@@ -451,6 +451,15 @@ export const medicamentosRepository = {
         // ------------------------------------------------------
         // RENOVAÇÕES
         // ------------------------------------------------------
+        //
+        // Renovação é histórico clínico/financeiro e NÃO deve ser
+        // apagada junto com o cadastro atual do medicamento.
+        //
+        // Antes de remover o medicamento, enriquecemos somente
+        // renovações legadas que ainda não possuem snapshot de
+        // nome/dosagem. Snapshots já existentes são preservados,
+        // pois representam a identidade histórica da aquisição.
+        // ------------------------------------------------------
 
         const renovacoes =
           await db.renovacoes
@@ -470,17 +479,50 @@ export const medicamentosRepository = {
             continue;
           }
 
-          await db.renovacoes.delete(
-            renovacao.id
+          const medicamentoNomeSnapshot =
+            renovacao.medicamento_nome?.trim() ||
+            medicamento.nome.trim() ||
+            null;
+
+          const medicamentoDosagemSnapshot =
+            renovacao.medicamento_dosagem?.trim() ||
+            medicamento.dosagem.trim() ||
+            null;
+
+          const needsSnapshotUpdate =
+            renovacao.medicamento_nome !==
+              medicamentoNomeSnapshot ||
+            renovacao.medicamento_dosagem !==
+              medicamentoDosagemSnapshot;
+
+          if (!needsSnapshotUpdate) {
+            continue;
+          }
+
+          const updatedRenovacao = {
+            ...renovacao,
+
+            medicamento_nome:
+              medicamentoNomeSnapshot,
+
+            medicamento_dosagem:
+              medicamentoDosagemSnapshot,
+
+            updated_at:
+              now,
+
+            synced:
+              false,
+          };
+
+          await db.renovacoes.put(
+            updatedRenovacao
           );
 
           await enfileirarOperacao(
             "renovacoes",
-            "delete",
-            {
-              id:
-                renovacao.id,
-            }
+            "update",
+            updatedRenovacao
           );
         }
 

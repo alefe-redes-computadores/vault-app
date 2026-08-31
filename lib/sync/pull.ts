@@ -274,7 +274,9 @@ export async function pullAllData(
           const rows =
             uniqueById(data);
 
-          let ignored = 0;
+          let ignoredPending = 0;
+          let ignoredUnsynced = 0;
+          let ignoredNewerLocal = 0;
           let imported = 0;
 
           for (
@@ -292,13 +294,74 @@ export async function pullAllData(
                 remoteItem.id
               )
             ) {
-              ignored++;
+              ignoredPending++;
 
               console.log(
                 `🛡️ [Pull] ${queueTable}:${remoteItem.id} possui alteração local pendente. Versão remota ignorada.`
               );
 
               continue;
+            }
+
+            const localItem =
+              await localTable.get(
+                remoteItem.id
+              );
+
+            if (localItem) {
+              const localRecord =
+                localItem as Record<
+                  string,
+                  unknown
+                >;
+
+              if (
+                localRecord.synced ===
+                false
+              ) {
+                ignoredUnsynced++;
+
+                console.log(
+                  `🛡️ [Pull] ${queueTable}:${remoteItem.id} está marcado como não sincronizado localmente. Versão remota ignorada.`
+                );
+
+                continue;
+              }
+
+              const localUpdatedAt =
+                typeof localRecord.updated_at ===
+                "string"
+                  ? Date.parse(
+                      localRecord.updated_at
+                    )
+                  : Number.NaN;
+
+              const remoteUpdatedAt =
+                typeof remoteItem.updated_at ===
+                "string"
+                  ? Date.parse(
+                      remoteItem.updated_at
+                    )
+                  : Number.NaN;
+
+              if (
+                Number.isFinite(
+                  localUpdatedAt
+                ) &&
+                Number.isFinite(
+                  remoteUpdatedAt
+                ) &&
+                localUpdatedAt >
+                  remoteUpdatedAt
+              ) {
+                ignoredNewerLocal++;
+
+                console.log(
+                  `🛡️ [Pull] ${queueTable}:${remoteItem.id} possui versão local mais recente que a remota. Versão remota ignorada.`
+                );
+
+                continue;
+              }
             }
 
             const mapped =
@@ -322,8 +385,13 @@ export async function pullAllData(
             imported++;
           }
 
+          const ignored =
+            ignoredPending +
+            ignoredUnsynced +
+            ignoredNewerLocal;
+
           console.log(
-            `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados, ${ignored} preservados por alterações locais`
+            `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados, ${ignored} preservados (${ignoredPending} com fila pendente, ${ignoredUnsynced} não sincronizados, ${ignoredNewerLocal} locais mais recentes)`
           );
         } catch (
           error: unknown

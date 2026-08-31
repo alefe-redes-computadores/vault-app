@@ -8,6 +8,10 @@ import {
   solicitarProcessamentoSync,
 } from "@/lib/sync/enfileirarOperacao";
 
+import {
+  getLocalTodayISO,
+} from "@/lib/health-utils";
+
 import type {
   Farmacia,
   Medicamento,
@@ -27,22 +31,34 @@ type RenovacaoCreateInput = Omit<
   | "updated_at"
   | "synced"
   | "person_id"
+  | "medicamento_nome"
+  | "medicamento_dosagem"
 > & {
   person_id: string;
 };
 
 type NullableRenovacaoFields = {
   document_id?: string | null;
+
   medico_id?: string | null;
   farmacia_id?: string | null;
   hospital_id?: string | null;
   local_id?: string | null;
+
+  medicamento_nome?: string | null;
+  medicamento_dosagem?: string | null;
+
+  data_aquisicao?: string | null;
+
   quantidade?: number | null;
   preco?: number | null;
+
   lote?: string | null;
   validade_produto?: string | null;
+
   anexo_url?: string | null;
   observacoes?: string | null;
+
   data_proxima_retirada?: string | null;
   data_retorno_sus?: string | null;
 };
@@ -73,40 +89,142 @@ export type RenovacaoCreateOptions = {
 // HELPERS
 // ============================================================
 
-function requirePersonId(personId?: string): string {
-  const normalized = personId?.trim();
+function requirePersonId(
+  personId?: string
+): string {
+  const normalized =
+    personId?.trim();
 
   if (!normalized) {
-    throw new Error("Pessoa ativa não identificada.");
+    throw new Error(
+      "Pessoa ativa não identificada."
+    );
   }
 
   return normalized;
 }
 
-function requireRenovacaoId(id?: string): string {
-  const normalized = id?.trim();
+function requireRenovacaoId(
+  id?: string
+): string {
+  const normalized =
+    id?.trim();
 
   if (!normalized) {
-    throw new Error("Renovação não identificada.");
+    throw new Error(
+      "Renovação não identificada."
+    );
   }
 
   return normalized;
 }
 
-function requireMedicamentoId(medicamentoId?: string): string {
-  const normalized = medicamentoId?.trim();
+function requireMedicamentoId(
+  medicamentoId?: string
+): string {
+  const normalized =
+    medicamentoId?.trim();
 
   if (!normalized) {
-    throw new Error("Medicamento não identificado.");
+    throw new Error(
+      "Medicamento não identificado."
+    );
   }
 
   return normalized;
+}
+
+function requireDate(
+  value: string | null | undefined,
+  field: string
+): string {
+  const normalized =
+    value?.trim();
+
+  if (!normalized) {
+    throw new Error(
+      `${field} não informada.`
+    );
+  }
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+      normalized
+    );
+
+  if (!match) {
+    throw new Error(
+      `${field} inválida.`
+    );
+  }
+
+  const year =
+    Number(match[1]);
+
+  const month =
+    Number(match[2]);
+
+  const day =
+    Number(match[3]);
+
+  const date =
+    new Date(
+      year,
+      month - 1,
+      day
+    );
+
+  if (
+    date.getFullYear() !==
+      year ||
+    date.getMonth() !==
+      month - 1 ||
+    date.getDate() !==
+      day
+  ) {
+    throw new Error(
+      `${field} inválida.`
+    );
+  }
+
+  return normalized;
+}
+
+function normalizeOptionalDate(
+  value: string | null | undefined,
+  field: string
+): string | null | undefined {
+  if (
+    value === undefined
+  ) {
+    return undefined;
+  }
+
+  if (
+    value === null
+  ) {
+    return null;
+  }
+
+  const normalized =
+    value.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return requireDate(
+    normalized,
+    field
+  );
 }
 
 function generateId(): string {
   if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
+    typeof crypto !==
+      "undefined" &&
+    typeof crypto.randomUUID ===
+      "function"
   ) {
     return crypto.randomUUID();
   }
@@ -121,50 +239,93 @@ function nowIso(): string {
 }
 
 /**
- * Remove apenas propriedades undefined.
+ * Remove somente propriedades undefined.
  *
  * null é preservado deliberadamente porque representa
- * "limpar o campo" para entidades/campos nullable.
- *
- * O tipo estrutural original é preservado porque retirar uma
- * propriedade cujo valor já era undefined não altera os campos
- * obrigatórios válidos do objeto.
+ * limpeza explícita em campos nullable.
  */
-function removeUndefined<T extends object>(value: T): T {
+function removeUndefined<
+  T extends object,
+>(
+  value: T
+): T {
   return Object.fromEntries(
-    Object.entries(value).filter(
-      ([, item]) => item !== undefined
+    Object.entries(
+      value
+    ).filter(
+      (
+        [, item]
+      ) =>
+        item !==
+        undefined
     )
   ) as T;
+}
+
+function getEffectiveAcquisitionDate(
+  renovacao: Renovacao
+): string {
+  return (
+    renovacao.data_aquisicao?.trim() ||
+    renovacao.data?.trim() ||
+    ""
+  );
 }
 
 function sortRenovacoes(
   renovacoes: Renovacao[]
 ): Renovacao[] {
-  return [...renovacoes].sort((a, b) => {
-    const dateCompare = String(
-      b.data || ""
-    ).localeCompare(String(a.data || ""));
+  return [
+    ...renovacoes,
+  ].sort(
+    (
+      a,
+      b
+    ) => {
+      const dateCompare =
+        getEffectiveAcquisitionDate(
+          b
+        ).localeCompare(
+          getEffectiveAcquisitionDate(
+            a
+          )
+        );
 
-    if (dateCompare !== 0) {
-      return dateCompare;
+      if (
+        dateCompare !==
+        0
+      ) {
+        return dateCompare;
+      }
+
+      return String(
+        b.created_at ||
+          ""
+      ).localeCompare(
+        String(
+          a.created_at ||
+            ""
+        )
+      );
     }
-
-    return String(
-      b.created_at || ""
-    ).localeCompare(String(a.created_at || ""));
-  });
+  );
 }
 
 async function getAuthenticatedUserId(): Promise<string> {
-  const { data, error } = await supabase.auth.getUser();
+  const {
+    data,
+    error,
+  } =
+    await supabase.auth.getUser();
 
   if (error) {
     throw error;
   }
 
   if (!data.user) {
-    throw new Error("Usuário não autenticado.");
+    throw new Error(
+      "Usuário não autenticado."
+    );
   }
 
   return data.user.id;
@@ -174,11 +335,15 @@ async function getRenovacaoForPerson(
   id: string,
   personId: string
 ): Promise<Renovacao> {
-  const renovacao = await db.renovacoes.get(id);
+  const renovacao =
+    await db.renovacoes.get(
+      id
+    );
 
   if (
     !renovacao ||
-    renovacao.person_id !== personId
+    renovacao.person_id !==
+      personId
   ) {
     throw new Error(
       "Renovação não encontrada para a pessoa ativa."
@@ -193,11 +358,14 @@ async function validateMedicamentoForPerson(
   personId: string
 ): Promise<Medicamento> {
   const medicamento =
-    await db.medicamentos.get(medicamentoId);
+    await db.medicamentos.get(
+      medicamentoId
+    );
 
   if (
     !medicamento ||
-    medicamento.person_id !== personId
+    medicamento.person_id !==
+      personId
   ) {
     throw new Error(
       "Medicamento não encontrado para a pessoa ativa."
@@ -208,14 +376,22 @@ async function validateMedicamentoForPerson(
 }
 
 async function getMedicoForUser(
-  medicoId: string | null | undefined,
+  medicoId:
+    | string
+    | null
+    | undefined,
   userId: string
-): Promise<Medico | undefined> {
+): Promise<
+  Medico | undefined
+> {
   if (!medicoId) {
     return undefined;
   }
 
-  const medico = await db.medicos.get(medicoId);
+  const medico =
+    await db.medicos.get(
+      medicoId
+    );
 
   if (!medico) {
     throw new Error(
@@ -223,7 +399,10 @@ async function getMedicoForUser(
     );
   }
 
-  if (medico.user_id !== userId) {
+  if (
+    medico.user_id !==
+    userId
+  ) {
     throw new Error(
       "Médico selecionado não pertence ao usuário autenticado."
     );
@@ -233,14 +412,22 @@ async function getMedicoForUser(
 }
 
 async function getFarmaciaForUser(
-  farmaciaId: string | null | undefined,
+  farmaciaId:
+    | string
+    | null
+    | undefined,
   userId: string
-): Promise<Farmacia | undefined> {
+): Promise<
+  Farmacia | undefined
+> {
   if (!farmaciaId) {
     return undefined;
   }
 
-  const farmacia = await db.farmacias.get(farmaciaId);
+  const farmacia =
+    await db.farmacias.get(
+      farmaciaId
+    );
 
   if (!farmacia) {
     throw new Error(
@@ -248,7 +435,10 @@ async function getFarmaciaForUser(
     );
   }
 
-  if (farmacia.user_id !== userId) {
+  if (
+    farmacia.user_id !==
+    userId
+  ) {
     throw new Error(
       "Farmácia selecionada não pertence ao usuário autenticado."
     );
@@ -258,31 +448,62 @@ async function getFarmaciaForUser(
 }
 
 function normalizeNullableText(
-  value: string | null | undefined
-): string | null | undefined {
-  if (value === undefined) {
+  value:
+    | string
+    | null
+    | undefined
+):
+  | string
+  | null
+  | undefined {
+  if (
+    value === undefined
+  ) {
     return undefined;
   }
 
-  if (value === null) {
+  if (
+    value === null
+  ) {
     return null;
   }
 
-  const normalized = value.trim();
+  const normalized =
+    value.trim();
 
-  return normalized || null;
+  return (
+    normalized ||
+    null
+  );
 }
 
 function normalizeNullableNumber(
-  value: number | null | undefined,
+  value:
+    | number
+    | null
+    | undefined,
   field: string
-): number | null | undefined {
-  if (value === undefined || value === null) {
+):
+  | number
+  | null
+  | undefined {
+  if (
+    value === undefined ||
+    value === null
+  ) {
     return value;
   }
 
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`${field} inválido.`);
+  if (
+    !Number.isFinite(
+      value
+    ) ||
+    value <
+      0
+  ) {
+    throw new Error(
+      `${field} inválido.`
+    );
   }
 
   return value;
@@ -294,57 +515,91 @@ function normalizeUpdateInput(
   return {
     ...data,
 
-    document_id: normalizeNullableText(
-      data.document_id
-    ),
+    document_id:
+      normalizeNullableText(
+        data.document_id
+      ),
 
-    medico_id: normalizeNullableText(
-      data.medico_id
-    ),
+    medico_id:
+      normalizeNullableText(
+        data.medico_id
+      ),
 
-    farmacia_id: normalizeNullableText(
-      data.farmacia_id
-    ),
+    farmacia_id:
+      normalizeNullableText(
+        data.farmacia_id
+      ),
 
-    hospital_id: normalizeNullableText(
-      data.hospital_id
-    ),
+    hospital_id:
+      normalizeNullableText(
+        data.hospital_id
+      ),
 
-    local_id: normalizeNullableText(
-      data.local_id
-    ),
+    local_id:
+      normalizeNullableText(
+        data.local_id
+      ),
 
-    lote: normalizeNullableText(data.lote),
+    medicamento_nome:
+      normalizeNullableText(
+        data.medicamento_nome
+      ),
 
-    validade_produto: normalizeNullableText(
-      data.validade_produto
-    ),
+    medicamento_dosagem:
+      normalizeNullableText(
+        data.medicamento_dosagem
+      ),
 
-    anexo_url: normalizeNullableText(
-      data.anexo_url
-    ),
+    data_aquisicao:
+      normalizeOptionalDate(
+        data.data_aquisicao,
+        "Data da aquisição"
+      ),
 
-    observacoes: normalizeNullableText(
-      data.observacoes
-    ),
+    lote:
+      normalizeNullableText(
+        data.lote
+      ),
 
-    data_proxima_retirada: normalizeNullableText(
-      data.data_proxima_retirada
-    ),
+    validade_produto:
+      normalizeOptionalDate(
+        data.validade_produto,
+        "Validade do produto"
+      ),
 
-    data_retorno_sus: normalizeNullableText(
-      data.data_retorno_sus
-    ),
+    anexo_url:
+      normalizeNullableText(
+        data.anexo_url
+      ),
 
-    quantidade: normalizeNullableNumber(
-      data.quantidade,
-      "Quantidade"
-    ),
+    observacoes:
+      normalizeNullableText(
+        data.observacoes
+      ),
 
-    preco: normalizeNullableNumber(
-      data.preco,
-      "Preço"
-    ),
+    data_proxima_retirada:
+      normalizeOptionalDate(
+        data.data_proxima_retirada,
+        "Data da próxima retirada"
+      ),
+
+    data_retorno_sus:
+      normalizeOptionalDate(
+        data.data_retorno_sus,
+        "Data de retorno do SUS"
+      ),
+
+    quantidade:
+      normalizeNullableNumber(
+        data.quantidade,
+        "Quantidade"
+      ),
+
+    preco:
+      normalizeNullableNumber(
+        data.preco,
+        "Preço"
+      ),
   };
 }
 
@@ -359,15 +614,27 @@ export const renovacoesRepository = {
 
   async getAll(
     personId: string
-  ): Promise<Renovacao[]> {
-    const safePersonId = requirePersonId(personId);
+  ): Promise<
+    Renovacao[]
+  > {
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
 
-    const renovacoes = await db.renovacoes
-      .where("person_id")
-      .equals(safePersonId)
-      .toArray();
+    const renovacoes =
+      await db.renovacoes
+        .where(
+          "person_id"
+        )
+        .equals(
+          safePersonId
+        )
+        .toArray();
 
-    return sortRenovacoes(renovacoes);
+    return sortRenovacoes(
+      renovacoes
+    );
   },
 
   // ==========================================================
@@ -377,23 +644,39 @@ export const renovacoesRepository = {
   async getByMedicamento(
     personId: string,
     medicamentoId: string
-  ): Promise<Renovacao[]> {
-    const safePersonId = requirePersonId(personId);
+  ): Promise<
+    Renovacao[]
+  > {
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
 
     const safeMedicamentoId =
-      requireMedicamentoId(medicamentoId);
+      requireMedicamentoId(
+        medicamentoId
+      );
 
-    const renovacoes = await db.renovacoes
-      .where("person_id")
-      .equals(safePersonId)
-      .filter(
-        (renovacao) =>
-          renovacao.medicamento_id ===
-          safeMedicamentoId
-      )
-      .toArray();
+    const renovacoes =
+      await db.renovacoes
+        .where(
+          "person_id"
+        )
+        .equals(
+          safePersonId
+        )
+        .filter(
+          (
+            renovacao
+          ) =>
+            renovacao.medicamento_id ===
+            safeMedicamentoId
+        )
+        .toArray();
 
-    return sortRenovacoes(renovacoes);
+    return sortRenovacoes(
+      renovacoes
+    );
   },
 
   // ==========================================================
@@ -403,15 +686,28 @@ export const renovacoesRepository = {
   async getById(
     id: string,
     personId: string
-  ): Promise<Renovacao | undefined> {
-    const safeId = requireRenovacaoId(id);
-    const safePersonId = requirePersonId(personId);
+  ): Promise<
+    Renovacao | undefined
+  > {
+    const safeId =
+      requireRenovacaoId(
+        id
+      );
 
-    const renovacao = await db.renovacoes.get(safeId);
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
+
+    const renovacao =
+      await db.renovacoes.get(
+        safeId
+      );
 
     if (
       !renovacao ||
-      renovacao.person_id !== safePersonId
+      renovacao.person_id !==
+        safePersonId
     ) {
       return undefined;
     }
@@ -424,16 +720,24 @@ export const renovacoesRepository = {
   // ==========================================================
 
   async create(
-    data: RenovacaoCreateInput,
-    options: RenovacaoCreateOptions = {}
+    data:
+      RenovacaoCreateInput,
+    options:
+      RenovacaoCreateOptions =
+        {}
   ): Promise<string> {
-    const personId = requirePersonId(data.person_id);
+    const personId =
+      requirePersonId(
+        data.person_id
+      );
 
-    const medicamentoId = requireMedicamentoId(
-      data.medicamento_id
-    );
+    const medicamentoId =
+      requireMedicamentoId(
+        data.medicamento_id
+      );
 
-    const userId = await getAuthenticatedUserId();
+    const userId =
+      await getAuthenticatedUserId();
 
     const medicamento =
       await validateMedicamentoForPerson(
@@ -443,166 +747,308 @@ export const renovacoesRepository = {
 
     if (
       medicamento.user_id &&
-      medicamento.user_id !== userId
+      medicamento.user_id !==
+        userId
     ) {
       throw new Error(
         "Medicamento não pertence ao usuário autenticado."
       );
     }
 
-    const documentId = normalizeNullableText(
-      data.document_id
-    );
+    // ========================================================
+    // DATAS CANÔNICAS
+    // ========================================================
 
-    const medicoId = normalizeNullableText(
-      data.medico_id
-    );
+    /*
+     * `data` continua sendo a data clínica da receita.
+     *
+     * `data_aquisicao` representa quando a compra/retirada
+     * realmente aconteceu.
+     *
+     * Enquanto a tela antiga ainda não enviar data_aquisicao,
+     * usamos hoje como padrão para novas aquisições.
+     */
+    const dataPrescricao =
+      requireDate(
+        data.data,
+        "Data da prescrição"
+      );
 
-    const farmaciaId = normalizeNullableText(
-      data.farmacia_id
-    );
+    const dataAquisicao =
+      data.data_aquisicao
+        ? requireDate(
+            data.data_aquisicao,
+            "Data da aquisição"
+          )
+        : getLocalTodayISO();
 
-    const hospitalId = normalizeNullableText(
-      data.hospital_id
-    );
+    // ========================================================
+    // RELAÇÕES
+    // ========================================================
 
-    const localId = normalizeNullableText(
-      data.local_id
-    );
+    const documentId =
+      normalizeNullableText(
+        data.document_id
+      );
 
-    const quantidade = normalizeNullableNumber(
-      data.quantidade,
-      "Quantidade"
-    );
+    const medicoId =
+      normalizeNullableText(
+        data.medico_id
+      );
 
-    const preco = normalizeNullableNumber(
-      data.preco,
-      "Preço"
-    );
+    const farmaciaId =
+      normalizeNullableText(
+        data.farmacia_id
+      );
 
-    const medico = await getMedicoForUser(
-      medicoId,
-      userId
-    );
+    const hospitalId =
+      normalizeNullableText(
+        data.hospital_id
+      );
 
-    const farmacia = await getFarmaciaForUser(
-      farmaciaId,
-      userId
-    );
+    const localId =
+      normalizeNullableText(
+        data.local_id
+      );
 
-    const timestamp = nowIso();
-    const id = generateId();
+    // ========================================================
+    // AQUISIÇÃO
+    // ========================================================
 
-    const renovacao: Renovacao = {
+    const quantidade =
+      normalizeNullableNumber(
+        data.quantidade,
+        "Quantidade"
+      );
+
+    const preco =
+      normalizeNullableNumber(
+        data.preco,
+        "Preço"
+      );
+
+    const medico =
+      await getMedicoForUser(
+        medicoId,
+        userId
+      );
+
+    const farmacia =
+      await getFarmaciaForUser(
+        farmaciaId,
+        userId
+      );
+
+    const timestamp =
+      nowIso();
+
+    const id =
+      generateId();
+
+    // ========================================================
+    // SNAPSHOT HISTÓRICO
+    // ========================================================
+
+    /*
+     * Nome e dosagem são copiados do Medicamento atual.
+     *
+     * Eles pertencem ao evento histórico e não dependem de o
+     * cadastro do medicamento continuar existindo no futuro.
+     */
+    const medicamentoNome =
+      medicamento.nome.trim();
+
+    const medicamentoDosagem =
+      medicamento.dosagem.trim();
+
+    const renovacao:
+      Renovacao = {
       ...data,
 
       id,
-      user_id: userId,
-      person_id: personId,
-      medicamento_id: medicamentoId,
 
-      document_id: documentId,
+      user_id:
+        userId,
 
-      medico_id: medicoId,
-      farmacia_id: farmaciaId,
-      hospital_id: hospitalId,
-      local_id: localId,
+      person_id:
+        personId,
+
+      medicamento_id:
+        medicamentoId,
+
+      medicamento_nome:
+        medicamentoNome ||
+        null,
+
+      medicamento_dosagem:
+        medicamentoDosagem ||
+        null,
+
+      document_id:
+        documentId,
+
+      medico_id:
+        medicoId,
+
+      farmacia_id:
+        farmaciaId,
+
+      hospital_id:
+        hospitalId,
+
+      local_id:
+        localId,
 
       quantidade,
+
       preco,
 
-      lote: normalizeNullableText(data.lote),
+      lote:
+        normalizeNullableText(
+          data.lote
+        ),
 
-      validade_produto: normalizeNullableText(
-        data.validade_produto
-      ),
+      validade_produto:
+        normalizeOptionalDate(
+          data.validade_produto,
+          "Validade do produto"
+        ),
 
-      anexo_url: normalizeNullableText(
-        data.anexo_url
-      ),
+      /*
+       * Data clínica da receita.
+       */
+      data:
+        dataPrescricao,
 
-      observacoes: normalizeNullableText(
-        data.observacoes
-      ),
+      /*
+       * Data financeira/logística da aquisição.
+       */
+      data_aquisicao:
+        dataAquisicao,
 
-      data_proxima_retirada: normalizeNullableText(
-        data.data_proxima_retirada
-      ),
+      anexo_url:
+        normalizeNullableText(
+          data.anexo_url
+        ),
 
-      data_retorno_sus: normalizeNullableText(
-        data.data_retorno_sus
-      ),
+      observacoes:
+        normalizeNullableText(
+          data.observacoes
+        ),
 
-      created_at: timestamp,
-      updated_at: timestamp,
-      synced: false,
+      data_proxima_retirada:
+        normalizeOptionalDate(
+          data.data_proxima_retirada,
+          "Data da próxima retirada"
+        ),
+
+      data_retorno_sus:
+        normalizeOptionalDate(
+          data.data_retorno_sus,
+          "Data de retorno do SUS"
+        ),
+
+      created_at:
+        timestamp,
+
+      updated_at:
+        timestamp,
+
+      synced:
+        false,
     };
 
     const cleanRenovacao =
-      removeUndefined(renovacao);
+      removeUndefined(
+        renovacao
+      );
+
+    // ========================================================
+    // CONSOLIDAÇÃO DO MEDICAMENTO
+    // ========================================================
 
     /*
      * Renovacao aceita null em diversos campos porque null
-     * representa limpeza explícita/histórica.
+     * representa ausência histórica explícita.
      *
-     * Medicamento, por outro lado, mantém undefined como
-     * representação canônica de ausência para leitura.
+     * Medicamento usa undefined como representação canônica
+     * de ausência para leitura.
      *
-     * Portanto os valores nullable da Renovacao são convertidos
-     * para undefined somente quando consolidados no Medicamento.
+     * Quando document_id é explicitamente enviado pela nova
+     * renovação, ele se torna também o documento principal
+     * atual do medicamento.
      *
-     * IMPORTANTE:
-     * quando uma nova renovação informa document_id, esse
-     * documento passa a ser também o documento atual/principal
-     * do Medicamento. O histórico continua preservado nas
-     * próprias Renovacoes.
+     * O documento histórico continua preservado na Renovacao.
      */
-    const medicamentoAtualizado: Medicamento = {
+    const medicamentoAtualizado:
+      Medicamento = {
       ...medicamento,
 
-      data_receita: data.data,
+      data_receita:
+        dataPrescricao,
 
       tipo_aquisicao:
-        data.tipo_aquisicao === "sus"
+        data.tipo_aquisicao ===
+        "sus"
           ? "sus"
-          : data.tipo_aquisicao === "gratuito"
+          : data.tipo_aquisicao ===
+              "gratuito"
             ? "gratuito"
             : "comprado",
 
-      ...(data.document_id !== undefined
+      ...(data.document_id !==
+      undefined
         ? {
             document_id:
-              documentId || undefined,
+              documentId ||
+              undefined,
           }
         : {}),
 
       medico_id:
-        medicoId || undefined,
+        medicoId ||
+        undefined,
 
       medico:
-        medico?.nome || "",
+        medico?.nome ||
+        "",
 
       farmacia_id:
-        farmaciaId || undefined,
+        farmaciaId ||
+        undefined,
 
       farmacia:
-        farmacia?.nome || undefined,
+        farmacia?.nome ||
+        undefined,
 
       data_retorno_sus:
-        data.tipo_aquisicao === "sus"
-          ? normalizeNullableText(
-              data.data_proxima_retirada
-            ) || undefined
+        data.tipo_aquisicao ===
+        "sus"
+          ? normalizeOptionalDate(
+              data.data_proxima_retirada,
+              "Data da próxima retirada"
+            ) ||
+            undefined
           : undefined,
 
-      ...(options.proximaRenovacao !== undefined
+      ...(options.proximaRenovacao !==
+      undefined
         ? {
             proxima_renovacao:
-              options.proximaRenovacao || "",
+              options.proximaRenovacao ||
+              "",
           }
         : {}),
 
-      ...(typeof quantidade === "number"
+      /*
+       * Estoque só é alterado quando a quantidade adquirida
+       * foi explicitamente informada.
+       *
+       * A referência agora é a DATA DA AQUISIÇÃO, não mais a
+       * data da receita.
+       */
+      ...(typeof quantidade ===
+      "number"
         ? {
             estoque_quantidade:
               (typeof medicamento.estoque_quantidade ===
@@ -611,15 +1057,24 @@ export const renovacoesRepository = {
                 medicamento.estoque_quantidade
               )
                 ? medicamento.estoque_quantidade
-                : 0) + quantidade,
+                : 0) +
+              quantidade,
 
-            estoque_data_referencia: data.data,
+            estoque_data_referencia:
+              dataAquisicao,
           }
         : {}),
 
-      updated_at: timestamp,
-      synced: false,
+      updated_at:
+        timestamp,
+
+      synced:
+        false,
     };
+
+    // ========================================================
+    // TRANSACTION ATÔMICA
+    // ========================================================
 
     await db.transaction(
       "rw",
@@ -629,18 +1084,23 @@ export const renovacoesRepository = {
         db.syncQueue,
       ],
       async () => {
-        await db.renovacoes.add(cleanRenovacao);
+        await db.renovacoes.add(
+          cleanRenovacao
+        );
 
         await db.medicamentos.put(
           medicamentoAtualizado
         );
 
         const medicamentoPersistido =
-          await db.medicamentos.get(medicamentoId);
+          await db.medicamentos.get(
+            medicamentoId
+          );
 
         if (
           !medicamentoPersistido ||
-          medicamentoPersistido.person_id !== personId
+          medicamentoPersistido.person_id !==
+            personId
         ) {
           throw new Error(
             "Não foi possível validar o medicamento após registrar a renovação."
@@ -652,7 +1112,8 @@ export const renovacoesRepository = {
           "add",
           cleanRenovacao,
           {
-            dispatchSync: false,
+            dispatchSync:
+              false,
           }
         );
 
@@ -661,7 +1122,8 @@ export const renovacoesRepository = {
           "update",
           medicamentoPersistido,
           {
-            dispatchSync: false,
+            dispatchSync:
+              false,
           }
         );
       }
@@ -679,20 +1141,32 @@ export const renovacoesRepository = {
   async update(
     id: string,
     personId: string,
-    data: RenovacaoUpdateInput
+    data:
+      RenovacaoUpdateInput
   ): Promise<void> {
-    const safeId = requireRenovacaoId(id);
-    const safePersonId = requirePersonId(personId);
-    const userId = await getAuthenticatedUserId();
+    const safeId =
+      requireRenovacaoId(
+        id
+      );
 
-    const atual = await getRenovacaoForPerson(
-      safeId,
-      safePersonId
-    );
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
+
+    const userId =
+      await getAuthenticatedUserId();
+
+    const atual =
+      await getRenovacaoForPerson(
+        safeId,
+        safePersonId
+      );
 
     if (
       atual.user_id &&
-      atual.user_id !== userId
+      atual.user_id !==
+        userId
     ) {
       throw new Error(
         "Renovação não pertence ao usuário autenticado."
@@ -700,10 +1174,17 @@ export const renovacoesRepository = {
     }
 
     const normalizedData =
-      normalizeUpdateInput(data);
+      normalizeUpdateInput(
+        data
+      );
+
+    // ========================================================
+    // MEDICAMENTO
+    // ========================================================
 
     const medicamentoId =
-      normalizedData.medicamento_id !== undefined
+      normalizedData.medicamento_id !==
+      undefined
         ? requireMedicamentoId(
             normalizedData.medicamento_id
           )
@@ -719,53 +1200,153 @@ export const renovacoesRepository = {
 
     if (
       medicamento.user_id &&
-      medicamento.user_id !== userId
+      medicamento.user_id !==
+        userId
     ) {
       throw new Error(
         "Medicamento não pertence ao usuário autenticado."
       );
     }
 
-    if (normalizedData.medico_id) {
+    if (
+      normalizedData.medico_id
+    ) {
       await getMedicoForUser(
         normalizedData.medico_id,
         userId
       );
     }
 
-    if (normalizedData.farmacia_id) {
+    if (
+      normalizedData.farmacia_id
+    ) {
       await getFarmaciaForUser(
         normalizedData.farmacia_id,
         userId
       );
     }
 
-    const timestamp = nowIso();
+    // ========================================================
+    // DATAS
+    // ========================================================
 
-    const payload = removeUndefined({
-      ...normalizedData,
+    const dataPrescricao =
+      normalizedData.data !==
+      undefined
+        ? requireDate(
+            normalizedData.data,
+            "Data da prescrição"
+          )
+        : atual.data;
 
-      medicamento_id: medicamentoId,
+    const dataAquisicao =
+      normalizedData.data_aquisicao !==
+      undefined
+        ? normalizedData.data_aquisicao
+        : atual.data_aquisicao;
 
-      updated_at: timestamp,
-      synced: false as const,
-    });
+    // ========================================================
+    // SNAPSHOT
+    // ========================================================
+
+    /*
+     * Se o medicamento histórico for alterado explicitamente
+     * em uma edição, atualizamos também o snapshot.
+     *
+     * Se não houver troca, snapshots existentes são
+     * preservados. Registros legados sem snapshot são
+     * enriquecidos na primeira edição.
+     */
+    const medicamentoFoiAlterado =
+      medicamentoId !==
+      atual.medicamento_id;
+
+    const medicamentoNomeSnapshot =
+      medicamentoFoiAlterado ||
+      !atual.medicamento_nome
+        ? medicamento.nome.trim() ||
+          null
+        : atual.medicamento_nome;
+
+    const medicamentoDosagemSnapshot =
+      medicamentoFoiAlterado ||
+      !atual.medicamento_dosagem
+        ? medicamento.dosagem.trim() ||
+          null
+        : atual.medicamento_dosagem;
+
+    const timestamp =
+      nowIso();
+
+    const payload =
+      removeUndefined({
+        ...normalizedData,
+
+        medicamento_id:
+          medicamentoId,
+
+        medicamento_nome:
+          medicamentoNomeSnapshot,
+
+        medicamento_dosagem:
+          medicamentoDosagemSnapshot,
+
+        data:
+          dataPrescricao,
+
+        /*
+         * Para legado, não forçamos data_aquisicao quando a
+         * edição não tocar nesse campo.
+         *
+         * A camada de leitura continua usando:
+         * data_aquisicao ?? data
+         */
+        ...(dataAquisicao !==
+        undefined
+          ? {
+              data_aquisicao:
+                dataAquisicao,
+            }
+          : {}),
+
+        updated_at:
+          timestamp,
+
+        synced:
+          false as const,
+      });
 
     delete (
-      payload as Record<string, unknown>
+      payload as Record<
+        string,
+        unknown
+      >
     ).id;
 
     delete (
-      payload as Record<string, unknown>
+      payload as Record<
+        string,
+        unknown
+      >
     ).user_id;
 
     delete (
-      payload as Record<string, unknown>
+      payload as Record<
+        string,
+        unknown
+      >
     ).person_id;
 
     delete (
-      payload as Record<string, unknown>
+      payload as Record<
+        string,
+        unknown
+      >
     ).created_at;
+
+    // ========================================================
+    // TRANSACTION
+    // ========================================================
 
     await db.transaction(
       "rw",
@@ -774,19 +1355,25 @@ export const renovacoesRepository = {
         db.syncQueue,
       ],
       async () => {
-        const updated = await db.renovacoes.update(
-          safeId,
-          payload
-        );
+        const updated =
+          await db.renovacoes.update(
+            safeId,
+            payload
+          );
 
-        if (updated === 0) {
+        if (
+          updated ===
+          0
+        ) {
           throw new Error(
             "Não foi possível atualizar a renovação."
           );
         }
 
         const renovacaoAtualizada =
-          await db.renovacoes.get(safeId);
+          await db.renovacoes.get(
+            safeId
+          );
 
         if (
           !renovacaoAtualizada ||
@@ -803,7 +1390,8 @@ export const renovacoesRepository = {
           "update",
           renovacaoAtualizada,
           {
-            dispatchSync: false,
+            dispatchSync:
+              false,
           }
         );
       }
@@ -820,18 +1408,29 @@ export const renovacoesRepository = {
     id: string,
     personId: string
   ): Promise<void> {
-    const safeId = requireRenovacaoId(id);
-    const safePersonId = requirePersonId(personId);
-    const userId = await getAuthenticatedUserId();
+    const safeId =
+      requireRenovacaoId(
+        id
+      );
 
-    const renovacao = await getRenovacaoForPerson(
-      safeId,
-      safePersonId
-    );
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
+
+    const userId =
+      await getAuthenticatedUserId();
+
+    const renovacao =
+      await getRenovacaoForPerson(
+        safeId,
+        safePersonId
+      );
 
     if (
       renovacao.user_id &&
-      renovacao.user_id !== userId
+      renovacao.user_id !==
+        userId
     ) {
       throw new Error(
         "Renovação não pertence ao usuário autenticado."
@@ -845,18 +1444,26 @@ export const renovacoesRepository = {
         db.syncQueue,
       ],
       async () => {
-        await db.renovacoes.delete(safeId);
+        await db.renovacoes.delete(
+          safeId
+        );
 
         await enfileirarOperacao(
           "renovacoes",
           "delete",
           {
-            id: safeId,
-            person_id: safePersonId,
-            user_id: userId,
+            id:
+              safeId,
+
+            person_id:
+              safePersonId,
+
+            user_id:
+              userId,
           },
           {
-            dispatchSync: false,
+            dispatchSync:
+              false,
           }
         );
       }

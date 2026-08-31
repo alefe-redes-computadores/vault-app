@@ -1,4 +1,3 @@
-
 // app/(app)/page.tsx
 "use client";
 
@@ -19,6 +18,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  CheckCircle2,
   FileText,
   FlaskConical,
   FolderHeart,
@@ -509,12 +509,6 @@ export default function HomePage() {
   } =
     useMedicamentos();
 
-  /**
-   * useMedicamentos já é person-scoped.
-   *
-   * Mantemos somente uma defesa adicional estrita:
-   * registros sem person_id não entram silenciosamente.
-   */
   const medicamentos =
     useMemo(
       () =>
@@ -598,28 +592,6 @@ export default function HomePage() {
         }
 
         return db.tratamentos
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [activePersonId],
-      []
-    );
-
-  const cids =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.cids
           .where(
             "person_id"
           )
@@ -827,10 +799,6 @@ export default function HomePage() {
                   horario
             );
 
-          /**
-           * Dose tomada ou explicitamente ignorada
-           * está resolvida.
-           */
           if (
             log?.tomado_em ||
             log?.ignorado_em
@@ -894,13 +862,6 @@ export default function HomePage() {
       ]
     );
 
-  /**
-   * Documentos ainda usam health-utils porque o motor
-   * de health-insights atual não recebe Document.
-   *
-   * Eles entram na MESMA lista visual, evitando um
-   * componente de notificações paralelo.
-   */
   const documentInsights =
     useMemo(
       () =>
@@ -1087,14 +1048,6 @@ export default function HomePage() {
       let gastoMesAnterior =
         0;
 
-      /**
-       * Fonte financeira canônica na Home:
-       * histórico de Renovações/aquisições.
-       *
-       * Não somamos medicamento.preco novamente,
-       * evitando dupla contagem da compra inicial
-       * quando ela já possui renovação correspondente.
-       */
       for (
         const renovacao of
           renovacoes
@@ -1113,18 +1066,22 @@ export default function HomePage() {
             renovacao.preco
           );
 
+        const dataFinanceira =
+          renovacao.data_aquisicao?.trim() ||
+          renovacao.data?.trim();
+
         if (
           !Number.isFinite(
             preco
           ) ||
           preco <= 0 ||
-          !renovacao.data
+          !dataFinanceira
         ) {
           continue;
         }
 
         const parts =
-          renovacao.data.split(
+          dataFinanceira.split(
             "-"
           );
 
@@ -1237,17 +1194,6 @@ export default function HomePage() {
       );
 
       try {
-        /**
-         * IMPORTANTE:
-         *
-         * Não alteramos estoque aqui.
-         *
-         * useDoseLogs
-         *   -> doseLogsRepository.setStatus()
-         *
-         * já registra a tomada, calcula a transição
-         * e movimenta estoque de forma centralizada.
-         */
         await marcarDose(
           dose.medicamentoId,
           dose.horario
@@ -1284,12 +1230,6 @@ export default function HomePage() {
       );
 
       try {
-        /**
-         * Cada registro passa pelo repository.
-         *
-         * Não há qualquer alteração manual de estoque
-         * nesta página.
-         */
         for (
           const dose of
             dosesPendentesAtrasadas
@@ -1377,10 +1317,6 @@ export default function HomePage() {
         "/saude/medicamentos",
     },
 
-    /**
-     * Antes esta posição repetia Prontuário,
-     * que já possui um card dedicado logo abaixo.
-     */
     {
       id:
         "cirurgias",
@@ -1407,6 +1343,9 @@ export default function HomePage() {
       label:
         "Médicos",
 
+      description:
+        "Profissionais",
+
       icon:
         Stethoscope,
 
@@ -1423,6 +1362,9 @@ export default function HomePage() {
 
       label:
         "Farmácias",
+
+      description:
+        "Compras e retiradas",
 
       icon:
         Store,
@@ -1441,6 +1383,9 @@ export default function HomePage() {
       label:
         "Hospitais",
 
+      description:
+        "Rede hospitalar",
+
       icon:
         Building2,
 
@@ -1458,6 +1403,9 @@ export default function HomePage() {
       label:
         "Locais",
 
+      description:
+        "Clínicas, UBS e labs",
+
       icon:
         MapPin,
 
@@ -1466,23 +1414,6 @@ export default function HomePage() {
 
       count:
         locais.length,
-    },
-
-    {
-      id:
-        "cids",
-
-      label:
-        "CIDs",
-
-      icon:
-        FileText,
-
-      path:
-        "/saude/cids",
-
-      count:
-        cids.length,
     },
   ];
 
@@ -1502,27 +1433,28 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen overflow-y-auto bg-void pb-40">
+      <main className="min-h-screen overflow-x-hidden bg-void pb-36">
         {/* =====================================================
             HEADER
         ===================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-safe backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-5 pb-3 pt-safe backdrop-blur-xl">
           <motion.div
             initial={{
               opacity: 0,
-              y: 10,
+              y: 8,
             }}
             animate={{
               opacity: 1,
               y: 0,
             }}
             transition={{
-              duration: 0.24,
+              duration: 0.22,
             }}
-            className="flex items-center gap-3"
+            className="flex items-center justify-between gap-3"
           >
             <button
+              type="button"
               onClick={() => {
                 trigger(
                   "vibrate"
@@ -1535,28 +1467,34 @@ export default function HomePage() {
               className="flex min-w-0 items-center gap-3 text-left"
             >
               {avatarUrl ? (
-                <span className="glow-ice flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                <span className="glow-ice flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full">
                   <img
-                    src={avatarUrl}
-                    alt={displayName}
+                    src={
+                      avatarUrl
+                    }
+                    alt={
+                      displayName
+                    }
                     loading="lazy"
                     className="h-full w-full rounded-full object-cover"
                   />
                 </span>
               ) : (
-                <div className="ring-gradient glow-ice flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-void">
+                <div className="ring-gradient glow-ice flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-void">
                   {displayName
-                    .charAt(0)
+                    .charAt(
+                      0
+                    )
                     .toUpperCase()}
                 </div>
               )}
 
               <div className="min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ice/90">
-                  Painel Clínico
+                <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-ice/80">
+                  Vault Saúde
                 </p>
 
-                <h1 className="mt-1 truncate font-display text-base font-semibold text-ink-primary">
+                <h1 className="mt-0.5 truncate font-display text-base font-semibold text-ink-primary">
                   Olá,{" "}
                   {
                     displayName.split(
@@ -1564,31 +1502,39 @@ export default function HomePage() {
                     )[0]
                   }
                 </h1>
-
-                <p className="text-xs text-ink-muted">
-                  {dosesPendentesAtrasadas.length >
-                  0
-                    ? `${dosesPendentesAtrasadas.length} dose${
-                        dosesPendentesAtrasadas.length >
-                        1
-                          ? "s"
-                          : ""
-                      } pendente${
-                        dosesPendentesAtrasadas.length >
-                        1
-                          ? "s"
-                          : ""
-                      }`
-                    : "Rotina de doses atualizada"}
-                </p>
               </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.push(
+                  "/hoje"
+                );
+              }}
+              className="flex shrink-0 items-center gap-2 rounded-full border border-surface-border/50 bg-surface px-3 py-2 text-[10px] font-semibold text-ink-muted shadow-sm transition-all active:scale-95"
+            >
+              <Clock
+                size={
+                  13
+                }
+                className="text-ice"
+              />
+
+              {
+                horaAtual
+              }
             </button>
           </motion.div>
         </header>
 
-        <section className="space-y-6 px-5 pt-5">
+        <section className="space-y-7 px-5 pt-5">
           {/* ===================================================
-              RESUMO DE HOJE
+              HOJE
           =================================================== */}
 
           <motion.section
@@ -1604,167 +1550,10 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.02,
             }}
-            className="overflow-hidden rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface p-5 shadow-sm"
+            className="overflow-hidden rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-sm"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="mb-1 flex items-center gap-2">
-                  <CalendarDays
-                    size={15}
-                    className="text-ice"
-                  />
-
-                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ice">
-                    Resumo de hoje
-                  </p>
-                </div>
-
-                <p className="font-display text-lg font-semibold text-ink-primary">
-                  Seu dia clínico
-                </p>
-
-                <p className="mt-1 text-xs text-ink-muted">
-                  Compromissos, doses e
-                  informações que precisam
-                  de atenção.
-                </p>
-              </div>
-
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-ice/20 bg-ice/10 text-ice">
-                <HeartPulse
-                  size={20}
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2.5">
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/hoje"
-                  );
-                }}
-                className="rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.97]"
-              >
-                <div className="flex items-center gap-2">
-                  <Calendar
-                    size={15}
-                    className="text-ice"
-                  />
-
-                  <span className="text-[10px] text-ink-muted">
-                    Compromissos
-                  </span>
-                </div>
-
-                <p className="mt-1 font-mono text-lg font-bold text-ink-primary">
-                  {
-                    totalCompromissosHoje
-                  }
-                </p>
-              </button>
-
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/saude/medicamentos"
-                  );
-                }}
-                className="rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.97]"
-              >
-                <div className="flex items-center gap-2">
-                  <Pill
-                    size={15}
-                    className="text-emerald-400"
-                  />
-
-                  <span className="text-[10px] text-ink-muted">
-                    Medicamentos ativos
-                  </span>
-                </div>
-
-                <p className="mt-1 font-mono text-lg font-bold text-ink-primary">
-                  {
-                    medicamentosAtivos.length
-                  }
-                </p>
-              </button>
-
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  setModalPendenciasAberto(
-                    true
-                  );
-                }}
-                className="rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.97]"
-              >
-                <div className="flex items-center gap-2">
-                  <Clock
-                    size={15}
-                    className={
-                      dosesPendentesAtrasadas.length >
-                      0
-                        ? "text-coral"
-                        : "text-emerald-400"
-                    }
-                  />
-
-                  <span className="text-[10px] text-ink-muted">
-                    Doses pendentes
-                  </span>
-                </div>
-
-                <p className="mt-1 font-mono text-lg font-bold text-ink-primary">
-                  {
-                    dosesPendentesAtrasadas.length
-                  }
-                </p>
-              </button>
-
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/hoje"
-                  );
-                }}
-                className="rounded-2xl border border-surface-border/50 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.97]"
-              >
-                <div className="flex items-center gap-2">
-                  <ClipboardList
-                    size={15}
-                    className="text-violet-400"
-                  />
-
-                  <span className="text-[10px] text-ink-muted">
-                    Doses tomadas
-                  </span>
-                </div>
-
-                <p className="mt-1 font-mono text-lg font-bold text-ink-primary">
-                  {
-                    dosesTomadasHoje
-                  }
-                </p>
-              </button>
-            </div>
-
             <button
+              type="button"
               onClick={() => {
                 trigger(
                   "vibrate"
@@ -1774,14 +1563,185 @@ export default function HomePage() {
                   "/hoje"
                 );
               }}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-ice/20 bg-ice/10 px-4 py-3 text-xs font-semibold text-ice transition-all hover:bg-ice/15 active:scale-[0.985]"
+              className="flex w-full items-center justify-between gap-4 px-5 pb-4 pt-5 text-left transition-all active:bg-surface-raised/40"
             >
-              Ver meu dia
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <CalendarDays
+                    size={
+                      14
+                    }
+                    className="text-ice"
+                  />
 
-              <ChevronRight
-                size={15}
-              />
+                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ice">
+                    Hoje
+                  </p>
+                </div>
+
+                <p className="mt-1 font-display text-lg font-semibold text-ink-primary">
+                  Sua rotina
+                </p>
+
+                <p className="mt-0.5 text-[11px] text-ink-muted">
+                  {dosesPendentesAtrasadas.length >
+                  0
+                    ? `${dosesPendentesAtrasadas.length} dose${
+                        dosesPendentesAtrasadas.length >
+                        1
+                          ? "s"
+                          : ""
+                      } aguardando ação`
+                    : "Nenhuma dose atrasada agora"}
+                </p>
+              </div>
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-ice/20 bg-ice/10 text-ice">
+                <HeartPulse
+                  size={
+                    19
+                  }
+                />
+              </div>
             </button>
+
+            <div className="grid grid-cols-2 border-t border-surface-border/40">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    "/hoje"
+                  );
+                }}
+                className="border-b border-r border-surface-border/40 px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+              >
+                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                  <Calendar
+                    size={
+                      13
+                    }
+                    className="text-ice"
+                  />
+
+                  Compromissos
+                </div>
+
+                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
+                  {
+                    totalCompromissosHoje
+                  }
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setModalPendenciasAberto(
+                    true
+                  );
+                }}
+                className="border-b border-surface-border/40 px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+              >
+                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                  <Clock
+                    size={
+                      13
+                    }
+                    className={
+                      dosesPendentesAtrasadas.length >
+                      0
+                        ? "text-coral"
+                        : "text-emerald-400"
+                    }
+                  />
+
+                  Pendentes
+                </div>
+
+                <p
+                  className={`mt-1 font-mono text-xl font-bold ${
+                    dosesPendentesAtrasadas.length >
+                    0
+                      ? "text-coral"
+                      : "text-ink-primary"
+                  }`}
+                >
+                  {
+                    dosesPendentesAtrasadas.length
+                  }
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    "/saude/medicamentos"
+                  );
+                }}
+                className="border-r border-surface-border/40 px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+              >
+                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                  <Pill
+                    size={
+                      13
+                    }
+                    className="text-emerald-400"
+                  />
+
+                  Medicamentos
+                </div>
+
+                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
+                  {
+                    medicamentosAtivos.length
+                  }
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    "/hoje"
+                  );
+                }}
+                className="px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+              >
+                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                  <CheckCircle2
+                    size={
+                      13
+                    }
+                    className="text-violet-400"
+                  />
+
+                  Tomadas
+                </div>
+
+                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
+                  {
+                    dosesTomadasHoje
+                  }
+                </p>
+              </button>
+            </div>
           </motion.section>
 
           {/* ===================================================
@@ -1805,28 +1765,27 @@ export default function HomePage() {
               }}
               className="space-y-3"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-coral/10 text-coral">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
                     <Bell
-                      size={16}
+                      size={
+                        15
+                      }
+                      className="text-coral"
                     />
-                  </div>
 
-                  <div>
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
                       Atenção
                     </h2>
-
-                    <p className="text-[10px] text-ink-muted">
-                      Prioridades calculadas
-                      a partir dos seus
-                      registros
-                    </p>
                   </div>
+
+                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                    O que merece prioridade agora
+                  </p>
                 </div>
 
-                <span className="rounded-full bg-coral/10 px-2.5 py-1 text-[10px] font-semibold text-coral">
+                <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-coral">
                   {
                     unifiedAlerts.length
                   }
@@ -1834,7 +1793,7 @@ export default function HomePage() {
               </div>
 
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-4 scrollbar-hide"
+                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide"
                 style={{
                   scrollbarWidth:
                     "none",
@@ -1844,12 +1803,14 @@ export default function HomePage() {
                 }}
               >
                 {unifiedAlerts.map(
-                  (alert) => (
+                  (
+                    alert
+                  ) => (
                     <div
                       key={
                         alert.id
                       }
-                      className="w-[90%] max-w-[350px] shrink-0 snap-start"
+                      className="w-[88%] max-w-[350px] shrink-0 snap-start"
                     >
                       <AlertRow
                         alert={
@@ -1886,27 +1847,28 @@ export default function HomePage() {
               }}
               className="space-y-3"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-ice/10 text-ice">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
                     <Calendar
-                      size={16}
+                      size={
+                        15
+                      }
+                      className="text-ice"
                     />
-                  </div>
 
-                  <div>
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      Hoje
+                      Próximos de hoje
                     </h2>
-
-                    <p className="text-[10px] text-ink-muted">
-                      Seus compromissos
-                      clínicos
-                    </p>
                   </div>
+
+                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                    Sua agenda clínica do dia
+                  </p>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     trigger(
                       "vibrate"
@@ -1923,7 +1885,7 @@ export default function HomePage() {
               </div>
 
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-4 scrollbar-hide"
+                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide"
                 style={{
                   scrollbarWidth:
                     "none",
@@ -1936,60 +1898,48 @@ export default function HomePage() {
                   (
                     consulta: any
                   ) => (
-                    <div
+                    <button
+                      type="button"
                       key={
                         consulta.id
                       }
-                      className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/consultas/detalhes?id=${consulta.id}`
+                        );
+                      }}
+                      className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
-                      <button
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                        <Stethoscope
+                          size={
+                            17
+                          }
+                        />
+                      </div>
 
-                          router.push(
-                            `/saude/consultas/detalhes?id=${consulta.id}`
-                          );
-                        }}
-                        className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-ice/30 active:scale-[0.985]"
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                          <Stethoscope
-                            size={
-                              18
-                            }
-                          />
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {consulta.especialidade ||
+                            "Consulta"}
+                        </p>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-ink-primary">
-                            {consulta.especialidade ||
-                              "Consulta"}
-                          </p>
+                        <p className="truncate text-[10px] text-ink-muted">
+                          {consulta.medico
+                            ? `Dr(a). ${consulta.medico}`
+                            : "Profissional não informado"}
+                        </p>
+                      </div>
 
-                          <p className="truncate text-[11px] text-ink-muted">
-                            {consulta.medico
-                              ? `Dr(a). ${consulta.medico}`
-                              : "Profissional não informado"}
-                          </p>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <p className="font-mono text-xs font-bold text-coral">
-                            {consulta.horario ||
-                              "Hoje"}
-                          </p>
-
-                          <ChevronRight
-                            size={
-                              14
-                            }
-                            className="ml-auto mt-1 text-ink-faint"
-                          />
-                        </div>
-                      </button>
-                    </div>
+                      <span className="shrink-0 font-mono text-[11px] font-semibold text-coral">
+                        {consulta.horario ||
+                          "Hoje"}
+                      </span>
+                    </button>
                   )
                 )}
 
@@ -1997,58 +1947,45 @@ export default function HomePage() {
                   (
                     cirurgia: any
                   ) => (
-                    <div
+                    <button
+                      type="button"
                       key={
                         cirurgia.id
                       }
-                      className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/cirurgias/detalhes?id=${cirurgia.id}`
+                        );
+                      }}
+                      className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
-                      <button
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
+                        <Syringe
+                          size={
+                            17
+                          }
+                        />
+                      </div>
 
-                          router.push(
-                            `/saude/cirurgias/detalhes?id=${cirurgia.id}`
-                          );
-                        }}
-                        className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-violet-400/30 active:scale-[0.985]"
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
-                          <Syringe
-                            size={
-                              18
-                            }
-                          />
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {cirurgia.procedimento ||
+                            "Cirurgia"}
+                        </p>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-ink-primary">
-                            {cirurgia.procedimento ||
-                              "Cirurgia"}
-                          </p>
+                        <p className="text-[10px] text-ink-muted">
+                          Procedimento agendado
+                        </p>
+                      </div>
 
-                          <p className="text-[11px] text-ink-muted">
-                            Procedimento
-                            agendado
-                          </p>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <p className="font-mono text-xs font-bold text-coral">
-                            Hoje
-                          </p>
-
-                          <ChevronRight
-                            size={
-                              14
-                            }
-                            className="ml-auto mt-1 text-ink-faint"
-                          />
-                        </div>
-                      </button>
-                    </div>
+                      <span className="shrink-0 font-mono text-[11px] font-semibold text-coral">
+                        Hoje
+                      </span>
+                    </button>
                   )
                 )}
 
@@ -2056,58 +1993,45 @@ export default function HomePage() {
                   (
                     exame: any
                   ) => (
-                    <div
+                    <button
+                      type="button"
                       key={
                         exame.id
                       }
-                      className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/exames/detalhes?id=${exame.id}`
+                        );
+                      }}
+                      className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
-                      <button
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                        <FlaskConical
+                          size={
+                            17
+                          }
+                        />
+                      </div>
 
-                          router.push(
-                            `/saude/exames/detalhes?id=${exame.id}`
-                          );
-                        }}
-                        className="flex w-full items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-emerald-400/30 active:scale-[0.985]"
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
-                          <FlaskConical
-                            size={
-                              18
-                            }
-                          />
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {exame.nome ||
+                            "Exame"}
+                        </p>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-ink-primary">
-                            {exame.nome ||
-                              "Exame"}
-                          </p>
+                        <p className="text-[10px] text-ink-muted">
+                          Exame programado para hoje
+                        </p>
+                      </div>
 
-                          <p className="text-[11px] text-ink-muted">
-                            Exame para
-                            hoje
-                          </p>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <p className="font-mono text-xs font-bold text-coral">
-                            Hoje
-                          </p>
-
-                          <ChevronRight
-                            size={
-                              14
-                            }
-                            className="ml-auto mt-1 text-ink-faint"
-                          />
-                        </div>
-                      </button>
-                    </div>
+                      <span className="shrink-0 font-mono text-[11px] font-semibold text-coral">
+                        Hoje
+                      </span>
+                    </button>
                   )
                 )}
 
@@ -2115,152 +2039,6 @@ export default function HomePage() {
               </div>
             </motion.section>
           )}
-
-          {/* ===================================================
-              MEDICAMENTOS
-          =================================================== */}
-
-          <motion.section
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.24,
-              delay: 0.08,
-            }}
-            className="rounded-[26px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
-                  <Pill
-                    size={19}
-                  />
-                </div>
-
-                <div>
-                  <h2 className="font-display text-sm font-semibold text-ink-primary">
-                    Medicamentos
-                  </h2>
-
-                  <p className="text-[10px] text-ink-muted">
-                    Acompanhamento da
-                    rotina de doses
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/saude/medicamentos"
-                  );
-                }}
-                className="text-[10px] font-semibold text-ice"
-              >
-                Ver todos
-              </button>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/60 p-3">
-                <p className="text-[10px] text-ink-muted">
-                  Ativos
-                </p>
-
-                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
-                  {
-                    medicamentosAtivos.length
-                  }
-                </p>
-
-                <p className="mt-1 text-[10px] text-ink-muted">
-                  medicamentos
-                </p>
-              </div>
-
-              <div
-                className={`rounded-2xl border p-3 ${
-                  dosesPendentesAtrasadas.length >
-                  0
-                    ? "border-coral/20 bg-coral/5"
-                    : "border-emerald-400/20 bg-emerald-400/5"
-                }`}
-              >
-                <p className="text-[10px] text-ink-muted">
-                  Pendentes
-                </p>
-
-                <p
-                  className={`mt-1 font-mono text-xl font-bold ${
-                    dosesPendentesAtrasadas.length >
-                    0
-                      ? "text-coral"
-                      : "text-emerald-400"
-                  }`}
-                >
-                  {
-                    dosesPendentesAtrasadas.length
-                  }
-                </p>
-
-                <p className="mt-1 text-[10px] text-ink-muted">
-                  doses vencidas
-                  hoje
-                </p>
-              </div>
-            </div>
-
-            {dosesPendentesAtrasadas.length >
-              0 && (
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  setModalPendenciasAberto(
-                    true
-                  );
-                }}
-                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-coral/20 bg-coral/5 px-3.5 py-3 text-left transition-all active:scale-[0.985]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Clock
-                    size={16}
-                    className="text-coral"
-                  />
-
-                  <div>
-                    <p className="text-xs font-semibold text-ink-primary">
-                      Existem doses
-                      pendentes
-                    </p>
-
-                    <p className="text-[10px] text-ink-muted">
-                      Revise apenas as
-                      doses cujo horário
-                      já passou
-                    </p>
-                  </div>
-                </div>
-
-                <ChevronRight
-                  size={16}
-                  className="text-coral"
-                />
-              </button>
-            )}
-          </motion.section>
 
           {/* ===================================================
               TRATAMENTOS
@@ -2277,34 +2055,34 @@ export default function HomePage() {
             }}
             transition={{
               duration: 0.24,
-              delay: 0.12,
+              delay: 0.08,
             }}
             className="space-y-3"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
                   <FolderHeart
-                    size={16}
+                    size={
+                      15
+                    }
+                    className="text-violet-400"
                   />
-                </div>
 
-                <div>
                   <h2 className="font-display text-sm font-semibold text-ink-primary">
                     Tratamentos
                   </h2>
-
-                  <p className="text-[10px] text-ink-muted">
-                    Condições e
-                    acompanhamentos
-                    registrados
-                  </p>
                 </div>
+
+                <p className="mt-0.5 text-[10px] text-ink-muted">
+                  Acompanhamentos desta pessoa
+                </p>
               </div>
 
               {tratamentos.length >
                 0 && (
                 <button
+                  type="button"
                   onClick={() => {
                     trigger(
                       "vibrate"
@@ -2323,20 +2101,49 @@ export default function HomePage() {
 
             {tratamentos.length ===
             0 ? (
-              <div className="rounded-[24px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-6 text-center">
-                <FolderHeart
-                  size={22}
-                  className="mx-auto mb-2 text-ink-faint"
-                />
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
 
-                <p className="text-sm text-ink-muted">
-                  Nenhum tratamento
-                  cadastrado.
-                </p>
-              </div>
+                  router.push(
+                    "/saude/tratamentos"
+                  );
+                }}
+                className="flex w-full items-center justify-between rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-4 text-left transition-all active:scale-[0.985]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                    <FolderHeart
+                      size={
+                        16
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-ink-primary">
+                      Nenhum tratamento cadastrado
+                    </p>
+
+                    <p className="text-[10px] text-ink-muted">
+                      Toque para acessar Tratamentos
+                    </p>
+                  </div>
+                </div>
+
+                <ChevronRight
+                  size={
+                    15
+                  }
+                  className="text-ink-faint"
+                />
+              </button>
             ) : (
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-4 scrollbar-hide"
+                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide"
                 style={{
                   scrollbarWidth:
                     "none",
@@ -2359,79 +2166,76 @@ export default function HomePage() {
                       "#8B5CF6";
 
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={
                           tratamento.id
                         }
-                        className="w-[85%] max-w-[320px] shrink-0 snap-start"
+                        onClick={() => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          router.push(
+                            `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                          );
+                        }}
+                        className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center justify-between overflow-hidden rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+                        style={{
+                          borderColor:
+                            `${cor}30`,
+
+                          borderLeftWidth:
+                            3,
+
+                          borderLeftColor:
+                            cor,
+                        }}
                       >
-                        <button
-                          onClick={() => {
-                            trigger(
-                              "vibrate"
-                            );
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+                            style={{
+                              backgroundColor:
+                                `${cor}15`,
 
-                            router.push(
-                              `/saude/tratamentos/detalhes?id=${tratamento.id}`
-                            );
-                          }}
-                          className="flex w-full items-center justify-between overflow-hidden rounded-[22px] border bg-surface p-4 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.985]"
-                          style={{
-                            borderColor:
-                              `${cor}30`,
-
-                            borderLeftWidth:
-                              4,
-
-                            borderLeftColor:
-                              cor,
-                          }}
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div
-                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-                              style={{
-                                backgroundColor:
-                                  `${cor}15`,
-
-                                color:
-                                  cor,
-                              }}
-                            >
-                              <Icon
-                                size={
-                                  19
-                                }
-                              />
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-ink-primary">
-                                {
-                                  tratamento.nome
-                                }
-                              </p>
-
-                              <p className="truncate text-[11px] text-ink-muted">
-                                {tratamento.status ===
-                                "ativo"
-                                  ? "Em andamento"
-                                  : tratamento.status ===
-                                      "concluido"
-                                    ? "Concluído"
-                                    : "Suspenso"}
-                              </p>
-                            </div>
+                              color:
+                                cor,
+                            }}
+                          >
+                            <Icon
+                              size={
+                                17
+                              }
+                            />
                           </div>
 
-                          <ChevronRight
-                            size={
-                              16
-                            }
-                            className="shrink-0 text-ink-faint"
-                          />
-                        </button>
-                      </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-ink-primary">
+                              {
+                                tratamento.nome
+                              }
+                            </p>
+
+                            <p className="truncate text-[10px] text-ink-muted">
+                              {tratamento.status ===
+                              "ativo"
+                                ? "Em andamento"
+                                : tratamento.status ===
+                                    "concluido"
+                                  ? "Concluído"
+                                  : "Suspenso"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <ChevronRight
+                          size={
+                            15
+                          }
+                          className="shrink-0 text-ink-faint"
+                        />
+                      </button>
                     );
                   }
                 )}
@@ -2456,28 +2260,39 @@ export default function HomePage() {
             }}
             transition={{
               duration: 0.24,
-              delay: 0.14,
+              delay: 0.1,
             }}
           >
             <div className="mb-3 flex items-center gap-2">
               <ClipboardList
-                size={15}
+                size={
+                  15
+                }
                 className="text-ice"
               />
 
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Acesso rápido
-              </h2>
+              <div>
+                <h2 className="font-display text-sm font-semibold text-ink-primary">
+                  Acesso rápido
+                </h2>
+
+                <p className="mt-0.5 text-[10px] text-ink-muted">
+                  Rotas clínicas mais usadas
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               {quickActions.map(
-                (action) => {
+                (
+                  action
+                ) => {
                   const Icon =
                     action.icon;
 
                   return (
                     <button
+                      type="button"
                       key={
                         action.id
                       }
@@ -2490,24 +2305,24 @@ export default function HomePage() {
                           action.path
                         );
                       }}
-                      className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.985]"
+                      className="flex min-h-[72px] items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface px-3.5 py-3 text-left shadow-sm transition-all active:scale-[0.975]"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                         <Icon
                           size={
-                            18
+                            16
                           }
                         />
                       </div>
 
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
+                        <p className="truncate text-xs font-semibold text-ink-primary">
                           {
                             action.label
                           }
                         </p>
 
-                        <p className="truncate text-[10px] text-ink-muted">
+                        <p className="mt-0.5 truncate text-[9px] text-ink-muted">
                           {
                             action.description
                           }
@@ -2525,6 +2340,186 @@ export default function HomePage() {
           =================================================== */}
 
           <motion.button
+            type="button"
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.24,
+              delay: 0.12,
+            }}
+            onClick={() => {
+              trigger(
+                "vibrate"
+              );
+
+              router.push(
+                "/saude/registros"
+              );
+            }}
+            className="flex w-full items-center justify-between gap-3 rounded-[22px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                <Activity
+                  size={
+                    18
+                  }
+                />
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink-primary">
+                  Prontuário
+                </p>
+
+                <p className="truncate text-[10px] text-ink-muted">
+                  Sintomas, medições e evolução
+                </p>
+              </div>
+            </div>
+
+            <ChevronRight
+              size={
+                16
+              }
+              className="shrink-0 text-ice"
+            />
+          </motion.button>
+
+          {/* ===================================================
+              MEUS ARQUIVOS
+          =================================================== */}
+
+          <motion.section
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.24,
+              delay: 0.14,
+            }}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <FolderLock
+                size={
+                  15
+                }
+                className="text-ice"
+              />
+
+              <div>
+                <h2 className="font-display text-sm font-semibold text-ink-primary">
+                  Meus arquivos
+                </h2>
+
+                <p className="mt-0.5 text-[10px] text-ink-muted">
+                  Saúde e documentos pessoais
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    "/saude/documentos"
+                  );
+                }}
+                className="flex min-h-[96px] flex-col justify-between rounded-[22px] border border-emerald-400/15 bg-gradient-to-br from-emerald-400/8 to-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.975]"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
+                  <FolderHeart
+                    size={
+                      16
+                    }
+                  />
+                </div>
+
+                <div className="mt-3 flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold text-ink-primary">
+                      Saúde
+                    </p>
+
+                    <p className="mt-0.5 text-[9px] text-ink-muted">
+                      Acervo clínico
+                    </p>
+                  </div>
+
+                  <ChevronRight
+                    size={
+                      14
+                    }
+                    className="text-emerald-400/70"
+                  />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  router.push(
+                    "/documentos"
+                  );
+                }}
+                className="flex min-h-[96px] flex-col justify-between rounded-[22px] border border-ice/15 bg-gradient-to-br from-ice/8 to-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.975]"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                  <FolderLock
+                    size={
+                      16
+                    }
+                  />
+                </div>
+
+                <div className="mt-3 flex items-end justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold text-ink-primary">
+                      Pessoal
+                    </p>
+
+                    <p className="mt-0.5 text-[9px] text-ink-muted">
+                      Cofre de documentos
+                    </p>
+                  </div>
+
+                  <ChevronRight
+                    size={
+                      14
+                    }
+                    className="text-ice/70"
+                  />
+                </div>
+              </button>
+            </div>
+          </motion.section>
+
+          {/* ===================================================
+              FINANCEIRO
+          =================================================== */}
+
+          <motion.button
+            type="button"
             initial={{
               opacity: 0,
               y: 10,
@@ -2543,206 +2538,31 @@ export default function HomePage() {
               );
 
               router.push(
-                "/saude/registros"
-              );
-            }}
-            className="flex w-full items-center justify-between rounded-[24px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface p-4 text-left shadow-sm transition-all hover:border-ice/40 active:scale-[0.985]"
-          >
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-ice/20 bg-ice/10 text-ice">
-                <Activity
-                  size={21}
-                />
-              </div>
-
-              <div className="min-w-0">
-                <p className="font-display text-sm font-bold text-ink-primary">
-                  Prontuário de
-                  sintomas e medições
-                </p>
-
-                <p className="mt-0.5 truncate text-xs text-ink-muted">
-                  Acompanhe sintomas,
-                  medições e evolução
-                </p>
-              </div>
-            </div>
-
-            <ChevronRight
-              size={18}
-              className="shrink-0 text-ice"
-            />
-          </motion.button>
-
-          {/* ===================================================
-              VERSÍCULO
-          =================================================== */}
-
-          <motion.section
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.24,
-              delay: 0.18,
-            }}
-          >
-            <VersiculoDia />
-          </motion.section>
-
-          {/* ===================================================
-              MEUS ARQUIVOS
-          =================================================== */}
-
-          <motion.section
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.24,
-              delay: 0.2,
-            }}
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <FolderHeart
-                size={15}
-                className="text-ice"
-              />
-
-              <h2 className="font-display text-sm font-semibold text-ink-primary">
-                Meus arquivos
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/saude/documentos"
-                  );
-                }}
-                className="flex flex-col items-start gap-2 rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/5 to-surface p-4 text-left shadow-sm transition-all hover:border-ice/40 active:scale-[0.97]"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
-                  <FolderHeart
-                    size={18}
-                  />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-ink-primary">
-                    Saúde
-                  </p>
-
-                  <p className="text-[10px] leading-tight text-ink-muted">
-                    Receitas, laudos e
-                    exames
-                  </p>
-                </div>
-
-                <ChevronRight
-                  size={16}
-                  className="mt-1 self-end text-ice/70"
-                />
-              </button>
-
-              <button
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/documentos"
-                  );
-                }}
-                className="flex flex-col items-start gap-2 rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/5 to-surface p-4 text-left shadow-sm transition-all hover:border-ice/40 active:scale-[0.97]"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                  <FolderLock
-                    size={18}
-                  />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-ink-primary">
-                    Pessoal
-                  </p>
-
-                  <p className="text-[10px] leading-tight text-ink-muted">
-                    Documentos,
-                    contratos e
-                    certidões
-                  </p>
-                </div>
-
-                <ChevronRight
-                  size={16}
-                  className="mt-1 self-end text-ice/70"
-                />
-              </button>
-            </div>
-          </motion.section>
-
-          {/* ===================================================
-              RESUMO FINANCEIRO
-          =================================================== */}
-
-          <motion.button
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.24,
-              delay: 0.22,
-            }}
-            onClick={() => {
-              trigger(
-                "vibrate"
-              );
-
-              router.push(
                 "/saude/renovacao"
               );
             }}
-            className="flex w-full items-center justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-emerald-400/30 active:scale-[0.985]"
+            className="flex w-full items-center justify-between gap-4 rounded-[22px] border border-emerald-400/15 bg-gradient-to-r from-emerald-400/8 via-surface to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
           >
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
                 <WalletCards
-                  size={21}
+                  size={
+                    18
+                  }
                 />
               </div>
 
               <div className="min-w-0">
-                <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-muted">
-                  Compras de
-                  medicamentos
+                <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-ink-muted">
+                  Compras de medicamentos
                 </p>
 
                 <p className="mt-0.5 font-mono text-lg font-bold text-ink-primary">
                   R${" "}
                   {metricasFinanceiras.gastoMesAtual
-                    .toFixed(2)
+                    .toFixed(
+                      2
+                    )
                     .replace(
                       ".",
                       ","
@@ -2752,7 +2572,7 @@ export default function HomePage() {
                 {metricasFinanceiras.diff !==
                   0 && (
                   <p
-                    className={`mt-0.5 text-[10px] font-bold ${
+                    className={`mt-0.5 text-[9px] font-semibold ${
                       metricasFinanceiras.diff >
                       0
                         ? "text-coral"
@@ -2780,19 +2600,19 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1 text-[10px] font-semibold text-ice">
-              <span>
-                Histórico
-              </span>
+            <div className="flex shrink-0 items-center gap-1 text-[9px] font-semibold text-ice">
+              Histórico
 
               <ChevronRight
-                size={15}
+                size={
+                  14
+                }
               />
             </div>
           </motion.button>
 
           {/* ===================================================
-              REDE
+              SUA REDE
           =================================================== */}
 
           <motion.section
@@ -2806,24 +2626,32 @@ export default function HomePage() {
             }}
             transition={{
               duration: 0.24,
-              delay: 0.24,
+              delay: 0.18,
             }}
-            className="rounded-[24px] border border-surface-border/50 bg-surface p-4"
+            className="space-y-3"
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="font-display text-sm font-semibold text-ink-primary">
-                  Sua rede
-                </h2>
+                <div className="flex items-center gap-2">
+                  <Stethoscope
+                    size={
+                      15
+                    }
+                    className="text-ice"
+                  />
+
+                  <h2 className="font-display text-sm font-semibold text-ink-primary">
+                    Sua rede
+                  </h2>
+                </div>
 
                 <p className="mt-0.5 text-[10px] text-ink-muted">
-                  Profissionais,
-                  estabelecimentos e
-                  vínculos clínicos
+                  Profissionais e estabelecimentos
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => {
                   trigger(
                     "vibrate"
@@ -2833,7 +2661,7 @@ export default function HomePage() {
                     "/saude/rede"
                   );
                 }}
-                className="rounded-full bg-ice/10 px-3 py-1.5 text-[10px] font-medium text-ice transition-colors hover:bg-ice/20"
+                className="text-[10px] font-semibold text-ice"
               >
                 Ver rede
               </button>
@@ -2841,7 +2669,9 @@ export default function HomePage() {
 
             <div className="grid grid-cols-2 gap-2.5">
               {redeActions.map(
-                (item) => {
+                (
+                  item
+                ) => {
                   const Icon =
                     item.icon;
 
@@ -2854,14 +2684,12 @@ export default function HomePage() {
                         ? "text-amber-400"
                         : item.id ===
                             "hospitais"
-                          ? "text-ice"
-                          : item.id ===
-                              "cids"
-                            ? "text-violet-400"
-                            : "text-emerald-400";
+                          ? "text-violet-400"
+                          : "text-emerald-400";
 
                   return (
                     <button
+                      type="button"
                       key={
                         item.id
                       }
@@ -2874,33 +2702,58 @@ export default function HomePage() {
                           item.path
                         );
                       }}
-                      className="flex min-h-[82px] flex-col items-center justify-center rounded-2xl border border-transparent bg-surface-raised/60 px-2 py-3 transition-all hover:border-surface-border/50 hover:bg-surface-raised active:scale-95"
+                      className="flex min-h-[78px] items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface px-3.5 py-3 text-left shadow-sm transition-all active:scale-[0.975]"
                     >
-                      <Icon
-                        size={
-                          17
-                        }
-                        className={
-                          iconClass
-                        }
-                      />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised">
+                        <Icon
+                          size={
+                            16
+                          }
+                          className={
+                            iconClass
+                          }
+                        />
+                      </div>
 
-                      <p className="mt-1 font-display text-base font-semibold text-ink-primary">
-                        {
-                          item.count
-                        }
-                      </p>
+                      <div className="min-w-0">
+                        <p className="font-mono text-base font-bold text-ink-primary">
+                          {
+                            item.count
+                          }
+                        </p>
 
-                      <p className="text-[10px] text-ink-muted">
-                        {
-                          item.label
-                        }
-                      </p>
+                        <p className="truncate text-[10px] font-medium text-ink-muted">
+                          {
+                            item.label
+                          }
+                        </p>
+                      </div>
                     </button>
                   );
                 }
               )}
             </div>
+          </motion.section>
+
+          {/* ===================================================
+              VERSÍCULO — ENCERRAMENTO
+          =================================================== */}
+
+          <motion.section
+            initial={{
+              opacity: 0,
+              y: 10,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{
+              duration: 0.24,
+              delay: 0.2,
+            }}
+          >
+            <VersiculoDia />
           </motion.section>
         </section>
 

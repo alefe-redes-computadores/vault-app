@@ -79,7 +79,8 @@ type StatusFilter =
 type AcquisitionFilter =
   | "todos"
   | "comprado"
-  | "sus";
+  | "sus"
+  | "gratuito";
 
 type RenovacaoEnriquecida =
   Renovacao & {
@@ -139,7 +140,14 @@ function getAcquisitionLabel(
     renovacao.tipo_aquisicao ===
     "sus"
   ) {
-    return "SUS / Gratuito";
+    return "SUS";
+  }
+
+  if (
+    renovacao.tipo_aquisicao ===
+    "gratuito"
+  ) {
+    return "Gratuito";
   }
 
   if (
@@ -157,6 +165,35 @@ function getAcquisitionLabel(
   }
 
   return "Valor não informado";
+}
+
+function getEffectiveAcquisitionDate(
+  renovacao: Renovacao
+): string {
+  return (
+    renovacao.data_aquisicao?.trim() ||
+    renovacao.data
+  );
+}
+
+function getAcquisitionTypeLabel(
+  renovacao: Renovacao
+): string {
+  if (
+    renovacao.tipo_aquisicao ===
+    "sus"
+  ) {
+    return "SUS";
+  }
+
+  if (
+    renovacao.tipo_aquisicao ===
+    "gratuito"
+  ) {
+    return "Gratuito";
+  }
+
+  return "Particular";
 }
 
 // ============================================================
@@ -361,10 +398,12 @@ export default function RenovacoesPage() {
               ...renovacao,
 
               medicamentoNome:
+                renovacao.medicamento_nome?.trim() ||
                 medicamento?.nome ||
-                "Medicamento não encontrado",
+                "Medicamento removido",
 
               medicamentoDosagem:
+                renovacao.medicamento_dosagem?.trim() ||
                 medicamento?.dosagem ||
                 "",
 
@@ -431,7 +470,9 @@ export default function RenovacoesPage() {
 
           if (
             renovacao.tipo_aquisicao ===
-            "sus"
+              "sus" ||
+            renovacao.tipo_aquisicao ===
+              "gratuito"
           ) {
             sus +=
               1;
@@ -512,7 +553,9 @@ export default function RenovacoesPage() {
                 renovacao
               ) =>
                 isWithinLastDays(
-                  renovacao.data,
+                  getEffectiveAcquisitionDate(
+                    renovacao
+                  ),
                   30
                 )
             );
@@ -528,7 +571,9 @@ export default function RenovacoesPage() {
                 renovacao
               ) =>
                 isWithinLastDays(
-                  renovacao.data,
+                  getEffectiveAcquisitionDate(
+                    renovacao
+                  ),
                   60
                 )
             );
@@ -699,7 +744,7 @@ export default function RenovacoesPage() {
                 </p>
 
                 <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  SUS
+                  SUS / grátis
                 </p>
               </div>
             </div>
@@ -885,6 +930,38 @@ export default function RenovacoesPage() {
 
               SUS
             </button>
+
+            <button
+              type="button"
+              onClick={
+                () => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setFiltroAquisicao(
+                    filtroAquisicao ===
+                      "gratuito"
+                      ? "todos"
+                      : "gratuito"
+                  );
+                }
+              }
+              className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroAquisicao ===
+                "gratuito"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
+              }`}
+            >
+              <Receipt
+                size={
+                  10
+                }
+              />
+
+              Gratuito
+            </button>
           </ListFilters>
         </ListPageHeader>
 
@@ -977,7 +1054,9 @@ export default function RenovacoesPage() {
                       <span
                         className={`shrink-0 whitespace-nowrap text-xs font-mono font-medium ${
                           renovacao.tipo_aquisicao ===
-                          "sus"
+                            "sus" ||
+                          renovacao.tipo_aquisicao ===
+                            "gratuito"
                             ? "text-emerald-400"
                             : renovacao.preco !==
                                 undefined &&
@@ -1006,7 +1085,10 @@ export default function RenovacoesPage() {
                         ======================================== */}
 
                     <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-                      <span className="flex items-center gap-1 font-mono">
+                      <span
+                        className="flex items-center gap-1 font-mono"
+                        title="Data da compra/retirada"
+                      >
                         <Calendar
                           size={
                             12
@@ -1015,39 +1097,56 @@ export default function RenovacoesPage() {
                         />
 
                         {formatDateDisplay(
-                          renovacao.data
+                          getEffectiveAcquisitionDate(
+                            renovacao
+                          )
                         )}
                       </span>
+
+                      {renovacao.data_aquisicao &&
+                        renovacao.data_aquisicao !==
+                          renovacao.data && (
+                          <span
+                            className="flex items-center gap-1 text-[10px] text-ink-muted"
+                            title="Data da prescrição"
+                          >
+                            Receita{" "}
+                            {formatDateDisplay(
+                              renovacao.data
+                            )}
+                          </span>
+                        )}
 
                       {/* AQUISIÇÃO */}
 
                       <span
                         className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
                           renovacao.tipo_aquisicao ===
-                          "sus"
+                            "sus" ||
+                          renovacao.tipo_aquisicao ===
+                            "gratuito"
                             ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
                             : "border-ice/20 bg-ice/10 text-ice"
                         }`}
                       >
                         {renovacao.tipo_aquisicao ===
-                        "sus" ? (
-                          <Receipt
+                        "comprado" ? (
+                          <Store
                             size={
                               10
                             }
                           />
                         ) : (
-                          <Store
+                          <Receipt
                             size={
                               10
                             }
                           />
                         )}
 
-                        {renovacao.tipo_aquisicao ===
-                        "sus"
-                          ? "SUS"
-                          : "Particular"}
+                        {getAcquisitionTypeLabel(
+                          renovacao
+                        )}
                       </span>
 
                       {/* VALIDADE */}

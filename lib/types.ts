@@ -888,7 +888,25 @@ export interface Renovacao {
   user_id: string;
   person_id?: string;
 
+  /**
+   * Relação com o cadastro atual do medicamento.
+   *
+   * Essa relação pode deixar de resolver no futuro caso o
+   * medicamento seja removido. Por isso a renovação também
+   * preserva um snapshot histórico de nome e dosagem.
+   */
   medicamento_id: string;
+
+  /**
+   * Snapshot histórico.
+   *
+   * Estes campos pertencem ao evento de renovação/aquisição e
+   * não devem depender do estado atual do Medicamento.
+   *
+   * São opcionais para compatibilidade com registros legados.
+   */
+  medicamento_nome?: string | null;
+  medicamento_dosagem?: string | null;
 
   document_id?: string | null;
   medico_id?: string | null;
@@ -896,13 +914,40 @@ export interface Renovacao {
   hospital_id?: string | null;
   local_id?: string | null;
 
+  /**
+   * Quantidade adquirida/retirada.
+   *
+   * Não representa preço unitário e não deve ser multiplicada
+   * automaticamente por preco.
+   */
   quantidade?: number | null;
+
+  /**
+   * Valor total informado para a aquisição.
+   */
   preco?: number | null;
 
   lote?: string | null;
   validade_produto?: string | null;
 
+  /**
+   * Data clínica da receita/prescrição.
+   *
+   * Mantida com a semântica histórica atual do Vault e usada
+   * para validade da receita e regras clínicas relacionadas.
+   */
   data: string;
+
+  /**
+   * Data real em que a compra ou retirada aconteceu.
+   *
+   * É a data correta para histórico financeiro.
+   *
+   * Opcional porque registros antigos possuem somente `data`.
+   * Consumidores devem usar `data_aquisicao ?? data` como
+   * fallback até os dados legados serem enriquecidos.
+   */
+  data_aquisicao?: string | null;
 
   anexo_url?: string | null;
   observacoes?: string | null;

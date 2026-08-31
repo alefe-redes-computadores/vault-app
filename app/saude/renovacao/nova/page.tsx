@@ -659,6 +659,16 @@ function NovaRenovacaoContent() {
     );
 
   const [
+    dataAquisicaoDisplay,
+    setDataAquisicaoDisplay,
+  ] =
+    useState(
+      formatDateToDisplay(
+        getLocalTodayISO()
+      )
+    );
+
+  const [
     preco,
     setPreco,
   ] =
@@ -1249,6 +1259,21 @@ function NovaRenovacaoContent() {
           "Data inválida";
       }
 
+      const dataAquisicaoISO =
+        parseDateToISO(
+          dataAquisicaoDisplay
+        );
+
+      if (
+        !dataAquisicaoISO
+      ) {
+        newErrors.dataAquisicao =
+          tipoAquisicao ===
+            "sus"
+            ? "Data da retirada inválida"
+            : "Data da compra inválida";
+      }
+
       if (
         validadeProduto &&
         !parseDateToISO(
@@ -1372,6 +1397,22 @@ function NovaRenovacaoContent() {
           ) {
             throw new Error(
               "Data da renovação inválida."
+            );
+          }
+
+          const dataAquisicaoISO =
+            parseDateToISO(
+              dataAquisicaoDisplay
+            );
+
+          if (
+            !dataAquisicaoISO
+          ) {
+            throw new Error(
+              tipoAquisicao ===
+                "sus"
+                ? "Data da retirada inválida."
+                : "Data da compra inválida."
             );
           }
 
@@ -1541,6 +1582,9 @@ function NovaRenovacaoContent() {
 
                 data:
                   dataISO,
+
+                data_aquisicao:
+                  dataAquisicaoISO,
 
                 anexo_url:
                   uploadedStorageUrl,
@@ -2367,6 +2411,93 @@ function NovaRenovacaoContent() {
             </div>
           </motion.div>
 
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.065,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <Calendar
+                size={
+                  16
+                }
+                className={
+                  tipoAquisicao ===
+                    "sus"
+                    ? "text-emerald-400"
+                    : "text-ice"
+                }
+              />
+
+              <div>
+                <h3 className="text-sm font-semibold text-ink-primary">
+                  {tipoAquisicao ===
+                  "sus"
+                    ? "Data da retirada"
+                    : "Data da compra"}
+                </h3>
+
+                <p className="mt-0.5 text-[11px] text-ink-muted">
+                  Esta é a data usada no histórico de aquisições e no financeiro do Vault.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <Calendar
+                size={
+                  16
+                }
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
+
+              <input
+                type="text"
+                placeholder="DD/MM/AAAA"
+                value={
+                  dataAquisicaoDisplay
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    setDataAquisicaoDisplay(
+                      handleDateMask(
+                        event.target.value
+                      )
+                    )
+                }
+                maxLength={
+                  10
+                }
+                inputMode="numeric"
+                className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none ${
+                  errors.dataAquisicao
+                    ? "border-coral/50"
+                    : tipoAquisicao ===
+                        "sus"
+                      ? "border-surface-border/50 focus:border-emerald-500/50"
+                      : "border-surface-border/50 focus:border-ice/50"
+                }`}
+              />
+            </div>
+
+            {errors.dataAquisicao && (
+              <p className="mt-1 text-xs text-coral">
+                {
+                  errors.dataAquisicao
+                }
+              </p>
+            )}
+          </motion.div>
+
           {/* ==================================================
               COMPRA
               ================================================== */}
@@ -2460,7 +2591,7 @@ function NovaRenovacaoContent() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                  Preço (R$)
+                  Valor total da compra (R$)
                 </label>
 
                 <div className="relative">
@@ -2503,6 +2634,10 @@ function NovaRenovacaoContent() {
                     }
                   </p>
                 )}
+
+                <p className="mt-1.5 text-[11px] text-ink-muted">
+                  Informe o valor total pago nesta compra. A quantidade adquirida é registrada separadamente e não multiplica este valor.
+                </p>
 
                 {analisePreco && (
                   <div className="mt-2 flex items-center gap-1.5 text-xs">

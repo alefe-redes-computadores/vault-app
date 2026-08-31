@@ -59,11 +59,6 @@ const MAX_BACKOFF_MS =
 
 // ============================================================
 // TRAVA GLOBAL
-//
-// useSyncQueue pode ser utilizado em mais de um componente.
-//
-// Um useRef() isolado por hook NÃO impede duas instâncias
-// diferentes de processarem a mesma syncQueue simultaneamente.
 // ============================================================
 
 let globalProcessingPromise:
@@ -417,19 +412,6 @@ export function useSyncQueue() {
 
   // ============================================================
   // MARCAR REGISTRO LOCAL COMO SYNCED
-  //
-  // Só marcamos synced=true se o updated_at local ainda for
-  // exatamente a versão que acabou de ser enviada.
-  //
-  // Isso impede:
-  //
-  // versão A enviada
-  // ↓
-  // usuário altera para versão B
-  // ↓
-  // finalize da versão A
-  // ↓
-  // B ser marcada incorretamente como sincronizada
   // ============================================================
 
   const markRecordSyncedIfCurrent =
@@ -1893,12 +1875,6 @@ export function useSyncQueue() {
                     med.status ||
                     "ativo",
 
-                  /*
-                   * IMPORTANTE:
-                   *
-                   * undefined significa "sem controle de estoque",
-                   * não estoque zero.
-                   */
                   estoque_quantidade:
                     med.estoque_quantidade !==
                     undefined
@@ -2049,27 +2025,15 @@ export function useSyncQueue() {
             );
           }
 
-          const {
-            error:
-              renovacoesError,
-          } =
-            await client
-              .from(
-                "renovacoes"
-              )
-              .delete()
-              .eq(
-                "medicamento_id",
-                id
-              );
-
-          if (
-            renovacoesError
-          ) {
-            throw new Error(
-              `Renovacoes cascade delete error: ${renovacoesError.message}`
-            );
-          }
+          /*
+           * Renovações são histórico clínico/financeiro.
+           *
+           * Elas permanecem no Supabase mesmo quando o cadastro
+           * atual do medicamento é removido. O medicamento_id
+           * histórico pode continuar apontando para o UUID antigo;
+           * medicamento_nome e medicamento_dosagem preservam a
+           * identidade exibível da aquisição.
+           */
 
           const {
             error:
@@ -2803,6 +2767,13 @@ export function useSyncQueue() {
 
   // ============================================================
   // RENOVAÇÕES
+  //
+  // A renovação é histórico financeiro e clínico.
+  //
+  // Por isso não consideramos o item sincronizado apenas porque
+  // o Supabase respondeu sem exception. O registro retornado
+  // precisa confirmar os campos que influenciam histórico,
+  // vínculo por pessoa e cálculo financeiro.
   // ============================================================
 
   const syncRenovacao =
@@ -2821,13 +2792,185 @@ export function useSyncQueue() {
       ) {
         case "add":
         case "update": {
-          requirePersonId(
-            renovacao.person_id,
-            "Renovação",
-            renovacao.id
-          );
+          if (
+            !renovacao.id
+          ) {
+            throw new Error(
+              "Renovação sem id."
+            );
+          }
+
+          const personId =
+            requirePersonId(
+              renovacao.person_id,
+              "Renovação",
+              renovacao.id
+            );
+
+          const userId =
+            requireUserId(
+              renovacao.user_id,
+              "Renovação",
+              renovacao.id
+            );
+
+          const medicamentoId =
+            renovacao.medicamento_id?.trim();
+
+          if (
+            !medicamentoId
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} sem medicamento_id.`
+            );
+          }
+
+          const dataRenovacao =
+            renovacao.data?.trim();
+
+          if (
+            !dataRenovacao
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} sem data.`
+            );
+          }
+
+          if (
+            renovacao.preco !==
+              undefined &&
+            renovacao.preco !==
+              null &&
+            (
+              !Number.isFinite(
+                renovacao.preco
+              ) ||
+              renovacao.preco <
+                0
+            )
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} com preço inválido.`
+            );
+          }
+
+          if (
+            renovacao.quantidade !==
+              undefined &&
+            renovacao.quantidade !==
+              null &&
+            (
+              !Number.isFinite(
+                renovacao.quantidade
+              ) ||
+              renovacao.quantidade <
+                0
+            )
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} com quantidade inválida.`
+            );
+          }
+
+          const payloadRemoto =
+            {
+              id:
+                renovacao.id,
+
+              user_id:
+                userId,
+
+              person_id:
+                personId,
+
+              medicamento_id:
+                medicamentoId,
+
+              medicamento_nome:
+                renovacao.medicamento_nome ??
+                null,
+
+              medicamento_dosagem:
+                renovacao.medicamento_dosagem ??
+                null,
+
+              medico_id:
+                renovacao.medico_id ??
+                null,
+
+              farmacia_id:
+                renovacao.farmacia_id ??
+                null,
+
+              hospital_id:
+                renovacao.hospital_id ??
+                null,
+
+              local_id:
+                renovacao.local_id ??
+                null,
+
+              document_id:
+                renovacao.document_id ??
+                null,
+
+              tipo_aquisicao:
+                renovacao.tipo_aquisicao ??
+                null,
+
+              data_proxima_retirada:
+                renovacao.data_proxima_retirada ??
+                null,
+
+              data_retorno_sus:
+                renovacao.data_retorno_sus ??
+                null,
+
+              exige_nova_receita:
+                renovacao.exige_nova_receita ??
+                false,
+
+              quantidade:
+                renovacao.quantidade ??
+                null,
+
+              preco:
+                renovacao.preco ??
+                null,
+
+              lote:
+                renovacao.lote ??
+                null,
+
+              validade_produto:
+                renovacao.validade_produto ??
+                null,
+
+              data:
+                dataRenovacao,
+
+              data_aquisicao:
+                renovacao.data_aquisicao ??
+                null,
+
+              anexo_url:
+                renovacao.anexo_url ??
+                null,
+
+              observacoes:
+                renovacao.observacoes ??
+                null,
+
+              created_at:
+                renovacao.created_at,
+
+              updated_at:
+                renovacao.updated_at,
+            };
 
           const {
+            data:
+              confirmedRows,
             error,
           } =
             await client
@@ -2835,103 +2978,229 @@ export function useSyncQueue() {
                 "renovacoes"
               )
               .upsert(
-                {
-                  id:
-                    renovacao.id,
-
-                  user_id:
-                    renovacao.user_id,
-
-                  person_id:
-                    renovacao.person_id,
-
-                  medicamento_id:
-                    renovacao.medicamento_id,
-
-                  medico_id:
-                    renovacao.medico_id ||
-                    null,
-
-                  farmacia_id:
-                    renovacao.farmacia_id ||
-                    null,
-
-                  hospital_id:
-                    renovacao.hospital_id ||
-                    null,
-
-                  local_id:
-                    renovacao.local_id ||
-                    null,
-
-                  document_id:
-                    renovacao.document_id ||
-                    null,
-
-                  tipo_aquisicao:
-                    renovacao.tipo_aquisicao ||
-                    null,
-
-                  data_proxima_retirada:
-                    renovacao.data_proxima_retirada ||
-                    null,
-
-                  data_retorno_sus:
-                    renovacao.data_retorno_sus ||
-                    null,
-
-                  exige_nova_receita:
-                    renovacao.exige_nova_receita ??
-                    false,
-
-                  quantidade:
-                    renovacao.quantidade !==
-                    undefined
-                      ? renovacao.quantidade
-                      : null,
-
-                  preco:
-                    renovacao.preco !==
-                    undefined
-                      ? renovacao.preco
-                      : null,
-
-                  lote:
-                    renovacao.lote ||
-                    null,
-
-                  validade_produto:
-                    renovacao.validade_produto ||
-                    null,
-
-                  data:
-                    renovacao.data,
-
-                  anexo_url:
-                    renovacao.anexo_url ||
-                    null,
-
-                  observacoes:
-                    renovacao.observacoes ||
-                    null,
-
-                  created_at:
-                    renovacao.created_at,
-
-                  updated_at:
-                    renovacao.updated_at,
-                },
+                payloadRemoto,
                 {
                   onConflict:
                     "id",
                 }
-              );
+              )
+              .select(
+"id,user_id,person_id,medicamento_id,medicamento_nome,medicamento_dosagem,tipo_aquisicao,quantidade,preco,data,data_aquisicao,updated_at"
+            );
 
           if (
             error
           ) {
             throw new Error(
               `Renovacoes upsert error: ${error.message}`
+            );
+          }
+
+          const remote =
+            confirmedRows?.find(
+              (
+                row
+              ) =>
+                row.id ===
+                renovacao.id
+            );
+
+          if (
+            !remote
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} não foi confirmada pelo Supabase após upsert.`
+            );
+          }
+
+          if (
+            remote.user_id !==
+            userId
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com user_id divergente no Supabase.`
+            );
+          }
+
+          if (
+            remote.person_id !==
+            personId
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com person_id divergente no Supabase.`
+            );
+          }
+
+          if (
+            remote.medicamento_id !==
+            medicamentoId
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com medicamento_id divergente no Supabase.`
+            );
+          }
+
+          const medicamentoNomeLocal =
+            renovacao.medicamento_nome ??
+            null;
+
+          const medicamentoNomeRemoto =
+            remote.medicamento_nome ??
+            null;
+
+          if (
+            medicamentoNomeRemoto !==
+            medicamentoNomeLocal
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com nome do medicamento divergente no Supabase.`
+            );
+          }
+
+          const medicamentoDosagemLocal =
+            renovacao.medicamento_dosagem ??
+            null;
+
+          const medicamentoDosagemRemota =
+            remote.medicamento_dosagem ??
+            null;
+
+          if (
+            medicamentoDosagemRemota !==
+            medicamentoDosagemLocal
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com dosagem do medicamento divergente no Supabase.`
+            );
+          }
+
+          if (
+            remote.data !==
+            dataRenovacao
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com data divergente no Supabase.`
+            );
+          }
+
+          const dataAquisicaoLocal =
+            renovacao.data_aquisicao ??
+            null;
+
+          const dataAquisicaoRemota =
+            remote.data_aquisicao ??
+            null;
+
+          if (
+            dataAquisicaoRemota !==
+            dataAquisicaoLocal
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com data de aquisição divergente no Supabase.`
+            );
+          }
+
+          const precoLocal =
+            renovacao.preco ??
+            null;
+
+          const precoRemoto =
+            remote.preco ===
+              null ||
+            remote.preco ===
+              undefined
+              ? null
+              : Number(
+                  remote.preco
+                );
+
+          if (
+            precoLocal ===
+              null
+              ? precoRemoto !==
+                null
+              : (
+                  precoRemoto ===
+                    null ||
+                  !Number.isFinite(
+                    precoRemoto
+                  ) ||
+                  precoRemoto !==
+                    precoLocal
+                )
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com preço divergente no Supabase. Local: ${String(
+                precoLocal
+              )}; remoto: ${String(
+                remote.preco
+              )}.`
+            );
+          }
+
+          const quantidadeLocal =
+            renovacao.quantidade ??
+            null;
+
+          const quantidadeRemota =
+            remote.quantidade ===
+              null ||
+            remote.quantidade ===
+              undefined
+              ? null
+              : Number(
+                  remote.quantidade
+                );
+
+          if (
+            quantidadeLocal ===
+              null
+              ? quantidadeRemota !==
+                null
+              : (
+                  quantidadeRemota ===
+                    null ||
+                  !Number.isFinite(
+                    quantidadeRemota
+                  ) ||
+                  quantidadeRemota !==
+                    quantidadeLocal
+                )
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com quantidade divergente no Supabase. Local: ${String(
+                quantidadeLocal
+              )}; remoto: ${String(
+                remote.quantidade
+              )}.`
+            );
+          }
+
+          const tipoLocal =
+            renovacao.tipo_aquisicao ??
+            null;
+
+          const tipoRemoto =
+            remote.tipo_aquisicao ??
+            null;
+
+          if (
+            tipoRemoto !==
+            tipoLocal
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} foi salva com tipo de aquisição divergente no Supabase.`
+            );
+          }
+
+          if (
+            renovacao.updated_at &&
+            remote.updated_at &&
+            remote.updated_at !==
+              renovacao.updated_at
+          ) {
+            throw new Error(
+              `Renovação ${renovacao.id} retornou versão remota diferente da versão enviada.`
             );
           }
 
@@ -3107,11 +3376,6 @@ export function useSyncQueue() {
             );
           }
 
-          /*
-           * Não removemos a queue apenas porque a requisição
-           * retornou sem exception. Exigimos confirmação do id
-           * salvo pelo Supabase.
-           */
           if (
             !confirmedRows ||
             confirmedRows.length ===
@@ -4470,10 +4734,6 @@ export function useSyncQueue() {
         return false;
       }
 
-      /*
-       * Se o item foi modificado durante o envio, não removemos
-       * a versão nova.
-       */
       if (
         atual.updated_at !==
         item.updated_at
@@ -4492,10 +4752,6 @@ export function useSyncQueue() {
         item.id
       );
 
-      /*
-       * A mesma chave pode ter sido recriada entre o envio e
-       * esta finalização.
-       */
       const novaOperacao =
         await db.syncQueue
           .where(
@@ -4679,9 +4935,11 @@ export function useSyncQueue() {
       async (): Promise<SyncProcessResult> => {
         if (
           !isOnline ||
-          typeof navigator !==
-            "undefined" &&
-          !navigator.onLine
+          (
+            typeof navigator !==
+              "undefined" &&
+            !navigator.onLine
+          )
         ) {
           return emptySyncResult({
             offline:
@@ -4689,12 +4947,6 @@ export function useSyncQueue() {
           });
         }
 
-        /*
-         * Trava GLOBAL.
-         *
-         * Se outra instância do hook já iniciou o processamento,
-         * reutilizamos exatamente a mesma Promise.
-         */
         if (
           globalProcessingPromise
         ) {
@@ -4898,14 +5150,6 @@ export function useSyncQueue() {
                   );
 
                 try {
-                  /*
-                   * Proteção adicional contra payloads de uma
-                   * sessão anterior.
-                   *
-                   * VaultMember é exceção porque representa
-                   * compartilhamento/convite e pode ter semântica
-                   * de usuário diferente.
-                   */
                   if (
                     item.operation !==
                       "delete" &&
@@ -4967,10 +5211,6 @@ export function useSyncQueue() {
                         )
                       : undefined;
 
-                  /*
-                   * Se a operação mudou durante a tentativa,
-                   * não aplicamos retry à versão antiga.
-                   */
                   if (
                     atual &&
                     atual.updated_at !==
