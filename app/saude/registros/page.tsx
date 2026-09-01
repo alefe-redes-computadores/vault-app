@@ -19,6 +19,8 @@ import {
   HeartPulse,
   Pill,
   Plus,
+  Search,
+  X,
 } from "lucide-react";
 
 import {
@@ -125,6 +127,16 @@ function getCategoriaLabel(
   return "Registro";
 }
 
+function normalizeSearchValue(
+  value?: string | null
+): string {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -161,6 +173,11 @@ export default function RegistrosSaudePage() {
     useState<FiltroCategoria>(
       "todos"
     );
+
+  const [
+    busca,
+    setBusca,
+  ] = useState("");
 
   // ==========================================================
   // ÍNDICES
@@ -289,25 +306,86 @@ export default function RegistrosSaudePage() {
   const registrosFiltrados =
     useMemo(
       () => {
-        if (
-          filtroCategoria ===
-          "todos"
-        ) {
-          return registros;
-        }
+        const termo =
+          normalizeSearchValue(
+            busca
+          );
 
         return registros.filter(
-          (
-            registro
-          ) =>
-            registro.categoria ===
-            filtroCategoria
+          (registro) => {
+            if (
+              filtroCategoria !== "todos" &&
+              registro.categoria !== filtroCategoria
+            ) {
+              return false;
+            }
+
+            if (!termo) {
+              return true;
+            }
+
+            const medicamento =
+              registro.medicamento_id
+                ? medicamentosMap.get(
+                    registro.medicamento_id
+                  )
+                : undefined;
+
+            const nomesTratamentos =
+              (registro.tratamento_ids || [])
+                .map((tratamentoId) =>
+                  tratamentosMap.get(tratamentoId)?.nome
+                )
+                .filter(Boolean)
+                .join(" ");
+
+            const searchable = [
+              registro.nome,
+              registro.tipo,
+              registro.valor_medicao,
+              registro.observacoes,
+              medicamento?.nome,
+              nomesTratamentos,
+            ]
+              .map(normalizeSearchValue)
+              .join(" ");
+
+            return searchable.includes(
+              termo
+            );
+          }
         );
       },
       [
         registros,
         filtroCategoria,
+        busca,
+        medicamentosMap,
+        tratamentosMap,
       ]
+    );
+
+  const alertasVisiveis =
+    useMemo(
+      () =>
+        registrosFiltrados.reduce(
+          (total, registro) => {
+            const insight =
+              analisarRegistroSaude(
+                registro.nome,
+                registro.valor_medicao,
+                registro.intensidade,
+                registro.observacoes
+              );
+
+            return insight &&
+              insight.status !== "normal"
+              ? total + 1
+              : total;
+          },
+          0
+        ),
+      [registrosFiltrados]
     );
 
   // ==========================================================
@@ -323,6 +401,8 @@ export default function RegistrosSaudePage() {
       setFiltroCategoria(
         "todos"
       );
+
+      setBusca("");
     };
 
   const handleFilter =
@@ -402,11 +482,44 @@ export default function RegistrosSaudePage() {
             </button>
           }
         >
+          <div className="relative mt-3 w-full">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+              />
+
+              <input
+                type="search"
+                value={busca}
+                onChange={(event) =>
+                  setBusca(event.target.value)
+                }
+                placeholder="Buscar registro, medicamento ou tratamento"
+                className="h-10 w-full rounded-xl border border-surface-border/50 bg-surface-raised pl-9 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/50"
+                aria-label="Buscar registros de saúde"
+              />
+
+              {busca && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setBusca("");
+                  }}
+                  className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-surface-border/40 hover:text-ink-primary active:scale-95"
+                  aria-label="Limpar busca"
+                >
+                  <X size={15} />
+                </button>
+              )}
+          </div>
+
           <ListFilters
             onClear={
               handleClearFilters
             }
           >
+
             <button
               type="button"
               onClick={
@@ -527,6 +640,26 @@ export default function RegistrosSaudePage() {
             ==================================================== */}
 
         <section className="space-y-3.5 px-5 pt-4">
+          {alertasVisiveis > 0 && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-3.5 py-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-300">
+                <AlertTriangle size={16} />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-amber-200">
+                  {alertasVisiveis === 1
+                    ? "1 registro destacado nesta lista"
+                    : `${alertasVisiveis} registros destacados nesta lista`}
+                </p>
+
+                <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
+                  São leituras dos valores registrados nas respectivas datas, não uma avaliação do estado atual nem um diagnóstico.
+                </p>
+              </div>
+            </div>
+          )}
+
           {registrosFiltrados.length ===
           0 ? (
             <EmptyState
@@ -535,13 +668,13 @@ export default function RegistrosSaudePage() {
               }
               title={
                 filtroCategoria !==
-                "todos"
+                  "todos" || busca
                   ? "Nenhum registro com este filtro"
                   : "Nenhum registro de saúde"
               }
               description={
                 filtroCategoria !==
-                "todos"
+                  "todos" || busca
                   ? "Tente ajustar o filtro ou cadastre um novo registro."
                   : "Comece a acompanhar sintomas, medições e outras informações de saúde."
               }

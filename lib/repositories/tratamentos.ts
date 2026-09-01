@@ -96,6 +96,9 @@ export type TratamentoUpdateResult = {
     Medicamento[];
 };
 
+export type TratamentoCreateResult =
+  TratamentoUpdateResult;
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -588,21 +591,13 @@ export const tratamentosRepository = {
   },
 
   // ==========================================================
-  // CREATE
-  //
-  // OPERAÇÃO ATÔMICA:
-  //
-  // - cria tratamento;
-  // - vincula medicamentos selecionados;
-  // - atualiza filas;
-  // - opcionalmente descontinua medicamento quando o novo
-  //   tratamento já nasce encerrado e não existe outro ativo.
+  // CREATE COM RESULTADO COMPLETO
   // ==========================================================
 
-  async create(
+  async createWithResult(
     data:
       CreateTratamentoInput
-  ): Promise<string> {
+  ): Promise<TratamentoCreateResult> {
     const personId =
       requirePersonId(
         data.person_id
@@ -624,9 +619,6 @@ export const tratamentosRepository = {
       ) ||
       [];
 
-    /*
-     * Validamos todos antes de iniciar a transaction.
-     */
     const medicamentosSelecionados =
       await getMedicamentosForPerson(
         medicamentoIds,
@@ -696,10 +688,6 @@ export const tratamentosRepository = {
         db.syncQueue,
       ],
       async () => {
-        // ------------------------------------------------------
-        // TRATAMENTO
-        // ------------------------------------------------------
-
         await db.tratamentos.add(
           tratamentoCompleto
         );
@@ -713,10 +701,6 @@ export const tratamentosRepository = {
               false,
           }
         );
-
-        // ------------------------------------------------------
-        // MEDICAMENTOS
-        // ------------------------------------------------------
 
         for (
           const medicamento of
@@ -754,13 +738,6 @@ export const tratamentosRepository = {
               false,
           };
 
-          /*
-           * Normalmente um tratamento novo nasce ativo.
-           *
-           * Se por algum motivo ele já nasce concluído/suspenso,
-           * preservamos a semântica sem matar medicamento que
-           * ainda esteja ligado a outro tratamento ativo.
-           */
           if (
             isTratamentoEncerrado(
               tratamentoCompleto.status
@@ -805,19 +782,32 @@ export const tratamentosRepository = {
 
     solicitarProcessamentoSync();
 
-    return tratamentoId;
+    return {
+      id:
+        tratamentoId,
+
+      medicamentosDescontinuados,
+    };
+  },
+
+  /*
+   * Mantém compatibilidade com consumidores que precisam
+   * somente do ID do tratamento criado.
+   */
+  async create(
+    data:
+      CreateTratamentoInput
+  ): Promise<string> {
+    const result =
+      await this.createWithResult(
+        data
+      );
+
+    return result.id;
   },
 
   // ==========================================================
   // UPDATE
-  //
-  // medicamento_ids:
-  //
-  // undefined -> não altera vínculos
-  // []        -> remove todos
-  // ids       -> estado final exato
-  //
-  // Tudo é reconciliado somente quando o usuário SALVA.
   // ==========================================================
 
   async update(
@@ -866,10 +856,6 @@ export const tratamentosRepository = {
         data.medicamento_ids
       );
 
-    /*
-     * Se medicamento_ids veio no comando, validamos a lista
-     * final inteira antes da transaction.
-     */
     if (
       medicamentosDesejadosIds !==
       undefined
@@ -952,10 +938,6 @@ export const tratamentosRepository = {
         db.syncQueue,
       ],
       async () => {
-        // ------------------------------------------------------
-        // TRATAMENTO
-        // ------------------------------------------------------
-
         const updated =
           await db.tratamentos.update(
             safeId,
@@ -996,10 +978,6 @@ export const tratamentosRepository = {
           }
         );
 
-        // ------------------------------------------------------
-        // RECONCILIAÇÃO DOS MEDICAMENTOS
-        // ------------------------------------------------------
-
         if (
           medicamentosDesejadosIds !==
           undefined
@@ -1033,10 +1011,6 @@ export const tratamentosRepository = {
             new Set(
               medicamentosDesejadosIds
             );
-
-          // ----------------------------------------------------
-          // REMOVER VÍNCULOS
-          // ----------------------------------------------------
 
           for (
             const medicamento of
@@ -1082,10 +1056,6 @@ export const tratamentosRepository = {
               atualizado
             );
           }
-
-          // ----------------------------------------------------
-          // ADICIONAR VÍNCULOS
-          // ----------------------------------------------------
 
           const idsAdicionar =
             medicamentosDesejadosIds.filter(
@@ -1136,22 +1106,11 @@ export const tratamentosRepository = {
           }
         }
 
-        // ------------------------------------------------------
-        // STATUS DO TRATAMENTO
-        // ------------------------------------------------------
-
         if (
           isTratamentoEncerrado(
             tratamentoAtualizado.status
           )
         ) {
-          /*
-           * Reconsultamos após a reconciliação.
-           *
-           * Assim somente os medicamentos que continuam
-           * vinculados ao tratamento no estado FINAL do Save
-           * participam da regra de encerramento.
-           */
           const vinculadosFinais =
             await getMedicamentosLinkedToTratamento(
               safeId,
@@ -1241,9 +1200,6 @@ export const tratamentosRepository = {
 
   // ==========================================================
   // DELETE SAFE
-  //
-  // Preserva Medicamentos e Exames.
-  // Remove apenas o vínculo com este Tratamento.
   // ==========================================================
 
   async deleteSafe(
@@ -1297,10 +1253,6 @@ export const tratamentosRepository = {
         db.syncQueue,
       ],
       async () => {
-        // ====================================================
-        // MEDICAMENTOS
-        // ====================================================
-
         const medicamentosRelacionados =
           await db.medicamentos
             .where(
@@ -1350,25 +1302,10 @@ export const tratamentosRepository = {
               false,
           };
 
-          /*
-           * IMPORTANTE:
-           *
-           * Queue recebe REGISTRO COMPLETO.
-           *
-           * O código anterior enviava somente:
-           *
-           * { id, tratamento_ids }
-           *
-           * Isso não é seguro para um sync baseado em upsert.
-           */
           await putMedicamentoAndQueue(
             atualizado
           );
         }
-
-        // ====================================================
-        // EXAMES
-        // ====================================================
 
         const examesRelacionados =
           await db.exames
@@ -1437,10 +1374,6 @@ export const tratamentosRepository = {
             );
           }
 
-          /*
-           * Também corrigimos o mesmo problema de payload
-           * parcial que existia nos Exames.
-           */
           await enfileirarOperacao(
             "exames",
             "update",
@@ -1451,10 +1384,6 @@ export const tratamentosRepository = {
             }
           );
         }
-
-        // ====================================================
-        // TRATAMENTO
-        // ====================================================
 
         await db.tratamentos.delete(
           safeId

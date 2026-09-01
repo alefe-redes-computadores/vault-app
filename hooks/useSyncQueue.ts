@@ -3195,13 +3195,32 @@ export function useSyncQueue() {
 
           if (
             renovacao.updated_at &&
-            remote.updated_at &&
-            remote.updated_at !==
-              renovacao.updated_at
+            remote.updated_at
           ) {
-            throw new Error(
-              `Renovação ${renovacao.id} retornou versão remota diferente da versão enviada.`
-            );
+            const updatedAtLocal =
+              Date.parse(
+                renovacao.updated_at
+              );
+
+            const updatedAtRemoto =
+              Date.parse(
+                remote.updated_at
+              );
+
+            if (
+              !Number.isFinite(
+                updatedAtLocal
+              ) ||
+              !Number.isFinite(
+                updatedAtRemoto
+              ) ||
+              updatedAtRemoto !==
+                updatedAtLocal
+            ) {
+              throw new Error(
+                `Renovação ${renovacao.id} retornou versão remota diferente da versão enviada.`
+              );
+            }
           }
 
           break;

@@ -1,3 +1,4 @@
+
 // hooks/useTratamentos.ts
 "use client";
 
@@ -54,7 +55,7 @@ async function cancelarNotificacoesDeMedicamentos(
   medicamentos:
     Awaited<
       ReturnType<
-        typeof tratamentosRepository.update
+        typeof tratamentosRepository.createWithResult
       >
     >["medicamentosDescontinuados"]
 ): Promise<void> {
@@ -206,12 +207,26 @@ export function useTratamentos() {
           );
         }
 
-        return tratamentosRepository.create({
-          ...data,
+        const result =
+          await tratamentosRepository.createWithResult({
+            ...data,
 
-          person_id:
-            activePersonId,
-        });
+            person_id:
+              activePersonId,
+          });
+
+        /*
+         * Um tratamento pode nascer concluído ou suspenso.
+         * Nesse cenário, o repository decide quais medicamentos
+         * foram realmente descontinuados dentro da transaction.
+         *
+         * Somente após o commit local cancelamos ações nativas.
+         */
+        await cancelarNotificacoesDeMedicamentos(
+          result.medicamentosDescontinuados
+        );
+
+        return result.id;
       },
       [
         activePersonId,

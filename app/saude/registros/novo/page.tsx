@@ -213,25 +213,6 @@ const TIPOS_PREDEFINIDOS = [
 // HELPERS DE DATA
 // ============================================================
 
-function formatDateToDisplay(
-  isoStr: string
-): string {
-  if (!isoStr) {
-    return "";
-  }
-
-  const parts =
-    isoStr.split("-");
-
-  if (
-    parts.length !== 3
-  ) {
-    return isoStr;
-  }
-
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
-
 function parseDateToISO(
   displayStr: string
 ): string {
@@ -415,6 +396,63 @@ function getCurrentDateDisplay(): string {
     );
 
   return `${day}/${month}/${year}`;
+}
+
+function getCurrentDateISO(): string {
+  const now = new Date();
+
+  return [
+    String(now.getFullYear()).padStart(4, "0"),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function isValidMeasurementValue(
+  tipo: string,
+  value: string
+): boolean {
+  const safeValue = value.trim();
+
+  if (!safeValue) {
+    return false;
+  }
+
+  if (tipo === "pressao_arterial") {
+    const match = safeValue.match(
+      /^(\d{2,3})\s*\/\s*(\d{2,3})$/
+    );
+
+    if (!match) {
+      return false;
+    }
+
+    const sistolica = Number(match[1]);
+    const diastolica = Number(match[2]);
+
+    return (
+      Number.isFinite(sistolica) &&
+      Number.isFinite(diastolica) &&
+      sistolica > 0 &&
+      diastolica > 0
+    );
+  }
+
+  if (
+    tipo === "glicemia" ||
+    tipo === "temperatura"
+  ) {
+    const numericValue = Number(
+      safeValue.replace(",", ".")
+    );
+
+    return (
+      Number.isFinite(numericValue) &&
+      numericValue > 0
+    );
+  }
+
+  return true;
 }
 
 function getCurrentTime(): string {
@@ -757,11 +795,6 @@ export default function NovoRegistroSaudePage() {
       ]
     );
 
-  const theme =
-    getRegistroTheme(
-      nome
-    );
-
   // ==========================================================
   // HELPERS
   // ==========================================================
@@ -834,6 +867,16 @@ export default function NovoRegistroSaudePage() {
         shakeList.push(
           "data"
         );
+      } else if (
+        dataISO >
+        getCurrentDateISO()
+      ) {
+        nextErrors.data =
+          "A data do registro não pode estar no futuro.";
+
+        shakeList.push(
+          "data"
+        );
       }
 
       const timeRegex =
@@ -850,6 +893,25 @@ export default function NovoRegistroSaudePage() {
 
         shakeList.push(
           "horario"
+        );
+      }
+
+      if (
+        categoria ===
+          "medicao" &&
+        !isValidMeasurementValue(
+          tipoSelecionado,
+          valorMedicao
+        )
+      ) {
+        nextErrors.valorMedicao =
+          tipoSelecionado ===
+          "pressao_arterial"
+            ? "Informe a pressão no formato 120/80."
+            : "Informe um valor numérico válido para a medição.";
+
+        shakeList.push(
+          "valorMedicao"
         );
       }
 
@@ -1392,31 +1454,60 @@ export default function NovoRegistroSaudePage() {
 
             {categoria ===
               "medicao" && (
-              <Input
-                label="Valor da Medição"
-                placeholder={
-                  TIPOS_PREDEFINIDOS.find(
-                    (
-                      item
-                    ) =>
-                      item.tipo ===
-                      tipoSelecionado
+              <div
+                className={
+                  shakeFields.includes(
+                    "valorMedicao"
                   )
-                    ?.placeholder ||
-                  "Informe o valor"
+                    ? "animate-shake"
+                    : ""
                 }
-                value={
-                  valorMedicao
-                }
-                onChange={
-                  (
-                    event
-                  ) =>
-                    setValorMedicao(
-                      event.target.value
+              >
+                <Input
+                  label="Valor da Medição"
+                  placeholder={
+                    TIPOS_PREDEFINIDOS.find(
+                      (
+                        item
+                      ) =>
+                        item.tipo ===
+                        tipoSelecionado
                     )
-                }
-              />
+                      ?.placeholder ||
+                    "Informe o valor"
+                  }
+                  value={
+                    valorMedicao
+                  }
+                  onChange={
+                    (
+                      event
+                    ) => {
+                      setValorMedicao(
+                        event.target.value
+                      );
+
+                      if (
+                        errors.valorMedicao
+                      ) {
+                        setErrors(
+                          (
+                            current
+                          ) => ({
+                            ...current,
+                            valorMedicao:
+                              "",
+                          })
+                        );
+                      }
+                    }
+                  }
+                  error={
+                    errors.valorMedicao
+                  }
+                  required
+                />
+              </div>
             )}
 
             {categoria ===

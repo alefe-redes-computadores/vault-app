@@ -16,6 +16,9 @@ import {
   AlertTriangle,
   DollarSign,
   Pill,
+  Plus,
+  Search,
+  X,
 } from "lucide-react";
 
 import {
@@ -75,17 +78,10 @@ type TratamentoStatus =
 
 type TratamentoEnriquecido =
   Tratamento & {
-    medicamentosCount:
-      number;
-
-    medicamentosAtivosCount:
-      number;
-
-    totalGasto:
-      number;
-
-    alertaSemMedicamento:
-      boolean;
+    medicamentosCount: number;
+    medicamentosAtivosCount: number;
+    totalGasto: number;
+    alertaSemMedicamento: boolean;
   };
 
 // ============================================================
@@ -93,8 +89,7 @@ type TratamentoEnriquecido =
 // ============================================================
 
 function getStatusLabel(
-  status:
-    Tratamento["status"]
+  status: Tratamento["status"]
 ): string {
   if (
     status ===
@@ -114,8 +109,7 @@ function getStatusLabel(
 }
 
 function getStatusClasses(
-  status:
-    Tratamento["status"]
+  status: Tratamento["status"]
 ): string {
   if (
     status ===
@@ -135,8 +129,7 @@ function getStatusClasses(
 }
 
 function getPrecoSeguro(
-  value:
-    Renovacao["preco"]
+  value: Renovacao["preco"]
 ): number {
   if (
     typeof value !==
@@ -151,6 +144,23 @@ function getPrecoSeguro(
   }
 
   return value;
+}
+
+function normalizeSearch(
+  value: string
+): string {
+  return value
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .trim()
+    .toLocaleLowerCase(
+      "pt-BR"
+    );
 }
 
 // ============================================================
@@ -174,10 +184,18 @@ function TratamentoListContent() {
       "todos"
     );
 
+  const [
+    search,
+    setSearch,
+  ] =
+    useState(
+      ""
+    );
+
   /*
-   * Todos os três hooks já respeitam a pessoa ativa.
+   * Os hooks já trabalham com a pessoa ativa.
    *
-   * Não fazemos um segundo filtro person_id na UI.
+   * A listagem não mantém um segundo estado de person_id.
    */
   const {
     tratamentos = [],
@@ -195,15 +213,11 @@ function TratamentoListContent() {
     useRenovacoes();
 
   // ==========================================================
-  // ÍNDICES
+  // ÍNDICE — MEDICAMENTOS POR TRATAMENTO
   // ==========================================================
 
   /*
-   * Montamos um índice:
-   *
-   * tratamentoId -> medicamentos atualmente vinculados
-   *
-   * A fonte canônica da relação é:
+   * Fonte canônica:
    *
    * Medicamento.tratamento_ids
    */
@@ -249,14 +263,23 @@ function TratamentoListContent() {
       ]
     );
 
+  // ==========================================================
+  // ÍNDICE — HISTÓRICO FINANCEIRO
+  // ==========================================================
+
   /*
-   * Índice do histórico financeiro por medicamento.
+   * Renovacao representa aquisição real.
    *
-   * Aqui usamos apenas Renovacoes porque elas representam
-   * eventos reais de aquisição.
+   * Não somamos Medicamento.preco porque ele representa
+   * o valor atual/referencial do medicamento, não uma nova
+   * aquisição.
    *
-   * Não somamos Medicamento.preco, evitando contar o preço
-   * atual junto com o histórico e duplicar o custo.
+   * IMPORTANTE:
+   *
+   * Esse total é um indicador do histórico dos medicamentos
+   * vinculados ao tratamento. Ele não deve ser interpretado
+   * como contabilidade exclusiva do tratamento, porque um
+   * medicamento pode participar de mais de um tratamento.
    */
   const gastoPorMedicamento =
     useMemo(
@@ -319,8 +342,8 @@ function TratamentoListContent() {
     useMemo<
       TratamentoEnriquecido[]
     >(
-      () => {
-        return tratamentos.map(
+      () =>
+        tratamentos.map(
           (
             tratamento
           ) => {
@@ -385,12 +408,6 @@ function TratamentoListContent() {
                 0
               );
 
-            const alertaSemMedicamento =
-              tratamento.status ===
-                "ativo" &&
-              meds.length ===
-                0;
-
             return {
               ...tratamento,
 
@@ -401,11 +418,14 @@ function TratamentoListContent() {
 
               totalGasto,
 
-              alertaSemMedicamento,
+              alertaSemMedicamento:
+                tratamento.status ===
+                  "ativo" &&
+                meds.length ===
+                  0,
             };
           }
-        );
-      },
+        ),
       [
         tratamentos,
         medicamentosPorTratamento,
@@ -414,23 +434,97 @@ function TratamentoListContent() {
     );
 
   // ==========================================================
-  // FILTRO / ORDENAÇÃO
+  // CONTADORES
+  // ==========================================================
+
+  const statusCounts =
+    useMemo(
+      () => {
+        let ativos =
+          0;
+
+        let concluidos =
+          0;
+
+        let suspensos =
+          0;
+
+        for (
+          const tratamento of
+          listaEnriquecida
+        ) {
+          if (
+            tratamento.status ===
+            "ativo"
+          ) {
+            ativos +=
+              1;
+          } else if (
+            tratamento.status ===
+            "concluido"
+          ) {
+            concluidos +=
+              1;
+          } else if (
+            tratamento.status ===
+            "suspenso"
+          ) {
+            suspensos +=
+              1;
+          }
+        }
+
+        return {
+          ativos,
+          concluidos,
+          suspensos,
+        };
+      },
+      [
+        listaEnriquecida,
+      ]
+    );
+
+  // ==========================================================
+  // FILTRO / BUSCA / ORDENAÇÃO
   // ==========================================================
 
   const filteredList =
     useMemo(
       () => {
+        const normalizedSearch =
+          normalizeSearch(
+            search
+          );
+
         const result =
-          filtroStatus ===
-          "todos"
-            ? listaEnriquecida
-            : listaEnriquecida.filter(
-                (
-                  tratamento
-                ) =>
-                  tratamento.status ===
+          listaEnriquecida.filter(
+            (
+              tratamento
+            ) => {
+              if (
+                filtroStatus !==
+                  "todos" &&
+                tratamento.status !==
                   filtroStatus
+              ) {
+                return false;
+              }
+
+              if (
+                !normalizedSearch
+              ) {
+                return true;
+              }
+
+              return normalizeSearch(
+                tratamento.nome ||
+                  ""
+              ).includes(
+                normalizedSearch
               );
+            }
+          );
 
         return [
           ...result,
@@ -458,27 +552,15 @@ function TratamentoListContent() {
       [
         listaEnriquecida,
         filtroStatus,
+        search,
       ]
     );
 
-  // ==========================================================
-  // CONTADORES
-  // ==========================================================
-
-  const tratamentosAtivos =
-    useMemo(
-      () =>
-        listaEnriquecida.filter(
-          (
-            tratamento
-          ) =>
-            tratamento.status ===
-            "ativo"
-        ).length,
-      [
-        listaEnriquecida,
-      ]
-    );
+  const hasFilters =
+    filtroStatus !==
+      "todos" ||
+    search.trim().length >
+      0;
 
   // ==========================================================
   // HANDLERS
@@ -516,6 +598,21 @@ function TratamentoListContent() {
       setFiltroStatus(
         "todos"
       );
+
+      setSearch(
+        ""
+      );
+    };
+
+  const handleCreate =
+    () => {
+      trigger(
+        "vibrate"
+      );
+
+      router.push(
+        "/saude/tratamentos/novo"
+      );
     };
 
   // ==========================================================
@@ -524,7 +621,7 @@ function TratamentoListContent() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-28">
+      <main className="relative min-h-[100dvh] bg-void pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
         {/* ====================================================
             HEADER / FILTROS
             ==================================================== */}
@@ -533,11 +630,12 @@ function TratamentoListContent() {
           title="Seus Tratamentos"
           subtitle={
             filtroStatus ===
-            "todos"
-              ? tratamentosAtivos ===
+              "todos" &&
+            !search.trim()
+              ? statusCounts.ativos ===
                 1
                 ? "1 tratamento em andamento"
-                : `${tratamentosAtivos} tratamentos em andamento`
+                : `${statusCounts.ativos} tratamentos em andamento`
               : filteredList.length ===
                   1
                 ? "1 resultado"
@@ -546,22 +644,23 @@ function TratamentoListContent() {
         >
           <ListFilters
             onClear={
-              handleClearFilters
+              hasFilters
+                ? handleClearFilters
+                : undefined
             }
           >
             <button
               type="button"
-              onClick={
-                () =>
-                  handleStatusFilter(
-                    "ativo"
-                  )
+              onClick={() =>
+                handleStatusFilter(
+                  "ativo"
+                )
               }
               aria-pressed={
                 filtroStatus ===
                 "ativo"
               }
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
                 filtroStatus ===
                 "ativo"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
@@ -569,59 +668,144 @@ function TratamentoListContent() {
               }`}
             >
               Em andamento
+              {statusCounts.ativos >
+                0 && (
+                <span className="ml-1 opacity-70">
+                  {
+                    statusCounts.ativos
+                  }
+                </span>
+              )}
             </button>
 
             <button
               type="button"
-              onClick={
-                () =>
-                  handleStatusFilter(
-                    "concluido"
-                  )
+              onClick={() =>
+                handleStatusFilter(
+                  "concluido"
+                )
               }
               aria-pressed={
                 filtroStatus ===
                 "concluido"
               }
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
                 filtroStatus ===
                 "concluido"
                   ? "border-ice bg-ice/20 text-ice"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
             >
-              Concluído
+              Concluídos
+              {statusCounts.concluidos >
+                0 && (
+                <span className="ml-1 opacity-70">
+                  {
+                    statusCounts.concluidos
+                  }
+                </span>
+              )}
             </button>
 
             <button
               type="button"
-              onClick={
-                () =>
-                  handleStatusFilter(
-                    "suspenso"
-                  )
+              onClick={() =>
+                handleStatusFilter(
+                  "suspenso"
+                )
               }
               aria-pressed={
                 filtroStatus ===
                 "suspenso"
               }
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
                 filtroStatus ===
                 "suspenso"
                   ? "border-coral bg-coral/20 text-coral"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
             >
-              Suspenso
+              Suspensos
+              {statusCounts.suspensos >
+                0 && (
+                <span className="ml-1 opacity-70">
+                  {
+                    statusCounts.suspensos
+                  }
+                </span>
+              )}
             </button>
           </ListFilters>
         </ListPageHeader>
 
         {/* ====================================================
+            BUSCA
+            ==================================================== */}
+
+        {listaEnriquecida.length >
+          0 && (
+          <section className="px-5 pt-4">
+            <div className="relative mx-auto max-w-3xl">
+              <Search
+                size={
+                  16
+                }
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+              />
+
+              <input
+                value={
+                  search
+                }
+                onChange={(
+                  event
+                ) =>
+                  setSearch(
+                    event
+                      .target
+                      .value
+                  )
+                }
+                type="search"
+                inputMode="search"
+                autoComplete="off"
+                placeholder="Buscar tratamento..."
+                aria-label="Buscar tratamento"
+                className="h-11 w-full rounded-[16px] border border-surface-border/40 bg-surface/80 pl-10 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/40 focus:bg-surface"
+              />
+
+              {search.length >
+                0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setSearch(
+                      ""
+                    );
+                  }}
+                  aria-label="Limpar busca"
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary active:scale-95"
+                >
+                  <X
+                    size={
+                      15
+                    }
+                  />
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ====================================================
             LISTA
             ==================================================== */}
 
-        <section className="space-y-3.5 px-5 pt-4">
+        <section className="mx-auto max-w-3xl space-y-3.5 px-5 pt-4">
           {filteredList.length ===
           0 ? (
             <EmptyState
@@ -629,16 +813,24 @@ function TratamentoListContent() {
                 Activity
               }
               title={
-                filtroStatus !==
-                "todos"
-                  ? "Nenhum tratamento com esse status"
+                hasFilters
+                  ? "Nenhum tratamento encontrado"
                   : "Nenhum tratamento cadastrado"
               }
               description={
-                filtroStatus !==
-                "todos"
-                  ? "Ajuste os filtros para visualizar outros tratamentos."
+                hasFilters
+                  ? "Nenhum tratamento corresponde à busca ou aos filtros atuais."
                   : "Cadastre tratamentos para organizar medicamentos, diagnósticos, profissionais e o histórico de acompanhamento."
+              }
+              actionLabel={
+                hasFilters
+                  ? "Limpar filtros"
+                  : "Criar tratamento"
+              }
+              onAction={
+                hasFilters
+                  ? handleClearFilters
+                  : handleCreate
               }
             />
           ) : (
@@ -647,6 +839,12 @@ function TratamentoListContent() {
                 tratamento,
                 index
               ) => {
+                if (
+                  !tratamento.id
+                ) {
+                  return null;
+                }
+
                 const theme =
                   getClinicalTheme(
                     tratamento.nome
@@ -661,24 +859,25 @@ function TratamentoListContent() {
                       tratamento.id
                     }
                     id={
-                      tratamento.id!
+                      tratamento.id
                     }
                     color={
                       theme.hex
                     }
-                    onClick={
-                      () => {
-                        trigger(
-                          "vibrate"
-                        );
+                    onClick={() => {
+                      trigger(
+                        "vibrate"
+                      );
 
-                        router.push(
-                          `/saude/tratamentos/detalhes?id=${tratamento.id}`
-                        );
-                      }
-                    }
+                      router.push(
+                        `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                      );
+                    }}
                     delay={
-                      index *
+                      Math.min(
+                        index,
+                        8
+                      ) *
                       0.025
                     }
                     icon={
@@ -748,7 +947,10 @@ function TratamentoListContent() {
 
                       {tratamento.totalGasto >
                         0 && (
-                        <span className="flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                        <span
+                          className="flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted"
+                          title="Histórico de aquisições dos medicamentos atualmente vinculados"
+                        >
                           <DollarSign
                             size={
                               10
@@ -768,14 +970,17 @@ function TratamentoListContent() {
                         ========================================== */}
 
                     {tratamento.alertaSemMedicamento && (
-                      <p className="mt-2 flex w-fit items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                      <p className="mt-2 flex w-fit max-w-full items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-400">
                         <AlertTriangle
                           size={
                             10
                           }
+                          className="shrink-0"
                         />
 
-                        Tratamento ativo sem medicamento vinculado
+                        <span>
+                          Tratamento ativo sem medicamento vinculado
+                        </span>
                       </p>
                     )}
                   </ListCard>
@@ -784,6 +989,25 @@ function TratamentoListContent() {
             )
           )}
         </section>
+
+        {/* ====================================================
+            FAB — NOVO TRATAMENTO
+            ==================================================== */}
+
+        <button
+          type="button"
+          onClick={
+            handleCreate
+          }
+          aria-label="Criar novo tratamento"
+          className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full border border-ice/25 bg-ice text-void shadow-[0_12px_32px_rgba(56,189,248,0.24)] transition-transform active:scale-95"
+        >
+          <Plus
+            size={
+              22
+            }
+          />
+        </button>
       </main>
     </PageTransition>
   );

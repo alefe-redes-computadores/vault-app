@@ -28,13 +28,17 @@ import {
   Loader2,
   Paperclip,
   Save,
+  ShieldCheck,
   Upload,
   User,
   UserRound,
   X,
 } from "lucide-react";
 
-import { uploadFile } from "@/lib/supabase/storage";
+import {
+  deleteFile,
+  uploadFile,
+} from "@/lib/supabase/storage";
 
 import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
@@ -117,6 +121,11 @@ interface PendingUpload {
   objectUrl: string;
 }
 
+interface UploadPendingResult {
+  attachments: Attachment[];
+  uploadedUrls: string[];
+}
+
 // ============================================================
 // LABELS
 // ============================================================
@@ -125,22 +134,63 @@ const DOCUMENT_TYPE_LABELS: Record<
   GeneralDocumentType,
   string
 > = {
-  rg: "C.I.N / RG",
+  rg: "C.I.N / Identidade",
   cpf: "CPF",
   cnh: "CNH",
   certidao_nascimento:
     "Certidão de Nascimento",
   titulo_eleitor:
     "Título de Eleitor",
-  certificado: "Certificado",
+  certificado:
+    "Certificado",
   carteira_trabalho:
     "Carteira de Trabalho",
-  passaporte: "Passaporte",
+  passaporte:
+    "Passaporte",
   dispensa_militar:
     "Dispensa Militar",
   credencial:
     "Credencial / Carteirinha",
-  outro: "Outro",
+  outro:
+    "Outro",
+};
+
+const DOCUMENT_TYPE_DESCRIPTIONS: Record<
+  GeneralDocumentType,
+  string
+> = {
+  rg:
+    "Registro Geral ou Carteira de Identidade Nacional.",
+
+  cpf:
+    "Cadastro de Pessoa Física.",
+
+  cnh:
+    "Carteira Nacional de Habilitação.",
+
+  certidao_nascimento:
+    "Certidão de nascimento ou outro registro civil.",
+
+  titulo_eleitor:
+    "Documento da Justiça Eleitoral.",
+
+  certificado:
+    "Certificados, diplomas, cursos e qualificações.",
+
+  carteira_trabalho:
+    "Carteira de Trabalho física ou digital.",
+
+  passaporte:
+    "Documento de identificação para viagens internacionais.",
+
+  dispensa_militar:
+    "Certificado de alistamento, reservista ou dispensa.",
+
+  credencial:
+    "Carteirinhas, crachás e credenciais.",
+
+  outro:
+    "Outros documentos pessoais, empresariais ou personalizados.",
 };
 
 const CATEGORY_ICONS: Record<
@@ -157,6 +207,7 @@ const sectionMotion = {
     opacity: 0,
     y: 10,
   },
+
   animate: {
     opacity: 1,
     y: 0,
@@ -187,17 +238,25 @@ function getMetadataString(
   metadata: Record<string, unknown>,
   key: string
 ): string {
-  const value = metadata[key];
+  const value =
+    metadata[key];
 
-  if (typeof value === "string") {
+  if (
+    typeof value ===
+    "string"
+  ) {
     return value;
   }
 
   if (
-    typeof value === "number" ||
-    typeof value === "boolean"
+    typeof value ===
+      "number" ||
+    typeof value ===
+      "boolean"
   ) {
-    return String(value);
+    return String(
+      value
+    );
   }
 
   return "";
@@ -208,7 +267,10 @@ function changeMetadataType(
   previousType: GeneralDocumentType,
   nextType: GeneralDocumentType
 ): Record<string, unknown> {
-  if (previousType === nextType) {
+  if (
+    previousType ===
+    nextType
+  ) {
     return {
       ...metadata,
     };
@@ -219,24 +281,66 @@ function changeMetadataType(
   };
 
   const previousFields =
-    DOCUMENT_FIELDS[previousType];
+    DOCUMENT_FIELDS[
+      previousType
+    ];
 
-  const nextFieldKeys = new Set(
-    DOCUMENT_FIELDS[nextType].map(
-      (field) => field.key
-    )
-  );
+  const nextFields =
+    DOCUMENT_FIELDS[
+      nextType
+    ];
+
+  const nextFieldKeys =
+    new Set(
+      nextFields.map(
+        (field) =>
+          field.key
+      )
+    );
 
   /*
-   * Remove somente campos estruturais pertencentes
-   * ao tipo anterior.
+   * Remove somente campos estruturais que pertenciam
+   * exclusivamente ao tipo anterior.
    *
-   * Campos personalizados adicionados pelo usuário
-   * continuam preservados.
+   * Metadados personalizados permanecem preservados.
    */
-  for (const field of previousFields) {
-    if (!nextFieldKeys.has(field.key)) {
-      delete result[field.key];
+  for (
+    const field of
+    previousFields
+  ) {
+    if (
+      !nextFieldKeys.has(
+        field.key
+      )
+    ) {
+      delete result[
+        field.key
+      ];
+    }
+  }
+
+  /*
+   * Inicializa selects do novo tipo quando eles ainda
+   * não possuem valor.
+   *
+   * Isso mantém a experiência consistente com a criação
+   * de novos documentos.
+   */
+  for (
+    const field of
+    nextFields
+  ) {
+    if (
+      field.type ===
+        "select" &&
+      field.options?.[0] &&
+      !getMetadataString(
+        result,
+        field.key
+      )
+    ) {
+      result[field.key] =
+        field.options[0];
     }
   }
 
@@ -247,17 +351,67 @@ function isSupportedAttachment(
   file: File
 ): boolean {
   return (
-    file.type.startsWith("image/") ||
-    file.type === "application/pdf"
+    file.type.startsWith(
+      "image/"
+    ) ||
+    file.type ===
+      "application/pdf"
   );
 }
 
 function getAttachmentType(
   file: File
 ): Attachment["type"] {
-  return file.type.startsWith("image/")
+  return file.type.startsWith(
+    "image/"
+  )
     ? "image"
     : "pdf";
+}
+
+async function cleanupUploadedFiles(
+  urls: string[]
+): Promise<void> {
+  const uniqueUrls =
+    Array.from(
+      new Set(
+        urls.filter(
+          Boolean
+        )
+      )
+    );
+
+  for (
+    const url of
+    uniqueUrls
+  ) {
+    try {
+      const {
+        error,
+      } =
+        await deleteFile(
+          url
+        );
+
+      if (
+        error
+      ) {
+        console.error(
+          "[EditarDocumento] Falha ao limpar upload órfão:",
+          url,
+          error
+        );
+      }
+    } catch (
+      error
+    ) {
+      console.error(
+        "[EditarDocumento] Erro inesperado ao limpar upload órfão:",
+        url,
+        error
+      );
+    }
+  }
 }
 
 // ============================================================
@@ -265,28 +419,39 @@ function getAttachmentType(
 // ============================================================
 
 export default function EditarDocumentoPage() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const searchParams =
     useSearchParams();
 
-  const { user } = useAuth();
+  const {
+    user,
+  } =
+    useAuth();
 
-  const { trigger } =
+  const {
+    trigger,
+  } =
     useHapticFeedback();
 
-  const { showToast } =
+  const {
+    showToast,
+  } =
     useToast();
 
   const {
     updateDocument,
-  } = useDocumentActions();
+  } =
+    useDocumentActions();
 
   const persons =
     usePersons() as Person[];
 
   const id =
-    searchParams.get("id") || "";
+    searchParams.get(
+      "id"
+    ) || "";
 
   /*
    * Contrato do hook:
@@ -296,7 +461,9 @@ export default function EditarDocumentoPage() {
    * Document  = documento válido da pessoa ativa
    */
   const doc =
-    useDocument(id);
+    useDocument(
+      id
+    );
 
   const fileInputRef =
     useRef<HTMLInputElement>(
@@ -317,6 +484,11 @@ export default function EditarDocumentoPage() {
       new Set()
     );
 
+  const submitLockRef =
+    useRef(
+      false
+    );
+
   // ==========================================================
   // ESTADOS
   // ==========================================================
@@ -324,46 +496,79 @@ export default function EditarDocumentoPage() {
   const [
     loading,
     setLoading,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    uploadProgress,
+    setUploadProgress,
+  ] =
+    useState(
+      0
+    );
 
   const [
     errors,
     setErrors,
-  ] = useState<
-    Record<string, string>
-  >({});
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
 
   const [
     isTypeModalOpen,
     setIsTypeModalOpen,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     activeSelectField,
     setActiveSelectField,
   ] =
-    useState<DocumentField | null>(
+    useState<
+      DocumentField | null
+    >(
       null
     );
 
   const [
     pendingUploads,
     setPendingUploads,
-  ] = useState<PendingUpload[]>(
-    []
-  );
+  ] =
+    useState<
+      PendingUpload[]
+    >([]);
 
   const [
     formData,
     setFormData,
-  ] = useState<FormData>({
-    category_id: "pessoal",
-    type: "rg",
-    title: "",
-    description: "",
-    metadata: {},
-    attachments: [],
-  });
+  ] =
+    useState<FormData>({
+      category_id:
+        "pessoal",
+
+      type:
+        "rg",
+
+      title:
+        "",
+
+      description:
+        "",
+
+      metadata:
+        {},
+
+      attachments:
+        [],
+    });
 
   // ==========================================================
   // LIMPEZA DE OBJECT URLS
@@ -375,7 +580,9 @@ export default function EditarDocumentoPage() {
 
     return () => {
       objectUrls.forEach(
-        (url) => {
+        (
+          url
+        ) => {
           URL.revokeObjectURL(
             url
           );
@@ -391,7 +598,9 @@ export default function EditarDocumentoPage() {
   // ==========================================================
 
   useEffect(() => {
-    if (!doc) {
+    if (
+      !doc
+    ) {
       return;
     }
 
@@ -423,24 +632,31 @@ export default function EditarDocumentoPage() {
         doc.title,
 
       description:
-        doc.description || "",
+        doc.description ||
+        "",
 
       metadata: {
-        ...(doc.metadata || {}),
+        ...(doc.metadata ||
+          {}),
       },
 
       attachments:
-        doc.attachments || [],
+        doc.attachments ||
+        [],
     });
 
     /*
      * Se por qualquer motivo o ID mudar enquanto esta tela
-     * permanece montada, descartamos uploads locais antigos.
+     * permanece montada, descartamos previews locais antigos.
      */
     setPendingUploads(
-      (previous) => {
+      (
+        previous
+      ) => {
         previous.forEach(
-          (pending) => {
+          (
+            pending
+          ) => {
             URL.revokeObjectURL(
               pending.objectUrl
             );
@@ -455,8 +671,16 @@ export default function EditarDocumentoPage() {
       }
     );
 
-    setErrors({});
-  }, [doc]);
+    setUploadProgress(
+      0
+    );
+
+    setErrors(
+      {}
+    );
+  }, [
+    doc,
+  ]);
 
   // ==========================================================
   // DERIVADOS
@@ -468,27 +692,45 @@ export default function EditarDocumentoPage() {
         DOCUMENT_FIELDS[
           formData.type
         ] || [],
-      [formData.type]
+      [
+        formData.type,
+      ]
     );
 
   const allowedDocumentTypes =
-    useMemo<SelectItem[]>(
+    useMemo<
+      SelectItem[]
+    >(
       () =>
         GENERAL_TYPES
-          .filter((type) =>
-            TYPE_CATEGORY_MAP[
+          .filter(
+            (
               type
-            ].includes(
-              formData.category_id
-            )
-          )
-          .map((type) => ({
-            id: type,
-            label:
-              DOCUMENT_TYPE_LABELS[
+            ) =>
+              TYPE_CATEGORY_MAP[
                 type
-              ],
-          })),
+              ].includes(
+                formData.category_id
+              )
+          )
+          .map(
+            (
+              type
+            ) => ({
+              id:
+                type,
+
+              label:
+                DOCUMENT_TYPE_LABELS[
+                  type
+                ],
+
+              description:
+                DOCUMENT_TYPE_DESCRIPTIONS[
+                  type
+                ],
+            })
+          ),
       [
         formData.category_id,
       ]
@@ -499,15 +741,24 @@ export default function EditarDocumentoPage() {
       formData.type
     ];
 
+  const selectedTypeDescription =
+    DOCUMENT_TYPE_DESCRIPTIONS[
+      formData.type
+    ];
+
   const selectedPerson =
     useMemo(
       () => {
-        if (!doc) {
+        if (
+          !doc
+        ) {
           return undefined;
         }
 
         return persons.find(
-          (person) =>
+          (
+            person
+          ) =>
             person.id ===
             doc.person_id
         );
@@ -542,18 +793,42 @@ export default function EditarDocumentoPage() {
         )
     );
 
+  const existingAttachmentsCount =
+    useMemo(
+      () => {
+        const pendingIds =
+          new Set(
+            pendingUploads.map(
+              (
+                pending
+              ) =>
+                pending.attachmentId
+            )
+          );
+
+        return formData.attachments.filter(
+          (
+            attachment
+          ) =>
+            !pendingIds.has(
+              attachment.id
+            )
+        ).length;
+      },
+      [
+        formData.attachments,
+        pendingUploads,
+      ]
+    );
+
   // ==========================================================
-  // SELECTS NATIVOS DOS CAMPOS
-  //
-  // No domínio pessoal não existem selects que precisem
-  // consultar médicos, hospitais, medicamentos etc.
-  //
-  // SelectionModal continua sendo usado para campos do tipo
-  // select definidos em DOCUMENT_FIELDS (ex.: opções fixas).
+  // SELECTS DOS CAMPOS
   // ==========================================================
 
   const selectItems =
-    useMemo<SelectItem[]>(
+    useMemo<
+      SelectItem[]
+    >(
       () => {
         if (
           !activeSelectField?.options
@@ -563,9 +838,14 @@ export default function EditarDocumentoPage() {
         }
 
         return activeSelectField.options.map(
-          (option) => ({
-            id: option,
-            label: option,
+          (
+            option
+          ) => ({
+            id:
+              option,
+
+            label:
+              option,
           })
         );
       },
@@ -582,9 +862,13 @@ export default function EditarDocumentoPage() {
     key: string
   ) => {
     setErrors(
-      (previous) => {
+      (
+        previous
+      ) => {
         if (
-          !previous[key]
+          !previous[
+            key
+          ]
         ) {
           return previous;
         }
@@ -593,7 +877,9 @@ export default function EditarDocumentoPage() {
           ...previous,
         };
 
-        delete next[key];
+        delete next[
+          key
+        ];
 
         return next;
       }
@@ -608,22 +894,32 @@ export default function EditarDocumentoPage() {
     value: string
   ) => {
     setFormData(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
-        title: value,
+
+        title:
+          value,
       })
     );
 
-    clearError("title");
+    clearError(
+      "title"
+    );
   };
 
   const handleDescriptionChange = (
     value: string
   ) => {
     setFormData(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
-        description: value,
+
+        description:
+          value,
       })
     );
   };
@@ -633,26 +929,37 @@ export default function EditarDocumentoPage() {
     value: string
   ) => {
     setFormData(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
 
         metadata: {
           ...previous.metadata,
-          [key]: value,
+
+          [key]:
+            value,
         },
       })
     );
 
-    clearError(key);
+    clearError(
+      key
+    );
   };
 
   const handleCategoryChange = (
-    categoryId: GeneralCategoryId
+    categoryId:
+      GeneralCategoryId
   ) => {
-    trigger("vibrate");
+    trigger(
+      "vibrate"
+    );
 
     setFormData(
-      (previous) => {
+      (
+        previous
+      ) => {
         const currentTypeAllowed =
           TYPE_CATEGORY_MAP[
             previous.type
@@ -665,6 +972,7 @@ export default function EditarDocumentoPage() {
         ) {
           return {
             ...previous,
+
             category_id:
               categoryId,
           };
@@ -672,7 +980,9 @@ export default function EditarDocumentoPage() {
 
         const nextType =
           GENERAL_TYPES.find(
-            (type) =>
+            (
+              type
+            ) =>
               TYPE_CATEGORY_MAP[
                 type
               ].includes(
@@ -680,7 +990,9 @@ export default function EditarDocumentoPage() {
               )
           );
 
-        if (!nextType) {
+        if (
+          !nextType
+        ) {
           return previous;
         }
 
@@ -703,17 +1015,23 @@ export default function EditarDocumentoPage() {
       }
     );
 
-    setErrors({});
+    setErrors(
+      {}
+    );
   };
 
   const handleTypeChange = (
     nextType:
       GeneralDocumentType
   ) => {
-    trigger("vibrate");
+    trigger(
+      "vibrate"
+    );
 
     setFormData(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
 
         type:
@@ -728,8 +1046,13 @@ export default function EditarDocumentoPage() {
       })
     );
 
-    setErrors({});
-    setIsTypeModalOpen(false);
+    setErrors(
+      {}
+    );
+
+    setIsTypeModalOpen(
+      false
+    );
   };
 
   // ==========================================================
@@ -743,14 +1066,17 @@ export default function EditarDocumentoPage() {
       | "camera"
   ) => {
     if (
-      files.length === 0
+      files.length ===
+      0
     ) {
       return;
     }
 
     const supported =
       files.filter(
-        (file) => {
+        (
+          file
+        ) => {
           if (
             !isSupportedAttachment(
               file
@@ -776,7 +1102,9 @@ export default function EditarDocumentoPage() {
       supported.length ===
       0
     ) {
-      trigger("error");
+      trigger(
+        "error"
+      );
 
       showToast(
         "Selecione imagens ou PDFs de até 10 MB.",
@@ -853,7 +1181,9 @@ export default function EditarDocumentoPage() {
     );
 
     setFormData(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
 
         attachments: [
@@ -864,13 +1194,17 @@ export default function EditarDocumentoPage() {
     );
 
     setPendingUploads(
-      (previous) => [
+      (
+        previous
+      ) => [
         ...previous,
         ...newPendingUploads,
       ]
     );
 
-    trigger("vibrate");
+    trigger(
+      "vibrate"
+    );
   };
 
   const handleFileSelect = (
@@ -902,11 +1236,17 @@ export default function EditarDocumentoPage() {
       ChangeEvent<HTMLInputElement>
   ) => {
     const file =
-      event.target.files?.[0];
+      event.target.files?.[
+        0
+      ];
 
-    if (file) {
+    if (
+      file
+    ) {
       addFiles(
-        [file],
+        [
+          file,
+        ],
         "camera"
       );
     }
@@ -921,12 +1261,16 @@ export default function EditarDocumentoPage() {
   ) => {
     const pending =
       pendingUploads.find(
-        (item) =>
+        (
+          item
+        ) =>
           item.attachmentId ===
           attachmentId
       );
 
-    if (pending) {
+    if (
+      pending
+    ) {
       URL.revokeObjectURL(
         pending.objectUrl
       );
@@ -936,9 +1280,13 @@ export default function EditarDocumentoPage() {
       );
 
       setPendingUploads(
-        (previous) =>
+        (
+          previous
+        ) =>
           previous.filter(
-            (item) =>
+            (
+              item
+            ) =>
               item.attachmentId !==
               attachmentId
           )
@@ -946,19 +1294,25 @@ export default function EditarDocumentoPage() {
     }
 
     setFormData(
-      (previous) => ({
+      (
+        previous
+      ) => ({
         ...previous,
 
         attachments:
           previous.attachments.filter(
-            (attachment) =>
+            (
+              attachment
+            ) =>
               attachment.id !==
               attachmentId
           ),
       })
     );
 
-    trigger("vibrate");
+    trigger(
+      "vibrate"
+    );
   };
 
   // ==========================================================
@@ -967,10 +1321,11 @@ export default function EditarDocumentoPage() {
 
   const validate =
     (): boolean => {
-      const newErrors: Record<
-        string,
-        string
-      > = {};
+      const newErrors:
+        Record<
+          string,
+          string
+        > = {};
 
       if (
         !formData.title.trim()
@@ -1045,16 +1400,19 @@ export default function EditarDocumentoPage() {
   // ==========================================================
 
   const uploadPendingAttachments =
-    async (): Promise<
-      Attachment[]
-    > => {
+    async (): Promise<UploadPendingResult> => {
       if (
         pendingUploads.length ===
         0
       ) {
-        return [
-          ...formData.attachments,
-        ];
+        return {
+          attachments: [
+            ...formData.attachments,
+          ],
+
+          uploadedUrls:
+            [],
+        };
       }
 
       if (
@@ -1069,17 +1427,29 @@ export default function EditarDocumentoPage() {
         ...formData.attachments,
       ];
 
+      const uploadedUrls:
+        string[] = [];
+
       for (
-        const pending of
-        pendingUploads
+        let index = 0;
+        index <
+        pendingUploads.length;
+        index++
       ) {
+        const pending =
+          pendingUploads[
+            index
+          ];
+
         /*
          * O anexo pode ter sido removido depois de entrar
          * na fila local.
          */
         const attachmentIndex =
           finalAttachments.findIndex(
-            (attachment) =>
+            (
+              attachment
+            ) =>
               attachment.id ===
               pending.attachmentId
           );
@@ -1105,10 +1475,28 @@ export default function EditarDocumentoPage() {
           error ||
           !url
         ) {
+          /*
+           * Se falhar no meio da sequência, arquivos que
+           * acabaram de ser enviados nesta tentativa também
+           * são removidos.
+           */
+          if (
+            uploadedUrls.length >
+            0
+          ) {
+            await cleanupUploadedFiles(
+              uploadedUrls
+            );
+          }
+
           throw new Error(
             `Falha ao enviar ${pending.file.name}.`
           );
         }
+
+        uploadedUrls.push(
+          url
+        );
 
         finalAttachments[
           attachmentIndex
@@ -1116,33 +1504,62 @@ export default function EditarDocumentoPage() {
           ...finalAttachments[
             attachmentIndex
           ],
+
           url,
         };
+
+        setUploadProgress(
+          Math.round(
+            ((index +
+              1) /
+              pendingUploads.length) *
+              100
+          )
+        );
       }
 
       /*
-       * Defesa final: o repository nunca deve receber blob:.
+       * Defesa final:
+       * o repository nunca deve receber blob:.
        */
       if (
         finalAttachments.some(
-          (attachment) =>
+          (
+            attachment
+          ) =>
             attachment.url.startsWith(
               "blob:"
             )
         )
       ) {
+        if (
+          uploadedUrls.length >
+          0
+        ) {
+          await cleanupUploadedFiles(
+            uploadedUrls
+          );
+        }
+
         throw new Error(
           "Existem anexos que ainda não foram enviados."
         );
       }
 
-      return finalAttachments;
+      return {
+        attachments:
+          finalAttachments,
+
+        uploadedUrls,
+      };
     };
 
   const clearUploadedBlobUrls =
     () => {
       pendingUploads.forEach(
-        (pending) => {
+        (
+          pending
+        ) => {
           URL.revokeObjectURL(
             pending.objectUrl
           );
@@ -1153,8 +1570,10 @@ export default function EditarDocumentoPage() {
         }
       );
 
-      setPendingUploads([]);
-    };
+      setPendingUploads(
+        []
+      );
+  };
 
   // ==========================================================
   // SALVAR
@@ -1164,6 +1583,7 @@ export default function EditarDocumentoPage() {
     async () => {
       if (
         loading ||
+        submitLockRef.current ||
         !doc ||
         !id
       ) {
@@ -1173,7 +1593,9 @@ export default function EditarDocumentoPage() {
       if (
         isHealthDocument
       ) {
-        trigger("error");
+        trigger(
+          "error"
+        );
 
         showToast(
           "Documentos clínicos devem ser editados pela área de Saúde.",
@@ -1186,19 +1608,40 @@ export default function EditarDocumentoPage() {
       if (
         !validate()
       ) {
-        trigger("error");
+        trigger(
+          "error"
+        );
+
         return;
       }
 
-      setLoading(true);
+      submitLockRef.current =
+        true;
+
+      setLoading(
+        true
+      );
+
+      setUploadProgress(
+        0
+      );
+
+      let uploadedUrls:
+        string[] = [];
+
+      let updateCommitted =
+        false;
 
       try {
         /*
          * Novos arquivos são enviados primeiro.
          * Assim URLs blob nunca chegam ao repository.
          */
-        const finalAttachments =
+        const uploadResult =
           await uploadPendingAttachments();
+
+        uploadedUrls =
+          uploadResult.uploadedUrls;
 
         await updateDocument(
           id,
@@ -1213,9 +1656,8 @@ export default function EditarDocumentoPage() {
               formData.title.trim(),
 
             /*
-             * null é proposital aqui:
-             * permite realmente limpar uma descrição antiga,
-             * em vez de tratar campo vazio como "não alterar".
+             * null é proposital:
+             * permite realmente limpar uma descrição antiga.
              */
             description:
               formData.description.trim() ||
@@ -1226,13 +1668,31 @@ export default function EditarDocumentoPage() {
             },
 
             attachments:
-              finalAttachments,
+              uploadResult.attachments,
           }
         );
 
+        updateCommitted =
+          true;
+
+        /*
+         * Depois que o repository concluiu o commit,
+         * as URLs novas já pertencem ao documento.
+         *
+         * Não devem mais participar de qualquer rollback.
+         */
+        uploadedUrls =
+          [];
+
         clearUploadedBlobUrls();
 
-        trigger("success");
+        setUploadProgress(
+          100
+        );
+
+        trigger(
+          "success"
+        );
 
         showToast(
           "Documento atualizado",
@@ -1242,23 +1702,54 @@ export default function EditarDocumentoPage() {
         router.replace(
           `/documentos/detalhes?id=${id}`
         );
-      } catch (error) {
+      } catch (
+        error
+      ) {
+        /*
+         * Se os uploads terminaram, mas o update do documento
+         * falhou, os arquivos recém-criados seriam órfãos.
+         *
+         * Apenas arquivos desta tentativa entram no cleanup.
+         * Anexos antigos nunca são apagados por esta rotina.
+         */
+        if (
+          !updateCommitted &&
+          uploadedUrls.length >
+          0
+        ) {
+          await cleanupUploadedFiles(
+            uploadedUrls
+          );
+        }
+
         console.error(
           "Erro ao atualizar documento:",
           error
         );
 
-        trigger("error");
-
-        showToast(
-          error instanceof Error &&
-            error.message
-              ? error.message
-              : "Erro ao atualizar documento",
+        trigger(
           "error"
         );
+
+        showToast(
+          error instanceof
+              Error &&
+            error.message
+            ? error.message
+            : "Erro ao atualizar documento",
+          "error"
+        );
+
+        setUploadProgress(
+          0
+        );
       } finally {
-        setLoading(false);
+        submitLockRef.current =
+          false;
+
+        setLoading(
+          false
+        );
       }
     };
 
@@ -1267,23 +1758,26 @@ export default function EditarDocumentoPage() {
   // ==========================================================
 
   if (
-    doc === null
+    doc ===
+    null
   ) {
     return (
       <PageTransition>
-        <main className="min-h-screen bg-void">
-          <header className="border-b border-surface-border/30 px-5 pb-4 pt-6">
+        <main className="min-h-[100dvh] bg-void">
+          <header className="border-b border-surface-border/30 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
             <div className="mx-auto max-w-3xl">
               <div className="h-11 w-11 animate-pulse rounded-full bg-surface-raised" />
             </div>
           </header>
 
           <div className="mx-auto max-w-3xl space-y-4 px-5 pt-6">
-            <div className="h-32 animate-pulse rounded-[28px] bg-surface" />
-            <div className="h-28 animate-pulse rounded-[28px] bg-surface" />
-            <div className="h-44 animate-pulse rounded-[28px] bg-surface" />
-            <div className="h-72 animate-pulse rounded-[28px] bg-surface" />
-            <div className="h-52 animate-pulse rounded-[28px] bg-surface" />
+            <div className="h-20 animate-pulse rounded-[22px] bg-surface" />
+
+            <div className="h-40 animate-pulse rounded-[24px] bg-surface" />
+
+            <div className="h-72 animate-pulse rounded-[24px] bg-surface" />
+
+            <div className="h-52 animate-pulse rounded-[24px] bg-surface" />
           </div>
         </main>
       </PageTransition>
@@ -1299,11 +1793,13 @@ export default function EditarDocumentoPage() {
   ) {
     return (
       <PageTransition>
-        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+        <main className="flex min-h-[100dvh] items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[28px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-raised text-ink-muted">
               <FileText
-                size={22}
+                size={
+                  22
+                }
               />
             </div>
 
@@ -1341,11 +1837,13 @@ export default function EditarDocumentoPage() {
   ) {
     return (
       <PageTransition>
-        <main className="flex min-h-screen items-center justify-center bg-void px-5">
+        <main className="flex min-h-[100dvh] items-center justify-center bg-void px-5">
           <div className="w-full max-w-sm rounded-[30px] border border-surface-border/50 bg-surface px-6 py-8 text-center shadow-sm">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-ice/15 bg-ice/10 text-ice">
               <FileText
-                size={24}
+                size={
+                  24
+                }
               />
             </div>
 
@@ -1354,7 +1852,7 @@ export default function EditarDocumentoPage() {
             </p>
 
             <p className="mt-2 text-sm leading-6 text-ink-muted">
-              Este documento pertence ao Acervo Clínico. A edição de documentos de Saúde é mantida separada do Cofre Pessoal.
+              Este documento pertence ao Acervo Clínico. A edição dos documentos de Saúde é mantida separada do Cofre Pessoal.
             </p>
 
             <div className="mt-6 space-y-3">
@@ -1397,7 +1895,8 @@ export default function EditarDocumentoPage() {
   // ==========================================================
 
   const renderField = (
-    field: DocumentField
+    field:
+      DocumentField
   ) => {
     const label =
       field.required
@@ -1441,9 +1940,7 @@ export default function EditarDocumentoPage() {
                 field.key
               ]
                 ? "border-coral/60"
-                : currentValue
-                  ? "border-surface-border/60 hover:border-ice/30"
-                  : "border-surface-border/50 hover:border-ice/30"
+                : "border-surface-border/50 focus:border-ice/40"
             }`}
           >
             <div className="flex min-w-0 items-center gap-3">
@@ -1455,7 +1952,9 @@ export default function EditarDocumentoPage() {
                 }`}
               >
                 <Layers3
-                  size={16}
+                  size={
+                    16
+                  }
                 />
               </div>
 
@@ -1474,7 +1973,9 @@ export default function EditarDocumentoPage() {
             </div>
 
             <ChevronDown
-              size={16}
+              size={
+                16
+              }
               className="shrink-0 text-ink-muted"
             />
           </button>
@@ -1535,12 +2036,42 @@ export default function EditarDocumentoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-[100dvh] bg-void pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+        {/* ====================================================
+            INPUTS OCULTOS
+            ==================================================== */}
+
+        <input
+          ref={
+            fileInputRef
+          }
+          type="file"
+          accept="image/*,application/pdf"
+          multiple
+          onChange={
+            handleFileSelect
+          }
+          className="hidden"
+        />
+
+        <input
+          ref={
+            cameraInputRef
+          }
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={
+            handleCameraCapture
+          }
+          className="hidden"
+        />
+
         {/* ====================================================
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <button
               type="button"
@@ -1551,113 +2082,68 @@ export default function EditarDocumentoPage() {
 
                 router.back();
               }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
+              disabled={
+                loading
+              }
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95 disabled:opacity-50"
               aria-label="Voltar"
             >
               <ArrowLeft
-                size={18}
+                size={
+                  18
+                }
                 className="text-ink-primary"
               />
             </button>
 
-            <div className="min-w-0">
-              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ice/90">
                 Cofre Pessoal
               </p>
 
-              <h1 className="font-display text-xl font-semibold text-ink-primary">
+              <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">
                 Editar documento
               </h1>
+            </div>
+
+            <div className="flex h-9 items-center gap-1.5 rounded-full border border-surface-border/40 bg-surface-raised px-3 text-[10px] font-medium text-ink-muted">
+              <ShieldCheck
+                size={
+                  13
+                }
+                className="text-ice"
+              />
+
+              Vinculado
             </div>
           </div>
         </header>
 
-        <section className="mx-auto max-w-3xl space-y-4 px-5 pt-6">
+        <section className="mx-auto max-w-3xl space-y-4 px-5 pt-5">
           {/* ==================================================
-              HERO
+              PESSOA + IDENTIDADE
               ================================================== */}
 
           <motion.div
             {...sectionMotion}
             transition={{
-              duration: 0.22,
+              duration:
+                0.22,
             }}
-            className="relative overflow-hidden rounded-[28px] border border-surface-border/50 bg-surface px-5 py-5 shadow-sm"
-            style={{
-              borderLeft: `4px solid ${personColor}`,
-            }}
+            className="rounded-[20px] border border-surface-border/35 bg-surface/75 px-3.5 py-3 shadow-sm"
           >
-            <div
-              className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-[0.08] blur-3xl"
-              style={{
-                backgroundColor:
-                  personColor,
-              }}
-            />
-
-            <div className="relative flex items-start gap-4">
+            <div className="flex items-center gap-3">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-surface-border/50 bg-surface-raised"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised"
                 style={{
-                  boxShadow: `inset 0 0 0 1px ${personColor}20`,
-                }}
-              >
-                <CategoryIcon
-                  size={22}
-                  className="text-ice"
-                />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
-                    {
-                      CATEGORIES[
-                        formData.category_id
-                      ].name
-                    }
-                  </span>
-
-                  <span className="rounded-full border border-ice/20 bg-ice/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-ice">
-                    {
-                      selectedTypeLabel
-                    }
-                  </span>
-                </div>
-
-                <h2 className="mt-3 truncate font-display text-lg font-semibold text-ink-primary">
-                  {formData.title ||
-                    "Sem título"}
-                </h2>
-
-                <p className="mt-1 text-xs leading-5 text-ink-faint">
-                  Atualize os dados e anexos deste documento.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* ==================================================
-              PROPRIETÁRIO — SOMENTE LEITURA
-              ================================================== */}
-
-          <motion.div
-            {...sectionMotion}
-            transition={{
-              duration: 0.22,
-              delay: 0.03,
-            }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-raised"
-                style={{
-                  boxShadow: `inset 0 0 0 1px ${personColor}25`,
+                  boxShadow:
+                    `inset 0 0 0 1px ${personColor}25`,
                 }}
               >
                 <UserRound
-                  size={18}
+                  size={
+                    17
+                  }
                   style={{
                     color:
                       personColor,
@@ -1666,202 +2152,281 @@ export default function EditarDocumentoPage() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
-                  Pessoa vinculada
-                </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="shrink-0 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-faint">
+                    Pessoa vinculada
+                  </p>
 
-                <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
-                  {selectedPerson?.name ||
-                    "Pessoa ativa"}
-                </p>
+                  <span
+                    className="h-1 w-1 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor:
+                        personColor,
+                    }}
+                  />
 
-                <p className="mt-1 text-xs leading-5 text-ink-muted">
-                  O proprietário deste documento não pode ser alterado durante a edição.
+                  <p className="truncate text-xs font-semibold text-ink-primary">
+                    {selectedPerson?.name ||
+                      "Pessoa ativa"}
+                  </p>
+                </div>
+
+                <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+                  O proprietário não pode ser alterado durante a edição.
                 </p>
               </div>
 
               <Check
-                size={16}
-                className="mt-1 shrink-0 text-ice"
+                size={
+                  15
+                }
+                className="shrink-0 text-ice"
               />
             </div>
           </motion.div>
 
           {/* ==================================================
-              CATEGORIA
+              VISÃO GERAL
               ================================================== */}
 
           <motion.div
             {...sectionMotion}
             transition={{
-              duration: 0.22,
-              delay: 0.06,
+              duration:
+                0.22,
+
+              delay:
+                0.03,
             }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+            className="relative overflow-hidden rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
           >
-            <p className="mb-2 text-sm font-medium text-ink-primary">
-              Categoria
-            </p>
+            <div
+              className="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full opacity-[0.08] blur-3xl"
+              style={{
+                backgroundColor:
+                  personColor,
+              }}
+            />
 
-            <p className="mb-3 text-xs leading-5 text-ink-faint">
-              Documentos clínicos são gerenciados separadamente no Acervo Clínico.
-            </p>
+            <div className="relative flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                <CategoryIcon
+                  size={
+                    19
+                  }
+                />
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              {GENERAL_CATEGORIES.map(
-                (
-                  categoryId
-                ) => {
-                  const category =
-                    CATEGORIES[
-                      categoryId
-                    ];
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-surface-border/40 bg-surface-raised px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-muted">
+                    {
+                      CATEGORIES[
+                        formData.category_id
+                      ].name
+                    }
+                  </span>
 
-                  const selected =
-                    formData.category_id ===
-                    categoryId;
+                  <span className="rounded-full border border-ice/20 bg-ice/8 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ice">
+                    {
+                      selectedTypeLabel
+                    }
+                  </span>
+                </div>
 
-                  return (
-                    <button
-                      key={
+                <h2 className="mt-3 truncate font-display text-lg font-semibold text-ink-primary">
+                  {formData.title.trim() ||
+                    "Documento sem título"}
+                </h2>
+
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">
+                  {
+                    selectedTypeDescription
+                  }
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ==================================================
+              CLASSIFICAÇÃO
+              ================================================== */}
+
+          <motion.div
+            {...sectionMotion}
+            transition={{
+              duration:
+                0.22,
+
+              delay:
+                0.06,
+            }}
+            className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
+          >
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-ink-primary">
+                Classificação
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                Escolha onde este documento se encaixa e qual é o seu tipo.
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2.5 text-xs font-medium text-ink-muted">
+                Categoria
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {GENERAL_CATEGORIES.map(
+                  (
+                    categoryId
+                  ) => {
+                    const category =
+                      CATEGORIES[
                         categoryId
-                      }
-                      type="button"
-                      onClick={() =>
-                        handleCategoryChange(
+                      ];
+
+                    const selected =
+                      formData.category_id ===
+                      categoryId;
+
+                    return (
+                      <button
+                        key={
                           categoryId
-                        )
-                      }
-                      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
-                        selected
-                          ? "border-ice bg-ice/12 text-ice"
-                          : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                      }`}
-                    >
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{
-                          backgroundColor:
-                            category.color,
-                        }}
-                      />
-
-                      {
-                        category.name
-                      }
-
-                      {selected && (
-                        <Check
-                          size={13}
+                        }
+                        type="button"
+                        disabled={
+                          loading
+                        }
+                        onClick={() =>
+                          handleCategoryChange(
+                            categoryId
+                          )
+                        }
+                        className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-50 ${
+                          selected
+                            ? "border-ice bg-ice/12 text-ice"
+                            : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                        }`}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{
+                            backgroundColor:
+                              category.color,
+                          }}
                         />
-                      )}
-                    </button>
-                  );
+
+                        {
+                          category.name
+                        }
+
+                        {selected && (
+                          <Check
+                            size={
+                              13
+                            }
+                          />
+                        )}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2.5 text-xs font-medium text-ink-muted">
+                Tipo de documento
+              </p>
+
+              <button
+                type="button"
+                disabled={
+                  loading
                 }
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsTypeModalOpen(
+                    true
+                  );
+                }}
+                className={`flex w-full items-center justify-between gap-3 rounded-[20px] border bg-surface-raised px-4 py-4 text-left transition-all active:scale-[0.99] disabled:opacity-50 ${
+                  errors.type
+                    ? "border-coral/60"
+                    : "border-surface-border/50"
+                }`}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                    <Layers3
+                      size={
+                        18
+                      }
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink-primary">
+                      {
+                        selectedTypeLabel
+                      }
+                    </p>
+
+                    <p className="mt-1 line-clamp-1 text-[11px] text-ink-muted">
+                      {
+                        selectedTypeDescription
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <ChevronDown
+                  size={
+                    16
+                  }
+                  className="shrink-0 text-ink-muted"
+                />
+              </button>
+
+              {errors.type && (
+                <p className="mt-2 px-1 text-xs text-coral">
+                  {
+                    errors.type
+                  }
+                </p>
               )}
             </div>
           </motion.div>
 
           {/* ==================================================
-              TIPO
+              DADOS DO DOCUMENTO
               ================================================== */}
 
           <motion.div
             {...sectionMotion}
             transition={{
-              duration: 0.22,
-              delay: 0.09,
+              duration:
+                0.22,
+
+              delay:
+                0.09,
             }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
+            className="space-y-4 rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
           >
-            <label className="mb-2 block text-sm font-medium text-ink-primary">
-              Tipo
-            </label>
-
-            <button
-              type="button"
-              onClick={() => {
-                trigger(
-                  "vibrate"
-                );
-
-                setIsTypeModalOpen(
-                  true
-                );
-              }}
-              className={`flex w-full items-center justify-between rounded-2xl border bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-colors ${
-                errors.type
-                  ? "border-coral/60"
-                  : "border-surface-border/50 hover:border-ice/30"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                  <Layers3
-                    size={16}
-                  />
-                </div>
-
-                <div>
-                  <span className="block text-sm font-medium">
-                    {
-                      selectedTypeLabel
-                    }
-                  </span>
-
-                  <span className="mt-0.5 block text-[10px] text-ink-faint">
-                    {
-                      allowedDocumentTypes.length
-                    }{" "}
-                    tipo
-                    {allowedDocumentTypes.length !==
-                    1
-                      ? "s"
-                      : ""}{" "}
-                    disponível
-                    {allowedDocumentTypes.length !==
-                    1
-                      ? "is"
-                      : ""}{" "}
-                    nesta categoria
-                  </span>
-                </div>
-              </div>
-
-              <ChevronDown
-                size={16}
-                className="text-ink-muted"
-              />
-            </button>
-
-            {errors.type && (
-              <p className="mt-2 px-1 text-xs text-coral">
-                {
-                  errors.type
-                }
-              </p>
-            )}
-          </motion.div>
-
-          {/* ==================================================
-              DADOS
-              ================================================== */}
-
-          <motion.div
-            {...sectionMotion}
-            transition={{
-              duration: 0.22,
-              delay: 0.12,
-            }}
-            className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface px-4 py-4 shadow-sm"
-          >
-            <div className="mb-1">
-              <p className="text-sm font-medium text-ink-primary">
+            <div>
+              <p className="text-sm font-semibold text-ink-primary">
                 Dados do documento
               </p>
 
-              <p className="mt-1 text-xs leading-5 text-ink-faint">
-                Os campos abaixo são definidos automaticamente pelo tipo selecionado.
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                Os campos abaixo acompanham o tipo selecionado.
               </p>
             </div>
 
@@ -1885,20 +2450,6 @@ export default function EditarDocumentoPage() {
             {fields.map(
               renderField
             )}
-
-            <TextArea
-              label="Notas"
-              value={
-                formData.description
-              }
-              onChange={(
-                event
-              ) =>
-                handleDescriptionChange(
-                  event.target.value
-                )
-              }
-            />
           </motion.div>
 
           {/* ==================================================
@@ -1908,109 +2459,194 @@ export default function EditarDocumentoPage() {
           <motion.div
             {...sectionMotion}
             transition={{
-              duration: 0.22,
-              delay: 0.15,
+              duration:
+                0.22,
+
+              delay:
+                0.12,
             }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
           >
             <div className="mb-4 flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                 <Paperclip
-                  size={17}
+                  size={
+                    17
+                  }
                 />
               </div>
 
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-ink-primary">
-                  Anexos
-                </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-ink-primary">
+                    Anexos
+                  </p>
 
-                <p className="mt-0.5 text-xs leading-5 text-ink-faint">
-                  Imagens e PDFs de até 10 MB. Novos arquivos são enviados quando você salva.
+                  {formData.attachments.length >
+                    0 && (
+                    <span className="rounded-full bg-surface-raised px-2 py-0.5 font-mono text-[9px] text-ink-muted">
+                      {
+                        formData.attachments.length
+                      }
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
+                  Imagens e PDFs de até 10 MB.
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="secondary"
-                className="flex items-center justify-center gap-2"
+              <button
+                type="button"
+                disabled={
+                  loading
+                }
                 onClick={() =>
                   fileInputRef.current?.click()
                 }
+                className="group flex min-h-[90px] flex-col items-center justify-center gap-2 rounded-[20px] border border-surface-border/50 bg-surface-raised px-3 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                  <Upload
+                    size={
+                      16
+                    }
+                  />
+                </div>
+
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-ink-primary">
+                    Escolher arquivo
+                  </p>
+
+                  <p className="mt-0.5 text-[9px] text-ink-faint">
+                    Imagem ou PDF
+                  </p>
+                </div>
+              </button>
+
+              <button
                 type="button"
                 disabled={
                   loading
                 }
-              >
-                <Upload
-                  size={16}
-                />
-
-                Arquivo
-              </Button>
-
-              <Button
-                variant="secondary"
-                className="flex items-center justify-center gap-2"
                 onClick={() =>
                   cameraInputRef.current?.click()
                 }
-                type="button"
-                disabled={
-                  loading
-                }
+                className="group flex min-h-[90px] flex-col items-center justify-center gap-2 rounded-[20px] border border-surface-border/50 bg-surface-raised px-3 transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                <Camera
-                  size={16}
-                />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                  <Camera
+                    size={
+                      16
+                    }
+                  />
+                </div>
 
-                Câmera
-              </Button>
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-ink-primary">
+                    Usar câmera
+                  </p>
 
-              <input
-                ref={
-                  fileInputRef
-                }
-                type="file"
-                accept="image/*,application/pdf"
-                multiple
-                onChange={
-                  handleFileSelect
-                }
-                className="hidden"
-              />
-
-              <input
-                ref={
-                  cameraInputRef
-                }
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={
-                  handleCameraCapture
-                }
-                className="hidden"
-              />
+                  <p className="mt-0.5 text-[9px] text-ink-faint">
+                    Fotografar agora
+                  </p>
+                </div>
+              </button>
             </div>
 
+            {pendingUploads.length >
+              0 && (
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-ice/15 bg-ice/5 px-3 py-2">
+                <p className="text-[10px] text-ink-muted">
+                  {pendingUploads.length} novo
+                  {pendingUploads.length !==
+                  1
+                    ? "s"
+                    : ""}{" "}
+                  anexo
+                  {pendingUploads.length !==
+                  1
+                    ? "s"
+                    : ""}{" "}
+                  aguardando salvamento
+                </p>
+
+                <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ice">
+                  Pendente
+                </span>
+              </div>
+            )}
+
+            {uploadProgress >
+              0 &&
+              uploadProgress <
+                100 && (
+                <div className="mt-3 rounded-xl border border-ice/15 bg-ice/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-ink-muted">
+                      Enviando anexos
+                    </span>
+
+                    <span className="font-mono text-[9px] text-ice">
+                      {
+                        uploadProgress
+                      }
+                      %
+                    </span>
+                  </div>
+
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-border/40">
+                    <motion.div
+                      className="h-full rounded-full bg-ice"
+                      animate={{
+                        width:
+                          `${uploadProgress}%`,
+                      }}
+                      transition={{
+                        duration:
+                          0.2,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
             {formData.attachments
-              .length === 0 ? (
-              <div className="mt-4 rounded-[20px] border border-dashed border-surface-border/50 bg-surface-raised/30 px-4 py-6 text-center">
+              .length ===
+            0 ? (
+              <div className="mt-4 rounded-[18px] border border-dashed border-surface-border/55 bg-surface-raised/30 px-4 py-5 text-center">
                 <Paperclip
-                  size={20}
+                  size={
+                    20
+                  }
                   className="mx-auto text-ink-faint"
                 />
 
-                <p className="mt-2 text-xs text-ink-muted">
-                  Nenhum anexo neste documento.
+                <p className="mt-2 text-xs font-medium text-ink-muted">
+                  Nenhum anexo
+                </p>
+
+                <p className="mt-1 text-[10px] leading-4 text-ink-faint">
+                  Você pode manter o documento sem arquivo ou adicionar um novo agora.
                 </p>
               </div>
             ) : (
-              <div className="mt-4 space-y-2.5">
+              <div className="mt-4 space-y-2">
+                {existingAttachmentsCount >
+                  0 && (
+                  <p className="px-1 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint">
+                    Arquivos do documento
+                  </p>
+                )}
+
                 <AnimatePresence
-                  initial={false}
+                  initial={
+                    false
+                  }
                 >
                   {formData.attachments.map(
                     (
@@ -2031,20 +2667,33 @@ export default function EditarDocumentoPage() {
                             attachment.id
                           }
                           initial={{
-                            opacity: 0,
-                            y: 8,
+                            opacity:
+                              0,
+
+                            y:
+                              8,
                           }}
                           animate={{
-                            opacity: 1,
-                            y: 0,
+                            opacity:
+                              1,
+
+                            y:
+                              0,
                           }}
                           exit={{
-                            opacity: 0,
-                            y: 8,
+                            opacity:
+                              0,
+
+                            scale:
+                              0.98,
                           }}
-                          className="flex items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface-raised px-3.5 py-3"
+                          className={`flex items-center gap-3 rounded-[18px] border p-2.5 ${
+                            isPending
+                              ? "border-ice/20 bg-ice/5"
+                              : "border-surface-border/40 bg-surface-raised/75"
+                          }`}
                         >
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-surface-border/40 bg-surface">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-void/60">
                             {attachment.type ===
                             "image" ? (
                               <img
@@ -2052,28 +2701,28 @@ export default function EditarDocumentoPage() {
                                   attachment.thumbnail_url ||
                                   attachment.url
                                 }
-                                alt={
-                                  attachment.name
-                                }
+                                alt=""
                                 className="h-full w-full object-cover"
                               />
                             ) : (
                               <FileText
-                                size={17}
+                                size={
+                                  18
+                                }
                                 className="text-ice"
                               />
                             )}
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-ink-primary">
+                            <p className="truncate text-xs font-semibold text-ink-primary">
                               {
                                 attachment.name
                               }
                             </p>
 
                             <div className="mt-1 flex items-center gap-2">
-                              <span className="text-[10px] uppercase tracking-wider text-ink-faint">
+                              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
                                 {attachment.type ===
                                 "image"
                                   ? "Imagem"
@@ -2081,28 +2730,34 @@ export default function EditarDocumentoPage() {
                               </span>
 
                               {isPending && (
-                                <span className="rounded-full bg-ice/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-ice">
-                                  Novo
-                                </span>
+                                <>
+                                  <span className="h-1 w-1 rounded-full bg-ice/60" />
+
+                                  <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ice">
+                                    Novo
+                                  </span>
+                                </>
                               )}
                             </div>
                           </div>
 
                           <button
                             type="button"
+                            disabled={
+                              loading
+                            }
                             onClick={() =>
                               removeAttachment(
                                 attachment.id
                               )
                             }
-                            disabled={
-                              loading
-                            }
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-coral/10 hover:text-coral disabled:opacity-40"
-                            aria-label={`Remover anexo ${attachment.name}`}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral transition-transform active:scale-95 disabled:opacity-40"
+                            aria-label={`Remover ${attachment.name}`}
                           >
                             <X
-                              size={15}
+                              size={
+                                14
+                              }
                             />
                           </button>
                         </motion.div>
@@ -2115,16 +2770,52 @@ export default function EditarDocumentoPage() {
           </motion.div>
 
           {/* ==================================================
-              SALVAR
+              NOTAS
               ================================================== */}
 
           <motion.div
             {...sectionMotion}
             transition={{
-              duration: 0.22,
-              delay: 0.18,
+              duration:
+                0.22,
+
+              delay:
+                0.15,
             }}
+            className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
           >
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-ink-primary">
+                Notas
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
+                Informações complementares que ajudam a identificar ou contextualizar este documento.
+              </p>
+            </div>
+
+            <TextArea
+              label="Observações"
+              value={
+                formData.description
+              }
+              onChange={(
+                event
+              ) =>
+                handleDescriptionChange(
+                  event.target.value
+                )
+              }
+            />
+          </motion.div>
+        </section>
+
+        {/* ====================================================
+            RODAPÉ FIXO
+            ==================================================== */}
+
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/35 bg-void/92 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-14px_32px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+          <div className="mx-auto max-w-3xl">
             <Button
               variant="primary"
               size="lg"
@@ -2140,24 +2831,33 @@ export default function EditarDocumentoPage() {
               {loading ? (
                 <>
                   <Loader2
-                    size={16}
+                    size={
+                      16
+                    }
                     className="animate-spin"
                   />
 
-                  Salvando...
+                  {uploadProgress >
+                  0 &&
+                  uploadProgress <
+                    100
+                    ? `Enviando ${uploadProgress}%`
+                    : "Salvando..."}
                 </>
               ) : (
                 <>
                   <Save
-                    size={16}
+                    size={
+                      16
+                    }
                   />
 
                   Salvar alterações
                 </>
               )}
             </Button>
-          </motion.div>
-        </section>
+          </div>
+        </div>
 
         {/* ====================================================
             MODAL — TIPO
@@ -2188,12 +2888,20 @@ export default function EditarDocumentoPage() {
           renderItem={(
             item
           ) => (
-            <div>
+            <div className="min-w-0">
               <p className="font-medium text-ink-primary">
                 {
                   item.label
                 }
               </p>
+
+              {item.description && (
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
+                  {
+                    item.description
+                  }
+                </p>
+              )}
             </div>
           )}
           getItemId={(

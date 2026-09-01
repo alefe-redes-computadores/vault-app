@@ -46,7 +46,6 @@ import {
 
 import {
   analisarRegistroSaude,
-  analisarSerieRegistrosSaude,
 } from "@/lib/health-insights";
 
 import {
@@ -162,6 +161,30 @@ function getCategoriaLabel(
   }
 
   return "Registro de saúde";
+}
+
+function registroDateTimeValue(
+  registro:
+    RegistroSaude
+): number {
+  const date =
+    registro.data ||
+    "";
+
+  const time =
+    registro.horario ||
+    "00:00";
+
+  const timestamp =
+    Date.parse(
+      `${date}T${time}:00`
+    );
+
+  return Number.isFinite(
+    timestamp
+  )
+    ? timestamp
+    : 0;
 }
 
 // ============================================================
@@ -339,7 +362,7 @@ function DetalhesRegistroSaudeContent() {
             const history =
               await getHistoricoSimilar(
                 id,
-                50
+                10
               );
 
             if (
@@ -523,9 +546,11 @@ function DetalhesRegistroSaudeContent() {
   // ==========================================================
   // CONTEXTO LONGITUDINAL DETERMINÍSTICO
   //
-  // A regra temporal e a comparação de intensidade pertencem
-  // ao health-insights.ts. A página apenas apresenta fatos do
-  // histórico person-scoped preparado pelo repository.
+  // Aqui não inventamos diagnóstico nem uma nova API do
+  // health-insights.ts.
+  //
+  // Apenas apresentamos fatos observáveis do histórico
+  // person-scoped preparado pelo repository.
   // ==========================================================
 
   const panoramaHistorico =
@@ -537,38 +562,140 @@ function DetalhesRegistroSaudeContent() {
           return null;
         }
 
-        return analisarSerieRegistrosSaude(
-          registro,
+        const serie =
+          [
+            registro,
+            ...historicoSimilar,
+          ].sort(
+            (
+              a,
+              b
+            ) =>
+              registroDateTimeValue(
+                b
+              ) -
+              registroDateTimeValue(
+                a
+              )
+          );
+
+        const intensidades =
+          serie
+            .map(
+              (
+                item
+              ) =>
+                item.intensidade
+            )
+            .filter(
+              (
+                value
+              ): value is number =>
+                typeof value ===
+                  "number" &&
+                Number.isFinite(
+                  value
+                )
+            );
+
+        const currentIntensity =
+          registro.intensidade;
+
+        const anteriores =
           historicoSimilar
-        );
+            .map(
+              (
+                item
+              ) =>
+                item.intensidade
+            )
+            .filter(
+              (
+                value
+              ): value is number =>
+                typeof value ===
+                  "number" &&
+                Number.isFinite(
+                  value
+                )
+            );
+
+        const mediaAnterior =
+          anteriores.length >
+          0
+            ? anteriores.reduce(
+                (
+                  total,
+                  value
+                ) =>
+                  total +
+                  value,
+                0
+              ) /
+              anteriores.length
+            : null;
+
+        let variacaoIntensidade:
+          | "acima"
+          | "abaixo"
+          | "estavel"
+          | null =
+          null;
+
+        if (
+          typeof currentIntensity ===
+            "number" &&
+          mediaAnterior !==
+            null
+        ) {
+          const diferenca =
+            currentIntensity -
+            mediaAnterior;
+
+          if (
+            diferenca >=
+            1
+          ) {
+            variacaoIntensidade =
+              "acima";
+          } else if (
+            diferenca <=
+            -1
+          ) {
+            variacaoIntensidade =
+              "abaixo";
+          } else {
+            variacaoIntensidade =
+              "estavel";
+          }
+        }
+
+        return {
+          totalOcorrencias:
+            serie.length,
+
+          primeiraData:
+            serie[
+              serie.length -
+                1
+            ]?.data,
+
+          ultimaData:
+            serie[
+              0
+            ]?.data,
+
+          intensidadesRegistradas:
+            intensidades.length,
+
+          mediaAnterior,
+
+          variacaoIntensidade,
+        };
       },
       [
         registro,
         historicoSimilar,
-      ]
-    );
-
-  const ocorrenciasAnteriores =
-    useMemo(
-      () => {
-        if (!panoramaHistorico) {
-          return [];
-        }
-
-        const ids = new Set(
-          panoramaHistorico.idsAnteriores
-        );
-
-        return historicoSimilar.filter(
-          (item) =>
-            Boolean(
-              item.id && ids.has(item.id)
-            )
-        );
-      },
-      [
-        historicoSimilar,
-        panoramaHistorico,
       ]
     );
 
@@ -1405,7 +1532,7 @@ function DetalhesRegistroSaudeContent() {
               ÚLTIMAS OCORRÊNCIAS
               ================================================== */}
 
-          {ocorrenciasAnteriores.length >
+          {historicoSimilar.length >
             0 && (
             <motion.div
               variants={
@@ -1429,11 +1556,11 @@ function DetalhesRegistroSaudeContent() {
                 }
                 title="Ocorrências Anteriores"
                 action={
-                  ocorrenciasAnteriores.length >
+                  historicoSimilar.length >
                   3 ? (
                     <span className="text-[10px] text-ink-faint">
                       {
-                        ocorrenciasAnteriores.length
+                        historicoSimilar.length
                       }{" "}
                       encontradas
                     </span>
@@ -1443,7 +1570,7 @@ function DetalhesRegistroSaudeContent() {
 
               <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
                 <div className="space-y-2">
-                  {ocorrenciasAnteriores
+                  {historicoSimilar
                     .slice(
                       0,
                       5

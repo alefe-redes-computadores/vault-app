@@ -1,21 +1,26 @@
 // app/galeria/page.tsx
 "use client";
 
-import { useState, useMemo, useEffect, Suspense, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Images,
-  HeartPulse,
-  Shield,
-  Search,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import {
   ArrowLeft,
-  X,
-  Share2,
-  FileText,
   ExternalLink,
+  FileText,
   FileWarning,
-  Trash2,
+  HeartPulse,
+  Images,
+  Search,
+  Share2,
+  Shield,
+  X,
 } from "lucide-react";
 import { useGaleria, type GalleryItem } from "@/hooks/useGaleria";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -24,80 +29,301 @@ import { UploadGaleriaModal } from "@/components/UploadGaleriaModal";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 
 // ============================================================
-// 1. COMPONENTE DE PREVIEW DO CARD (Com Blindagem Anti-Blob)
+// HELPERS
 // ============================================================
+
+type GalleryTab = "saude" | "pessoal";
+
+function parseGalleryDate(value: string): Date | null {
+  if (!value) return null;
+
+  const isoDateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (isoDateOnly) {
+    const [, year, month, day] = isoDateOnly;
+
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day)
+    );
+
+    return Number.isNaN(parsed.getTime())
+      ? null
+      : parsed;
+  }
+
+  const parsed = new Date(value);
+
+  return Number.isNaN(parsed.getTime())
+    ? null
+    : parsed;
+}
+
+function formatGalleryDate(
+  value: string,
+  options: Intl.DateTimeFormatOptions
+): string {
+  const parsed = parseGalleryDate(value);
+
+  if (!parsed) {
+    return "Data não informada";
+  }
+
+  return parsed.toLocaleDateString(
+    "pt-BR",
+    options
+  );
+}
+
+function getSourceLabel(
+  item: GalleryItem
+): string {
+  switch (item.source_table) {
+    case "documents":
+      return "Documento";
+
+    case "anexos_clinicos":
+      return "Anexo clínico";
+
+    case "renovacoes":
+      return "Renovação";
+
+    default:
+      return "Arquivo";
+  }
+}
+
+function getGroupLabel(
+  date: Date,
+  today: Date
+): string {
+  const normalizedDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  const normalizedToday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+
+  const diffDays = Math.round(
+    (
+      normalizedToday.getTime() -
+      normalizedDate.getTime()
+    ) /
+      (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays === 0) {
+    return "Hoje";
+  }
+
+  if (diffDays === 1) {
+    return "Ontem";
+  }
+
+  if (
+    diffDays >= 2 &&
+    diffDays <= 7
+  ) {
+    return "Últimos 7 dias";
+  }
+
+  const mesAno =
+    date.toLocaleDateString(
+      "pt-BR",
+      {
+        month: "long",
+        year: "numeric",
+      }
+    );
+
+  return (
+    mesAno.charAt(0).toUpperCase() +
+    mesAno.slice(1)
+  );
+}
+
+// ============================================================
+// CARD
+// ============================================================
+
 interface DocumentPreviewProps {
   item: GalleryItem;
   accentColor: string;
-  onClick: (item: GalleryItem) => void;
+  onClick: (
+    item: GalleryItem
+  ) => void;
 }
 
-function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
-  const [imgStatus, setImgStatus] = useState<"idle" | "loading" | "success" | "error">("loading");
-  
-  // Detecta se a URL é um blob local expirado ou inválido
-  const isDeadBlob = item.url?.startsWith("blob:");
-  const imageSource = item.thumbnail_url || item.url;
+function DocumentPreview({
+  item,
+  accentColor,
+  onClick,
+}: DocumentPreviewProps) {
+  const [
+    imgStatus,
+    setImgStatus,
+  ] = useState<
+    "loading" | "success" | "error"
+  >("loading");
+
+  const isDeadBlob =
+    item.url.startsWith("blob:");
+
+  const imageSource =
+    item.thumbnail_url ||
+    item.url;
 
   return (
     <motion.button
-      whileTap={{ scale: 0.97 }}
-      onClick={() => onClick(item)}
-      className="group relative aspect-square w-full overflow-hidden rounded-[20px] border bg-surface transition-all shadow-sm"
-      style={{ borderColor: `${accentColor}30` }}
+      type="button"
+      whileTap={{
+        scale: 0.975,
+      }}
+      onClick={() =>
+        onClick(item)
+      }
+      className="group w-full overflow-hidden rounded-[22px] border bg-surface text-left shadow-sm transition-shadow active:shadow-none"
+      style={{
+        borderColor:
+          `${accentColor}24`,
+      }}
+      aria-label={`Abrir ${item.title}`}
     >
-      {item.file_type === "pdf" ? (
-        <div className="flex h-full w-full flex-col items-center justify-center bg-void/30 p-4 transition-colors group-hover:bg-void/50">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-[18px] shadow-inner" style={{ backgroundColor: `${accentColor}1A`, color: accentColor }}>
-            <FileText size={26} strokeWidth={1.5} />
-          </div>
-          <span className="rounded-lg bg-surface-border/50 px-2.5 py-1 text-[10px] font-bold text-ink-primary uppercase tracking-widest">PDF</span>
-        </div>
-      ) : isDeadBlob ? (
-        <div className="flex h-full w-full flex-col items-center justify-center bg-void/50 p-4 text-center">
-          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-coral/10 text-coral">
-            <FileWarning size={18} />
-          </div>
-          <span className="text-[10px] font-bold text-coral leading-tight">Link Local Expirado</span>
-          <span className="mt-1 text-[9px] text-ink-muted">Edite o item para reanexar</span>
-        </div>
-      ) : (
-        <>
-          {imgStatus === "loading" && (
-            <div className="absolute inset-0 flex items-center justify-center bg-surface-raised">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-surface-border border-t-ink-muted" />
+      <div className="relative aspect-[4/5] overflow-hidden bg-surface-raised">
+        {item.file_type ===
+        "pdf" ? (
+          <div className="flex h-full w-full flex-col items-center justify-center p-5">
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-[20px]"
+              style={{
+                backgroundColor:
+                  `${accentColor}16`,
+
+                color:
+                  accentColor,
+              }}
+            >
+              <FileText
+                size={28}
+                strokeWidth={
+                  1.6
+                }
+              />
             </div>
-          )}
-          
-          {imgStatus === "error" ? (
-            <div className="flex h-full w-full flex-col items-center justify-center bg-void/30 p-4">
-              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-surface-border/30 text-ink-muted">
-                <FileWarning size={18} />
+
+            <span className="mt-4 rounded-full border border-surface-border/50 bg-surface px-3 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
+              PDF
+            </span>
+          </div>
+        ) : isDeadBlob ? (
+          <div className="flex h-full w-full flex-col items-center justify-center p-5 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-coral/10 text-coral">
+              <FileWarning
+                size={20}
+              />
+            </div>
+
+            <p className="mt-3 text-[11px] font-semibold text-coral">
+              Link local expirado
+            </p>
+
+            <p className="mt-1 text-[9px] leading-relaxed text-ink-muted">
+              Reanexe o arquivo
+              para recuperar a
+              prévia.
+            </p>
+          </div>
+        ) : (
+          <>
+            {imgStatus ===
+              "loading" && (
+              <div className="absolute inset-0 flex items-center justify-center bg-surface-raised">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-surface-border border-t-ink-muted" />
               </div>
-              <span className="text-[10px] font-medium text-ink-muted text-center leading-tight">Prévia<br/>Indisponível</span>
-            </div>
-          ) : (
-            <img 
-              src={imageSource} 
-              alt={item.title} 
-              loading="lazy"
-              onLoad={() => setImgStatus("success")}
-              onError={() => setImgStatus("error")}
-              className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 ${imgStatus === "success" ? "opacity-100" : "opacity-0"}`}
-            />
-          )}
-        </>
-      )}
-      
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent p-3 pt-10 text-left">
-        <p className="truncate text-[13px] font-bold text-white/95 leading-tight">{item.title}</p>
-        <div className="mt-1 flex items-center justify-between gap-1">
-          <span className="text-[10px] font-semibold text-white/70 uppercase">
-            {item.date ? new Date(item.date).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : ""}
+            )}
+
+            {imgStatus ===
+            "error" ? (
+              <div className="flex h-full w-full flex-col items-center justify-center p-5 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface text-ink-muted">
+                  <FileWarning
+                    size={
+                      20
+                    }
+                  />
+                </div>
+
+                <p className="mt-3 text-[10px] font-medium text-ink-muted">
+                  Prévia
+                  indisponível
+                </p>
+              </div>
+            ) : (
+              <img
+                src={
+                  imageSource
+                }
+                alt={
+                  item.title
+                }
+                loading="lazy"
+                onLoad={() =>
+                  setImgStatus(
+                    "success"
+                  )
+                }
+                onError={() =>
+                  setImgStatus(
+                    "error"
+                  )
+                }
+                className={`h-full w-full object-cover transition duration-500 group-hover:scale-[1.025] ${
+                  imgStatus ===
+                  "success"
+                    ? "opacity-100"
+                    : "opacity-0"
+                }`}
+              />
+            )}
+          </>
+        )}
+
+        <div className="pointer-events-none absolute left-2.5 top-2.5">
+          <span className="rounded-full border border-black/10 bg-black/55 px-2.5 py-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-md">
+            {getSourceLabel(
+              item
+            )}
           </span>
+        </div>
+      </div>
+
+      <div className="px-3.5 pb-3.5 pt-3">
+        <p className="line-clamp-2 min-h-[34px] text-[12px] font-semibold leading-[1.35] text-ink-primary">
+          {item.title}
+        </p>
+
+        <div className="mt-2 flex items-center justify-between gap-2 border-t border-surface-border/35 pt-2.5">
+          <span className="truncate font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+            {formatGalleryDate(
+              item.date,
+              {
+                day: "2-digit",
+                month: "short",
+              }
+            )}
+          </span>
+
           {item.subtitle && (
-            <span className="text-[10px] font-medium text-white/50 truncate max-w-[60%] text-right">
-              {item.subtitle}
+            <span className="max-w-[55%] truncate text-right text-[9px] text-ink-muted">
+              {
+                item.subtitle
+              }
             </span>
           )}
         </div>
@@ -107,354 +333,1376 @@ function DocumentPreview({ item, accentColor, onClick }: DocumentPreviewProps) {
 }
 
 // ============================================================
-// 2. COMPONENTE VISUALIZADOR TELA CHEIA
+// VISUALIZADOR
 // ============================================================
+
 interface DocumentViewerProps {
   item: GalleryItem;
   onClose: () => void;
-  onShare: (item: GalleryItem) => void;
+  onShare: (
+    item: GalleryItem
+  ) => void;
 }
 
-function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) {
-  const imgRef = useRef<HTMLImageElement>(null);
-  const transform = useRef({ scale: 1, x: 0, y: 0 });
-  const initialPinch = useRef({ dist: 0, scale: 1 });
-  const lastPan = useRef({ x: 0, y: 0 });
-  const isPanning = useRef(false);
+function DocumentViewer({
+  item,
+  onClose,
+  onShare,
+}: DocumentViewerProps) {
+  const imgRef =
+    useRef<HTMLImageElement>(
+      null
+    );
 
-  const applyTransform = () => {
-    if (imgRef.current) {
-      imgRef.current.style.transform = `translate3d(${transform.current.x}px, ${transform.current.y}px, 0) scale(${transform.current.scale})`;
-    }
-  };
+  const transform =
+    useRef({
+      scale: 1,
+      x: 0,
+      y: 0,
+    });
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      isPanning.current = false;
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      initialPinch.current = { dist, scale: transform.current.scale };
-    } else if (e.touches.length === 1 && transform.current.scale > 1) {
-      isPanning.current = true;
-      lastPan.current = {
-        x: e.touches[0].clientX - transform.current.x,
-        y: e.touches[0].clientY - transform.current.y
-      };
-    }
-  };
+  const initialPinch =
+    useRef({
+      dist: 0,
+      scale: 1,
+    });
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && initialPinch.current.dist > 0) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      const newScale = Math.min(Math.max(1, initialPinch.current.scale * (dist / initialPinch.current.dist)), 4);
-      transform.current.scale = newScale;
-      requestAnimationFrame(applyTransform);
-    } else if (e.touches.length === 1 && isPanning.current) {
-      transform.current.x = e.touches[0].clientX - lastPan.current.x;
-      transform.current.y = e.touches[0].clientY - lastPan.current.y;
-      requestAnimationFrame(applyTransform);
-    }
-  };
+  const lastPan =
+    useRef({
+      x: 0,
+      y: 0,
+    });
 
-  const handleTouchEnd = () => {
-    initialPinch.current.dist = 0;
-    isPanning.current = false;
-    
-    if (transform.current.scale < 1.05) {
-      transform.current = { scale: 1, x: 0, y: 0 };
-      if (imgRef.current) {
-        imgRef.current.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        applyTransform();
-        setTimeout(() => { if (imgRef.current) imgRef.current.style.transition = 'none'; }, 300);
+  const isPanning =
+    useRef(false);
+
+  const applyTransform =
+    () => {
+      if (
+        !imgRef.current
+      ) {
+        return;
       }
-    }
-  };
+
+      imgRef.current.style.transform =
+        `translate3d(${transform.current.x}px, ${transform.current.y}px, 0) scale(${transform.current.scale})`;
+    };
+
+  const resetTransform =
+    () => {
+      transform.current = {
+        scale: 1,
+        x: 0,
+        y: 0,
+      };
+
+      if (
+        !imgRef.current
+      ) {
+        return;
+      }
+
+      imgRef.current.style.transition =
+        "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)";
+
+      applyTransform();
+
+      window.setTimeout(
+        () => {
+          if (
+            imgRef.current
+          ) {
+            imgRef.current.style.transition =
+              "none";
+          }
+        },
+        300
+      );
+    };
+
+  const handleTouchStart =
+    (
+      event: React.TouchEvent
+    ) => {
+      if (
+        event.touches
+          .length === 2
+      ) {
+        isPanning.current =
+          false;
+
+        const dist =
+          Math.hypot(
+            event.touches[0]
+              .clientX -
+              event.touches[1]
+                .clientX,
+
+            event.touches[0]
+              .clientY -
+              event.touches[1]
+                .clientY
+          );
+
+        initialPinch.current =
+          {
+            dist,
+            scale:
+              transform
+                .current
+                .scale,
+          };
+
+        return;
+      }
+
+      if (
+        event.touches
+          .length === 1 &&
+        transform.current
+          .scale > 1
+      ) {
+        isPanning.current =
+          true;
+
+        lastPan.current = {
+          x:
+            event.touches[0]
+              .clientX -
+            transform.current
+              .x,
+
+          y:
+            event.touches[0]
+              .clientY -
+            transform.current
+              .y,
+        };
+      }
+    };
+
+  const handleTouchMove =
+    (
+      event: React.TouchEvent
+    ) => {
+      if (
+        event.touches
+          .length === 2 &&
+        initialPinch.current
+          .dist > 0
+      ) {
+        const dist =
+          Math.hypot(
+            event.touches[0]
+              .clientX -
+              event.touches[1]
+                .clientX,
+
+            event.touches[0]
+              .clientY -
+              event.touches[1]
+                .clientY
+          );
+
+        transform.current.scale =
+          Math.min(
+            Math.max(
+              1,
+
+              initialPinch
+                .current
+                .scale *
+                (
+                  dist /
+                  initialPinch
+                    .current
+                    .dist
+                )
+            ),
+            4
+          );
+
+        requestAnimationFrame(
+          applyTransform
+        );
+
+        return;
+      }
+
+      if (
+        event.touches
+          .length === 1 &&
+        isPanning.current
+      ) {
+        transform.current.x =
+          event.touches[0]
+            .clientX -
+          lastPan.current.x;
+
+        transform.current.y =
+          event.touches[0]
+            .clientY -
+          lastPan.current.y;
+
+        requestAnimationFrame(
+          applyTransform
+        );
+      }
+    };
+
+  const handleTouchEnd =
+    () => {
+      initialPinch.current.dist =
+        0;
+
+      isPanning.current =
+        false;
+
+      if (
+        transform.current
+          .scale < 1.05
+      ) {
+        resetTransform();
+      }
+    };
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-2xl"
+      initial={{
+        opacity: 0,
+      }}
+      animate={{
+        opacity: 1,
+      }}
+      exit={{
+        opacity: 0,
+      }}
+      className="fixed inset-0 z-[100] flex flex-col bg-black"
     >
-      <div className="flex items-center justify-between p-5 pt-safe z-10">
-        <button onClick={onClose} className="rounded-full bg-white/10 p-3 text-white backdrop-blur-md active:scale-90 transition-transform" aria-label="Fechar">
-          <X size={22} />
-        </button>
-        <button onClick={() => onShare(item)} className="flex items-center gap-2 rounded-full bg-ice/20 px-5 py-3 text-sm font-bold text-ice active:scale-95 transition-transform backdrop-blur-md">
-          <Share2 size={16} /> Compartilhar
-        </button>
-      </div>
+      <header className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/80 to-transparent px-4 pb-8 pt-safe">
+        <div className="flex items-center justify-between pt-3">
+          <button
+            type="button"
+            onClick={
+              onClose
+            }
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md transition-transform active:scale-95"
+            aria-label="Fechar"
+          >
+            <X
+              size={19}
+            />
+          </button>
 
-      <div className="flex-1 overflow-hidden flex items-center justify-center relative touch-none px-2">
-        {item.file_type === "pdf" ? (
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="h-24 w-24 rounded-[28px] bg-coral/10 text-coral flex items-center justify-center mb-6 shadow-2xl">
-              <FileText size={40} strokeWidth={1.5} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2 max-w-[280px] leading-tight">{item.title}</h3>
-            <p className="text-sm text-white/50 mb-8">Documento PDF seguro</p>
-            <button 
-              onClick={() => window.open(item.url, "_blank")}
-              className="flex items-center gap-2 bg-white text-black px-6 py-3.5 rounded-full font-bold shadow-lg active:scale-95 transition-transform"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                onShare(
+                  item
+                )
+              }
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md transition-transform active:scale-95"
+              aria-label="Compartilhar"
             >
-              <ExternalLink size={18} /> Abrir Arquivo Completo
+              <Share2
+                size={
+                  18
+                }
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.open(
+                  item.url,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md transition-transform active:scale-95"
+              aria-label="Abrir arquivo original"
+            >
+              <ExternalLink
+                size={
+                  18
+                }
+              />
             </button>
           </div>
-        ) : (
-          <div 
-            className="w-full h-full flex items-center justify-center"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <img 
-              ref={imgRef}
-              src={item.url} 
-              alt={item.title} 
-              className="max-h-full max-w-full object-contain origin-center select-none"
-              draggable="false"
-              style={{ willChange: 'transform' }}
-            />
+        </div>
+      </header>
+
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+        {item.file_type ===
+        "pdf" ? (
+          <div className="flex max-w-[280px] flex-col items-center px-6 text-center text-white">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/10">
+              <FileText
+                size={
+                  34
+                }
+                strokeWidth={
+                  1.5
+                }
+              />
+            </div>
+
+            <p className="mt-5 font-display text-lg font-semibold">
+              Documento PDF
+            </p>
+
+            <p className="mt-2 text-xs leading-relaxed text-white/55">
+              Abra o arquivo
+              original para
+              visualizar todas
+              as páginas.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.open(
+                  item.url,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+              className="mt-5 flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold"
+            >
+              <ExternalLink
+                size={
+                  15
+                }
+              />
+
+              Abrir PDF
+            </button>
           </div>
+        ) : item.url.startsWith(
+            "blob:"
+          ) ? (
+          <div className="flex max-w-[280px] flex-col items-center px-6 text-center text-white">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-coral/20 bg-coral/10 text-coral">
+              <FileWarning
+                size={
+                  32
+                }
+              />
+            </div>
+
+            <p className="mt-5 font-display text-lg font-semibold">
+              Arquivo local
+              expirado
+            </p>
+
+            <p className="mt-2 text-xs leading-relaxed text-white/55">
+              Este endereço
+              temporário não
+              sobreviveu ao
+              fechamento do
+              aplicativo.
+            </p>
+          </div>
+        ) : (
+          <img
+            ref={imgRef}
+            src={
+              item.url
+            }
+            alt={
+              item.title
+            }
+            draggable={
+              false
+            }
+            onDoubleClick={() => {
+              if (
+                transform
+                  .current
+                  .scale > 1
+              ) {
+                resetTransform();
+              } else {
+                transform.current =
+                  {
+                    scale: 2,
+                    x: 0,
+                    y: 0,
+                  };
+
+                applyTransform();
+              }
+            }}
+            onTouchStart={
+              handleTouchStart
+            }
+            onTouchMove={
+              handleTouchMove
+            }
+            onTouchEnd={
+              handleTouchEnd
+            }
+            className="max-h-full max-w-full select-none object-contain will-change-transform"
+            style={{
+              touchAction:
+                "none",
+            }}
+          />
         )}
       </div>
 
-      <div className="bg-gradient-to-t from-black via-black/80 to-transparent p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] z-10">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="rounded-lg bg-white/15 px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-widest">{item.category}</span>
-          <span className="text-xs font-semibold text-white/60">{new Date(item.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+      <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black via-black/85 to-transparent px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-14 text-white">
+        <div className="mx-auto max-w-xl">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[8px] font-semibold uppercase tracking-[0.15em] text-white/70 backdrop-blur-md">
+              {getSourceLabel(
+                item
+              )}
+            </span>
+
+            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-white/45">
+              {formatGalleryDate(
+                item.date,
+                {
+                  day: "2-digit",
+                  month:
+                    "short",
+                  year: "numeric",
+                }
+              )}
+            </span>
+          </div>
+
+          <h2 className="font-display text-[18px] font-semibold leading-tight">
+            {
+              item.title
+            }
+          </h2>
+
+          {item.subtitle && (
+            <p className="mt-1.5 text-[11px] leading-relaxed text-white/55">
+              {
+                item.subtitle
+              }
+            </p>
+          )}
         </div>
-        {item.file_type !== "pdf" && <h2 className="text-xl font-bold text-white leading-tight line-clamp-2">{item.title}</h2>}
       </div>
     </motion.div>
   );
 }
 
 // ============================================================
-// 3. ESTRUTURA PRINCIPAL DA GALERIA
+// SKELETON
 // ============================================================
+
 function GallerySkeleton() {
   return (
-    <div className="animate-pulse space-y-8 px-5 pt-8">
-      <div className="mb-4 h-4 w-28 rounded-md bg-surface-border/40"></div>
-      <div className="grid grid-cols-2 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="aspect-square rounded-[20px] bg-surface-border/20"></div>
-        ))}
+    <div className="px-5 pt-6">
+      <div className="mb-4 h-3 w-24 animate-pulse rounded-full bg-surface-raised" />
+
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({
+          length: 6,
+        }).map(
+          (_, index) => (
+            <div
+              key={
+                index
+              }
+              className="overflow-hidden rounded-[22px] border border-surface-border/40 bg-surface"
+            >
+              <div className="aspect-[4/5] animate-pulse bg-surface-raised" />
+
+              <div className="space-y-2 p-3.5">
+                <div className="h-3 w-4/5 animate-pulse rounded-full bg-surface-raised" />
+
+                <div className="h-2.5 w-1/2 animate-pulse rounded-full bg-surface-raised" />
+              </div>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
 }
 
-function GalleryEmptyState({ activeTab }: { activeTab: "saude" | "pessoal" }) {
-  const title = activeTab === "saude" ? "Nenhum documento de saúde" : "Nenhum documento pessoal";
-  const subtitle = activeTab === "saude" ? "Receitas, exames e laudos médicos aparecerão aqui." : "RG, CNH, passaporte e certificados podem ser armazenados aqui.";
+// ============================================================
+// EMPTY STATE
+// ============================================================
 
+interface GalleryEmptyStateProps {
+  activeTab: GalleryTab;
+  isSearching: boolean;
+  onClearSearch: () => void;
+}
+
+function GalleryEmptyState({
+  activeTab,
+  isSearching,
+  onClearSearch,
+}: GalleryEmptyStateProps) {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-16 flex flex-col items-center justify-center text-center px-6">
-      <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-surface-raised border border-surface-border/50 shadow-sm mb-5">
-        <Images size={32} className="text-ink-muted/50" />
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 10,
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+      }}
+      className="mx-auto mt-16 flex max-w-[300px] flex-col items-center px-6 text-center"
+    >
+      <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-surface-border/50 bg-surface-raised">
+        {isSearching ? (
+          <Search
+            size={
+              30
+            }
+            className="text-ink-muted/50"
+          />
+        ) : activeTab ===
+          "saude" ? (
+          <HeartPulse
+            size={
+              30
+            }
+            className="text-emerald-400/60"
+          />
+        ) : (
+          <Shield
+            size={
+              30
+            }
+            className="text-ice/60"
+          />
+        )}
       </div>
-      <p className="font-display text-[19px] font-bold text-ink-primary leading-tight">{title}</p>
-      <p className="mt-2 text-sm text-ink-muted leading-relaxed max-w-[260px]">{subtitle}</p>
+
+      <p className="mt-5 font-display text-[18px] font-semibold text-ink-primary">
+        {isSearching
+          ? "Nenhum resultado"
+          : activeTab ===
+              "saude"
+            ? "Nenhum arquivo de saúde"
+            : "Nenhum arquivo pessoal"}
+      </p>
+
+      <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+        {isSearching
+          ? "Tente outro nome, tipo ou data."
+          : activeTab ===
+              "saude"
+            ? "Receitas, exames, anexos e outros arquivos clínicos aparecem aqui automaticamente."
+            : "Documentos pessoais com arquivos anexados aparecem aqui automaticamente."}
+      </p>
+
+      {isSearching && (
+        <button
+          type="button"
+          onClick={
+            onClearSearch
+          }
+          className="mt-5 rounded-full border border-surface-border/50 bg-surface px-4 py-2 text-[11px] font-semibold text-ink-primary transition-transform active:scale-95"
+        >
+          Limpar busca
+        </button>
+      )}
     </motion.div>
   );
 }
 
-function GaleriaContent() {
-  const { trigger } = useHapticFeedback();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { activePersonId } = useActivePersonId();
+// ============================================================
+// CONTEÚDO
+// ============================================================
 
-  const [activeTab, setActiveTab] = useState<"saude" | "pessoal">("saude");
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [viewingItem, setViewingItem] = useState<GalleryItem | null>(null);
+function GaleriaContent() {
+  const router =
+    useRouter();
+
+  const searchParams =
+    useSearchParams();
+
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
+
+  const {
+    activePersonId,
+  } =
+    useActivePersonId();
+
+  const {
+    items:
+      allItems,
+    isLoading,
+  } =
+    useGaleria();
+
+  const [
+    activeTab,
+    setActiveTab,
+  ] =
+    useState<GalleryTab>(
+      "saude"
+    );
+
+  const [
+    viewingItem,
+    setViewingItem,
+  ] =
+    useState<
+      GalleryItem | null
+    >(null);
+
+  const [
+    isUploadOpen,
+    setIsUploadOpen,
+  ] =
+    useState(false);
+
+  const [
+    isSearchOpen,
+    setIsSearchOpen,
+  ] =
+    useState(false);
+
+  const [
+    searchTerm,
+    setSearchTerm,
+  ] =
+    useState("");
 
   useEffect(() => {
-    if (searchParams.get("upload") === "true") setIsUploadOpen(true);
+    const tab =
+      searchParams.get(
+        "tab"
+      );
+
+    if (
+      tab === "pessoal"
+    ) {
+      setActiveTab(
+        "pessoal"
+      );
+    } else if (
+      tab === "saude"
+    ) {
+      setActiveTab(
+        "saude"
+      );
+    }
   }, [searchParams]);
 
   useEffect(() => {
-    if (viewingItem || isUploadOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "unset";
-    return () => { document.body.style.overflow = "unset"; };
-  }, [viewingItem, isUploadOpen]);
+    setSearchTerm("");
+  }, [activeTab]);
 
-  const { items: allItems, isLoading } = useGaleria();
-
-    const filteredItems = useMemo(() => {
-    if (!allItems) return [];
-    return allItems.filter((item: any) => {
-      // 🛡️ Ignora e oculta automaticamente itens com links temporários (blob) quebrados ou expirados
-      if (item.url && item.url.startsWith("blob:")) return false;
-
-      const pertenceAoPerfil = !activePersonId || !item.person_id || item.person_id === activePersonId;
-      if (!pertenceAoPerfil) return false;
-      const category = item.category || item.category_id;
-      if (activeTab === "saude") return category === "saude";
-      return category !== "saude";
-    });
-  }, [allItems, activePersonId, activeTab]);
-
-
-  const groupedItems = useMemo(() => {
-    const groups: Record<string, GalleryItem[]> = {};
-    const hojeBase = new Date();
-    hojeBase.setHours(0, 0, 0, 0);
-
-    filteredItems.forEach((item) => {
-      const d = new Date(item.date);
-      if (isNaN(d.getTime())) return;
-
-      const docDate = new Date(d);
-      docDate.setHours(0, 0, 0, 0);
-
-      const diffTime = hojeBase.getTime() - docDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      let label = "";
-      if (diffDays === 0) label = "Hoje";
-      else if (diffDays === 1) label = "Ontem";
-      else if (diffDays > 1 && diffDays <= 7) label = "Últimos 7 dias";
-      else {
-        const mesAno = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-        label = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+  const filteredItems =
+    useMemo(() => {
+      if (
+        !activePersonId
+      ) {
+        return [];
       }
 
-      if (!groups[label]) groups[label] = [];
-      groups[label].push(item);
-    });
+      const normalizedSearch =
+        searchTerm
+          .trim()
+          .toLocaleLowerCase(
+            "pt-BR"
+          );
 
-    const orderedGroups: Record<string, GalleryItem[]> = {};
-    const prioKeys = ["Hoje", "Ontem", "Últimos 7 dias"];
-    prioKeys.forEach((key) => { if (groups[key]) orderedGroups[key] = groups[key]; });
-
-    const otherKeys = Object.keys(groups)
-      .filter((key) => !prioKeys.includes(key))
-      .sort((a, b) => {
-        const getDateFromLabel = (label: string) => {
-          const parts = label.split(" de ");
-          if (parts.length === 2) {
-            const months: Record<string, number> = {
-              janeiro: 0, fevereiro: 1, março: 2, abril: 3, maio: 4, junho: 5,
-              julho: 6, agosto: 7, setembro: 8, outubro: 9, novembro: 10, dezembro: 11
-            };
-            const month = months[parts[0].toLowerCase()];
-            const year = parseInt(parts[1]);
-            if (!isNaN(month) && !isNaN(year)) return new Date(year, month, 1);
+      return allItems.filter(
+        (item) => {
+          if (
+            item.person_id !==
+            activePersonId
+          ) {
+            return false;
           }
-          return new Date(0);
-        };
-        return getDateFromLabel(b).getTime() - getDateFromLabel(a).getTime();
-      });
 
-    otherKeys.forEach((key) => { orderedGroups[key] = groups[key]; });
-    return orderedGroups;
-  }, [filteredItems]);
+          if (
+            item.url.startsWith(
+              "blob:"
+            )
+          ) {
+            return false;
+          }
 
-  const accentColor = activeTab === "saude" ? "#34D399" : "#38BDF8";
+          const matchesTab =
+            activeTab ===
+            "saude"
+              ? item.category ===
+                "saude"
+              : item.category ===
+                "pessoal";
 
-  const handleShare = async (item: GalleryItem) => {
-    trigger("vibrate");
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: item.title, url: item.url });
-      } else {
-        window.open(item.url, "_blank");
+          if (
+            !matchesTab
+          ) {
+            return false;
+          }
+
+          if (
+            !normalizedSearch
+          ) {
+            return true;
+          }
+
+          const formattedDate =
+            formatGalleryDate(
+              item.date,
+              {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              }
+            );
+
+          const haystack =
+            [
+              item.title,
+              item.subtitle,
+              getSourceLabel(
+                item
+              ),
+              formattedDate,
+            ]
+              .filter(
+                Boolean
+              )
+              .join(" ")
+              .toLocaleLowerCase(
+                "pt-BR"
+              );
+
+          return haystack.includes(
+            normalizedSearch
+          );
+        }
+      );
+    }, [
+      allItems,
+      activePersonId,
+      activeTab,
+      searchTerm,
+    ]);
+
+  const groupedItems =
+    useMemo(() => {
+      const today =
+        new Date();
+
+      const groups =
+        new Map<
+          string,
+          {
+            dateKey: number;
+            items: GalleryItem[];
+          }
+        >();
+
+      filteredItems.forEach(
+        (item) => {
+          const parsed =
+            parseGalleryDate(
+              item.date
+            );
+
+          if (
+            !parsed
+          ) {
+            return;
+          }
+
+          const label =
+            getGroupLabel(
+              parsed,
+              today
+            );
+
+          const dateKey =
+            label ===
+            "Hoje"
+              ? Number.MAX_SAFE_INTEGER
+              : label ===
+                  "Ontem"
+                ? Number.MAX_SAFE_INTEGER -
+                  1
+                : label ===
+                    "Últimos 7 dias"
+                  ? Number.MAX_SAFE_INTEGER -
+                    2
+                  : new Date(
+                      parsed.getFullYear(),
+                      parsed.getMonth(),
+                      1
+                    ).getTime();
+
+          const existing =
+            groups.get(
+              label
+            );
+
+          if (
+            existing
+          ) {
+            existing.items.push(
+              item
+            );
+
+            existing.dateKey =
+              Math.max(
+                existing.dateKey,
+                dateKey
+              );
+          } else {
+            groups.set(
+              label,
+              {
+                dateKey,
+                items: [
+                  item,
+                ],
+              }
+            );
+          }
+        }
+      );
+
+      return Array.from(
+        groups.entries()
+      )
+        .map(
+          ([
+            label,
+            value,
+          ]) => ({
+            label,
+            dateKey:
+              value.dateKey,
+            items:
+              value.items,
+          })
+        )
+        .sort(
+          (a, b) =>
+            b.dateKey -
+            a.dateKey
+        );
+    }, [filteredItems]);
+
+  const accentColor =
+    activeTab === "saude"
+      ? "#34D399"
+      : "#38BDF8";
+
+  const handleShare =
+    async (
+      item: GalleryItem
+    ) => {
+      trigger(
+        "vibrate"
+      );
+
+      try {
+        if (
+          navigator.share
+        ) {
+          await navigator.share(
+            {
+              title:
+                item.title,
+
+              text:
+                item.subtitle,
+
+              url:
+                item.url,
+            }
+          );
+
+          return;
+        }
+
+        window.open(
+          item.url,
+          "_blank",
+          "noopener,noreferrer"
+        );
+      } catch (error) {
+        if (
+          error instanceof
+            DOMException &&
+          error.name ===
+            "AbortError"
+        ) {
+          return;
+        }
+
+        console.error(
+          "[Galeria] Erro ao compartilhar:",
+          error
+        );
       }
-    } catch (error) {
-      console.error("Erro ao compartilhar:", error);
-    }
-  };
+    };
+
+  const totalInTab =
+    useMemo(() => {
+      if (
+        !activePersonId
+      ) {
+        return 0;
+      }
+
+      return allItems.filter(
+        (item) =>
+          item.person_id ===
+            activePersonId &&
+          !item.url.startsWith(
+            "blob:"
+          ) &&
+          (
+            activeTab ===
+            "saude"
+              ? item.category ===
+                "saude"
+              : item.category ===
+                "pessoal"
+          )
+      ).length;
+    }, [
+      allItems,
+      activePersonId,
+      activeTab,
+    ]);
 
   return (
-    <main className="min-h-screen bg-void pb-[calc(6rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-20 bg-void/85 pt-safe backdrop-blur-xl border-b border-surface-border/30">
-        <div className="px-5 pt-6 pb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <main className="min-h-screen overflow-x-hidden bg-void pb-[calc(6rem+env(safe-area-inset-bottom))]">
+      <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 pt-safe backdrop-blur-xl">
+        <div className="flex items-center justify-between px-5 pb-3 pt-4">
+          <div className="flex min-w-0 items-center gap-3">
             <button
-              onClick={() => { trigger("vibrate"); router.back(); }}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary transition-transform active:scale-95"
+              type="button"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.back();
+              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               aria-label="Voltar"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft
+                size={
+                  17
+                }
+              />
             </button>
-            <h1 className="font-display text-[24px] font-bold text-ink-primary tracking-tight">Galeria</h1>
+
+            <div className="min-w-0">
+              <h1 className="font-display text-[22px] font-semibold tracking-tight text-ink-primary">
+                Galeria
+              </h1>
+
+              <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-muted">
+                {totalInTab}{" "}
+                {totalInTab ===
+                1
+                  ? "arquivo"
+                  : "arquivos"}
+              </p>
+            </div>
           </div>
+
           <button
-            className="h-11 w-11 flex items-center justify-center rounded-full bg-surface-raised border border-surface-border/50 text-ink-primary transition-transform active:scale-95"
-            aria-label="Buscar"
-            onClick={() => trigger("vibrate")}
+            type="button"
+            className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all active:scale-95 ${
+              isSearchOpen
+                ? "border-ice/30 bg-ice/10 text-ice"
+                : "border-surface-border/50 bg-surface-raised text-ink-primary"
+            }`}
+            aria-label={
+              isSearchOpen
+                ? "Fechar busca"
+                : "Buscar"
+            }
+            onClick={() => {
+              trigger(
+                "vibrate"
+              );
+
+              setIsSearchOpen(
+                (
+                  current
+                ) =>
+                  !current
+              );
+
+              if (
+                isSearchOpen
+              ) {
+                setSearchTerm(
+                  ""
+                );
+              }
+            }}
           >
-            <Search size={18} />
+            {isSearchOpen ? (
+              <X
+                size={
+                  17
+                }
+              />
+            ) : (
+              <Search
+                size={
+                  17
+                }
+              />
+            )}
           </button>
         </div>
 
-        <div className="flex">
+        <AnimatePresence
+          initial={
+            false
+          }
+        >
+          {isSearchOpen && (
+            <motion.div
+              initial={{
+                height: 0,
+                opacity: 0,
+              }}
+              animate={{
+                height: "auto",
+                opacity: 1,
+              }}
+              exit={{
+                height: 0,
+                opacity: 0,
+              }}
+              transition={{
+                duration:
+                  0.18,
+              }}
+              className="overflow-hidden px-5"
+            >
+              <div className="relative pb-3">
+                <Search
+                  size={
+                    15
+                  }
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-[calc(50%+6px)] text-ink-faint"
+                />
+
+                <input
+                  autoFocus
+                  type="search"
+                  value={
+                    searchTerm
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setSearchTerm(
+                      event
+                        .target
+                        .value
+                    )
+                  }
+                  placeholder="Buscar por nome, tipo ou data"
+                  className="h-11 w-full rounded-2xl border border-surface-border/50 bg-surface pl-10 pr-10 text-[12px] text-ink-primary outline-none placeholder:text-ink-faint focus:border-ice/40"
+                />
+
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSearchTerm(
+                        ""
+                      )
+                    }
+                    className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-[calc(50%+6px)] items-center justify-center rounded-full bg-surface-raised text-ink-muted"
+                    aria-label="Limpar busca"
+                  >
+                    <X
+                      size={
+                        12
+                      }
+                    />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-2 px-5">
           <button
-            onClick={() => { trigger("vibrate"); setActiveTab("saude"); }}
-            className={`relative flex-1 py-4 text-[13px] uppercase tracking-widest font-bold transition-colors duration-300 ${activeTab === "saude" ? "text-ink-primary" : "text-ink-muted"}`}
+            type="button"
+            onClick={() => {
+              trigger(
+                "vibrate"
+              );
+
+              setActiveTab(
+                "saude"
+              );
+            }}
+            className={`relative flex items-center justify-center gap-2 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors ${
+              activeTab ===
+              "saude"
+                ? "text-ink-primary"
+                : "text-ink-muted"
+            }`}
           >
-            <div className="flex items-center justify-center gap-2">
-              <HeartPulse size={16} className={activeTab === "saude" ? "" : "opacity-60"} style={activeTab === "saude" ? { color: accentColor } : {}} /> Saúde
-            </div>
-            {activeTab === "saude" && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-[3px] rounded-t-md" style={{ backgroundColor: accentColor }} />
+            <HeartPulse
+              size={
+                15
+              }
+              style={
+                activeTab ===
+                "saude"
+                  ? {
+                      color:
+                        accentColor,
+                    }
+                  : undefined
+              }
+              className={
+                activeTab ===
+                "saude"
+                  ? ""
+                  : "opacity-60"
+              }
+            />
+
+            Saúde
+
+            {activeTab ===
+              "saude" && (
+              <motion.div
+                layoutId="gallery-tab-indicator"
+                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                style={{
+                  backgroundColor:
+                    accentColor,
+                }}
+              />
             )}
           </button>
+
           <button
-            onClick={() => { trigger("vibrate"); setActiveTab("pessoal"); }}
-            className={`relative flex-1 py-4 text-[13px] uppercase tracking-widest font-bold transition-colors duration-300 ${activeTab === "pessoal" ? "text-ink-primary" : "text-ink-muted"}`}
+            type="button"
+            onClick={() => {
+              trigger(
+                "vibrate"
+              );
+
+              setActiveTab(
+                "pessoal"
+              );
+            }}
+            className={`relative flex items-center justify-center gap-2 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors ${
+              activeTab ===
+              "pessoal"
+                ? "text-ink-primary"
+                : "text-ink-muted"
+            }`}
           >
-            <div className="flex items-center justify-center gap-2">
-              <Shield size={16} className={activeTab === "pessoal" ? "" : "opacity-60"} style={activeTab === "pessoal" ? { color: accentColor } : {}} /> Pessoal
-            </div>
-            {activeTab === "pessoal" && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-[3px] rounded-t-md" style={{ backgroundColor: accentColor }} />
+            <Shield
+              size={
+                15
+              }
+              style={
+                activeTab ===
+                "pessoal"
+                  ? {
+                      color:
+                        accentColor,
+                    }
+                  : undefined
+              }
+              className={
+                activeTab ===
+                "pessoal"
+                  ? ""
+                  : "opacity-60"
+              }
+            />
+
+            Pessoal
+
+            {activeTab ===
+              "pessoal" && (
+              <motion.div
+                layoutId="gallery-tab-indicator"
+                className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                style={{
+                  backgroundColor:
+                    accentColor,
+                }}
+              />
             )}
           </button>
         </div>
       </header>
 
-      {isLoading ? (
+      {!activePersonId ? (
+        <div className="mx-auto mt-16 flex max-w-[300px] flex-col items-center px-6 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-surface-border/50 bg-surface-raised">
+            <Shield
+              size={
+                30
+              }
+              className="text-ink-muted/50"
+            />
+          </div>
+
+          <p className="mt-5 font-display text-[18px] font-semibold text-ink-primary">
+            Selecione uma
+            pessoa
+          </p>
+
+          <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">
+            A galeria é sempre
+            vinculada à pessoa
+            ativa do Vault.
+          </p>
+        </div>
+      ) : isLoading ? (
         <GallerySkeleton />
-      ) : Object.keys(groupedItems).length === 0 ? (
-        <GalleryEmptyState activeTab={activeTab} />
+      ) : groupedItems.length ===
+        0 ? (
+        <GalleryEmptyState
+          activeTab={
+            activeTab
+          }
+          isSearching={Boolean(
+            searchTerm.trim()
+          )}
+          onClearSearch={() =>
+            setSearchTerm(
+              ""
+            )
+          }
+        />
       ) : (
-        <section className="px-5 pt-8">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
-            {Object.entries(groupedItems).map(([label, groupItems]) => (
-              <div key={label} className="mb-10">
-                <h2 className="mb-4 pl-1 text-[11px] font-bold uppercase tracking-[0.2em] text-ink-muted">{label}</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {groupItems.map((item) => (
-                    <DocumentPreview
-                      key={item.id}
-                      item={item}
-                      accentColor={accentColor}
-                      onClick={(clickedItem) => {
-                        trigger("vibrate");
-                        setViewingItem(clickedItem);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+        <section className="px-5 pt-6">
+          <motion.div
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            transition={{
+              duration:
+                0.25,
+            }}
+          >
+            {groupedItems.map(
+              (
+                group
+              ) => (
+                <section
+                  key={
+                    group.label
+                  }
+                  className="mb-8"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3 px-0.5">
+                    <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
+                      {
+                        group.label
+                      }
+                    </h2>
+
+                    <span className="text-[9px] text-ink-faint">
+                      {
+                        group
+                          .items
+                          .length
+                      }{" "}
+                      {group
+                        .items
+                        .length ===
+                      1
+                        ? "item"
+                        : "itens"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {group.items.map(
+                      (
+                        item
+                      ) => (
+                        <DocumentPreview
+                          key={
+                            item.id
+                          }
+                          item={
+                            item
+                          }
+                          accentColor={
+                            accentColor
+                          }
+                          onClick={(
+                            clickedItem
+                          ) => {
+                            trigger(
+                              "vibrate"
+                            );
+
+                            setViewingItem(
+                              clickedItem
+                            );
+                          }}
+                        />
+                      )
+                    )}
+                  </div>
+                </section>
+              )
+            )}
           </motion.div>
         </section>
       )}
 
-      <UploadGaleriaModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      <UploadGaleriaModal
+        isOpen={
+          isUploadOpen
+        }
+        onClose={() =>
+          setIsUploadOpen(
+            false
+          )
+        }
+      />
 
       <AnimatePresence>
         {viewingItem && (
           <DocumentViewer
-            item={viewingItem}
-            onClose={() => setViewingItem(null)}
-            onShare={handleShare}
+            item={
+              viewingItem
+            }
+            onClose={() =>
+              setViewingItem(
+                null
+              )
+            }
+            onShare={
+              handleShare
+            }
           />
         )}
       </AnimatePresence>
@@ -465,7 +1713,11 @@ function GaleriaContent() {
 export default function GaleriaPage() {
   return (
     <PageTransition>
-      <Suspense fallback={<GallerySkeleton />}>
+      <Suspense
+        fallback={
+          <GallerySkeleton />
+        }
+      >
         <GaleriaContent />
       </Suspense>
     </PageTransition>

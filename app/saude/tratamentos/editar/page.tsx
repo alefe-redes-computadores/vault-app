@@ -848,8 +848,7 @@ function EditarTratamentoContent() {
                 status,
 
                 observacoes:
-                  observacoes.trim() ||
-                  undefined,
+                  observacoes.trim(),
 
                 medico_ids:
                   Array.from(

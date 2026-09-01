@@ -20,121 +20,361 @@ export interface GalleryItem {
   date: string;
 }
 
+function inferFileType(
+  url: string,
+  explicitType?: string
+): "image" | "pdf" {
+  if (explicitType === "pdf") return "pdf";
+  if (explicitType === "image") return "image";
+
+  const cleanUrl = url
+    .toLowerCase()
+    .split("?")[0]
+    .split("#")[0];
+
+  return cleanUrl.endsWith(".pdf")
+    ? "pdf"
+    : "image";
+}
+
+function normalizeDate(
+  value: unknown,
+  fallback = ""
+): string {
+  if (
+    typeof value === "string" &&
+    value.trim()
+  ) {
+    return value.trim();
+  }
+
+  if (
+    value instanceof Date &&
+    !Number.isNaN(value.getTime())
+  ) {
+    return value.toISOString();
+  }
+
+  return fallback;
+}
+
 export function useGaleria() {
-  const { activePersonId } = useActivePersonId();
+  const { activePersonId } =
+    useActivePersonId();
 
-  const documentosRaw = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      return db.documents.where("person_id").equals(activePersonId).toArray();
-    },
-    [activePersonId],
-    []
-  ) || [];
+  const documentosQuery =
+    useLiveQuery(
+      () => {
+        if (!activePersonId) {
+          return [];
+        }
 
-  const anexosClinicosRaw = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      return db.anexos_clinicos.where("person_id").equals(activePersonId).toArray();
-    },
-    [activePersonId],
-    []
-  ) || [];
+        return db.documents
+          .where("person_id")
+          .equals(activePersonId)
+          .toArray();
+      },
+      [activePersonId]
+    );
 
-  const renovacoesRaw = useLiveQuery(
-    () => {
-      if (!activePersonId) return [];
-      return db.renovacoes.where("person_id").equals(activePersonId).toArray();
-    },
-    [activePersonId],
-    []
-  ) || [];
+  const anexosClinicosQuery =
+    useLiveQuery(
+      () => {
+        if (!activePersonId) {
+          return [];
+        }
+
+        return db.anexos_clinicos
+          .where("person_id")
+          .equals(activePersonId)
+          .toArray();
+      },
+      [activePersonId]
+    );
+
+  const renovacoesQuery =
+    useLiveQuery(
+      () => {
+        if (!activePersonId) {
+          return [];
+        }
+
+        return db.renovacoes
+          .where("person_id")
+          .equals(activePersonId)
+          .toArray();
+      },
+      [activePersonId]
+    );
+
+  const isLoading =
+    Boolean(activePersonId) &&
+    (
+      documentosQuery === undefined ||
+      anexosClinicosQuery === undefined ||
+      renovacoesQuery === undefined
+    );
+
+  const documentosRaw =
+    documentosQuery ?? [];
+
+  const anexosClinicosRaw =
+    anexosClinicosQuery ?? [];
+
+  const renovacoesRaw =
+    renovacoesQuery ?? [];
 
   const items = useMemo(() => {
-    const combined: GalleryItem[] = [];
+    if (!activePersonId) {
+      return [];
+    }
 
-    documentosRaw.forEach((doc) => {
-      if (!doc.attachments || doc.attachments.length === 0) return;
+    const combined: GalleryItem[] =
+      [];
 
-      doc.attachments.forEach((att, index) => {
+    documentosRaw.forEach(
+      (doc) => {
+        if (
+          doc.person_id !==
+          activePersonId
+        ) {
+          return;
+        }
+
+        if (
+          !doc.attachments?.length
+        ) {
+          return;
+        }
+
+        doc.attachments.forEach(
+          (att, index) => {
+            if (!att?.url) {
+              return;
+            }
+
+            combined.push({
+              id: `doc-${doc.id}-${index}`,
+              source_id: doc.id!,
+              source_table:
+                "documents",
+              url: att.url,
+              file_type:
+                inferFileType(
+                  att.url,
+                  att.type
+                ),
+              category:
+                doc.category_id ===
+                "pessoal"
+                  ? "pessoal"
+                  : "saude",
+              person_id:
+                doc.person_id,
+              title:
+                doc.title,
+              subtitle:
+                doc.type
+                  ?.toUpperCase()
+                  .replaceAll(
+                    "_",
+                    " "
+                  ) ||
+                "Documento",
+              date:
+                normalizeDate(
+                  doc.metadata
+                    ?.date ??
+                    doc.metadata
+                      ?.issue_date ??
+                    doc.created_at
+                ),
+            });
+          }
+        );
+      }
+    );
+
+    anexosClinicosRaw.forEach(
+      (anexo) => {
+        if (
+          anexo.person_id !==
+          activePersonId
+        ) {
+          return;
+        }
+
+        if (!anexo.url) {
+          return;
+        }
+
         combined.push({
-          id: `doc-${doc.id}-${index}`,
-          source_id: doc.id!,
-          source_table: "documents",
-          url: att.url,
-          file_type: att.type || (att.url.toLowerCase().includes(".pdf") ? "pdf" : "image"),
-          category: doc.category_id === "pessoal" ? "pessoal" : "saude",
-          person_id: doc.person_id,
-          title: doc.title,
-          subtitle: doc.type.toUpperCase().replace("_", " "),
-          date: String(doc.metadata?.date || doc.metadata?.issue_date || doc.created_at || ""),
+          id: `anx-${anexo.id}`,
+          source_id:
+            anexo.id!,
+          source_table:
+            "anexos_clinicos",
+          url: anexo.url,
+          thumbnail_url:
+            anexo.thumbnail_url,
+          file_type:
+            inferFileType(
+              anexo.url
+            ),
+          category: "saude",
+          person_id:
+            anexo.person_id,
+          title:
+            anexo.tipo ||
+            "Anexo Clínico",
+          subtitle:
+            (
+              (anexo.tags as string[]) ||
+              []
+            ).join(", ") ||
+            "Arquivo de saúde",
+          date:
+            normalizeDate(
+              anexo.created_at
+            ),
         });
-      });
-    });
+      }
+    );
 
-    anexosClinicosRaw.forEach((anexo) => {
-      if (!anexo.url) return;
+    renovacoesRaw.forEach(
+      (ren) => {
+        if (
+          ren.person_id !==
+          activePersonId
+        ) {
+          return;
+        }
 
-      combined.push({
-        id: `anx-${anexo.id}`,
-        source_id: anexo.id!,
-        source_table: "anexos_clinicos",
-        url: anexo.url,
-        thumbnail_url: anexo.thumbnail_url,
-        file_type: anexo.url.toLowerCase().includes(".pdf") ? "pdf" : "image",
-        category: "saude",
-        person_id: anexo.person_id || "",
-        title: anexo.tipo || "Anexo Clínico",
-        subtitle: (anexo.tags as string[] || []).join(", ") || "Arquivo de saúde",
-        date: String(anexo.created_at || ""),
-      });
-    });
+        if (!ren.anexo_url) {
+          return;
+        }
 
-    renovacoesRaw.forEach((ren) => {
-      if (!ren.anexo_url) return;
-
-      combined.push({
-        id: `ren-${ren.id}`,
-        source_id: ren.id!,
-        source_table: "renovacoes",
-        url: ren.anexo_url,
-        file_type: ren.anexo_url.toLowerCase().includes(".pdf") ? "pdf" : "image",
-        category: "saude",
-        person_id: ren.person_id || "",
-        title: "Comprovante / Receita",
-        subtitle: "Renovação de Medicamento",
-        date: String(ren.data || ren.created_at || new Date().toISOString()),
-      });
-    });
+        combined.push({
+          id: `ren-${ren.id}`,
+          source_id:
+            ren.id!,
+          source_table:
+            "renovacoes",
+          url:
+            ren.anexo_url,
+          file_type:
+            inferFileType(
+              ren.anexo_url
+            ),
+          category: "saude",
+          person_id:
+            ren.person_id,
+          title:
+            "Comprovante / Receita",
+          subtitle:
+            ren.medicamento_nome
+              ?.trim()
+              ? `Renovação · ${ren.medicamento_nome.trim()}`
+              : "Renovação de medicamento",
+          date:
+            normalizeDate(
+              ren.data,
+              normalizeDate(
+                ren.created_at
+              )
+            ),
+        });
+      }
+    );
 
     return combined.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      (a, b) => {
+        const aTime =
+          new Date(
+            a.date
+          ).getTime();
+
+        const bTime =
+          new Date(
+            b.date
+          ).getTime();
+
+        const safeA =
+          Number.isNaN(aTime)
+            ? 0
+            : aTime;
+
+        const safeB =
+          Number.isNaN(bTime)
+            ? 0
+            : bTime;
+
+        return safeB - safeA;
+      }
     );
-  }, [documentosRaw, anexosClinicosRaw, renovacoesRaw]);
+  }, [
+    activePersonId,
+    documentosRaw,
+    anexosClinicosRaw,
+    renovacoesRaw,
+  ]);
 
-  const groupedItems = useMemo(() => {
-    const groups: Record<string, GalleryItem[]> = {};
+  const groupedItems =
+    useMemo(() => {
+      const groups: Record<
+        string,
+        GalleryItem[]
+      > = {};
 
-    items.forEach((item) => {
-      const d = new Date(item.date);
-      if (isNaN(d.getTime())) return;
+      items.forEach(
+        (item) => {
+          const d =
+            new Date(
+              item.date
+            );
 
-      const mesAno = d.toLocaleDateString("pt-BR", {
-        month: "long",
-        year: "numeric",
-      });
-      const label = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+          if (
+            Number.isNaN(
+              d.getTime()
+            )
+          ) {
+            return;
+          }
 
-      if (!groups[label]) groups[label] = [];
-      groups[label].push(item);
-    });
+          const mesAno =
+            d.toLocaleDateString(
+              "pt-BR",
+              {
+                month: "long",
+                year: "numeric",
+              }
+            );
 
-    return groups;
-  }, [items]);
+          const label =
+            mesAno
+              .charAt(0)
+              .toUpperCase() +
+            mesAno.slice(1);
+
+          if (
+            !groups[label]
+          ) {
+            groups[label] =
+              [];
+          }
+
+          groups[label].push(
+            item
+          );
+        }
+      );
+
+      return groups;
+    }, [items]);
 
   return {
     items,
     groupedItems,
-    isLoading: documentosRaw === undefined || anexosClinicosRaw === undefined,
+    isLoading,
   };
 }

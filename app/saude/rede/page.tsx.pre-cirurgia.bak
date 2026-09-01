@@ -83,10 +83,6 @@ import {
 } from "@/hooks/useRegistrosSaude";
 
 import {
-  useCids,
-} from "@/hooks/useCids";
-
-import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
 
@@ -116,7 +112,6 @@ import {
 } from "@/lib/health-utils";
 
 import type {
-  Cid,
   Cirurgia,
   Consulta,
   Exame,
@@ -422,11 +417,6 @@ export default function RedeSaudePage() {
   } =
     useRegistrosSaude();
 
-  const {
-    cids = [],
-  } =
-    useCids();
-
   // ==========================================================
   // UI
   // ==========================================================
@@ -707,30 +697,6 @@ export default function RedeSaudePage() {
       ]
     );
 
-  const filteredCids =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return cids.filter(
-          (
-            cid:
-              Cid
-          ) =>
-            cid.person_id ===
-            activePersonId
-        );
-      },
-      [
-        cids,
-        activePersonId,
-      ]
-    );
-
   // ==========================================================
   // MÉDICOS VINCULADOS
   // ==========================================================
@@ -763,45 +729,6 @@ export default function RedeSaudePage() {
           ) {
             linked.add(
               cirurgia.medico_id
-            );
-          }
-        }
-
-        for (
-          const exame of
-          filteredExames
-        ) {
-          if (
-            exame.medico_id
-          ) {
-            linked.add(
-              exame.medico_id
-            );
-          }
-        }
-
-        for (
-          const renovacao of
-          filteredRenovacoes
-        ) {
-          if (
-            renovacao.medico_id
-          ) {
-            linked.add(
-              renovacao.medico_id
-            );
-          }
-        }
-
-        for (
-          const cid of
-          filteredCids
-        ) {
-          if (
-            cid.medico_id
-          ) {
-            linked.add(
-              cid.medico_id
             );
           }
         }
@@ -851,9 +778,6 @@ export default function RedeSaudePage() {
         medicos,
         filteredConsultas,
         filteredCirurgias,
-        filteredExames,
-        filteredRenovacoes,
-        filteredCids,
         filteredMedicamentos,
         filteredTratamentos,
       ]
@@ -995,19 +919,6 @@ export default function RedeSaudePage() {
           }
         }
 
-        for (
-          const cid of
-          filteredCids
-        ) {
-          if (
-            cid.hospital_id
-          ) {
-            linked.add(
-              cid.hospital_id
-            );
-          }
-        }
-
         return hospitais.filter(
           (
             hospital:
@@ -1028,7 +939,6 @@ export default function RedeSaudePage() {
         filteredMedicamentos,
         filteredRenovacoes,
         filteredTratamentos,
-        filteredCids,
       ]
     );
 
@@ -1125,19 +1035,6 @@ export default function RedeSaudePage() {
           }
         }
 
-        for (
-          const cid of
-          filteredCids
-        ) {
-          if (
-            cid.local_id
-          ) {
-            linked.add(
-              cid.local_id
-            );
-          }
-        }
-
         return locais.filter(
           (
             local:
@@ -1159,7 +1056,6 @@ export default function RedeSaudePage() {
         filteredRenovacoes,
         filteredMedicamentos,
         filteredTratamentos,
-        filteredCids,
       ]
     );
 
@@ -2728,7 +2624,7 @@ function TabList<
               <Icon
                 size={
                   22
-                }
+                }q
               />
             }
             showChevron={

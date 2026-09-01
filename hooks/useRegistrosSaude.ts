@@ -65,8 +65,7 @@ export function useRegistrosSaude() {
       },
       [
         activePersonId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================

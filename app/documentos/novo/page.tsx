@@ -47,7 +47,10 @@ import {
 } from "lucide-react";
 
 import { db } from "@/lib/db";
-import { uploadFile } from "@/lib/supabase/storage";
+import {
+  deleteFile,
+  uploadFile,
+} from "@/lib/supabase/storage";
 import {
   scheduleDocumentExpiryNotification,
 } from "@/lib/notifications";
@@ -352,31 +355,83 @@ function handleDateMask(
 function parseDateToISO(
   displayValue: string
 ): string {
-  if (
-    /^\d{4}-\d{2}-\d{2}$/.test(
-      displayValue
-    )
-  ) {
-    return displayValue;
-  }
+  const normalized =
+    displayValue.trim();
 
-  const clean =
-    displayValue.replace(
-      /\D/g,
-      ""
+  let year: number;
+  let month: number;
+  let day: number;
+
+  const isoMatch =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+      normalized
     );
 
-  if (clean.length !== 8) {
+  if (isoMatch) {
+    year = Number(isoMatch[1]);
+    month = Number(isoMatch[2]);
+    day = Number(isoMatch[3]);
+  } else {
+    const brMatch =
+      /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(
+        normalized
+      );
+
+    if (!brMatch) {
+      return "";
+    }
+
+    day = Number(brMatch[1]);
+    month = Number(brMatch[2]);
+    year = Number(brMatch[3]);
+  }
+
+  const parsed = new Date(
+    year,
+    month - 1,
+    day
+  );
+
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
     return "";
   }
 
-  return `${clean.slice(
-    4,
-    8
-  )}-${clean.slice(
-    2,
-    4
-  )}-${clean.slice(0, 2)}`;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+async function cleanupUploadedFiles(
+  urls: string[]
+): Promise<void> {
+  const uniqueUrls = Array.from(
+    new Set(
+      urls.filter(Boolean)
+    )
+  );
+
+  for (const url of uniqueUrls) {
+    try {
+      const { error } =
+        await deleteFile(url);
+
+      if (error) {
+        console.error(
+          "[NovoDocumento] Falha ao limpar upload órfão:",
+          url,
+          error
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[NovoDocumento] Erro ao limpar upload órfão:",
+        url,
+        error
+      );
+    }
+  }
 }
 
 function buildMetadataForType(
@@ -1219,16 +1274,32 @@ export default function NovoDocumentoPage() {
         (
           field: DocumentField
         ) => {
+          const value =
+            formData.metadata[
+              field.key
+            ]?.trim();
+
           if (
             field.required &&
-            !formData.metadata[
-              field.key
-            ]?.trim()
+            !value
           ) {
             newErrors[
               field.key
             ] =
               `${field.label} é obrigatório`;
+
+            return;
+          }
+
+          if (
+            field.type === "date" &&
+            value &&
+            !parseDateToISO(value)
+          ) {
+            newErrors[
+              field.key
+            ] =
+              `${field.label} possui uma data inválida`;
           }
         }
       );
@@ -1273,16 +1344,32 @@ export default function NovoDocumentoPage() {
           field:
             DocumentField
         ) => {
+          const value =
+            formData.metadata[
+              field.key
+            ]?.trim();
+
           if (
             field.required &&
-            !formData.metadata[
-              field.key
-            ]?.trim()
+            !value
           ) {
             newErrors[
               field.key
             ] =
               `${field.label} é obrigatório`;
+
+            return;
+          }
+
+          if (
+            field.type === "date" &&
+            value &&
+            !parseDateToISO(value)
+          ) {
+            newErrors[
+              field.key
+            ] =
+              `${field.label} possui uma data inválida`;
           }
         }
       );
@@ -1388,6 +1475,9 @@ export default function NovoDocumentoPage() {
 
     run(
       async () => {
+        const uploadedUrls: string[] = [];
+        let documentCreated = false;
+
         try {
           setUploadProgress(
             0
@@ -1517,6 +1607,10 @@ export default function NovoDocumentoPage() {
                 );
               }
 
+              uploadedUrls.push(
+                url
+              );
+
               finalAttachments[
                 attachmentIndex
               ] = {
@@ -1620,6 +1714,8 @@ export default function NovoDocumentoPage() {
               }
             );
 
+          documentCreated = true;
+
           // ================================================
           // VENCIMENTO
           // ================================================
@@ -1665,6 +1761,17 @@ export default function NovoDocumentoPage() {
           router.push(
             "/documentos"
           );
+        } catch (error) {
+          if (
+            !documentCreated &&
+            uploadedUrls.length > 0
+          ) {
+            await cleanupUploadedFiles(
+              uploadedUrls
+            );
+          }
+
+          throw error;
         } finally {
           isSubmitLocked.current =
             false;
@@ -1952,8 +2059,8 @@ export default function NovoDocumentoPage() {
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
-                  Vault
+                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ice/90">
+                  Novo documento
                 </p>
 
                 <h1 className="mt-1 font-display text-lg font-semibold text-ink-primary">
@@ -2028,54 +2135,52 @@ export default function NovoDocumentoPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[20px] border border-surface-border/35 bg-surface/75 px-3.5 py-3 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                       <UserRound
-                        size={
-                          19
-                        }
+                        size={17}
                       />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
-                        Pessoa ativa
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-faint">
+                          Pessoa ativa
+                        </p>
 
-                      <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
-                        {selectedPerson
-                          ? selectedPerson.name
-                          : activePersonId
-                            ? "Carregando pessoa..."
-                            : "Nenhuma pessoa ativa"}
-                      </p>
+                        <span className="h-1 w-1 rounded-full bg-ice/60" />
 
-                      <p className="mt-1 text-xs leading-5 text-ink-muted">
-                        O documento será vinculado automaticamente à pessoa selecionada no Vault.
+                        <p className="truncate text-xs font-semibold text-ink-primary">
+                          {selectedPerson
+                            ? selectedPerson.name
+                            : activePersonId
+                              ? "Carregando..."
+                              : "Não selecionada"}
+                        </p>
+                      </div>
+
+                      <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+                        O vínculo é automático e não pode ser transferido durante a criação.
                       </p>
                     </div>
                   </div>
 
                   {errors.person_id && (
-                    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-coral/30 bg-coral/10 px-3.5 py-3">
+                    <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-coral/25 bg-coral/8 px-3 py-2">
                       <AlertCircle
-                        size={
-                          15
-                        }
+                        size={14}
                         className="shrink-0 text-coral"
                       />
 
-                      <p className="text-xs text-coral">
-                        {
-                          errors.person_id
-                        }
+                      <p className="text-[11px] text-coral">
+                        {errors.person_id}
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm">
                   <p className="mb-3 text-sm font-medium text-ink-primary">
                     Categoria *
                   </p>
@@ -2129,7 +2234,7 @@ export default function NovoDocumentoPage() {
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm">
                   <label className="mb-3 block text-sm font-medium text-ink-primary">
                     Tipo de documento *
                   </label>
@@ -2180,7 +2285,7 @@ export default function NovoDocumentoPage() {
                   </button>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm">
                   <Input
                     label="Título do documento *"
                     placeholder={
@@ -2237,7 +2342,7 @@ export default function NovoDocumentoPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+                <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm">
                   <div className="mb-5 flex items-start gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                       <SelectedTypeIcon
@@ -2285,7 +2390,7 @@ export default function NovoDocumentoPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
+                <div className="space-y-4 rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-ink-primary">
@@ -2407,7 +2512,7 @@ export default function NovoDocumentoPage() {
                 }}
                 className="space-y-4"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+                <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm">
                   <div className="mb-4 flex items-start gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                       <Paperclip
@@ -2466,59 +2571,95 @@ export default function NovoDocumentoPage() {
                     </Button>
                   </div>
 
-                  {uploadProgress >
-                    0 &&
-                    uploadProgress <
-                      100 && (
-                      <div className="mt-4 text-xs text-ink-muted">
-                        Enviando:{" "}
-                        {
-                          uploadProgress
-                        }
-                        %
+                  {uploadProgress > 0 &&
+                    uploadProgress < 100 && (
+                      <div className="mt-4 rounded-2xl border border-ice/15 bg-ice/5 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[11px] font-medium text-ink-muted">
+                            Enviando anexos
+                          </p>
+
+                          <span className="font-mono text-[10px] text-ice">
+                            {uploadProgress}%
+                          </span>
+                        </div>
+
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-border/40">
+                          <motion.div
+                            className="h-full rounded-full bg-ice"
+                            animate={{
+                              width: `${uploadProgress}%`,
+                            }}
+                            transition={{
+                              duration: 0.2,
+                            }}
+                          />
+                        </div>
                       </div>
                     )}
 
                   <div className="mt-4 space-y-2">
+                    {formData.attachments.length === 0 && (
+                      <div className="rounded-[18px] border border-dashed border-surface-border/55 bg-surface-raised/35 px-4 py-5 text-center">
+                        <Paperclip
+                          size={20}
+                          className="mx-auto text-ink-faint"
+                        />
+
+                        <p className="mt-2 text-xs font-medium text-ink-muted">
+                          Nenhum anexo ainda
+                        </p>
+
+                        <p className="mt-1 text-[10px] leading-4 text-ink-faint">
+                          Você pode salvar sem anexo e adicionar arquivos depois.
+                        </p>
+                      </div>
+                    )}
+
                     {formData.attachments.map(
                       (
                         attachment
                       ) => (
                         <div
-                          key={
-                            attachment.id
-                          }
-                          className="flex items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3"
+                          key={attachment.id}
+                          className="flex items-center gap-3 rounded-[18px] border border-surface-border/40 bg-surface-raised/75 p-2.5"
                         >
-                          <FileText
-                            size={
-                              16
-                            }
-                            className="text-ice"
-                          />
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-void/60">
+                            {attachment.type === "image" ? (
+                              <img
+                                src={attachment.url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <FileText
+                                size={18}
+                                className="text-ice"
+                              />
+                            )}
+                          </div>
 
-                          <p className="min-w-0 flex-1 truncate text-sm text-ink-primary">
-                            {
-                              attachment.name
-                            }
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-ink-primary">
+                              {attachment.name}
+                            </p>
+
+                            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                              {attachment.type === "image" ? "Imagem" : "PDF"}
+                            </p>
+                          </div>
 
                           <button
                             type="button"
                             onClick={() =>
-                              removeAttachment(
-                                attachment.id
-                              )
+                              removeAttachment(attachment.id)
                             }
-                            disabled={
-                              isSubmitting
-                            }
+                            disabled={isSubmitting}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 transition-transform active:scale-95 disabled:opacity-50"
                             aria-label={`Remover ${attachment.name}`}
                           >
                             <X
-                              size={
-                                14
-                              }
+                              size={14}
                               className="text-coral"
                             />
                           </button>
@@ -2528,7 +2669,7 @@ export default function NovoDocumentoPage() {
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
+                <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4">
                   <TextArea
                     label="Notas"
                     value={
@@ -2553,7 +2694,7 @@ export default function NovoDocumentoPage() {
 
                 {userVaults.length >
                   0 && (
-                  <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
+                  <div className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4">
                     <div className="mb-3">
                       <p className="text-sm font-medium text-ink-primary">
                         Cofre
@@ -2659,8 +2800,8 @@ export default function NovoDocumentoPage() {
           }
           title="Selecionar tipo de documento"
         >
-          <div className="max-h-[60vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-3 pb-4">
+          <div className="max-h-[68vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-2 pb-4 sm:grid-cols-2">
               {availableTypes.map(
                 (type) => {
                   const Icon =
@@ -2687,14 +2828,14 @@ export default function NovoDocumentoPage() {
                           type
                         )
                       }
-                      className={`flex min-h-[165px] flex-col items-start rounded-[22px] border p-4 text-left transition-all ${
+                      className={`flex min-h-[112px] items-start gap-3 rounded-[20px] border p-3.5 text-left transition-all ${
                         active
                           ? "border-ice bg-ice/10"
                           : "border-surface-border/50 bg-surface"
                       }`}
                     >
                       <div
-                        className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl ${
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
                           active
                             ? "bg-ice/20 text-ice"
                             : "bg-ice/10 text-ice"
@@ -2707,27 +2848,29 @@ export default function NovoDocumentoPage() {
                         />
                       </div>
 
-                      <p
-                        className={`text-sm font-semibold ${
-                          active
-                            ? "text-ice"
-                            : "text-ink-primary"
-                        }`}
-                      >
-                        {
-                          DOCUMENT_TYPE_LABELS[
-                            type
-                          ]
-                        }
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p
+                            className={`truncate text-sm font-semibold ${
+                              active
+                                ? "text-ice"
+                                : "text-ink-primary"
+                            }`}
+                          >
+                            {DOCUMENT_TYPE_LABELS[type]}
+                          </p>
 
-                      <p className="mt-2 line-clamp-3 text-[11px] leading-5 text-ink-muted">
-                        {
-                          TYPE_DESCRIPTIONS[
-                            type
-                          ]
-                        }
-                      </p>
+                          {active && (
+                            <span className="shrink-0 rounded-full bg-ice/15 px-2 py-0.5 font-mono text-[8px] uppercase tracking-[0.12em] text-ice">
+                              Atual
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-ink-muted">
+                          {TYPE_DESCRIPTIONS[type]}
+                        </p>
+                      </div>
                     </motion.button>
                   );
                 }
@@ -2736,7 +2879,7 @@ export default function NovoDocumentoPage() {
           </div>
         </BottomSheet>
 
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/35 bg-void/92 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-14px_32px_rgba(0,0,0,0.16)] backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl gap-3">
             {currentStep >
               1 && (

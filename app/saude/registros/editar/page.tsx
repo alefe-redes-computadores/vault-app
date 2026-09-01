@@ -310,6 +310,63 @@ function handleTimeMask(
   return clean;
 }
 
+function getCurrentDateISO(): string {
+  const now = new Date();
+
+  return [
+    String(now.getFullYear()).padStart(4, "0"),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function isValidMeasurementValue(
+  tipo: string,
+  value: string
+): boolean {
+  const safeValue = value.trim();
+
+  if (!safeValue) {
+    return false;
+  }
+
+  if (tipo === "pressao_arterial") {
+    const match = safeValue.match(
+      /^(\d{2,3})\s*\/\s*(\d{2,3})$/
+    );
+
+    if (!match) {
+      return false;
+    }
+
+    const sistolica = Number(match[1]);
+    const diastolica = Number(match[2]);
+
+    return (
+      Number.isFinite(sistolica) &&
+      Number.isFinite(diastolica) &&
+      sistolica > 0 &&
+      diastolica > 0
+    );
+  }
+
+  if (
+    tipo === "glicemia" ||
+    tipo === "temperatura"
+  ) {
+    const numericValue = Number(
+      safeValue.replace(",", ".")
+    );
+
+    return (
+      Number.isFinite(numericValue) &&
+      numericValue > 0
+    );
+  }
+
+  return true;
+}
+
 // ============================================================
 // CONTENT
 // ============================================================
@@ -895,13 +952,24 @@ function EditarRegistroSaudeContent() {
         );
       }
 
-      if (
-        !parseDateToISO(
+      const dataISO =
+        parseDateToISO(
           dataDisplay
-        )
-      ) {
+        );
+
+      if (!dataISO) {
         nextErrors.data =
           "Informe uma data válida.";
+
+        shakeList.push(
+          "data"
+        );
+      } else if (
+        dataISO >
+        getCurrentDateISO()
+      ) {
+        nextErrors.data =
+          "A data do registro não pode estar no futuro.";
 
         shakeList.push(
           "data"
@@ -922,6 +990,25 @@ function EditarRegistroSaudeContent() {
 
         shakeList.push(
           "horario"
+        );
+      }
+
+      if (
+        categoria ===
+          "medicao" &&
+        !isValidMeasurementValue(
+          tipoSelecionado,
+          valorMedicao
+        )
+      ) {
+        nextErrors.valorMedicao =
+          tipoSelecionado ===
+          "pressao_arterial"
+            ? "Informe a pressão no formato 120/80."
+            : "Informe um valor numérico válido para a medição.";
+
+        shakeList.push(
+          "valorMedicao"
         );
       }
 
@@ -1167,8 +1254,7 @@ function EditarRegistroSaudeContent() {
                 valor_medicao:
                   categoria ===
                   "medicao"
-                    ? valorMedicao.trim() ||
-                      undefined
+                    ? valorMedicao.trim()
                     : undefined,
 
                 data:
@@ -1177,8 +1263,7 @@ function EditarRegistroSaudeContent() {
                 horario,
 
                 observacoes:
-                  observacoes.trim() ||
-                  undefined,
+                  observacoes.trim(),
 
                 /*
                  * null limpa explicitamente.
@@ -1409,21 +1494,55 @@ function EditarRegistroSaudeContent() {
 
             {categoria ===
               "medicao" && (
-              <Input
-                label="Valor da Medição"
-                placeholder="Informe o valor"
-                value={
-                  valorMedicao
+              <div
+                className={
+                  shakeFields.includes(
+                    "valorMedicao"
+                  )
+                    ? "animate-shake"
+                    : ""
                 }
-                onChange={
-                  (
-                    event
-                  ) =>
-                    setValorMedicao(
-                      event.target.value
-                    )
-                }
-              />
+              >
+                <Input
+                  label="Valor da Medição"
+                  placeholder={
+                    tipoSelecionado ===
+                    "pressao_arterial"
+                      ? "Ex: 120/80"
+                      : "Informe o valor"
+                  }
+                  value={
+                    valorMedicao
+                  }
+                  onChange={
+                    (
+                      event
+                    ) => {
+                      setValorMedicao(
+                        event.target.value
+                      );
+
+                      if (
+                        errors.valorMedicao
+                      ) {
+                        setErrors(
+                          (
+                            current
+                          ) => ({
+                            ...current,
+                            valorMedicao:
+                              "",
+                          })
+                        );
+                      }
+                    }
+                  }
+                  error={
+                    errors.valorMedicao
+                  }
+                  required
+                />
+              </div>
             )}
 
             {categoria ===
