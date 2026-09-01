@@ -177,7 +177,8 @@ function addDaysToCivilDate(
 export function useRenovacaoInteligente(
   medicamentoId: string,
   farmaciaId: string,
-  preco: string
+  preco: string,
+  quantidade: string
 ) {
   /*
    * useRenovacoes já é person-scoped.
@@ -209,8 +210,8 @@ export function useRenovacaoInteligente(
       () => {
         if (
           !medicamentoId ||
-          !farmaciaId ||
-          !preco
+          !preco ||
+          !quantidade
         ) {
           return null;
         }
@@ -220,9 +221,22 @@ export function useRenovacaoInteligente(
             preco
           );
 
+        const quantidadeAtual =
+          Number(
+            quantidade
+              .trim()
+              .replace(
+                ",",
+                "."
+              )
+          );
+
         if (
-          precoAtual ===
-          null
+          precoAtual === null ||
+          !Number.isFinite(
+            quantidadeAtual
+          ) ||
+          quantidadeAtual <= 0
         ) {
           return null;
         }
@@ -243,30 +257,54 @@ export function useRenovacaoInteligente(
                 renovacao.preco
               ) &&
               renovacao.preco >
-                0
+                0 &&
+              typeof renovacao.quantidade ===
+                "number" &&
+              Number.isFinite(
+                renovacao.quantidade
+              ) &&
+              renovacao.quantidade >
+                0 &&
+              renovacao.tipo_aquisicao !==
+                "sus" &&
+              renovacao.tipo_aquisicao !==
+                "gratuito"
           );
 
         if (
           !anteriorComPreco ||
           typeof anteriorComPreco.preco !==
+            "number" ||
+          typeof anteriorComPreco.quantidade !==
             "number"
         ) {
           return null;
         }
 
-        const precoAnterior =
+        const precoAnteriorOriginal =
           anteriorComPreco.preco;
 
+        const quantidadeAnterior =
+          anteriorComPreco.quantidade;
+
+        const precoUnitarioAnterior =
+          precoAnteriorOriginal /
+          quantidadeAnterior;
+
+        const precoAnterior =
+          precoUnitarioAnterior *
+          quantidadeAtual;
+
         /*
-         * IMPORTANTE:
-         *
-         * positivo = economia.
+         * A comparação usa custo equivalente para a quantidade atual.
          *
          * Exemplo:
+         * anterior: R$100 / 60 = R$1,67 por unidade
+         * atual: 30 unidades
+         * referência equivalente: R$50
          *
-         * anterior: 50
-         * atual:    40
-         * diff:     +10
+         * Se o preço atual for R$42:
+         * diff = +R$8
          */
         const diff =
           precoAnterior -
@@ -298,6 +336,7 @@ export function useRenovacaoInteligente(
         medicamentoId,
         farmaciaId,
         preco,
+        quantidade,
         renovacoes,
         farmacias,
       ]

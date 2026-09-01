@@ -1605,70 +1605,168 @@ export function analisarMelhorFarmacia(
 // 4. CALCULAR ECONOMIA
 // ============================================================
 
-export function calcularEconomia(
-  renovacoes: Renovacao[]
-) {
-  const comPreco =
-    renovacoes.filter(
-      (renovacao) => {
-        const preco =
-          Number(
-            renovacao.preco
-          );
-
-        const gratuita =
-          renovacao.tipo_aquisicao ===
-            "sus" ||
-          renovacao.tipo_aquisicao ===
-            "gratuito";
-
-        return (
-          !gratuita &&
-          Number.isFinite(
-            preco
-          ) &&
-          preco > 0
-        );
-      }
-    );
+/**
+ * Converte um valor desconhecido em número positivo utilizável
+ * por análises financeiras.
+ *
+ * Zero, negativos, NaN, null e undefined não são considerados
+ * dados suficientes para comparação.
+ */
+function toPositiveFiniteNumber(
+  value: unknown
+): number | null {
+  const parsed =
+    Number(value);
 
   if (
-    comPreco.length < 2
+    !Number.isFinite(
+      parsed
+    ) ||
+    parsed <= 0
   ) {
     return null;
   }
 
-  const ordenadas = [
-    ...comPreco,
-  ].sort(
-    (a, b) => {
-      const dataA =
-        parseLocalDate(
-          a.data
-        )?.getTime() ??
-        0;
+  return parsed;
+}
 
-      const dataB =
-        parseLocalDate(
-          b.data
-        )?.getTime() ??
-        0;
+/**
+ * Data que representa a aquisição financeira.
+ *
+ * `data_aquisicao` é canônica para compras/retiradas novas.
+ * `data` permanece como fallback para registros legados que
+ * foram criados antes desse campo existir.
+ */
+function getRenovacaoAcquisitionTime(
+  renovacao: Renovacao
+): number {
+  const rawDate =
+    renovacao.data_aquisicao ||
+    renovacao.data;
 
-      return (
-        dataA -
-        dataB
-      );
-    }
+  return (
+    parseLocalDate(
+      rawDate
+    )?.getTime() ??
+    0
   );
+}
+
+interface RenovacaoComparablePrice {
+  renovacao:
+    Renovacao;
+
+  precoTotal:
+    number;
+
+  quantidade:
+    number;
+
+  precoUnitario:
+    number;
+
+  timestamp:
+    number;
+}
+
+/**
+ * Extrai somente aquisições capazes de participar de uma
+ * comparação justa de preço.
+ *
+ * A comparação exige:
+ * - aquisição paga;
+ * - preço total conhecido;
+ * - quantidade adquirida conhecida.
+ *
+ * Sem quantidade não existe base segura para dizer que uma
+ * compra ficou mais cara ou mais barata que outra.
+ */
+function getComparableRenovacaoPrice(
+  renovacao:
+    Renovacao
+): RenovacaoComparablePrice | null {
+  const gratuita =
+    renovacao.tipo_aquisicao ===
+      "sus" ||
+    renovacao.tipo_aquisicao ===
+      "gratuito";
+
+  if (gratuita) {
+    return null;
+  }
+
+  const precoTotal =
+    toPositiveFiniteNumber(
+      renovacao.preco
+    );
+
+  const quantidade =
+    toPositiveFiniteNumber(
+      renovacao.quantidade
+    );
+
+  if (
+    precoTotal ===
+      null ||
+    quantidade ===
+      null
+  ) {
+    return null;
+  }
+
+  return {
+    renovacao,
+
+    precoTotal,
+
+    quantidade,
+
+    precoUnitario:
+      precoTotal /
+      quantidade,
+
+    timestamp:
+      getRenovacaoAcquisitionTime(
+        renovacao
+      ),
+  };
+}
+
+export function calcularEconomia(
+  renovacoes: Renovacao[]
+) {
+  const comparaveis =
+    renovacoes
+      .map(
+        getComparableRenovacaoPrice
+      )
+      .filter(
+        (
+          item
+        ): item is RenovacaoComparablePrice =>
+          item !== null
+      )
+      .sort(
+        (a, b) =>
+          a.timestamp -
+          b.timestamp
+      );
+
+  if (
+    comparaveis.length <
+    2
+  ) {
+    return null;
+  }
 
   const ultima =
-    ordenadas[
-      ordenadas.length -
+    comparaveis[
+      comparaveis.length -
         1
     ];
 
   const anteriores =
-    ordenadas.slice(
+    comparaveis.slice(
       0,
       -1
     );
@@ -1680,48 +1778,74 @@ export function calcularEconomia(
     return null;
   }
 
-  const mediaAnterior =
+  /**
+   * A inteligência trabalha com custo unitário médio anterior,
+   * e só depois converte essa referência para a quantidade
+   * comprada atualmente.
+   *
+   * Exemplo:
+   * R$100 / 60 = R$1,6667 por unidade.
+   * Para uma compra atual de 30 unidades, a referência justa
+   * passa a ser R$50, e não R$100.
+   */
+  const mediaPrecoUnitarioAnterior =
     anteriores.reduce(
       (
         total,
-        renovacao
+        item
       ) =>
         total +
-        Number(
-          renovacao.preco
-        ),
+        item.precoUnitario,
       0
     ) /
     anteriores.length;
 
   if (
-    mediaAnterior <= 0
+    !Number.isFinite(
+      mediaPrecoUnitarioAnterior
+    ) ||
+    mediaPrecoUnitarioAnterior <=
+      0
   ) {
     return null;
   }
 
-  const ultimoPreco =
-    Number(
-      ultima.preco
-    );
+  const precoReferenciaQuantidadeAtual =
+    mediaPrecoUnitarioAnterior *
+    ultima.quantidade;
 
   const economia =
-    mediaAnterior -
-    ultimoPreco;
+    precoReferenciaQuantidadeAtual -
+    ultima.precoTotal;
 
   const percentual =
     (
       economia /
-      mediaAnterior
+      precoReferenciaQuantidadeAtual
     ) *
     100;
 
   return {
+    /**
+     * Campos históricos preservados para compatibilidade com
+     * telas que já consomem calcularEconomia().
+     *
+     * `media_anterior` agora significa:
+     * custo histórico médio equivalente à quantidade atual.
+     */
     ultimo_preco:
-      ultimoPreco,
+      Number(
+        ultima.precoTotal.toFixed(
+          2
+        )
+      ),
 
     media_anterior:
-      mediaAnterior,
+      Number(
+        precoReferenciaQuantidadeAtual.toFixed(
+          2
+        )
+      ),
 
     economia:
       Number(
@@ -1736,6 +1860,42 @@ export function calcularEconomia(
           1
         )
       ),
+
+    /**
+     * Evidências adicionais para o cérebro explicar a conta
+     * sem obrigar as telas a refazerem lógica financeira.
+     */
+    quantidade_atual:
+      ultima.quantidade,
+
+    preco_unitario_atual:
+      Number(
+        ultima.precoUnitario.toFixed(
+          4
+        )
+      ),
+
+    preco_unitario_medio_anterior:
+      Number(
+        mediaPrecoUnitarioAnterior.toFixed(
+          4
+        )
+      ),
+
+    preco_referencia_quantidade_atual:
+      Number(
+        precoReferenciaQuantidadeAtual.toFixed(
+          2
+        )
+      ),
+
+    compras_anteriores_comparaveis:
+      anteriores.length,
+
+    data_referencia:
+      ultima.renovacao
+        .data_aquisicao ||
+      ultima.renovacao.data,
   };
 }
 

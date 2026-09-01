@@ -823,7 +823,8 @@ function NovaRenovacaoContent() {
     useRenovacaoInteligente(
       medicamentoId,
       farmaciaId,
-      preco
+      preco,
+      quantidadeAdicionar
     );
 
   const theme =
@@ -2661,7 +2662,7 @@ function NovaRenovacaoContent() {
                               ".",
                               ","
                             )}{" "}
-                          mais barato que a compra anterior
+                          mais barato que a compra anterior para a mesma quantidade
                           {analisePreco.farmaciaAnteriorName
                             ? ` em ${analisePreco.farmaciaAnteriorName}`
                             : ""}
@@ -2690,7 +2691,7 @@ function NovaRenovacaoContent() {
                               ".",
                               ","
                             )}{" "}
-                          mais caro que a compra anterior
+                          mais caro que a compra anterior para a mesma quantidade
                           {analisePreco.farmaciaAnteriorName
                             ? ` em ${analisePreco.farmaciaAnteriorName}`
                             : ""}
@@ -2707,7 +2708,7 @@ function NovaRenovacaoContent() {
                         />
 
                         <span className="text-ink-muted">
-                          Mesmo valor da compra anterior.
+                          Mesmo custo proporcional da compra anterior.
                         </span>
                       </>
                     )}
