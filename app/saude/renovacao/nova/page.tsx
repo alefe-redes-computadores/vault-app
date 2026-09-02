@@ -1647,7 +1647,7 @@ function NovaRenovacaoContent() {
         },
         {
           successMessage:
-            "Renovação registrada com sucesso",
+            "Aquisição registrada com sucesso",
 
           errorMessage:
             "Erro ao salvar renovação",
@@ -1755,7 +1755,7 @@ function NovaRenovacaoContent() {
 
             <div className="min-w-0">
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Nova receita / Renovação
+                Nova aquisição / retirada
               </h1>
             </div>
           </div>

@@ -20,11 +20,9 @@ import {
   Eye,
   EyeOff,
   Info,
-  Moon,
   Pill,
   Stethoscope,
   StickyNote,
-  Sun,
   Syringe,
   Zap,
   type LucideIcon,
@@ -84,7 +82,6 @@ import type {
 
 import {
   ListCard,
-  ListFilters,
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
@@ -544,17 +541,17 @@ export default function MedicamentosListPage() {
   // ==========================================================
 
   const {
-    medsManha,
-    medsTardeNoite,
+    medsPrioridade,
+    medsEmDia,
     medsSOS,
     medsSuspensos,
   } =
     useMemo(
       () => {
-        const manha:
+        const prioridade:
           ProcessedMed[] = [];
 
-        const tardeNoite:
+        const emDia:
           ProcessedMed[] = [];
 
         const sos:
@@ -587,60 +584,81 @@ export default function MedicamentosListPage() {
               return;
             }
 
-            /*
-             * Mantemos o medicamento em uma única seção.
-             *
-             * Para medicamentos com vários horários, usamos
-             * o primeiro horário configurado apenas para
-             * decidir em qual grupo visual o card aparece.
-             *
-             * O progresso do medicamento NÃO depende disso.
-             */
-            const primeiroHorario =
-              item.med
-                .estoque_horarios?.[0];
+            const precisaAcao =
+              item.isEstoqueZerado ||
+              item.isEstoqueCritico ||
+              item.insight.deveRenovar ||
+              item.dosesPendentesHoje >
+                0;
 
-            if (
-              !primeiroHorario
-            ) {
-              manha.push(
+            if (precisaAcao) {
+              prioridade.push(
                 item
               );
 
               return;
             }
 
-            const hora =
-              Number(
-                primeiroHorario.split(
-                  ":"
-                )[0]
-              );
-
-            if (
-              Number.isFinite(
-                hora
-              ) &&
-              hora >=
-                12
-            ) {
-              tardeNoite.push(
-                item
-              );
-            } else {
-              manha.push(
-                item
-              );
-            }
+            emDia.push(
+              item
+            );
           }
         );
 
-        return {
-          medsManha:
-            manha,
+        prioridade.sort(
+          (a, b) => {
+            const score =
+              (item: ProcessedMed) =>
+                item.isEstoqueZerado
+                  ? 0
+                  : item.insight
+                        .urgencia ===
+                      "alta"
+                    ? 1
+                    : item.isEstoqueCritico
+                      ? 2
+                      : item.dosesPendentesHoje >
+                          0
+                        ? 3
+                        : 4;
 
-          medsTardeNoite:
-            tardeNoite,
+            const byPriority =
+              score(a) -
+              score(b);
+
+            if (byPriority !== 0) {
+              return byPriority;
+            }
+
+            return String(
+              a.med.nome || ""
+            ).localeCompare(
+              String(
+                b.med.nome || ""
+              ),
+              "pt-BR"
+            );
+          }
+        );
+
+        emDia.sort(
+          (a, b) =>
+            String(
+              a.med.nome || ""
+            ).localeCompare(
+              String(
+                b.med.nome || ""
+              ),
+              "pt-BR"
+            )
+        );
+
+        return {
+          medsPrioridade:
+            prioridade,
+
+          medsEmDia:
+            emDia,
 
           medsSOS:
             sos,
@@ -845,10 +863,10 @@ export default function MedicamentosListPage() {
             />
           }
         >
-          <div className="flex h-full min-h-[96px] flex-col">
+          <div className="flex h-full min-h-[124px] flex-col">
             {/* LINHA 1 */}
 
-            <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex min-h-6 min-w-0 items-center justify-between gap-2">
               <div className="flex min-w-0 flex-1 items-baseline gap-2">
                 <h3 className="truncate font-display text-base font-bold uppercase text-ink-primary">
                   {
@@ -906,7 +924,7 @@ export default function MedicamentosListPage() {
 
             {/* LINHA 2 */}
 
-            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-ink-muted">
+            <div className="mt-1.5 flex min-h-[18px] flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-ink-muted">
               {receita && (
                 <button
                   type="button"
@@ -968,9 +986,12 @@ export default function MedicamentosListPage() {
                 </span>
               )}
 
-              <span className="text-surface-border/60">
-                •
-              </span>
+              {(receita ||
+                med.medico) && (
+                <span className="text-surface-border/60">
+                  •
+                </span>
+              )}
 
               <span
                 className={`font-bold ${
@@ -990,7 +1011,7 @@ export default function MedicamentosListPage() {
 
             {/* LINHA 3 */}
 
-            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
+            <div className="mt-auto flex min-h-8 flex-wrap items-center justify-between gap-2 pt-3">
               <div className="flex min-w-0 items-center gap-2">
                 {isSOS && (
                   <span className="flex shrink-0 items-center gap-0.5 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-400">
@@ -1191,7 +1212,7 @@ export default function MedicamentosListPage() {
                         );
 
                         router.push(
-                          `/saude/renovacao/nova?medicamento_id=${med.id}`
+                          "/saude/documentos/novo"
                         );
                       }
                     }
@@ -1208,7 +1229,7 @@ export default function MedicamentosListPage() {
                       }
                     />
 
-                    Renovar
+                    Nova receita
                   </button>
                 )}
             </div>
@@ -1357,34 +1378,6 @@ export default function MedicamentosListPage() {
             />
           </div>
 
-          <ListFilters
-            onClear={
-              showDescontinuados
-                ? () => {
-                    setShowDescontinuados(
-                      false
-                    );
-
-                    if (
-                      typeof window !==
-                      "undefined"
-                    ) {
-                      localStorage.setItem(
-                        "@vault:meds_showSuspended",
-                        "false"
-                      );
-                    }
-
-                    trigger(
-                      "vibrate"
-                    );
-                  }
-                : undefined
-            }
-            clearLabel="Limpar"
-          >
-            {null}
-          </ListFilters>
         </ListPageHeader>
 
         {/* CONTEÚDO */}
@@ -1427,33 +1420,33 @@ export default function MedicamentosListPage() {
             />
           ) : (
             <div className="space-y-3.5 pb-8">
-              {medsManha.length >
+              {medsPrioridade.length >
                 0 && (
                 <>
                   <SectionTitle
                     icon={
-                      Sun
+                      AlertTriangle
                     }
-                    title="Manhã"
+                    title="Rotina de hoje"
                   />
 
-                  {medsManha.map(
+                  {medsPrioridade.map(
                     renderCard
                   )}
                 </>
               )}
 
-              {medsTardeNoite.length >
+              {medsEmDia.length >
                 0 && (
                 <>
                   <SectionTitle
                     icon={
-                      Moon
+                      CheckCircle2
                     }
-                    title="Tarde / Noite"
+                    title="Em dia"
                   />
 
-                  {medsTardeNoite.map(
+                  {medsEmDia.map(
                     renderCard
                   )}
                 </>

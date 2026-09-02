@@ -19,6 +19,7 @@ import {
 
 import type {
   Document,
+  Medicamento,
 } from "@/lib/types";
 
 // ============================================================
@@ -450,6 +451,97 @@ async function validateHealthEntityReference(
 }
 
 // ============================================================
+// RECEITA CANÔNICA DO MEDICAMENTO
+// ============================================================
+
+function getMetadataDate(
+  metadata: Document["metadata"],
+  key: string
+): string {
+  const value =
+    metadata?.[key];
+
+  return typeof value === "string"
+    ? value.trim()
+    : "";
+}
+
+function isMedicationPrescription(
+  document: Pick<
+    Document,
+    | "category_id"
+    | "type"
+    | "entidade_tipo"
+    | "entidade_id"
+  >
+): document is typeof document & {
+  entidade_tipo: "medicamento";
+  entidade_id: string;
+} {
+  return (
+    document.category_id === "saude" &&
+    document.type === "receita" &&
+    document.entidade_tipo === "medicamento" &&
+    Boolean(document.entidade_id)
+  );
+}
+
+async function buildMedicationFromPrescription(
+  document: Document,
+  personId: string,
+  now: string
+): Promise<Medicamento | null> {
+  if (
+    !isMedicationPrescription(
+      document
+    )
+  ) {
+    return null;
+  }
+
+  const medicamento =
+    await db.medicamentos.get(
+      document.entidade_id
+    );
+
+  if (
+    !medicamento ||
+    medicamento.person_id !== personId
+  ) {
+    throw new Error(
+      "O medicamento vinculado à receita não pertence à pessoa ativa."
+    );
+  }
+
+  const dataReceita =
+    getMetadataDate(
+      document.metadata,
+      "prescription_date"
+    );
+
+  const proximaRenovacao =
+    getMetadataDate(
+      document.metadata,
+      "renewal_date"
+    );
+
+  return {
+    ...medicamento,
+    document_id: document.id,
+    data_receita:
+      dataReceita ||
+      medicamento.data_receita ||
+      "",
+    proxima_renovacao:
+      proximaRenovacao ||
+      medicamento.proxima_renovacao ||
+      "",
+    updated_at: now,
+    synced: false,
+  };
+}
+
+// ============================================================
 // STORAGE
 // ============================================================
 
@@ -774,10 +866,24 @@ export const documentsRepository = {
           false,
       };
 
+    /*
+     * Uma nova Receita vinculada canonicamente a um medicamento
+     * passa a ser a receita atual dele. O histórico documental
+     * permanece intacto; somente o ponteiro e as datas correntes
+     * do medicamento são promovidos atomicamente.
+     */
+    const medicamentoAtualizado =
+      await buildMedicationFromPrescription(
+        document,
+        personId,
+        now
+      );
+
     await db.transaction(
       "rw",
       [
         db.documents,
+        db.medicamentos,
         db.syncQueue,
       ],
       async () => {
@@ -794,6 +900,24 @@ export const documentsRepository = {
               false,
           }
         );
+
+        if (
+          medicamentoAtualizado
+        ) {
+          await db.medicamentos.put(
+            medicamentoAtualizado
+          );
+
+          await enfileirarOperacao(
+            "medicamentos",
+            "update",
+            medicamentoAtualizado,
+            {
+              dispatchSync:
+                false,
+            }
+          );
+        }
       }
     );
 

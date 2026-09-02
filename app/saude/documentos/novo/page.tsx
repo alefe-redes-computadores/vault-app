@@ -2335,12 +2335,10 @@ export default function NovoDocumentoSaudePage() {
           }
 
           /*
-           * Campos confirmados no contrato real de Medicamento:
-           *
-           * data_receita       -> data da receita
-           * proxima_renovacao  -> próxima renovação
-           *
-           * São conceitos diferentes.
+           * Esta tela cria uma NOVA receita. Portanto, não
+           * copiamos as datas da receita anterior do medicamento:
+           * a data clínica começa em hoje e a próxima renovação
+           * permanece explícita para o usuário confirmar.
            *
            * proxima_renovacao NÃO representa validade e nunca
            * deve alimentar expiry_date/validade.
@@ -2352,11 +2350,9 @@ export default function NovoDocumentoSaudePage() {
             )
           ) {
             nextMetadata.prescription_date =
-              medicamento.data_receita
-                ? formatDateDisplay(
-                    medicamento.data_receita
-                  )
-                : "";
+              formatDateDisplay(
+                new Date().toISOString()
+              );
           }
 
           if (
@@ -2366,11 +2362,7 @@ export default function NovoDocumentoSaudePage() {
             )
           ) {
             nextMetadata.renewal_date =
-              medicamento.proxima_renovacao
-                ? formatDateDisplay(
-                    medicamento.proxima_renovacao
-                  )
-                : "";
+              "";
           }
 
           if (

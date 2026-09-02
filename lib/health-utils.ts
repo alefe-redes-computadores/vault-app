@@ -1444,6 +1444,44 @@ export function getDocumentAlerts(
   documents:
     Document[]
 ): HealthAlert[] {
+  const newestPrescriptionByMedication =
+    new Map<string, Document>();
+
+  for (const document of documents) {
+    if (
+      document.category_id !== "saude" ||
+      document.type !== "receita" ||
+      document.entidade_tipo !== "medicamento" ||
+      !document.entidade_id
+    ) {
+      continue;
+    }
+
+    const current =
+      newestPrescriptionByMedication.get(
+        document.entidade_id
+      );
+
+    const documentDate = String(
+      document.metadata?.prescription_date ||
+      document.created_at ||
+      ""
+    );
+
+    const currentDate = String(
+      current?.metadata?.prescription_date ||
+      current?.created_at ||
+      ""
+    );
+
+    if (!current || documentDate > currentDate) {
+      newestPrescriptionByMedication.set(
+        document.entidade_id,
+        document
+      );
+    }
+  }
+
   return documents
     .filter(
       (
@@ -1453,6 +1491,14 @@ export function getDocumentAlerts(
           "saude" &&
         Boolean(
           doc.id
+        ) &&
+        (
+          doc.type !== "receita" ||
+          doc.entidade_tipo !== "medicamento" ||
+          !doc.entidade_id ||
+          newestPrescriptionByMedication.get(
+            doc.entidade_id
+          )?.id === doc.id
         )
     )
     .map(
@@ -1463,15 +1509,11 @@ export function getDocumentAlerts(
           String(
             doc.metadata
               ?.expiry_date ||
-              doc.metadata
-                ?.renewal_date ||
-              doc.metadata
-                ?.vencimento ||
-              doc.metadata
-                ?.validade ||
-              doc.metadata
-                ?.proxima_renovacao ||
-              ""
+            doc.metadata
+              ?.vencimento ||
+            doc.metadata
+              ?.validade ||
+            ""
           );
 
         const daysUntil =
@@ -1509,6 +1551,7 @@ export function getDocumentAlerts(
 
           href:
             `/saude/documentos/detalhes?id=${doc.id}`,
+
         };
       }
     )
