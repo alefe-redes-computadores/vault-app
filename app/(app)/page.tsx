@@ -1,6 +1,11 @@
 // app/(app)/page.tsx
 "use client";
 
+// A Home depende de autenticação, pessoa ativa e IndexedDB no dispositivo.
+// Impedir a pré-renderização estática também evita que o Next 14 tente
+// construir esta Client Page sem o manifesto completo de módulos do cliente.
+export const dynamic = "force-dynamic";
+
 import {
   useEffect,
   useMemo,
