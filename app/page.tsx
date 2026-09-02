@@ -1,4 +1,4 @@
-// app/(app)/page.tsx
+// app/page.tsx
 "use client";
 
 import {
@@ -837,6 +837,97 @@ export default function HomePage() {
       [doseLogs]
     );
 
+  const totalDosesPlanejadasHoje =
+    useMemo(
+      () =>
+        medicamentosAtivos.reduce(
+          (
+            total,
+            medicamento
+          ) =>
+            medicamento.tipo_uso ===
+            "continuo"
+              ? total +
+                (
+                  medicamento.estoque_horarios ||
+                  []
+                ).filter(
+                  Boolean
+                ).length
+              : total,
+          0
+        ),
+      [medicamentosAtivos]
+    );
+
+  const dosesTomadasDaRotinaHoje =
+    useMemo(
+      () =>
+        medicamentosAtivos.reduce(
+          (
+            total,
+            medicamento
+          ) => {
+            if (
+              !medicamento.id ||
+              medicamento.tipo_uso !==
+                "continuo"
+            ) {
+              return total;
+            }
+
+            const horarios =
+              (
+                medicamento.estoque_horarios ||
+                []
+              ).filter(
+                Boolean
+              );
+
+            return (
+              total +
+              horarios.filter(
+                (
+                  horario
+                ) =>
+                  doseLogs.some(
+                    (
+                      log
+                    ) =>
+                      log.medicamento_id ===
+                        medicamento.id &&
+                      log.horario ===
+                        horario &&
+                      Boolean(
+                        log.tomado_em
+                      )
+                  )
+              ).length
+            );
+          },
+          0
+        ),
+      [
+        medicamentosAtivos,
+        doseLogs,
+      ]
+    );
+
+  const progressoDosesHoje =
+    totalDosesPlanejadasHoje >
+    0
+      ? Math.min(
+          100,
+          Math.round(
+            (
+              dosesTomadasDaRotinaHoje /
+              totalDosesPlanejadasHoje
+            ) *
+              100
+          )
+        )
+      : 0;
+
   // ==========================================================
   // MOTOR CANÔNICO DE ALERTAS
   // ==========================================================
@@ -1018,6 +1109,98 @@ export default function HomePage() {
       documentInsights,
     ]);
 
+  const resumoContextual =
+    useMemo(
+      () => {
+        if (
+          dosesPendentesAtrasadas.length >
+          0
+        ) {
+          return {
+            eyebrow:
+              "Ação agora",
+
+            title:
+              dosesPendentesAtrasadas.length ===
+              1
+                ? "Uma dose está aguardando"
+                : `${dosesPendentesAtrasadas.length} doses estão aguardando`,
+
+            description:
+              "Resolva as pendências da rotina sem sair da Home.",
+
+            color:
+              "#FB7185",
+          };
+        }
+
+        if (
+          totalCompromissosHoje >
+          0
+        ) {
+          return {
+            eyebrow:
+              "Agenda de hoje",
+
+            title:
+              totalCompromissosHoje ===
+              1
+                ? "Você tem um compromisso"
+                : `Você tem ${totalCompromissosHoje} compromissos`,
+
+            description:
+              "Sua agenda clínica está organizada logo abaixo.",
+
+            color:
+              "#38BDF8",
+          };
+        }
+
+        if (
+          unifiedAlerts.length >
+          0
+        ) {
+          return {
+            eyebrow:
+              "Tudo sob controle",
+
+            title:
+              "Rotina em dia",
+
+            description:
+              `${unifiedAlerts.length} lembrete${
+                unifiedAlerts.length ===
+                1
+                  ? ""
+                  : "s"
+              } para planejar com calma.`,
+
+            color:
+              "#34D399",
+          };
+        }
+
+        return {
+          eyebrow:
+            "Tudo sob controle",
+
+          title:
+            "Seu dia está tranquilo",
+
+          description:
+            "Nenhuma pendência clínica pede atenção agora.",
+
+          color:
+            "#34D399",
+        };
+      },
+      [
+        dosesPendentesAtrasadas.length,
+        totalCompromissosHoje,
+        unifiedAlerts.length,
+      ]
+    );
+
   // ==========================================================
   // FINANCEIRO
   // ==========================================================
@@ -1153,6 +1336,12 @@ export default function HomePage() {
   const [
     modalPendenciasAberto,
     setModalPendenciasAberto,
+  ] =
+    useState(false);
+
+  const [
+    mostrarTodosAlertas,
+    setMostrarTodosAlertas,
   ] =
     useState(false);
 
@@ -1532,7 +1721,7 @@ export default function HomePage() {
           </motion.div>
         </header>
 
-        <section className="space-y-7 px-5 pt-5">
+        <section className="space-y-6 px-5 pt-5">
           {/* ===================================================
               HOJE
           =================================================== */}
@@ -1550,7 +1739,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.02,
             }}
-            className="overflow-hidden rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-sm"
+            className="relative overflow-hidden rounded-[30px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-[0_18px_50px_rgba(0,0,0,0.18)]"
           >
             <button
               type="button"
@@ -1563,7 +1752,7 @@ export default function HomePage() {
                   "/hoje"
                 );
               }}
-              className="flex w-full items-center justify-between gap-4 px-5 pb-4 pt-5 text-left transition-all active:bg-surface-raised/40"
+              className="flex w-full items-center justify-between gap-4 px-5 pb-3 pt-5 text-left transition-all active:bg-surface-raised/40"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -1574,29 +1763,39 @@ export default function HomePage() {
                     className="text-ice"
                   />
 
-                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ice">
-                    Hoje
+                  <p
+                    className="font-mono text-[9px] uppercase tracking-[0.22em]"
+                    style={{
+                      color:
+                        resumoContextual.color,
+                    }}
+                  >
+                    {resumoContextual.eyebrow}
                   </p>
                 </div>
 
-                <p className="mt-1 font-display text-lg font-semibold text-ink-primary">
-                  Sua rotina
+                <p className="mt-1 font-display text-xl font-semibold leading-tight text-ink-primary">
+                  {resumoContextual.title}
                 </p>
 
-                <p className="mt-0.5 text-[11px] text-ink-muted">
-                  {dosesPendentesAtrasadas.length >
-                  0
-                    ? `${dosesPendentesAtrasadas.length} dose${
-                        dosesPendentesAtrasadas.length >
-                        1
-                          ? "s"
-                          : ""
-                      } aguardando ação`
-                    : "Nenhuma dose atrasada agora"}
+                <p className="mt-1 max-w-[250px] text-[11px] leading-relaxed text-ink-muted">
+                  {resumoContextual.description}
                 </p>
               </div>
 
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-ice/20 bg-ice/10 text-ice">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+                style={{
+                  borderColor:
+                    `${resumoContextual.color}35`,
+
+                  backgroundColor:
+                    `${resumoContextual.color}14`,
+
+                  color:
+                    resumoContextual.color,
+                }}
+              >
                 <HeartPulse
                   size={
                     19
@@ -1605,7 +1804,38 @@ export default function HomePage() {
               </div>
             </button>
 
-            <div className="grid grid-cols-2 border-t border-surface-border/40">
+            <div className="px-5 pb-4">
+              <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-medium text-ink-muted">
+                <span>
+                  Doses de hoje
+                </span>
+
+                <span className="font-mono text-ink-primary">
+                  {dosesTomadasDaRotinaHoje}/
+                  {totalDosesPlanejadasHoje}
+                </span>
+              </div>
+
+              <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised">
+                <motion.div
+                  initial={{
+                    width:
+                      0,
+                  }}
+                  animate={{
+                    width:
+                      `${progressoDosesHoje}%`,
+                  }}
+                  transition={{
+                    duration:
+                      0.45,
+                  }}
+                  className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 border-t border-surface-border/40">
               <button
                 type="button"
                 onClick={() => {
@@ -1617,9 +1847,9 @@ export default function HomePage() {
                     "/hoje"
                   );
                 }}
-                className="border-b border-r border-surface-border/40 px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+                className="border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
               >
-                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
                   <Calendar
                     size={
                       13
@@ -1630,7 +1860,7 @@ export default function HomePage() {
                   Compromissos
                 </div>
 
-                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
+                <p className="mt-1 font-mono text-base font-bold text-ink-primary">
                   {
                     totalCompromissosHoje
                   }
@@ -1648,9 +1878,9 @@ export default function HomePage() {
                     true
                   );
                 }}
-                className="border-b border-surface-border/40 px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+                className="border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
               >
-                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
                   <Clock
                     size={
                       13
@@ -1667,7 +1897,7 @@ export default function HomePage() {
                 </div>
 
                 <p
-                  className={`mt-1 font-mono text-xl font-bold ${
+                  className={`mt-1 font-mono text-base font-bold ${
                     dosesPendentesAtrasadas.length >
                     0
                       ? "text-coral"
@@ -1691,9 +1921,9 @@ export default function HomePage() {
                     "/saude/medicamentos"
                   );
                 }}
-                className="border-r border-surface-border/40 px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+                className="border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
               >
-                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
                   <Pill
                     size={
                       13
@@ -1704,7 +1934,7 @@ export default function HomePage() {
                   Medicamentos
                 </div>
 
-                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
+                <p className="mt-1 font-mono text-base font-bold text-ink-primary">
                   {
                     medicamentosAtivos.length
                   }
@@ -1722,9 +1952,9 @@ export default function HomePage() {
                     "/hoje"
                   );
                 }}
-                className="px-4 py-3.5 text-left transition-colors active:bg-surface-raised/50"
+                className="px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
               >
-                <div className="flex items-center gap-2 text-[10px] text-ink-muted">
+                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
                   <CheckCircle2
                     size={
                       13
@@ -1735,7 +1965,7 @@ export default function HomePage() {
                   Tomadas
                 </div>
 
-                <p className="mt-1 font-mono text-xl font-bold text-ink-primary">
+                <p className="mt-1 font-mono text-base font-bold text-ink-primary">
                   {
                     dosesTomadasHoje
                   }
@@ -1793,16 +2023,16 @@ export default function HomePage() {
               </div>
 
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide"
-                style={{
-                  scrollbarWidth:
-                    "none",
-
-                  msOverflowStyle:
-                    "none",
-                }}
+                className="space-y-2"
               >
-                {unifiedAlerts.map(
+                {(
+                  mostrarTodosAlertas
+                    ? unifiedAlerts
+                    : unifiedAlerts.slice(
+                        0,
+                        3
+                      )
+                ).map(
                   (
                     alert
                   ) => (
@@ -1810,7 +2040,7 @@ export default function HomePage() {
                       key={
                         alert.id
                       }
-                      className="w-[88%] max-w-[350px] shrink-0 snap-start"
+                      className="w-full"
                     >
                       <AlertRow
                         alert={
@@ -1821,7 +2051,39 @@ export default function HomePage() {
                   )
                 )}
 
-                <div className="w-2 shrink-0" />
+                {unifiedAlerts.length >
+                  3 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setMostrarTodosAlertas(
+                        (
+                          previous
+                        ) =>
+                          !previous
+                      );
+                    }}
+                    className="flex w-full items-center justify-center gap-1 rounded-2xl border border-surface-border/40 bg-surface/50 py-2.5 text-[10px] font-semibold text-ice transition-all active:scale-[0.985]"
+                  >
+                    {mostrarTodosAlertas
+                      ? "Mostrar menos"
+                      : `Ver mais ${
+                          unifiedAlerts.length -
+                          3
+                        } lembrete${
+                          unifiedAlerts.length -
+                            3 ===
+                          1
+                            ? ""
+                            : "s"
+                        }`}
+                  </button>
+                )}
+
               </div>
             </motion.section>
           )}
@@ -1885,14 +2147,7 @@ export default function HomePage() {
               </div>
 
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide"
-                style={{
-                  scrollbarWidth:
-                    "none",
-
-                  msOverflowStyle:
-                    "none",
-                }}
+                className="space-y-2"
               >
                 {consultasHoje.map(
                   (
@@ -1912,7 +2167,7 @@ export default function HomePage() {
                           `/saude/consultas/detalhes?id=${consulta.id}`
                         );
                       }}
-                      className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+                      className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                         <Stethoscope
@@ -1961,7 +2216,7 @@ export default function HomePage() {
                           `/saude/cirurgias/detalhes?id=${cirurgia.id}`
                         );
                       }}
-                      className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+                      className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
                         <Syringe
@@ -2007,7 +2262,7 @@ export default function HomePage() {
                           `/saude/exames/detalhes?id=${exame.id}`
                         );
                       }}
-                      className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+                      className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
                         <FlaskConical
@@ -2035,7 +2290,6 @@ export default function HomePage() {
                   )
                 )}
 
-                <div className="w-2 shrink-0" />
               </div>
             </motion.section>
           )}
@@ -2143,16 +2397,14 @@ export default function HomePage() {
               </button>
             ) : (
               <div
-                className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide"
-                style={{
-                  scrollbarWidth:
-                    "none",
-
-                  msOverflowStyle:
-                    "none",
-                }}
+                className="grid grid-cols-2 gap-2.5"
               >
-                {tratamentos.map(
+                {tratamentos
+                  .slice(
+                    0,
+                    4
+                  )
+                  .map(
                   (
                     tratamento: any
                   ) => {
@@ -2180,7 +2432,7 @@ export default function HomePage() {
                             `/saude/tratamentos/detalhes?id=${tratamento.id}`
                           );
                         }}
-                        className="flex w-[82%] max-w-[310px] shrink-0 snap-start items-center justify-between overflow-hidden rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+                        className="flex min-h-[82px] w-full items-center justify-between overflow-hidden rounded-[20px] border bg-surface p-3 text-left shadow-sm transition-all active:scale-[0.985]"
                         style={{
                           borderColor:
                             `${cor}30`,
@@ -2194,7 +2446,7 @@ export default function HomePage() {
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
                             style={{
                               backgroundColor:
                                 `${cor}15`,
@@ -2240,7 +2492,6 @@ export default function HomePage() {
                   }
                 )}
 
-                <div className="w-2 shrink-0" />
               </div>
             )}
           </motion.section>
@@ -2282,7 +2533,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-4 gap-2">
               {quickActions.map(
                 (
                   action
@@ -2305,7 +2556,7 @@ export default function HomePage() {
                           action.path
                         );
                       }}
-                      className="flex min-h-[72px] items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface px-3.5 py-3 text-left shadow-sm transition-all active:scale-[0.975]"
+                      className="flex min-h-[84px] flex-col items-center justify-center gap-2 rounded-[20px] border border-surface-border/50 bg-surface px-2 py-3 text-center shadow-sm transition-all active:scale-[0.975]"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
                         <Icon
@@ -2315,14 +2566,14 @@ export default function HomePage() {
                         />
                       </div>
 
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-ink-primary">
+                      <div className="min-w-0 max-w-full">
+                        <p className="truncate text-[10px] font-semibold text-ink-primary">
                           {
                             action.label
                           }
                         </p>
 
-                        <p className="mt-0.5 truncate text-[9px] text-ink-muted">
+                        <p className="hidden">
                           {
                             action.description
                           }
