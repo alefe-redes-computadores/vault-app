@@ -137,6 +137,7 @@ import type {
   Farmacia,
   Hospital,
   LocalSaude,
+  ModoLembreteReceita,
   Medico,
   Medicamento,
   TipoReceita,
@@ -1197,6 +1198,22 @@ function EditarMedicamentoContent() {
     setProximaRenovacaoTexto,
   ] =
     useState(
+    ""
+    );
+
+  const [
+    modoLembreteReceita,
+    setModoLembreteReceita,
+  ] =
+    useState<ModoLembreteReceita>(
+      "automatico"
+    );
+
+  const [
+    dataLembreteReceitaTexto,
+    setDataLembreteReceitaTexto,
+  ] =
+    useState(
       ""
     );
 
@@ -1866,6 +1883,18 @@ function EditarMedicamentoContent() {
             setProximaRenovacaoTexto(
               isoParaBr(
                 item.proxima_renovacao ||
+                  ""
+              )
+            );
+
+            setModoLembreteReceita(
+              item.lembrete_receita_modo ||
+                "automatico"
+            );
+
+            setDataLembreteReceitaTexto(
+              isoParaBr(
+                item.lembrete_receita_data ||
                   ""
               )
             );
@@ -2818,6 +2847,21 @@ function EditarMedicamentoContent() {
       }
 
       if (
+        modoLembreteReceita ===
+          "data_personalizada" &&
+        !brParaIso(
+          dataLembreteReceitaTexto
+        )
+      ) {
+        newErrors.dataLembreteReceitaTexto =
+          "Informe uma data válida";
+
+        shakeList.push(
+          "dataLembreteReceitaTexto"
+        );
+      }
+
+      if (
         tipoAquisicao ===
           "sus" &&
         dataRetornoSusTexto &&
@@ -3132,6 +3176,15 @@ function EditarMedicamentoContent() {
               proximaRenovacaoTexto
             ) ||
             undefined;
+
+          const dataLembreteReceitaISO =
+            modoLembreteReceita ===
+              "data_personalizada"
+              ? brParaIso(
+                  dataLembreteReceitaTexto
+                ) ||
+                undefined
+              : undefined;
 
           const dataRetornoSusISO =
             tipoAquisicao ===
@@ -3529,6 +3582,21 @@ function EditarMedicamentoContent() {
 
               tipo_receita:
                 tipoReceita,
+
+              lembrete_receita_modo:
+                tipoReceita ===
+                  "amarela"
+                  ? "automatico"
+                  : modoLembreteReceita,
+
+              lembrete_receita_data:
+                tipoReceita !==
+                  "amarela" &&
+                modoLembreteReceita ===
+                  "data_personalizada"
+                  ? dataLembreteReceitaISO ||
+                    null
+                  : null,
 
               tratamento_ids:
                 tratamentosSelecionados,
@@ -5934,6 +6002,138 @@ function EditarMedicamentoContent() {
                         }
                       />
                     </div>
+                  </div>
+
+                  <div className="mb-5 rounded-2xl border border-surface-border/40 bg-surface-raised/60 p-4">
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-ink-primary">
+                        Quando lembrar da próxima receita?
+                      </p>
+
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                        {tipoReceita ===
+                        "amarela"
+                          ? "Receitas A1/A2/A3 permanecem no acompanhamento mensal rigoroso do Vault."
+                          : "No automático, o Vault combina validade, estoque e consumo real antes de pedir uma nova receita."}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          [
+                            "automatico",
+                            "Automático",
+                          ],
+                          [
+                            "7_dias",
+                            "Com 7 dias",
+                          ],
+                          [
+                            "15_dias",
+                            "Com 15 dias",
+                          ],
+                          [
+                            "data_personalizada",
+                            "Data escolhida",
+                          ],
+                        ] as const
+                      ).map(
+                        ([
+                          value,
+                          label,
+                        ]) => {
+                          const selected =
+                            (
+                              tipoReceita ===
+                              "amarela"
+                                ? "automatico"
+                                : modoLembreteReceita
+                            ) ===
+                            value;
+
+                          return (
+                            <button
+                              key={
+                                value
+                              }
+                              type="button"
+                              disabled={
+                                tipoReceita ===
+                                  "amarela" &&
+                                value !==
+                                  "automatico"
+                              }
+                              onClick={
+                                () => {
+                                  setModoLembreteReceita(
+                                    value
+                                  );
+
+                                  if (
+                                    value !==
+                                    "data_personalizada"
+                                  ) {
+                                    setDataLembreteReceitaTexto(
+                                      ""
+                                    );
+                                  }
+
+                                  markChanged();
+                                  trigger(
+                                    "light"
+                                  );
+                                }
+                              }
+                              className={`rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all active:scale-95 ${
+                                selected
+                                  ? "border-ice/40 bg-ice/10 text-ice"
+                                  : "border-surface-border/50 bg-surface text-ink-muted"
+                              } disabled:cursor-not-allowed disabled:opacity-35`}
+                            >
+                              {
+                                label
+                              }
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+
+                    {tipoReceita !==
+                      "amarela" &&
+                      modoLembreteReceita ===
+                        "data_personalizada" && (
+                        <div
+                          className={`mt-3 ${
+                            shakeFields.includes(
+                              "dataLembreteReceitaTexto"
+                            )
+                              ? "animate-shake"
+                              : ""
+                          }`}
+                        >
+                          <Input
+                            label="Começar a lembrar em"
+                            placeholder="DD/MM/AAAA"
+                            value={
+                              dataLembreteReceitaTexto
+                            }
+                            onChange={
+                              handleDateChange(
+                                setDataLembreteReceitaTexto
+                              )
+                            }
+                            maxLength={
+                              10
+                            }
+                            inputMode="numeric"
+                            error={
+                              errors.dataLembreteReceitaTexto
+                            }
+                          />
+                        </div>
+                      )}
                   </div>
 
                   {!attachment ? (

@@ -1011,21 +1011,8 @@ export default function MedicamentosListPage() {
 
             {/* LINHA 3 */}
 
-            <div className="mt-auto flex min-h-8 flex-wrap items-center justify-between gap-2 pt-3">
-              <div className="flex min-w-0 items-center gap-2">
-                {isSOS && (
-                  <span className="flex shrink-0 items-center gap-0.5 rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-400">
-                    <Zap
-                      size={
-                        8
-                      }
-                      fill="currentColor"
-                    />
-
-                    SOS
-                  </span>
-                )}
-
+            <div className="mt-auto flex min-h-8 items-center justify-between gap-2 pt-3">
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                 {!isSuspenso && (
                   <>
                     {rotinaConcluida && (
@@ -1116,7 +1103,7 @@ export default function MedicamentosListPage() {
                               );
                             }
                           }
-                          className="flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-transform active:scale-95"
+                          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-transform active:scale-95"
                         >
                           <Zap
                             size={
@@ -1148,7 +1135,7 @@ export default function MedicamentosListPage() {
                               );
                             }
                           }
-                          className="flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-transform active:scale-95"
+                          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-transform active:scale-95"
                         >
                           <Zap
                             size={
@@ -1181,7 +1168,7 @@ export default function MedicamentosListPage() {
                               );
                             }
                           }
-                          className="flex items-center gap-1 rounded-lg bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-400 transition-transform active:scale-95"
+                          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-400 transition-transform active:scale-95"
                         >
                           <Zap
                             size={
@@ -1212,11 +1199,11 @@ export default function MedicamentosListPage() {
                         );
 
                         router.push(
-                          "/saude/documentos/novo"
+                          `/saude/documentos/novo?medicamento_id=${med.id}`
                         );
                       }
                     }
-                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[10px] font-bold transition-transform active:scale-95 ${
+                    className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[10px] font-bold transition-transform active:scale-95 ${
                       insight.urgencia ===
                       "alta"
                         ? "border-coral/30 bg-coral/10 text-coral"

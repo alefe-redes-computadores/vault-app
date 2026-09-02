@@ -1855,6 +1855,14 @@ export function useSyncQueue() {
                     med.tipo_receita ||
                     "comum",
 
+                  lembrete_receita_modo:
+                    med.lembrete_receita_modo ||
+                    "automatico",
+
+                  lembrete_receita_data:
+                    med.lembrete_receita_data ||
+                    null,
+
                   tipo_uso:
                     med.tipo_uso ||
                     "continuo",

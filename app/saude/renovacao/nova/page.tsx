@@ -92,13 +92,13 @@ import {
 import {
   analisarValidadeReceita,
   calcularDataValidadeReceita,
-  RECEITA_VALIDADE_PADRAO_DIAS,
 } from "@/lib/health-insights";
 
 import {
   getClinicalTheme,
   getDaysUntil,
   getLocalTodayISO,
+  VALIDADE_RECEITA_DIAS,
 } from "@/lib/health-utils";
 
 import type {
@@ -845,7 +845,10 @@ function NovaRenovacaoContent() {
   const validadeCanonica =
     dataPrescricaoISO
       ? analisarValidadeReceita(
-          dataPrescricaoISO
+          dataPrescricaoISO,
+          selectedMedicamento
+            ?.tipo_receita ||
+            "comum"
         )
       : null;
 
@@ -858,7 +861,11 @@ function NovaRenovacaoContent() {
       dataAtual:
         string,
       ignorarEdicaoManual:
-        boolean = false
+        boolean = false,
+      tipoReceita =
+        selectedMedicamento
+          ?.tipo_receita ||
+        "comum"
     ) => {
       if (
         proximaEditadaManualmente &&
@@ -895,7 +902,8 @@ function NovaRenovacaoContent() {
 
       const proxISO =
         calcularDataValidadeReceita(
-          currentISO
+          currentISO,
+          tipoReceita
         );
 
       setProximaDisplay(
@@ -1000,7 +1008,9 @@ function NovaRenovacaoContent() {
 
       recalcularProximaData(
         dataDisplay,
-        true
+        true,
+        item.tipo_receita ||
+          "comum"
       );
     };
 
@@ -1431,7 +1441,10 @@ function NovaRenovacaoContent() {
                 ) ||
                 undefined
               : calcularDataValidadeReceita(
-                  dataISO
+                  dataISO,
+                  selectedMedicamento
+                    ?.tipo_receita ||
+                    "comum"
                 ) ||
                 undefined;
 
@@ -1533,6 +1546,11 @@ function NovaRenovacaoContent() {
               {
                 medicamento_id:
                   medicamentoId,
+
+                document_id:
+                  selectedMedicamento
+                    ?.document_id ||
+                  undefined,
 
                 medico_id:
                   medicoId ||
@@ -2268,7 +2286,17 @@ function NovaRenovacaoContent() {
 
                   <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
                     O Vault preenche automaticamente esta data em{" "}
-                    {RECEITA_VALIDADE_PADRAO_DIAS} dias após a prescrição, conforme a regra atual do aplicativo. Você pode alterar a data manualmente quando necessário.
+                    {VALIDADE_RECEITA_DIAS[
+                      selectedMedicamento
+                        ?.tipo_receita ||
+                        "comum"
+                    ]
+                      ? `${VALIDADE_RECEITA_DIAS[
+                          selectedMedicamento
+                            ?.tipo_receita ||
+                            "comum"
+                        ]} dias após a prescrição, conforme o tipo de receita cadastrado`
+                      : "somente quando existir uma validade de referência para o tipo de receita cadastrado"}. Você pode alterar a data manualmente quando necessário.
                   </p>
 
                   {proximaEditadaManualmente && (

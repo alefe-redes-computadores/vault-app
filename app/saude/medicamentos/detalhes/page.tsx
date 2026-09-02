@@ -2563,7 +2563,13 @@ function MedicamentoDetalhesContent() {
                               : "text-amber-400"
                           }`}
                         >
-                          Atenção à renovação
+                          {alertaInteligente.motivo ===
+                          "receita"
+                            ? "Planejamento da receita"
+                            : alertaInteligente.motivo ===
+                                "sus"
+                              ? "Próxima retirada"
+                              : "Atenção ao estoque"}
                         </p>
 
                         {diasAteRenovacao !==
@@ -2606,7 +2612,10 @@ function MedicamentoDetalhesContent() {
                         onClick={
                           () =>
                             router.push(
-                              `/saude/renovacao/nova?medicamento_id=${id}`
+                              alertaInteligente.motivo ===
+                                "receita"
+                                ? `/saude/documentos/novo?medicamento_id=${id}`
+                                : `/saude/renovacao/nova?medicamento_id=${id}`
                             )
                         }
                         className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold transition-transform active:scale-95 ${
@@ -2616,7 +2625,13 @@ function MedicamentoDetalhesContent() {
                             : "bg-amber-400 text-void"
                         }`}
                       >
-                        Registrar renovação
+                        {alertaInteligente.motivo ===
+                        "receita"
+                          ? "Adicionar nova receita"
+                          : alertaInteligente.motivo ===
+                              "sus"
+                            ? "Registrar retirada"
+                            : "Registrar aquisição"}
                       </button>
                     </div>
                   </div>
@@ -3983,8 +3998,18 @@ function MedicamentoDetalhesContent() {
                     Sem data
                   </span>
                 ) : isVencida ? (
-                  <span className="rounded-full bg-coral px-2 py-1 text-[9px] font-bold uppercase text-void">
-                    Data atingida
+                  <span
+                    className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase ${
+                      alertaInteligente.motivo ===
+                      "receita"
+                        ? "bg-coral text-void"
+                        : "bg-surface-raised text-ink-muted"
+                    }`}
+                  >
+                    {alertaInteligente.motivo ===
+                    "receita"
+                      ? "Ação necessária"
+                      : "Validade encerrada"}
                   </span>
                 ) : (
                   <span className="rounded-full bg-emerald-500 px-2 py-1 text-[9px] font-bold uppercase text-void">

@@ -103,7 +103,7 @@ const URGENTE_DIAS_CONTROLADA =
   7;
 
 const ATENCAO_DIAS_CONTROLADA =
-  18;
+  10;
 
 const URGENTE_DIAS_ESTOQUE =
   3;
@@ -1384,6 +1384,38 @@ export function getMedicamentoAlerts(
             med.proxima_renovacao
           );
 
+        const estoque =
+          computeEstoqueInfo(
+            med
+          );
+
+        const isMensalRigorosa =
+          med.tipo_receita ===
+          "amarela";
+
+        const coberturaConfortavel =
+          med.tipo_uso ===
+            "continuo"
+            ? estoque?.diasRestantes !==
+                null &&
+              estoque?.diasRestantes !==
+                undefined &&
+              estoque.diasRestantes >
+                10
+            : estoque?.estimativaDosesDisponivel ===
+                true &&
+              estoque.dosesRestantes >
+                5;
+
+        const level =
+          !isMensalRigorosa &&
+          coberturaConfortavel
+            ? "ok"
+            : getAlertLevel(
+                daysUntil,
+                controlada
+              );
+
         return {
           id:
             med.id!,
@@ -1405,11 +1437,7 @@ export function getMedicamentoAlerts(
             daysUntil ??
             999,
 
-          level:
-            getAlertLevel(
-              daysUntil,
-              controlada
-            ),
+          level,
 
           href:
             `/saude/medicamentos/editar?id=${med.id}`,

@@ -44,6 +44,12 @@ export type DocumentFieldType = "text" | "date" | "select";
 
 export type TipoReceita = "comum" | "amarela" | "azul" | "branca";
 
+export type ModoLembreteReceita =
+  | "automatico"
+  | "7_dias"
+  | "15_dias"
+  | "data_personalizada";
+
 export type VaultPermission = "view" | "edit" | "admin";
 
 export type VaultMemberStatus =
@@ -744,6 +750,8 @@ export interface Medicamento {
 
   observacoes?: string;
   tipo_receita?: TipoReceita;
+  lembrete_receita_modo?: ModoLembreteReceita;
+  lembrete_receita_data?: string;
   tipo_uso?: "continuo" | "esporadico" | "sos";
 
   tipo_aquisicao?: "comprado" | "sus" | "gratuito";
@@ -843,6 +851,7 @@ export type NullableMedicamentoFields = {
   proxima_renovacao?: string | null;
 
   observacoes?: string | null;
+  lembrete_receita_data?: string | null;
   data_retorno_sus?: string | null;
 
   cor_principal?: string | null;

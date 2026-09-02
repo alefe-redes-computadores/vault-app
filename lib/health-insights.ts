@@ -5,6 +5,7 @@ import {
   getDaysUntil,
   getLocalTodayISO,
   parseLocalDate,
+  VALIDADE_RECEITA_DIAS,
 } from "./health-utils";
 
 import type {
@@ -18,6 +19,7 @@ import type {
   RegistroSaude,
   Renovacao,
   Tratamento,
+  TipoReceita,
 } from "./types";
 
 // ============================================================
@@ -72,6 +74,10 @@ export interface ValidadeReceitaInsight {
 
   mensagem: string;
 }
+
+type TipoOuDiasValidadeReceita =
+  | TipoReceita
+  | number;
 
 /**
  * Regra atual do produto Vault.
@@ -613,12 +619,25 @@ function isInsideWindow(
 
 export function calcularDataValidadeReceita(
   dataReceita?: string | null,
-  diasValidade:
-    number =
+  tipoOuDias:
+    TipoOuDiasValidadeReceita =
       RECEITA_VALIDADE_PADRAO_DIAS
 ): string | null {
+  const diasValidade =
+    (
+      typeof tipoOuDias ===
+      "number"
+        ? tipoOuDias
+        : VALIDADE_RECEITA_DIAS[
+            tipoOuDias
+          ]
+    ) ||
+    0;
+
   if (
     !dataReceita ||
+    diasValidade ===
+      null ||
     !Number.isInteger(
       diasValidade
     ) ||
@@ -652,14 +671,25 @@ export function calcularDataValidadeReceita(
 
 export function analisarValidadeReceita(
   dataReceita?: string | null,
-  diasValidade:
-    number =
+  tipoOuDias:
+    TipoOuDiasValidadeReceita =
       RECEITA_VALIDADE_PADRAO_DIAS
 ): ValidadeReceitaInsight {
+  const diasValidade =
+    (
+      typeof tipoOuDias ===
+      "number"
+        ? tipoOuDias
+        : VALIDADE_RECEITA_DIAS[
+            tipoOuDias
+          ]
+    ) ||
+    0;
+
   const dataValidade =
     calcularDataValidadeReceita(
       dataReceita,
-      diasValidade
+      tipoOuDias
     );
 
   if (
@@ -1236,11 +1266,98 @@ export function sugerirRenovacao(
       ? estoque.diasRestantes
       : null;
 
+  const dosesRestantes =
+    estoque?.estimativaDosesDisponivel
+      ? estoque.dosesRestantes
+      : null;
+
+  const modoLembrete =
+    medicamento.lembrete_receita_modo ||
+    "automatico";
+
+  const limitePlanejamento =
+    modoLembrete ===
+    "7_dias"
+      ? 7
+      : modoLembrete ===
+          "15_dias"
+        ? 15
+        : 10;
+
+  const isReceitaMensalRigorosa =
+    medicamento.tipo_receita ===
+    "amarela";
+
+  const diasAteLembretePersonalizado =
+    modoLembrete ===
+      "data_personalizada" &&
+    medicamento.lembrete_receita_data
+      ? getDaysUntil(
+          medicamento.lembrete_receita_data
+        )
+      : null;
+
+  const aguardandoDataPersonalizada =
+    diasAteLembretePersonalizado !==
+      null &&
+    diasAteLembretePersonalizado >
+      0;
+
   if (
+    diasAteLembretePersonalizado !==
+      null &&
+    diasAteLembretePersonalizado <=
+      0
+  ) {
+    return {
+      deveRenovar: true,
+
+      mensagem:
+        `Você escolheu esta data para planejar uma nova receita de "${medicamento.nome}".`,
+
+      urgencia:
+        diasAteLembretePersonalizado <
+        -3
+          ? "alta"
+          : "media",
+
+      motivo:
+        "receita",
+
+      diasAteRenovacao:
+        diasAteLembretePersonalizado,
+
+      diasRestantesEstoque:
+        diasRestantes,
+    };
+  }
+
+  if (
+    !aguardandoDataPersonalizada &&
     diasAteRenovacao !==
       null &&
     diasAteRenovacao <
-      0
+      0 &&
+    (
+      isReceitaMensalRigorosa ||
+      (
+        isContinuo &&
+        diasRestantes ===
+          null
+      ) ||
+      (
+        !isContinuo &&
+        (
+          !temControleEstoque ||
+          (
+            dosesRestantes !==
+              null &&
+            dosesRestantes <=
+              5
+          )
+        )
+      )
+    )
   ) {
     return {
       deveRenovar: true,
@@ -1344,13 +1461,25 @@ export function sugerirRenovacao(
           true,
 
         mensagem:
-          `O estoque registrado de "${medicamento.nome}" está zerado.`,
+          isReceitaMensalRigorosa &&
+          diasAteRenovacao !==
+            null &&
+          diasAteRenovacao <=
+            limitePlanejamento
+            ? `O estoque de "${medicamento.nome}" está zerado e o ciclo da receita controlada exige atenção.`
+            : `O estoque registrado de "${medicamento.nome}" está zerado.`,
 
         urgencia:
           "alta",
 
         motivo:
-          "estoque",
+          isReceitaMensalRigorosa &&
+          diasAteRenovacao !==
+            null &&
+          diasAteRenovacao <=
+            limitePlanejamento
+            ? "receita"
+            : "estoque",
 
         diasAteRenovacao,
 
@@ -1360,9 +1489,21 @@ export function sugerirRenovacao(
     }
 
     if (
+      !aguardandoDataPersonalizada &&
+      (
+        isReceitaMensalRigorosa ||
+        !temControleEstoque ||
+        (
+          dosesRestantes !==
+            null &&
+          dosesRestantes <=
+            5
+        )
+      ) &&
       diasAteRenovacao !==
         null &&
-      diasAteRenovacao <= 10
+      diasAteRenovacao <=
+        limitePlanejamento
     ) {
       return {
         deveRenovar:
@@ -1419,13 +1560,25 @@ export function sugerirRenovacao(
       deveRenovar: true,
 
       mensagem:
-        `O estoque registrado de "${medicamento.nome}" está zerado.`,
+        isReceitaMensalRigorosa &&
+        diasAteRenovacao !==
+          null &&
+        diasAteRenovacao <=
+          limitePlanejamento
+          ? `O estoque de "${medicamento.nome}" está zerado e o ciclo da receita controlada exige atenção.`
+          : `O estoque registrado de "${medicamento.nome}" está zerado.`,
 
       urgencia:
         "alta",
 
       motivo:
-        "estoque",
+        isReceitaMensalRigorosa &&
+        diasAteRenovacao !==
+          null &&
+        diasAteRenovacao <=
+          limitePlanejamento
+          ? "receita"
+          : "estoque",
 
       diasAteRenovacao,
 
@@ -1437,7 +1590,8 @@ export function sugerirRenovacao(
   if (
     diasRestantes !==
       null &&
-    diasRestantes <= 10
+    diasRestantes <=
+      limitePlanejamento
   ) {
     return {
       deveRenovar: true,
@@ -1445,7 +1599,13 @@ export function sugerirRenovacao(
       mensagem:
         diasRestantes <= 0
           ? `O estoque registrado de "${medicamento.nome}" está zerado.`
-          : `O estoque registrado de "${medicamento.nome}" corresponde a aproximadamente ${diasRestantes} dia(s) na rotina configurada.`,
+          : isReceitaMensalRigorosa &&
+              diasAteRenovacao !==
+                null &&
+              diasAteRenovacao <=
+                limitePlanejamento
+            ? `O estoque de "${medicamento.nome}" corresponde a aproximadamente ${diasRestantes} dia(s), e o próximo ciclo da receita controlada também está próximo.`
+            : `O estoque registrado de "${medicamento.nome}" corresponde a aproximadamente ${diasRestantes} dia(s) na rotina configurada.`,
 
       urgencia:
         diasRestantes <=
@@ -1454,7 +1614,19 @@ export function sugerirRenovacao(
           : "media",
 
       motivo:
-        "estoque",
+        isReceitaMensalRigorosa &&
+          diasAteRenovacao !==
+            null &&
+          diasAteRenovacao <=
+            limitePlanejamento
+          ? "receita"
+          : !aguardandoDataPersonalizada &&
+              diasAteRenovacao !==
+                null &&
+              diasAteRenovacao <=
+                0
+          ? "receita"
+          : "estoque",
 
       diasAteRenovacao,
 
@@ -1464,9 +1636,16 @@ export function sugerirRenovacao(
   }
 
   if (
+    !aguardandoDataPersonalizada &&
+    (
+      isReceitaMensalRigorosa ||
+      diasRestantes ===
+        null
+    ) &&
     diasAteRenovacao !==
       null &&
-    diasAteRenovacao <= 10
+    diasAteRenovacao <=
+      limitePlanejamento
   ) {
     return {
       deveRenovar: true,
@@ -3156,8 +3335,6 @@ export function analisarReceitaArquivada(
   renovacoesDoMedicamento:
     Renovacao[]
 ): StatusReceita | null {
-  void medicamentoAlvo;
-
   if (
     !dataReceita
   ) {
@@ -3208,7 +3385,10 @@ export function analisarReceitaArquivada(
 
   const validade =
     analisarValidadeReceita(
-      dataReceita
+      dataReceita,
+      medicamentoAlvo
+        ?.tipo_receita ||
+        RECEITA_VALIDADE_PADRAO_DIAS
     );
 
   if (
@@ -4632,7 +4812,7 @@ export function processarListaMedicamentos(
         ) {
           receita = {
             sigla:
-              "A1/A2",
+              "A1/A2/A3",
 
             corBorda:
               "#fbbf24",
