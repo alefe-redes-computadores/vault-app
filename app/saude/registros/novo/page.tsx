@@ -894,6 +894,18 @@ export default function NovoRegistroSaudePage() {
         shakeList.push(
           "horario"
         );
+      } else if (
+        dataISO ===
+          getCurrentDateISO() &&
+        horario >
+          getCurrentTime()
+      ) {
+        nextErrors.horario =
+          "O horário do registro não pode estar no futuro.";
+
+        shakeList.push(
+          "horario"
+        );
       }
 
       if (

@@ -392,7 +392,6 @@ const ALLOWED_NAV_PATHS = [
   "/saude/medicamentos",
   "/saude/medicos",
   "/saude/farmacias",
-  "/saude/tratamentos",
   "/saude/hospitais",
   "/saude/locais",
   "/saude/renovacao",

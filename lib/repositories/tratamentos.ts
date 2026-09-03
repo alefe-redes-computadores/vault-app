@@ -1250,6 +1250,10 @@ export const tratamentosRepository = {
         db.tratamentos,
         db.medicamentos,
         db.exames,
+        db.consultas,
+        db.cirurgias,
+        db.registros_saude,
+        db.documents,
         db.syncQueue,
       ],
       async () => {
@@ -1382,6 +1386,227 @@ export const tratamentosRepository = {
               dispatchSync:
                 false,
             }
+          );
+        }
+
+        const consultasRelacionadas =
+          await db.consultas
+            .where("person_id")
+            .equals(safePersonId)
+            .filter((consulta) =>
+              (
+                consulta.tratamento_ids ||
+                []
+              ).includes(safeId)
+            )
+            .toArray();
+
+        for (
+          const consulta of
+          consultasRelacionadas
+        ) {
+          if (!consulta.id) {
+            continue;
+          }
+
+          const atualizada = {
+            ...consulta,
+            tratamento_ids:
+              Array.from(
+                new Set(
+                  (
+                    consulta.tratamento_ids ||
+                    []
+                  ).filter(
+                    (tratamentoId) =>
+                      tratamentoId !==
+                      safeId
+                  )
+                )
+              ),
+            updated_at: now,
+            synced: false,
+          };
+
+          await db.consultas.put(
+            atualizada
+          );
+
+          await enfileirarOperacao(
+            "consultas",
+            "update",
+            atualizada,
+            { dispatchSync: false }
+          );
+        }
+
+        const cirurgiasRelacionadas =
+          await db.cirurgias
+            .where("person_id")
+            .equals(safePersonId)
+            .filter((cirurgia) =>
+              (
+                cirurgia.tratamento_ids ||
+                []
+              ).includes(safeId)
+            )
+            .toArray();
+
+        for (
+          const cirurgia of
+          cirurgiasRelacionadas
+        ) {
+          if (!cirurgia.id) {
+            continue;
+          }
+
+          const atualizada = {
+            ...cirurgia,
+            tratamento_ids:
+              Array.from(
+                new Set(
+                  (
+                    cirurgia.tratamento_ids ||
+                    []
+                  ).filter(
+                    (tratamentoId) =>
+                      tratamentoId !==
+                      safeId
+                  )
+                )
+              ),
+            updated_at: now,
+            synced: false,
+          };
+
+          await db.cirurgias.put(
+            atualizada
+          );
+
+          await enfileirarOperacao(
+            "cirurgias",
+            "update",
+            atualizada,
+            { dispatchSync: false }
+          );
+        }
+
+        const registrosRelacionados =
+          await db.registros_saude
+            .where("person_id")
+            .equals(safePersonId)
+            .filter((registro) =>
+              (
+                registro.tratamento_ids ||
+                []
+              ).includes(safeId)
+            )
+            .toArray();
+
+        for (
+          const registro of
+          registrosRelacionados
+        ) {
+          if (!registro.id) {
+            continue;
+          }
+
+          const atualizado = {
+            ...registro,
+            tratamento_ids:
+              Array.from(
+                new Set(
+                  (
+                    registro.tratamento_ids ||
+                    []
+                  ).filter(
+                    (tratamentoId) =>
+                      tratamentoId !==
+                      safeId
+                  )
+                )
+              ),
+            updated_at: now,
+            synced: false,
+          };
+
+          await db.registros_saude.put(
+            atualizado
+          );
+
+          await enfileirarOperacao(
+            "registros_saude" as any,
+            "update",
+            atualizado,
+            { dispatchSync: false }
+          );
+        }
+
+        const documentosDaPessoa =
+          await db.documents
+            .where("person_id")
+            .equals(safePersonId)
+            .toArray();
+
+        for (
+          const documento of
+          documentosDaPessoa
+        ) {
+          if (!documento.id) {
+            continue;
+          }
+
+          const metadata =
+            documento.metadata || {};
+
+          const vinculoDireto =
+            documento.entidade_tipo ===
+              "tratamento" &&
+            documento.entidade_id ===
+              safeId;
+
+          const vinculoLegado =
+            metadata.tratamento_id ===
+            safeId;
+
+          if (
+            !vinculoDireto &&
+            !vinculoLegado
+          ) {
+            continue;
+          }
+
+          const metadataAtualizada = {
+            ...metadata,
+          };
+
+          delete metadataAtualizada.tratamento_id;
+
+          const atualizado = {
+            ...documento,
+            ...(vinculoDireto
+              ? {
+                  entidade_tipo: null,
+                  entidade_id: null,
+                }
+              : {}),
+            metadata:
+              metadataAtualizada,
+            updated_at:
+              now,
+            synced:
+              false,
+          };
+
+          await db.documents.put(
+            atualizado as any
+          );
+
+          await enfileirarOperacao(
+            "documents",
+            "update",
+            atualizado,
+            { dispatchSync: false }
           );
         }
 

@@ -14,7 +14,7 @@ import {
 import {
   Activity,
   AlertTriangle,
-  DollarSign,
+  History,
   Pill,
   Plus,
   Search,
@@ -61,6 +61,11 @@ import {
 } from "@/lib/health-utils";
 
 import {
+  analisarTratamento,
+  type TratamentoInsightAlerta,
+} from "@/lib/health-insights";
+
+import {
   ListCard,
   ListFilters,
   ListPageHeader,
@@ -81,7 +86,9 @@ type TratamentoEnriquecido =
     medicamentosCount: number;
     medicamentosAtivosCount: number;
     totalGasto: number;
-    alertaSemMedicamento: boolean;
+    alertaPrincipal:
+      | TratamentoInsightAlerta
+      | null;
   };
 
 // ============================================================
@@ -362,9 +369,8 @@ function TratamentoListContent() {
                 totalGasto:
                   0,
 
-                alertaSemMedicamento:
-                  tratamento.status ===
-                  "ativo",
+                alertaPrincipal:
+                  null,
               };
             }
 
@@ -408,6 +414,14 @@ function TratamentoListContent() {
                 0
               );
 
+            const insight =
+              analisarTratamento({
+                tratamento,
+                medicamentos:
+                  meds,
+                renovacoes,
+              });
+
             return {
               ...tratamento,
 
@@ -418,11 +432,9 @@ function TratamentoListContent() {
 
               totalGasto,
 
-              alertaSemMedicamento:
-                tratamento.status ===
-                  "ativo" &&
-                meds.length ===
-                  0,
+              alertaPrincipal:
+                insight.alertas[0] ||
+                null,
             };
           }
         ),
@@ -430,6 +442,7 @@ function TratamentoListContent() {
         tratamentos,
         medicamentosPorTratamento,
         gastoPorMedicamento,
+        renovacoes,
       ]
     );
 
@@ -621,7 +634,7 @@ function TratamentoListContent() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-[100dvh] bg-void pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+      <main className="relative min-h-[100dvh] bg-void pb-[calc(6rem+env(safe-area-inset-bottom))]">
         {/* ====================================================
             HEADER / FILTROS
             ==================================================== */}
@@ -951,7 +964,7 @@ function TratamentoListContent() {
                           className="flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted"
                           title="Histórico de aquisições dos medicamentos atualmente vinculados"
                         >
-                          <DollarSign
+                          <History
                             size={
                               10
                             }
@@ -969,7 +982,7 @@ function TratamentoListContent() {
                         ALERTA
                         ========================================== */}
 
-                    {tratamento.alertaSemMedicamento && (
+                    {tratamento.alertaPrincipal && (
                       <p className="mt-2 flex w-fit max-w-full items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-400">
                         <AlertTriangle
                           size={
@@ -979,7 +992,9 @@ function TratamentoListContent() {
                         />
 
                         <span>
-                          Tratamento ativo sem medicamento vinculado
+                          {
+                            tratamento.alertaPrincipal.titulo
+                          }
                         </span>
                       </p>
                     )}

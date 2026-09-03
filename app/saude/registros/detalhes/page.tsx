@@ -645,7 +645,9 @@ function DetalhesRegistroSaudeContent() {
           false
         );
 
-        throw error;
+        setShowDeleteModal(
+          false
+        );
       }
     };
 

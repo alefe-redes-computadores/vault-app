@@ -320,6 +320,23 @@ function getCurrentDateISO(): string {
   ].join("-");
 }
 
+function getCurrentTime(): string {
+  const now =
+    new Date();
+
+  return `${String(
+    now.getHours()
+  ).padStart(
+    2,
+    "0"
+  )}:${String(
+    now.getMinutes()
+  ).padStart(
+    2,
+    "0"
+  )}`;
+}
+
 function isValidMeasurementValue(
   tipo: string,
   value: string
@@ -987,6 +1004,18 @@ function EditarRegistroSaudeContent() {
       ) {
         nextErrors.horario =
           "Informe um horário válido.";
+
+        shakeList.push(
+          "horario"
+        );
+      } else if (
+        dataISO ===
+          getCurrentDateISO() &&
+        horario >
+          getCurrentTime()
+      ) {
+        nextErrors.horario =
+          "O horário do registro não pode estar no futuro.";
 
         shakeList.push(
           "horario"

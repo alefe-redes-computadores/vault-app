@@ -37,10 +37,6 @@ import {
 } from "lucide-react";
 
 import {
-  useLiveQuery,
-} from "dexie-react-hooks";
-
-import {
   useHapticFeedback,
 } from "@/lib/haptics";
 
@@ -77,8 +73,8 @@ import {
 } from "@/hooks/useMedicamentos";
 
 import {
-  db,
-} from "@/lib/db";
+  useExames,
+} from "@/hooks/useExames";
 
 import {
   getClinicalTheme,
@@ -192,6 +188,11 @@ function EditarTratamentoContent() {
     medicamentos = [],
   } =
     useMedicamentos();
+
+  const {
+    exames = [],
+  } =
+    useExames();
 
   const saveAction =
     useSubmitAction();
@@ -371,42 +372,6 @@ function EditarTratamentoContent() {
     useState(
       false
     );
-
-  // ==========================================================
-  // EXAMES
-  //
-  // Leitura temporariamente permanece via Dexie porque ainda
-  // não temos aqui uma API confirmada de useExames adequada
-  // para esta consulta.
-  //
-  // Diferentemente do código antigo, a leitura é obrigatoriamente
-  // limitada à pessoa ativa.
-  // ==========================================================
-
-  const exames =
-    useLiveQuery(
-      async () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.exames
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ],
-      []
-    ) ||
-    [];
 
   // ==========================================================
   // LOAD
@@ -2208,7 +2173,7 @@ function EditarTratamentoContent() {
             handleDelete
           }
           title="Excluir Tratamento"
-          message="Excluir este tratamento? Medicamentos e exames serão preservados, mas perderão o vínculo com este tratamento."
+          message="Excluir este tratamento? Os registros relacionados serão preservados, mas perderão o vínculo com este tratamento."
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
           isLoading={

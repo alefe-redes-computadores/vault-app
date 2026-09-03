@@ -2713,7 +2713,206 @@ export function analisarFarmaciaDetalhada(
 }
 
 // ============================================================
-// 10. VISÃO GERAL — MOTOR CANÔNICO DE ALERTAS
+// 10. TRATAMENTOS — ANÁLISE CANÔNICA
+// ============================================================
+
+export type TratamentoInsightCodigo =
+  | "sem_medicamentos"
+  | "sem_medicamentos_ativos"
+  | "medicamentos_ativos_status_inativo";
+
+export interface TratamentoInsightAlerta {
+  id: string;
+  codigo: TratamentoInsightCodigo;
+  titulo: string;
+  mensagem: string;
+  urgencia: InsightUrgencia;
+  confianca: InsightConfianca;
+  evidencias: string[];
+}
+
+export interface TratamentoInsight {
+  tratamentoId: string | null;
+  medicamentosCount: number;
+  medicamentosAtivosCount: number;
+  totalGasto: number;
+  aquisicoesCount: number;
+  alertas: TratamentoInsightAlerta[];
+}
+
+/**
+ * Analisa um tratamento usando somente dados que já passaram
+ * pelo filtro da pessoa ativa.
+ *
+ * A fonte canônica do vínculo é Medicamento.tratamento_ids.
+ * O total financeiro representa o histórico das aquisições
+ * dos medicamentos atualmente vinculados. Ele não constitui
+ * contabilidade exclusiva do tratamento, pois um medicamento
+ * pode participar de mais de um tratamento.
+ */
+export function analisarTratamento(
+  contexto: {
+    tratamento: Tratamento;
+    medicamentos: Medicamento[];
+    renovacoes: Renovacao[];
+  }
+): TratamentoInsight {
+  const {
+    tratamento,
+    medicamentos,
+    renovacoes,
+  } = contexto;
+
+  const tratamentoId =
+    tratamento.id || null;
+
+  const medicamentosVinculados =
+    tratamentoId
+      ? medicamentos.filter(
+          (medicamento) =>
+            (
+              medicamento.tratamento_ids ||
+              []
+            ).includes(tratamentoId)
+        )
+      : [];
+
+  const medicamentosAtivos =
+    medicamentosVinculados.filter(
+      (medicamento) =>
+        medicamento.status !==
+        "descontinuado"
+    );
+
+  const medicamentoIds =
+    new Set(
+      medicamentosVinculados
+        .map(
+          (medicamento) =>
+            medicamento.id
+        )
+        .filter(
+          (id): id is string =>
+            Boolean(id)
+        )
+    );
+
+  let totalGasto = 0;
+  let aquisicoesCount = 0;
+
+  renovacoes.forEach(
+    (renovacao) => {
+      if (
+        !renovacao.medicamento_id ||
+        !medicamentoIds.has(
+          renovacao.medicamento_id
+        )
+      ) {
+        return;
+      }
+
+      const preco =
+        toPositiveFiniteNumber(
+          renovacao.preco
+        );
+
+      if (preco === null) {
+        return;
+      }
+
+      totalGasto += preco;
+      aquisicoesCount += 1;
+    }
+  );
+
+  const alertas:
+    TratamentoInsightAlerta[] = [];
+
+  if (
+    tratamento.status === "ativo" &&
+    medicamentosVinculados.length === 0
+  ) {
+    alertas.push({
+      id:
+        `tratamento-sem-medicamentos-${tratamentoId || "sem-id"}`,
+      codigo:
+        "sem_medicamentos",
+      titulo:
+        "Tratamento sem medicamento vinculado",
+      mensagem:
+        "Este tratamento está em andamento, mas ainda não possui medicamento vinculado.",
+      urgencia:
+        "media",
+      confianca:
+        "alta",
+      evidencias: [
+        "Tratamento registrado como ativo",
+        "Nenhum medicamento vinculado ao tratamento",
+      ],
+    });
+  } else if (
+    tratamento.status === "ativo" &&
+    medicamentosVinculados.length > 0 &&
+    medicamentosAtivos.length === 0
+  ) {
+    alertas.push({
+      id:
+        `tratamento-sem-medicamentos-ativos-${tratamentoId || "sem-id"}`,
+      codigo:
+        "sem_medicamentos_ativos",
+      titulo:
+        "Tratamento ativo sem medicamento em uso",
+      mensagem:
+        "Todos os medicamentos vinculados a este tratamento estão descontinuados.",
+      urgencia:
+        "media",
+      confianca:
+        "alta",
+      evidencias: [
+        `${medicamentosVinculados.length} medicamento(s) vinculado(s)`,
+        "Nenhum medicamento vinculado permanece em uso",
+      ],
+    });
+  }
+
+  if (
+    tratamento.status !== "ativo" &&
+    medicamentosAtivos.length > 0
+  ) {
+    alertas.push({
+      id:
+        `tratamento-inativo-com-medicamentos-ativos-${tratamentoId || "sem-id"}`,
+      codigo:
+        "medicamentos_ativos_status_inativo",
+      titulo:
+        "Medicamentos ainda aparecem em uso",
+      mensagem:
+        `Este tratamento está ${tratamento.status === "concluido" ? "concluído" : "suspenso"}, mas possui medicamento(s) vinculado(s) ainda marcado(s) como em uso.`,
+      urgencia:
+        "media",
+      confianca:
+        "alta",
+      evidencias: [
+        `Tratamento registrado como ${tratamento.status}`,
+        `${medicamentosAtivos.length} medicamento(s) ainda em uso`,
+      ],
+    });
+  }
+
+  return {
+    tratamentoId,
+    medicamentosCount:
+      medicamentosVinculados.length,
+    medicamentosAtivosCount:
+      medicamentosAtivos.length,
+    totalGasto,
+    aquisicoesCount,
+    alertas,
+  };
+}
+
+// ============================================================
+// 11. VISÃO GERAL — MOTOR CANÔNICO DE ALERTAS
 // ============================================================
 
 export interface AlertaVisaoGeral {
@@ -6947,6 +7146,7 @@ export type HealthInsightCategory =
   | "renovacao"
   | "rotina"
   | "sintomas"
+  | "tratamento"
   | "historico"
   | "dados";
 
@@ -7170,6 +7370,13 @@ export function gerarInsightsSaude(
         contexto.personId
     );
 
+  const tratamentos =
+    contexto.tratamentos.filter(
+      (item) =>
+        item.person_id ===
+        contexto.personId
+    );
+
   const registrosSaude =
     contexto.registrosSaude.filter(
       (item) =>
@@ -7211,6 +7418,57 @@ export function gerarInsightsSaude(
     getActiveMedicamentos(
       medicamentos
     );
+
+  // ----------------------------------------------------------
+  // TRATAMENTOS
+  // ----------------------------------------------------------
+
+  tratamentos.forEach(
+    (tratamento) => {
+      if (!tratamento.id) {
+        return;
+      }
+
+      const analise =
+        analisarTratamento({
+          tratamento,
+          medicamentos,
+          renovacoes,
+        });
+
+      analise.alertas.forEach(
+        (alerta) => {
+          insights.push({
+            id:
+              alerta.id,
+            categoria:
+              "tratamento",
+            titulo:
+              alerta.titulo,
+            mensagem:
+              alerta.mensagem,
+            urgencia:
+              alerta.urgencia,
+            confianca:
+              alerta.confianca,
+            amostra:
+              Math.max(
+                1,
+                analise.medicamentosCount
+              ),
+            entidadeTipo:
+              "tratamento",
+            entidadeId:
+              tratamento.id,
+            link:
+              `/saude/tratamentos/detalhes?id=${tratamento.id}`,
+            evidencias:
+              alerta.evidencias,
+          });
+        }
+      );
+    }
+  );
 
   // ----------------------------------------------------------
   // ADESÃO / HORÁRIOS / CONSUMO DE MEDICAMENTOS CONTÍNUOS

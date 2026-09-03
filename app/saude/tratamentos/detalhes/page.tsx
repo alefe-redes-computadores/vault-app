@@ -79,6 +79,7 @@ import type {
 } from "@/lib/types";
 
 import {
+  analisarTratamento,
   calcularEconomia,
   gerarLinhaDoTempoSaude,
   getCidInsights,
@@ -433,6 +434,22 @@ function TratamentoContent() {
         ),
       );
   }, [linkedMedicamentos, renovacoes]);
+
+  // ==========================================================
+  // INTELIGÊNCIA DO TRATAMENTO
+  // ==========================================================
+
+  const tratamentoInsight = useMemo(() => {
+    if (!tratamento) {
+      return null;
+    }
+
+    return analisarTratamento({
+      tratamento,
+      medicamentos: linkedMedicamentos,
+      renovacoes: linkedRenovacoes,
+    });
+  }, [tratamento, linkedMedicamentos, linkedRenovacoes]);
 
   // ==========================================================
   // DOCUMENTOS DO TRATAMENTO
@@ -1205,6 +1222,62 @@ function TratamentoContent() {
               />
             </div>
           </motion.div>
+
+          {tratamentoInsight && tratamentoInsight.alertas.length > 0 && (
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay: 0.02,
+              }}
+              className="space-y-2 rounded-[24px] border border-amber-400/20 bg-amber-400/5 p-4"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
+                  <Sparkles size={17} />
+                </span>
+
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-400">
+                    Inteligência do tratamento
+                  </p>
+
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Análise baseada nos vínculos e status registrados no Vault.
+                  </p>
+                </div>
+              </div>
+
+              {tratamentoInsight.alertas.map((alerta) => (
+                <div
+                  key={alerta.id}
+                  className="rounded-2xl border border-surface-border/50 bg-surface/80 p-3"
+                >
+                  <p className="text-sm font-semibold text-ink-primary">
+                    {alerta.titulo}
+                  </p>
+
+                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                    {alerta.mensagem}
+                  </p>
+
+                  {alerta.evidencias.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {alerta.evidencias.map((evidencia) => (
+                        <span
+                          key={evidencia}
+                          className="rounded-full border border-amber-400/15 bg-amber-400/5 px-2 py-1 text-[9px] text-amber-300"
+                        >
+                          {evidencia}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          )}
 
           <motion.div
             variants={fadeUp}
