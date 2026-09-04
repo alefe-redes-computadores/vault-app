@@ -26,6 +26,10 @@ import {
   loadHealthInsightContext,
 } from "@/lib/health-intelligence/context";
 
+import {
+  selectHealthHighlights,
+} from "@/lib/health-intelligence/select-highlights";
+
 export type HealthIntelligenceMaturity = {
   score: number;
   label: string;
@@ -78,6 +82,21 @@ export function useHealthIntelligence() {
           : [],
       [
         context,
+      ]
+    );
+
+  const highlights =
+    useMemo(
+      () =>
+        selectHealthHighlights(
+          insights,
+          {
+            limit: 3,
+            minimumSample: 3,
+          }
+        ),
+      [
+        insights,
       ]
     );
 
@@ -213,6 +232,8 @@ export function useHealthIntelligence() {
       null,
 
     insights,
+
+    highlights,
 
     validation,
 

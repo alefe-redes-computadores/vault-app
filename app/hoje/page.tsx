@@ -1328,7 +1328,7 @@ export default function HojePage() {
         {/* =========================================================
             CONTEÚDO
         ========================================================= */}
-        <section className="space-y-5 px-5 pt-4">
+        <section className="space-y-4 px-4 pt-3">
           {/* ASSISTENTE DIÁRIO */}
           {assistenteDiario && (
             <motion.div
@@ -1610,7 +1610,7 @@ export default function HojePage() {
                 return (
                   <div
                     key={key}
-                    className="space-y-3"
+                    className="space-y-2"
                   >
                     <div className="flex items-end justify-between gap-4 px-1">
                       <div className="flex items-center gap-2">
@@ -1644,7 +1644,7 @@ export default function HojePage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {grupo.items.map(
                         (item) => {
                           if (
@@ -1922,7 +1922,7 @@ export default function HojePage() {
                               style={{
                                 borderLeft: `4px solid ${tratamentoCor}`,
                               }}
-                              className={`group relative w-full cursor-pointer rounded-[20px] border p-3 pr-8 text-left shadow-sm transition-all ${
+                              className={`group relative w-full cursor-pointer rounded-[18px] border px-3 py-2.5 pr-8 text-left shadow-sm transition-all ${
                                 item.tomada
                                   ? "border-emerald-400/30 bg-emerald-400/5 opacity-90"
                                   : item.ignorada
@@ -1941,11 +1941,11 @@ export default function HojePage() {
                               <ChevronRight
                                 size={16}
                                 aria-hidden="true"
-                                className="absolute right-3 top-3 text-ink-faint"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ice/60 transition-transform group-active:translate-x-0.5"
                               />
 
-                              <div className="space-y-2">
-                                <div className="flex items-start gap-3">
+                              <div className="space-y-1.5">
+                                <div className="flex items-start gap-2.5">
                                   <div className="shrink-0 pt-0.5">
                                     {item.tomada ? (
                                       <CheckCircle2
@@ -1991,8 +1991,9 @@ export default function HojePage() {
                                       )}
                                     </div>
 
-                                    <p
-                                      className={`mt-1 truncate text-sm font-semibold ${
+                                    <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
+                                      <p
+                                      className={`min-w-0 truncate text-sm font-semibold ${
                                         item.ignorada
                                           ? "text-ink-muted line-through"
                                           : "text-ink-primary"
@@ -2004,12 +2005,13 @@ export default function HojePage() {
                                     </p>
 
                                     {item.dosagem && (
-                                      <p className="mt-0.5 text-xs font-medium text-ink-muted">
+                                      <span className="shrink-0 text-[11px] font-medium text-ink-muted">
                                         {
                                           item.dosagem
                                         }
-                                      </p>
+                                      </span>
                                     )}
+                                    </div>
 
                                     {item.isAvulsa &&
                                       item.motivoAvulsa && (
@@ -2024,7 +2026,7 @@ export default function HojePage() {
                                     {(item.tratamentoNome ||
                                       item.medicoNome ||
                                       item.farmaciaNome) && (
-                                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                                         {item.tratamentoNome &&
                                           item.tratamentoId && (
                                             <span
@@ -2060,7 +2062,7 @@ export default function HojePage() {
                                     )}
 
                                     {!item.isAvulsa && (
-                                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                                         {(
                                           item.estoqueRestante ??
                                           0
@@ -2081,7 +2083,9 @@ export default function HojePage() {
                                           item.diasRestantes !==
                                             null &&
                                           item.diasRestantes >=
-                                            0 && (
+                                            0 &&
+                                          item.diasRestantes <=
+                                            90 && (
                                             <span
                                               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${diasEstilo.cor} ${diasEstilo.bg}`}
                                             >
@@ -2153,7 +2157,7 @@ export default function HojePage() {
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-surface-border/30 pt-2">
+                                <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1">
                                   {!item.tomada &&
                                     !item.ignorada &&
                                     !item.isAvulsa && (
@@ -2173,7 +2177,7 @@ export default function HojePage() {
                                             isProcessando ||
                                             isProcessing
                                           }
-                                          className="rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
+                                          className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                         >
                                           Ignorar
                                         </button>
@@ -2193,7 +2197,7 @@ export default function HojePage() {
                                             isProcessando ||
                                             isProcessing
                                           }
-                                          className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-3.5 py-1.5 text-[10px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
+                                          className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-3 py-1 text-[9px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
                                         >
                                           <CheckCircle2 size={13} />
                                           {isProcessando
@@ -2219,7 +2223,7 @@ export default function HojePage() {
                                         isProcessando ||
                                         isProcessing
                                       }
-                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
+                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                     >
                                       {item.isAvulsa ? (
                                         <>

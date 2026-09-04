@@ -1123,33 +1123,7 @@ export default function HomePage() {
    * - limitados para não sobrecarregar a Home.
    */
   const longitudinalHighlights =
-    useMemo(
-      () =>
-        healthIntelligence.insights
-          .filter(
-            (
-              insight
-            ) =>
-              Boolean(
-                insight.link &&
-                insight.confianca !==
-                  "baixa" &&
-                insight.categoria !==
-                  "estoque" &&
-                insight.categoria !==
-                  "renovacao" &&
-                insight.categoria !==
-                  "dados"
-              )
-          )
-          .slice(
-            0,
-            3
-          ),
-      [
-        healthIntelligence.insights,
-      ]
-    );
+    healthIntelligence.highlights;
 
   const resumoContextual =
     useMemo(
