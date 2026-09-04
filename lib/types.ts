@@ -1249,6 +1249,17 @@ export interface Hospital {
   person_id?: string;
 }
 
+export type LocalSaudeTipo =
+  | "posto_saude"
+  | "ubs"
+  | "caps"
+  | "posto"
+  | "laboratorio"
+  | "clinica"
+  | "outro";
+
+
+
 export interface LocalSaude {
   id?: string;
   user_id: string;

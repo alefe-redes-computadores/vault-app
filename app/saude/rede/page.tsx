@@ -1183,7 +1183,9 @@ export default function RedeSaudePage() {
           filteredMedicamentos
         ) {
           if (
-            !medicamento.id
+            !medicamento.id ||
+            medicamento.status ===
+              "descontinuado"
           ) {
             continue;
           }
@@ -1201,7 +1203,10 @@ export default function RedeSaudePage() {
                 `estoque-${medicamento.id}`,
 
               tipo:
-                "estoque",
+                insight.motivo ===
+                "receita"
+                  ? "receita"
+                  : "estoque",
 
               mensagem:
                 insight.mensagem,
@@ -1219,6 +1224,11 @@ export default function RedeSaudePage() {
 
           if (
             medicamento.proxima_renovacao &&
+            (
+              !insight.deveRenovar ||
+              insight.motivo !==
+                "receita"
+            ) &&
             isReceitaVencidaSegura(
               medicamento.proxima_renovacao
             )
@@ -1450,7 +1460,9 @@ export default function RedeSaudePage() {
                 dias !==
                   null &&
                 dias >=
-                  0
+                  0 &&
+                dias <=
+                  30
               );
             }
           ).length;
@@ -2067,7 +2079,7 @@ export default function RedeSaudePage() {
                     value={
                       stats.consultas
                     }
-                    sub={`${stats.consultasProximas} próximas`}
+                    sub={`${stats.consultasProximas} nos próximos 30 dias`}
                     color="#38BDF8"
                     onClick={
                       () =>
