@@ -40,13 +40,21 @@ import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useNotificationPreference } from "@/hooks/useNotificationPreference";
 import {
   requestNotificationPermission,
-  cancelAllDoseNotifications,
+  scheduleDoseNotifications,
 } from "@/lib/dose-notifications";
+
+import {
+  cancelAllNotifications,
+  reconcilePersistentNotifications,
+} from "@/lib/notifications";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
-import type { Medicamento } from "@/lib/types";
+import type {
+  Document,
+  Medicamento,
+} from "@/lib/types";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -147,6 +155,12 @@ export default function MaisPage() {
       []
     ) as Medicamento[]) ?? [];
 
+  const allDocuments =
+    (useLiveQuery(
+      () => db.documents.toArray(),
+      []
+    ) as Document[]) ?? [];
+
   const totalLocalItems =
     useLiveQuery(async () => {
       let count = 0;
@@ -206,6 +220,12 @@ export default function MaisPage() {
     setIsLoading(true);
 
     try {
+      /*
+       * Evita notificações órfãs depois que os dados locais
+       * forem removidos.
+       */
+      await cancelAllNotifications();
+
       await Promise.all([
         db.persons.clear(),
         db.documents.clear(),
@@ -385,43 +405,155 @@ export default function MaisPage() {
   // ============================================================
 
   const handleNotificationsToggle = async () => {
-    trigger("vibrate");
+    if (
+      isLoading
+    ) {
+      return;
+    }
 
-    if (isNotificationsEnabled) {
-      if (allMedicamentos.length > 0) {
-        await cancelAllDoseNotifications(
-          allMedicamentos.map((med) => ({
-            id: med.id!,
-            nome: med.nome,
-            dosagem: med.dosagem,
-            estoque_horarios:
-              med.estoque_horarios || [],
-          }))
+    trigger("vibrate");
+    setIsLoading(true);
+
+    try {
+      if (
+        isNotificationsEnabled
+      ) {
+        /*
+         * Primeiro desliga a preferência. Assim nenhum fluxo
+         * concorrente consegue criar um novo agendamento
+         * enquanto limpamos os lembretes do Android.
+         */
+        disableNotifications();
+
+        await cancelAllNotifications();
+
+        showToast(
+          "Todos os lembretes foram desativados",
+          "info"
         );
+
+        return;
       }
 
-      disableNotifications();
-
-      showToast(
-        "Lembretes desativados",
-        "info"
-      );
-    } else {
       const granted =
         await requestNotificationPermission();
 
-      if (granted) {
-        enableNotifications();
-
-        showToast(
-          "Lembretes ativados",
-          "success"
-        );
-      } else {
+      if (
+        !granted
+      ) {
         showError(
           "Permissão de notificação negada pelo sistema."
         );
+
+        return;
       }
+
+      /*
+       * O núcleo consulta esta preferência antes de agendar.
+       * Portanto ela precisa ser ligada antes da reconciliação.
+       */
+      enableNotifications();
+
+      const medicamentosAgendaveis =
+        allMedicamentos.filter(
+          (
+            medicamento
+          ) =>
+            Boolean(
+              medicamento.id &&
+              medicamento.person_id &&
+              medicamento.status !==
+                "descontinuado" &&
+              medicamento.estoque_horarios &&
+              medicamento.estoque_horarios.length >
+                0
+            )
+        );
+
+      const results =
+        await Promise.allSettled(
+          medicamentosAgendaveis.map(
+            (
+              medicamento
+            ) =>
+              scheduleDoseNotifications({
+                id:
+                  medicamento.id!,
+
+                person_id:
+                  medicamento.person_id,
+
+                nome:
+                  medicamento.nome,
+
+                dosagem:
+                  medicamento.dosagem,
+
+                estoque_horarios:
+                  medicamento.estoque_horarios ||
+                  [],
+              })
+          )
+        );
+
+      /*
+       * Além das doses, restaura vencimentos de documentos e
+       * próximas renovações cadastradas nos medicamentos.
+       */
+      await reconcilePersistentNotifications(
+        allDocuments,
+        allMedicamentos
+      );
+
+      const failures =
+        results.filter(
+          (
+            result
+          ) =>
+            result.status ===
+            "rejected"
+        ).length;
+
+      if (
+        failures > 0
+      ) {
+        console.error(
+          "[Mais] Alguns lembretes não foram reagendados:",
+          failures
+        );
+
+        showToast(
+          "Lembretes ativados, mas alguns medicamentos precisam ser revisados.",
+          "info",
+          5000
+        );
+
+        return;
+      }
+
+      showToast(
+        medicamentosAgendaveis.length ===
+          0
+          ? "Lembretes ativados"
+          : medicamentosAgendaveis.length ===
+              1
+            ? "Lembretes ativados para 1 medicamento"
+            : `Lembretes ativados para ${medicamentosAgendaveis.length} medicamentos`,
+        "success"
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "[Mais] Erro ao alterar lembretes:",
+        error
+      );
+
+      showError(
+        "Não foi possível atualizar os lembretes."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 

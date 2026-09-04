@@ -1,34 +1,94 @@
+// hooks/useNotificationPreference.ts
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-const STORAGE_KEY = "vault_notifications_enabled";
+import {
+  isNotificationPreferenceEnabled,
+  setNotificationPreferenceEnabled,
+} from "@/lib/notifications";
 
 export function useNotificationPreference() {
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [
+    isEnabled,
+    setIsEnabled,
+  ] = useState(false);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    setIsEnabled(stored === "true");
+    setIsEnabled(
+      isNotificationPreferenceEnabled()
+    );
+
     setIsLoading(false);
   }, []);
 
-  const toggle = () => {
-    const newValue = !isEnabled;
-    setIsEnabled(newValue);
-    localStorage.setItem(STORAGE_KEY, String(newValue));
-  };
+  const updatePreference =
+    useCallback(
+      (
+        enabled: boolean
+      ) => {
+        setNotificationPreferenceEnabled(
+          enabled
+        );
 
-  const enable = () => {
-    setIsEnabled(true);
-    localStorage.setItem(STORAGE_KEY, "true");
-  };
+        setIsEnabled(
+          enabled
+        );
+      },
+      []
+    );
 
-  const disable = () => {
-    setIsEnabled(false);
-    localStorage.setItem(STORAGE_KEY, "false");
-  };
+  const toggle =
+    useCallback(
+      () => {
+        updatePreference(
+          !isEnabled
+        );
+      },
+      [
+        isEnabled,
+        updatePreference,
+      ]
+    );
 
-  return { isEnabled, isLoading, toggle, enable, disable };
+  const enable =
+    useCallback(
+      () => {
+        updatePreference(
+          true
+        );
+      },
+      [
+        updatePreference,
+      ]
+    );
+
+  const disable =
+    useCallback(
+      () => {
+        updatePreference(
+          false
+        );
+      },
+      [
+        updatePreference,
+      ]
+    );
+
+  return {
+    isEnabled,
+    isLoading,
+    toggle,
+    enable,
+    disable,
+  };
 }

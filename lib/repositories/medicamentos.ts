@@ -13,6 +13,16 @@ import {
   enfileirarOperacao,
 } from "@/lib/sync/enfileirarOperacao";
 
+import {
+  cancelDoseNotifications,
+  scheduleDoseNotifications,
+} from "@/lib/dose-notifications";
+
+import {
+  cancelMedicationRenewalNotification,
+  scheduleMedicationRenewalNotification,
+} from "@/lib/notifications";
+
 import type {
   CreateMedicamentoInput,
   Medicamento,
@@ -41,6 +51,132 @@ function normalizeCreateText(
   value?: string
 ): string {
   return value?.trim() || "";
+}
+
+async function reconcileMedicationNotifications(
+  previous:
+    Medicamento |
+    undefined,
+
+  current:
+    Medicamento |
+    undefined
+): Promise<void> {
+  const reference =
+    current ||
+    previous;
+
+  if (
+    !reference?.id
+  ) {
+    return;
+  }
+
+  try {
+    /*
+     * Cancela os horários antigos primeiro.
+     * Assim horários removidos não ficam vivos no Android.
+     */
+    if (
+      previous
+        ?.estoque_horarios &&
+      previous
+        .estoque_horarios
+        .length >
+        0
+    ) {
+      await cancelDoseNotifications({
+        id:
+          reference.id,
+
+        person_id:
+          previous.person_id,
+
+        nome:
+          previous.nome,
+
+        dosagem:
+          previous.dosagem,
+
+        estoque_horarios:
+          previous.estoque_horarios,
+      });
+    }
+
+    /*
+     * A renovação usa ID determinístico por medicamento.
+     * Cancelamos antes de decidir se existe uma nova.
+     */
+    await cancelMedicationRenewalNotification(
+      reference.id
+    );
+
+    /*
+     * Exclusão ou descontinuação encerra aqui:
+     * nada deve ser reagendado.
+     */
+    if (
+      !current ||
+      current.status ===
+        "descontinuado"
+    ) {
+      return;
+    }
+
+    if (
+      current.tipo_uso ===
+        "continuo" &&
+      current
+        .estoque_horarios &&
+      current
+        .estoque_horarios
+        .length >
+        0
+    ) {
+      await scheduleDoseNotifications({
+        id:
+          current.id!,
+
+        person_id:
+          current.person_id,
+
+        nome:
+          current.nome,
+
+        dosagem:
+          current.dosagem,
+
+        estoque_horarios:
+          current.estoque_horarios,
+      });
+    }
+
+    const renewalDate =
+      current
+        .proxima_renovacao
+        ?.trim();
+
+    if (
+      renewalDate
+    ) {
+      await scheduleMedicationRenewalNotification(
+        current.id!,
+        current.nome,
+        renewalDate,
+        current.medico || ""
+      );
+    }
+  } catch (
+    error
+  ) {
+    /*
+     * Falha no Android não desfaz um cadastro já salvo.
+     */
+    console.error(
+      "[medicamentosRepository] Dados salvos, mas houve falha ao reconciliar notificações:",
+      error
+    );
+  }
 }
 
 // ============================================================
@@ -283,6 +419,11 @@ export const medicamentosRepository = {
       registroCriado
     );
 
+    await reconcileMedicationNotifications(
+      undefined,
+      registroCriado
+    );
+
     return id;
   },
 
@@ -390,6 +531,11 @@ export const medicamentosRepository = {
     await enfileirarOperacao(
       "medicamentos",
       "update",
+      registroCompleto
+    );
+
+    await reconcileMedicationNotifications(
+      current,
       registroCompleto
     );
 
@@ -748,6 +894,11 @@ export const medicamentosRepository = {
           }
         );
       }
+    );
+
+    await reconcileMedicationNotifications(
+      medicamento,
+      undefined
     );
 
     return id;

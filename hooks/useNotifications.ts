@@ -15,6 +15,11 @@ import {
   LocalNotifications,
 } from "@capacitor/local-notifications";
 
+import {
+  checkNotificationPermissions,
+  requestNotificationPermissions,
+} from "@/lib/notifications";
+
 export function useNotifications() {
   const [
     permissionGranted,
@@ -29,44 +34,19 @@ export function useNotifications() {
   const checkPermissions =
     useCallback(
       async () => {
+        setIsLoading(true);
+
         try {
-          if (
-            !Capacitor.isNativePlatform()
-          ) {
-            setPermissionGranted(
-              false
-            );
-
-            return false;
-          }
-
-          const result =
-            await LocalNotifications.checkPermissions();
-
           const granted =
-            result.display ===
-            "granted";
+            await checkNotificationPermissions();
 
           setPermissionGranted(
             granted
           );
 
           return granted;
-        } catch (error) {
-          console.error(
-            "[useNotifications] Erro ao verificar permissões:",
-            error
-          );
-
-          setPermissionGranted(
-            false
-          );
-
-          return false;
         } finally {
-          setIsLoading(
-            false
-          );
+          setIsLoading(false);
         }
       },
       []
@@ -75,54 +55,19 @@ export function useNotifications() {
   const requestPermissions =
     useCallback(
       async () => {
+        setIsLoading(true);
+
         try {
-          if (
-            !Capacitor.isNativePlatform()
-          ) {
-            setPermissionGranted(
-              false
-            );
-
-            return false;
-          }
-
-          const current =
-            await LocalNotifications.checkPermissions();
-
-          if (
-            current.display ===
-            "granted"
-          ) {
-            setPermissionGranted(
-              true
-            );
-
-            return true;
-          }
-
-          const result =
-            await LocalNotifications.requestPermissions();
-
           const granted =
-            result.display ===
-            "granted";
+            await requestNotificationPermissions();
 
           setPermissionGranted(
             granted
           );
 
           return granted;
-        } catch (error) {
-          console.error(
-            "[useNotifications] Erro ao solicitar permissões:",
-            error
-          );
-
-          setPermissionGranted(
-            false
-          );
-
-          return false;
+        } finally {
+          setIsLoading(false);
         }
       },
       []
@@ -166,9 +111,26 @@ export function useNotifications() {
                 return;
               }
 
-              callback(
-                data
-              );
+              const record =
+                data &&
+                typeof data ===
+                  "object"
+                  ? {
+                      ...(
+                        data as Record<
+                          string,
+                          unknown
+                        >
+                      ),
+                    }
+                  : {};
+
+              callback({
+                ...record,
+
+                actionId:
+                  event.actionId,
+              });
             }
           );
 

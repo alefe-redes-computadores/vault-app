@@ -17,6 +17,15 @@ import {
   deleteFile,
 } from "@/lib/supabase/storage";
 
+import {
+  cancelDocumentExpiryNotification,
+  scheduleDocumentExpiryNotification,
+} from "@/lib/notifications";
+
+import {
+  CATEGORIES,
+} from "@/lib/types";
+
 import type {
   Document,
   Medicamento,
@@ -541,6 +550,103 @@ async function buildMedicationFromPrescription(
   };
 }
 
+async function reconcileDocumentExpiryNotification(
+  document: Document
+): Promise<void> {
+  const documentId =
+    document.id?.trim();
+
+  if (
+    !documentId
+  ) {
+    return;
+  }
+
+  try {
+    const metadata =
+      document.metadata || {};
+
+    /*
+     * Em Saúde, apenas Receita usa alerta documental.
+     * renewal_date continua sendo próxima renovação e nunca
+     * deve ser confundida com validade.
+     */
+    const isHealthPrescription =
+      document.category_id ===
+        "saude" &&
+      document.type ===
+        "receita";
+
+    const isPersonalDocument =
+      document.category_id !==
+        "saude";
+
+    const candidates =
+      isHealthPrescription
+        ? [
+            metadata.expiry_date,
+            metadata.expiration_date,
+            metadata.validade,
+          ]
+        : isPersonalDocument
+          ? [
+              metadata.expiry_date,
+              metadata.data_validade,
+              metadata.validade,
+            ]
+          : [];
+
+    const expiryDate =
+      candidates.find(
+        (
+          value
+        ) =>
+          typeof value ===
+            "string" &&
+          value.trim().length >
+            0
+      );
+
+    /*
+     * Sem validade real, qualquer agendamento anterior deve
+     * ser removido.
+     */
+    if (
+      typeof expiryDate !==
+        "string"
+    ) {
+      await cancelDocumentExpiryNotification(
+        documentId
+      );
+
+      return;
+    }
+
+    await scheduleDocumentExpiryNotification(
+      documentId,
+      document.title,
+      expiryDate.trim(),
+      CATEGORIES[
+        document.category_id
+      ]?.name ||
+        "Documento",
+      isHealthPrescription
+        ? 7
+        : 30
+    );
+  } catch (
+    error
+  ) {
+    /*
+     * Uma falha do Android não desfaz o documento já salvo.
+     */
+    console.error(
+      "[documentsRepository] Documento salvo, mas houve falha ao reconciliar sua notificação:",
+      error
+    );
+  }
+}
+
 // ============================================================
 // STORAGE
 // ============================================================
@@ -923,6 +1029,10 @@ export const documentsRepository = {
 
     solicitarProcessamentoSync();
 
+    await reconcileDocumentExpiryNotification(
+      document
+    );
+
     return docId;
   },
 
@@ -1239,6 +1349,16 @@ export const documentsRepository = {
 
     solicitarProcessamentoSync();
 
+    const persistedDocument =
+      await getDocumentForPerson(
+        safeId,
+        safePersonId
+      );
+
+    await reconcileDocumentExpiryNotification(
+      persistedDocument
+    );
+
     /*
      * Limpeza física somente DEPOIS do commit local.
      *
@@ -1372,6 +1492,14 @@ export const documentsRepository = {
     );
 
     solicitarProcessamentoSync();
+
+    /*
+     * O documento já não existe localmente. Seu lembrete
+     * também precisa desaparecer do Android.
+     */
+    await cancelDocumentExpiryNotification(
+      safeId
+    );
 
     /*
      * Storage é best-effort e pós-commit.

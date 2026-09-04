@@ -27,6 +27,7 @@ import {
   Zap,
   Trash2,
   RotateCcw,
+  ChevronRight,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -1089,7 +1090,7 @@ export default function HojePage() {
         {/* =========================================================
             HEADER
         ========================================================= */}
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-4 pt-safe backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-3 pt-safe backdrop-blur-xl">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -1119,8 +1120,8 @@ export default function HojePage() {
           </div>
 
           {/* RESUMO */}
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2.5">
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2
                   size={13}
@@ -1136,7 +1137,7 @@ export default function HojePage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2.5">
+            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
               <div className="flex items-center gap-1.5">
                 <AlertTriangle
                   size={13}
@@ -1152,7 +1153,7 @@ export default function HojePage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2.5">
+            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
               <div className="flex items-center gap-1.5">
                 <Activity
                   size={13}
@@ -1170,7 +1171,7 @@ export default function HojePage() {
           </div>
 
           {/* FILTROS */}
-          <div className="mt-4 -mx-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="mt-3 -mx-1 overflow-x-auto pb-1 scrollbar-none">
             <div className="flex min-w-max items-center gap-2 px-1">
               <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1.5">
                 <Filter
@@ -1327,7 +1328,7 @@ export default function HojePage() {
         {/* =========================================================
             CONTEÚDO
         ========================================================= */}
-        <section className="space-y-7 px-5 pt-6">
+        <section className="space-y-5 px-5 pt-4">
           {/* ASSISTENTE DIÁRIO */}
           {assistenteDiario && (
             <motion.div
@@ -1887,13 +1888,41 @@ export default function HojePage() {
                                 item.logId ||
                                 `${item.medicamentoId}-${item.horario}`
                               }
+                              role="button"
+                              tabIndex={0}
+                              aria-label="Abrir detalhes do medicamento"
+                              onClick={() => {
+                                if (!item.medicamentoId) return;
+
+                                trigger("vibrate");
+
+                                router.push(
+                                  "/saude/medicamentos/detalhes?id=" +
+                                    item.medicamentoId
+                                );
+                              }}
+                              onKeyDown={(event) => {
+                                if (
+                                  event.key !== "Enter" &&
+                                  event.key !== " "
+                                ) return;
+
+                                event.preventDefault();
+
+                                if (item.medicamentoId) {
+                                  router.push(
+                                    "/saude/medicamentos/detalhes?id=" +
+                                      item.medicamentoId
+                                  );
+                                }
+                              }}
                               whileTap={{
-                                scale: 0.985,
+                                scale: 0.99,
                               }}
                               style={{
-                                borderLeft: `6px solid ${tratamentoCor}`,
+                                borderLeft: `4px solid ${tratamentoCor}`,
                               }}
-                              className={`group relative w-full rounded-[24px] border p-4 text-left shadow-sm transition-all ${
+                              className={`group relative w-full cursor-pointer rounded-[20px] border p-3 pr-8 text-left shadow-sm transition-all ${
                                 item.tomada
                                   ? "border-emerald-400/30 bg-emerald-400/5 opacity-90"
                                   : item.ignorada
@@ -1909,22 +1938,28 @@ export default function HojePage() {
                                   : ""
                               }`}
                             >
-                              <div className="space-y-3">
+                              <ChevronRight
+                                size={16}
+                                aria-hidden="true"
+                                className="absolute right-3 top-3 text-ink-faint"
+                              />
+
+                              <div className="space-y-2">
                                 <div className="flex items-start gap-3">
                                   <div className="shrink-0 pt-0.5">
                                     {item.tomada ? (
                                       <CheckCircle2
-                                        size={24}
+                                        size={20}
                                         className="text-emerald-400"
                                       />
                                     ) : item.ignorada ? (
                                       <XCircle
-                                        size={24}
+                                        size={20}
                                         className="text-ink-muted"
                                       />
                                     ) : (
                                       <Circle
-                                        size={24}
+                                        size={20}
                                         className="text-ink-faint"
                                       />
                                     )}
@@ -2118,7 +2153,7 @@ export default function HojePage() {
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-surface-border/30 pt-3">
+                                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-surface-border/30 pt-2">
                                   {!item.tomada &&
                                     !item.ignorada &&
                                     !item.isAvulsa && (
@@ -2138,7 +2173,7 @@ export default function HojePage() {
                                             isProcessando ||
                                             isProcessing
                                           }
-                                          className="rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
+                                          className="rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                         >
                                           Ignorar
                                         </button>
@@ -2158,7 +2193,7 @@ export default function HojePage() {
                                             isProcessando ||
                                             isProcessing
                                           }
-                                          className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-4 py-2 text-[10px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
+                                          className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-3.5 py-1.5 text-[10px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
                                         >
                                           <CheckCircle2 size={13} />
                                           {isProcessando
@@ -2184,7 +2219,7 @@ export default function HojePage() {
                                         isProcessando ||
                                         isProcessing
                                       }
-                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-2 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
+                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                     >
                                       {item.isAvulsa ? (
                                         <>

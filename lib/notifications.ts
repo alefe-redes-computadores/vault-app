@@ -8,6 +8,62 @@ import {
   LocalNotifications,
 } from "@capacitor/local-notifications";
 
+import {
+  CATEGORIES,
+} from "@/lib/types";
+
+import type {
+  Document,
+  Medicamento,
+} from "@/lib/types";
+
+export const NOTIFICATION_PREFERENCE_STORAGE_KEY =
+  "vault_notifications_enabled";
+
+export function isNotificationPreferenceEnabled(): boolean {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return false;
+  }
+
+  try {
+    return (
+      window.localStorage.getItem(
+        NOTIFICATION_PREFERENCE_STORAGE_KEY
+      ) === "true"
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function setNotificationPreferenceEnabled(
+  enabled: boolean
+): void {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      NOTIFICATION_PREFERENCE_STORAGE_KEY,
+      String(enabled)
+    );
+  } catch (
+    error
+  ) {
+    console.error(
+      "[notifications] Erro ao salvar preferência:",
+      error
+    );
+  }
+}
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -170,6 +226,82 @@ async function cancelNotificationById(
   }
 }
 
+type NotificationExtra =
+  Record<
+    string,
+    unknown
+  >;
+
+function asNotificationExtra(
+  value: unknown
+): NotificationExtra {
+  if (
+    !value ||
+    typeof value !==
+      "object"
+  ) {
+    return {};
+  }
+
+  return value as NotificationExtra;
+}
+
+async function cancelPendingNotificationsWhere(
+  predicate: (
+    extra: NotificationExtra
+  ) => boolean
+): Promise<void> {
+  if (
+    !isNativePlatform()
+  ) {
+    return;
+  }
+
+  try {
+    const pending =
+      await LocalNotifications.getPending();
+
+    const notifications =
+      pending.notifications
+        .filter(
+          (
+            notification
+          ) =>
+            predicate(
+              asNotificationExtra(
+                notification.extra
+              )
+            )
+        )
+        .map(
+          (
+            notification
+          ) => ({
+            id:
+              notification.id,
+          })
+        );
+
+    if (
+      notifications.length ===
+      0
+    ) {
+      return;
+    }
+
+    await LocalNotifications.cancel({
+      notifications,
+    });
+  } catch (
+    error
+  ) {
+    console.error(
+      "[notifications] Erro ao reconciliar agendamentos:",
+      error
+    );
+  }
+}
+
 // ============================================================
 // PERMISSÕES
 // ============================================================
@@ -302,6 +434,20 @@ export async function scheduleDocumentExpiryNotification(
     return;
   }
 
+  /*
+   * Sempre removemos o agendamento anterior.
+   * Se a preferência estiver desligada, paramos aqui.
+   */
+  await cancelNotificationById(
+    notificationId
+  );
+
+  if (
+    !isNotificationPreferenceEnabled()
+  ) {
+    return;
+  }
+
   const expiry =
     parseLocalDate(
       expiryDate
@@ -328,17 +474,6 @@ export async function scheduleDocumentExpiryNotification(
       normalizeDaysBefore(
         daysBefore
       )
-  );
-
-  /*
-   * O ID de validade do documento é determinístico.
-   *
-   * Cancelamos primeiro qualquer agendamento anterior.
-   * Isso é importante inclusive quando a nova data já não
-   * comporta um lembrete futuro.
-   */
-  await cancelNotificationById(
-    notificationId
   );
 
   if (
@@ -393,6 +528,45 @@ export async function scheduleDocumentExpiryNotification(
 // RENOVAÇÃO DE MEDICAMENTO
 // ============================================================
 
+export async function cancelMedicationRenewalNotification(
+  medicamentoId: string
+): Promise<void> {
+  if (
+    !isNativePlatform()
+  ) {
+    return;
+  }
+
+  const safeMedicamentoId =
+    medicamentoId.trim();
+
+  if (
+    !safeMedicamentoId
+  ) {
+    return;
+  }
+
+  /*
+   * Cancela tanto o formato novo quanto IDs antigos,
+   * porque a identificação principal vem do extra.
+   */
+  await cancelPendingNotificationsWhere(
+    (
+      extra
+    ) =>
+      extra.type ===
+        "medication_renewal" &&
+      extra.medicamentoId ===
+        safeMedicamentoId
+  );
+
+  await cancelNotificationById(
+    hashToId(
+      `medication-renewal:${safeMedicamentoId}`
+    )
+  );
+}
+
 export async function scheduleMedicationRenewalNotification(
   medicamentoId: string,
   nome: string,
@@ -411,6 +585,16 @@ export async function scheduleMedicationRenewalNotification(
 
   if (
     !safeMedicamentoId
+  ) {
+    return;
+  }
+
+  await cancelMedicationRenewalNotification(
+    safeMedicamentoId
+  );
+
+  if (
+    !isNotificationPreferenceEnabled()
   ) {
     return;
   }
@@ -452,14 +636,10 @@ export async function scheduleMedicationRenewalNotification(
 
   const id =
     hashToId(
-      `medication-renewal:${safeMedicamentoId}:${dataRenovacao}`
+      `medication-renewal:${safeMedicamentoId}`
     );
 
   try {
-    await cancelNotificationById(
-      id
-    );
-
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -499,6 +679,129 @@ export async function scheduleMedicationRenewalNotification(
       error
     );
   }
+}
+
+// ============================================================
+// RECONCILIAÇÃO DOS DADOS PERSISTIDOS
+// ============================================================
+
+function readDocumentExpiryDate(
+  document: Document
+): string | null {
+  const metadata =
+    document.metadata || {};
+
+  const candidates = [
+    metadata.expiry_date,
+    metadata.data_validade,
+    metadata.validade,
+  ];
+
+  const value =
+    candidates.find(
+      (candidate) =>
+        typeof candidate ===
+          "string" &&
+        candidate.trim().length >
+          0
+    );
+
+  return typeof value ===
+    "string"
+    ? value.trim()
+    : null;
+}
+
+export async function reconcilePersistentNotifications(
+  documents: Document[],
+  medicamentos: Medicamento[]
+): Promise<{
+  documents: number;
+  renewals: number;
+}> {
+  if (
+    !isNativePlatform() ||
+    !isNotificationPreferenceEnabled()
+  ) {
+    return {
+      documents: 0,
+      renewals: 0,
+    };
+  }
+
+  const documentTasks =
+    documents.flatMap(
+      (document) => {
+        const id =
+          document.id?.trim();
+
+        const expiryDate =
+          readDocumentExpiryDate(
+            document
+          );
+
+        if (
+          !id ||
+          !expiryDate
+        ) {
+          return [];
+        }
+
+        return [
+          scheduleDocumentExpiryNotification(
+            id,
+            document.title,
+            expiryDate,
+            CATEGORIES[
+              document.category_id
+            ]?.name ||
+              "Documento"
+          ),
+        ];
+      }
+    );
+
+  const renewalTasks =
+    medicamentos.flatMap(
+      (medicamento) => {
+        const id =
+          medicamento.id?.trim();
+
+        const renewalDate =
+          medicamento.proxima_renovacao?.trim();
+
+        if (
+          !id ||
+          !renewalDate ||
+          medicamento.status ===
+            "descontinuado"
+        ) {
+          return [];
+        }
+
+        return [
+          scheduleMedicationRenewalNotification(
+            id,
+            medicamento.nome,
+            renewalDate,
+            medicamento.medico || ""
+          ),
+        ];
+      }
+    );
+
+  await Promise.all([
+    ...documentTasks,
+    ...renewalTasks,
+  ]);
+
+  return {
+    documents:
+      documentTasks.length,
+
+    renewals:
+      renewalTasks.length,
+  };
 }
 
 // ============================================================

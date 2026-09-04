@@ -59,10 +59,6 @@ import {
 } from "./ErrorBoundary";
 
 import {
-  ToastProvider,
-} from "./ToastProvider";
-
-import {
   pullAllData,
 } from "@/lib/sync/pull";
 
@@ -82,6 +78,9 @@ interface NotificationActionData {
     string;
 
   medicamentoId?:
+    string;
+
+  actionId?:
     string;
 }
 
@@ -120,6 +119,12 @@ function getNotificationActionData(
       typeof record.medicamentoId ===
       "string"
         ? record.medicamentoId
+        : undefined,
+
+    actionId:
+      typeof record.actionId ===
+      "string"
+        ? record.actionId
         : undefined,
   };
 }
@@ -571,9 +576,121 @@ export function Providers({
                 "medication_renewal" &&
               data.medicamentoId
             ) {
-              router.push(
-                `/saude/medicamentos/detalhes?id=${data.medicamentoId}`
-              );
+              const medicamentoId =
+                data.medicamentoId;
+
+              void (
+                async () => {
+                  try {
+                    const medicamento =
+                      await db.medicamentos.get(
+                        medicamentoId
+                      );
+
+                    if (
+                      !medicamento
+                    ) {
+                      console.warn(
+                        "[Providers] Medicamento da renovação não encontrado:",
+                        medicamentoId
+                      );
+
+                      router.push(
+                        "/saude/medicamentos"
+                      );
+
+                      return;
+                    }
+
+                    if (
+                      medicamento.person_id &&
+                      medicamento.person_id !==
+                        activePersonId
+                    ) {
+                      await changePerson(
+                        medicamento.person_id
+                      );
+                    }
+
+                    router.push(
+                      `/saude/medicamentos/detalhes?id=${encodeURIComponent(
+                        medicamentoId
+                      )}`
+                    );
+                  } catch (
+                    error
+                  ) {
+                    console.error(
+                      "[Providers] Erro ao abrir renovação:",
+                      error
+                    );
+                  }
+                }
+              )();
+
+              return;
+            }
+
+            if (
+              data.type ===
+                "dose_reminder" &&
+              data.medicamentoId &&
+              data.actionId !==
+                "TOMEI" &&
+              data.actionId !==
+                "IGNORAR"
+            ) {
+              const medicamentoId =
+                data.medicamentoId;
+
+              void (
+                async () => {
+                  try {
+                    const medicamento =
+                      await db.medicamentos.get(
+                        medicamentoId
+                      );
+
+                    if (
+                      !medicamento
+                    ) {
+                      console.warn(
+                        "[Providers] Medicamento da dose não encontrado:",
+                        medicamentoId
+                      );
+
+                      router.push(
+                        "/saude/medicamentos"
+                      );
+
+                      return;
+                    }
+
+                    if (
+                      medicamento.person_id &&
+                      medicamento.person_id !==
+                        activePersonId
+                    ) {
+                      await changePerson(
+                        medicamento.person_id
+                      );
+                    }
+
+                    router.push(
+                      `/saude/medicamentos/detalhes?id=${encodeURIComponent(
+                        medicamentoId
+                      )}`
+                    );
+                  } catch (
+                    error
+                  ) {
+                    console.error(
+                      "[Providers] Erro ao abrir lembrete de dose:",
+                      error
+                    );
+                  }
+                }
+              )();
             }
           }
         );
@@ -634,20 +751,18 @@ export function Providers({
   if (
     loading
   ) {
+    /*
+     * O SplashScreen já cobre a primeira inicialização.
+     *
+     * Durante uma revalidação curta da autenticação mantemos
+     * somente o fundo do aplicativo, sem simular uma nova
+     * abertura do Vault.
+     */
     return (
-      <div className="flex min-h-screen items-center justify-center bg-void px-6">
-        <div className="w-full max-w-xs rounded-[28px] border border-surface-border/50 bg-surface px-6 py-10 text-center shadow-vault">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-ice border-t-transparent" />
-
-          <p className="mt-4 font-display text-base font-semibold text-ink-primary">
-            Carregando Vault
-          </p>
-
-          <p className="mt-1 text-sm text-ink-muted">
-            Preparando seus dados com segurança
-          </p>
-        </div>
-      </div>
+      <div
+        className="min-h-screen bg-void"
+        aria-hidden="true"
+      />
     );
   }
 
@@ -662,7 +777,6 @@ export function Providers({
       "/auth/callback"
   ) {
     return (
-      <ToastProvider>
         <ErrorBoundary>
           <Suspense
             fallback={
@@ -674,7 +788,6 @@ export function Providers({
             }
           </Suspense>
         </ErrorBoundary>
-      </ToastProvider>
     );
   }
 
@@ -686,7 +799,6 @@ export function Providers({
     !user
   ) {
     return (
-      <ToastProvider>
         <ErrorBoundary>
           <Suspense
             fallback={
@@ -700,7 +812,6 @@ export function Providers({
             </div>
           </Suspense>
         </ErrorBoundary>
-      </ToastProvider>
     );
   }
 
@@ -709,7 +820,6 @@ export function Providers({
   // ==========================================================
 
   return (
-    <ToastProvider>
       <ErrorBoundary>
         <div className="min-h-screen pb-24">
           <Suspense
@@ -731,6 +841,5 @@ export function Providers({
           </Suspense>
         </div>
       </ErrorBoundary>
-    </ToastProvider>
   );
 }

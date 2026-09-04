@@ -8,6 +8,11 @@ import {
   LocalNotifications,
 } from "@capacitor/local-notifications";
 
+import {
+  isNotificationPreferenceEnabled,
+  requestNotificationPermissions,
+} from "@/lib/notifications";
+
 // ============================================================
 // TIPOS
 // ============================================================
@@ -219,44 +224,24 @@ async function registerNotificationActions(): Promise<void> {
 // ============================================================
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (!isNativePlatform()) {
+  if (
+    !isNativePlatform()
+  ) {
     return false;
   }
 
-  try {
-    const current =
-      await LocalNotifications.checkPermissions();
+  const granted =
+    await requestNotificationPermissions();
 
-    if (
-      current.display ===
-      "granted"
-    ) {
-      await registerNotificationActions();
-
-      return true;
-    }
-
-    const result =
-      await LocalNotifications.requestPermissions();
-
-    if (
-      result.display !==
-      "granted"
-    ) {
-      return false;
-    }
-
-    await registerNotificationActions();
-
-    return true;
-  } catch (error) {
-    console.error(
-      "[dose-notifications] Erro ao pedir permissão:",
-      error
-    );
-
+  if (
+    !granted
+  ) {
     return false;
   }
+
+  await registerNotificationActions();
+
+  return true;
 }
 
 // ============================================================
@@ -279,6 +264,20 @@ export async function scheduleDoseNotifications(
       ?.trim();
 
   if (!medicamentoId) {
+    return;
+  }
+
+  /*
+   * Primeiro removemos qualquer agenda anterior do medicamento,
+   * inclusive horários que já não existem no cadastro atual.
+   */
+  await cancelDoseNotifications(
+    medicamento
+  );
+
+  if (
+    !isNotificationPreferenceEnabled()
+  ) {
     return;
   }
 
@@ -312,13 +311,6 @@ export async function scheduleDoseNotifications(
   }
 
   await registerNotificationActions();
-
-  await cancelDoseNotifications({
-    ...medicamento,
-
-    estoque_horarios:
-      horarios,
-  });
 
   const notifications =
     horarios.map(
@@ -437,22 +429,77 @@ export async function cancelDoseNotifications(
     return;
   }
 
-  const notifications =
+  const fallbackIds =
     horarios.map(
       (
         horario
-      ) => ({
-        id:
-          getDoseNotificationId(
-            medicamentoId,
-            horario
-          ),
-      })
+      ) =>
+        getDoseNotificationId(
+          medicamentoId,
+          horario
+        )
     );
 
   try {
+    const pending =
+      await LocalNotifications.getPending();
+
+    const ids =
+      new Set<number>(
+        fallbackIds
+      );
+
+    pending.notifications.forEach(
+      (
+        notification
+      ) => {
+        const extra =
+          notification.extra;
+
+        if (
+          extra &&
+          typeof extra ===
+            "object" &&
+          (
+            extra as Record<
+              string,
+              unknown
+            >
+          ).type ===
+            "dose_reminder" &&
+          (
+            extra as Record<
+              string,
+              unknown
+            >
+          ).medicamentoId ===
+            medicamentoId
+        ) {
+          ids.add(
+            notification.id
+          );
+        }
+      }
+    );
+
+    if (
+      ids.size ===
+      0
+    ) {
+      return;
+    }
+
     await LocalNotifications.cancel({
-      notifications,
+      notifications:
+        Array.from(
+          ids
+        ).map(
+          (
+            id
+          ) => ({
+            id,
+          })
+        ),
     });
   } catch (error) {
     console.error(
@@ -505,14 +552,43 @@ export async function cancelAllDoseNotifications(
     }
   );
 
-  if (
-    ids.size ===
-    0
-  ) {
-    return;
-  }
-
   try {
+    const pending =
+      await LocalNotifications.getPending();
+
+    pending.notifications.forEach(
+      (
+        notification
+      ) => {
+        const extra =
+          notification.extra;
+
+        if (
+          extra &&
+          typeof extra ===
+            "object" &&
+          (
+            extra as Record<
+              string,
+              unknown
+            >
+          ).type ===
+            "dose_reminder"
+        ) {
+          ids.add(
+            notification.id
+          );
+        }
+      }
+    );
+
+    if (
+      ids.size ===
+      0
+    ) {
+      return;
+    }
+
     await LocalNotifications.cancel({
       notifications:
         Array.from(

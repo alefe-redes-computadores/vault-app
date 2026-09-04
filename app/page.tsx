@@ -44,6 +44,7 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
@@ -412,6 +413,9 @@ export default function HomePage() {
     activePersonId,
   } =
     useActivePersonId();
+
+  const healthIntelligence =
+    useHealthIntelligence();
 
   const hoje =
     getLocalTodayISO();
@@ -1108,6 +1112,44 @@ export default function HomePage() {
       healthInsights,
       documentInsights,
     ]);
+
+  /*
+   * Alertas imediatos continuam no bloco Atenção.
+   *
+   * Esta seleção contém somente padrões longitudinais:
+   * - com destino navegável;
+   * - confiança média ou alta;
+   * - sem repetir estoque e renovação;
+   * - limitados para não sobrecarregar a Home.
+   */
+  const longitudinalHighlights =
+    useMemo(
+      () =>
+        healthIntelligence.insights
+          .filter(
+            (
+              insight
+            ) =>
+              Boolean(
+                insight.link &&
+                insight.confianca !==
+                  "baixa" &&
+                insight.categoria !==
+                  "estoque" &&
+                insight.categoria !==
+                  "renovacao" &&
+                insight.categoria !==
+                  "dados"
+              )
+          )
+          .slice(
+            0,
+            3
+          ),
+      [
+        healthIntelligence.insights,
+      ]
+    );
 
   const resumoContextual =
     useMemo(
@@ -2093,6 +2135,165 @@ export default function HomePage() {
                   </button>
                 )}
 
+              </div>
+            </motion.section>
+          )}
+
+          {/* ===================================================
+              PADRÕES PERCEBIDOS
+          =================================================== */}
+
+          {longitudinalHighlights.length >
+            0 && (
+            <motion.section
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.05,
+              }}
+              className="space-y-3"
+            >
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Activity
+                      size={15}
+                      className="text-violet-400"
+                    />
+
+                    <h2 className="font-display text-sm font-semibold text-ink-primary">
+                      Padrões percebidos
+                    </h2>
+                  </div>
+
+                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                    {
+                      healthIntelligence
+                        .maturity
+                        .label
+                    }
+
+                    {" · "}
+
+                    {
+                      healthIntelligence
+                        .maturity
+                        .totalRecords
+                    }
+
+                    {" registros analisados"}
+                  </p>
+                </div>
+
+                <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-violet-300">
+                  {
+                    healthIntelligence
+                      .maturity
+                      .sourcesWithData
+                  }
+
+                  /
+
+                  {
+                    healthIntelligence
+                      .maturity
+                      .totalSources
+                  }
+
+                  {" fontes"}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {longitudinalHighlights.map(
+                  (
+                    insight
+                  ) => (
+                    <button
+                      key={
+                        insight.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        const link =
+                          insight.link;
+
+                        if (
+                          !link
+                        ) {
+                          return;
+                        }
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          link
+                        );
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left transition-all active:scale-[0.985]"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300">
+                        <Activity
+                          size={17}
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-violet-300">
+                            {
+                              insight
+                                .categoria
+                                .replace(
+                                  "_",
+                                  " "
+                                )
+                            }
+                          </span>
+
+                          <span className="text-[9px] text-ink-faint">
+                            Confiança{" "}
+                            {
+                              insight.confianca
+                            }
+
+                            {" · amostra "}
+
+                            {
+                              insight.amostra
+                            }
+                          </span>
+                        </div>
+
+                        <p className="mt-1 line-clamp-1 text-xs font-bold text-ink-primary">
+                          {
+                            insight.titulo
+                          }
+                        </p>
+
+                        <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-ink-muted">
+                          {
+                            insight.mensagem
+                          }
+                        </p>
+                      </div>
+
+                      <ChevronRight
+                        size={15}
+                        className="shrink-0 text-violet-300"
+                      />
+                    </button>
+                  )
+                )}
               </div>
             </motion.section>
           )}
