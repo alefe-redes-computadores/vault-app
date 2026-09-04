@@ -1,104 +1,230 @@
+// components/SplashScreen.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck } from "lucide-react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+} from "framer-motion";
+
+import {
+  ShieldCheck,
+} from "lucide-react";
 
 interface SplashScreenProps {
   children: React.ReactNode;
   minDisplayTime?: number;
 }
 
+const SPLASH_SESSION_KEY =
+  "@vault:splash-shown";
+
 export function SplashScreen({
   children,
-  minDisplayTime = 1500,
+  minDisplayTime = 650,
 }: SplashScreenProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const reduceMotion =
+    useReducedMotion();
+
+  const [
+    isVisible,
+    setIsVisible,
+  ] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, minDisplayTime);
+    let alreadyShown =
+      false;
 
-    return () => clearTimeout(timer);
-  }, [minDisplayTime]);
+    try {
+      alreadyShown =
+        sessionStorage.getItem(
+          SPLASH_SESSION_KEY
+        ) === "true";
+    } catch {
+      /*
+       * Algumas WebViews podem bloquear
+       * o armazenamento de sessão.
+       */
+    }
+
+    if (alreadyShown) {
+      setIsVisible(false);
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(
+        SPLASH_SESSION_KEY,
+        "true"
+      );
+    } catch {
+      /*
+       * O splash continua funcional
+       * mesmo sem persistência.
+       */
+    }
+
+    const duration =
+      reduceMotion
+        ? 120
+        : Math.max(
+            350,
+            minDisplayTime
+          );
+
+    const timer =
+      window.setTimeout(
+        () => {
+          setIsVisible(false);
+        },
+        duration
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    minDisplayTime,
+    reduceMotion,
+  ]);
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        {isLoading && (
+      {children}
+
+      <AnimatePresence
+        initial={false}
+      >
+        {isVisible && (
           <motion.div
-            key="splash"
-            className="bg-aurora fixed inset-0 z-50 flex flex-col items-center justify-center bg-void px-6"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            key="vault-splash"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-void px-6"
+            initial={{
+              opacity: 1,
+            }}
+            exit={{
+              opacity: 0,
+              scale:
+                reduceMotion
+                  ? 1
+                  : 1.015,
+            }}
+            transition={{
+              duration:
+                reduceMotion
+                  ? 0.08
+                  : 0.2,
+
+              ease: [
+                0.16,
+                1,
+                0.3,
+                1,
+              ],
+            }}
+            role="status"
+            aria-label="Abrindo o Vault"
           >
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 0.42, delay: 0.12 }}
-              className="shadow-vault w-full max-w-xs rounded-[32px] border border-surface-border/50 bg-surface px-8 py-12 text-center"
-            >
+            <div className="relative flex flex-col items-center">
+              <div className="absolute inset-0 -z-10 scale-[2.2] rounded-full bg-ice/10 blur-3xl" />
+
               <motion.div
-                animate={{ scale: [1, 1.035, 1] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
+                initial={
+                  reduceMotion
+                    ? false
+                    : {
+                        opacity: 0,
+                        scale: 0.9,
+                        y: 6,
+                      }
+                }
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                  y: 0,
                 }}
-                className="ring-gradient glow-ice mx-auto flex h-20 w-20 items-center justify-center rounded-[24px]"
+                transition={{
+                  duration: 0.28,
+
+                  ease: [
+                    0.16,
+                    1,
+                    0.3,
+                    1,
+                  ],
+                }}
+                className="ring-gradient glow-ice flex h-[72px] w-[72px] items-center justify-center rounded-[22px]"
               >
-                <ShieldCheck size={38} className="text-void" strokeWidth={1.8} />
+                <ShieldCheck
+                  size={34}
+                  className="text-void"
+                  strokeWidth={1.9}
+                />
               </motion.div>
 
-              <motion.h1
-                className="text-gradient mt-6 font-display text-2xl font-semibold tracking-tight"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.24 }}
-              >
-                Vault
-              </motion.h1>
-
-              <motion.p
-                className="mt-1 text-sm text-ink-muted"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.38 }}
-              >
-                Seus documentos, sempre à mão
-              </motion.p>
-
               <motion.div
-                className="mt-8 flex items-center justify-center gap-2.5"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.5 }}
+                initial={
+                  reduceMotion
+                    ? false
+                    : {
+                        opacity: 0,
+                        y: 5,
+                      }
+                }
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                transition={{
+                  duration: 0.22,
+
+                  delay:
+                    reduceMotion
+                      ? 0
+                      : 0.08,
+                }}
+                className="mt-5 text-center"
               >
-                {[0, 0.16, 0.32].map((delay) => (
+                <h1 className="text-gradient font-display text-2xl font-semibold tracking-tight">
+                  Vault
+                </h1>
+
+                <p className="mt-1 text-xs text-ink-muted">
+                  Sua vida organizada e protegida
+                </p>
+              </motion.div>
+
+              {!reduceMotion && (
+                <motion.div
+                  className="mt-5 h-0.5 w-16 overflow-hidden rounded-full bg-surface-raised"
+                  aria-hidden="true"
+                >
                   <motion.div
-                    key={delay}
+                    className="h-full rounded-full bg-ice"
+                    initial={{
+                      x: "-100%",
+                    }}
                     animate={{
-                      scale: [1, 1.35, 1],
-                      opacity: [0.28, 1, 0.28],
+                      x: "100%",
                     }}
                     transition={{
-                      duration: 1.1,
-                      repeat: Infinity,
+                      duration: 0.55,
                       ease: "easeInOut",
-                      delay,
                     }}
-                    className="h-2.5 w-2.5 rounded-full bg-ice/45"
                   />
-                ))}
-              </motion.div>
-            </motion.div>
+                </motion.div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {!isLoading && children}
     </>
   );
 }

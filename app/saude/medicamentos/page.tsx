@@ -19,7 +19,6 @@ import {
   Droplet,
   Eye,
   EyeOff,
-  Info,
   Pill,
   Stethoscope,
   StickyNote,
@@ -47,10 +46,6 @@ import {
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
-
-import {
-  useToast,
-} from "@/components/ToastProvider";
 
 import {
   PageTransition,
@@ -211,11 +206,6 @@ export default function MedicamentosListPage() {
     trigger,
   } =
     useHapticFeedback();
-
-  const {
-    showToast,
-  } =
-    useToast();
 
   const {
     medicamentos:
@@ -474,69 +464,13 @@ export default function MedicamentosListPage() {
     );
 
   // ==========================================================
-  // TOAST DE DOSES PENDENTES
+  // ==========================================================
+  // AVISO DE DOSES
   //
-  // Aparece no máximo UMA vez por dia para cada pessoa.
-  //
-  // Abrir um medicamento e voltar para a listagem no mesmo
-  // dia não gera um novo toast.
+  // O progresso já comunica as doses pendentes na própria
+  // página, evitando um toast automático redundante.
   // ==========================================================
 
-  useEffect(
-    () => {
-      if (
-        typeof window ===
-          "undefined" ||
-        !activePersonId ||
-        statsProgresso.pendentes <=
-          0
-      ) {
-        return;
-      }
-
-      const storageKey =
-        `@vault:meds_pendingToast:${activePersonId}`;
-
-      const ultimaDataExibida =
-        localStorage.getItem(
-          storageKey
-        );
-
-      if (
-        ultimaDataExibida ===
-        hojeString
-      ) {
-        return;
-      }
-
-      /*
-       * Gravamos antes de mostrar.
-       *
-       * Isso também evita toast duplicado no StrictMode
-       * durante desenvolvimento.
-       */
-      localStorage.setItem(
-        storageKey,
-        hojeString
-      );
-
-      showToast(
-        statsProgresso.pendentes ===
-          1
-          ? "Você tem 1 dose contínua pendente hoje."
-          : `Você tem ${statsProgresso.pendentes} doses contínuas pendentes hoje.`,
-        "info"
-      );
-    },
-    [
-      activePersonId,
-      hojeString,
-      statsProgresso.pendentes,
-      showToast,
-    ]
-  );
-
-  // ==========================================================
   // AGRUPAMENTO
   // ==========================================================
 
@@ -863,7 +797,7 @@ export default function MedicamentosListPage() {
             />
           }
         >
-          <div className="flex h-full min-h-[124px] flex-col">
+          <div className="flex min-h-[98px] flex-col">
             {/* LINHA 1 */}
 
             <div className="flex min-h-6 min-w-0 items-center justify-between gap-2">
@@ -884,41 +818,26 @@ export default function MedicamentosListPage() {
               </div>
 
               {insight?.deveRenovar && (
-                <button
-                  type="button"
-                  onClick={
-                    (
-                      event
-                    ) => {
-                      event.stopPropagation();
-
-                      trigger(
-                        "light"
-                      );
-
-                      showToast(
-                        insight.mensagem,
-                        insight.urgencia ===
-                          "alta"
-                          ? "error"
-                          : "info"
-                      );
-                    }
-                  }
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 ${
+                <span
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                     insight.urgencia ===
                     "alta"
                       ? "bg-coral/15 text-coral"
                       : "bg-amber-400/15 text-amber-500"
                   }`}
-                  aria-label="Ver alerta de renovação"
+                  title={
+                    insight.mensagem
+                  }
+                  aria-label={
+                    insight.mensagem
+                  }
                 >
                   <AlertTriangle
                     size={
                       14
                     }
                   />
-                </button>
+                </span>
               )}
             </div>
 
@@ -926,37 +845,22 @@ export default function MedicamentosListPage() {
 
             <div className="mt-1.5 flex min-h-[18px] flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-ink-muted">
               {receita && (
-                <button
-                  type="button"
-                  onClick={
-                    (
-                      event
-                    ) => {
-                      event.stopPropagation();
-
-                      trigger(
-                        "light"
-                      );
-
-                      showToast(
-                        receita.tooltip,
-                        "info"
-                      );
-                    }
+                <span
+                  className={`shrink-0 rounded-md border px-1.5 py-0.5 font-bold uppercase ${receita.textColorClass}`}
+                  style={{
+                    borderColor:
+                      `${cardColor}45`,
+                    backgroundColor:
+                      `${cardColor}12`,
+                  }}
+                  title={
+                    receita.tooltip
                   }
-                  className={`flex items-center gap-0.5 font-bold uppercase transition-transform active:scale-95 ${receita.textColorClass}`}
                 >
                   {
                     receita.sigla
                   }
-
-                  <Info
-                    size={
-                      10
-                    }
-                    className="opacity-70"
-                  />
-                </button>
+                </span>
               )}
 
               {receita &&
@@ -1011,7 +915,7 @@ export default function MedicamentosListPage() {
 
             {/* LINHA 3 */}
 
-            <div className="mt-auto flex min-h-8 items-center justify-between gap-2 pt-3">
+            <div className="mt-auto flex min-h-8 items-center justify-between gap-2 pt-2.5">
               <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                 {!isSuspenso && (
                   <>

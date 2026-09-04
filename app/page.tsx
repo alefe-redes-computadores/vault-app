@@ -61,7 +61,7 @@ import {
 } from "@/lib/health-insights";
 
 import { PageTransition } from "@/components/PageTransition";
-import { SimpleSpinner } from "@/components/loading/SimpleSpinner";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { PendingDosesModal } from "@/components/PendingDosesModal";
 import { VersiculoDia } from "@/components/VersiculoDia";
 
@@ -1612,7 +1612,16 @@ export default function HomePage() {
 
   if (authLoading) {
     return (
-      <SimpleSpinner />
+      <main className="min-h-screen bg-void px-5 pb-36 pt-6">
+        <div className="mb-6 space-y-3">
+          <div className="h-5 w-32 animate-pulse rounded-lg bg-surface-raised" />
+          <div className="h-9 w-52 animate-pulse rounded-xl bg-surface-raised" />
+        </div>
+
+        <div className="mb-5 h-44 animate-pulse rounded-[28px] border border-surface-border/50 bg-surface" />
+
+        <CardListSkeleton />
+      </main>
     );
   }
 
