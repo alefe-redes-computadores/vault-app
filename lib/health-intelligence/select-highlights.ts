@@ -28,12 +28,10 @@ export function selectHealthHighlights(
 
   const eligible = insights.filter(
     (insight) =>
+      insight.kind === "pattern" &&
       Boolean(insight.link) &&
       insight.confianca !== "baixa" &&
-      insight.amostra >= minimumSample &&
-      insight.categoria !== "estoque" &&
-      insight.categoria !== "renovacao" &&
-      insight.categoria !== "dados"
+      insight.amostra >= minimumSample
   );
 
   const semanticKeys = new Set<string>();

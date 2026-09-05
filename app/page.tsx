@@ -24,6 +24,7 @@ import {
   FolderHeart,
   FolderLock,
   HeartPulse,
+  Info,
   Landmark,
   MapPin,
   Pill,
@@ -59,12 +60,14 @@ import {
 import {
   gerarAlertasVisaoGeral,
   type AlertaVisaoGeral,
+  type HealthInsight,
 } from "@/lib/health-insights";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { PendingDosesModal } from "@/components/PendingDosesModal";
 import { VersiculoDia } from "@/components/VersiculoDia";
+import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 
 // ============================================================
 // HELPERS
@@ -1362,6 +1365,20 @@ export default function HomePage() {
     useState(false);
 
   const [
+    insightExplicado,
+    setInsightExplicado,
+  ] =
+    useState<
+      HealthInsight | null
+    >(null);
+
+  const [
+    mostrarFontesInteligencia,
+    setMostrarFontesInteligencia,
+  ] =
+    useState(false);
+
+  const [
     processandoDoseId,
     setProcessandoDoseId,
   ] =
@@ -2166,7 +2183,28 @@ export default function HomePage() {
                   </p>
                 </div>
 
-                <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-violet-300">
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setInsightExplicado(
+                      null
+                    );
+
+                    setMostrarFontesInteligencia(
+                      true
+                    );
+                  }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-violet-300 transition-all active:scale-95"
+                  aria-label="Ver fontes usadas pela inteligência do Vault"
+                >
+                  <Info
+                    size={11}
+                  />
+
                   {
                     healthIntelligence
                       .maturity
@@ -2182,7 +2220,7 @@ export default function HomePage() {
                   }
 
                   {" fontes"}
-                </span>
+                </button>
               </div>
 
               <div className="space-y-2">
@@ -2196,21 +2234,16 @@ export default function HomePage() {
                       }
                       type="button"
                       onClick={() => {
-                        const link =
-                          insight.link;
-
-                        if (
-                          !link
-                        ) {
-                          return;
-                        }
-
                         trigger(
                           "vibrate"
                         );
 
-                        router.push(
-                          link
+                        setMostrarFontesInteligencia(
+                          false
+                        );
+
+                        setInsightExplicado(
+                          insight
                         );
                       }}
                       className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left transition-all active:scale-[0.985]"
@@ -3191,6 +3224,56 @@ export default function HomePage() {
             <VersiculoDia />
           </motion.section>
         </section>
+
+        {/* =====================================================
+            EXPLICABILIDADE DA INTELIGÊNCIA
+        ===================================================== */}
+
+        <HealthInsightExplanationSheet
+          isOpen={
+            Boolean(
+              insightExplicado
+            ) ||
+            mostrarFontesInteligencia
+          }
+          mode={
+            mostrarFontesInteligencia
+              ? "sources"
+              : "insight"
+          }
+          insight={
+            insightExplicado
+          }
+          sources={
+            healthIntelligence
+              .maturity
+              .sources
+          }
+          onClose={() => {
+            setInsightExplicado(
+              null
+            );
+
+            setMostrarFontesInteligencia(
+              false
+            );
+          }}
+          onNavigate={(
+            href
+          ) => {
+            setInsightExplicado(
+              null
+            );
+
+            setMostrarFontesInteligencia(
+              false
+            );
+
+            router.push(
+              href
+            );
+          }}
+        />
 
         {/* =====================================================
             MODAL DE DOSES

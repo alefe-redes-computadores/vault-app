@@ -1339,22 +1339,23 @@ export function sugerirRenovacao(
     diasAteRenovacao <
       0 &&
     (
-      isReceitaMensalRigorosa ||
       (
         isContinuo &&
-        diasRestantes ===
-          null
+        (
+          diasRestantes ===
+            null ||
+          diasRestantes <=
+            limitePlanejamento
+        )
       ) ||
       (
         !isContinuo &&
         (
           !temControleEstoque ||
-          (
-            dosesRestantes !==
-              null &&
-            dosesRestantes <=
-              5
-          )
+          dosesRestantes ===
+            null ||
+          dosesRestantes <=
+            5
         )
       )
     )
@@ -1491,14 +1492,11 @@ export function sugerirRenovacao(
     if (
       !aguardandoDataPersonalizada &&
       (
-        isReceitaMensalRigorosa ||
         !temControleEstoque ||
-        (
-          dosesRestantes !==
-            null &&
-          dosesRestantes <=
-            5
-        )
+        dosesRestantes ===
+          null ||
+        dosesRestantes <=
+          5
       ) &&
       diasAteRenovacao !==
         null &&
@@ -1637,11 +1635,8 @@ export function sugerirRenovacao(
 
   if (
     !aguardandoDataPersonalizada &&
-    (
-      isReceitaMensalRigorosa ||
-      diasRestantes ===
-        null
-    ) &&
+    diasRestantes ===
+      null &&
     diasAteRenovacao !==
       null &&
     diasAteRenovacao <=
@@ -7150,8 +7145,39 @@ export type HealthInsightCategory =
   | "historico"
   | "dados";
 
+/**
+ * Natureza semântica do conhecimento produzido pelo cérebro.
+ *
+ * alert
+ *   Algo temporal que pode exigir atenção ou ação.
+ *
+ * observation
+ *   Constatação objetiva do estado atual dos dados.
+ *
+ * pattern
+ *   Comportamento recorrente, tendência ou mudança inferida
+ *   a partir de múltiplos registros.
+ *
+ * data_quality
+ *   Inconsistência, ausência ou problema de qualidade dos dados.
+ *
+ * recommendation
+ *   Orientação operacional derivada do contexto.
+ *
+ * Este tipo não representa diagnóstico ou gravidade clínica.
+ */
+export type HealthInsightKind =
+  | "alert"
+  | "observation"
+  | "pattern"
+  | "data_quality"
+  | "recommendation";
+
 export interface HealthInsight {
   id: string;
+
+  kind:
+    HealthInsightKind;
 
   categoria:
     HealthInsightCategory;
@@ -7391,6 +7417,9 @@ export function gerarInsightsSaude(
       id:
         "contexto-dados-inconsistentes",
 
+      kind:
+        "data_quality",
+
       categoria:
         "dados",
 
@@ -7441,6 +7470,10 @@ export function gerarInsightsSaude(
           insights.push({
             id:
               alerta.id,
+
+            kind:
+              "observation",
+
             categoria:
               "tratamento",
             titulo:
@@ -7538,6 +7571,9 @@ export function gerarInsightsSaude(
             id:
               `adesao-${medicamento.id}`,
 
+            kind:
+              "pattern",
+
             categoria:
               "adesao",
 
@@ -7592,6 +7628,9 @@ export function gerarInsightsSaude(
             id:
               `horario-adesao-${medicamento.id}-${horarioInsight.horario}`,
 
+            kind:
+              "pattern",
+
             categoria:
               "adesao",
 
@@ -7642,6 +7681,9 @@ export function gerarInsightsSaude(
           insights.push({
             id:
               `consumo-rotina-${medicamento.id}`,
+
+            kind:
+              "pattern",
 
             categoria:
               "rotina",
@@ -7702,6 +7744,9 @@ export function gerarInsightsSaude(
           id:
             `tendencia-sos-${medicamento.id}`,
 
+          kind:
+            "pattern",
+
           categoria:
             "uso_sos",
 
@@ -7760,6 +7805,9 @@ export function gerarInsightsSaude(
           id:
             `renovacao-${renovacaoInsight.motivo}-${medicamento.id}`,
 
+          kind:
+            "alert",
+
           categoria:
             renovacaoInsight.motivo ===
             "estoque"
@@ -7813,6 +7861,9 @@ export function gerarInsightsSaude(
           id:
             `intervalo-renovacoes-${medicamento.id}`,
 
+          kind:
+            "pattern",
+
           categoria:
             "historico",
 
@@ -7859,6 +7910,9 @@ export function gerarInsightsSaude(
         insights.push({
           id:
             `padrao-renovacao-${medicamento.id}`,
+
+          kind:
+            "pattern",
 
           categoria:
             "historico",
@@ -8002,6 +8056,9 @@ export function gerarInsightsSaude(
       id:
         "cluster-sintomas-sos",
 
+      kind:
+        "pattern",
+
       categoria:
         "sintomas",
 
@@ -8062,6 +8119,9 @@ export function gerarInsightsSaude(
         `padrao-dia-${normalizeText(
           padraoDia.diaCritico
         )}`,
+
+      kind:
+        "pattern",
 
       categoria:
         "historico",

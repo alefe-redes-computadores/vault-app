@@ -30,12 +30,20 @@ import {
   selectHealthHighlights,
 } from "@/lib/health-intelligence/select-highlights";
 
+export type HealthIntelligenceSource = {
+  key: string;
+  label: string;
+  count: number;
+  hasData: boolean;
+};
+
 export type HealthIntelligenceMaturity = {
   score: number;
   label: string;
   sourcesWithData: number;
   totalSources: number;
   totalRecords: number;
+  sources: HealthIntelligenceSource[];
 };
 
 export function useHealthIntelligence() {
@@ -118,37 +126,143 @@ export function useHealthIntelligence() {
       HealthIntelligenceMaturity
     >(
       () => {
-        if (
-          !context
-        ) {
-          return {
-            score: 0,
+        const sources: HealthIntelligenceSource[] = [
+          {
+            key:
+              "medicamentos",
             label:
-              "Aguardando histórico",
-            sourcesWithData: 0,
-            totalSources: 10,
-            totalRecords: 0,
-          };
-        }
-
-        const sources = [
-          context.medicamentos,
-          context.doseLogs,
-          context.renovacoes,
-          context.tratamentos,
-          context.registrosSaude,
-          context.consultas,
-          context.exames,
-          context.cirurgias,
-          context.cids,
-          context.documentos,
+              "Medicamentos",
+            count:
+              context?.medicamentos.length ??
+              0,
+            hasData:
+              (context?.medicamentos.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "doseLogs",
+            label:
+              "Registros de doses",
+            count:
+              context?.doseLogs.length ??
+              0,
+            hasData:
+              (context?.doseLogs.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "renovacoes",
+            label:
+              "Renovações e aquisições",
+            count:
+              context?.renovacoes.length ??
+              0,
+            hasData:
+              (context?.renovacoes.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "tratamentos",
+            label:
+              "Tratamentos",
+            count:
+              context?.tratamentos.length ??
+              0,
+            hasData:
+              (context?.tratamentos.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "registrosSaude",
+            label:
+              "Registros de saúde",
+            count:
+              context?.registrosSaude.length ??
+              0,
+            hasData:
+              (context?.registrosSaude.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "consultas",
+            label:
+              "Consultas",
+            count:
+              context?.consultas.length ??
+              0,
+            hasData:
+              (context?.consultas.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "exames",
+            label:
+              "Exames",
+            count:
+              context?.exames.length ??
+              0,
+            hasData:
+              (context?.exames.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "cirurgias",
+            label:
+              "Cirurgias",
+            count:
+              context?.cirurgias.length ??
+              0,
+            hasData:
+              (context?.cirurgias.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "cids",
+            label:
+              "CIDs",
+            count:
+              context?.cids.length ??
+              0,
+            hasData:
+              (context?.cids.length ??
+                0) >
+              0,
+          },
+          {
+            key:
+              "documentos",
+            label:
+              "Documentos de saúde",
+            count:
+              context?.documentos.length ??
+              0,
+            hasData:
+              (context?.documentos.length ??
+                0) >
+              0,
+          },
         ];
 
         const sourcesWithData =
           sources.filter(
             (source) =>
-              source.length >
-              0
+              source.hasData
           ).length;
 
         const totalRecords =
@@ -158,9 +272,24 @@ export function useHealthIntelligence() {
               source
             ) =>
               total +
-              source.length,
+              source.count,
             0
           );
+
+        if (
+          !context
+        ) {
+          return {
+            score: 0,
+            label:
+              "Aguardando histórico",
+            sourcesWithData,
+            totalSources:
+              sources.length,
+            totalRecords,
+            sources,
+          };
+        }
 
         /*
          * Índice de maturidade do contexto, não da saúde.
@@ -169,8 +298,11 @@ export function useHealthIntelligence() {
          * produzir padrões. Nunca representa diagnóstico.
          */
         const coverage =
-          sourcesWithData /
-          sources.length;
+          sources.length >
+          0
+            ? sourcesWithData /
+              sources.length
+            : 0;
 
         const volume =
           Math.min(
@@ -218,6 +350,7 @@ export function useHealthIntelligence() {
           totalSources:
             sources.length,
           totalRecords,
+          sources,
         };
       },
       [

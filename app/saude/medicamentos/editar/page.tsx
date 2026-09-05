@@ -6,19 +6,20 @@ import {
   useEffect,
   useRef,
   useState,
-} from "react";
+  } from "react";
 
 import {
   useRouter,
   useSearchParams,
-} from "next/navigation";
+  } from "next/navigation";
 
 import {
   AnimatePresence,
   motion,
-} from "framer-motion";
+  } from "framer-motion";
 
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
@@ -119,6 +120,15 @@ import {
 import {
   sugerirHorarios,
 } from "@/lib/health-insights";
+
+
+import {
+  supabaseMedicationCatalogProvider,
+} from "@/lib/medication-catalog";
+
+import type {
+  MedicationCatalogSearchResult,
+} from "@/lib/medication-catalog";
 
 import {
   hospitaisRepository,
@@ -574,6 +584,217 @@ function getPositiveNumberOrNull(
   return parsed;
 }
 
+function normalizeCatalogText(
+  value: string
+) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+
+function formatMatchesCatalog(
+  formato: string,
+  texts: string[]
+) {
+  if (!formato || texts.length === 0) {
+    return true;
+  }
+
+  const aliases: Record<string, string[]> = {
+    comprimido: [
+      "comprimido",
+      "comp",
+    ],
+
+    partido: [
+      "comprimido",
+      "comp",
+    ],
+
+    capsula: [
+      "capsula",
+      "cap",
+    ],
+
+    gota: [
+      "gota",
+      "gotas",
+      "gts",
+    ],
+
+    injecao: [
+      "injecao",
+      "injetavel",
+    ],
+
+    adesivo: [
+      "adesivo",
+      "transdermico",
+    ],
+
+    solucao: [
+      "solucao",
+    ],
+
+    suspensao: [
+      "suspensao",
+    ],
+
+    xarope: [
+      "xarope",
+    ],
+
+    spray: [
+      "spray",
+      "aerosol",
+    ],
+
+    inalador: [
+      "inalador",
+      "inalacao",
+      "inalatoria",
+    ],
+
+    creme: [
+      "creme",
+    ],
+
+    pomada: [
+      "pomada",
+    ],
+
+    gel: [
+      "gel",
+    ],
+
+    colirio: [
+      "colirio",
+      "oftalm",
+    ],
+
+    supositorio: [
+      "supositorio",
+    ],
+
+    ovulo: [
+      "ovulo",
+      "vaginal",
+    ],
+
+    po: [
+      "po",
+    ],
+
+    granulado: [
+      "granulado",
+    ],
+
+    sache: [
+      "sache",
+    ],
+
+    sublingual: [
+      "sublingual",
+    ],
+
+    bucal: [
+      "bucal",
+    ],
+
+    mastigavel: [
+      "mastigavel",
+    ],
+
+    efervescente: [
+      "efervescente",
+    ],
+
+    dispersivel: [
+      "dispersivel",
+      "orodispersivel",
+    ],
+
+    implante: [
+      "implante",
+    ],
+  };
+
+  const expected =
+    aliases[formato] ?? [
+      formato,
+    ];
+
+  const normalizedTexts =
+    texts
+      .map(normalizeCatalogText)
+      .filter(Boolean);
+
+  return expected.some(
+    (term) => {
+      const normalized =
+        normalizeCatalogText(term);
+
+      return normalizedTexts.some(
+        (candidate) =>
+          candidate.includes(
+            normalized
+          )
+      );
+    }
+  );
+}
+
+function getEstoqueUnidadePorFormato(
+  formato: string
+) {
+  switch (formato) {
+    case "gota":
+    case "colirio":
+      return "gota(s)";
+
+    case "solucao":
+    case "suspensao":
+    case "xarope":
+      return "ml";
+
+    case "spray":
+    case "inalador":
+      return "jato(s)";
+
+    case "creme":
+    case "pomada":
+    case "gel":
+      return "aplicação(ões)";
+
+    case "injecao":
+      return "dose(s)";
+
+    case "adesivo":
+      return "adesivo(s)";
+
+    case "sache":
+      return "sachê(s)";
+
+    case "supositorio":
+      return "supositório(s)";
+
+    case "ovulo":
+      return "óvulo(s)";
+
+    case "implante":
+      return "implante(s)";
+
+    case "capsula":
+      return "cápsula(s)";
+
+    default:
+      return "comprimido(s)";
+  }
+}
+
 // ============================================================
 // ÍCONES
 // ============================================================
@@ -699,72 +920,65 @@ const CapsuleIcon = ({
   </svg>
 );
 
+const FORMATOS_PRINCIPAIS = [
+  {
+    id: "comprimido",
+    label: "Comprimido",
+    icon: CirclePillIcon,
+  },
+  {
+    id: "partido",
+    label: "Partido",
+    icon: SplitPillIcon,
+  },
+  {
+    id: "capsula",
+    label: "Cápsula",
+    icon: CapsuleIcon,
+  },
+  {
+    id: "gota",
+    label: "Gotas",
+    icon: Droplet,
+  },
+  {
+    id: "injecao",
+    label: "Injeção",
+    icon: Syringe,
+  },
+  {
+    id: "adesivo",
+    label: "Adesivo",
+    icon: StickyNote,
+  },
+];
+
+const FORMATOS_ADICIONAIS = [
+  { id: "solucao", label: "Solução", icon: Droplet },
+  { id: "suspensao", label: "Suspensão", icon: Droplet },
+  { id: "xarope", label: "Xarope", icon: Droplet },
+  { id: "spray", label: "Spray", icon: Activity },
+  { id: "inalador", label: "Inalador", icon: Activity },
+  { id: "creme", label: "Creme", icon: Eraser },
+  { id: "pomada", label: "Pomada", icon: Eraser },
+  { id: "gel", label: "Gel", icon: Droplet },
+  { id: "colirio", label: "Colírio", icon: Droplet },
+  { id: "supositorio", label: "Supositório", icon: CapsuleIcon },
+  { id: "ovulo", label: "Óvulo", icon: CapsuleIcon },
+  { id: "po", label: "Pó", icon: Package },
+  { id: "granulado", label: "Granulado", icon: Package },
+  { id: "sache", label: "Sachê", icon: Package },
+  { id: "sublingual", label: "Sublingual", icon: CirclePillIcon },
+  { id: "bucal", label: "Bucal", icon: CirclePillIcon },
+  { id: "mastigavel", label: "Mastigável", icon: CirclePillIcon },
+  { id: "efervescente", label: "Efervescente", icon: Activity },
+  { id: "dispersivel", label: "Dispersível", icon: Activity },
+  { id: "implante", label: "Implante", icon: Package },
+];
+
 const FORMATOS = [
-  {
-    id:
-      "comprimido",
-
-    label:
-      "Comprimido",
-
-    icon:
-      CirclePillIcon,
-  },
-
-  {
-    id:
-      "partido",
-
-    label:
-      "Partido",
-
-    icon:
-      SplitPillIcon,
-  },
-
-  {
-    id:
-      "capsula",
-
-    label:
-      "Cápsula",
-
-    icon:
-      CapsuleIcon,
-  },
-
-  {
-    id:
-      "gota",
-
-    label:
-      "Gotas",
-
-    icon:
-      Droplet,
-  },
-
-  {
-    id:
-      "injecao",
-
-    label:
-      "Injeção",
-
-    icon:
-      Syringe,
-  },
-
-  {
-    id:
-      "adesivo",
-
-    label:
-      "Adesivo",
-
-    icon:
-      StickyNote,
-  },
+  ...FORMATOS_PRINCIPAIS,
+  ...FORMATOS_ADICIONAIS,
 ];
 
 const CORES_DISPONIVEIS = [
@@ -1012,6 +1226,49 @@ function EditarMedicamentoContent() {
   ] =
     useState(
       "comprimido"
+    );
+
+
+  const [
+    isFormatoModalOpen,
+    setIsFormatoModalOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    catalogResults,
+    setCatalogResults,
+  ] =
+    useState<
+      MedicationCatalogSearchResult[]
+    >(
+      []
+    );
+
+  const [
+    selectedCatalogReferenceId,
+    setSelectedCatalogReferenceId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    isCatalogSearching,
+    setIsCatalogSearching,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    catalogSearchError,
+    setCatalogSearchError,
+  ] =
+    useState(
+      false
     );
 
   const [
@@ -2244,6 +2501,93 @@ function EditarMedicamentoContent() {
   );
 
   // ==========================================================
+  // MEDICATION INTELLIGENCE
+  // ==========================================================
+
+  useEffect(
+    () => {
+      const query =
+        nome.trim();
+
+      if (
+        query.length < 4
+      ) {
+        setCatalogResults([]);
+        setSelectedCatalogReferenceId(null);
+        setIsCatalogSearching(false);
+        setCatalogSearchError(false);
+
+        return;
+      }
+
+      let cancelled =
+        false;
+
+      const timer =
+        window.setTimeout(
+          async () => {
+            setIsCatalogSearching(
+              true
+            );
+
+            setCatalogSearchError(
+              false
+            );
+
+            try {
+              const results =
+                await supabaseMedicationCatalogProvider.search(
+                  query,
+                  {
+                    limit: 3,
+                  }
+                );
+
+              if (!cancelled) {
+                setCatalogResults(
+                  results
+                );
+              }
+            } catch (error) {
+              console.warn(
+                "[Medication Intelligence] catálogo indisponível:",
+                error
+              );
+
+              if (!cancelled) {
+                setCatalogResults(
+                  []
+                );
+
+                setCatalogSearchError(
+                  true
+                );
+              }
+            } finally {
+              if (!cancelled) {
+                setIsCatalogSearching(
+                  false
+                );
+              }
+            }
+          },
+          650
+        );
+
+      return () => {
+        cancelled = true;
+
+        window.clearTimeout(
+          timer
+        );
+      };
+    },
+    [
+      nome,
+    ]
+  );
+
+  // ==========================================================
   // HANDLERS
   // ==========================================================
 
@@ -2282,38 +2626,19 @@ function EditarMedicamentoContent() {
         novoFormato
       );
 
+      setEstoqueUnidade(
+        getEstoqueUnidadePorFormato(
+          novoFormato
+        )
+      );
+
       if (
         novoFormato ===
-        "gota"
+        "gota" &&
+        !isGotasCalcAtivo
       ) {
-        setEstoqueUnidade(
-          (
-            previous
-          ) =>
-            !previous ||
-            previous ===
-              "comprimido(s)"
-              ? "gota(s)"
-              : previous
-        );
-
-        if (
-          !isGotasCalcAtivo
-        ) {
-          setIsGotasCalcAtivo(
-            true
-          );
-        }
-      } else {
-        setEstoqueUnidade(
-          (
-            previous
-          ) =>
-            !previous ||
-            previous ===
-              "gota(s)"
-              ? "comprimido(s)"
-              : previous
+        setIsGotasCalcAtivo(
+          true
         );
       }
 
@@ -4138,6 +4463,97 @@ function EditarMedicamentoContent() {
   // LOADING / NOT FOUND
   // ==========================================================
 
+  const selectedCatalogResult =
+    catalogResults.find(
+      (
+        result
+      ) =>
+        result.reference.id ===
+        selectedCatalogReferenceId
+    ) ??
+    catalogResults.find(
+      (
+        result
+      ) =>
+        normalizeCatalogText(
+          result.reference.canonicalName
+        ) ===
+        normalizeCatalogText(
+          nome
+        )
+    ) ??
+    catalogResults[0] ??
+    null;
+
+  const catalogReference =
+    selectedCatalogResult
+      ?.reference ??
+    null;
+
+  const catalogNameIsDifferent =
+    Boolean(
+      catalogReference &&
+      normalizeCatalogText(
+        catalogReference.canonicalName
+      ) !==
+        normalizeCatalogText(
+          nome
+        )
+    );
+
+  const catalogPresentations =
+    catalogReference
+      ?.presentations ??
+    [];
+
+  const catalogForms =
+    Array.from(
+      new Set(
+        [
+          ...(
+            catalogReference
+              ?.pharmaceuticalForms ??
+            []
+          ),
+
+          ...catalogPresentations
+            .map(
+              (
+                presentation
+              ) =>
+                presentation
+                  .pharmaceuticalForm
+            )
+            .filter(
+              (
+                value
+              ): value is string =>
+                Boolean(value)
+            ),
+
+          ...catalogPresentations.map(
+            (
+              presentation
+            ) =>
+              presentation.label
+          ),
+        ]
+      )
+    );
+
+  const formatCanBeChecked =
+    Boolean(
+      catalogReference
+    ) &&
+    catalogForms.length > 0;
+
+  const catalogFormatMatches =
+    !formatCanBeChecked ||
+    formatMatchesCatalog(
+      formato,
+      catalogForms
+    );
+
   if (
     isLoading
   ) {
@@ -4708,6 +5124,15 @@ function EditarMedicamentoContent() {
                         errors.novaDosagem
                       }
                     />
+
+                    {catalogReference &&
+                      novaDosagem.trim() &&
+                      catalogPresentations.length ===
+                        0 && (
+                        <p className="mt-2 text-[10px] leading-relaxed text-ink-faint">
+                          O catálogo não possui apresentações atuais suficientes para validar esta nova dosagem com segurança.
+                        </p>
+                      )}
                   </div>
 
                   <div className="border-t border-surface-border/40 pt-4">
@@ -5234,7 +5659,7 @@ function EditarMedicamentoContent() {
                   </div>
 
                   <div className="mb-5 grid grid-cols-3 gap-2">
-                    {FORMATOS.map(
+                    {FORMATOS_PRINCIPAIS.map(
                       (
                         item
                       ) => {
@@ -5291,7 +5716,82 @@ function EditarMedicamentoContent() {
                         );
                       }
                     )}
+
+                    <button
+                      type="button"
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setIsFormatoModalOpen(
+                            true
+                          );
+                        }
+                      }
+                      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 transition-all ${
+                        FORMATOS_ADICIONAIS.some(
+                          (
+                            item
+                          ) =>
+                            item.id === formato
+                        )
+                          ? "border-ice bg-ice/15 text-ice"
+                          : "border-surface-border/40 bg-surface-raised text-ink-muted"
+                      }`}
+                    >
+                      <Package
+                        size={20}
+                      />
+
+                      <span className="max-w-full truncate px-1 text-[10px] font-medium">
+                        {
+                          FORMATOS_ADICIONAIS.find(
+                            (
+                              item
+                            ) =>
+                              item.id === formato
+                          )?.label ??
+                          "Mais formatos"
+                        }
+                      </span>
+                    </button>
                   </div>
+
+                  {catalogReference &&
+                    formatCanBeChecked &&
+                    !catalogFormatMatches && (
+                      <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-3">
+                        <AlertTriangle
+                          size={15}
+                          className="mt-0.5 shrink-0 text-amber-400"
+                        />
+
+                        <div>
+                          <p className="text-xs font-semibold text-ink-primary">
+                            Formato não encontrado nas apresentações consultadas
+                          </p>
+
+                          <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                            O formato selecionado não apareceu entre as informações oficiais encontradas para{" "}
+                            <strong>
+                              {
+                                catalogReference.canonicalName
+                              }
+                            </strong>
+                            . Você pode manter esse formato e salvar normalmente.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                  {catalogReference &&
+                    !formatCanBeChecked && (
+                      <p className="mb-4 text-[10px] leading-relaxed text-ink-faint">
+                        O catálogo ainda não possui evidência atual suficiente para confirmar este formato.
+                      </p>
+                    )}
 
                   <p className="mb-2 text-xs font-medium text-ink-muted">
                     Cores
@@ -6516,6 +7016,10 @@ function EditarMedicamentoContent() {
                             event.target.value
                           );
 
+                          setSelectedCatalogReferenceId(
+                            null
+                          );
+
                           markChanged();
                         }
                       }
@@ -6523,6 +7027,198 @@ function EditarMedicamentoContent() {
                         errors.nome
                       }
                     />
+
+                    <AnimatePresence>
+                      {nome.trim().length >=
+                        4 &&
+                        (
+                          isCatalogSearching ||
+                          catalogResults.length > 0 ||
+                          catalogSearchError
+                        ) && (
+                          <motion.div
+                            initial={{
+                              opacity: 0,
+                              y: -4,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              y: 0,
+                            }}
+                            exit={{
+                              opacity: 0,
+                              y: -4,
+                            }}
+                            className="mt-2 overflow-hidden rounded-2xl border border-surface-border/50 bg-surface-raised"
+                          >
+                            {isCatalogSearching ? (
+                              <div className="flex items-center gap-2 px-3.5 py-3 text-xs text-ink-muted">
+                                <Loader2
+                                  size={14}
+                                  className="animate-spin text-ice"
+                                />
+
+                                Consultando catálogo oficial...
+                              </div>
+                            ) : catalogSearchError ? (
+                              <p className="px-3.5 py-3 text-xs leading-relaxed text-ink-muted">
+                                Catálogo temporariamente indisponível. A edição pode continuar normalmente.
+                              </p>
+                            ) : (
+                              <>
+                                {catalogResults.map(
+                                  (
+                                    result
+                                  ) => {
+                                    const reference =
+                                      result.reference;
+
+                                    const selected =
+                                      catalogReference
+                                        ?.id ===
+                                      reference.id;
+
+                                    const ingredient =
+                                      reference
+                                        .activeIngredients
+                                        ?.join(" + ") ??
+                                      reference
+                                        .activeIngredient;
+
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={
+                                          reference.id
+                                        }
+                                        onClick={
+                                          () => {
+                                            trigger(
+                                              "vibrate"
+                                            );
+
+                                            setSelectedCatalogReferenceId(
+                                              reference.id
+                                            );
+                                          }
+                                        }
+                                        className={`flex w-full items-start gap-3 border-b border-surface-border/30 px-3.5 py-3 text-left transition-colors last:border-b-0 ${
+                                          selected
+                                            ? "bg-ice/10"
+                                            : "hover:bg-void/30"
+                                        }`}
+                                      >
+                                        <FileSearch
+                                          size={16}
+                                          className="mt-0.5 shrink-0 text-ice"
+                                        />
+
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block text-sm font-semibold text-ink-primary">
+                                            {
+                                              reference.canonicalName
+                                            }
+                                          </span>
+
+                                          {ingredient && (
+                                            <span className="mt-0.5 block text-[11px] text-ink-muted">
+                                              {
+                                                ingredient
+                                              }
+                                            </span>
+                                          )}
+
+                                          <span className="mt-1 block text-[10px] text-ink-faint">
+                                            Compatibilidade{" "}
+                                            {
+                                              Math.round(
+                                                result.score *
+                                                  100
+                                              )
+                                            }
+                                            %
+                                          </span>
+                                        </span>
+
+                                        {selected && (
+                                          <Check
+                                            size={16}
+                                            className="mt-0.5 shrink-0 text-ice"
+                                          />
+                                        )}
+                                      </button>
+                                    );
+                                  }
+                                )}
+
+                                {catalogNameIsDifferent &&
+                                  catalogReference && (
+                                    <div className="border-t border-surface-border/40 px-3.5 py-3">
+                                      <div className="flex items-start gap-2">
+                                        <AlertTriangle
+                                          size={15}
+                                          className="mt-0.5 shrink-0 text-amber-400"
+                                        />
+
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-semibold text-ink-primary">
+                                            Talvez você queira dizer{" "}
+                                            {
+                                              catalogReference.canonicalName
+                                            }
+                                          </p>
+
+                                          <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                            O Vault encontrou um nome oficial parecido. Nada será alterado automaticamente.
+                                          </p>
+
+                                          <div className="mt-2 flex gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={
+                                                () => {
+                                                  setNome(
+                                                    catalogReference.canonicalName
+                                                  );
+
+                                                  setSelectedCatalogReferenceId(
+                                                    catalogReference.id
+                                                  );
+
+                                                  markChanged();
+
+                                                  trigger(
+                                                    "vibrate"
+                                                  );
+                                                }
+                                              }
+                                              className="rounded-xl bg-ice px-3 py-1.5 text-[11px] font-semibold text-void"
+                                            >
+                                              Usar sugestão
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={
+                                                () =>
+                                                  setCatalogResults(
+                                                    []
+                                                  )
+                                              }
+                                              className="rounded-xl border border-surface-border px-3 py-1.5 text-[11px] font-medium text-ink-muted"
+                                            >
+                                              Manter como está
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                              </>
+                            )}
+                          </motion.div>
+                        )}
+                    </AnimatePresence>
                   </div>
 
                   <div>
@@ -6662,6 +7358,149 @@ function EditarMedicamentoContent() {
             <div className="h-10" />
           )}
         </div>
+
+        <AnimatePresence>
+          {isFormatoModalOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Fechar seleção de formato"
+                initial={{
+                  opacity: 0,
+                }}
+                animate={{
+                  opacity: 1,
+                }}
+                exit={{
+                  opacity: 0,
+                }}
+                onClick={
+                  () =>
+                    setIsFormatoModalOpen(
+                      false
+                    )
+                }
+                className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  y: 28,
+                  scale: 0.98,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 28,
+                  scale: 0.98,
+                }}
+                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-h-[78dvh] max-w-lg overflow-hidden rounded-[30px] border border-surface-border bg-surface shadow-2xl"
+              >
+                <div className="flex items-start justify-between border-b border-surface-border/50 px-5 py-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-ink-primary">
+                      Mais formatos
+                    </h3>
+
+                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                      Selecione outro formato. Divergências com o catálogo oficial geram aviso, nunca bloqueio.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      () =>
+                        setIsFormatoModalOpen(
+                          false
+                        )
+                    }
+                    className="ml-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted"
+                  >
+                    <X
+                      size={18}
+                    />
+                  </button>
+                </div>
+
+                <div className="max-h-[60dvh] overflow-y-auto p-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    {FORMATOS_ADICIONAIS.map(
+                      (
+                        item
+                      ) => {
+                        const active =
+                          formato === item.id;
+
+                        const Icon =
+                          item.icon;
+
+                        return (
+                          <button
+                            type="button"
+                            key={
+                              item.id
+                            }
+                            onClick={
+                              () => {
+                                toggleFormato(
+                                  item.id
+                                );
+
+                                setIsFormatoModalOpen(
+                                  false
+                                );
+                              }
+                            }
+                            className={`flex min-h-[68px] items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all ${
+                              active
+                                ? "border-ice bg-ice/15 text-ice"
+                                : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                            }`}
+                          >
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-void/50">
+                              <Icon
+                                size={20}
+                                fill={
+                                  active
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                                stroke={
+                                  active
+                                    ? "none"
+                                    : "currentColor"
+                                }
+                              />
+                            </span>
+
+                            <span className="min-w-0 flex-1 text-sm font-medium">
+                              {
+                                item.label
+                              }
+                            </span>
+
+                            {active && (
+                              <Check
+                                size={17}
+                                className="shrink-0"
+                              />
+                            )}
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         <SelectionModal<any>
           isOpen={

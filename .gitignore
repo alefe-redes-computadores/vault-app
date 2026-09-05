@@ -3,3 +3,8 @@ node_modules/
 out/
 .DS_Store
 *.local
+
+# Vault local secrets / medication catalog importer
+.env.local
+.env*.local
+.certs/
