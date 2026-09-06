@@ -1311,6 +1311,137 @@ function MedicamentoDetalhesContent() {
   // Todos os Hooks já foram executados acima.
   // ==========================================================
 
+  // ==========================================================
+  // MENU — HOOK DE FECHAMENTO
+  //
+  // IMPORTANTE:
+  // precisa permanecer antes de qualquer return condicional
+  // para preservar a ordem dos Hooks entre renders.
+  // ==========================================================
+
+  useEffect(
+    () => {
+      if (
+        !isMenuFlutuanteOpen
+      ) {
+        return;
+      }
+
+      const handlePointerDown =
+        (
+          event:
+            PointerEvent
+        ) => {
+          const target =
+            event.target as Node;
+
+          if (
+            menuFlutuanteRef.current?.contains(
+              target
+            ) ||
+            menuFlutuanteTriggerRef.current?.contains(
+              target
+            )
+          ) {
+            return;
+          }
+
+          setIsMenuFlutuanteOpen(
+            false
+          );
+        };
+
+      const handleKeyDown =
+        (
+          event:
+            KeyboardEvent
+        ) => {
+          if (
+            event.key ===
+            "Escape"
+          ) {
+            setIsMenuFlutuanteOpen(
+              false
+            );
+          }
+        };
+
+      document.addEventListener(
+        "pointerdown",
+        handlePointerDown
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown
+      );
+
+      return () => {
+        document.removeEventListener(
+          "pointerdown",
+          handlePointerDown
+        );
+
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown
+        );
+      };
+    },
+    [
+      isMenuFlutuanteOpen,
+    ]
+  );
+
+  const menuOptions = [
+    {
+      id:
+        "nova-renovacao",
+
+      label:
+        "Nova Renovação",
+
+      icon:
+        FileWarning,
+
+      path:
+        `/saude/renovacao/nova?medicamento_id=${id}`,
+    },
+
+    {
+      id:
+        "duplicar-medicamento",
+
+      label:
+        "Duplicar Medicamento",
+
+      icon:
+        Copy,
+
+      path:
+        `/saude/medicamentos/novo?duplicar=${id}`,
+    },
+  ];
+
+  const handleMenuOptionClick =
+    (
+      path:
+        string
+    ) => {
+      trigger(
+        "vibrate"
+      );
+
+      setIsMenuFlutuanteOpen(
+        false
+      );
+
+      router.push(
+        path
+      );
+    };
+
+
   if (
     med ===
     undefined
@@ -2091,132 +2222,6 @@ function MedicamentoDetalhesContent() {
 
   const personAccent =
     "var(--person-accent, #38BDF8)";
-
-  // ==========================================================
-  // MENU
-  // ==========================================================
-
-  useEffect(
-    () => {
-      if (
-        !isMenuFlutuanteOpen
-      ) {
-        return;
-      }
-
-      const handlePointerDown =
-        (
-          event:
-            PointerEvent
-        ) => {
-          const target =
-            event.target as Node;
-
-          if (
-            menuFlutuanteRef.current?.contains(
-              target
-            ) ||
-            menuFlutuanteTriggerRef.current?.contains(
-              target
-            )
-          ) {
-            return;
-          }
-
-          setIsMenuFlutuanteOpen(
-            false
-          );
-        };
-
-      const handleKeyDown =
-        (
-          event:
-            KeyboardEvent
-        ) => {
-          if (
-            event.key ===
-            "Escape"
-          ) {
-            setIsMenuFlutuanteOpen(
-              false
-            );
-          }
-        };
-
-      document.addEventListener(
-        "pointerdown",
-        handlePointerDown
-      );
-
-      document.addEventListener(
-        "keydown",
-        handleKeyDown
-      );
-
-      return () => {
-        document.removeEventListener(
-          "pointerdown",
-          handlePointerDown
-        );
-
-        document.removeEventListener(
-          "keydown",
-          handleKeyDown
-        );
-      };
-    },
-    [
-      isMenuFlutuanteOpen,
-    ]
-  );
-
-  const menuOptions = [
-    {
-      id:
-        "nova-renovacao",
-
-      label:
-        "Nova Renovação",
-
-      icon:
-        FileWarning,
-
-      path:
-        `/saude/renovacao/nova?medicamento_id=${id}`,
-    },
-
-    {
-      id:
-        "duplicar-medicamento",
-
-      label:
-        "Duplicar Medicamento",
-
-      icon:
-        Copy,
-
-      path:
-        `/saude/medicamentos/novo?duplicar=${id}`,
-    },
-  ];
-
-  const handleMenuOptionClick =
-    (
-      path:
-        string
-    ) => {
-      trigger(
-        "vibrate"
-      );
-
-      setIsMenuFlutuanteOpen(
-        false
-      );
-
-      router.push(
-        path
-      );
-    };
 
   // ==========================================================
   // QUALIDADE DO CADASTRO — AÇÕES
