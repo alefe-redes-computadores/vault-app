@@ -1396,10 +1396,69 @@ export interface BankCard {
 // 11. CONFIGURAÇÕES E VERSÍCULOS
 // ============================================================
 
+export type HealthIntelligenceDecisionAction =
+  | "accepted"
+  | "dismissed";
+
+export interface HealthIntelligenceDecision {
+  /**
+   * Pessoa a quem pertence a entidade analisada.
+   */
+  person_id: string;
+
+  /**
+   * Tipo lógico da entidade.
+   *
+   * Mantido como string porque esta infraestrutura é
+   * transversal e poderá ser usada fora de Saúde.
+   */
+  entity_type: string;
+
+  entity_id: string;
+
+  /**
+   * Identificador estável do tipo de inconsistência.
+   *
+   * Ex.:
+   * possible_name_typo
+   * prescription_type_mismatch
+   * presentation_not_found
+   */
+  issue_key: string;
+
+  /**
+   * Valor efetivamente revisado pelo usuário.
+   *
+   * Se ele mudar depois, a decisão anterior deixa de
+   * esconder uma nova inconsistência.
+   */
+  detected_value: string;
+
+  /**
+   * Sugestão apresentada no momento da revisão.
+   */
+  suggested_value?: string;
+
+  decision:
+    HealthIntelligenceDecisionAction;
+
+  reviewed_at: string;
+}
+
 export interface AppSettings {
   id: string;
   user_id: string;
   default_person_id?: string;
+
+  /**
+   * Decisões tomadas pelo usuário sobre alertas de
+   * qualidade/inteligência.
+   *
+   * Campo não indexado: não exige nova versão do Dexie.
+   */
+  health_intelligence_decisions?:
+    HealthIntelligenceDecision[];
+
   created_at?: string;
   updated_at?: string;
   synced?: boolean;

@@ -355,9 +355,284 @@ function presentationRowToReference(
   };
 }
 
+export type MedicationCatalogQuickSearchResult = {
+  referenceId: string;
+  referenceType:
+    | "substance"
+    | "product";
+  canonicalName: string;
+  matchedText: string;
+  score: number;
+};
+
+type CachedQuickSearch = {
+  expiresAt: number;
+  value: Promise<MedicationCatalogQuickSearchResult[]>;
+};
+
+type CachedReference = {
+  expiresAt: number;
+  value: Promise<MedicationReference | null>;
+};
+
 export class SupabaseMedicationCatalogProvider
   implements MedicationCatalogProvider
 {
+  private readonly quickSearchCache =
+    new Map<string, CachedQuickSearch>();
+
+  private readonly referenceCache =
+    new Map<string, CachedReference>();
+
+  private readonly quickSearchCacheTtlMs =
+    2 * 60 * 1000;
+
+  private readonly referenceCacheTtlMs =
+    10 * 60 * 1000;
+
+  async searchLight(
+    query: string,
+    options: MedicationCatalogSearchOptions = {}
+  ): Promise<MedicationCatalogQuickSearchResult[]> {
+    const normalized =
+      normalizeMedicationText(query);
+
+    if (!normalized) {
+      return [];
+    }
+
+    const limit =
+      Math.max(
+        1,
+        Math.min(
+          options.limit ?? 10,
+          50
+        )
+      );
+
+    const minimumScore =
+      options.minimumScore ??
+      (
+        normalized.length <= 4
+          ? 0.85
+          : normalized.length <= 7
+            ? 0.5
+            : 0.6
+      );
+
+    const cacheKey =
+      [
+        normalized,
+        limit,
+        minimumScore,
+      ].join("|");
+
+    const cached =
+      this.quickSearchCache.get(cacheKey);
+
+    if (
+      cached &&
+      cached.expiresAt > Date.now()
+    ) {
+      return cached.value;
+    }
+
+    const promise =
+      this.executeLightSearch(
+        normalized,
+        limit,
+        minimumScore
+      );
+
+    this.quickSearchCache.set(
+      cacheKey,
+      {
+        expiresAt:
+          Date.now() +
+          this.quickSearchCacheTtlMs,
+        value: promise,
+      }
+    );
+
+    try {
+      return await promise;
+    } catch (error) {
+      this.quickSearchCache.delete(
+        cacheKey
+      );
+      throw error;
+    }
+  }
+
+  private async executeLightSearch(
+    normalized: string,
+    limit: number,
+    minimumScore: number
+  ): Promise<MedicationCatalogQuickSearchResult[]> {
+    const { data, error } =
+      await supabase.rpc(
+        "search_medication_catalog",
+        {
+          p_query: normalized,
+          p_limit: limit,
+          p_min_score: minimumScore,
+        }
+      );
+
+    if (error) {
+      throw new Error(
+        `Falha ao pesquisar catálogo de medicamentos: ${error.message}`
+      );
+    }
+
+    const rows =
+      (data ?? []) as SearchRpcRow[];
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const productIds =
+      Array.from(
+        new Set(
+          rows
+            .filter(
+              row =>
+                row.reference_type ===
+                "product"
+            )
+            .map(row => row.reference_id)
+        )
+      );
+
+    const substanceIds =
+      Array.from(
+        new Set(
+          rows
+            .filter(
+              row =>
+                row.reference_type ===
+                "substance"
+            )
+            .map(row => row.reference_id)
+        )
+      );
+
+    const [
+      productsResult,
+      substancesResult,
+    ] =
+      await Promise.all([
+        productIds.length > 0
+          ? supabase
+              .from("medication_products")
+              .select("id, product_name")
+              .in("id", productIds)
+          : Promise.resolve({
+              data: [],
+              error: null,
+            }),
+
+        substanceIds.length > 0
+          ? supabase
+              .from("medication_substances")
+              .select("id, canonical_name")
+              .in("id", substanceIds)
+          : Promise.resolve({
+              data: [],
+              error: null,
+            }),
+      ]);
+
+    if (productsResult.error) {
+      throw new Error(
+        `Falha ao carregar nomes de produtos: ${productsResult.error.message}`
+      );
+    }
+
+    if (substancesResult.error) {
+      throw new Error(
+        `Falha ao carregar nomes de substâncias: ${substancesResult.error.message}`
+      );
+    }
+
+    const productNameMap =
+      new Map(
+        (productsResult.data ?? []).map(
+          row => [
+            row.id,
+            row.product_name,
+          ]
+        )
+      );
+
+    const substanceNameMap =
+      new Map(
+        (substancesResult.data ?? []).map(
+          row => [
+            row.id,
+            row.canonical_name,
+          ]
+        )
+      );
+
+    return rows
+      .map(row => {
+        const canonicalName =
+          row.reference_type ===
+          "product"
+            ? productNameMap.get(
+                row.reference_id
+              )
+            : substanceNameMap.get(
+                row.reference_id
+              );
+
+        if (!canonicalName) {
+          return null;
+        }
+
+        return {
+          referenceId:
+            row.reference_id,
+          referenceType:
+            row.reference_type,
+          canonicalName,
+          matchedText:
+            row.matched_text,
+          score:
+            Number(row.score),
+        };
+      })
+      .filter(
+        (
+          item
+        ): item is MedicationCatalogQuickSearchResult =>
+          item !== null
+      );
+  }
+
+  async hydrateQuickResult(
+    result: MedicationCatalogQuickSearchResult
+  ): Promise<MedicationCatalogSearchResult | null> {
+    const reference =
+      await this.getByTypedId(
+        result.referenceId,
+        result.referenceType
+      );
+
+    if (!reference) {
+      return null;
+    }
+
+    return {
+      reference,
+      score: result.score,
+      matchedText:
+        result.matchedText,
+    };
+  }
+
   async search(
     query: string,
     options:
@@ -597,18 +872,44 @@ export class SupabaseMedicationCatalogProvider
       | "substance"
       | "product"
   ): Promise<MedicationReference | null> {
-    if (
-      type ===
-      "product"
-    ) {
-      return this.hydrateProduct(
-        id
+    const cacheKey =
+      `${type}:${id}`;
+
+    const cached =
+      this.referenceCache.get(
+        cacheKey
       );
+
+    if (
+      cached &&
+      cached.expiresAt > Date.now()
+    ) {
+      return cached.value;
     }
 
-    return this.hydrateSubstance(
-      id
+    const value =
+      type === "product"
+        ? this.hydrateProduct(id)
+        : this.hydrateSubstance(id);
+
+    this.referenceCache.set(
+      cacheKey,
+      {
+        expiresAt:
+          Date.now() +
+          this.referenceCacheTtlMs,
+        value,
+      }
     );
+
+    try {
+      return await value;
+    } catch (error) {
+      this.referenceCache.delete(
+        cacheKey
+      );
+      throw error;
+    }
   }
 
   private async hydrateProduct(

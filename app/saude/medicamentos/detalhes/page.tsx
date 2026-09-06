@@ -3,6 +3,8 @@
 
 import {
   Suspense,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -136,11 +138,52 @@ import {
   sugerirRenovacao,
 } from "@/lib/health-insights";
 
+
+import {
+  supabaseMedicationCatalogProvider,
+} from "@/lib/medication-catalog";
+
+import type {
+  MedicationCatalogSearchResult,
+} from "@/lib/medication-catalog";
+
+import {
+  medicamentosRepository,
+} from "@/lib/repositories/medicamentos";
+
+import {
+  healthIntelligenceDecisionsRepository,
+} from "@/lib/repositories/healthIntelligenceDecisions";
+
 import type {
   Cid,
   DoseLog,
   Tratamento,
 } from "@/lib/types";
+
+function normalizeMedicationQualityText(
+  value:
+    string | null | undefined
+): string {
+  return String(
+    value ?? ""
+  )
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
+    .replace(
+      /[^a-z0-9]+/g,
+      ""
+    )
+    .trim();
+}
 
 // ============================================================
 // TIPOS
@@ -693,6 +736,17 @@ function MedicamentoDetalhesContent() {
       false
     );
 
+
+  const menuFlutuanteRef =
+    useRef<HTMLDivElement>(
+      null
+    );
+
+  const menuFlutuanteTriggerRef =
+    useRef<HTMLButtonElement>(
+      null
+    );
+
   const [
     showDeleteModal,
     setShowDeleteModal,
@@ -712,6 +766,33 @@ function MedicamentoDetalhesContent() {
   const [
     isQuickDoseOpen,
     setIsQuickDoseOpen,
+  ] =
+    useState(
+      false
+    );
+
+
+  const [
+    catalogNameSuggestion,
+    setCatalogNameSuggestion,
+  ] =
+    useState<
+      MedicationCatalogSearchResult | null
+    >(
+      null
+    );
+
+  const [
+    isQualityChecking,
+    setIsQualityChecking,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isQualityActionPending,
+    setIsQualityActionPending,
   ] =
     useState(
       false
@@ -749,6 +830,217 @@ function MedicamentoDetalhesContent() {
         id,
         activePersonId,
         getMedicamento,
+      ]
+    );
+
+  // ==========================================================
+  // QUALIDADE DO CADASTRO — NOME
+  //
+  // Busca somente quando o medicamento já existe.
+  //
+  // A inteligência nunca altera o cadastro silenciosamente.
+  // ==========================================================
+
+  useEffect(
+    () => {
+      const nomeAtual =
+        med?.nome?.trim() ??
+        "";
+
+      if (
+        !med?.id ||
+        nomeAtual.length < 4
+      ) {
+        setCatalogNameSuggestion(
+          null
+        );
+
+        setIsQualityChecking(
+          false
+        );
+
+        return;
+      }
+
+      let cancelled =
+        false;
+
+      const timer =
+        window.setTimeout(
+          async () => {
+            setIsQualityChecking(
+              true
+            );
+
+            try {
+              const results =
+                await supabaseMedicationCatalogProvider.searchLight(
+                  nomeAtual,
+                  {
+                    limit:
+                      5,
+                  }
+                );
+
+              if (
+                cancelled
+              ) {
+                return;
+              }
+
+              /*
+               * Se o catálogo contém correspondência exata,
+               * não existe motivo para gerar alerta de nome.
+               */
+              const exact =
+                results.find(
+                  (
+                    result
+                  ) =>
+                    normalizeMedicationQualityText(
+                      result.canonicalName
+                    ) ===
+                    normalizeMedicationQualityText(
+                      nomeAtual
+                    )
+                );
+
+              if (
+                exact
+              ) {
+                setCatalogNameSuggestion(
+                  null
+                );
+
+                return;
+              }
+
+              /*
+               * O provider já aplica o threshold fuzzy
+               * calibrado anteriormente.
+               *
+               * Aqui não inventamos um segundo algoritmo.
+               */
+              const quickSuggestion =
+                results[0] ??
+                null;
+
+              if (
+                !quickSuggestion
+              ) {
+                setCatalogNameSuggestion(
+                  null
+                );
+
+                return;
+              }
+
+              /*
+               * A busca visual foi leve.
+               *
+               * Só agora hidratamos UM candidato — aquele
+               * que realmente poderá virar alerta.
+               */
+              const hydratedSuggestion =
+                await supabaseMedicationCatalogProvider.hydrateQuickResult(
+                  quickSuggestion
+                );
+
+              if (
+                cancelled
+              ) {
+                return;
+              }
+
+              setCatalogNameSuggestion(
+                hydratedSuggestion
+              );
+            } catch (
+              error
+            ) {
+              console.warn(
+                "[Medication Intelligence] Não foi possível revisar o nome:",
+                error
+              );
+
+              if (
+                !cancelled
+              ) {
+                setCatalogNameSuggestion(
+                  null
+                );
+              }
+            } finally {
+              if (
+                !cancelled
+              ) {
+                setIsQualityChecking(
+                  false
+                );
+              }
+            }
+          },
+          450
+        );
+
+      return () => {
+        cancelled =
+          true;
+
+        window.clearTimeout(
+          timer
+        );
+      };
+    },
+    [
+      med?.id,
+      med?.nome,
+    ]
+  );
+
+  const nameQualityDecision =
+    useLiveQuery(
+      async () => {
+        if (
+          !med?.id ||
+          !med.user_id ||
+          !activePersonId ||
+          !catalogNameSuggestion
+        ) {
+          return null;
+        }
+
+        return healthIntelligenceDecisionsRepository.find({
+          userId:
+            med.user_id,
+
+          personId:
+            activePersonId,
+
+          entityType:
+            "medicamento",
+
+          entityId:
+            med.id,
+
+          issueKey:
+            "possible_name_typo",
+
+          detectedValue:
+            med.nome,
+
+          suggestedValue:
+            catalogNameSuggestion.reference.canonicalName,
+        });
+      },
+      [
+        med?.id,
+        med?.user_id,
+        med?.nome,
+        activePersonId,
+        catalogNameSuggestion
+          ?.reference
+          .canonicalName,
       ]
     );
 
@@ -1804,6 +2096,80 @@ function MedicamentoDetalhesContent() {
   // MENU
   // ==========================================================
 
+  useEffect(
+    () => {
+      if (
+        !isMenuFlutuanteOpen
+      ) {
+        return;
+      }
+
+      const handlePointerDown =
+        (
+          event:
+            PointerEvent
+        ) => {
+          const target =
+            event.target as Node;
+
+          if (
+            menuFlutuanteRef.current?.contains(
+              target
+            ) ||
+            menuFlutuanteTriggerRef.current?.contains(
+              target
+            )
+          ) {
+            return;
+          }
+
+          setIsMenuFlutuanteOpen(
+            false
+          );
+        };
+
+      const handleKeyDown =
+        (
+          event:
+            KeyboardEvent
+        ) => {
+          if (
+            event.key ===
+            "Escape"
+          ) {
+            setIsMenuFlutuanteOpen(
+              false
+            );
+          }
+        };
+
+      document.addEventListener(
+        "pointerdown",
+        handlePointerDown
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown
+      );
+
+      return () => {
+        document.removeEventListener(
+          "pointerdown",
+          handlePointerDown
+        );
+
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown
+        );
+      };
+    },
+    [
+      isMenuFlutuanteOpen,
+    ]
+  );
+
   const menuOptions = [
     {
       id:
@@ -1850,6 +2216,224 @@ function MedicamentoDetalhesContent() {
       router.push(
         path
       );
+    };
+
+  // ==========================================================
+  // QUALIDADE DO CADASTRO — AÇÕES
+  // ==========================================================
+
+  const buildNameQualityTarget =
+    () => {
+      if (
+        !med?.id ||
+        !med.user_id ||
+        !activePersonId ||
+        !catalogNameSuggestion
+      ) {
+        return null;
+      }
+
+      return {
+        userId:
+          med.user_id,
+
+        personId:
+          activePersonId,
+
+        entityType:
+          "medicamento",
+
+        entityId:
+          med.id,
+
+        issueKey:
+          "possible_name_typo",
+
+        detectedValue:
+          med.nome,
+
+        suggestedValue:
+          catalogNameSuggestion.reference.canonicalName,
+      };
+    };
+
+  const handleAcceptNameCorrection =
+    async () => {
+      const target =
+        buildNameQualityTarget();
+
+      if (
+        !target ||
+        !med?.id ||
+        !activePersonId ||
+        !catalogNameSuggestion
+      ) {
+        return;
+      }
+
+      setIsQualityActionPending(
+        true
+      );
+
+      setToastMessage({
+        text:
+          "Corrigindo cadastro...",
+
+        type:
+          "loading",
+      });
+
+      try {
+        const suggestedName =
+          catalogNameSuggestion
+            .reference
+            .canonicalName;
+
+        /*
+         * Atualização passa pelo repository canônico:
+         * Dexie + syncQueue + notificações.
+         */
+        await medicamentosRepository.update(
+          med.id,
+          activePersonId,
+          {
+            nome:
+              suggestedName,
+          }
+        );
+
+        await healthIntelligenceDecisionsRepository.accept(
+          target
+        );
+
+        setCatalogNameSuggestion(
+          null
+        );
+
+        trigger(
+          "success"
+        );
+
+        setToastMessage({
+          text:
+            "Nome corrigido com sucesso!",
+
+          type:
+            "success",
+        });
+
+        setTimeout(
+          () =>
+            setToastMessage(
+              null
+            ),
+          3000
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao corrigir nome do medicamento:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        setToastMessage({
+          text:
+            "Não foi possível corrigir o cadastro.",
+
+          type:
+            "error",
+        });
+
+        setTimeout(
+          () =>
+            setToastMessage(
+              null
+            ),
+          3000
+        );
+      } finally {
+        setIsQualityActionPending(
+          false
+        );
+      }
+    };
+
+  const handleDismissNameCorrection =
+    async () => {
+      const target =
+        buildNameQualityTarget();
+
+      if (
+        !target
+      ) {
+        return;
+      }
+
+      setIsQualityActionPending(
+        true
+      );
+
+      try {
+        await healthIntelligenceDecisionsRepository.dismiss(
+          target
+        );
+
+        trigger(
+          "success"
+        );
+
+        setToastMessage({
+          text:
+            "Revisado. O Vault manterá o nome atual.",
+
+          type:
+            "success",
+        });
+
+        setTimeout(
+          () =>
+            setToastMessage(
+              null
+            ),
+          3000
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao registrar decisão da inteligência:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        setToastMessage({
+          text:
+            "Não foi possível registrar sua decisão.",
+
+          type:
+            "error",
+        });
+
+        setTimeout(
+          () =>
+            setToastMessage(
+              null
+            ),
+          3000
+        );
+      } finally {
+        setIsQualityActionPending(
+          false
+        );
+      }
     };
 
   // ==========================================================
@@ -2311,6 +2895,9 @@ function MedicamentoDetalhesContent() {
               </button>
 
               <button
+                ref={
+                  menuFlutuanteTriggerRef
+                }
                 type="button"
                 onClick={
                   () => {
@@ -2379,7 +2966,7 @@ function MedicamentoDetalhesContent() {
                     opacity:
                       0,
                   }}
-                  onClick={
+                  onPointerDown={
                     () =>
                       setIsMenuFlutuanteOpen(
                         false
@@ -2389,6 +2976,15 @@ function MedicamentoDetalhesContent() {
                 />
 
                 <motion.div
+                  ref={
+                    menuFlutuanteRef
+                  }
+                  onPointerDown={
+                    (
+                      event
+                    ) =>
+                      event.stopPropagation()
+                  }
                   initial={{
                     opacity:
                       0,
@@ -2500,6 +3096,194 @@ function MedicamentoDetalhesContent() {
         </header>
 
         <div className="mx-auto max-w-3xl space-y-6 px-5 pt-5">
+          {/* ==================================================
+              QUALIDADE DO CADASTRO
+              ================================================== */}
+
+          <AnimatePresence>
+            {catalogNameSuggestion &&
+              !nameQualityDecision && (
+                <motion.section
+                  initial={{
+                    opacity:
+                      0,
+
+                    y:
+                      -8,
+                  }}
+                  animate={{
+                    opacity:
+                      1,
+
+                    y:
+                      0,
+                  }}
+                  exit={{
+                    opacity:
+                      0,
+
+                    height:
+                      0,
+                  }}
+                  className="overflow-hidden rounded-[24px] border border-amber-400/30 bg-amber-400/10"
+                >
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400">
+                        <FileWarning
+                          size={
+                            20
+                          }
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-400">
+                            Qualidade do cadastro
+                          </p>
+                        </div>
+
+                        <h2 className="mt-1 text-sm font-semibold text-ink-primary">
+                          Possível divergência no nome
+                        </h2>
+
+                        <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                          O nome cadastrado é parecido com uma referência encontrada no catálogo oficial. O Vault não altera seus dados sem sua confirmação.
+                        </p>
+
+                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-surface-border/50 bg-void/30 p-3">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">
+                              Cadastrado
+                            </p>
+
+                            <p className="mt-1 break-words text-sm font-semibold text-ink-primary">
+                              {
+                                med.nome
+                              }
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl border border-ice/20 bg-ice/5 p-3">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                              Referência encontrada
+                            </p>
+
+                            <p className="mt-1 break-words text-sm font-semibold text-ink-primary">
+                              {
+                                catalogNameSuggestion
+                                  .reference
+                                  .canonicalName
+                              }
+                            </p>
+
+                            {(
+                              catalogNameSuggestion
+                                .reference
+                                .activeIngredients
+                                ?.join(
+                                  " + "
+                                ) ??
+                              catalogNameSuggestion
+                                .reference
+                                .activeIngredient
+                            ) && (
+                              <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                                {
+                                  catalogNameSuggestion
+                                    .reference
+                                    .activeIngredients
+                                    ?.join(
+                                      " + "
+                                    ) ??
+                                  catalogNameSuggestion
+                                    .reference
+                                    .activeIngredient
+                                }
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2 text-[10px] text-ink-faint">
+                          <Info
+                            size={
+                              12
+                            }
+                          />
+
+                          Compatibilidade aproximada:{" "}
+                          <span className="font-semibold text-ink-muted">
+                            {
+                              Math.round(
+                                catalogNameSuggestion.score *
+                                  100
+                              )
+                            }
+                            %
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            disabled={
+                              isQualityActionPending
+                            }
+                            onClick={
+                              handleAcceptNameCorrection
+                            }
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-ice px-4 py-2.5 text-xs font-bold text-void transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isQualityActionPending ? (
+                              <Activity
+                                size={
+                                  15
+                                }
+                                className="animate-pulse"
+                              />
+                            ) : (
+                              <CheckCircle2
+                                size={
+                                  15
+                                }
+                              />
+                            )}
+
+                            Corrigir cadastro
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={
+                              isQualityActionPending
+                            }
+                            onClick={
+                              handleDismissNameCorrection
+                            }
+                            className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface-raised px-4 py-2.5 text-xs font-semibold text-ink-muted transition-all hover:text-ink-primary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Check
+                              size={
+                                15
+                              }
+                            />
+
+                            Manter como está
+                          </button>
+                        </div>
+
+                        <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
+                          Se você optar por manter o nome, o Vault considera esta divergência revisada e não volta a mostrar o mesmo alerta enquanto os valores permanecerem iguais.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.section>
+              )}
+          </AnimatePresence>
+
           {/* ==================================================
               RENOVAÇÃO
               ================================================== */}

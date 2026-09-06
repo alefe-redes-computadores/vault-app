@@ -112,6 +112,10 @@ import type {
   MedicationCatalogSearchResult,
 } from "@/lib/medication-catalog";
 
+import type {
+  MedicationCatalogQuickSearchResult,
+} from "@/lib/medication-catalog/supabase-provider";
+
 import {
   documentsRepository,
 } from "@/lib/repositories/documents";
@@ -215,6 +219,325 @@ function normalizeCatalogComparisonText(
       ""
     )
     .trim();
+}
+
+type CatalogPresentationSuggestion = {
+  key: string;
+  dosage: string;
+  format: string | null;
+  formatLabel: string | null;
+  officialLabel: string;
+};
+
+function extractCatalogPresentationDosage(
+  value: string
+): string | null {
+  const text =
+    String(
+      value ?? ""
+    )
+      .replace(
+        /,/g,
+        "."
+      )
+      .trim();
+
+  const compoundMatch =
+    text.match(
+      /\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|ug|g|ui)\s*\/\s*\d*(?:\.\d+)?\s*ml\b/i
+    );
+
+  if (
+    compoundMatch
+  ) {
+    return compoundMatch[0]
+      .replace(
+        /\s*\/\s*/g,
+        "/"
+      )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+  }
+
+  const perMlMatch =
+    text.match(
+      /\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|ug|g|ui)\s*\/\s*ml\b/i
+    );
+
+  if (
+    perMlMatch
+  ) {
+    return perMlMatch[0]
+      .replace(
+        /\s*\/\s*/g,
+        "/"
+      )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+  }
+
+  const simpleMatch =
+    text.match(
+      /\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|ug|g|ui)\b/i
+    );
+
+  if (
+    simpleMatch
+  ) {
+    return simpleMatch[0]
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+  }
+
+  const percentMatch =
+    text.match(
+      /\b\d+(?:\.\d+)?\s*%/
+    );
+
+  if (
+    percentMatch
+  ) {
+    return percentMatch[0]
+      .replace(
+        /\s+/g,
+        ""
+      );
+  }
+
+  return null;
+}
+
+function inferVaultFormatFromOfficialPresentation(
+  value: string
+): string | null {
+  const text =
+    ` ${normalizeCatalogComparisonText(
+      value
+    )} `;
+
+  if (
+    /\binj(?:ecao|etavel)?\b|\bsol inj\b|\bampola\b|\bseringa\b/.test(
+      text
+    )
+  ) {
+    return "injecao";
+  }
+
+  if (
+    /\bcolirio\b|\boftalm/.test(
+      text
+    )
+  ) {
+    return "colirio";
+  }
+
+  if (
+    /\badesiv|transderm/.test(
+      text
+    )
+  ) {
+    return "adesivo";
+  }
+
+  if (
+    /\bsupositor/.test(
+      text
+    )
+  ) {
+    return "supositorio";
+  }
+
+  if (
+    /\bovulo\b/.test(
+      text
+    )
+  ) {
+    return "ovulo";
+  }
+
+  if (
+    /\bsubling/.test(
+      text
+    )
+  ) {
+    return "sublingual";
+  }
+
+  if (
+    /\bmastig/.test(
+      text
+    )
+  ) {
+    return "mastigavel";
+  }
+
+  if (
+    /\beferv/.test(
+      text
+    )
+  ) {
+    return "efervescente";
+  }
+
+  if (
+    /\bdispers/.test(
+      text
+    )
+  ) {
+    return "dispersivel";
+  }
+
+  if (
+    /\bcomprim|\bcom\b/.test(
+      text
+    )
+  ) {
+    return "comprimido";
+  }
+
+  if (
+    /\bcapsul|\bcap\b/.test(
+      text
+    )
+  ) {
+    return "capsula";
+  }
+
+  if (
+    /\bsuspens|\bsus or\b/.test(
+      text
+    )
+  ) {
+    return "suspensao";
+  }
+
+  if (
+    /\bxarope\b|\bxpe\b/.test(
+      text
+    )
+  ) {
+    return "xarope";
+  }
+
+  if (
+    /\bcreme\b|\bcrem\b/.test(
+      text
+    )
+  ) {
+    return "creme";
+  }
+
+  if (
+    /\bpomada\b|\bpom\b/.test(
+      text
+    )
+  ) {
+    return "pomada";
+  }
+
+  if (
+    /\bgel\b/.test(
+      text
+    )
+  ) {
+    return "gel";
+  }
+
+  if (
+    /\bgranulado\b|\bgran\b/.test(
+      text
+    )
+  ) {
+    return "granulado";
+  }
+
+  if (
+    /\bsache\b/.test(
+      text
+    )
+  ) {
+    return "sache";
+  }
+
+  if (
+    /\bspray\b/.test(
+      text
+    )
+  ) {
+    return "spray";
+  }
+
+  if (
+    /\binalador\b|\binala/.test(
+      text
+    )
+  ) {
+    return "inalador";
+  }
+
+  if (
+    /\bgota|\bgot\b/.test(
+      text
+    )
+  ) {
+    return "gota";
+  }
+
+  if (
+    /\bsolucao\b|\bsol or\b|\bsol\b/.test(
+      text
+    )
+  ) {
+    return "solucao";
+  }
+
+  if (
+    /\bpo\b/.test(
+      text
+    )
+  ) {
+    return "po";
+  }
+
+  if (
+    /\bimplante\b|\bimplant/.test(
+      text
+    )
+  ) {
+    return "implante";
+  }
+
+  return null;
+}
+
+function getCatalogFormatLabel(
+  format: string | null
+): string | null {
+  if (
+    !format
+  ) {
+    return null;
+  }
+
+  return (
+    FORMATOS.find(
+      (
+        item
+      ) =>
+        item.id ===
+        format
+    )?.label ??
+    null
+  );
 }
 
 function formatMatchesCatalog(
@@ -1140,7 +1463,7 @@ export default function NovoMedicamentoPage() {
     setCatalogResults,
   ] =
     useState<
-      MedicationCatalogSearchResult[]
+      MedicationCatalogQuickSearchResult[]
     >(
       []
     );
@@ -1156,8 +1479,34 @@ export default function NovoMedicamentoPage() {
     );
 
   const [
+    hydratedCatalogResult,
+    setHydratedCatalogResult,
+  ] =
+    useState<
+      MedicationCatalogSearchResult | null
+    >(
+      null
+    );
+
+  const [
     isCatalogSearching,
     setIsCatalogSearching,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isCatalogHydrating,
+    setIsCatalogHydrating,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isCatalogOpen,
+    setIsCatalogOpen,
   ] =
     useState(
       false
@@ -1169,6 +1518,11 @@ export default function NovoMedicamentoPage() {
   ] =
     useState(
       false
+    );
+
+  const catalogPopoverRef =
+    useRef<HTMLDivElement>(
+      null
     );
 
 
@@ -1681,6 +2035,14 @@ export default function NovoMedicamentoPage() {
           null
         );
 
+        setHydratedCatalogResult(
+          null
+        );
+
+        setIsCatalogOpen(
+          false
+        );
+
         setIsCatalogSearching(
           false
         );
@@ -1708,11 +2070,11 @@ export default function NovoMedicamentoPage() {
 
             try {
               const results =
-                await supabaseMedicationCatalogProvider.search(
+                await supabaseMedicationCatalogProvider.searchLight(
                   query,
                   {
                     limit:
-                      3,
+                      5,
                   }
                 );
 
@@ -1724,6 +2086,11 @@ export default function NovoMedicamentoPage() {
 
               setCatalogResults(
                 results
+              );
+
+              setIsCatalogOpen(
+                results.length >
+                  0
               );
             } catch (
               error
@@ -1750,6 +2117,10 @@ export default function NovoMedicamentoPage() {
               setCatalogSearchError(
                 true
               );
+
+              setIsCatalogOpen(
+                true
+              );
             } finally {
               if (
                 !cancelled
@@ -1760,7 +2131,7 @@ export default function NovoMedicamentoPage() {
               }
             }
           },
-          650
+          350
         );
 
       return () => {
@@ -3009,33 +3380,86 @@ export default function NovoMedicamentoPage() {
     "split-novo-bicolor";
 
   // ==========================================================
+  // CATÁLOGO — FECHAR AUTOCOMPLETE
+  // ==========================================================
+
+  useEffect(
+    () => {
+      if (
+        !isCatalogOpen
+      ) {
+        return;
+      }
+
+      const handlePointerDown =
+        (
+          event:
+            PointerEvent
+        ) => {
+          const target =
+            event.target as Node;
+
+          if (
+            catalogPopoverRef.current?.contains(
+              target
+            )
+          ) {
+            return;
+          }
+
+          setIsCatalogOpen(
+            false
+          );
+        };
+
+      const handleKeyDown =
+        (
+          event:
+            KeyboardEvent
+        ) => {
+          if (
+            event.key ===
+            "Escape"
+          ) {
+            setIsCatalogOpen(
+              false
+            );
+          }
+        };
+
+      document.addEventListener(
+        "pointerdown",
+        handlePointerDown
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown
+      );
+
+      return () => {
+        document.removeEventListener(
+          "pointerdown",
+          handlePointerDown
+        );
+
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown
+        );
+      };
+    },
+    [
+      isCatalogOpen,
+    ]
+  );
+
+  // ==========================================================
   // RENDER
   // ==========================================================
 
-  const selectedCatalogResult =
-    catalogResults.find(
-      (
-        result
-      ) =>
-        result.reference.id ===
-        selectedCatalogReferenceId
-    ) ??
-    catalogResults.find(
-      (
-        result
-      ) =>
-        normalizeCatalogComparisonText(
-          result.reference.canonicalName
-        ) ===
-        normalizeCatalogComparisonText(
-          nome
-        )
-    ) ??
-    catalogResults[0] ??
-    null;
-
   const catalogReference =
-    selectedCatalogResult
+    hydratedCatalogResult
       ?.reference ??
     null;
 
@@ -3112,6 +3536,103 @@ export default function NovoMedicamentoPage() {
           )
         )
     );
+
+  const catalogPresentationSuggestions =
+    Array.from(
+      new Map<
+        string,
+        CatalogPresentationSuggestion
+      >(
+        catalogPresentations
+          .map(
+            (
+              presentation
+            ):
+              CatalogPresentationSuggestion | null => {
+              const dosage =
+                extractCatalogPresentationDosage(
+                  presentation.label
+                );
+
+              if (
+                !dosage
+              ) {
+                return null;
+              }
+
+              const inferredFormat =
+                inferVaultFormatFromOfficialPresentation(
+                  [
+                    presentation.label,
+                    presentation.pharmaceuticalForm ??
+                      "",
+                  ].join(
+                    " "
+                  )
+                );
+
+              const formatLabel =
+                getCatalogFormatLabel(
+                  inferredFormat
+                );
+
+              const key =
+                [
+                  normalizeCatalogComparisonText(
+                    dosage
+                  ),
+                  inferredFormat ??
+                    "unknown",
+                ].join(
+                  "|"
+                );
+
+              return {
+                key,
+                dosage,
+                format:
+                  inferredFormat,
+                formatLabel,
+                officialLabel:
+                  presentation.label,
+              };
+            }
+          )
+          .filter(
+            (
+              item
+            ): item is CatalogPresentationSuggestion =>
+              item !==
+              null
+          )
+          .map(
+            (
+              item
+            ) => [
+              item.key,
+              item,
+            ]
+          )
+      ).values()
+    )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.dosage.localeCompare(
+            b.dosage,
+            "pt-BR",
+            {
+              numeric:
+                true,
+            }
+          )
+      )
+      .slice(
+        0,
+        10
+      );
 
   const formatCanBeChecked =
     Boolean(
@@ -3313,6 +3834,10 @@ export default function NovoMedicamentoPage() {
                             setSelectedCatalogReferenceId(
                               null
                             );
+
+                            setHydratedCatalogResult(
+                              null
+                            );
                           }
                       }
                       error={
@@ -3323,6 +3848,7 @@ export default function NovoMedicamentoPage() {
                     <AnimatePresence>
                       {nome.trim().length >=
                         4 &&
+                        isCatalogOpen &&
                         (
                           isCatalogSearching ||
                           catalogResults.length >
@@ -3330,19 +3856,31 @@ export default function NovoMedicamentoPage() {
                           catalogSearchError
                         ) && (
                           <motion.div
+                            ref={
+                              catalogPopoverRef
+                            }
                             initial={{
-                              opacity: 0,
-                              y: -4,
+                              opacity:
+                                0,
+
+                              y:
+                                -4,
                             }}
                             animate={{
-                              opacity: 1,
-                              y: 0,
+                              opacity:
+                                1,
+
+                              y:
+                                0,
                             }}
                             exit={{
-                              opacity: 0,
-                              y: -4,
+                              opacity:
+                                0,
+
+                              y:
+                                -4,
                             }}
-                            className="mt-2 overflow-hidden rounded-2xl border border-surface-border/50 bg-surface-raised"
+                            className="mt-2 overflow-hidden rounded-2xl border border-surface-border/50 bg-surface-raised shadow-lg"
                           >
                             {isCatalogSearching ? (
                               <div className="flex items-center gap-2 px-3.5 py-3 text-xs text-ink-muted">
@@ -3363,49 +3901,77 @@ export default function NovoMedicamentoPage() {
                               <div>
                                 {catalogResults.map(
                                   (
-                                    result,
-                                    index
+                                    result
                                   ) => {
-                                    const reference =
-                                      result.reference;
-
-                                    const activeIngredient =
-                                      reference
-                                        .activeIngredients
-                                        ?.join(
-                                          " + "
-                                        ) ??
-                                      reference
-                                        .activeIngredient;
-
                                     const isSelected =
-                                      catalogReference
-                                        ?.id ===
-                                      reference.id;
+                                      selectedCatalogReferenceId ===
+                                      result.referenceId;
 
                                     return (
                                       <button
                                         type="button"
                                         key={
-                                          reference.id
+                                          `${result.referenceType}:${result.referenceId}`
                                         }
                                         onClick={
-                                          () => {
+                                          async () => {
                                             trigger(
                                               "vibrate"
                                             );
 
                                             setSelectedCatalogReferenceId(
-                                              reference.id
+                                              result.referenceId
                                             );
+
+                                            /*
+                                             * Fecha imediatamente.
+                                             * O conteúdo rico é hidratado
+                                             * somente para a escolha feita.
+                                             */
+                                            setIsCatalogOpen(
+                                              false
+                                            );
+
+                                            setIsCatalogHydrating(
+                                              true
+                                            );
+
+                                            setCatalogSearchError(
+                                              false
+                                            );
+
+                                            try {
+                                              const hydrated =
+                                                await supabaseMedicationCatalogProvider.hydrateQuickResult(
+                                                  result
+                                                );
+
+                                              setHydratedCatalogResult(
+                                                hydrated
+                                              );
+                                            } catch (
+                                              error
+                                            ) {
+                                              console.warn(
+                                                "[Medication Intelligence] falha ao hidratar referência:",
+                                                error
+                                              );
+
+                                              setHydratedCatalogResult(
+                                                null
+                                              );
+
+                                              setSelectedCatalogReferenceId(
+                                                null
+                                              );
+                                            } finally {
+                                              setIsCatalogHydrating(
+                                                false
+                                              );
+                                            }
                                           }
                                         }
-                                        className={`flex w-full items-start gap-3 px-3.5 py-3 text-left transition-colors ${
-                                          index >
-                                          0
-                                            ? "border-t border-surface-border/40"
-                                            : ""
-                                        } ${
+                                        className={`flex w-full items-start gap-3 border-b border-surface-border/30 px-3.5 py-3 text-left transition-colors last:border-b-0 ${
                                           isSelected
                                             ? "bg-ice/10"
                                             : "hover:bg-void/30"
@@ -3421,17 +3987,18 @@ export default function NovoMedicamentoPage() {
                                         <span className="min-w-0 flex-1">
                                           <span className="block text-sm font-semibold text-ink-primary">
                                             {
-                                              reference.canonicalName
+                                              result.canonicalName
                                             }
                                           </span>
 
-                                          {activeIngredient && (
-                                            <span className="mt-0.5 block text-[11px] text-ink-muted">
-                                              {
-                                                activeIngredient
-                                              }
-                                            </span>
-                                          )}
+                                          <span className="mt-0.5 block text-[11px] text-ink-muted">
+                                            {
+                                              result.referenceType ===
+                                              "substance"
+                                                ? "Princípio ativo"
+                                                : "Medicamento"
+                                            }
+                                          </span>
 
                                           <span className="mt-1 block text-[10px] text-ink-faint">
                                             Compatibilidade{" "}
@@ -3446,9 +4013,9 @@ export default function NovoMedicamentoPage() {
                                         </span>
 
                                         {isSelected && (
-                                          <CheckCircle2
+                                          <Check
                                             size={
-                                              17
+                                              16
                                             }
                                             className="mt-0.5 shrink-0 text-ice"
                                           />
@@ -3457,63 +4024,240 @@ export default function NovoMedicamentoPage() {
                                     );
                                   }
                                 )}
-
-                                {catalogNameIsDifferent &&
-                                  catalogReference && (
-                                    <div className="border-t border-surface-border/40 px-3.5 py-3">
-                                      <div className="flex items-start gap-2">
-                                        <AlertTriangle
-                                          size={
-                                            15
-                                          }
-                                          className="mt-0.5 shrink-0 text-amber-400"
-                                        />
-
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-xs font-semibold text-ink-primary">
-                                            Talvez você queira dizer{" "}
-                                            {
-                                              catalogReference.canonicalName
-                                            }
-                                          </p>
-
-                                          <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-                                            O nome digitado é parecido com uma referência encontrada no catálogo. O Vault não altera seu cadastro automaticamente.
-                                          </p>
-
-                                          <div className="mt-2 flex gap-2">
-                                            <button
-                                              type="button"
-                                              onClick={
-                                                applyCatalogName
-                                              }
-                                              className="rounded-xl bg-ice px-3 py-1.5 text-[11px] font-semibold text-void"
-                                            >
-                                              Usar sugestão
-                                            </button>
-
-                                            <button
-                                              type="button"
-                                              onClick={
-                                                () =>
-                                                  setCatalogResults(
-                                                    []
-                                                  )
-                                              }
-                                              className="rounded-xl border border-surface-border px-3 py-1.5 text-[11px] font-medium text-ink-muted"
-                                            >
-                                              Manter como digitei
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
                               </div>
                             )}
                           </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {isCatalogHydrating && (
+                      <div className="mt-2 flex items-center gap-2 rounded-2xl border border-ice/15 bg-ice/5 px-3.5 py-3 text-xs text-ink-muted">
+                        <Loader2
+                          size={
+                            14
+                          }
+                          className="animate-spin text-ice"
+                        />
+
+                        Carregando apresentações oficiais...
+                      </div>
+                    )}
+
+                    {!isCatalogHydrating &&
+                      catalogReference && (
+                        <div className="mt-2 rounded-2xl border border-ice/20 bg-ice/5 p-3.5">
+                          <div className="flex items-start gap-3">
+                            <FileSearch
+                              size={
+                                17
+                              }
+                              className="mt-0.5 shrink-0 text-ice"
+                            />
+
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                                Referência selecionada
+                              </p>
+
+                              <p className="mt-1 text-sm font-semibold text-ink-primary">
+                                {
+                                  catalogReference.canonicalName
+                                }
+                              </p>
+
+                              {(
+                                catalogReference.activeIngredients
+                                  ?.join(
+                                    " + "
+                                  ) ??
+                                catalogReference.activeIngredient
+                              ) && (
+                                <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
+                                  {
+                                    catalogReference.activeIngredients
+                                      ?.join(
+                                        " + "
+                                      ) ??
+                                    catalogReference.activeIngredient
+                                  }
+                                </p>
+                              )}
+
+                              {catalogNameIsDifferent && (
+                                <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+                                  <div className="flex items-start gap-2">
+                                    <AlertTriangle
+                                      size={
+                                        14
+                                      }
+                                      className="mt-0.5 shrink-0 text-amber-400"
+                                    />
+
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-semibold text-ink-primary">
+                                        Talvez você queira dizer{" "}
+                                        {
+                                          catalogReference.canonicalName
+                                        }
+                                      </p>
+
+                                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                        O Vault não altera seu cadastro sem sua confirmação.
+                                      </p>
+
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={
+                                            applyCatalogName
+                                          }
+                                          className="rounded-xl bg-ice px-3 py-1.5 text-[11px] font-semibold text-void"
+                                        >
+                                          Usar sugestão
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={
+                                            () => {
+                                              setHydratedCatalogResult(
+                                                null
+                                              );
+
+                                              setSelectedCatalogReferenceId(
+                                                null
+                                              );
+
+                                              trigger(
+                                                "vibrate"
+                                              );
+                                            }
+                                          }
+                                          className="rounded-xl border border-surface-border px-3 py-1.5 text-[11px] font-medium text-ink-muted"
+                                        >
+                                          Manter como digitei
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {catalogPresentationSuggestions.length >
+                                0 && (
+                                <div className="mt-4 border-t border-ice/10 pt-4">
+                                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-faint">
+                                    Apresentações encontradas
+                                  </p>
+
+                                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                    Escolha uma apresentação para preencher a dosagem. O formato só será alterado quando puder ser identificado com segurança.
+                                  </p>
+
+                                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {catalogPresentationSuggestions.map(
+                                      (
+                                        suggestion
+                                      ) => {
+                                        const selected =
+                                          normalizeCatalogComparisonText(
+                                            dosagem
+                                          ) ===
+                                            normalizeCatalogComparisonText(
+                                              suggestion.dosage
+                                            ) &&
+                                          (
+                                            !suggestion.format ||
+                                            formato ===
+                                              suggestion.format
+                                          );
+
+                                        return (
+                                          <button
+                                            key={
+                                              suggestion.key
+                                            }
+                                            type="button"
+                                            title={
+                                              suggestion.officialLabel
+                                            }
+                                            onClick={
+                                              () => {
+                                                setDosagem(
+                                                  suggestion.dosage
+                                                );
+
+                                                if (
+                                                  suggestion.format
+                                                ) {
+                                                  setFormato(
+                                                    suggestion.format
+                                                  );
+
+                                                  setEstoqueUnidade(
+                                                    getEstoqueUnidadePorFormato(
+                                                      suggestion.format
+                                                    )
+                                                  );
+                                                }
+
+                                                trigger(
+                                                  "vibrate"
+                                                );
+                                              }
+                                            }
+                                            className={`rounded-2xl border px-3.5 py-3 text-left transition-all active:scale-[0.99] ${
+                                              selected
+                                                ? "border-ice/50 bg-ice/15"
+                                                : "border-surface-border/60 bg-surface-raised hover:border-ice/25 hover:bg-ice/5"
+                                            }`}
+                                          >
+                                            <div className="flex items-start justify-between gap-3">
+                                              <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-ink-primary">
+                                                  {
+                                                    suggestion.dosage
+                                                  }
+                                                </p>
+
+                                                <p className="mt-0.5 text-[11px] font-medium text-ice">
+                                                  {
+                                                    suggestion.formatLabel ??
+                                                    "Formato não confirmado"
+                                                  }
+                                                </p>
+                                              </div>
+
+                                              {selected && (
+                                                <Check
+                                                  size={
+                                                    15
+                                                  }
+                                                  className="shrink-0 text-ice"
+                                                />
+                                              )}
+                                            </div>
+
+                                            <p className="mt-2 line-clamp-2 text-[9px] leading-relaxed text-ink-faint">
+                                              {
+                                                suggestion.officialLabel
+                                              }
+                                            </p>
+                                          </button>
+                                        );
+                                      }
+                                    )}
+                                  </div>
+
+                                  <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
+                                    Fonte: apresentações atuais do catálogo regulatório. Se o formato não puder ser reconhecido com segurança, apenas a dosagem é preenchida.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                   </div>
 
                   <div

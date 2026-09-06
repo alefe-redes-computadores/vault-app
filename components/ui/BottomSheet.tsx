@@ -1,82 +1,194 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { X } from "lucide-react";
-import { useHapticFeedback } from "@/lib/haptics";
+import {
+  useEffect,
+  useRef,
+} from "react";
+
+import {
+  X,
+} from "lucide-react";
+
+import {
+  useHapticFeedback,
+} from "@/lib/haptics";
 
 interface BottomSheetProps {
   isOpen: boolean;
+
   onClose: () => void;
-  children: React.ReactNode;
+
+  children:
+    React.ReactNode;
+
   title?: string;
-  height?: "auto" | "half" | "full";
+
+  height?:
+    | "auto"
+    | "half"
+    | "full";
 }
 
-export function BottomSheet({ isOpen, onClose, children, title, height = "auto" }: BottomSheetProps) {
-  const { trigger } = useHapticFeedback();
-  const sheetRef = useRef<HTMLDivElement>(null);
+export function BottomSheet({
+  isOpen,
+  onClose,
+  children,
+  title,
+  height = "auto",
+}: BottomSheetProps) {
+  const {
+    trigger,
+  } =
+    useHapticFeedback();
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) onClose();
-    };
+  const sheetRef =
+    useRef<HTMLDivElement>(
+      null
+    );
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        onClose();
+  useEffect(
+    () => {
+      if (
+        !isOpen
+      ) {
+        return;
       }
-    };
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      document.addEventListener("mousedown", handleClickOutside);
-      document.body.style.overflow = "hidden";
-    }
+      const previousOverflow =
+        document.body.style.overflow;
 
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.body.style.overflow = "auto";
-    };
-  }, [isOpen, onClose]);
+      const handleEscape =
+        (
+          event:
+            KeyboardEvent
+        ) => {
+          if (
+            event.key ===
+            "Escape"
+          ) {
+            onClose();
+          }
+        };
 
-  if (!isOpen) return null;
+      document.addEventListener(
+        "keydown",
+        handleEscape
+      );
+
+      document.body.style.overflow =
+        "hidden";
+
+      return () => {
+        document.removeEventListener(
+          "keydown",
+          handleEscape
+        );
+
+        document.body.style.overflow =
+          previousOverflow;
+      };
+    },
+    [
+      isOpen,
+      onClose,
+    ]
+  );
+
+  if (
+    !isOpen
+  ) {
+    return null;
+  }
 
   const heights = {
-    auto: "max-h-[90vh]",
-    half: "h-[50vh]",
-    full: "h-[90vh]",
+    auto:
+      "max-h-[90dvh]",
+
+    half:
+      "h-[50dvh]",
+
+    full:
+      "h-[90dvh]",
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center p-4 animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      onPointerDown={
+        (
+          event
+        ) => {
+          if (
+            event.target ===
+            event.currentTarget
+          ) {
+            onClose();
+          }
+        }
+      }
+    >
       <div
-        ref={sheetRef}
+        ref={
+          sheetRef
+        }
+        role="dialog"
+        aria-modal="true"
+        aria-label={
+          title ??
+          "Painel"
+        }
+        onPointerDown={
+          (
+            event
+          ) =>
+            event.stopPropagation()
+        }
         className={`
-          relative w-full max-w-lg rounded-sheet bg-surface-raised border border-surface-border
-          shadow-vault animate-in slide-in-from-bottom duration-300
+          relative w-full max-w-lg overflow-hidden rounded-sheet
+          border border-surface-border bg-surface-raised shadow-vault
+          animate-in slide-in-from-bottom duration-300
           ${heights[height]}
         `}
       >
-        {/* Header */}
-        <div className="relative flex items-center justify-between p-4 border-b border-surface-border">
-          <div className="w-10 h-1 rounded-full bg-ice/30 mx-auto absolute left-1/2 -translate-x-1/2 -top-3" />
+        <div className="relative flex items-center justify-between border-b border-surface-border p-4">
+          <div className="absolute -top-3 left-1/2 mx-auto h-1 w-10 -translate-x-1/2 rounded-full bg-ice/30" />
+
           {title && (
-            <h2 className="font-display text-lg text-ink-primary">{title}</h2>
+            <h2 className="font-display text-lg text-ink-primary">
+              {
+                title
+              }
+            </h2>
           )}
+
           <button
-            onClick={() => {
-              trigger("vibrate");
-              onClose();
-            }}
-            className="ml-auto p-1 rounded-full transition-colors hover:bg-ice/10 hover:text-ice"
+            type="button"
+            aria-label="Fechar"
+            onClick={
+              () => {
+                trigger(
+                  "vibrate"
+                );
+
+                onClose();
+              }
+            }
+            className="ml-auto rounded-full p-1 transition-colors hover:bg-ice/10 hover:text-ice"
           >
-            <X size={20} className="text-ink-muted" />
+            <X
+              size={
+                20
+              }
+              className="text-ink-muted"
+            />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 overflow-y-auto">{children}</div>
+        <div className="max-h-[calc(90dvh-4rem)] overflow-y-auto p-4">
+          {
+            children
+          }
+        </div>
       </div>
     </div>
   );
