@@ -735,7 +735,9 @@ function DetalhesRegistroSaudeContent() {
                       "vibrate"
                     );
 
-                    router.back();
+                    router.replace(
+                    "/saude/registros"
+                  );
                   }
                 }
                 aria-label="Voltar"

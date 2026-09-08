@@ -51,6 +51,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
 
 import {
+  addDaysToLocalDate,
   alertLevelColor,
   getDocumentAlerts,
   getLocalTodayISO,
@@ -63,9 +64,17 @@ import {
   type HealthInsight,
 } from "@/lib/health-insights";
 
+import {
+  buildMedicationCareOpportunities,
+} from "@/lib/health-intelligence/medication-care-opportunities";
+
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import { PendingDosesModal } from "@/components/PendingDosesModal";
+import {
+  PendingDosesModal,
+  type PendingDose,
+  type PendingDoseResolution,
+} from "@/components/PendingDosesModal";
 import { VersiculoDia } from "@/components/VersiculoDia";
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 
@@ -82,6 +91,72 @@ function getCurrentTimeHHMM(): string {
       hour12: false,
     }
   );
+}
+
+function buildLocalDateTimeIso(
+  date: string,
+  time: string
+): string {
+  const [
+    year,
+    month,
+    day,
+  ] =
+    date
+      .split("-")
+      .map(Number);
+
+  const [
+    hour,
+    minute,
+  ] =
+    time
+      .split(":")
+      .map(Number);
+
+  const parsed =
+    new Date(
+      year,
+      month - 1,
+      day,
+      hour,
+      minute,
+      0,
+      0
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    throw new Error(
+      "Data ou horário inválido."
+    );
+  }
+
+  return parsed.toISOString();
+}
+
+function parseLocalDateTimeInput(
+  value: string
+): string {
+  const parsed =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    throw new Error(
+      "Data ou horário da tomada inválido."
+    );
+  }
+
+  return parsed.toISOString();
 }
 
 function getTratamentoIcon(
@@ -423,6 +498,12 @@ export default function HomePage() {
   const hoje =
     getLocalTodayISO();
 
+  const ontem =
+    addDaysToLocalDate(
+      hoje,
+      -1
+    );
+
   // ==========================================================
   // RELÓGIO REATIVO
   // ==========================================================
@@ -580,10 +661,30 @@ export default function HomePage() {
 
   const {
     doseLogs,
-    marcarComoTomada:
-      marcarDose,
+
+    marcarComoTomadaEm:
+      marcarDoseHojeEm,
+
+    marcarComoIgnorada:
+      ignorarDoseHoje,
   } =
-    useDoseLogs(hoje);
+    useDoseLogs(
+      hoje
+    );
+
+  const {
+    doseLogs:
+      doseLogsOntem,
+
+    marcarComoTomadaEm:
+      marcarDoseOntemEm,
+
+    marcarComoIgnorada:
+      ignorarDoseOntem,
+  } =
+    useDoseLogs(
+      ontem
+    );
 
   // ==========================================================
   // ENTIDADES CLÍNICAS PERSON-SCOPED
@@ -758,79 +859,146 @@ export default function HomePage() {
   // ==========================================================
 
   const dosesPendentesAtrasadas =
-    useMemo(() => {
-      const lista: Array<{
-        medicamentoId:
-          string;
+    useMemo<
+      PendingDose[]
+    >(
+      () => {
+        const lista:
+          PendingDose[] = [];
 
-        nome: string;
+        const appendPendingSlots =
+          ({
+            data,
+            logs,
+            diaLabel,
+            respectCurrentTime,
+          }: {
+            data:
+              string;
 
-        horario: string;
-      }> = [];
+            logs:
+              typeof doseLogs;
 
-      for (
-        const med of
-          medicamentosAtivos
-      ) {
-        if (
-          !med.id ||
-          med.tipo_uso !==
-            "continuo"
-        ) {
-          continue;
-        }
+            diaLabel:
+              "Hoje" |
+              "Ontem";
 
-        const horarios =
-          (
-            med.estoque_horarios ||
-            []
-          ).filter(Boolean);
+            respectCurrentTime:
+              boolean;
+          }) => {
+            for (
+              const med of
+                medicamentosAtivos
+            ) {
+              if (
+                !med.id ||
+                med.tipo_uso !==
+                  "continuo"
+              ) {
+                continue;
+              }
 
-        for (
-          const horario of
-            horarios
-        ) {
-          if (
-            horario >
-            horaAtual
-          ) {
-            continue;
-          }
+              const horarios =
+                (
+                  med.estoque_horarios ||
+                  []
+                )
+                  .filter(
+                    Boolean
+                  )
+                  .sort();
 
-          const log =
-            doseLogs.find(
-              (item) =>
-                item.medicamento_id ===
-                  med.id &&
-                item.horario ===
-                  horario
-            );
+              for (
+                const horario of
+                  horarios
+              ) {
+                if (
+                  respectCurrentTime &&
+                  horario >
+                    horaAtual
+                ) {
+                  continue;
+                }
 
-          if (
-            log?.tomado_em ||
-            log?.ignorado_em
-          ) {
-            continue;
-          }
+                const log =
+                  logs.find(
+                    (
+                      item
+                    ) =>
+                      item.medicamento_id ===
+                        med.id &&
+                      item.data ===
+                        data &&
+                      item.horario ===
+                        horario
+                  );
 
-          lista.push({
-            medicamentoId:
-              med.id,
+                if (
+                  log?.tomado_em ||
+                  log?.ignorado_em
+                ) {
+                  continue;
+                }
 
-            nome:
-              med.nome,
+                lista.push({
+                  medicamentoId:
+                    med.id,
 
-            horario,
-          });
-        }
-      }
+                  nome:
+                    med.nome,
 
-      return lista;
-    }, [
-      medicamentosAtivos,
-      doseLogs,
-      horaAtual,
-    ]);
+                  data,
+
+                  horario,
+
+                  diaLabel,
+                });
+              }
+            }
+          };
+
+        /*
+         * Pendências antigas aparecem primeiro.
+         */
+        appendPendingSlots({
+          data:
+            ontem,
+
+          logs:
+            doseLogsOntem,
+
+          diaLabel:
+            "Ontem",
+
+          respectCurrentTime:
+            false,
+        });
+
+        appendPendingSlots({
+          data:
+            hoje,
+
+          logs:
+            doseLogs,
+
+          diaLabel:
+            "Hoje",
+
+          respectCurrentTime:
+            true,
+        });
+
+        return lista;
+      },
+      [
+        medicamentosAtivos,
+        doseLogs,
+        doseLogsOntem,
+        horaAtual,
+        hoje,
+        ontem,
+      ]
+    );
 
   const dosesTomadasHoje =
     useMemo(
@@ -962,8 +1130,14 @@ export default function HomePage() {
 
   const documentInsights =
     useMemo(
-      () =>
-        getDocumentAlerts(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return getDocumentAlerts(
           documents || []
         ).filter(
           (alert) =>
@@ -971,8 +1145,12 @@ export default function HomePage() {
               5 &&
             alert.daysUntil >=
               -7
-        ),
-      [documents]
+        );
+      },
+      [
+        documents,
+        activePersonId,
+      ]
     );
 
   const unifiedAlerts =
@@ -1128,6 +1306,31 @@ export default function HomePage() {
   const longitudinalHighlights =
     healthIntelligence.highlights;
 
+  const medicationCareOpportunities =
+    useMemo(
+      () =>
+        buildMedicationCareOpportunities({
+          medicamentos:
+            medicamentosAtivos,
+
+          tratamentos,
+
+          renovacoes,
+
+          limit:
+            3,
+        }),
+      [
+        medicamentosAtivos,
+        tratamentos,
+        renovacoes,
+      ]
+    );
+
+  const primaryMedicationCareOpportunity =
+    medicationCareOpportunities[0] ??
+    null;
+
   const resumoContextual =
     useMemo(
       () => {
@@ -1150,6 +1353,32 @@ export default function HomePage() {
 
             color:
               "#FB7185",
+          };
+        }
+
+        if (
+          primaryMedicationCareOpportunity &&
+          primaryMedicationCareOpportunity.level !==
+            "planning"
+        ) {
+          return {
+            eyebrow:
+              primaryMedicationCareOpportunity.level ===
+              "urgent"
+                ? "Atenção ao tratamento"
+                : "Planejamento",
+
+            title:
+              primaryMedicationCareOpportunity.title,
+
+            description:
+              primaryMedicationCareOpportunity.message,
+
+            color:
+              primaryMedicationCareOpportunity.level ===
+              "urgent"
+                ? "#FB7185"
+                : "#FBBF24",
           };
         }
 
@@ -1215,6 +1444,7 @@ export default function HomePage() {
       },
       [
         dosesPendentesAtrasadas.length,
+        primaryMedicationCareOpportunity,
         totalCompromissosHoje,
         unifiedAlerts.length,
       ]
@@ -1384,29 +1614,28 @@ export default function HomePage() {
   ] =
     useState<
       string | null
-    >(null);
+    >(
+      null
+    );
 
-  const [
-    isProcessandoTudo,
-    setIsProcessandoTudo,
-  ] =
-    useState(false);
-
-  const handleTomarDosePendente =
-    async (dose: {
-      medicamentoId:
-        string;
-
-      nome: string;
-
-      horario: string;
-    }) => {
+  const handleResolveDosePendente =
+    async (
+      dose:
+        PendingDose,
+      resolution:
+        PendingDoseResolution
+    ) => {
       const processingKey =
-        `${dose.medicamentoId}-${dose.horario}`;
+        [
+          dose.data,
+          dose.medicamentoId,
+          dose.horario,
+        ].join(
+          ":"
+        );
 
       if (
-        processandoDoseId ||
-        isProcessandoTudo
+        processandoDoseId
       ) {
         return;
       }
@@ -1416,69 +1645,86 @@ export default function HomePage() {
       );
 
       try {
-        await marcarDose(
-          dose.medicamentoId,
-          dose.horario
-        );
+        const isToday =
+          dose.data ===
+          hoje;
 
-        trigger(
-          "success"
-        );
-      } catch (error) {
-        console.error(
-          "[Home] Erro ao registrar dose:",
-          error
-        );
+        const marcarEm =
+          isToday
+            ? marcarDoseHojeEm
+            : marcarDoseOntemEm;
 
-        trigger("error");
-      } finally {
-        setProcessandoDoseId(
-          null
-        );
-      }
-    };
+        const ignorar =
+          isToday
+            ? ignorarDoseHoje
+            : ignorarDoseOntem;
 
-  const handleTomarTodasAtrasadas =
-    async () => {
-      if (
-        isProcessandoTudo ||
-        processandoDoseId
-      ) {
-        return;
-      }
-
-      setIsProcessandoTudo(
-        true
-      );
-
-      try {
-        for (
-          const dose of
-            dosesPendentesAtrasadas
+        switch (
+          resolution.kind
         ) {
-          await marcarDose(
-            dose.medicamentoId,
-            dose.horario
-          );
+          case "scheduled": {
+            await marcarEm(
+              dose.medicamentoId,
+              dose.horario,
+              buildLocalDateTimeIso(
+                dose.data,
+                dose.horario
+              )
+            );
+
+            break;
+          }
+
+          case "now": {
+            await marcarEm(
+              dose.medicamentoId,
+              dose.horario,
+              new Date()
+                .toISOString()
+            );
+
+            break;
+          }
+
+          case "custom": {
+            await marcarEm(
+              dose.medicamentoId,
+              dose.horario,
+              parseLocalDateTimeInput(
+                resolution.takenAtLocal
+              )
+            );
+
+            break;
+          }
+
+          case "ignored": {
+            await ignorar(
+              dose.medicamentoId,
+              dose.horario
+            );
+
+            break;
+          }
         }
 
         trigger(
           "success"
         );
-
-        setModalPendenciasAberto(
-          false
-        );
-      } catch (error) {
+      } catch (
+        error
+      ) {
         console.error(
-          "[Home] Erro ao registrar doses pendentes:",
+          "[Home] Erro ao resolver dose pendente:",
           error
         );
 
-        trigger("error");
+        trigger(
+          "error"
+        );
       } finally {
-        setIsProcessandoTudo(
-          false
+        setProcessandoDoseId(
+          null
         );
       }
     };
@@ -2511,6 +2757,164 @@ export default function HomePage() {
             </motion.section>
           )}
 
+          {primaryMedicationCareOpportunity && (
+            <motion.section
+              initial={{
+                opacity:
+                  0,
+                y:
+                  10,
+              }}
+              animate={{
+                opacity:
+                  1,
+                y:
+                  0,
+              }}
+              transition={{
+                duration:
+                  0.24,
+                delay:
+                  0.08,
+              }}
+            >
+              <div
+                className={`rounded-[24px] border p-4 shadow-sm ${
+                  primaryMedicationCareOpportunity.level ===
+                  "urgent"
+                    ? "border-coral/30 bg-gradient-to-br from-coral/10 via-surface to-surface"
+                    : primaryMedicationCareOpportunity.level ===
+                        "attention"
+                      ? "border-amber-400/25 bg-gradient-to-br from-amber-400/8 via-surface to-surface"
+                      : "border-ice/20 bg-gradient-to-br from-ice/8 via-surface to-surface"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                      primaryMedicationCareOpportunity.level ===
+                      "urgent"
+                        ? "bg-coral/15 text-coral"
+                        : primaryMedicationCareOpportunity.level ===
+                            "attention"
+                          ? "bg-amber-400/10 text-amber-400"
+                          : "bg-ice/10 text-ice"
+                    }`}
+                  >
+                    <Pill size={18} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`font-mono text-[8px] font-bold uppercase tracking-[0.18em] ${
+                        primaryMedicationCareOpportunity.level ===
+                        "urgent"
+                          ? "text-coral"
+                          : primaryMedicationCareOpportunity.level ===
+                              "attention"
+                            ? "text-amber-400"
+                            : "text-ice"
+                      }`}
+                    >
+                      Continuidade do tratamento
+                    </p>
+
+                    <h2 className="mt-1 text-sm font-bold text-ink-primary">
+                      {
+                        primaryMedicationCareOpportunity.title
+                      }
+                    </h2>
+
+                    <p className="mt-1.5 text-[10px] leading-relaxed text-ink-muted">
+                      {
+                        primaryMedicationCareOpportunity.message
+                      }
+                    </p>
+
+                    {primaryMedicationCareOpportunity.latestRenewalDate && (
+                      <p className="mt-2 font-mono text-[9px] text-ink-faint">
+                        Último registro de renovação:{" "}
+                        {
+                          primaryMedicationCareOpportunity.latestRenewalDate
+                        }
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+
+                      router.push(
+                        primaryMedicationCareOpportunity.renewalHref
+                      );
+                    }}
+                    className={`rounded-xl px-3 py-2.5 text-[10px] font-bold transition-all active:scale-[0.98] ${
+                      primaryMedicationCareOpportunity.level ===
+                      "urgent"
+                        ? "bg-coral text-white"
+                        : "bg-ice text-void"
+                    }`}
+                  >
+                    Já renovei · registrar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+
+                      router.push(
+                        primaryMedicationCareOpportunity.medicationHref
+                      );
+                    }}
+                    className="rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-[10px] font-semibold text-ink-primary transition-all active:scale-[0.98]"
+                  >
+                    Ver medicamento
+                  </button>
+                </div>
+
+                {primaryMedicationCareOpportunity.treatmentHref && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger("vibrate");
+
+                      router.push(
+                        primaryMedicationCareOpportunity.treatmentHref!
+                      );
+                    }}
+                    className="mt-2 flex w-full items-center justify-between rounded-xl border border-surface-border/70 bg-surface-raised/70 px-3 py-2.5 text-left transition-all active:scale-[0.98]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-semibold text-ink-primary">
+                        Ver tratamento vinculado
+                      </p>
+
+                      <p className="truncate text-[9px] text-ink-muted">
+                        {
+                          primaryMedicationCareOpportunity.treatmentName
+                        }
+                      </p>
+                    </div>
+
+                    <ChevronRight
+                      size={14}
+                      className="shrink-0 text-ink-faint"
+                    />
+                  </button>
+                )}
+
+                <p className="mt-3 text-center text-[8px] leading-relaxed text-ink-faint">
+                  O Vault cruza seus próprios registros de estoque, renovação e tratamento. Isso não substitui orientação profissional.
+                </p>
+              </div>
+            </motion.section>
+          )}
+
           {/* ===================================================
               TRATAMENTOS
           =================================================== */}
@@ -3295,17 +3699,11 @@ export default function HomePage() {
           doses={
             dosesPendentesAtrasadas
           }
-          onTomarDose={
-            handleTomarDosePendente
-          }
-          onTomarTodas={
-            handleTomarTodasAtrasadas
+          onResolveDose={
+            handleResolveDosePendente
           }
           isProcessingDose={
             processandoDoseId
-          }
-          isProcessingAll={
-            isProcessandoTudo
           }
           onExpand={() => {
             setModalPendenciasAberto(

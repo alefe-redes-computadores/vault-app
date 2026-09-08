@@ -1456,7 +1456,7 @@ export default function NovoTratamentoPage() {
                     className="text-emerald-400"
                   />
 
-                  Postos / Locais de Saúde
+                  Locais de Saúde
                 </h2>
 
                 <button
@@ -1488,7 +1488,7 @@ export default function NovoTratamentoPage() {
               0 ? (
                 <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center">
                   <p className="text-xs text-ink-muted">
-                    Nenhum posto ou local vinculado.
+                    Nenhum local de saúde vinculado.
                   </p>
                 </div>
               ) : (
@@ -1937,7 +1937,7 @@ export default function NovoTratamentoPage() {
                 )
             )
           }
-          title="Vincular Posto / Local"
+          title="Vincular Local de Saúde"
           placeholder="Buscar local..."
           getItemId={
             (

@@ -2845,7 +2845,9 @@ function MedicamentoDetalhesContent() {
                     "vibrate"
                   );
 
-                  router.back();
+                  router.replace(
+                    "/saude/medicamentos"
+                  );
                 }
               }
               aria-label="Voltar"

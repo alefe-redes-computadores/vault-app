@@ -837,6 +837,12 @@ function EditarTratamentoContent() {
                   ),
               }
             );
+
+            router.replace(
+              `/saude/tratamentos/detalhes?id=${encodeURIComponent(
+                id
+              )}`
+            );
           },
           {
             successMessage:
@@ -846,7 +852,7 @@ function EditarTratamentoContent() {
               "Erro ao atualizar tratamento",
 
             goBackOnSuccess:
-              true,
+              false,
           }
         );
       } finally {
@@ -1277,7 +1283,11 @@ function EditarTratamentoContent() {
                     "vibrate"
                   );
 
-                  router.back();
+                  router.replace(
+                      `/saude/tratamentos/detalhes?id=${encodeURIComponent(
+                        id
+                      )}`
+                    );
                 }
               }
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
@@ -1931,7 +1941,7 @@ function EditarTratamentoContent() {
                     className="text-emerald-400"
                   />
 
-                  Postos / Locais de Saúde
+                  Locais de Saúde
                 </h2>
 
                 <button
@@ -1963,7 +1973,7 @@ function EditarTratamentoContent() {
               0 ? (
                 <div className="rounded-2xl border border-dashed border-surface-border/60 bg-surface-raised/40 p-3 text-center">
                   <p className="text-xs text-ink-muted">
-                    Nenhum posto ou local vinculado.
+                    Nenhum local de saúde vinculado.
                   </p>
                 </div>
               ) : (
@@ -2454,7 +2464,7 @@ function EditarTratamentoContent() {
                 )
             )
           }
-          title="Vincular Posto / Local"
+          title="Vincular Local de Saúde"
           placeholder="Buscar local..."
           getItemId={
             (

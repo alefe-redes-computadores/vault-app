@@ -4674,7 +4674,11 @@ function EditarDocumentoSaudeContent() {
                     ) {
                       prevStep();
                     } else {
-                      router.back();
+                      router.replace(
+                    `/saude/documentos/detalhes?id=${encodeURIComponent(
+                      id
+                    )}`
+                  );
                     }
                   }
                 }

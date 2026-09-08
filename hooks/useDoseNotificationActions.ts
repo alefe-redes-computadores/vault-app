@@ -18,6 +18,7 @@ import {
 } from "@/lib/repositories/doseLogs";
 
 import {
+  addDaysToLocalDate,
   getLocalTodayISO,
 } from "@/lib/health-utils";
 
@@ -57,6 +58,70 @@ function isValidHorario(
     minute >= 0 &&
     minute <= 59
   );
+}
+
+function resolveDoseNotificationSlotDate(
+  horario:
+    string,
+  now:
+    Date = new Date()
+): string {
+  const today =
+    getLocalTodayISO();
+
+  const [
+    scheduledHour,
+    scheduledMinute,
+  ] =
+    horario
+      .split(
+        ":"
+      )
+      .map(
+        Number
+      );
+
+  const currentMinutes =
+    now.getHours() *
+      60 +
+    now.getMinutes();
+
+  const scheduledMinutes =
+    scheduledHour *
+      60 +
+    scheduledMinute;
+
+  /*
+   * A notificação é recorrente e não carrega uma data de slot
+   * diferente a cada repetição.
+   *
+   * Portanto associamos a ação ao slot MAIS RECENTE daquele
+   * horário no relógio local:
+   *
+   * - 23:00 clicado às 00:20 -> ontem;
+   * - 08:00 clicado às 08:30 -> hoje;
+   * - 08:00 clicado às 07:30 -> ontem.
+   *
+   * Isso impede que uma notificação pendente atravessando
+   * meia-noite crie uma dose no dia errado.
+   */
+  if (
+    currentMinutes <
+    scheduledMinutes
+  ) {
+    const yesterday =
+      addDaysToLocalDate(
+        today,
+        -1
+      );
+
+    return (
+      yesterday ||
+      today
+    );
+  }
+
+  return today;
 }
 
 function getDoseReminderExtra(
@@ -149,8 +214,10 @@ export function useDoseNotificationActions() {
                 return;
               }
 
-              const hoje =
-                getLocalTodayISO();
+              const slotDate =
+                resolveDoseNotificationSlotDate(
+                  horario
+                );
 
               if (
                 event.actionId ===
@@ -160,7 +227,7 @@ export function useDoseNotificationActions() {
                   personId,
                   medicamentoId,
                   data:
-                    hoje,
+                    slotDate,
                   horario,
                   status:
                     "taken",
@@ -177,7 +244,7 @@ export function useDoseNotificationActions() {
                   personId,
                   medicamentoId,
                   data:
-                    hoje,
+                    slotDate,
                   horario,
                   status:
                     "ignored",

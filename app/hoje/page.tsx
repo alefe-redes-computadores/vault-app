@@ -28,6 +28,7 @@ import {
   Trash2,
   RotateCcw,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
@@ -42,6 +43,7 @@ import {
 } from "@/lib/db";
 import { EmptyState } from "@/components/EmptyState";
 import {
+  addDaysToLocalDate,
   computeEstoqueInfo,
   getLocalTodayISO,
   getDaysUntil,
@@ -174,6 +176,13 @@ interface DoseItemExt {
   isAvulsa?: boolean;
   motivoAvulsa?: string;
   logId?: string;
+
+  /**
+   * Slot previsto sem DoseLog real em um dia diferente de hoje.
+   * É informativo e não entra nas métricas de adesão.
+   */
+  isExpectedUnconfirmed?: boolean;
+
   isSintoma?: boolean;
   sintomaId?: string;
   sintomaNome?: string;
@@ -190,41 +199,285 @@ export default function HojePage() {
   const { showToast } = useToast();
   const { activePersonId } = useActivePersonId();
 
-  const hoje = getLocalTodayISO();
+  const hoje =
+    getLocalTodayISO();
+
+  const requestedDate =
+    searchParams.get(
+      "data"
+    );
+
+  const retroReviewMode =
+    searchParams.get(
+      "retro"
+    ) ===
+    "1";
+
+  const retroReviewMedicationId =
+    searchParams.get(
+      "medicamento"
+    );
+
+  const requestedDateIsValid =
+    Boolean(
+      requestedDate &&
+      /^\d{4}-\d{2}-\d{2}$/.test(
+        requestedDate
+      ) &&
+      !Number.isNaN(
+        new Date(
+          `${requestedDate}T12:00:00`
+        ).getTime()
+      )
+    );
+
+  const dataSelecionada =
+    requestedDateIsValid &&
+    requestedDate
+      ? requestedDate
+      : hoje;
+
+  const isHoje =
+    dataSelecionada ===
+    hoje;
+
+  const isPassado =
+    dataSelecionada <
+    hoje;
+
+  const ontem =
+    addDaysToLocalDate(
+      hoje,
+      -1
+    );
+
+  const amanha =
+    addDaysToLocalDate(
+      hoje,
+      1
+    );
+
+  const dataSelecionadaLabel =
+    dataSelecionada ===
+    hoje
+      ? "Hoje"
+      : dataSelecionada ===
+          ontem
+        ? "Ontem"
+        : dataSelecionada ===
+            amanha
+          ? "Amanhã"
+          : new Intl.DateTimeFormat(
+              "pt-BR",
+              {
+                weekday:
+                  "long",
+
+                day:
+                  "2-digit",
+
+                month:
+                  "long",
+              }
+            ).format(
+              new Date(
+                `${dataSelecionada}T12:00:00`
+              )
+            );
+
+  const dataSelecionadaDescricao =
+    new Intl.DateTimeFormat(
+      "pt-BR",
+      {
+        day:
+          "2-digit",
+
+        month:
+          "2-digit",
+
+        year:
+          "numeric",
+      }
+    ).format(
+      new Date(
+        `${dataSelecionada}T12:00:00`
+      )
+    );
+
+  const buildTimelineUrl =
+    (
+      date:
+        string
+    ) => {
+      const params =
+        new URLSearchParams();
+
+      if (
+        date !==
+        hoje
+      ) {
+        params.set(
+          "data",
+          date
+        );
+      }
+
+      if (
+        retroReviewMode &&
+        retroReviewMedicationId
+      ) {
+        params.set(
+          "retro",
+          "1"
+        );
+
+        params.set(
+          "medicamento",
+          retroReviewMedicationId
+        );
+      }
+
+      const query =
+        params.toString();
+
+      return query
+        ? `/hoje?${query}`
+        : "/hoje";
+    };
+
+  const navegarData =
+    (
+      delta:
+        number
+    ) => {
+      const destino =
+        addDaysToLocalDate(
+          dataSelecionada,
+          delta
+        );
+
+      if (
+        !destino
+      ) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      router.replace(
+        buildTimelineUrl(
+          destino
+        )
+      );
+    };
+
+  const voltarParaHoje =
+    () => {
+      if (
+        isHoje
+      ) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      router.replace(
+        buildTimelineUrl(
+          hoje
+        )
+      );
+    };
 
   const {
     medicamentos: rawMedicamentos,
   } = useMedicamentos();
 
-  const medicamentos = useMemo(() => {
-    if (!rawMedicamentos) return [];
+  const medicamentos =
+    useMemo(
+      () => {
+        if (
+          !rawMedicamentos ||
+          !activePersonId
+        ) {
+          return [];
+        }
 
-    return rawMedicamentos.filter(
-      (m: any) =>
-        !activePersonId ||
-        !m.person_id ||
-        m.person_id === activePersonId
+        return rawMedicamentos.filter(
+          (
+            medicamento:
+              any
+          ) =>
+            medicamento.person_id ===
+            activePersonId
+        );
+      },
+      [
+        rawMedicamentos,
+        activePersonId,
+      ]
     );
-  }, [rawMedicamentos, activePersonId]);
 
   const {
     doseLogs,
     marcarComoTomada: marcarDose,
+    marcarComoTomadaHistoricaEm,
     marcarComoIgnorada,
+    marcarComoIgnoradaHistorica,
     desmarcarDose,
+    desmarcarDoseHistorica,
     removerDosePorId,
-  } = useDoseLogs(hoje);
+  } = useDoseLogs(
+    dataSelecionada
+  );
 
   const tratamentos =
     useLiveQuery(
-      () =>
-        activePersonId
-          ? db.tratamentos
-              .where("person_id")
-              .equals(activePersonId)
-              .toArray()
-          : db.tratamentos.toArray(),
-      [activePersonId]
+      async () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.tratamentos
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ]
+    ) || [];
+
+  const renovacoes =
+    useLiveQuery(
+      async () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        return db.renovacoes
+          .where(
+            "person_id"
+          )
+          .equals(
+            activePersonId
+          )
+          .toArray();
+      },
+      [
+        activePersonId,
+      ]
     ) || [];
 
   const medicos = useLiveQuery(
@@ -248,16 +501,24 @@ export default function HojePage() {
       []
     ) || [];
 
-  const consultas = useMemo(
-    () =>
-      rawConsultas.filter(
-        (c: any) =>
-          !activePersonId ||
-          !c.person_id ||
-          c.person_id === activePersonId
-      ),
-    [rawConsultas, activePersonId]
-  );
+  const consultas =
+    useMemo(
+      () =>
+        activePersonId
+          ? rawConsultas.filter(
+              (
+                consulta:
+                  any
+              ) =>
+                consulta.person_id ===
+                activePersonId
+            )
+          : [],
+      [
+        rawConsultas,
+        activePersonId,
+      ]
+    );
 
   const rawCirurgias =
     useLiveQuery(
@@ -265,16 +526,24 @@ export default function HojePage() {
       []
     ) || [];
 
-  const cirurgias = useMemo(
-    () =>
-      rawCirurgias.filter(
-        (c: any) =>
-          !activePersonId ||
-          !c.person_id ||
-          c.person_id === activePersonId
-      ),
-    [rawCirurgias, activePersonId]
-  );
+  const cirurgias =
+    useMemo(
+      () =>
+        activePersonId
+          ? rawCirurgias.filter(
+              (
+                cirurgia:
+                  any
+              ) =>
+                cirurgia.person_id ===
+                activePersonId
+            )
+          : [],
+      [
+        rawCirurgias,
+        activePersonId,
+      ]
+    );
 
   const rawExames =
     useLiveQuery(
@@ -282,16 +551,24 @@ export default function HojePage() {
       []
     ) || [];
 
-  const exames = useMemo(
-    () =>
-      rawExames.filter(
-        (e: any) =>
-          !activePersonId ||
-          !e.person_id ||
-          e.person_id === activePersonId
-      ),
-    [rawExames, activePersonId]
-  );
+  const exames =
+    useMemo(
+      () =>
+        activePersonId
+          ? rawExames.filter(
+              (
+                exame:
+                  any
+              ) =>
+                exame.person_id ===
+                activePersonId
+            )
+          : [],
+      [
+        rawExames,
+        activePersonId,
+      ]
+    );
 
   const rawRegistrosSaude =
     useLiveQuery(
@@ -299,25 +576,44 @@ export default function HojePage() {
       []
     ) || [];
 
-  const registrosHoje = useMemo(() => {
-    return rawRegistrosSaude.filter((r: any) => {
-      const matchPerson =
-        !activePersonId ||
-        !r.person_id ||
-        r.person_id === activePersonId;
+  const registrosHoje =
+    useMemo(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
 
-      const matchDate = r.data === hoje;
-
-      return matchPerson && matchDate;
-    });
-  }, [rawRegistrosSaude, activePersonId, hoje]);
+        return rawRegistrosSaude.filter(
+          (
+            registro:
+              any
+          ) =>
+            registro.person_id ===
+              activePersonId &&
+            registro.data ===
+              dataSelecionada
+        );
+      },
+      [
+        rawRegistrosSaude,
+        activePersonId,
+        dataSelecionada,
+      ]
+    );
 
   const consultasHoje = useMemo(
     () =>
       consultas.filter(
-        (c: any) => c.data === hoje
+        (c: any) =>
+          c.data ===
+          dataSelecionada
       ),
-    [consultas, hoje]
+    [
+      consultas,
+      dataSelecionada,
+    ]
   );
 
   const cirurgiasHoje = useMemo(
@@ -325,15 +621,23 @@ export default function HojePage() {
       cirurgias.filter(
         (c: any) => c.data === hoje
       ),
-    [cirurgias, hoje]
+    [
+      cirurgias,
+      dataSelecionada,
+    ]
   );
 
   const examesHoje = useMemo(
     () =>
       exames.filter(
-        (e: any) => e.data === hoje
+        (e: any) =>
+          e.data ===
+          dataSelecionada
       ),
-    [exames, hoje]
+    [
+      exames,
+      dataSelecionada,
+    ]
   );
 
   const [filtroStatus, setFiltroStatus] =
@@ -377,6 +681,38 @@ export default function HojePage() {
   const [isDoseModalOpen, setIsDoseModalOpen] =
     useState(false);
 
+  const [
+    historicalDoseReviewItem,
+    setHistoricalDoseReviewItem,
+  ] =
+    useState<DoseItemExt | null>(
+      null
+    );
+
+  const [
+    historicalCustomTakenAt,
+    setHistoricalCustomTakenAt,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    historicalCustomMode,
+    setHistoricalCustomMode,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isHistoricalProcessing,
+    setIsHistoricalProcessing,
+  ] =
+    useState(
+      false
+    );
+
   useEffect(() => {
     const action = searchParams.get("action");
 
@@ -394,6 +730,378 @@ export default function HojePage() {
       []
     ) || [];
 
+  const retroReviewSummary =
+    useMemo(
+      () => {
+        if (
+          !retroReviewMode ||
+          !retroReviewMedicationId
+        ) {
+          return null;
+        }
+
+        const medicamento =
+          medicamentos.find(
+            (
+              item:
+                any
+            ) =>
+              item.id ===
+              retroReviewMedicationId
+          );
+
+        if (
+          !medicamento
+        ) {
+          return null;
+        }
+
+        const horarios =
+          Array.from(
+            new Set(
+              (
+                medicamento.estoque_horarios ||
+                []
+              )
+                .map(
+                  (
+                    horario:
+                      string
+                  ) =>
+                    String(
+                      horario ||
+                      ""
+                    ).trim()
+                )
+                .filter(
+                  (
+                    horario:
+                      string
+                  ) =>
+                    /^([01]\d|2[0-3]):[0-5]\d$/.test(
+                      horario
+                    )
+                )
+            )
+          ).sort();
+
+        const acquisitionDates =
+          renovacoes
+            .filter(
+              (
+                renovacao:
+                  any
+              ) =>
+                renovacao.medicamento_id ===
+                medicamento.id
+            )
+            .map(
+              (
+                renovacao:
+                  any
+              ) =>
+                String(
+                  renovacao.data_aquisicao ||
+                  renovacao.data ||
+                  ""
+                ).slice(
+                  0,
+                  10
+                )
+            )
+            .filter(
+              (
+                value:
+                  string
+              ) =>
+                /^\d{4}-\d{2}-\d{2}$/.test(
+                  value
+                )
+            )
+            .sort();
+
+        const createdDate =
+          String(
+            medicamento.created_at ||
+            ""
+          ).slice(
+            0,
+            10
+          );
+
+        const startDate =
+          acquisitionDates[0] ||
+          (
+            /^\d{4}-\d{2}-\d{2}$/.test(
+              createdDate
+            )
+              ? createdDate
+              : null
+          ) ||
+          medicamento.estoque_data_referencia ||
+          medicamento.data_receita ||
+          null;
+
+        if (
+          !startDate ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(
+            startDate
+          ) ||
+          horarios.length ===
+            0
+        ) {
+          return {
+            medicamento,
+
+            startDate,
+
+            horarios,
+
+            totalSlots:
+              0,
+
+            confirmedSlots:
+              0,
+
+            pendingSlots:
+              0,
+
+            pendingDates:
+              [] as string[],
+
+            firstPendingDate:
+              null as
+                | string
+                | null,
+          };
+        }
+
+        const yesterday =
+          addDaysToLocalDate(
+            hoje,
+            -1
+          );
+
+        if (
+          !yesterday ||
+          startDate >
+            yesterday
+        ) {
+          return {
+            medicamento,
+
+            startDate,
+
+            horarios,
+
+            totalSlots:
+              0,
+
+            confirmedSlots:
+              0,
+
+            pendingSlots:
+              0,
+
+            pendingDates:
+              [] as string[],
+
+            firstPendingDate:
+              null as
+                | string
+                | null,
+          };
+        }
+
+        const logsBySlot =
+          new Set(
+            historicoDosesCompleto
+              .filter(
+                (
+                  log:
+                    any
+                ) =>
+                  log.medicamento_id ===
+                    medicamento.id &&
+                  log.person_id ===
+                    activePersonId
+              )
+              .map(
+                (
+                  log:
+                    any
+                ) =>
+                  `${log.data}|${log.horario}`
+              )
+          );
+
+        let cursor =
+          startDate;
+
+        let totalSlots =
+          0;
+
+        let confirmedSlots =
+          0;
+
+        const pendingDatesSet =
+          new Set<string>();
+
+        /*
+         * Guard alto apenas evita loop infinito em dado inválido.
+         * Dez anos de histórico continuam suportados.
+         */
+        let guard =
+          0;
+
+        while (
+          cursor <=
+            yesterday &&
+          guard <
+            3660
+        ) {
+          for (
+            const horario of
+              horarios
+          ) {
+            totalSlots +=
+              1;
+
+            const key =
+              `${cursor}|${horario}`;
+
+            if (
+              logsBySlot.has(
+                key
+              )
+            ) {
+              confirmedSlots +=
+                1;
+            } else {
+              pendingDatesSet.add(
+                cursor
+              );
+            }
+          }
+
+          const nextDate =
+            addDaysToLocalDate(
+              cursor,
+              1
+            );
+
+          if (
+            !nextDate ||
+            nextDate ===
+              cursor
+          ) {
+            break;
+          }
+
+          cursor =
+            nextDate;
+
+          guard +=
+            1;
+        }
+
+        const pendingDates =
+          Array.from(
+            pendingDatesSet
+          ).sort();
+
+        return {
+          medicamento,
+
+          startDate,
+
+          horarios,
+
+          totalSlots,
+
+          confirmedSlots,
+
+          pendingSlots:
+            Math.max(
+              0,
+              totalSlots -
+                confirmedSlots
+            ),
+
+          pendingDates,
+
+          firstPendingDate:
+            pendingDates[0] ||
+            null,
+        };
+      },
+      [
+        retroReviewMode,
+        retroReviewMedicationId,
+        medicamentos,
+        renovacoes,
+        historicoDosesCompleto,
+        activePersonId,
+        hoje,
+      ]
+    );
+
+  const irParaProximoPendenteRetroativo =
+    () => {
+      if (
+        !retroReviewSummary ||
+        retroReviewSummary.pendingDates.length ===
+          0
+      ) {
+        showToast(
+          "Não há doses retroativas pendentes de revisão",
+          "success"
+        );
+
+        return;
+      }
+
+      const pendingDates =
+        retroReviewSummary.pendingDates;
+
+      const nextAfterCurrent =
+        pendingDates.find(
+          (
+            date
+          ) =>
+            date >
+            dataSelecionada
+        );
+
+      const destino =
+        nextAfterCurrent ||
+        pendingDates[0];
+
+      trigger(
+        "vibrate"
+      );
+
+      router.replace(
+        buildTimelineUrl(
+          destino
+        )
+      );
+    };
+
+  const sairRevisaoRetroativa =
+    () => {
+      trigger(
+        "vibrate"
+      );
+
+      router.replace(
+        dataSelecionada ===
+          hoje
+          ? "/hoje"
+          : `/hoje?data=${dataSelecionada}`
+      );
+    };
+
   const horaAtual = new Date().toLocaleTimeString(
     "pt-BR",
     {
@@ -408,6 +1116,15 @@ export default function HojePage() {
 
     for (const med of medicamentos || []) {
       if (
+        retroReviewMode &&
+        retroReviewMedicationId &&
+        med.id !==
+          retroReviewMedicationId
+      ) {
+        continue;
+      }
+
+      if (
         !med.id ||
         med.status === "descontinuado" ||
         !med.estoque_horarios ||
@@ -416,8 +1133,75 @@ export default function HojePage() {
         continue;
       }
 
+      const acquisitionDates =
+        renovacoes
+          .filter(
+            (
+              renovacao:
+                any
+            ) =>
+              renovacao.medicamento_id ===
+              med.id
+          )
+          .map(
+            (
+              renovacao:
+                any
+            ) =>
+              String(
+                renovacao.data_aquisicao ||
+                renovacao.data ||
+                ""
+              ).slice(
+                0,
+                10
+              )
+          )
+          .filter(
+            (
+              value:
+                string
+            ) =>
+              /^\d{4}-\d{2}-\d{2}$/.test(
+                value
+              )
+          )
+          .sort();
+
+      const createdDate =
+        String(
+          (med as any).created_at ||
+          ""
+        ).slice(
+          0,
+          10
+        );
+
+      const knownStartDate =
+        acquisitionDates[0] ||
+        (
+          /^\d{4}-\d{2}-\d{2}$/.test(
+            createdDate
+          )
+            ? createdDate
+            : null
+        ) ||
+        med.estoque_data_referencia ||
+        med.data_receita ||
+        null;
+
+      if (
+        knownStartDate &&
+        dataSelecionada <
+          knownStartDate
+      ) {
+        continue;
+      }
+
       const estoqueInfo =
-        computeEstoqueInfo(med);
+        computeEstoqueInfo(
+          med
+        );
 
       const medicoObj = medicos.find(
         (m) => m.id === med.medico_id
@@ -520,7 +1304,13 @@ export default function HojePage() {
           insight,
           receitaVencida,
           comportamento,
-          isAvulsa: false,
+
+          isAvulsa:
+            false,
+
+          isExpectedUnconfirmed:
+            !isHoje &&
+            !log,
         });
       }
     }
@@ -637,6 +1427,11 @@ export default function HojePage() {
     hospitais,
     historicoDosesCompleto,
     registrosHoje,
+    renovacoes,
+    dataSelecionada,
+    isHoje,
+    retroReviewMode,
+    retroReviewMedicationId,
   ]);
 
   const compromissosFiltrados = useMemo(() => {
@@ -716,7 +1511,8 @@ export default function HojePage() {
         (d) =>
           !d.tomada &&
           !d.ignorada &&
-          !d.isSintoma
+          !d.isSintoma &&
+          !d.isExpectedUnconfirmed
       );
     } else if (
       filtroStatus === "ignorados"
@@ -786,22 +1582,50 @@ export default function HojePage() {
     );
   }, [dosesFiltradas]);
 
-  const totalTomadas = doses.filter(
-    (d) => d.tomada
-  ).length;
+  const metricItems =
+    doses.filter(
+      (
+        dose
+      ) =>
+        !dose.isExpectedUnconfirmed
+    );
 
-  const totalPendentes = doses.filter(
-    (d) =>
-      !d.tomada &&
-      !d.ignorada &&
-      !d.isSintoma
-  ).length;
+  const totalTomadas =
+    metricItems.filter(
+      (
+        dose
+      ) =>
+        dose.tomada
+    ).length;
 
-  const totalIgnoradas = doses.filter(
-    (d) => d.ignorada
-  ).length;
+  const totalPendentes =
+    metricItems.filter(
+      (
+        dose
+      ) =>
+        !dose.tomada &&
+        !dose.ignorada &&
+        !dose.isSintoma
+    ).length;
 
-  const totalRegistros = doses.length;
+  const totalEsperadasSemConfirmacao =
+    doses.filter(
+      (
+        dose
+      ) =>
+        dose.isExpectedUnconfirmed
+    ).length;
+
+  const totalIgnoradas =
+    metricItems.filter(
+      (
+        dose
+      ) =>
+        dose.ignorada
+    ).length;
+
+  const totalRegistros =
+    metricItems.length;
 
   const percentualConclusao =
     totalRegistros > 0
@@ -819,9 +1643,270 @@ export default function HojePage() {
     return <CardListSkeleton />;
   }
 
+  const abrirRevisaoHistorica =
+    (
+      item:
+        DoseItemExt
+    ) => {
+      if (
+        !isPassado ||
+        !item.medicamentoId ||
+        item.isAvulsa ||
+        item.isSintoma
+      ) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      setHistoricalDoseReviewItem(
+        item
+      );
+
+      setHistoricalCustomTakenAt(
+        `${dataSelecionada}T${item.horario || "00:00"}`
+      );
+
+      setHistoricalCustomMode(
+        false
+      );
+    };
+
+  const fecharRevisaoHistorica =
+    () => {
+      if (
+        isHistoricalProcessing
+      ) {
+        return;
+      }
+
+      setHistoricalDoseReviewItem(
+        null
+      );
+
+      setHistoricalCustomMode(
+        false
+      );
+
+      setHistoricalCustomTakenAt(
+        ""
+      );
+    };
+
+  const executarRevisaoHistorica =
+    async (
+      action:
+        | "scheduled"
+        | "custom"
+        | "ignored"
+        | "clear"
+    ) => {
+      const item =
+        historicalDoseReviewItem;
+
+      if (
+        !item?.medicamentoId ||
+        !isPassado ||
+        isHistoricalProcessing
+      ) {
+        return;
+      }
+
+      setIsHistoricalProcessing(
+        true
+      );
+
+      try {
+        if (
+          action ===
+          "scheduled"
+        ) {
+          const scheduledLocal =
+            `${dataSelecionada}T${item.horario || "00:00"}:00`;
+
+          const takenAt =
+            new Date(
+              scheduledLocal
+            );
+
+          if (
+            Number.isNaN(
+              takenAt.getTime()
+            )
+          ) {
+            throw new Error(
+              "Horário histórico inválido."
+            );
+          }
+
+          await marcarComoTomadaHistoricaEm(
+            item.medicamentoId,
+            item.horario,
+            takenAt.toISOString()
+          );
+
+          trigger(
+            "success"
+          );
+
+          showToast(
+            "Dose histórica confirmada",
+            "success"
+          );
+        } else if (
+          action ===
+          "custom"
+        ) {
+          if (
+            !historicalCustomTakenAt
+          ) {
+            showToast(
+              "Informe quando a dose foi tomada",
+              "error"
+            );
+
+            return;
+          }
+
+          const customDate =
+            historicalCustomTakenAt.slice(
+              0,
+              10
+            );
+
+          if (
+            customDate !==
+            dataSelecionada
+          ) {
+            showToast(
+              "O horário informado precisa pertencer ao dia selecionado",
+              "error"
+            );
+
+            return;
+          }
+
+          const takenAt =
+            new Date(
+              historicalCustomTakenAt
+            );
+
+          if (
+            Number.isNaN(
+              takenAt.getTime()
+            )
+          ) {
+            showToast(
+              "Data ou horário inválido",
+              "error"
+            );
+
+            return;
+          }
+
+          await marcarComoTomadaHistoricaEm(
+            item.medicamentoId,
+            item.horario,
+            takenAt.toISOString()
+          );
+
+          trigger(
+            "success"
+          );
+
+          showToast(
+            "Horário histórico atualizado",
+            "success"
+          );
+        } else if (
+          action ===
+          "ignored"
+        ) {
+          await marcarComoIgnoradaHistorica(
+            item.medicamentoId,
+            item.horario
+          );
+
+          trigger(
+            "vibrate"
+          );
+
+          showToast(
+            "Dose marcada como não tomada",
+            "info"
+          );
+        } else {
+          await desmarcarDoseHistorica(
+            item.medicamentoId,
+            item.horario
+          );
+
+          trigger(
+            "vibrate"
+          );
+
+          showToast(
+            "Confirmação histórica removida",
+            "info"
+          );
+        }
+
+        setHistoricalDoseReviewItem(
+          null
+        );
+
+        setHistoricalCustomMode(
+          false
+        );
+
+        setHistoricalCustomTakenAt(
+          ""
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Erro ao revisar dose histórica:",
+          error
+        );
+
+        trigger(
+          "error"
+        );
+
+        showToast(
+          "Erro ao atualizar histórico",
+          "error"
+        );
+      } finally {
+        setIsHistoricalProcessing(
+          false
+        );
+      }
+    };
+
   const handleToggle = async (
     item: DoseItemExt
   ) => {
+    if (
+      !isHoje
+    ) {
+      trigger(
+        "vibrate"
+      );
+
+      showToast(
+        isPassado
+          ? "Histórico em modo de consulta. Nenhuma dose passada será presumida."
+          : "Doses futuras só poderão ser registradas no dia correspondente.",
+        "info"
+      );
+
+      return;
+    }
+
     if (
       processandoDoseId ||
       !item.medicamentoId
@@ -935,6 +2020,23 @@ export default function HojePage() {
   const handleIgnorar = async (
     item: DoseItemExt
   ) => {
+    if (
+      !isHoje
+    ) {
+      trigger(
+        "vibrate"
+      );
+
+      showToast(
+        isPassado
+          ? "Histórico em modo de consulta."
+          : "Ainda não é possível ignorar uma dose futura.",
+        "info"
+      );
+
+      return;
+    }
+
     if (
       processandoDoseId ||
       !item.medicamentoId
@@ -1104,9 +2206,19 @@ export default function HojePage() {
                 </p>
               </div>
 
-              <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Hoje
+              <h1 className="mt-1 font-display text-xl font-semibold capitalize text-ink-primary">
+                {
+                  dataSelecionadaLabel
+                }
               </h1>
+
+              {!isHoje && (
+                <p className="mt-0.5 font-mono text-[9px] text-ink-faint">
+                  {
+                    dataSelecionadaDescricao
+                  }
+                </p>
+              )}
             </div>
 
             <div className="shrink-0 text-right">
@@ -1118,6 +2230,88 @@ export default function HojePage() {
               </span>
             </div>
           </div>
+
+          {/* NAVEGAÇÃO TEMPORAL */}
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={
+                () =>
+                  navegarData(
+                    -1
+                  )
+              }
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95"
+              aria-label="Dia anterior"
+            >
+              <ChevronLeft
+                size={
+                  16
+                }
+              />
+            </button>
+
+            <div className="min-w-0 flex-1 rounded-xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2 text-center">
+              <p className="truncate text-[10px] font-semibold capitalize text-ink-primary">
+                {
+                  dataSelecionadaLabel
+                }
+              </p>
+
+              <p className="mt-0.5 font-mono text-[8px] text-ink-faint">
+                {
+                  dataSelecionadaDescricao
+                }
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={
+                () =>
+                  navegarData(
+                    1
+                  )
+              }
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95"
+              aria-label="Próximo dia"
+            >
+              <ChevronRight
+                size={
+                  16
+                }
+              />
+            </button>
+
+            {!isHoje && (
+              <button
+                type="button"
+                onClick={
+                  voltarParaHoje
+                }
+                className="shrink-0 rounded-xl border border-ice/25 bg-ice/10 px-3 py-2 font-mono text-[9px] font-bold text-ice transition-all active:scale-95"
+              >
+                Hoje
+              </button>
+            )}
+          </div>
+
+          {!isHoje && (
+            <div className="mt-2 flex items-start gap-2 rounded-xl border border-ice/15 bg-ice/5 px-3 py-2.5">
+              <Info
+                size={
+                  13
+                }
+                className="mt-0.5 shrink-0 text-ice"
+              />
+
+              <p className="text-[9px] leading-relaxed text-ink-muted">
+                {isPassado
+                  ? "Visualização histórica. Slots sem registro são apenas previsões da rotina e não contam como tomada, falta ou adesão."
+                  : "Planejamento futuro. As doses aparecem como previstas e não podem ser registradas antecipadamente."}
+              </p>
+            </div>
+          )}
 
           {/* RESUMO */}
           <div className="mt-3 grid grid-cols-3 gap-2">
@@ -1144,12 +2338,18 @@ export default function HojePage() {
                   className="text-coral"
                 />
                 <span className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-                  Pendentes
+                  {isHoje
+                    ? "Pendentes"
+                    : isPassado
+                      ? "Sem confirmação"
+                      : "Previstas"}
                 </span>
               </div>
 
               <p className="mt-1 font-mono text-sm font-bold text-coral">
-                {totalPendentes}
+                {isHoje
+                  ? totalPendentes
+                  : totalEsperadasSemConfirmacao}
               </p>
             </div>
 
@@ -1329,6 +2529,242 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-4 px-4 pt-3">
+          {retroReviewMode && (
+            <motion.div
+              initial={{
+                opacity:
+                  0,
+
+                y:
+                  8,
+              }}
+              animate={{
+                opacity:
+                  1,
+
+                y:
+                  0,
+              }}
+              className="rounded-[26px] border border-ice/25 bg-ice/5 p-4 shadow-sm"
+            >
+              {retroReviewSummary ? (
+                <>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/15 text-ice">
+                      <Clock
+                        size={
+                          19
+                        }
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                        Revisão retroativa assistida
+                      </p>
+
+                      <h2 className="mt-1 truncate text-sm font-bold text-ink-primary">
+                        {
+                          retroReviewSummary
+                            .medicamento
+                            .nome
+                        }
+                      </h2>
+
+                      {retroReviewSummary.startDate && (
+                        <p className="mt-1 text-[10px] text-ink-muted">
+                          Período conhecido desde{" "}
+                          <strong className="text-ink-primary">
+                            {new Intl.DateTimeFormat(
+                              "pt-BR"
+                            ).format(
+                              new Date(
+                                `${retroReviewSummary.startDate}T12:00:00`
+                              )
+                            )}
+                          </strong>
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        sairRevisaoRetroativa
+                      }
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted"
+                      aria-label="Sair da revisão retroativa"
+                    >
+                      <X
+                        size={
+                          14
+                        }
+                      />
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 p-3">
+                      <p className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">
+                        Previstas
+                      </p>
+
+                      <p className="mt-1 font-mono text-sm font-bold text-ink-primary">
+                        {
+                          retroReviewSummary
+                            .totalSlots
+                        }
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-3">
+                      <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-400/80">
+                        Revisadas
+                      </p>
+
+                      <p className="mt-1 font-mono text-sm font-bold text-emerald-400">
+                        {
+                          retroReviewSummary
+                            .confirmedSlots
+                        }
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-ice/20 bg-ice/5 p-3">
+                      <p className="text-[8px] font-bold uppercase tracking-wider text-ice/80">
+                        Sem confirmação
+                      </p>
+
+                      <p className="mt-1 font-mono text-sm font-bold text-ice">
+                        {
+                          retroReviewSummary
+                            .pendingSlots
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {retroReviewSummary.totalSlots >
+                    0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[9px] text-ink-muted">
+                          Progresso da revisão
+                        </span>
+
+                        <span className="font-mono text-[9px] font-bold text-ice">
+                          {Math.round(
+                            (
+                              retroReviewSummary
+                                .confirmedSlots /
+                              retroReviewSummary
+                                .totalSlots
+                            ) *
+                              100
+                          )}
+                          %
+                        </span>
+                      </div>
+
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-border">
+                        <div
+                          className="h-full rounded-full bg-ice transition-all duration-500"
+                          style={{
+                            width:
+                              `${Math.round(
+                                (
+                                  retroReviewSummary
+                                    .confirmedSlots /
+                                  retroReviewSummary
+                                    .totalSlots
+                                ) *
+                                  100
+                              )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3">
+                    <Info
+                      size={
+                        13
+                      }
+                      className="mt-0.5 shrink-0 text-amber-300"
+                    />
+
+                    <p className="text-[9px] leading-relaxed text-ink-muted">
+                      Os slots são reconstruídos usando a{" "}
+                      <strong className="text-ink-primary">
+                        rotina atualmente conhecida
+                      </strong>
+                      . Se os horários ou a frequência eram diferentes no passado, revise conscientemente antes de confirmar.
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={
+                        irParaProximoPendenteRetroativo
+                      }
+                      disabled={
+                        retroReviewSummary.pendingSlots ===
+                        0
+                      }
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-ice px-4 py-3 text-[10px] font-bold text-void transition-all active:scale-[0.99] disabled:opacity-40"
+                    >
+                      <ChevronRight
+                        size={
+                          14
+                        }
+                      />
+
+                      {retroReviewSummary.pendingSlots >
+                      0
+                        ? "Próximo sem confirmação"
+                        : "Revisão concluída"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        sairRevisaoRetroativa
+                      }
+                      className="rounded-2xl border border-surface-border px-4 py-3 text-[10px] font-semibold text-ink-muted transition-all active:scale-[0.99]"
+                    >
+                      Sair
+                    </button>
+                  </div>
+
+                  <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                    Nada é confirmado automaticamente. “Não lembro” continua sem registro e fora das métricas.
+                  </p>
+                </>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <AlertTriangle
+                    size={
+                      17
+                    }
+                    className="mt-0.5 shrink-0 text-amber-400"
+                  />
+
+                  <div>
+                    <p className="text-xs font-bold text-ink-primary">
+                      Medicamento não encontrado
+                    </p>
+
+                    <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                      Não foi possível iniciar a revisão retroativa para este medicamento.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* ASSISTENTE DIÁRIO */}
           {assistenteDiario && (
             <motion.div
@@ -1408,7 +2844,7 @@ export default function HojePage() {
                   />
 
                   <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
-                    Compromissos de Hoje
+                    Compromissos do Dia
                   </h2>
                 </div>
 
@@ -1521,7 +2957,9 @@ export default function HojePage() {
                                     : "bg-emerald-400/10 text-emerald-400"
                                 }`}
                               >
-                                Hoje
+                                {
+                                  dataSelecionadaLabel
+                                }
                               </span>
                             </div>
 
@@ -1559,20 +2997,32 @@ export default function HojePage() {
               title={
                 hasFiltrosAtivos
                   ? "Nada com esses filtros"
-                  : "Nenhum registro hoje"
+                  : retroReviewMode
+                    ? "Nenhum slot para revisar neste dia"
+                    : isHoje
+                      ? "Nenhum registro hoje"
+                      : `Nenhum registro em ${dataSelecionadaDescricao}`
               }
               description={
                 hasFiltrosAtivos
                   ? "Tente ajustar os filtros para ver mais itens."
-                  : "Registre uma dose avulsa ou adicione um sintoma para preencher sua linha do tempo."
+                  : isHoje
+                    ? "Registre uma dose avulsa ou adicione um sintoma para preencher sua linha do tempo."
+                    : isPassado
+                      ? "Não há registros confirmados ou previsões conhecidas para este dia."
+                      : "Não há eventos previstos para este dia."
               }
               actionLabel={
-                !hasFiltrosAtivos
+                !hasFiltrosAtivos &&
+                isHoje &&
+                !retroReviewMode
                   ? "Registrar Dose Avulsa"
                   : undefined
               }
               onAction={
-                !hasFiltrosAtivos
+                !hasFiltrosAtivos &&
+                isHoje &&
+                !retroReviewMode
                   ? () => {
                       trigger(
                         "vibrate"
@@ -2158,30 +3608,127 @@ export default function HojePage() {
                                 </div>
 
                                 <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1">
-                                  {!item.tomada &&
-                                    !item.ignorada &&
-                                    !item.isAvulsa && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={(
-                                            e
-                                          ) => {
-                                            e.stopPropagation();
+                                  {!isHoje &&
+                                  !item.isAvulsa ? (
+                                    isPassado ? (
+                                      <button
+                                        type="button"
+                                        onClick={(
+                                          e
+                                        ) => {
+                                          e.stopPropagation();
 
-                                            handleIgnorar(
-                                              item
-                                            );
-                                          }}
-                                          disabled={
-                                            isProcessando ||
-                                            isProcessing
+                                          abrirRevisaoHistorica(
+                                            item
+                                          );
+                                        }}
+                                        disabled={
+                                          isHistoricalProcessing
+                                        }
+                                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[9px] font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                                          item.tomada
+                                            ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+                                            : item.ignorada
+                                              ? "border-surface-border/50 bg-surface-raised text-ink-muted"
+                                              : "border-ice/30 bg-ice/10 text-ice"
+                                        }`}
+                                      >
+                                        {item.tomada ? (
+                                          <>
+                                            <CheckCircle2
+                                              size={
+                                                12
+                                              }
+                                            />
+                                            Revisar tomada
+                                          </>
+                                        ) : item.ignorada ? (
+                                          <>
+                                            <XCircle
+                                              size={
+                                                12
+                                              }
+                                            />
+                                            Revisar
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Clock
+                                              size={
+                                                12
+                                              }
+                                            />
+                                            Revisar histórico
+                                          </>
+                                        )}
+                                      </button>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 text-[9px] font-medium text-violet-300">
+                                        <Clock
+                                          size={
+                                            11
                                           }
-                                          className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
-                                        >
-                                          Ignorar
-                                        </button>
+                                        />
+                                        Prevista
+                                      </span>
+                                    )
+                                  ) : (
+                                    <>
+                                      {!item.tomada &&
+                                        !item.ignorada &&
+                                        !item.isAvulsa && (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={(
+                                                e
+                                              ) => {
+                                                e.stopPropagation();
 
+                                                handleIgnorar(
+                                                  item
+                                                );
+                                              }}
+                                              disabled={
+                                                isProcessando ||
+                                                isProcessing
+                                              }
+                                              className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
+                                            >
+                                              Ignorar
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={(
+                                                e
+                                              ) => {
+                                                e.stopPropagation();
+
+                                                handleToggle(
+                                                  item
+                                                );
+                                              }}
+                                              disabled={
+                                                isProcessando ||
+                                                isProcessing
+                                              }
+                                              className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-3 py-1 text-[9px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
+                                            >
+                                              <CheckCircle2
+                                                size={
+                                                  13
+                                                }
+                                              />
+
+                                              {isProcessando
+                                                ? "..."
+                                                : "Tomar"}
+                                            </button>
+                                          </>
+                                        )}
+
+                                      {item.tomada && (
                                         <button
                                           type="button"
                                           onClick={(
@@ -2197,44 +3744,30 @@ export default function HojePage() {
                                             isProcessando ||
                                             isProcessing
                                           }
-                                          className="inline-flex items-center gap-1 rounded-full bg-emerald-400 px-3 py-1 text-[9px] font-bold text-void shadow-sm transition-all hover:bg-emerald-300 active:scale-95 disabled:opacity-50"
+                                          className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                         >
-                                          <CheckCircle2 size={13} />
-                                          {isProcessando
-                                            ? "..."
-                                            : "Tomar"}
+                                          {item.isAvulsa ? (
+                                            <>
+                                              <Trash2
+                                                size={
+                                                  12
+                                                }
+                                              />
+                                              Excluir
+                                            </>
+                                          ) : (
+                                            <>
+                                              <RotateCcw
+                                                size={
+                                                  12
+                                                }
+                                              />
+                                              Desfazer
+                                            </>
+                                          )}
                                         </button>
-                                      </>
-                                    )}
-
-                                  {item.tomada && (
-                                    <button
-                                      type="button"
-                                      onClick={(
-                                        e
-                                      ) => {
-                                        e.stopPropagation();
-
-                                        handleToggle(
-                                          item
-                                        );
-                                      }}
-                                      disabled={
-                                        isProcessando ||
-                                        isProcessing
-                                      }
-                                      className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
-                                    >
-                                      {item.isAvulsa ? (
-                                        <>
-                                          <Trash2 size={12} /> Excluir
-                                        </>
-                                      ) : (
-                                        <>
-                                          <RotateCcw size={12} /> Desfazer
-                                        </>
                                       )}
-                                    </button>
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -2253,6 +3786,359 @@ export default function HojePage() {
         {/* =========================================================
             MODAL — DOSE AVULSA
         ========================================================= */}
+        <AnimatePresence>
+          {historicalDoseReviewItem && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Fechar revisão histórica"
+                initial={{
+                  opacity:
+                    0,
+                }}
+                animate={{
+                  opacity:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+                }}
+                onClick={
+                  fecharRevisaoHistorica
+                }
+                className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{
+                  opacity:
+                    0,
+
+                  y:
+                    36,
+                }}
+                animate={{
+                  opacity:
+                    1,
+
+                  y:
+                    0,
+                }}
+                exit={{
+                  opacity:
+                    0,
+
+                  y:
+                    36,
+                }}
+                transition={{
+                  duration:
+                    0.18,
+                }}
+                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[120] mx-auto max-w-lg rounded-[30px] border border-surface-border bg-surface p-5 shadow-2xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                    <Clock
+                      size={
+                        20
+                      }
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                      Revisão histórica
+                    </p>
+
+                    <h3 className="mt-1 truncate text-base font-bold text-ink-primary">
+                      {
+                        historicalDoseReviewItem
+                          .medicamentoNome
+                      }
+                    </h3>
+
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {
+                        dataSelecionadaDescricao
+                      }{" "}
+                      •{" "}
+                      {
+                        historicalDoseReviewItem
+                          .horario
+                      }
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      fecharRevisaoHistorica
+                    }
+                    disabled={
+                      isHistoricalProcessing
+                    }
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted disabled:opacity-40"
+                  >
+                    <X
+                      size={
+                        16
+                      }
+                    />
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-ice/15 bg-ice/5 p-3">
+                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                    Esta revisão altera apenas o histórico.{" "}
+                    <strong className="text-ink-primary">
+                      O estoque atual não será movimentado.
+                    </strong>
+                  </p>
+                </div>
+
+                {(historicalDoseReviewItem.tomada ||
+                  historicalDoseReviewItem.ignorada) && (
+                  <div className="mt-3 flex items-center gap-2 rounded-2xl border border-surface-border bg-surface-raised px-3 py-2.5">
+                    {historicalDoseReviewItem.tomada ? (
+                      <CheckCircle2
+                        size={
+                          15
+                        }
+                        className="text-emerald-400"
+                      />
+                    ) : (
+                      <XCircle
+                        size={
+                          15
+                        }
+                        className="text-ink-muted"
+                      />
+                    )}
+
+                    <p className="text-[10px] text-ink-muted">
+                      Estado atual:{" "}
+                      <strong className="text-ink-primary">
+                        {historicalDoseReviewItem.tomada
+                          ? "tomada"
+                          : "não tomada"}
+                      </strong>
+                    </p>
+                  </div>
+                )}
+
+                {!historicalCustomMode ? (
+                  <div className="mt-4 space-y-2">
+                    <button
+                      type="button"
+                      disabled={
+                        isHistoricalProcessing
+                      }
+                      onClick={
+                        () =>
+                          executarRevisaoHistorica(
+                            "scheduled"
+                          )
+                      }
+                      className="flex w-full items-center justify-between rounded-2xl bg-emerald-400 px-4 py-3.5 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <div>
+                        <p className="text-xs font-bold">
+                          Tomei no horário
+                        </p>
+
+                        <p className="mt-0.5 text-[9px] opacity-70">
+                          Registrar às{" "}
+                          {
+                            historicalDoseReviewItem
+                              .horario
+                          }
+                        </p>
+                      </div>
+
+                      <CheckCircle2
+                        size={
+                          18
+                        }
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isHistoricalProcessing
+                      }
+                      onClick={
+                        () =>
+                          setHistoricalCustomMode(
+                            true
+                          )
+                      }
+                      className="flex w-full items-center justify-between rounded-2xl border border-ice/25 bg-ice/10 px-4 py-3.5 text-left text-ice transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <div>
+                        <p className="text-xs font-bold">
+                          Tomei em outro horário
+                        </p>
+
+                        <p className="mt-0.5 text-[9px] text-ink-muted">
+                          Informar quando realmente tomou
+                        </p>
+                      </div>
+
+                      <Clock
+                        size={
+                          18
+                        }
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isHistoricalProcessing
+                      }
+                      onClick={
+                        () =>
+                          executarRevisaoHistorica(
+                            "ignored"
+                          )
+                      }
+                      className="flex w-full items-center justify-between rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <div>
+                        <p className="text-xs font-bold">
+                          Não tomei
+                        </p>
+
+                        <p className="mt-0.5 text-[9px] text-ink-muted">
+                          Confirmar ausência daquela dose
+                        </p>
+                      </div>
+
+                      <XCircle
+                        size={
+                          18
+                        }
+                        className="text-ink-muted"
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isHistoricalProcessing
+                      }
+                      onClick={
+                        fecharRevisaoHistorica
+                      }
+                      className="w-full rounded-2xl border border-surface-border/60 px-4 py-3 text-xs font-semibold text-ink-muted transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      Não lembro
+                    </button>
+
+                    {(historicalDoseReviewItem.tomada ||
+                      historicalDoseReviewItem.ignorada) && (
+                      <button
+                        type="button"
+                        disabled={
+                          isHistoricalProcessing
+                        }
+                        onClick={
+                          () =>
+                            executarRevisaoHistorica(
+                              "clear"
+                            )
+                        }
+                        className="flex w-full items-center justify-center gap-1.5 rounded-2xl px-4 py-3 text-[10px] font-semibold text-coral transition-all active:scale-[0.99] disabled:opacity-50"
+                      >
+                        <RotateCcw
+                          size={
+                            13
+                          }
+                        />
+                        Remover confirmação histórica
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+                        Quando tomou?
+                      </span>
+
+                      <input
+                        type="datetime-local"
+                        value={
+                          historicalCustomTakenAt
+                        }
+                        min={
+                          `${dataSelecionada}T00:00`
+                        }
+                        max={
+                          `${dataSelecionada}T23:59`
+                        }
+                        onChange={
+                          (
+                            event
+                          ) =>
+                            setHistoricalCustomTakenAt(
+                              event.target.value
+                            )
+                        }
+                        className="mt-2 w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 font-mono text-sm text-ink-primary outline-none transition-colors focus:border-ice/50"
+                      />
+                    </label>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={
+                          isHistoricalProcessing
+                        }
+                        onClick={
+                          () =>
+                            setHistoricalCustomMode(
+                              false
+                            )
+                        }
+                        className="rounded-2xl border border-surface-border px-4 py-3 text-xs font-semibold text-ink-muted disabled:opacity-50"
+                      >
+                        Voltar
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          isHistoricalProcessing ||
+                          !historicalCustomTakenAt
+                        }
+                        onClick={
+                          () =>
+                            executarRevisaoHistorica(
+                              "custom"
+                            )
+                        }
+                        className="rounded-2xl bg-ice px-4 py-3 text-xs font-bold text-void disabled:opacity-50"
+                      >
+                        {isHistoricalProcessing
+                          ? "Salvando..."
+                          : "Confirmar horário"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                  “Não lembro” não cria nenhum registro e permanece fora das métricas de adesão.
+                </p>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         <QuickDoseModal
           isOpen={isDoseModalOpen}
           onClose={() =>

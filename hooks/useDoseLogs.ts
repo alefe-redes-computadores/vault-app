@@ -115,6 +115,115 @@ export function useDoseLogs(
     );
 
   // ==========================================================
+  // MARCAR COMO TOMADA EM MOMENTO REAL INFORMADO
+  //
+  // Permite diferenciar:
+  //
+  // - tomou no horário e só registrou depois;
+  // - tomou realmente atrasado.
+  // ==========================================================
+
+  const marcarComoTomadaEm =
+    useCallback(
+      async (
+        medicamentoId:
+          string,
+        horario:
+          string,
+        tomadoEm:
+          string,
+        quantidade?:
+          number
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return doseLogsRepository.setStatus({
+          personId:
+            activePersonId,
+
+          medicamentoId,
+
+          data:
+            targetDate,
+
+          horario,
+
+          status:
+            "taken",
+
+          quantidade,
+
+          tomadoEm,
+        });
+      },
+      [
+        activePersonId,
+        targetDate,
+      ]
+    );
+
+  // ==========================================================
+  // TOMADA HISTÓRICA
+  //
+  // Registra uma confirmação real em uma data passada sem
+  // movimentar o saldo atual do medicamento.
+  // ==========================================================
+
+  const marcarComoTomadaHistoricaEm =
+    useCallback(
+      async (
+        medicamentoId:
+          string,
+        horario:
+          string,
+        tomadoEm:
+          string,
+        quantidade?:
+          number
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return doseLogsRepository.setStatus({
+          personId:
+            activePersonId,
+
+          medicamentoId,
+
+          data:
+            targetDate,
+
+          horario,
+
+          status:
+            "taken",
+
+          quantidade,
+
+          tomadoEm,
+
+          adjustStock:
+            false,
+        });
+      },
+      [
+        activePersonId,
+        targetDate,
+      ]
+    );
+
+  // ==========================================================
   // MARCAR COMO IGNORADA
   // ==========================================================
 
@@ -151,6 +260,54 @@ export function useDoseLogs(
             "ignored",
 
           quantidade,
+        });
+      },
+      [
+        activePersonId,
+        targetDate,
+      ]
+    );
+
+  // ==========================================================
+  // IGNORADA HISTÓRICA
+  // ==========================================================
+
+  const marcarComoIgnoradaHistorica =
+    useCallback(
+      async (
+        medicamentoId:
+          string,
+        horario:
+          string,
+        quantidade?:
+          number
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return doseLogsRepository.setStatus({
+          personId:
+            activePersonId,
+
+          medicamentoId,
+
+          data:
+            targetDate,
+
+          horario,
+
+          status:
+            "ignored",
+
+          quantidade,
+
+          adjustStock:
+            false,
         });
       },
       [
@@ -292,6 +449,52 @@ export function useDoseLogs(
       ]
     );
 
+  // ==========================================================
+  // DESMARCAR HISTÓRICO
+  //
+  // Remove a confirmação histórica sem devolver estoque.
+  // ==========================================================
+
+  const desmarcarDoseHistorica =
+    useCallback(
+      async (
+        medicamentoId:
+          string,
+        horario:
+          string
+      ) => {
+        if (
+          !activePersonId
+        ) {
+          throw new Error(
+            "Pessoa ativa não identificada."
+          );
+        }
+
+        return doseLogsRepository.setStatus({
+          personId:
+            activePersonId,
+
+          medicamentoId,
+
+          data:
+            targetDate,
+
+          horario,
+
+          status:
+            "clear",
+
+          adjustStock:
+            false,
+        });
+      },
+      [
+        activePersonId,
+        targetDate,
+      ]
+    );
+
   return {
     doseLogs,
 
@@ -301,9 +504,14 @@ export function useDoseLogs(
 
     marcarComoTomada,
 
+    marcarComoTomadaEm,
+    marcarComoTomadaHistoricaEm,
+
     marcarComoIgnorada,
+    marcarComoIgnoradaHistorica,
 
     desmarcarDose,
+    desmarcarDoseHistorica,
 
     registrarTomadaAvulsa,
 

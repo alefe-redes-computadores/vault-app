@@ -713,7 +713,9 @@ function DetalhesRenovacaoContent() {
                       "vibrate"
                     );
 
-                    router.back();
+                    router.replace(
+                    "/saude/renovacao"
+                  );
                   }
                 }
                 aria-label="Voltar"

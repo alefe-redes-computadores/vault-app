@@ -8,12 +8,17 @@ import {
   normalizeMedicationText,
 } from "@/lib/medication-intelligence/normalize";
 
+import {
+  isMedicationRegulatoryRuleActive,
+} from "./regulatory";
+
 import type {
   MedicationCommercialIdentity,
   MedicationCommercialProduct,
   MedicationPresentation,
   MedicationReference,
   MedicationReferenceSource,
+  MedicationRegulatoryReference,
 } from "@/lib/medication-intelligence/types";
 
 import type {
@@ -26,6 +31,11 @@ import type {
   MedicationCatalogStatus,
   MedicationCatalogVersion,
 } from "./types";
+
+import type {
+  MedicationRegulatoryCondition,
+  MedicationRegulatoryException,
+} from "./regulatory";
 
 type SearchRpcRow = {
   reference_id: string;
@@ -156,6 +166,14 @@ type HydratedCommercialIdentity = {
 };
 
 type RegulatoryRuleRow = {
+  id: string;
+
+  regulatory_class:
+    string | null;
+
+  prescription_model:
+    string | null;
+
   vault_prescription_type:
     | "comum"
     | "amarela"
@@ -176,6 +194,50 @@ type RegulatoryRuleRow = {
 
   verified_at:
     string;
+};
+
+type RegulatoryExceptionRow = {
+  id:
+    string;
+
+  regulatory_rule_id:
+    string;
+
+  label:
+    string;
+
+  condition_schema_version:
+    number;
+
+  conditions:
+    unknown;
+
+  override_prescription_model:
+    string | null;
+
+  override_vault_prescription_type:
+    | "comum"
+    | "amarela"
+    | "azul"
+    | "branca"
+    | null;
+
+  source_version_id:
+    string;
+
+  effective_from:
+    | string
+    | null;
+
+  effective_until:
+    | string
+    | null;
+
+  verified_at:
+    string;
+
+  notes:
+    string | null;
 };
 
 function mapAuthority(
@@ -276,29 +338,407 @@ function versionToCatalogVersion(
   };
 }
 
-function isRuleActive(
-  rule:
-    RegulatoryRuleRow,
-  today:
-    string
+function isRegulatoryNumericOperator(
+  value:
+    unknown
+): value is
+  | "eq"
+  | "lt"
+  | "lte"
+  | "gt"
+  | "gte" {
+  return (
+    value === "eq" ||
+    value === "lt" ||
+    value === "lte" ||
+    value === "gt" ||
+    value === "gte"
+  );
+}
+
+function isRegulatoryTextOperator(
+  value:
+    unknown
+): value is
+  | "eq"
+  | "in" {
+  return (
+    value === "eq" ||
+    value === "in"
+  );
+}
+
+function isRegulatoryConcentrationUnit(
+  value:
+    unknown
+): value is
+  | "percent"
+  | "mg_ml"
+  | "mg"
+  | "mcg" {
+  return (
+    value === "percent" ||
+    value === "mg_ml" ||
+    value === "mg" ||
+    value === "mcg"
+  );
+}
+
+function isNonEmptyString(
+  value:
+    unknown
+): value is string {
+  return (
+    typeof value ===
+      "string" &&
+    value.trim().length >
+      0
+  );
+}
+
+function isStringOrStringArray(
+  value:
+    unknown
+): value is
+  | string
+  | string[] {
+  if (
+    isNonEmptyString(
+      value
+    )
+  ) {
+    return true;
+  }
+
+  return (
+    Array.isArray(
+      value
+    ) &&
+    value.length >
+      0 &&
+    value.every(
+      isNonEmptyString
+    )
+  );
+}
+
+function parseRegulatoryCondition(
+  value:
+    unknown
+): MedicationRegulatoryCondition | null {
+  if (
+    !value ||
+    typeof value !==
+      "object" ||
+    Array.isArray(
+      value
+    )
+  ) {
+    return null;
+  }
+
+  const row =
+    value as Record<
+      string,
+      unknown
+    >;
+
+  switch (
+    row.kind
+  ) {
+    case "ingredient_concentration": {
+      if (
+        !isNonEmptyString(
+          row.ingredient
+        ) ||
+        !isRegulatoryNumericOperator(
+          row.operator
+        ) ||
+        typeof row.value !==
+          "number" ||
+        !Number.isFinite(
+          row.value
+        ) ||
+        !isRegulatoryConcentrationUnit(
+          row.unit
+        )
+      ) {
+        return null;
+      }
+
+      return {
+        kind:
+          "ingredient_concentration",
+
+        ingredient:
+          row.ingredient,
+
+        operator:
+          row.operator,
+
+        value:
+          row.value,
+
+        unit:
+          row.unit,
+      };
+    }
+
+    case "pharmaceutical_form":
+    case "product_id":
+    case "registration_number": {
+      if (
+        !isRegulatoryTextOperator(
+          row.operator
+        ) ||
+        !isStringOrStringArray(
+          row.value
+        )
+      ) {
+        return null;
+      }
+
+      return {
+        kind:
+          row.kind,
+
+        operator:
+          row.operator,
+
+        value:
+          row.value,
+      };
+    }
+
+    default:
+      return null;
+  }
+}
+
+function parseRegulatoryConditions(
+  value:
+    unknown,
+  schemaVersion:
+    number
+): MedicationRegulatoryCondition[] | null {
+  if (
+    schemaVersion !==
+      1 ||
+    !Array.isArray(
+      value
+    ) ||
+    value.length ===
+      0
+  ) {
+    return null;
+  }
+
+  const parsed =
+    value.map(
+      parseRegulatoryCondition
+    );
+
+  if (
+    parsed.some(
+      (
+        condition
+      ) =>
+        condition ===
+        null
+    )
+  ) {
+    return null;
+  }
+
+  return parsed as MedicationRegulatoryCondition[];
+}
+
+function isMissingRegulatoryExceptionsTableError(
+  error:
+    unknown
 ): boolean {
   if (
-    rule.effective_from &&
-    rule.effective_from >
-      today
+    !error ||
+    typeof error !==
+      "object"
   ) {
     return false;
   }
+
+  const candidate =
+    error as {
+      code?:
+        unknown;
+
+      message?:
+        unknown;
+
+      details?:
+        unknown;
+
+      hint?:
+        unknown;
+    };
+
+  const code =
+    typeof candidate.code ===
+      "string"
+      ? candidate.code
+      : "";
+
+  const message =
+    [
+      candidate.message,
+      candidate.details,
+      candidate.hint,
+    ]
+      .filter(
+        (
+          value
+        ): value is string =>
+          typeof value ===
+          "string"
+      )
+      .join(
+        " "
+      )
+      .toLowerCase();
+
+  return (
+    code ===
+      "42P01" ||
+    code ===
+      "PGRST205" ||
+    (
+      message.includes(
+        "medication_regulatory_rule_exceptions"
+      ) &&
+      (
+        message.includes(
+          "does not exist"
+        ) ||
+        message.includes(
+          "schema cache"
+        ) ||
+        message.includes(
+          "could not find"
+        )
+      )
+    )
+  );
+}
+
+function regulatoryExceptionRowToReference(
+  row:
+    RegulatoryExceptionRow,
+  sourceMap:
+    Map<
+      string,
+      MedicationReferenceSource
+    >
+): MedicationRegulatoryException | null {
+  const conditions =
+    parseRegulatoryConditions(
+      row.conditions,
+      row.condition_schema_version
+    );
 
   if (
-    rule.effective_until &&
-    rule.effective_until <
-      today
+    !conditions
   ) {
-    return false;
+    return null;
   }
 
-  return true;
+  const source =
+    sourceMap.get(
+      row.source_version_id
+    );
+
+  return {
+    id:
+      row.id,
+
+    label:
+      row.label,
+
+    conditions,
+
+    overrideVaultPrescriptionType:
+      row.override_vault_prescription_type ??
+      undefined,
+
+    overridePrescriptionModel:
+      row.override_prescription_model ??
+      undefined,
+
+    effectiveFrom:
+      row.effective_from ??
+      undefined,
+
+    effectiveUntil:
+      row.effective_until ??
+      undefined,
+
+    sourceId:
+      row.source_version_id,
+
+    sourceVersion:
+      source?.version,
+
+    verifiedAt:
+      row.verified_at,
+
+    notes:
+      row.notes ??
+      undefined,
+  };
+}
+
+function regulatoryRuleRowToReference(
+  rule:
+    RegulatoryRuleRow,
+  sourceMap:
+    Map<
+      string,
+      MedicationReferenceSource
+    >
+): MedicationRegulatoryReference {
+  const source =
+    sourceMap.get(
+      rule.source_version_id
+    );
+
+  return {
+    vaultPrescriptionType:
+      rule.vault_prescription_type ??
+      undefined,
+
+    regulatoryClass:
+      rule.regulatory_class ??
+      undefined,
+
+    prescriptionModel:
+      rule.prescription_model ??
+      undefined,
+
+    effectiveFrom:
+      rule.effective_from ??
+      undefined,
+
+    effectiveUntil:
+      rule.effective_until ??
+      undefined,
+
+    verifiedAt:
+      rule.verified_at,
+
+    sources:
+      source
+        ? [
+            source,
+          ]
+        : [],
+  };
 }
 
 function uniqueStrings(
@@ -1180,7 +1620,7 @@ export class SupabaseMedicationCatalogProvider
                 "medication_regulatory_rules"
               )
               .select(
-                "vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
+                "id, regulatory_class, prescription_model, vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
               )
               .eq(
                 "substance_id",
@@ -1236,23 +1676,14 @@ export class SupabaseMedicationCatalogProvider
           ) as RegulatoryRuleRow[]
       );
 
-    const today =
-      new Date()
-        .toISOString()
-        .slice(
-          0,
-          10
-        );
-
-    const activeRules =
-      rules.filter(
-        (
-          rule
-        ) =>
-          isRuleActive(
-            rule,
-            today
-          )
+    const regulatoryExceptionRows =
+      await this.loadRegulatoryExceptions(
+        rules.map(
+          (
+            rule
+          ) =>
+            rule.id
+        )
       );
 
     const commercialIdentity =
@@ -1278,11 +1709,18 @@ export class SupabaseMedicationCatalogProvider
             relation.source_version_id
         ),
 
-        ...activeRules.map(
+        ...rules.map(
           (
             rule
           ) =>
             rule.source_version_id
+        ),
+
+        ...regulatoryExceptionRows.map(
+          (
+            exception
+          ) =>
+            exception.source_version_id
         ),
 
         ...(
@@ -1294,6 +1732,99 @@ export class SupabaseMedicationCatalogProvider
     const sources =
       await this.loadSources(
         versionIds
+      );
+
+    const sourceMap =
+      new Map(
+        sources.map(
+          (
+            source
+          ) => [
+            source.id,
+            source,
+          ]
+        )
+      );
+
+    const exceptionsByRuleId =
+      new Map<
+        string,
+        MedicationRegulatoryException[]
+      >();
+
+    const malformedExceptionRuleIds =
+      new Set<string>();
+
+    for (
+      const row of
+        regulatoryExceptionRows
+    ) {
+      const parsed =
+        regulatoryExceptionRowToReference(
+          row,
+          sourceMap
+        );
+
+      if (
+        !parsed
+      ) {
+        malformedExceptionRuleIds.add(
+          row.regulatory_rule_id
+        );
+
+        continue;
+      }
+
+      const current =
+        exceptionsByRuleId.get(
+          row.regulatory_rule_id
+        ) ??
+        [];
+
+      current.push(
+        parsed
+      );
+
+      exceptionsByRuleId.set(
+        row.regulatory_rule_id,
+        current
+      );
+    }
+
+    const regulatoryRules =
+      rules.map(
+        (
+          rule
+        ) => ({
+          ...regulatoryRuleRowToReference(
+            rule,
+            sourceMap
+          ),
+
+          exceptions:
+            exceptionsByRuleId.get(
+              rule.id
+            ) ??
+            [],
+
+          hasMalformedExceptions:
+            malformedExceptionRuleIds.has(
+              rule.id
+            ),
+        })
+      );
+
+    const activeRules =
+      regulatoryRules.filter(
+        (
+          rule
+        ) =>
+          Boolean(
+            rule.vaultPrescriptionType
+          ) &&
+          isMedicationRegulatoryRuleActive(
+            rule
+          )
       );
 
     const activeIngredients =
@@ -1346,7 +1877,7 @@ export class SupabaseMedicationCatalogProvider
             (
               rule
             ) =>
-              rule.vault_prescription_type
+              rule.vaultPrescriptionType
           )
         ) as Array<
           | "comum"
@@ -1354,6 +1885,20 @@ export class SupabaseMedicationCatalogProvider
           | "azul"
           | "branca"
         >,
+
+      regulatoryRules,
+
+      regulatoryIdentity: {
+        referenceType:
+          "product",
+
+        productId:
+          product.id,
+
+        registrationNumber:
+          product.registration_number ??
+          undefined,
+      },
 
       pharmaceuticalForms:
         uniqueStrings(
@@ -1832,7 +2377,7 @@ export class SupabaseMedicationCatalogProvider
             "medication_regulatory_rules"
           )
           .select(
-            "vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
+            "id, regulatory_class, prescription_model, vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
           )
           .eq(
             "substance_id",
@@ -1980,23 +2525,14 @@ export class SupabaseMedicationCatalogProvider
         []
       ) as RegulatoryRuleRow[];
 
-    const today =
-      new Date()
-        .toISOString()
-        .slice(
-          0,
-          10
-        );
-
-    const activeRules =
-      rules.filter(
-        (
-          rule
-        ) =>
-          isRuleActive(
-            rule,
-            today
-          )
+    const regulatoryExceptionRows =
+      await this.loadRegulatoryExceptions(
+        rules.map(
+          (
+            rule
+          ) =>
+            rule.id
+        )
       );
 
     const versionIds =
@@ -2010,17 +2546,117 @@ export class SupabaseMedicationCatalogProvider
             product.source_version_id
         ),
 
-        ...activeRules.map(
+        ...rules.map(
           (
             rule
           ) =>
             rule.source_version_id
+        ),
+
+        ...regulatoryExceptionRows.map(
+          (
+            exception
+          ) =>
+            exception.source_version_id
         ),
       ]);
 
     const sources =
       await this.loadSources(
         versionIds
+      );
+
+    const sourceMap =
+      new Map(
+        sources.map(
+          (
+            source
+          ) => [
+            source.id,
+            source,
+          ]
+        )
+      );
+
+    const exceptionsByRuleId =
+      new Map<
+        string,
+        MedicationRegulatoryException[]
+      >();
+
+    const malformedExceptionRuleIds =
+      new Set<string>();
+
+    for (
+      const row of
+        regulatoryExceptionRows
+    ) {
+      const parsed =
+        regulatoryExceptionRowToReference(
+          row,
+          sourceMap
+        );
+
+      if (
+        !parsed
+      ) {
+        malformedExceptionRuleIds.add(
+          row.regulatory_rule_id
+        );
+
+        continue;
+      }
+
+      const current =
+        exceptionsByRuleId.get(
+          row.regulatory_rule_id
+        ) ??
+        [];
+
+      current.push(
+        parsed
+      );
+
+      exceptionsByRuleId.set(
+        row.regulatory_rule_id,
+        current
+      );
+    }
+
+    const regulatoryRules =
+      rules.map(
+        (
+          rule
+        ) => ({
+          ...regulatoryRuleRowToReference(
+            rule,
+            sourceMap
+          ),
+
+          exceptions:
+            exceptionsByRuleId.get(
+              rule.id
+            ) ??
+            [],
+
+          hasMalformedExceptions:
+            malformedExceptionRuleIds.has(
+              rule.id
+            ),
+        })
+      );
+
+    const activeRules =
+      regulatoryRules.filter(
+        (
+          rule
+        ) =>
+          Boolean(
+            rule.vaultPrescriptionType
+          ) &&
+          isMedicationRegulatoryRuleActive(
+            rule
+          )
       );
 
     return {
@@ -2065,7 +2701,7 @@ export class SupabaseMedicationCatalogProvider
             (
               rule
             ) =>
-              rule.vault_prescription_type
+              rule.vaultPrescriptionType
           )
         ) as Array<
           | "comum"
@@ -2073,6 +2709,13 @@ export class SupabaseMedicationCatalogProvider
           | "azul"
           | "branca"
         >,
+
+      regulatoryRules,
+
+      regulatoryIdentity: {
+        referenceType:
+          "substance",
+      },
 
       pharmaceuticalForms:
         uniqueStrings(
@@ -2086,6 +2729,55 @@ export class SupabaseMedicationCatalogProvider
 
       sources,
     };
+  }
+
+  private async loadRegulatoryExceptions(
+    ruleIds:
+      string[]
+  ): Promise<RegulatoryExceptionRow[]> {
+    if (
+      ruleIds.length ===
+        0
+    ) {
+      return [];
+    }
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "medication_regulatory_rule_exceptions"
+        )
+        .select(
+          "id, regulatory_rule_id, label, condition_schema_version, conditions, override_prescription_model, override_vault_prescription_type, source_version_id, effective_from, effective_until, verified_at, notes"
+        )
+        .in(
+          "regulatory_rule_id",
+          ruleIds
+        );
+
+    if (
+      error
+    ) {
+      if (
+        isMissingRegulatoryExceptionsTableError(
+          error
+        )
+      ) {
+        return [];
+      }
+
+      throw new Error(
+        `Falha ao carregar exceções regulatórias: ${error.message}`
+      );
+    }
+
+    return (
+      data ??
+      []
+    ) as RegulatoryExceptionRow[];
   }
 
   private async loadSources(

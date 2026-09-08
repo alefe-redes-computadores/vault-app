@@ -660,7 +660,10 @@ export default function MedicamentosListPage() {
         quantidadeTomadaHoje,
         insight,
         receita,
-        textoEstoque,
+        textoDose,
+        doseUnidade,
+        textoEstoquePrincipal,
+        textoEstoqueSecundario,
         isEstoqueZerado,
         isEstoqueCritico,
       } =
@@ -758,6 +761,112 @@ export default function MedicamentosListPage() {
         dosesTomadasHoje >
           0;
 
+      const estoqueTone =
+        isEstoqueZerado
+          ? "border-coral/25 bg-coral/[0.07] text-coral"
+          : isEstoqueCritico
+            ? "border-amber-400/25 bg-amber-400/[0.07] text-amber-400"
+            : "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400";
+
+      const estoqueStatus =
+        isEstoqueZerado
+          ? "Sem estoque"
+          : isEstoqueCritico
+            ? "Estoque baixo"
+            : "Estoque disponível";
+
+      const todayStatus =
+        isSuspenso
+          ? {
+              label:
+                "Medicamento suspenso",
+              detail:
+                "Fora da rotina atual",
+              tone:
+                "text-rose-400",
+            }
+          : isSOS
+            ? sosTomadoHoje
+              ? {
+                  label:
+                    `${dosesTomadasHoje} registro${dosesTomadasHoje === 1 ? "" : "s"} hoje`,
+                  detail:
+                    quantidadeTomadaHoje >
+                    0
+                      ? `${formatQuantidade(
+                          quantidadeTomadaHoje
+                        )} ${doseUnidade}`
+                      : "Uso quando necessário",
+                  tone:
+                    "text-emerald-400",
+                }
+              : {
+                  label:
+                    "Quando necessário",
+                  detail:
+                    "Nenhum uso registrado hoje",
+                  tone:
+                    "text-ink-muted",
+                }
+            : rotinaConcluida
+              ? {
+                  label:
+                    dosesEsperadasHoje >
+                    1
+                      ? `${dosesTomadasHoje}/${dosesEsperadasHoje} doses concluídas`
+                      : horarioTomado
+                        ? `Tomado às ${horarioTomado}`
+                        : "Dose concluída",
+                  detail:
+                    "Rotina de hoje em dia",
+                  tone:
+                    "text-emerald-400",
+                }
+              : rotinaParcial
+                ? {
+                    label:
+                      `${dosesTomadasHoje}/${dosesEsperadasHoje} doses`,
+                    detail:
+                      horarioTomado
+                        ? `Última às ${horarioTomado}`
+                        : `${dosesPendentesHoje} pendente${dosesPendentesHoje === 1 ? "" : "s"}`,
+                    tone:
+                      "text-amber-400",
+                  }
+                : dosesPendentesHoje >
+                    0
+                  ? {
+                      label:
+                        `${dosesPendentesHoje} dose${dosesPendentesHoje === 1 ? "" : "s"} pendente${dosesPendentesHoje === 1 ? "" : "s"}`,
+                      detail:
+                        "Rotina de hoje",
+                      tone:
+                        "text-amber-400",
+                    }
+                  : {
+                      label:
+                        "Sem dose prevista",
+                      detail:
+                        "Nada pendente hoje",
+                      tone:
+                        "text-ink-muted",
+                    };
+
+      const canQuickDose =
+        !isSuspenso &&
+        !isEstoqueZerado;
+
+      const quickDoseLabel =
+        isSOS
+          ? sosTomadoHoje
+            ? "Registrar outra"
+            : "Registrar uso"
+          : rotinaParcial
+            ? "Próxima dose"
+            : rotinaConcluida
+              ? null
+              : "Tomar";
+
       return (
         <ListCard
           key={
@@ -797,299 +906,229 @@ export default function MedicamentosListPage() {
             />
           }
         >
-          <div className="flex min-h-[98px] flex-col">
-            {/* LINHA 1 */}
+          <div className="flex min-w-0 flex-col gap-3 py-0.5">
+            {/* IDENTIDADE */}
 
-            <div className="flex min-h-6 min-w-0 items-center justify-between gap-2">
-              <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                <h3 className="truncate font-display text-base font-bold uppercase text-ink-primary">
-                  {
-                    med.nome
-                  }
-                </h3>
-
-                {med.dosagem && (
-                  <span className="shrink-0 text-xs font-semibold text-ink-muted">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <h3 className="min-w-0 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
                     {
-                      med.dosagem
+                      med.nome
                     }
-                  </span>
-                )}
+                  </h3>
+
+                  {med.dosagem && (
+                    <span className="shrink-0 text-[11px] font-semibold text-ink-muted">
+                      {
+                        med.dosagem
+                      }
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+                  {receita && (
+                    <span
+                      className={`inline-flex h-6 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
+                      style={{
+                        borderColor:
+                          `${cardColor}45`,
+                        backgroundColor:
+                          `${cardColor}12`,
+                      }}
+                      title={
+                        receita.tooltip
+                      }
+                    >
+                      {
+                        receita.sigla
+                      }
+                    </span>
+                  )}
+
+                  {isSOS && (
+                    <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.07] px-2 text-[9px] font-bold uppercase tracking-wide text-amber-400">
+                      SOS
+                    </span>
+                  )}
+
+                  {med.medico && (
+                    <span className="inline-flex h-6 max-w-[150px] items-center gap-1 rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted">
+                      <Stethoscope
+                        size={
+                          10
+                        }
+                        className="shrink-0 opacity-60"
+                      />
+
+                      <span className="truncate">
+                        {
+                          med.medico
+                        }
+                      </span>
+                    </span>
+                  )}
+
+                  {textoDose && (
+                    <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted">
+                      Dose&nbsp;
+                      <strong className="font-bold text-ink-primary">
+                        {
+                          textoDose
+                        }
+                      </strong>
+                    </span>
+                  )}
+                </div>
               </div>
 
               {insight?.deveRenovar && (
-                <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                <div
+                  className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-bold ${
                     insight.urgencia ===
                     "alta"
-                      ? "bg-coral/15 text-coral"
-                      : "bg-amber-400/15 text-amber-500"
+                      ? "border-coral/25 bg-coral/[0.08] text-coral"
+                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
                   }`}
                   title={
-                    insight.mensagem
-                  }
-                  aria-label={
                     insight.mensagem
                   }
                 >
                   <AlertTriangle
                     size={
-                      14
+                      11
                     }
                   />
-                </span>
+
+                  Receita
+                </div>
               )}
             </div>
 
-            {/* LINHA 2 */}
+            {/* PAINEL OPERACIONAL */}
 
-            <div className="mt-1.5 flex min-h-[18px] flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-ink-muted">
-              {receita && (
-                <span
-                  className={`shrink-0 rounded-md border px-1.5 py-0.5 font-bold uppercase ${receita.textColorClass}`}
-                  style={{
-                    borderColor:
-                      `${cardColor}45`,
-                    backgroundColor:
-                      `${cardColor}12`,
-                  }}
-                  title={
-                    receita.tooltip
-                  }
-                >
-                  {
-                    receita.sigla
-                  }
-                </span>
-              )}
-
-              {receita &&
-                (
-                  med.medico ||
-                  med.farmacia
-                ) && (
-                  <span className="text-surface-border/60">
-                    •
+            <div className="grid grid-cols-2 gap-2">
+              <div className="min-w-0 rounded-xl border border-surface-border/35 bg-black/[0.08] px-3 py-2.5">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className="text-[8px] font-black uppercase tracking-[0.16em] text-ink-faint">
+                    Hoje
                   </span>
-                )}
+                </div>
 
-              {med.medico && (
-                <span className="flex max-w-[90px] items-center gap-1 truncate">
-                  <Stethoscope
-                    size={
-                      10
-                    }
-                    className="shrink-0 opacity-50"
-                  />
+                <div className={`flex min-w-0 items-center gap-1.5 text-[10px] font-bold ${todayStatus.tone}`}>
+                  {rotinaConcluida ||
+                  sosTomadoHoje ? (
+                    <CheckCircle2
+                      size={
+                        12
+                      }
+                      className="shrink-0"
+                    />
+                  ) : (
+                    <Circle
+                      size={
+                        10
+                      }
+                      className="shrink-0"
+                    />
+                  )}
 
                   <span className="truncate">
                     {
-                      med.medico
+                      todayStatus.label
                     }
                   </span>
-                </span>
-              )}
+                </div>
 
-              {(receita ||
-                med.medico) && (
-                <span className="text-surface-border/60">
-                  •
-                </span>
-              )}
-
-              <span
-                className={`font-bold ${
-                  isEstoqueZerado
-                    ? "text-coral"
-                    : isEstoqueCritico
-                      ? "text-amber-400"
-                      : "text-emerald-400"
-                }`}
-              >
-                Estoque:{" "}
-                {
-                  textoEstoque
-                }
-              </span>
-            </div>
-
-            {/* LINHA 3 */}
-
-            <div className="mt-auto flex min-h-8 items-center justify-between gap-2 pt-2.5">
-              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                {!isSuspenso && (
-                  <>
-                    {rotinaConcluida && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-                        <CheckCircle2
-                          size={
-                            12
-                          }
-                        />
-
-                        {dosesEsperadasHoje >
-                        1
-                          ? `${dosesTomadasHoje}/${dosesEsperadasHoje} doses hoje`
-                          : horarioTomado
-                            ? `Tomado às ${horarioTomado}`
-                            : "Dose concluída hoje"}
-                      </span>
-                    )}
-
-                    {rotinaParcial && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400">
-                        <CheckCircle2
-                          size={
-                            12
-                          }
-                        />
-
-                        {
-                          dosesTomadasHoje
-                        }
-                        /
-                        {
-                          dosesEsperadasHoje
-                        }{" "}
-                        doses hoje
-
-                        {horarioTomado
-                          ? ` · última ${horarioTomado}`
-                          : ""}
-                      </span>
-                    )}
-
-                    {sosTomadoHoje && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-                        <CheckCircle2
-                          size={
-                            12
-                          }
-                        />
-
-                        {
-                          dosesTomadasHoje
-                        }{" "}
-                        tomada
-                        {dosesTomadasHoje ===
-                        1
-                          ? ""
-                          : "s"}{" "}
-                        hoje
-
-                        {quantidadeTomadaHoje >
-                        0
-                          ? ` · ${formatQuantidade(
-                              quantidadeTomadaHoje
-                            )} un.`
-                          : ""}
-                      </span>
-                    )}
-
-                    {!rotinaConcluida &&
-                      !rotinaParcial &&
-                      !sosTomadoHoje &&
-                      !isEstoqueZerado && (
-                        <button
-                          type="button"
-                          onClick={
-                            (
-                              event
-                            ) => {
-                              event.stopPropagation();
-
-                              trigger(
-                                "vibrate"
-                              );
-
-                              setQuickDoseMedId(
-                                med.id!
-                              );
-                            }
-                          }
-                          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-transform active:scale-95"
-                        >
-                          <Zap
-                            size={
-                              10
-                            }
-                            fill="currentColor"
-                          />
-
-                          Tomar
-                        </button>
-                      )}
-
-                    {rotinaParcial &&
-                      !isEstoqueZerado && (
-                        <button
-                          type="button"
-                          onClick={
-                            (
-                              event
-                            ) => {
-                              event.stopPropagation();
-
-                              trigger(
-                                "vibrate"
-                              );
-
-                              setQuickDoseMedId(
-                                med.id!
-                              );
-                            }
-                          }
-                          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-transform active:scale-95"
-                        >
-                          <Zap
-                            size={
-                              10
-                            }
-                            fill="currentColor"
-                          />
-
-                          Próxima dose
-                        </button>
-                      )}
-
-                    {isSOS &&
-                      sosTomadoHoje &&
-                      !isEstoqueZerado && (
-                        <button
-                          type="button"
-                          onClick={
-                            (
-                              event
-                            ) => {
-                              event.stopPropagation();
-
-                              trigger(
-                                "vibrate"
-                              );
-
-                              setQuickDoseMedId(
-                                med.id!
-                              );
-                            }
-                          }
-                          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold text-amber-400 transition-transform active:scale-95"
-                        >
-                          <Zap
-                            size={
-                              10
-                            }
-                            fill="currentColor"
-                          />
-
-                          Registrar outra
-                        </button>
-                      )}
-                  </>
-                )}
+                <p className="mt-0.5 truncate pl-[18px] text-[8px] font-medium text-ink-faint">
+                  {
+                    todayStatus.detail
+                  }
+                </p>
               </div>
 
-              {!isSuspenso &&
-                insight.deveRenovar && (
+              <div
+                className={`min-w-0 rounded-xl border px-3 py-2.5 ${estoqueTone}`}
+              >
+                <div className="mb-1 flex items-center gap-1.5">
+                  <Droplet
+                    size={
+                      9
+                    }
+                    className="opacity-70"
+                  />
+
+                  <span className="text-[8px] font-black uppercase tracking-[0.16em] opacity-70">
+                    Estoque
+                  </span>
+                </div>
+
+                <p className="truncate text-[10px] font-black">
+                  {
+                    textoEstoquePrincipal
+                  }
+                </p>
+
+                <p className="mt-0.5 truncate text-[8px] font-semibold opacity-70">
+                  {
+                    textoEstoqueSecundario ||
+                    estoqueStatus
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* AÇÕES */}
+
+            {!isSuspenso &&
+              (
+                (
+                  canQuickDose &&
+                  quickDoseLabel
+                ) ||
+                insight.deveRenovar
+              ) && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-surface-border/30 pt-2.5">
+                {canQuickDose &&
+                  quickDoseLabel && (
+                  <button
+                    type="button"
+                    onClick={
+                      (
+                        event
+                      ) => {
+                        event.stopPropagation();
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        setQuickDoseMedId(
+                          med.id!
+                        );
+                      }
+                    }
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
+                      isSOS
+                        ? "border-amber-400/20 bg-amber-400/[0.08] text-amber-400"
+                        : "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-400"
+                    }`}
+                  >
+                    <Zap
+                      size={
+                        11
+                      }
+                      fill="currentColor"
+                    />
+
+                    {
+                      quickDoseLabel
+                    }
+                  </button>
+                )}
+
+                {insight.deveRenovar && (
                   <button
                     type="button"
                     onClick={
@@ -1107,23 +1146,24 @@ export default function MedicamentosListPage() {
                         );
                       }
                     }
-                    className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[10px] font-bold transition-transform active:scale-95 ${
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
                       insight.urgencia ===
                       "alta"
-                        ? "border-coral/30 bg-coral/10 text-coral"
-                        : "border-amber-400/30 bg-amber-400/10 text-amber-500"
+                        ? "border-coral/25 bg-coral/[0.08] text-coral"
+                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
                     }`}
                   >
                     <Calendar
                       size={
-                        10
+                        11
                       }
                     />
 
                     Nova receita
                   </button>
                 )}
-            </div>
+              </div>
+            )}
           </div>
         </ListCard>
       );
@@ -1282,6 +1322,44 @@ export default function MedicamentosListPage() {
               statsProgresso.completados
             }
           />
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-amber-400/15 bg-amber-400/[0.045] px-3 py-2.5">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                Atenção
+              </p>
+
+              <p className="mt-0.5 text-base font-black tabular-nums text-amber-400">
+                {
+                  medsPrioridade.length
+                }
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.045] px-3 py-2.5">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                Em dia
+              </p>
+
+              <p className="mt-0.5 text-base font-black tabular-nums text-emerald-400">
+                {
+                  medsEmDia.length
+                }
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-surface-border/40 bg-surface-raised/40 px-3 py-2.5">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                SOS
+              </p>
+
+              <p className="mt-0.5 text-base font-black tabular-nums text-ink-primary">
+                {
+                  medsSOS.length
+                }
+              </p>
+            </div>
+          </div>
 
           {listaProcessada.length ===
           0 ? (

@@ -283,6 +283,63 @@ async function getTratamentoForPerson(
   return tratamento;
 }
 
+async function validateCidIdsForPerson(
+  ids: string[] | undefined,
+  personId: string
+): Promise<string[] | undefined> {
+  const normalizedIds =
+    uniqueIds(
+      ids
+    );
+
+  if (
+    normalizedIds ===
+    undefined
+  ) {
+    return undefined;
+  }
+
+  if (
+    normalizedIds.length ===
+    0
+  ) {
+    return [];
+  }
+
+  const safePersonId =
+    requirePersonId(
+      personId
+    );
+
+  const cids =
+    await db.cids.bulkGet(
+      normalizedIds
+    );
+
+  for (
+    let index = 0;
+    index <
+      normalizedIds.length;
+    index += 1
+  ) {
+    const cid =
+      cids[index];
+
+    if (
+      !cid ||
+      cid.person_id !==
+        safePersonId
+    ) {
+      throw new Error(
+        "Um dos CIDs selecionados não pertence à pessoa ativa."
+      );
+    }
+  }
+
+  return normalizedIds;
+}
+
+
 async function getMedicamentosForPerson(
   ids: string[],
   personId: string
@@ -619,6 +676,12 @@ export const tratamentosRepository = {
       ) ||
       [];
 
+    const cidIds =
+      await validateCidIdsForPerson(
+        data.cid_ids,
+        personId
+      );
+
     const medicamentosSelecionados =
       await getMedicamentosForPerson(
         medicamentoIds,
@@ -648,9 +711,7 @@ export const tratamentosRepository = {
         personId,
 
       cid_ids:
-        uniqueIds(
-          data.cid_ids
-        ),
+        cidIds,
 
       medico_ids:
         uniqueIds(
@@ -856,6 +917,12 @@ export const tratamentosRepository = {
         data.medicamento_ids
       );
 
+    const cidIds =
+      await validateCidIdsForPerson(
+        data.cid_ids,
+        safePersonId
+      );
+
     if (
       medicamentosDesejadosIds !==
       undefined
@@ -880,13 +947,11 @@ export const tratamentosRepository = {
       removeUndefined({
         ...tratamentoChanges,
 
-        ...(data.cid_ids !==
+        ...(cidIds !==
         undefined
           ? {
               cid_ids:
-                uniqueIds(
-                  data.cid_ids
-                ),
+                cidIds,
             }
           : {}),
 

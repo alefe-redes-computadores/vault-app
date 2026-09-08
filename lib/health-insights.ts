@@ -183,6 +183,15 @@ interface DoseLogLike {
   quantidade?: number;
 
   /**
+   * Momento em que o registro entrou ou foi alterado no Vault.
+   *
+   * Isso NÃO representa necessariamente o momento da tomada.
+   */
+  created_at?: string;
+
+  updated_at?: string;
+
+  /**
    * Compatibilidade temporária com estruturas antigas.
    */
   timestamp?: string;
@@ -3768,6 +3777,8 @@ export function analisarAdesaoMedicamento(
     quantidade?: number;
     tomado_em?: string;
     ignorado_em?: string;
+    created_at?: string;
+    updated_at?: string;
     status?: string;
   }>,
 
@@ -4761,6 +4772,27 @@ export interface ProcessedMed {
   textoEstoque:
     string;
 
+  textoDose:
+    string | null;
+
+  doseUnidade:
+    string;
+
+  textoEstoquePrincipal:
+    string;
+
+  textoEstoqueSecundario:
+    string | null;
+
+  dosesRestantesEstimadas:
+    number | null;
+
+  gotasDisponiveis:
+    number | null;
+
+  mlDisponiveis:
+    number | null;
+
   isEstoqueZerado:
     boolean;
 
@@ -5131,6 +5163,56 @@ export function processarListaMedicamentos(
               ? `${medicamento.estoque_quantidade} ${medicamento.estoque_unidade_medida || "unidades"}`
               : "Sem controle de estoque";
 
+        const textoDose =
+          estoqueInfo
+            ?.textoDose ??
+          null;
+
+        const doseUnidade =
+          estoqueInfo
+            ?.doseUnidade ??
+          (
+            String(
+              medicamento.formato ||
+                medicamento.forma_farmaceutica ||
+                ""
+            )
+              .toLowerCase()
+              .includes(
+                "gota"
+              )
+              ? "gotas"
+              : "unidades"
+          );
+
+        const textoEstoquePrincipal =
+          estoqueInfo
+            ?.textoEstoquePrincipal ??
+          textoEstoque;
+
+        const textoEstoqueSecundario =
+          estoqueInfo
+            ?.textoEstoqueSecundario ??
+          null;
+
+        const dosesRestantesEstimadas =
+          estoqueInfo &&
+          estoqueInfo
+            .estimativaDosesDisponivel
+            ? estoqueInfo
+                .dosesRestantes
+            : null;
+
+        const gotasDisponiveis =
+          estoqueInfo
+            ?.gotasDisponiveis ??
+          null;
+
+        const mlDisponiveis =
+          estoqueInfo
+            ?.mlDisponiveis ??
+          null;
+
         return {
           med:
             medicamento,
@@ -5158,6 +5240,20 @@ export function processarListaMedicamentos(
           receita,
 
           textoEstoque,
+
+          textoDose,
+
+          doseUnidade,
+
+          textoEstoquePrincipal,
+
+          textoEstoqueSecundario,
+
+          dosesRestantesEstimadas,
+
+          gotasDisponiveis,
+
+          mlDisponiveis,
 
           isEstoqueZerado,
 
@@ -5746,6 +5842,448 @@ export function analisarPadraoDiaSemana(
       "baixa"
         ? `Há um sinal inicial de maior concentração de registros em ${diaCritico} (${maxOcorrencias} de ${registrosValidos}). Ainda há poucos dados para considerar isso um padrão consistente.`
         : `Os registros mostram maior concentração em ${diaCritico}: ${maxOcorrencias} de ${registrosValidos} ocorrência(s) analisadas.`,
+  };
+}
+
+// ============================================================
+// 18.5. ATRASO REAL × ATRASO APENAS DE REGISTRO
+// ============================================================
+
+export interface AtrasoTomadaMedicamentoInsight {
+  tomadasAnalisadas: number;
+
+  tomadasAtrasadas: number;
+
+  taxaAtraso: number;
+
+  atrasoMedioMinutos: number;
+
+  atrasoTotalMinutos: number;
+
+  maiorAtrasoMinutos: number;
+
+  registrosTardiosSemAtrasoReal: number;
+
+  taxaRegistroTardioSemAtrasoReal: number;
+
+  periodoDias: number;
+
+  confianca:
+    InsightConfianca;
+
+  amostra: number;
+}
+
+const DOSE_DELAY_TOLERANCE_MINUTES =
+  15;
+
+/**
+ * Referência puramente lúdica para dar dimensão de tempo.
+ *
+ * Não participa de qualquer classificação clínica.
+ */
+const INTERSTELLAR_RUNTIME_MINUTES =
+  169;
+
+function parseIsoDateSafe(
+  value?: string
+): Date | null {
+  if (
+    !value
+  ) {
+    return null;
+  }
+
+  const parsed =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function diffPositiveMinutes(
+  later:
+    Date,
+  earlier:
+    Date
+): number {
+  return Math.max(
+    0,
+    Math.round(
+      (
+        later.getTime() -
+        earlier.getTime()
+      ) /
+        (
+          60 *
+          1000
+        )
+    )
+  );
+}
+
+function formatDelayDuration(
+  minutes:
+    number
+): string {
+  const safeMinutes =
+    Math.max(
+      0,
+      Math.round(
+        minutes
+      )
+    );
+
+  const hours =
+    Math.floor(
+      safeMinutes /
+        60
+    );
+
+  const remainder =
+    safeMinutes %
+    60;
+
+  if (
+    hours ===
+    0
+  ) {
+    return `${remainder} min`;
+  }
+
+  if (
+    remainder ===
+    0
+  ) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h${String(
+    remainder
+  ).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function buildInterstellarComparison(
+  totalMinutes:
+    number
+): string | null {
+  if (
+    totalMinutes <
+    INTERSTELLAR_RUNTIME_MINUTES
+  ) {
+    return null;
+  }
+
+  const completos =
+    Math.floor(
+      totalMinutes /
+        INTERSTELLAR_RUNTIME_MINUTES
+    );
+
+  if (
+    completos <=
+    1
+  ) {
+    return "Isso já passa de um Interestelar inteiro — até os créditos.";
+  }
+
+  return `Isso já passa de ${completos} Interestelares completos — dá para ter uma boa noção do tamanho desse atraso acumulado.`;
+}
+
+/**
+ * Distingue três horários diferentes:
+ *
+ * 1. horário programado;
+ * 2. horário real informado da tomada;
+ * 3. momento em que a informação foi registrada no Vault.
+ *
+ * Dessa forma:
+ *
+ * - registrar às 16h dizendo que tomou às 10h NÃO vira
+ *   atraso de tomada;
+ *
+ * - registrar às 16h dizendo que tomou às 16h vira atraso
+ *   real de 6 horas.
+ *
+ * Não produz diagnóstico nem interpreta consequência clínica.
+ */
+export function analisarAtrasosTomadaMedicamento(
+  medicamento:
+    Medicamento,
+
+  doseLogs:
+    DoseLogLike[],
+
+  periodoDias:
+    number = 30
+): AtrasoTomadaMedicamentoInsight | null {
+  if (
+    medicamento.tipo_uso !==
+    "continuo"
+  ) {
+    return null;
+  }
+
+  const horarios =
+    uniqueStrings(
+      medicamento
+        .estoque_horarios ||
+        []
+    );
+
+  if (
+    horarios.length ===
+    0
+  ) {
+    return null;
+  }
+
+  const dias =
+    Math.max(
+      1,
+      Math.floor(
+        periodoDias
+      )
+    );
+
+  const agora =
+    new Date();
+
+  const inicio =
+    new Date(
+      agora
+    );
+
+  inicio.setDate(
+    inicio.getDate() -
+      (
+        dias -
+        1
+      )
+  );
+
+  inicio.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const atrasos:
+    number[] = [];
+
+  let tomadasAnalisadas =
+    0;
+
+  let registrosTardiosSemAtrasoReal =
+    0;
+
+  for (
+    const dose of
+      doseLogs
+  ) {
+    if (
+      !isDoseTaken(
+        dose
+      )
+    ) {
+      continue;
+    }
+
+    if (
+      !dose.data ||
+      !dose.horario ||
+      !horarios.includes(
+        dose.horario
+      )
+    ) {
+      continue;
+    }
+
+    const programadaEm =
+      parseLocalDateTime(
+        dose.data,
+        dose.horario
+      );
+
+    const tomadaEm =
+      parseIsoDateSafe(
+        dose.tomado_em
+      );
+
+    if (
+      !programadaEm ||
+      !tomadaEm
+    ) {
+      continue;
+    }
+
+    if (
+      programadaEm <
+        inicio ||
+      programadaEm >
+        agora
+    ) {
+      continue;
+    }
+
+    tomadasAnalisadas +=
+      1;
+
+    const atrasoReal =
+      diffPositiveMinutes(
+        tomadaEm,
+        programadaEm
+      );
+
+    if (
+      atrasoReal >
+      DOSE_DELAY_TOLERANCE_MINUTES
+    ) {
+      atrasos.push(
+        atrasoReal
+      );
+    }
+
+    const registradoEm =
+      parseIsoDateSafe(
+        dose.updated_at
+      ) ??
+      parseIsoDateSafe(
+        dose.created_at
+      );
+
+    if (
+      registradoEm
+    ) {
+      const atrasoRegistro =
+        diffPositiveMinutes(
+          registradoEm,
+          programadaEm
+        );
+
+      if (
+        atrasoReal <=
+          DOSE_DELAY_TOLERANCE_MINUTES &&
+        atrasoRegistro >
+          DOSE_DELAY_TOLERANCE_MINUTES
+      ) {
+        registrosTardiosSemAtrasoReal +=
+          1;
+      }
+    }
+  }
+
+  if (
+    tomadasAnalisadas ===
+    0
+  ) {
+    return null;
+  }
+
+  const tomadasAtrasadas =
+    atrasos.length;
+
+  const atrasoTotalMinutos =
+    atrasos.reduce(
+      (
+        total,
+        value
+      ) =>
+        total +
+        value,
+      0
+    );
+
+  const atrasoMedioMinutos =
+    tomadasAtrasadas >
+    0
+      ? Math.round(
+          atrasoTotalMinutos /
+            tomadasAtrasadas
+        )
+      : 0;
+
+  const maiorAtrasoMinutos =
+    atrasos.length >
+    0
+      ? Math.max(
+          ...atrasos
+        )
+      : 0;
+
+  const taxaAtraso =
+    Number(
+      (
+        (
+          tomadasAtrasadas /
+          tomadasAnalisadas
+        ) *
+        100
+      ).toFixed(
+        1
+      )
+    );
+
+  const taxaRegistroTardioSemAtrasoReal =
+    Number(
+      (
+        (
+          registrosTardiosSemAtrasoReal /
+          tomadasAnalisadas
+        ) *
+        100
+      ).toFixed(
+        1
+      )
+    );
+
+  return {
+    tomadasAnalisadas,
+
+    tomadasAtrasadas,
+
+    taxaAtraso,
+
+    atrasoMedioMinutos,
+
+    atrasoTotalMinutos,
+
+    maiorAtrasoMinutos,
+
+    registrosTardiosSemAtrasoReal,
+
+    taxaRegistroTardioSemAtrasoReal,
+
+    periodoDias:
+      dias,
+
+    confianca:
+      determineConfidence(
+        tomadasAnalisadas,
+        {
+          media:
+            7,
+
+          alta:
+            20,
+        }
+      ),
+
+    amostra:
+      tomadasAnalisadas,
   };
 }
 
@@ -7525,6 +8063,161 @@ export function gerarInsightsSaude(
         medicamento.tipo_uso ===
         "continuo"
       ) {
+        const atrasoTomada =
+          analisarAtrasosTomadaMedicamento(
+            medicamento,
+            logs,
+            30
+          );
+
+        if (
+          atrasoTomada &&
+          atrasoTomada.tomadasAtrasadas >=
+            3 &&
+          atrasoTomada.taxaAtraso >=
+            25
+        ) {
+          const comparacao =
+            buildInterstellarComparison(
+              atrasoTomada.atrasoTotalMinutos
+            );
+
+          const frequente =
+            atrasoTomada.taxaAtraso >=
+              50 ||
+            atrasoTomada.atrasoMedioMinutos >=
+              60;
+
+          const titulo =
+            frequente
+              ? `Horário de ${medicamento.nome} merece atenção`
+              : `Seu relógio e ${medicamento.nome} estão discutindo`;
+
+          const mensagemBase =
+            `Nos últimos ${atrasoTomada.periodoDias} dias, ${atrasoTomada.tomadasAtrasadas} de ${atrasoTomada.tomadasAnalisadas} tomada(s) foram informadas mais de ${DOSE_DELAY_TOLERANCE_MINUTES} minutos após o horário programado. O atraso médio entre essas tomadas foi de ${formatDelayDuration(
+              atrasoTomada.atrasoMedioMinutos
+            )}, somando ${formatDelayDuration(
+              atrasoTomada.atrasoTotalMinutos
+            )}.`;
+
+          const fechamento =
+            frequente
+              ? " A brincadeira fica de lado aqui: esse padrão está ficando frequente. Tente manter os horários conforme a orientação recebida e, se houver dificuldade recorrente para seguir a rotina, converse com o profissional responsável pelo tratamento."
+              : " Vale prestar atenção às próximas doses e manter a rotina conforme a orientação recebida.";
+
+          insights.push({
+            id:
+              `atraso-real-${medicamento.id}`,
+
+            kind:
+              "pattern",
+
+            categoria:
+              "adesao",
+
+            titulo,
+
+            mensagem:
+              `${mensagemBase}${comparacao ? ` ${comparacao}` : ""}${fechamento}`,
+
+            urgencia:
+              frequente
+                ? "media"
+                : "baixa",
+
+            confianca:
+              atrasoTomada.confianca,
+
+            amostra:
+              atrasoTomada.amostra,
+
+            periodoDias:
+              atrasoTomada.periodoDias,
+
+            entidadeTipo:
+              "medicamento",
+
+            entidadeId:
+              medicamento.id,
+
+            link:
+              `/saude/medicamentos/detalhes?id=${medicamento.id}`,
+
+            evidencias: [
+              `${atrasoTomada.tomadasAnalisadas} tomada(s) programada(s) analisadas`,
+              `${atrasoTomada.tomadasAtrasadas} tomada(s) com atraso real acima de ${DOSE_DELAY_TOLERANCE_MINUTES} min`,
+              `${atrasoTomada.taxaAtraso}% das tomadas analisadas ficaram acima da tolerância`,
+              `Atraso médio: ${formatDelayDuration(
+                atrasoTomada.atrasoMedioMinutos
+              )}`,
+              `Atraso acumulado: ${formatDelayDuration(
+                atrasoTomada.atrasoTotalMinutos
+              )}`,
+              `Maior atraso informado: ${formatDelayDuration(
+                atrasoTomada.maiorAtrasoMinutos
+              )}`,
+            ],
+          });
+        }
+
+        /*
+         * Registro tardio sem atraso real é informação de
+         * qualidade/comportamento de registro, não de adesão.
+         *
+         * Fica fora dos highlights principais porque kind é
+         * observation, mas permanece explicável no cérebro.
+         */
+        if (
+          atrasoTomada &&
+          atrasoTomada.registrosTardiosSemAtrasoReal >=
+            3 &&
+          atrasoTomada.taxaRegistroTardioSemAtrasoReal >=
+            25
+        ) {
+          insights.push({
+            id:
+              `registro-tardio-${medicamento.id}`,
+
+            kind:
+              "observation",
+
+            categoria:
+              "dados",
+
+            titulo:
+              `Registros de ${medicamento.nome} feitos depois`,
+
+            mensagem:
+              `Em ${atrasoTomada.registrosTardiosSemAtrasoReal} de ${atrasoTomada.tomadasAnalisadas} tomada(s) analisadas, o registro foi feito depois do horário, mas a tomada foi informada como realizada no horário programado. O Vault separa isso de atraso real para não penalizar sua rotina indevidamente.`,
+
+            urgencia:
+              "nenhuma",
+
+            confianca:
+              atrasoTomada.confianca,
+
+            amostra:
+              atrasoTomada.amostra,
+
+            periodoDias:
+              atrasoTomada.periodoDias,
+
+            entidadeTipo:
+              "medicamento",
+
+            entidadeId:
+              medicamento.id,
+
+            link:
+              `/saude/medicamentos/detalhes?id=${medicamento.id}`,
+
+            evidencias: [
+              `${atrasoTomada.registrosTardiosSemAtrasoReal} registro(s) tardio(s) sem atraso real informado`,
+              "Horário real da tomada foi preservado separadamente do momento de registro",
+            ],
+          });
+        }
+
         const adesao =
           analisarAdesaoMedicamento(
             medicamento,
@@ -7552,6 +8245,12 @@ export function gerarInsightsSaude(
 
                   ignorado_em:
                     log.ignorado_em,
+
+                  created_at:
+                    log.created_at,
+
+                  updated_at:
+                    log.updated_at,
 
                   status:
                     log.status,

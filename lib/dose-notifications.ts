@@ -417,17 +417,19 @@ export async function cancelDoseNotifications(
    * Isso mantém compatibilidade com fluxos antigos e com
    * Tratamentos, que precisam apenas remover os IDs conhecidos.
    */
+  /*
+   * Cancelamento independe dos horários atuais.
+   *
+   * Um medicamento pode ter sido agendado com horários antigos
+   * e depois ter os horários removidos ou ser descontinuado.
+   *
+   * Mesmo com [] precisamos consultar as notificações pendentes
+   * e localizar as antigas pelo extra.medicamentoId.
+   */
   const horarios =
     getUniqueValidHorarios(
       medicamento
     );
-
-  if (
-    horarios.length ===
-    0
-  ) {
-    return;
-  }
 
   const fallbackIds =
     horarios.map(

@@ -1737,7 +1737,9 @@ export default function RedeSaudePage() {
                       "vibrate"
                     );
 
-                    router.back();
+                    router.replace(
+                  "/"
+                );
                   }
                 }
                 aria-label="Voltar"

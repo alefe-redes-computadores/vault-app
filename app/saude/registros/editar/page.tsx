@@ -1319,6 +1319,12 @@ function EditarRegistroSaudeContent() {
                   ),
               }
             );
+
+            router.replace(
+              `/saude/registros/detalhes?id=${encodeURIComponent(
+                id
+              )}`
+            );
           },
           {
             successMessage:
@@ -1328,7 +1334,7 @@ function EditarRegistroSaudeContent() {
               "Erro ao atualizar registro",
 
             goBackOnSuccess:
-              true,
+              false,
           }
         );
       } finally {
@@ -1406,7 +1412,11 @@ function EditarRegistroSaudeContent() {
                     "vibrate"
                   );
 
-                  router.back();
+                  router.replace(
+                    `/saude/registros/detalhes?id=${encodeURIComponent(
+                      id
+                    )}`
+                  );
                 }
               }
               aria-label="Voltar"

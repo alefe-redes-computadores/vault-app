@@ -2,6 +2,12 @@
 "use client";
 
 import {
+  buildMedicationRegulatoryContext,
+} from "@/lib/medication-catalog/regulatory-context";
+
+
+import { validateMedication } from "@/lib/medication-intelligence/validate";
+import {
   Suspense,
   useEffect,
   useRef,
@@ -4790,7 +4796,11 @@ function EditarMedicamentoContent() {
         return;
       }
 
-      router.back();
+      router.replace(
+                    `/saude/medicamentos/detalhes?id=${encodeURIComponent(
+                      id
+                    )}`
+                  );
     };
 
   const discardChanges =
@@ -4911,6 +4921,63 @@ function EditarMedicamentoContent() {
     hydratedCatalogResult
       ?.reference ??
     null;
+
+  const regulatoryContext =
+    catalogReference
+      ? buildMedicationRegulatoryContext(
+          {
+            reference:
+              catalogReference,
+
+            selectedFormat:
+              formato,
+          }
+        )
+      : undefined;
+
+  /*
+   * Reutiliza a referência já hidratada.
+   * Nenhuma consulta adicional ao provider é disparada.
+   */
+  const catalogValidation =
+    catalogReference
+      ? validateMedication(
+          {
+            nome,
+
+            dosagem:
+              dosagem.trim() ||
+              undefined,
+
+            tipoReceita,
+
+            formato,
+
+            regulatoryContext,
+
+            prescriptionDate:
+              brParaIso(
+                dataReceitaTexto
+              ) ||
+              undefined,
+          },
+          [
+            catalogReference,
+          ]
+        )
+      : null;
+
+  const catalogRegulatoryIssues =
+    catalogValidation
+      ?.issues
+      .filter(
+        (
+          issue
+        ) =>
+          issue.code ===
+          "prescription_type_mismatch"
+      ) ??
+    [];
 
   const catalogNameIsDifferent =
     Boolean(
@@ -7787,6 +7854,115 @@ function EditarMedicamentoContent() {
                                   }
                                 </p>
                               )}
+
+
+                    {catalogRegulatoryIssues.length >
+                      0 && (
+                      <div className="mt-3 space-y-2">
+                        {catalogRegulatoryIssues.map(
+                          (
+                            issue
+                          ) => (
+                            <div
+                              key={
+                                issue.id
+                              }
+                              className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3.5"
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <AlertTriangle
+                                  size={
+                                    16
+                                  }
+                                  className="mt-0.5 shrink-0 text-amber-400"
+                                />
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-ink-primary">
+                                    {
+                                      issue.title
+                                    }
+                                  </p>
+
+                                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                    {
+                                      issue.message
+                                    }
+                                  </p>
+
+                                  {issue.evidence.length >
+                                    0 && (
+                                    <div className="mt-3 rounded-xl border border-amber-400/15 bg-black/10 p-2.5">
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                                        Evidências
+                                      </p>
+
+                                      <div className="mt-1.5 space-y-1">
+                                        {issue.evidence.map(
+                                          (
+                                            evidence
+                                          ) => (
+                                            <p
+                                              key={
+                                                evidence
+                                              }
+                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                            >
+                                              •{" "}
+                                              {
+                                                evidence
+                                              }
+                                            </p>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {issue.sources.length >
+                                    0 && (
+                                    <div className="mt-3 border-t border-amber-400/15 pt-2.5">
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                                        Fonte regulatória
+                                      </p>
+
+                                      <div className="mt-1 space-y-1">
+                                        {issue.sources.map(
+                                          (
+                                            source
+                                          ) => (
+                                            <p
+                                              key={
+                                                source.id
+                                              }
+                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                            >
+                                              {
+                                                source.label
+                                              }
+                                              {source.version
+                                                ? ` · ${source.version}`
+                                                : ""}
+                                              {source.verifiedAt
+                                                ? ` · verificado em ${source.verifiedAt}`
+                                                : ""}
+                                            </p>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <p className="mt-3 text-[9px] leading-relaxed text-ink-faint">
+                                    O Vault não altera o tipo de receita automaticamente. Confira o documento original antes de modificar o cadastro.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
 
                               {catalogPresentationSuggestions.length >
                                 0 && (

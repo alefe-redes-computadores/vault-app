@@ -2,6 +2,13 @@
 "use client";
 
 import {
+  buildMedicationRegulatoryContext,
+} from "@/lib/medication-catalog/regulatory-context";
+
+
+import { validateMedication } from "@/lib/medication-intelligence/validate";
+import { Info as InfoIcon } from "lucide-react";
+import {
   useEffect,
   useRef,
   useState,
@@ -85,7 +92,7 @@ import {
 } from "@/lib/supabase/storage";
 
 import {
-  calcularEstoqueRetroativo,
+  analisarEstoqueRetroativo,
   getLocalTodayISO,
   suggestRenewalDate,
   VALIDADE_RECEITA_DIAS,
@@ -1915,6 +1922,60 @@ export default function NovoMedicamentoPage() {
       false
     );
 
+  const [
+    retroactivePreview,
+    setRetroactivePreview,
+  ] =
+    useState<{
+      signature:
+        string;
+
+      dataReferencia:
+        string;
+
+      unidadeLabel:
+        string;
+
+      analise:
+        ReturnType<
+          typeof analisarEstoqueRetroativo
+        >;
+    } | null>(
+      null
+    );
+
+  const [
+    retroactivePostCreate,
+    setRetroactivePostCreate,
+  ] =
+    useState<{
+      medicamentoId:
+        string;
+
+      medicamentoNome:
+        string;
+
+      startDate:
+        string;
+
+      totalSlots:
+        number;
+    } | null>(
+      null
+    );
+
+  const retroactiveDecisionRef =
+    useRef<{
+      signature:
+        string;
+
+      mode:
+        | "adjust"
+        | "keep";
+    } | null>(
+      null
+    );
+
   // ==========================================================
   // VALIDAÇÃO
   // ==========================================================
@@ -2711,11 +2772,167 @@ export default function NovoMedicamentoPage() {
     };
 
   // ==========================================================
+  // CADASTRO RETROATIVO
+  // ==========================================================
+
+  const buildRetroactivePreview =
+    () => {
+      if (
+        !estoqueAtivo ||
+        tipoUso !==
+          "continuo"
+      ) {
+        return null;
+      }
+
+      const today =
+        getLocalTodayISO();
+
+      const dataReferencia =
+        brParaIso(
+          estoqueDataReferenciaTexto
+        );
+
+      if (
+        !dataReferencia ||
+        dataReferencia >=
+          today
+      ) {
+        return null;
+      }
+
+      const horariosValidos =
+        Array.from(
+          new Set(
+            horarios.filter(
+              (
+                horario
+              ) =>
+                Boolean(
+                  horario
+                ) &&
+                isValidTime(
+                  horario
+                )
+            )
+          )
+        );
+
+      if (
+        horariosValidos.length ===
+        0
+      ) {
+        return null;
+      }
+
+      const unidadePorDose =
+        parsePositiveOptionalNumber(
+          estoqueUnidadePorDose
+        );
+
+      if (
+        unidadePorDose ===
+        undefined
+      ) {
+        return null;
+      }
+
+      const quantidadeInformada =
+        Number(
+          estoqueQuantidade
+        );
+
+      const quantidadeBase =
+        isGotas &&
+        estoqueGotasCalculado >
+          0
+          ? estoqueGotasCalculado
+          : quantidadeInformada;
+
+      if (
+        !Number.isFinite(
+          quantidadeBase
+        ) ||
+        quantidadeBase <=
+          0
+      ) {
+        return null;
+      }
+
+      const analise =
+        analisarEstoqueRetroativo(
+          quantidadeBase,
+          dataReferencia,
+          horariosValidos,
+          unidadePorDose
+        );
+
+      if (
+        !analise.aplicavel
+      ) {
+        return null;
+      }
+
+      const signature =
+        JSON.stringify({
+          dataReferencia,
+
+          quantidadeBase,
+
+          horarios:
+            horariosValidos,
+
+          unidadePorDose,
+        });
+
+      return {
+        signature,
+
+        dataReferencia,
+
+        unidadeLabel:
+          isGotas
+            ? "gotas"
+            : estoqueUnidade,
+
+        analise,
+      };
+    };
+
+  // ==========================================================
   // SUBMIT
   // ==========================================================
 
   const handleSubmit =
     () => {
+      const preview =
+        buildRetroactivePreview();
+
+      const decision =
+        retroactiveDecisionRef.current;
+
+      const hasCurrentDecision =
+        Boolean(
+          preview &&
+          decision &&
+          decision.signature ===
+            preview.signature
+        );
+
+      if (
+        preview &&
+        !hasCurrentDecision
+      ) {
+        trigger(
+          "vibrate"
+        );
+
+        setRetroactivePreview(
+          preview
+        );
+
+        return;
+      }
       if (
         isSubmitLocked.current ||
         isSubmitting
@@ -2736,6 +2953,25 @@ export default function NovoMedicamentoPage() {
 
         return;
       }
+
+      let didCompleteSave =
+        false;
+
+      let retroactivePostCreatePayload:
+        {
+          medicamentoId:
+            string;
+
+          medicamentoNome:
+            string;
+
+          startDate:
+            string;
+
+          totalSlots:
+            number;
+        } | null =
+        null;
 
       run(
         async () => {
@@ -2847,27 +3083,37 @@ export default function NovoMedicamentoPage() {
               : 0;
 
           /*
-           * O retroativo só pode consumir estoque quando sabemos
-           * quanto uma tomada consome.
+           * Cadastro retroativo agora é uma decisão explícita.
            *
-           * Sem unidadePorDose conhecida, preservamos exatamente
-           * o saldo informado pelo usuário.
+           * O Vault pode estimar o saldo atual a partir da
+           * aquisição passada, mas nunca assume silenciosamente
+           * que o usuário tomou todas as doses.
+           *
+           * Nenhum DoseLog passado é criado aqui.
            */
+          const retroactivePreviewAtual =
+            buildRetroactivePreview();
+
+          const retroactiveDecision =
+            retroactiveDecisionRef.current;
+
+          const aplicarRetroativo =
+            Boolean(
+              retroactivePreviewAtual &&
+              retroactiveDecision &&
+              retroactiveDecision.signature ===
+                retroactivePreviewAtual.signature &&
+              retroactiveDecision.mode ===
+                "adjust"
+            );
+
           const quantidadeEstoqueFinal =
             estoqueAtivo
-              ? estoqueDataReferenciaISO &&
-                tipoUso ===
-                  "continuo" &&
-                horariosFiltrados.length >
-                  0 &&
-                unidadePorDose !==
-                  undefined
-                ? calcularEstoqueRetroativo(
-                    quantidadeBase,
-                    estoqueDataReferenciaISO,
-                    horariosFiltrados,
-                    unidadePorDose
-                  )
+              ? aplicarRetroativo &&
+                retroactivePreviewAtual
+                ? retroactivePreviewAtual
+                    .analise
+                    .estoqueEstimadoAtual
                 : quantidadeBase
               : 0;
 
@@ -3204,9 +3450,20 @@ export default function NovoMedicamentoPage() {
                 preco:
                   precoNumerico,
 
+                /*
+                 * A prescrição e a aquisição são eventos
+                 * diferentes.
+                 *
+                 * data = data clínica da receita.
+                 * data_aquisicao = compra / retirada real.
+                 */
                 data:
-                  estoqueDataReferenciaISO ||
                   dataReceitaISO ||
+                  estoqueDataReferenciaISO ||
+                  today,
+
+                data_aquisicao:
+                  estoqueDataReferenciaISO ||
                   today,
               });
             }
@@ -3327,6 +3584,51 @@ export default function NovoMedicamentoPage() {
               attachment.url
             );
           }
+
+          /*
+           * O save chegou ao fim de verdade.
+           *
+           * Essa flag é importante porque useSubmitAction()
+           * captura erros internamente e não os relança.
+           */
+          didCompleteSave =
+            true;
+
+          /*
+           * O convite só existe quando:
+           *
+           * - o medicamento foi criado;
+           * - o usuário escolheu AJUSTAR retroativamente;
+           * - existe período passado programado.
+           *
+           * Nenhum DoseLog é criado aqui.
+           */
+          if (
+            medicamentoId &&
+            aplicarRetroativo &&
+            retroactivePreviewAtual &&
+            retroactivePreviewAtual
+              .analise
+              .dosesProgramadas >
+              0
+          ) {
+            retroactivePostCreatePayload =
+              {
+                medicamentoId,
+
+                medicamentoNome:
+                  nome.trim(),
+
+                startDate:
+                  retroactivePreviewAtual
+                    .dataReferencia,
+
+                totalSlots:
+                  retroactivePreviewAtual
+                    .analise
+                    .dosesProgramadas,
+              };
+          }
         },
         {
           successMessage:
@@ -3336,7 +3638,37 @@ export default function NovoMedicamentoPage() {
             "Erro ao cadastrar medicamento",
 
           goBackOnSuccess:
-            true,
+            false,
+        }
+      ).then(
+        () => {
+          /*
+           * Em caso de erro useSubmitAction já mostrou o toast,
+           * mas a Promise resolve normalmente.
+           *
+           * Não navegamos nem abrimos modal sem save completo.
+           */
+          if (
+            !didCompleteSave
+          ) {
+            return;
+          }
+
+          if (
+            retroactivePostCreatePayload
+          ) {
+            setRetroactivePostCreate(
+              retroactivePostCreatePayload
+            );
+
+            return;
+          }
+
+          /*
+           * Cadastro comum preserva exatamente o efeito antigo
+           * de goBackOnSuccess: true.
+           */
+          router.back();
         }
       ).finally(
         () => {
@@ -3348,6 +3680,43 @@ export default function NovoMedicamentoPage() {
           );
         }
       );
+    };
+
+  const revisarRetroativoAgora =
+    () => {
+      if (
+        !retroactivePostCreate
+      ) {
+        return;
+      }
+
+      trigger(
+        "vibrate"
+      );
+
+      router.push(
+        `/hoje?retro=1&medicamento=${encodeURIComponent(
+          retroactivePostCreate.medicamentoId
+        )}&data=${encodeURIComponent(
+          retroactivePostCreate.startDate
+        )}`
+      );
+    };
+
+  const revisarRetroativoDepois =
+    () => {
+      trigger(
+        "vibrate"
+      );
+
+      setRetroactivePostCreate(
+        null
+      );
+
+      /*
+       * Equivalente ao antigo goBackOnSuccess.
+       */
+      router.back();
     };
 
   // ==========================================================
@@ -3462,6 +3831,70 @@ export default function NovoMedicamentoPage() {
     hydratedCatalogResult
       ?.reference ??
     null;
+
+  const regulatoryContext =
+    catalogReference
+      ? buildMedicationRegulatoryContext(
+          {
+            reference:
+              catalogReference,
+
+            selectedFormat:
+              formato,
+          }
+        )
+      : undefined;
+
+  /*
+   * Medication Intelligence usa exclusivamente a referência
+   * que a pessoa já selecionou/hidratou.
+   *
+   * Não existe nova busca pesada aqui.
+   */
+  const catalogValidation =
+    catalogReference
+      ? validateMedication(
+          {
+            nome,
+
+            dosagem:
+              dosagem.trim() ||
+              undefined,
+
+            tipoReceita,
+
+            formato,
+
+            regulatoryContext,
+
+            prescriptionDate:
+              brParaIso(
+                dataReceitaTexto
+              ) ||
+              undefined,
+          },
+          [
+            catalogReference,
+          ]
+        )
+      : null;
+
+  /*
+   * Nome, dosagem e formato já possuem UX própria nesta tela.
+   * Por enquanto o painel do cérebro mostra apenas a camada
+   * regulatória para não duplicar alertas.
+   */
+  const catalogRegulatoryIssues =
+    catalogValidation
+      ?.issues
+      .filter(
+        (
+          issue
+        ) =>
+          issue.code ===
+          "prescription_type_mismatch"
+      ) ??
+    [];
 
   const catalogNameIsDifferent =
     Boolean(
@@ -4082,6 +4515,115 @@ export default function NovoMedicamentoPage() {
                                   }
                                 </p>
                               )}
+
+
+                    {catalogRegulatoryIssues.length >
+                      0 && (
+                      <div className="mt-3 space-y-2">
+                        {catalogRegulatoryIssues.map(
+                          (
+                            issue
+                          ) => (
+                            <div
+                              key={
+                                issue.id
+                              }
+                              className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3.5"
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <AlertTriangle
+                                  size={
+                                    16
+                                  }
+                                  className="mt-0.5 shrink-0 text-amber-400"
+                                />
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-ink-primary">
+                                    {
+                                      issue.title
+                                    }
+                                  </p>
+
+                                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                    {
+                                      issue.message
+                                    }
+                                  </p>
+
+                                  {issue.evidence.length >
+                                    0 && (
+                                    <div className="mt-3 rounded-xl border border-amber-400/15 bg-black/10 p-2.5">
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                                        Evidências
+                                      </p>
+
+                                      <div className="mt-1.5 space-y-1">
+                                        {issue.evidence.map(
+                                          (
+                                            evidence
+                                          ) => (
+                                            <p
+                                              key={
+                                                evidence
+                                              }
+                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                            >
+                                              •{" "}
+                                              {
+                                                evidence
+                                              }
+                                            </p>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {issue.sources.length >
+                                    0 && (
+                                    <div className="mt-3 border-t border-amber-400/15 pt-2.5">
+                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                                        Fonte regulatória
+                                      </p>
+
+                                      <div className="mt-1 space-y-1">
+                                        {issue.sources.map(
+                                          (
+                                            source
+                                          ) => (
+                                            <p
+                                              key={
+                                                source.id
+                                              }
+                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                            >
+                                              {
+                                                source.label
+                                              }
+                                              {source.version
+                                                ? ` · ${source.version}`
+                                                : ""}
+                                              {source.verifiedAt
+                                                ? ` · verificado em ${source.verifiedAt}`
+                                                : ""}
+                                            </p>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <p className="mt-3 text-[9px] leading-relaxed text-ink-faint">
+                                    O Vault não altera o tipo de receita automaticamente. Confira o documento original antes de modificar o cadastro.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
 
                               {catalogNameIsDifferent && (
                                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
@@ -5942,6 +6484,495 @@ export default function NovoMedicamentoPage() {
                     )}
                   </div>
                 </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {retroactivePostCreate && (
+            <>
+              <motion.div
+                initial={{
+                  opacity:
+                    0,
+                }}
+                animate={{
+                  opacity:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+                }}
+                className="fixed inset-0 z-[130] bg-black/75 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{
+                  opacity:
+                    0,
+
+                  y:
+                    30,
+
+                  scale:
+                    0.98,
+                }}
+                animate={{
+                  opacity:
+                    1,
+
+                  y:
+                    0,
+
+                  scale:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+
+                  y:
+                    30,
+
+                  scale:
+                    0.98,
+                }}
+                transition={{
+                  duration:
+                    0.18,
+                }}
+                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[140] mx-auto max-w-lg rounded-[30px] border border-ice/25 bg-surface p-5 shadow-2xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                    <CheckCircle2
+                      size={
+                        20
+                      }
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">
+                      Medicamento cadastrado
+                    </p>
+
+                    <h3 className="mt-1 truncate text-base font-bold text-ink-primary">
+                      {
+                        retroactivePostCreate
+                          .medicamentoNome
+                      }
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+                      O estoque foi reconstruído até hoje. Existem{" "}
+                      <strong className="text-ink-primary">
+                        {
+                          retroactivePostCreate
+                            .totalSlots
+                        }{" "}
+                        dose(s) anteriores
+                      </strong>{" "}
+                      disponíveis para revisão.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-start gap-2 rounded-2xl border border-ice/15 bg-ice/5 p-3">
+                  <InfoIcon
+                    size={
+                      14
+                    }
+                    className="mt-0.5 shrink-0 text-ice"
+                  />
+
+                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                    A revisão histórica não movimenta o estoque atual e nenhuma dose será confirmada automaticamente.
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={
+                      revisarRetroativoAgora
+                    }
+                    className="flex w-full items-center justify-between rounded-2xl bg-ice px-4 py-3.5 text-left text-void transition-all active:scale-[0.99]"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">
+                        Revisar histórico agora
+                      </p>
+
+                      <p className="mt-0.5 text-[9px] opacity-70">
+                        Abrir a revisão retroativa assistida
+                      </p>
+                    </div>
+
+                    <ChevronRight
+                      size={
+                        18
+                      }
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      revisarRetroativoDepois
+                    }
+                    className="w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 text-xs font-semibold text-ink-muted transition-all active:scale-[0.99]"
+                  >
+                    Fazer depois
+                  </button>
+                </div>
+
+                <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                  Você poderá revisar o período depois pela Linha do Tempo.
+                </p>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {retroactivePreview && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Fechar revisão do cadastro retroativo"
+                initial={{
+                  opacity:
+                    0,
+                }}
+                animate={{
+                  opacity:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+                }}
+                onClick={
+                  () =>
+                    setRetroactivePreview(
+                      null
+                    )
+                }
+                className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{
+                  opacity:
+                    0,
+
+                  y:
+                    28,
+
+                  scale:
+                    0.98,
+                }}
+                animate={{
+                  opacity:
+                    1,
+
+                  y:
+                    0,
+
+                  scale:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+
+                  y:
+                    28,
+
+                  scale:
+                    0.98,
+                }}
+                transition={{
+                  duration:
+                    0.18,
+                }}
+                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[120] mx-auto max-w-lg rounded-[30px] border border-ice/25 bg-surface p-5 shadow-2xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                    <Clock
+                      size={
+                        20
+                      }
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                      Cadastro retroativo
+                    </p>
+
+                    <h3 className="mt-1 text-base font-bold text-ink-primary">
+                      Este estoque começou antes de hoje
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+                      A aquisição/retirada informada foi em{" "}
+                      <strong className="text-ink-primary">
+                        {
+                          estoqueDataReferenciaTexto
+                        }
+                      </strong>
+                      . O Vault encontrou{" "}
+                      <strong className="text-ink-primary">
+                        {
+                          retroactivePreview
+                            .analise
+                            .dosesProgramadas
+                        }{" "}
+                        dose(s) programada(s)
+                      </strong>{" "}
+                      em{" "}
+                      {
+                        retroactivePreview
+                          .analise
+                          .diasDecorridos
+                      }{" "}
+                      dia(s) completos anteriores a hoje.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-surface-border bg-surface-raised p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+                        Estoque na aquisição
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-ink-primary">
+                        {new Intl.NumberFormat(
+                          "pt-BR",
+                          {
+                            maximumFractionDigits:
+                              2,
+                          }
+                        ).format(
+                          retroactivePreview
+                            .analise
+                            .estoqueInicial
+                        )}{" "}
+                        {
+                          retroactivePreview
+                            .unidadeLabel
+                        }
+                      </p>
+                    </div>
+
+                    <ChevronRight
+                      size={
+                        18
+                      }
+                      className="text-ink-faint"
+                    />
+
+                    <div className="text-right">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-ice">
+                        Estimativa hoje
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-ice">
+                        {new Intl.NumberFormat(
+                          "pt-BR",
+                          {
+                            maximumFractionDigits:
+                              2,
+                          }
+                        ).format(
+                          retroactivePreview
+                            .analise
+                            .estoqueEstimadoAtual
+                        )}{" "}
+                        {
+                          retroactivePreview
+                            .unidadeLabel
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 border-t border-surface-border/60 pt-3">
+                    <p className="text-[10px] leading-relaxed text-ink-muted">
+                      Consumo estimado:{" "}
+                      <strong className="text-ink-primary">
+                        {new Intl.NumberFormat(
+                          "pt-BR",
+                          {
+                            maximumFractionDigits:
+                              2,
+                          }
+                        ).format(
+                          retroactivePreview
+                            .analise
+                            .quantidadeEstimadaConsumida
+                        )}{" "}
+                        {
+                          retroactivePreview
+                            .unidadeLabel
+                        }
+                      </strong>
+                      .
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-3">
+                  <AlertTriangle
+                    size={
+                      15
+                    }
+                    className="mt-0.5 shrink-0 text-amber-400"
+                  />
+
+                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                    Isso é uma estimativa de estoque, não um histórico de adesão. O Vault{" "}
+                    <strong className="text-ink-primary">
+                      não marcará doses passadas como tomadas
+                    </strong>
+                    .
+                  </p>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={
+                      () => {
+                        retroactiveDecisionRef.current =
+                          {
+                            signature:
+                              retroactivePreview.signature,
+
+                            mode:
+                              "adjust",
+                          };
+
+                        setRetroactivePreview(
+                          null
+                        );
+
+                        trigger(
+                          "success"
+                        );
+
+                        handleSubmit();
+                      }
+                    }
+                    className="flex w-full items-center justify-between rounded-2xl bg-ice px-4 py-3.5 text-left text-void transition-all active:scale-[0.99]"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">
+                        Ajustar estoque retroativamente
+                      </p>
+
+                      <p className="mt-0.5 text-[9px] opacity-70">
+                        Usar o saldo estimado para hoje
+                      </p>
+                    </div>
+
+                    <CheckCircle2
+                      size={
+                        18
+                      }
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      () => {
+                        retroactiveDecisionRef.current =
+                          {
+                            signature:
+                              retroactivePreview.signature,
+
+                            mode:
+                              "keep",
+                          };
+
+                        setRetroactivePreview(
+                          null
+                        );
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        handleSubmit();
+                      }
+                    }
+                    className="flex w-full items-center justify-between rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 text-left text-ink-primary transition-all active:scale-[0.99]"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">
+                        Manter quantidade informada
+                      </p>
+
+                      <p className="mt-0.5 text-[9px] text-ink-muted">
+                        A quantidade digitada representa meu saldo atual
+                      </p>
+                    </div>
+
+                    <Package
+                      size={
+                        18
+                      }
+                      className="text-ink-muted"
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      () => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        setRetroactivePreview(
+                          null
+                        );
+
+                        window.setTimeout(
+                          () => {
+                            document
+                              .querySelector(
+                                '[name="estoqueDataReferenciaTexto"]'
+                              )
+                              ?.scrollIntoView({
+                                behavior:
+                                  "smooth",
+
+                                block:
+                                  "center",
+                              });
+                          },
+                          80
+                        );
+                      }
+                    }
+                    className="w-full rounded-2xl px-4 py-3 text-xs font-semibold text-ink-muted transition-colors hover:text-ink-primary"
+                  >
+                    Revisar data ou estoque
+                  </button>
+                </div>
+
+                <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                  Dias anteriores ficarão disponíveis na Linha do Tempo, mas só entrarão como tomada ou ignorada quando houver confirmação real.
+                </p>
               </motion.div>
             </>
           )}

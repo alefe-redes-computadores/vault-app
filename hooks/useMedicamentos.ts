@@ -58,14 +58,9 @@ export function useMedicamentos() {
           return [];
         }
 
-        return db.medicamentos
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
+        return medicamentosRepository.getAll(
+          activePersonId
+        );
       },
       [
         activePersonId,

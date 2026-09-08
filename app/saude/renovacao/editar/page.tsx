@@ -1293,7 +1293,11 @@ function EditarRenovacaoContent() {
                       "vibrate"
                     );
 
-                    router.back();
+                    router.replace(
+                    `/saude/renovacao/detalhes?id=${encodeURIComponent(
+                      id
+                    )}`
+                  );
                   }
                 }
                 aria-label="Voltar"

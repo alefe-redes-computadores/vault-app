@@ -68,19 +68,61 @@ export interface HealthAlert {
 
 export interface EstoqueInfo {
   consumoDiario: number;
+
   quantidadeInicial: number;
+
   quantidadeRestante: number;
+
   saldoRegistrado: number;
+
   estoqueNegativo: boolean;
+
   diasRestantes:
     number | null;
+
   dosesRestantes: number;
+
   unidade: string;
+
+  /**
+   * Compatibilidade com consumidores antigos.
+   */
   textoEstoque: string;
+
   isSOS: boolean;
+
   temFrequenciaConfigurada: boolean;
+
   estimativaDosesDisponivel: boolean;
+
   temUnidadePorDoseConfigurada: boolean;
+
+  /**
+   * Apresentação estruturada para UI.
+   */
+  textoDose:
+    string | null;
+
+  doseQuantidade:
+    number | null;
+
+  doseUnidade:
+    string;
+
+  textoEstoquePrincipal:
+    string;
+
+  textoEstoqueSecundario:
+    string | null;
+
+  gotasPorMl:
+    number | null;
+
+  gotasDisponiveis:
+    number | null;
+
+  mlDisponiveis:
+    number | null;
 }
 
 // ============================================================
@@ -599,6 +641,177 @@ function isMedicamentoGotas(
   );
 }
 
+function formatEstoqueNumero(
+  value:
+    number
+): string {
+  if (
+    !Number.isFinite(
+      value
+    )
+  ) {
+    return "0";
+  }
+
+  if (
+    Number.isInteger(
+      value
+    )
+  ) {
+    return String(
+      value
+    );
+  }
+
+  return value
+    .toFixed(
+      2
+    )
+    .replace(
+      /\.00$/,
+      ""
+    )
+    .replace(
+      /(\.\d)0$/,
+      "$1"
+    )
+    .replace(
+      ".",
+      ","
+    );
+}
+
+function pluralDoseUnit(
+  singular:
+    string,
+  plural:
+    string,
+  quantity:
+    number
+): string {
+  return quantity ===
+    1
+    ? singular
+    : plural;
+}
+
+export function getMedicamentoDoseUnitLabel(
+  med:
+    Medicamento,
+  quantity:
+    number = 2
+): string {
+  if (
+    isMedicamentoGotas(
+      med
+    )
+  ) {
+    return pluralDoseUnit(
+      "gota",
+      "gotas",
+      quantity
+    );
+  }
+
+  const formato =
+    String(
+      med.formato ||
+        med.forma_farmaceutica ||
+        ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    formato.includes(
+      "caps"
+    )
+  ) {
+    return pluralDoseUnit(
+      "cápsula",
+      "cápsulas",
+      quantity
+    );
+  }
+
+  if (
+    formato.includes(
+      "comprim"
+    ) ||
+    formato.includes(
+      "partido"
+    ) ||
+    formato.includes(
+      "inteiro"
+    )
+  ) {
+    return pluralDoseUnit(
+      "comprimido",
+      "comprimidos",
+      quantity
+    );
+  }
+
+  if (
+    formato.includes(
+      "adesivo"
+    )
+  ) {
+    return pluralDoseUnit(
+      "adesivo",
+      "adesivos",
+      quantity
+    );
+  }
+
+  const estoqueUnit =
+    String(
+      med.estoque_unidade_medida ||
+        ""
+    ).trim();
+
+  if (
+    estoqueUnit
+  ) {
+    return estoqueUnit;
+  }
+
+  return pluralDoseUnit(
+    "unidade",
+    "unidades",
+    quantity
+  );
+}
+
+export function formatMedicamentoDose(
+  med:
+    Medicamento,
+  quantity?:
+    number | null
+): string | null {
+  const resolved =
+    Number(
+      quantity
+    );
+
+  if (
+    !Number.isFinite(
+      resolved
+    ) ||
+    resolved <=
+      0
+  ) {
+    return null;
+  }
+
+  return `${formatEstoqueNumero(
+    resolved
+  )} ${getMedicamentoDoseUnitLabel(
+    med,
+    resolved
+  )}`;
+}
+
 function normalizeHorarios(
   horarios:
     string[] | undefined
@@ -678,7 +891,7 @@ export function computeEstoqueInfo(
     med.estoque_unidade_medida ||
     "unidade(s)";
 
-  const unidade =
+  const unidadeNormalizada =
     unidadeOriginal
       .trim()
       .toLowerCase();
@@ -686,6 +899,26 @@ export function computeEstoqueInfo(
   const isGotas =
     isMedicamentoGotas(
       med
+    );
+
+  const gotasPorMl =
+    isGotas
+      ? getGotasPorMl(
+          med
+        )
+      : null;
+
+  const doseUnidade =
+    getMedicamentoDoseUnitLabel(
+      med,
+      unidadePorDose ??
+        2
+    );
+
+  const textoDose =
+    formatMedicamentoDose(
+      med,
+      unidadePorDose
     );
 
   let consumoDiario =
@@ -701,13 +934,103 @@ export function computeEstoqueInfo(
   let estimativaDosesDisponivel =
     temUnidadePorDoseConfigurada;
 
-  let textoEstoque =
-    `${quantidadeRestante} ${unidadeOriginal}`;
+  let gotasDisponiveis:
+    number | null =
+    null;
+
+  let mlDisponiveis:
+    number | null =
+    null;
+
+  const textoEstoquePrincipal =
+    `${formatEstoqueNumero(
+      quantidadeRestante
+    )} ${unidadeOriginal}`;
+
+  let textoEstoqueSecundario:
+    string | null =
+    null;
+
+  if (
+    isGotas &&
+    unidadeNormalizada.includes(
+      "ml"
+    )
+  ) {
+    mlDisponiveis =
+      quantidadeRestante;
+
+    if (
+      gotasPorMl !==
+      null
+    ) {
+      gotasDisponiveis =
+        quantidadeRestante *
+        gotasPorMl;
+    }
+  }
+
+  if (
+    isGotas &&
+    unidadeNormalizada.includes(
+      "frasco"
+    )
+  ) {
+    const mlTotal =
+      Number(
+        med.estoque_ml_total
+      );
+
+    if (
+      Number.isFinite(
+        mlTotal
+      ) &&
+      mlTotal >
+        0
+    ) {
+      mlDisponiveis =
+        mlTotal;
+
+      if (
+        gotasPorMl !==
+        null
+      ) {
+        gotasDisponiveis =
+          mlTotal *
+          gotasPorMl;
+      }
+    }
+  }
 
   if (
     unidadePorDose ===
     null
   ) {
+    estimativaDosesDisponivel =
+      false;
+
+    if (
+      gotasDisponiveis !==
+      null
+    ) {
+      textoEstoqueSecundario =
+        `≈ ${formatEstoqueNumero(
+          gotasDisponiveis
+        )} gotas disponíveis`;
+    } else if (
+      isGotas &&
+      mlDisponiveis !==
+        null
+    ) {
+      textoEstoqueSecundario =
+        "Conversão em gotas indisponível";
+    }
+
+    const textoEstoque =
+      textoEstoqueSecundario
+        ? `${textoEstoquePrincipal} · ${textoEstoqueSecundario}`
+        : textoEstoquePrincipal;
+
     return {
       consumoDiario:
         0,
@@ -741,31 +1064,36 @@ export function computeEstoqueInfo(
 
       temUnidadePorDoseConfigurada:
         false,
+
+      textoDose,
+
+      doseQuantidade:
+        null,
+
+      doseUnidade,
+
+      textoEstoquePrincipal,
+
+      textoEstoqueSecundario,
+
+      gotasPorMl,
+
+      gotasDisponiveis,
+
+      mlDisponiveis,
     };
   }
 
   if (
-    isGotas &&
-    unidade.includes(
-      "ml"
-    )
+    isGotas
   ) {
-    const gotasPorMl =
-      getGotasPorMl(
-        med
-      );
-
     if (
-      gotasPorMl !==
+      gotasDisponiveis !==
       null
     ) {
-      const totalGotas =
-        quantidadeRestante *
-        gotasPorMl;
-
       dosesRestantes =
         Math.floor(
-          totalGotas /
+          gotasDisponiveis /
             unidadePorDose
         );
 
@@ -782,61 +1110,32 @@ export function computeEstoqueInfo(
         ) {
           diasRestantes =
             Math.floor(
-              totalGotas /
+              gotasDisponiveis /
                 consumoDiario
             );
         }
       }
 
-      textoEstoque =
-        `${quantidadeRestante} ${unidadeOriginal} (aprox. ${dosesRestantes} dose${
+      textoEstoqueSecundario =
+        `≈ ${formatEstoqueNumero(
+          gotasDisponiveis
+        )} gotas · ≈ ${dosesRestantes} dose${
           dosesRestantes ===
           1
             ? ""
             : "s"
-        })`;
-    } else {
-      estimativaDosesDisponivel =
-        false;
-
-      dosesRestantes =
-        0;
-
-      diasRestantes =
-        null;
-    }
-  } else if (
-    isGotas &&
-    unidade.includes(
-      "frasco"
-    )
-  ) {
-    const gotasPorMl =
-      getGotasPorMl(
-        med
-      );
-
-    const mlTotal =
-      Number(
-        med.estoque_ml_total
-      );
-
-    if (
-      gotasPorMl !==
-        null &&
-      Number.isFinite(
-        mlTotal
-      ) &&
-      mlTotal >
-        0
+        }`;
+    } else if (
+      unidadeNormalizada.includes(
+        "gota"
+      )
     ) {
-      const totalGotas =
-        mlTotal *
-        gotasPorMl;
+      gotasDisponiveis =
+        quantidadeRestante;
 
       dosesRestantes =
         Math.floor(
-          totalGotas /
+          quantidadeRestante /
             unidadePorDose
         );
 
@@ -853,19 +1152,19 @@ export function computeEstoqueInfo(
         ) {
           diasRestantes =
             Math.floor(
-              totalGotas /
+              quantidadeRestante /
                 consumoDiario
             );
         }
       }
 
-      textoEstoque =
-        `${quantidadeRestante} ${unidadeOriginal} (aprox. ${dosesRestantes} dose${
+      textoEstoqueSecundario =
+        `≈ ${dosesRestantes} dose${
           dosesRestantes ===
           1
             ? ""
             : "s"
-        })`;
+        }`;
     } else {
       estimativaDosesDisponivel =
         false;
@@ -875,6 +1174,14 @@ export function computeEstoqueInfo(
 
       diasRestantes =
         null;
+
+      if (
+        mlDisponiveis !==
+        null
+      ) {
+        textoEstoqueSecundario =
+          "Conversão em gotas indisponível";
+      }
     }
   } else {
     dosesRestantes =
@@ -901,7 +1208,20 @@ export function computeEstoqueInfo(
           );
       }
     }
+
+    textoEstoqueSecundario =
+      `≈ ${dosesRestantes} dose${
+        dosesRestantes ===
+        1
+          ? ""
+          : "s"
+      }`;
   }
+
+  const textoEstoque =
+    textoEstoqueSecundario
+      ? `${textoEstoquePrincipal} · ${textoEstoqueSecundario}`
+      : textoEstoquePrincipal;
 
   return {
     consumoDiario,
@@ -931,6 +1251,23 @@ export function computeEstoqueInfo(
     estimativaDosesDisponivel,
 
     temUnidadePorDoseConfigurada,
+
+    textoDose,
+
+    doseQuantidade:
+      unidadePorDose,
+
+    doseUnidade,
+
+    textoEstoquePrincipal,
+
+    textoEstoqueSecundario,
+
+    gotasPorMl,
+
+    gotasDisponiveis,
+
+    mlDisponiveis,
   };
 }
 
@@ -938,7 +1275,49 @@ export function computeEstoqueInfo(
 // ESTOQUE RETROATIVO
 // ============================================================
 
-export function calcularEstoqueRetroativo(
+export interface EstoqueRetroativoAnalise {
+  estoqueInicial:
+    number;
+
+  estoqueEstimadoAtual:
+    number;
+
+  quantidadeEstimadaConsumida:
+    number;
+
+  dosesProgramadas:
+    number;
+
+  diasDecorridos:
+    number;
+
+  horariosPorDia:
+    number;
+
+  unidadePorDose:
+    number | null;
+
+  aplicavel:
+    boolean;
+
+  limitadoPorEstoque:
+    boolean;
+}
+
+/**
+ * Analisa um possível cadastro retroativo de estoque.
+ *
+ * IMPORTANTE:
+ *
+ * Esta função estima CONSUMO DE ESTOQUE.
+ *
+ * Ela NÃO afirma que as doses foram tomadas e NÃO cria
+ * histórico de adesão.
+ *
+ * O período considera apenas dias completos anteriores a hoje.
+ * Doses do dia atual não são presumidas.
+ */
+export function analisarEstoqueRetroativo(
   quantidadeComprada:
     number,
   dataCompraStr:
@@ -947,28 +1326,60 @@ export function calcularEstoqueRetroativo(
     string[],
   unidadePorDose?:
     number
-): number {
-  if (
-    !Number.isFinite(
+): EstoqueRetroativoAnalise {
+  const estoqueInicial =
+    Number.isFinite(
       quantidadeComprada
-    ) ||
-    quantidadeComprada <=
-      0
-  ) {
-    return Math.max(
-      0,
-      Number.isFinite(
-        quantidadeComprada
-      )
-        ? quantidadeComprada
-        : 0
-    );
-  }
+    )
+      ? Math.max(
+          0,
+          quantidadeComprada
+        )
+      : 0;
+
+  const emptyResult:
+    EstoqueRetroativoAnalise = {
+      estoqueInicial,
+
+      estoqueEstimadoAtual:
+        estoqueInicial,
+
+      quantidadeEstimadaConsumida:
+        0,
+
+      dosesProgramadas:
+        0,
+
+      diasDecorridos:
+        0,
+
+      horariosPorDia:
+        0,
+
+      unidadePorDose:
+        typeof unidadePorDose ===
+          "number" &&
+        Number.isFinite(
+          unidadePorDose
+        ) &&
+        unidadePorDose >
+          0
+          ? unidadePorDose
+          : null,
+
+      aplicavel:
+        false,
+
+      limitadoPorEstoque:
+        false,
+    };
 
   if (
+    estoqueInicial <=
+      0 ||
     !dataCompraStr
   ) {
-    return quantidadeComprada;
+    return emptyResult;
   }
 
   const horarios =
@@ -980,7 +1391,12 @@ export function calcularEstoqueRetroativo(
     horarios.length ===
     0
   ) {
-    return quantidadeComprada;
+    return {
+      ...emptyResult,
+
+      horariosPorDia:
+        0,
+    };
   }
 
   if (
@@ -992,7 +1408,12 @@ export function calcularEstoqueRetroativo(
     unidadePorDose <=
       0
   ) {
-    return quantidadeComprada;
+    return {
+      ...emptyResult,
+
+      horariosPorDia:
+        horarios.length,
+    };
   }
 
   const dataCompra =
@@ -1003,7 +1424,14 @@ export function calcularEstoqueRetroativo(
   if (
     !dataCompra
   ) {
-    return quantidadeComprada;
+    return {
+      ...emptyResult,
+
+      horariosPorDia:
+        horarios.length,
+
+      unidadePorDose,
+    };
   }
 
   const hoje =
@@ -1019,7 +1447,7 @@ export function calcularEstoqueRetroativo(
       hoje
     );
 
-  const diasPassados =
+  const diasDecorridos =
     Math.floor(
       (
         hojeDay -
@@ -1029,32 +1457,112 @@ export function calcularEstoqueRetroativo(
     );
 
   if (
-    diasPassados <=
+    diasDecorridos <=
     0
   ) {
-    return quantidadeComprada;
+    return {
+      ...emptyResult,
+
+      horariosPorDia:
+        horarios.length,
+
+      unidadePorDose,
+
+      diasDecorridos:
+        Math.max(
+          0,
+          diasDecorridos
+        ),
+    };
   }
 
-  const consumoDiario =
-    horarios.length *
+  const dosesProgramadas =
+    diasDecorridos *
+    horarios.length;
+
+  const consumoCalculado =
+    dosesProgramadas *
     unidadePorDose;
 
-  const totalConsumido =
-    diasPassados *
-    consumoDiario;
+  const quantidadeEstimadaConsumida =
+    Math.min(
+      estoqueInicial,
+      consumoCalculado
+    );
 
-  const saldoRestante =
-    quantidadeComprada -
-    totalConsumido;
+  const estoqueEstimadoAtual =
+    Math.max(
+      0,
+      estoqueInicial -
+        quantidadeEstimadaConsumida
+    );
 
-  return Math.max(
-    0,
-    Number(
-      saldoRestante.toFixed(
-        4
-      )
-    )
-  );
+  return {
+    estoqueInicial:
+      Number(
+        estoqueInicial.toFixed(
+          4
+        )
+      ),
+
+    estoqueEstimadoAtual:
+      Number(
+        estoqueEstimadoAtual.toFixed(
+          4
+        )
+      ),
+
+    quantidadeEstimadaConsumida:
+      Number(
+        quantidadeEstimadaConsumida.toFixed(
+          4
+        )
+      ),
+
+    dosesProgramadas,
+
+    diasDecorridos,
+
+    horariosPorDia:
+      horarios.length,
+
+    unidadePorDose,
+
+    aplicavel:
+      dosesProgramadas >
+        0 &&
+      quantidadeEstimadaConsumida >
+        0,
+
+    limitadoPorEstoque:
+      consumoCalculado >
+      estoqueInicial,
+  };
+}
+
+/**
+ * Compatibilidade com consumidores existentes.
+ *
+ * Para fluxos novos, prefira analisarEstoqueRetroativo()
+ * para que a estimativa possa ser explicada ao usuário antes
+ * de ser aplicada.
+ */
+export function calcularEstoqueRetroativo(
+  quantidadeComprada:
+    number,
+  dataCompraStr:
+    string,
+  horariosDiarios:
+    string[],
+  unidadePorDose?:
+    number
+): number {
+  return analisarEstoqueRetroativo(
+    quantidadeComprada,
+    dataCompraStr,
+    horariosDiarios,
+    unidadePorDose
+  ).estoqueEstimadoAtual;
 }
 
 // ============================================================

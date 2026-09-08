@@ -926,7 +926,9 @@ function TratamentoContent() {
                 onClick={() => {
                   trigger("vibrate");
 
-                  router.back();
+                  router.replace(
+                      "/saude/tratamentos"
+                    );
                 }}
                 aria-label="Voltar"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"

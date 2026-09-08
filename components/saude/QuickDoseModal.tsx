@@ -53,6 +53,10 @@ import {
 } from "@/lib/health-utils";
 
 import {
+  assessDoseQuantitySafety,
+} from "@/lib/health-intelligence/dose-quantity-safety";
+
+import {
   useHapticFeedback,
 } from "@/lib/haptics";
 
@@ -200,6 +204,85 @@ function timeToMinutes(
       60 +
     minute
   );
+}
+
+function getDelayMinutes(
+  scheduledTime: string
+): number {
+  const scheduled =
+    timeToMinutes(
+      scheduledTime
+    );
+
+  const current =
+    timeToMinutes(
+      getCurrentTime()
+    );
+
+  if (
+    !Number.isFinite(
+      scheduled
+    ) ||
+    !Number.isFinite(
+      current
+    )
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    current -
+      scheduled
+  );
+}
+
+function buildLocalTakenAtIso(
+  date: string,
+  time: string
+): string {
+  const [
+    year,
+    month,
+    day,
+  ] =
+    date
+      .split("-")
+      .map(Number);
+
+  const [
+    hour,
+    minute,
+  ] =
+    time
+      .split(":")
+      .map(Number);
+
+  if (
+    !year ||
+    !month ||
+    !day ||
+    !Number.isInteger(
+      hour
+    ) ||
+    !Number.isInteger(
+      minute
+    )
+  ) {
+    throw new Error(
+      "Data ou horário da tomada inválido."
+    );
+  }
+
+  return new Date(
+    year,
+    month - 1,
+    day,
+    hour,
+    minute,
+    0,
+    0
+  ).toISOString();
 }
 
 // ============================================================
@@ -647,6 +730,42 @@ export function QuickDoseModal({
   ] =
     useState(false);
 
+  const [
+    lateDoseDecisionOpen,
+    setLateDoseDecisionOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    recentDoseQuantities,
+    setRecentDoseQuantities,
+  ] =
+    useState<
+      number[]
+    >(
+      []
+    );
+
+  const [
+    quantitySafetyOpen,
+    setQuantitySafetyOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    acceptedUnusualQuantity,
+    setAcceptedUnusualQuantity,
+  ] =
+    useState<
+      number | null
+    >(
+      null
+    );
+
   // ==========================================================
   // MEDICAMENTO SELECIONADO
   // ==========================================================
@@ -726,6 +845,112 @@ export function QuickDoseModal({
       selectedMed
     );
 
+  useEffect(
+    () => {
+      let cancelled =
+        false;
+
+      const loadHistory =
+        async () => {
+          if (
+            !activePersonId ||
+            !selectedMed?.id
+          ) {
+            setRecentDoseQuantities(
+              []
+            );
+
+            return;
+          }
+
+          try {
+            const quantities =
+              await doseLogsRepository.getRecentQuantities(
+                activePersonId,
+                selectedMed.id,
+                20
+              );
+
+            if (
+              !cancelled
+            ) {
+              setRecentDoseQuantities(
+                quantities
+              );
+            }
+          } catch (
+            error
+          ) {
+            console.error(
+              "[QuickDoseModal] Falha ao carregar histórico de quantidades:",
+              error
+            );
+
+            if (
+              !cancelled
+            ) {
+              setRecentDoseQuantities(
+                []
+              );
+            }
+          }
+        };
+
+      void loadHistory();
+
+      return () => {
+        cancelled =
+          true;
+      };
+    },
+    [
+      activePersonId,
+      selectedMed?.id,
+    ]
+  );
+
+  const quantitySafetyAssessment =
+    useMemo(
+      () =>
+        assessDoseQuantitySafety({
+          quantity:
+            doseQtd,
+
+          configuredQuantity:
+            selectedMed
+              ?.estoque_unidade_por_dose,
+
+          historicalQuantities:
+            recentDoseQuantities,
+
+          unitLabel:
+            selectedMed
+              ?.estoque_unidade_medida ||
+            (
+              String(
+                selectedMed?.formato ||
+                  ""
+              )
+                .toLowerCase()
+                .includes(
+                  "gota"
+                )
+                ? "gota(s)"
+                : "unidade(s)"
+            ),
+        }),
+      [
+        doseQtd,
+        selectedMed
+          ?.estoque_unidade_por_dose,
+        selectedMed
+          ?.estoque_unidade_medida,
+        selectedMed
+          ?.formato,
+        recentDoseQuantities,
+      ]
+    );
+
   // ==========================================================
   // RESET / ABERTURA
   // ==========================================================
@@ -740,6 +965,18 @@ export function QuickDoseModal({
 
       setSearchQuery(
         ""
+      );
+
+      setLateDoseDecisionOpen(
+        false
+      );
+
+      setQuantitySafetyOpen(
+        false
+      );
+
+      setAcceptedUnusualQuantity(
+        null
       );
 
       if (
@@ -892,6 +1129,14 @@ export function QuickDoseModal({
       setDoseMedId(
         medicamento.id
       );
+
+      setQuantitySafetyOpen(
+        false
+      );
+
+      setAcceptedUnusualQuantity(
+        null
+      );
     };
 
   const handleSelectSchedule =
@@ -911,6 +1156,10 @@ export function QuickDoseModal({
 
       setDoseHora(
         horario
+      );
+
+      setLateDoseDecisionOpen(
+        false
       );
     };
 
@@ -983,6 +1232,34 @@ export function QuickDoseModal({
         return;
       }
 
+      if (
+        quantitySafetyOpen
+      ) {
+        trigger(
+          "vibrate"
+        );
+
+        setQuantitySafetyOpen(
+          false
+        );
+
+        return;
+      }
+
+      if (
+        lateDoseDecisionOpen
+      ) {
+        trigger(
+          "vibrate"
+        );
+
+        setLateDoseDecisionOpen(
+          false
+        );
+
+        return;
+      }
+
       trigger(
         "vibrate"
       );
@@ -995,7 +1272,14 @@ export function QuickDoseModal({
   // ==========================================================
 
   const handleSalvar =
-    async () => {
+    async (
+      options?: {
+        tomadoEm?: string;
+        status?: "taken" | "ignored";
+        skipLatePrompt?: boolean;
+        skipQuantityGuard?: boolean;
+      }
+    ) => {
       if (
         isSaving
       ) {
@@ -1068,8 +1352,83 @@ export function QuickDoseModal({
         return;
       }
 
+      const requestedStatus =
+        options?.status ??
+        "taken";
+
+      const quantityAlreadyAccepted =
+        acceptedUnusualQuantity ===
+          doseQtd;
+
+      if (
+        requestedStatus ===
+          "taken" &&
+        quantitySafetyAssessment.level !==
+          "normal" &&
+        !options?.skipQuantityGuard &&
+        !quantityAlreadyAccepted
+      ) {
+        trigger(
+          quantitySafetyAssessment.level ===
+            "high"
+            ? "error"
+            : "vibrate"
+        );
+
+        setQuantitySafetyOpen(
+          true
+        );
+
+        return;
+      }
+
+      const delayMinutes =
+        doseMode ===
+        "scheduled"
+          ? getDelayMinutes(
+              doseHora
+            )
+          : 0;
+
+      /*
+       * Só perguntamos quando:
+       *
+       * - é dose programada;
+       * - ainda não estava tomada;
+       * - passaram mais de 15 minutos;
+       * - a chamada ainda não veio de uma decisão do usuário.
+       */
+      if (
+        doseMode ===
+          "scheduled" &&
+        !scheduledAlreadyTaken &&
+        requestedStatus ===
+          "taken" &&
+        !options?.skipLatePrompt &&
+        delayMinutes >
+          15
+      ) {
+        trigger(
+          "vibrate"
+        );
+
+        setLateDoseDecisionOpen(
+          true
+        );
+
+        return;
+      }
+
       setIsSaving(
         true
+      );
+
+      setLateDoseDecisionOpen(
+        false
+      );
+
+      setQuantitySafetyOpen(
+        false
       );
 
       trigger(
@@ -1102,12 +1461,27 @@ export function QuickDoseModal({
               doseHora,
 
             status:
-              "taken",
+              requestedStatus,
 
             quantidade:
               doseQtd,
+
+            tomadoEm:
+              requestedStatus ===
+                "taken"
+                ? options?.tomadoEm
+                : undefined,
           });
         } else {
+          if (
+            requestedStatus ===
+            "ignored"
+          ) {
+            throw new Error(
+              "Uma tomada avulsa não pode ser marcada como não tomada."
+            );
+          }
+
           /*
            * SOS / esporádica / horário fora da rotina:
            *
@@ -1147,12 +1521,15 @@ export function QuickDoseModal({
         );
 
         showToast(
-          doseMode ===
-            "scheduled"
-            ? scheduledAlreadyTaken
-              ? `Registro de ${selectedMed.nome} atualizado.`
-              : `Dose de ${selectedMed.nome} registrada.`
-            : `Tomada de ${selectedMed.nome} registrada.`,
+          requestedStatus ===
+            "ignored"
+            ? `Dose de ${selectedMed.nome} marcada como não tomada.`
+            : doseMode ===
+                "scheduled"
+              ? scheduledAlreadyTaken
+                ? `Registro de ${selectedMed.nome} atualizado.`
+                : `Dose de ${selectedMed.nome} registrada.`
+              : `Tomada de ${selectedMed.nome} registrada.`,
           "success"
         );
 
@@ -1273,8 +1650,597 @@ export function QuickDoseModal({
           ) =>
             event.stopPropagation()
         }
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[32px] border border-surface-border bg-surface shadow-2xl sm:rounded-[32px]"
+        className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[32px] border border-surface-border bg-surface shadow-2xl sm:rounded-[32px]"
       >
+        <AnimatePresence>
+          {quantitySafetyOpen &&
+            selectedMed && (
+              <motion.div
+                initial={{
+                  opacity:
+                    0,
+                }}
+                animate={{
+                  opacity:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+                }}
+                className="absolute inset-0 z-40 flex items-end bg-void/90 p-3 backdrop-blur-md sm:items-center"
+                onPointerDown={
+                  (
+                    event
+                  ) => {
+                    if (
+                      event.target ===
+                        event.currentTarget &&
+                      !isSaving
+                    ) {
+                      setQuantitySafetyOpen(
+                        false
+                      );
+                    }
+                  }
+                }
+              >
+                <motion.div
+                  initial={{
+                    opacity:
+                      0,
+
+                    y:
+                      24,
+
+                    scale:
+                      0.98,
+                  }}
+                  animate={{
+                    opacity:
+                      1,
+
+                    y:
+                      0,
+
+                    scale:
+                      1,
+                  }}
+                  exit={{
+                    opacity:
+                      0,
+
+                    y:
+                      24,
+
+                    scale:
+                      0.98,
+                  }}
+                  onPointerDown={
+                    (
+                      event
+                    ) =>
+                      event.stopPropagation()
+                  }
+                  className={`w-full rounded-[28px] border p-5 shadow-2xl ${
+                    quantitySafetyAssessment.level ===
+                    "high"
+                      ? "border-coral/40 bg-surface"
+                      : "border-amber-400/30 bg-surface"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                        quantitySafetyAssessment.level ===
+                        "high"
+                          ? "bg-coral/15 text-coral"
+                          : "bg-amber-400/10 text-amber-400"
+                      }`}
+                    >
+                      <AlertTriangle
+                        size={
+                          20
+                        }
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`text-[10px] font-bold uppercase tracking-[0.16em] ${
+                          quantitySafetyAssessment.level ===
+                          "high"
+                            ? "text-coral"
+                            : "text-amber-400"
+                        }`}
+                      >
+                        {quantitySafetyAssessment.level ===
+                        "high"
+                          ? "Confirmação reforçada"
+                          : "Revise a quantidade"}
+                      </p>
+
+                      <h4 className="mt-1 text-base font-bold text-ink-primary">
+                        {quantitySafetyAssessment.level ===
+                        "high"
+                          ? "Essa quantidade está muito fora do seu padrão"
+                          : "Essa quantidade parece incomum"}
+                      </h4>
+
+                      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+                        Você informou{" "}
+                        <strong className="text-ink-primary">
+                          {
+                            formatQuantity(
+                              doseQtd
+                            )
+                          }{" "}
+                          {
+                            quantitySafetyAssessment.unitLabel
+                          }
+                        </strong>
+                        .
+
+                        {quantitySafetyAssessment.baseline !==
+                          null && (
+                          <>
+                            {" "}
+                            A referência encontrada no cadastro ou no seu histórico é de aproximadamente{" "}
+                            <strong className="text-ink-primary">
+                              {
+                                formatQuantity(
+                                  quantitySafetyAssessment.baseline
+                                )
+                              }{" "}
+                              {
+                                quantitySafetyAssessment.unitLabel
+                              }
+                            </strong>
+                            .
+                          </>
+                        )}
+                      </p>
+
+                      {quantitySafetyAssessment.ratio !==
+                        null && (
+                        <p className="mt-2 text-[11px] text-ink-muted">
+                          Aproximadamente{" "}
+                          <strong
+                            className={
+                              quantitySafetyAssessment.level ===
+                              "high"
+                                ? "text-coral"
+                                : "text-amber-400"
+                            }
+                          >
+                            {
+                              quantitySafetyAssessment.ratio
+                            }×
+                          </strong>{" "}
+                          a referência interna encontrada.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {quantitySafetyAssessment.suggestedQuantity !==
+                    null && (
+                    <div className="mt-4 rounded-2xl border border-ice/20 bg-ice/5 p-3.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ice">
+                        Possível erro de digitação
+                      </p>
+
+                      <p className="mt-1 text-xs text-ink-muted">
+                        Você quis dizer{" "}
+                        <strong className="text-ink-primary">
+                          {
+                            formatQuantity(
+                              quantitySafetyAssessment.suggestedQuantity
+                            )
+                          }{" "}
+                          {
+                            quantitySafetyAssessment.unitLabel
+                          }
+                        </strong>
+                        ?
+                      </p>
+
+                      <button
+                        type="button"
+                        disabled={
+                          isSaving
+                        }
+                        onClick={
+                          () => {
+                            const suggestion =
+                              quantitySafetyAssessment.suggestedQuantity;
+
+                            if (
+                              suggestion ===
+                              null
+                            ) {
+                              return;
+                            }
+
+                            trigger(
+                              "success"
+                            );
+
+                            setDoseQtd(
+                              suggestion
+                            );
+
+                            setAcceptedUnusualQuantity(
+                              null
+                            );
+
+                            setQuantitySafetyOpen(
+                              false
+                            );
+                          }
+                        }
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-ice px-3 py-2.5 text-xs font-bold text-void active:scale-[0.99]"
+                      >
+                        <Check
+                          size={
+                            14
+                          }
+                        />
+
+                        Usar{" "}
+                        {
+                          formatQuantity(
+                            quantitySafetyAssessment.suggestedQuantity
+                          )
+                        }
+                      </button>
+                    </div>
+                  )}
+
+                  {quantitySafetyAssessment.level ===
+                    "high" && (
+                    <div className="mt-4 rounded-2xl border border-coral/30 bg-coral/10 p-3.5">
+                      <p className="text-xs font-bold text-coral">
+                        Se essa quantidade já foi tomada
+                      </p>
+
+                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                        O Vault não determina se uma quantidade é clinicamente segura. Se houver suspeita de intoxicação, sintomas importantes ou preocupação com o que foi ingerido, procure orientação imediatamente.
+                      </p>
+
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <a
+                          href="tel:192"
+                          className="flex items-center justify-center rounded-xl border border-coral/30 bg-coral/10 px-3 py-2.5 text-xs font-bold text-coral"
+                        >
+                          SAMU · 192
+                        </a>
+
+                        <a
+                          href="tel:08007226001"
+                          className="flex items-center justify-center rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-center text-xs font-bold text-ink-primary"
+                        >
+                          Disque-Intoxicação
+                        </a>
+                      </div>
+
+                      <p className="mt-2 text-center font-mono text-[9px] text-ink-faint">
+                        0800 722 6001
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mt-4 space-y-2">
+                    <button
+                      type="button"
+                      disabled={
+                        isSaving
+                      }
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setQuantitySafetyOpen(
+                            false
+                          );
+                        }
+                      }
+                      className="w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 text-xs font-semibold text-ink-primary active:scale-[0.99]"
+                    >
+                      Revisar quantidade
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isSaving
+                      }
+                      onClick={
+                        () => {
+                          setAcceptedUnusualQuantity(
+                            doseQtd
+                          );
+
+                          setQuantitySafetyOpen(
+                            false
+                          );
+
+                          void handleSalvar({
+                            skipQuantityGuard:
+                              true,
+                          });
+                        }
+                      }
+                      className={`w-full rounded-2xl border px-4 py-3 text-xs font-bold active:scale-[0.99] ${
+                        quantitySafetyAssessment.level ===
+                        "high"
+                          ? "border-coral/40 bg-coral/15 text-coral"
+                          : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                      }`}
+                    >
+                      Confirmar{" "}
+                      {
+                        formatQuantity(
+                          doseQtd
+                        )
+                      }{" "}
+                      {
+                        quantitySafetyAssessment.unitLabel
+                      }
+                    </button>
+                  </div>
+
+                  <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                    Este alerta compara apenas seu cadastro e seu histórico. Não representa limite clínico ou toxicológico.
+                  </p>
+                </motion.div>
+              </motion.div>
+            )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {lateDoseDecisionOpen &&
+            selectedMed &&
+            doseMode ===
+              "scheduled" && (
+              <motion.div
+                initial={{
+                  opacity:
+                    0,
+                }}
+                animate={{
+                  opacity:
+                    1,
+                }}
+                exit={{
+                  opacity:
+                    0,
+                }}
+                className="absolute inset-0 z-30 flex items-end bg-void/80 p-3 backdrop-blur-sm sm:items-center"
+                onClick={
+                  () =>
+                    setLateDoseDecisionOpen(
+                      false
+                    )
+                }
+              >
+                <motion.div
+                  initial={{
+                    opacity:
+                      0,
+
+                    y:
+                      20,
+
+                    scale:
+                      0.98,
+                  }}
+                  animate={{
+                    opacity:
+                      1,
+
+                    y:
+                      0,
+
+                    scale:
+                      1,
+                  }}
+                  exit={{
+                    opacity:
+                      0,
+
+                    y:
+                      20,
+
+                    scale:
+                      0.98,
+                  }}
+                  onClick={
+                    (
+                      event
+                    ) =>
+                      event.stopPropagation()
+                  }
+                  className="w-full rounded-[26px] border border-surface-border bg-surface-raised p-5 shadow-2xl"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400">
+                      <Clock
+                        size={
+                          20
+                        }
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-400">
+                        Dose atrasada
+                      </p>
+
+                      <h4 className="mt-1 text-base font-bold text-ink-primary">
+                        Quando você tomou?
+                      </h4>
+
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                        {
+                          selectedMed.nome
+                        }{" "}
+                        estava programado para{" "}
+                        <strong className="text-ink-primary">
+                          {
+                            doseHora
+                          }
+                        </strong>
+                        . O Vault usa sua resposta para diferenciar atraso na tomada de atraso apenas no registro.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-2">
+                    <button
+                      type="button"
+                      disabled={
+                        isSaving
+                      }
+                      onClick={
+                        () =>
+                          handleSalvar({
+                            tomadoEm:
+                              buildLocalTakenAtIso(
+                                today,
+                                doseHora
+                              ),
+
+                            status:
+                              "taken",
+
+                            skipLatePrompt:
+                              true,
+                          })
+                      }
+                      className="flex w-full items-center gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3.5 text-left transition-all active:scale-[0.99]"
+                    >
+                      <CheckCircle2
+                        size={
+                          18
+                        }
+                        className="shrink-0 text-emerald-400"
+                      />
+
+                      <span>
+                        <span className="block text-sm font-semibold text-ink-primary">
+                          Tomei às{" "}
+                          {
+                            doseHora
+                          }
+                        </span>
+
+                        <span className="mt-0.5 block text-[10px] text-ink-muted">
+                          Só esqueci de registrar no Vault.
+                        </span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isSaving
+                      }
+                      onClick={
+                        () =>
+                          handleSalvar({
+                            tomadoEm:
+                              new Date()
+                                .toISOString(),
+
+                            status:
+                              "taken",
+
+                            skipLatePrompt:
+                              true,
+                          })
+                      }
+                      className="flex w-full items-center gap-3 rounded-2xl border border-ice/25 bg-ice/10 p-3.5 text-left transition-all active:scale-[0.99]"
+                    >
+                      <Timer
+                        size={
+                          18
+                        }
+                        className="shrink-0 text-ice"
+                      />
+
+                      <span>
+                        <span className="block text-sm font-semibold text-ink-primary">
+                          Tomei agora ·{" "}
+                          {
+                            getCurrentTime()
+                          }
+                        </span>
+
+                        <span className="mt-0.5 block text-[10px] text-ink-muted">
+                          Registrar a tomada real como atrasada.
+                        </span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        isSaving
+                      }
+                      onClick={
+                        () =>
+                          handleSalvar({
+                            status:
+                              "ignored",
+
+                            skipLatePrompt:
+                              true,
+                          })
+                      }
+                      className="flex w-full items-center gap-3 rounded-2xl border border-coral/25 bg-coral/10 p-3.5 text-left transition-all active:scale-[0.99]"
+                    >
+                      <X
+                        size={
+                          18
+                        }
+                        className="shrink-0 text-coral"
+                      />
+
+                      <span>
+                        <span className="block text-sm font-semibold text-ink-primary">
+                          Não tomei
+                        </span>
+
+                        <span className="mt-0.5 block text-[10px] text-ink-muted">
+                          Marcar esta dose programada como não tomada.
+                        </span>
+                      </span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={
+                      isSaving
+                    }
+                    onClick={
+                      () =>
+                        setLateDoseDecisionOpen(
+                          false
+                        )
+                    }
+                    className="mt-3 w-full rounded-xl py-2.5 text-xs font-semibold text-ink-muted"
+                  >
+                    Voltar
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+        </AnimatePresence>
+
         {/* ==================================================
             HANDLE MOBILE
             ================================================== */}
@@ -1970,7 +2936,8 @@ export function QuickDoseModal({
           <button
             type="button"
             onClick={
-              handleSalvar
+              () =>
+                handleSalvar()
             }
             disabled={
               isSaving ||

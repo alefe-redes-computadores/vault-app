@@ -44,6 +44,35 @@ interface SetDoseStatusInput {
   status: DoseStatus;
 
   quantidade?: number;
+
+  /**
+   * Momento REAL informado para a tomada.
+   *
+   * Exemplo:
+   *
+   * slot programado: 10:00
+   * registro feito: 16:00
+   *
+   * - se tomou às 10:00, enviar 10:00
+   * - se tomou às 16:00, enviar 16:00
+   *
+   * Quando omitido, mantém o comportamento legado:
+   * usa o momento atual.
+   */
+  tomadoEm?: string;
+
+  /**
+   * Controla se esta alteração deve movimentar o saldo atual
+   * do medicamento.
+   *
+   * true / undefined:
+   * comportamento normal do Vault.
+   *
+   * false:
+   * revisão histórica. O DoseLog é persistido e sincronizado,
+   * mas o estoque atual permanece intacto.
+   */
+  adjustStock?: boolean;
 }
 
 interface RegistrarTomadaAvulsaInput {
@@ -196,6 +225,44 @@ function requireDate(
   }
 
   return normalized;
+}
+
+function normalizeTakenAt(
+  value?: string
+): string | undefined {
+  if (
+    value === undefined
+  ) {
+    return undefined;
+  }
+
+  const normalized =
+    value.trim();
+
+  if (
+    !normalized
+  ) {
+    throw new Error(
+      "Horário real da tomada inválido."
+    );
+  }
+
+  const parsed =
+    new Date(
+      normalized
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    throw new Error(
+      "Horário real da tomada inválido."
+    );
+  }
+
+  return parsed.toISOString();
 }
 
 // ============================================================
@@ -721,7 +788,104 @@ export const doseLogsRepository = {
     );
   },
 
-  async getById(
+  /**
+   * Quantidades recentes efetivamente registradas como tomadas.
+   *
+   * Usado exclusivamente para proteção de UX contra
+   * possíveis erros de digitação.
+   */
+  async getRecentQuantities(
+    personId: string,
+    medicamentoId: string,
+    limit: number = 20
+  ): Promise<number[]> {
+    const safePersonId =
+      requirePersonId(
+        personId
+      );
+
+    const safeMedicamentoId =
+      requireMedicamentoId(
+        medicamentoId
+      );
+
+    const safeLimit =
+      Math.min(
+        50,
+        Math.max(
+          1,
+          Math.floor(
+            limit
+          )
+        )
+      );
+
+    const rows =
+      await db.doseLogs
+        .where(
+          "person_id"
+        )
+        .equals(
+          safePersonId
+        )
+        .and(
+          (
+            log
+          ) =>
+            log.medicamento_id ===
+              safeMedicamentoId &&
+            Boolean(
+              log.tomado_em
+            ) &&
+            typeof log.quantidade ===
+              "number" &&
+            Number.isFinite(
+              log.quantidade
+            ) &&
+            log.quantidade >
+              0
+        )
+        .toArray();
+
+    return rows
+      .sort(
+        (
+          first,
+          second
+        ) => {
+          const firstTime =
+            first.tomado_em ||
+            first.updated_at ||
+            first.created_at ||
+            `${first.data || ""}T${first.horario || "00:00"}`;
+
+          const secondTime =
+            second.tomado_em ||
+            second.updated_at ||
+            second.created_at ||
+            `${second.data || ""}T${second.horario || "00:00"}`;
+
+          return secondTime.localeCompare(
+            firstTime
+          );
+        }
+      )
+      .slice(
+        0,
+        safeLimit
+      )
+      .map(
+        (
+          log
+        ) =>
+          Number(
+            log.quantidade
+          )
+      )
+      .reverse();
+  },
+
+    async getById(
     id: string,
     personId: string
   ): Promise<DoseLog | undefined> {
@@ -766,6 +930,8 @@ export const doseLogsRepository = {
     horario,
     status,
     quantidade,
+    tomadoEm,
+    adjustStock = true,
   }: SetDoseStatusInput): Promise<string> {
     const safePersonId =
       requirePersonId(
@@ -786,6 +952,14 @@ export const doseLogsRepository = {
       requireDate(
         data
       );
+
+    const safeTakenAt =
+      status ===
+      "taken"
+        ? normalizeTakenAt(
+            tomadoEm
+          )
+        : undefined;
 
     const user =
       await requireAuthenticatedUser();
@@ -888,11 +1062,20 @@ export const doseLogsRepository = {
                 : -oldStockAmount
               : 0;
 
-          await applyStockDelta(
-            safeMedicamentoId,
-            stockDelta,
-            timestamp
-          );
+          /*
+           * Revisão histórica pode apagar/corrigir o DoseLog
+           * sem alterar um estoque atual que já incorporava
+           * aquele período.
+           */
+          if (
+            adjustStock
+          ) {
+            await applyStockDelta(
+              safeMedicamentoId,
+              stockDelta,
+              timestamp
+            );
+          }
 
           return existing.id;
         }
@@ -1003,10 +1186,13 @@ export const doseLogsRepository = {
               status ===
               "taken"
                 ? (
-                    wasTaken &&
-                    existing?.tomado_em
-                      ? existing.tomado_em
-                      : timestamp
+                    safeTakenAt ??
+                    (
+                      wasTaken &&
+                      existing?.tomado_em
+                        ? existing.tomado_em
+                        : timestamp
+                    )
                   )
                 : undefined,
 
@@ -1050,11 +1236,24 @@ export const doseLogsRepository = {
           doseLogAtualizado
         );
 
-        await applyStockDelta(
-          safeMedicamentoId,
-          stockDelta,
-          timestamp
-        );
+        /*
+         * Registro histórico continua sendo um DoseLog real:
+         *
+         * - entra no histórico;
+         * - sincroniza;
+         * - pode participar das métricas;
+         *
+         * porém pode deliberadamente NÃO alterar o saldo atual.
+         */
+        if (
+          adjustStock
+        ) {
+          await applyStockDelta(
+            safeMedicamentoId,
+            stockDelta,
+            timestamp
+          );
+        }
 
         return doseLogId;
       }

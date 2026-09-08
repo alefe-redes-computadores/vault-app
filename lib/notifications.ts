@@ -720,7 +720,154 @@ export async function reconcilePersistentNotifications(
   renewals: number;
 }> {
   if (
-    !isNativePlatform() ||
+    !isNativePlatform()
+  ) {
+    return {
+      documents: 0,
+      renewals: 0,
+    };
+  }
+
+  const validDocumentIds =
+    new Set(
+      documents
+        .map(
+          (
+            document
+          ) =>
+            document.id?.trim()
+        )
+        .filter(
+          (
+            id
+          ): id is string =>
+            Boolean(
+              id
+            )
+        )
+    );
+
+  const validMedicationIds =
+    new Set(
+      medicamentos
+        .filter(
+          (
+            medicamento
+          ) =>
+            medicamento.status !==
+            "descontinuado"
+        )
+        .map(
+          (
+            medicamento
+          ) =>
+            medicamento.id?.trim()
+        )
+        .filter(
+          (
+            id
+          ): id is string =>
+            Boolean(
+              id
+            )
+        )
+    );
+
+  /*
+   * Antes de reagendar, removemos somente notificações
+   * persistentes gerenciadas por este módulo que já não
+   * correspondem aos dados atuais.
+   *
+   * Notificações de dose e outros tipos NÃO são tocadas aqui.
+   */
+  try {
+    const pending =
+      await LocalNotifications.getPending();
+
+    const orphanedPersistentNotifications =
+      pending.notifications
+        .filter(
+          (
+            notification
+          ) => {
+            const extra =
+              asNotificationExtra(
+                notification.extra
+              );
+
+            if (
+              extra.type ===
+              "document_expiry"
+            ) {
+              const docId =
+                typeof extra.docId ===
+                  "string"
+                  ? extra.docId.trim()
+                  : "";
+
+              return (
+                !docId ||
+                !validDocumentIds.has(
+                  docId
+                )
+              );
+            }
+
+            if (
+              extra.type ===
+              "medication_renewal"
+            ) {
+              const medicamentoId =
+                typeof extra.medicamentoId ===
+                  "string"
+                  ? extra.medicamentoId.trim()
+                  : "";
+
+              return (
+                !medicamentoId ||
+                !validMedicationIds.has(
+                  medicamentoId
+                )
+              );
+            }
+
+            return false;
+          }
+        )
+        .map(
+          (
+            notification
+          ) => ({
+            id:
+              notification.id,
+          })
+        );
+
+    if (
+      orphanedPersistentNotifications.length >
+      0
+    ) {
+      await LocalNotifications.cancel({
+        notifications:
+          orphanedPersistentNotifications,
+      });
+    }
+  } catch (
+    error
+  ) {
+    console.error(
+      "[notifications] Erro ao reconciliar notificações persistentes órfãs:",
+      error
+    );
+  }
+
+  /*
+   * Com a preferência desligada, não criamos novos lembretes.
+   *
+   * A limpeza acima ainda roda para não abandonar órfãos
+   * antigos no aparelho.
+   */
+  if (
     !isNotificationPreferenceEnabled()
   ) {
     return {
@@ -731,7 +878,9 @@ export async function reconcilePersistentNotifications(
 
   const documentTasks =
     documents.flatMap(
-      (document) => {
+      (
+        document
+      ) => {
         const id =
           document.id?.trim();
 
@@ -763,7 +912,9 @@ export async function reconcilePersistentNotifications(
 
   const renewalTasks =
     medicamentos.flatMap(
-      (medicamento) => {
+      (
+        medicamento
+      ) => {
         const id =
           medicamento.id?.trim();
 
@@ -784,7 +935,8 @@ export async function reconcilePersistentNotifications(
             id,
             medicamento.nome,
             renewalDate,
-            medicamento.medico || ""
+            medicamento.medico ||
+              ""
           ),
         ];
       }

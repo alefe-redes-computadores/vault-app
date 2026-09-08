@@ -4,6 +4,11 @@ import type {
   TipoReceita,
 } from "@/lib/types";
 
+import type {
+  MedicationRegulatoryEvaluationContext,
+  MedicationRegulatoryException,
+} from "@/lib/medication-catalog/regulatory";
+
 /**
  * Origem de uma informação usada pelo Medication Intelligence.
  *
@@ -35,6 +40,67 @@ export type MedicationReferenceSource = {
    * Data ISO da última verificação/importação.
    */
   verifiedAt?: string;
+};
+
+/**
+ * Regra regulatória vinculada à referência farmacêutica.
+ *
+ * Essa estrutura é evidência, não interpretação clínica.
+ * Uma regra pode ter vigência histórica e fontes próprias.
+ */
+export type MedicationRegulatoryReference = {
+  vaultPrescriptionType?:
+    TipoReceita;
+
+  regulatoryClass?:
+    string;
+
+  /**
+   * Modelo regulatório oficial quando conhecido.
+   *
+   * Ex.:
+   * "Notificação de Receita A"
+   * "Notificação de Receita B"
+   * "Receita de Controle Especial"
+   *
+   * Não confundir com vaultPrescriptionType, que é apenas
+   * a abstração visual utilizada pelo Vault.
+   */
+  prescriptionModel?:
+    string;
+
+  effectiveFrom?:
+    string;
+
+  effectiveUntil?:
+    string;
+
+  verifiedAt?:
+    string;
+
+  /**
+   * Exceções condicionais associadas a esta regra.
+   *
+   * A presença de uma exceção NÃO significa que ela se aplica.
+   * Ela deve ser avaliada com contexto suficiente.
+   */
+  exceptions?:
+    MedicationRegulatoryException[];
+
+  /**
+   * true significa que pelo menos uma exceção vinculada a esta
+   * regra foi recebida, mas não pôde ser interpretada pelo
+   * contrato estruturado atual.
+   *
+   * Fail-safe:
+   * uma regra nessa condição não pode sustentar acusação de
+   * divergência de receita.
+   */
+  hasMalformedExceptions?:
+    boolean;
+
+  sources:
+    MedicationReferenceSource[];
 };
 
 export type MedicationPresentation = {
@@ -115,6 +181,22 @@ export type MedicationCommercialIdentity = {
  *
  * O catálogo deve representar equivalências conhecidas.
  */
+export type MedicationRegulatoryIdentity =
+  | {
+      referenceType:
+        "product";
+
+      productId:
+        string;
+
+      registrationNumber?:
+        string;
+    }
+  | {
+      referenceType:
+        "substance";
+    };
+
 export type MedicationReference = {
   id: string;
 
@@ -147,7 +229,36 @@ export type MedicationReference = {
 
   presentations?: MedicationPresentation[];
 
+  /**
+   * Tipos de receita vigentes no momento em que a referência
+   * foi hidratada.
+   *
+   * Mantido por compatibilidade com consumidores existentes.
+   * Para validação temporal, prefira regulatoryRules.
+   */
   prescriptionTypes?: TipoReceita[];
+
+  /**
+   * Regras regulatórias conhecidas, inclusive históricas.
+   *
+   * O consumidor deve respeitar effectiveFrom/effectiveUntil.
+   */
+  regulatoryRules?:
+    MedicationRegulatoryReference[];
+
+  /**
+   * Identidade regulatória concreta da referência hidratada.
+   *
+   * Produto:
+   * - productId é o ID real de medication_products;
+   * - registrationNumber só existe quando veio da fonte.
+   *
+   * Substância:
+   * - nunca inventa productId;
+   * - nunca escolhe arbitrariamente um produto relacionado.
+   */
+  regulatoryIdentity?:
+    MedicationRegulatoryIdentity;
 
   pharmaceuticalForms?: string[];
 
@@ -233,6 +344,24 @@ export type MedicationValidationInput = {
   tipoReceita?: TipoReceita;
 
   formato?: string;
+
+  /**
+   * Data ISO da prescrição/receita quando conhecida.
+   *
+   * Permite comparar a classificação selecionada com a regra
+   * que estava vigente naquele momento, em vez de assumir
+   * automaticamente a regra atual.
+   */
+  prescriptionDate?: string;
+
+  /**
+   * Contexto regulatório opcional para avaliar exceções que
+   * dependam do produto, apresentação ou concentração.
+   *
+   * Ausência desse contexto nunca autoriza inferência.
+   */
+  regulatoryContext?:
+    MedicationRegulatoryEvaluationContext;
 };
 
 export type MedicationNormalizedInput = {

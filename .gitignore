@@ -8,3 +8,6 @@ out/
 .env.local
 .env*.local
 .certs/
+
+# Vault — artefatos locais de auditoria do catálogo de medicamentos
+.medication-catalog-audit/
