@@ -43,6 +43,21 @@ export type MedicationReferenceSource = {
 };
 
 /**
+ * Código estruturado do modelo oficial de receituário.
+ *
+ * TipoReceita continua sendo a abstração visual/legada do Vault.
+ */
+export type MedicationRegulatoryPrescriptionModelCode =
+  | "notificacao_a"
+  | "notificacao_b"
+  | "notificacao_b2"
+  | "notificacao_retinoides"
+  | "notificacao_talidomida"
+  | "receita_controle_especial"
+  | "receita_comum"
+  | "other";
+
+/**
  * Regra regulatória vinculada à referência farmacêutica.
  *
  * Essa estrutura é evidência, não interpretação clínica.
@@ -68,6 +83,9 @@ export type MedicationRegulatoryReference = {
    */
   prescriptionModel?:
     string;
+
+  prescriptionModelCode?:
+    MedicationRegulatoryPrescriptionModelCode;
 
   effectiveFrom?:
     string;

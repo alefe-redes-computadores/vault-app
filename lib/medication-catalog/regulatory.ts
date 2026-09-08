@@ -4,6 +4,10 @@ import type {
   TipoReceita,
 } from "@/lib/types";
 
+import type {
+  MedicationRegulatoryPrescriptionModelCode,
+} from "@/lib/medication-intelligence/types";
+
 export type MedicationRegulatoryRule = {
   id: string;
 
@@ -24,6 +28,9 @@ export type MedicationRegulatoryRule = {
    * Deve permanecer separado da abstração visual do Vault.
    */
   prescriptionModel?: string;
+
+  prescriptionModelCode?:
+    MedicationRegulatoryPrescriptionModelCode;
 
   /**
    * Tipo visual utilizado atualmente pelo Vault.
@@ -167,6 +174,9 @@ export type MedicationRegulatoryException = {
   overridePrescriptionModel?:
     string;
 
+  overridePrescriptionModelCode?:
+    MedicationRegulatoryPrescriptionModelCode;
+
   effectiveFrom?:
     string;
 
@@ -258,11 +268,17 @@ export type MedicationRegulatoryResolution = {
   prescriptionModel?:
     string;
 
+  prescriptionModelCode?:
+    MedicationRegulatoryPrescriptionModelCode;
+
   baseVaultPrescriptionType?:
     TipoReceita;
 
   basePrescriptionModel?:
     string;
+
+  basePrescriptionModelCode?:
+    MedicationRegulatoryPrescriptionModelCode;
 
   exceptionEvaluations:
     MedicationRegulatoryExceptionEvaluation[];

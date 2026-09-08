@@ -741,6 +741,9 @@ function validatePrescriptionType(
 
       evidence,
 
+      suggestedValue:
+        expectedType,
+
       referenceId:
         match.reference.id,
 

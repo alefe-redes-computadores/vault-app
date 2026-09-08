@@ -19,6 +19,7 @@ import type {
   MedicationReference,
   MedicationReferenceSource,
   MedicationRegulatoryReference,
+  MedicationRegulatoryPrescriptionModelCode,
 } from "@/lib/medication-intelligence/types";
 
 import type {
@@ -174,6 +175,9 @@ type RegulatoryRuleRow = {
   prescription_model:
     string | null;
 
+  prescription_model_code:
+    MedicationRegulatoryPrescriptionModelCode | null;
+
   vault_prescription_type:
     | "comum"
     | "amarela"
@@ -214,6 +218,9 @@ type RegulatoryExceptionRow = {
 
   override_prescription_model:
     string | null;
+
+  override_prescription_model_code:
+    MedicationRegulatoryPrescriptionModelCode | null;
 
   override_vault_prescription_type:
     | "comum"
@@ -671,6 +678,10 @@ function regulatoryExceptionRowToReference(
       row.override_prescription_model ??
       undefined,
 
+    overridePrescriptionModelCode:
+      row.override_prescription_model_code ??
+      undefined,
+
     effectiveFrom:
       row.effective_from ??
       undefined,
@@ -719,6 +730,10 @@ function regulatoryRuleRowToReference(
 
     prescriptionModel:
       rule.prescription_model ??
+      undefined,
+
+    prescriptionModelCode:
+      rule.prescription_model_code ??
       undefined,
 
     effectiveFrom:
@@ -1579,7 +1594,7 @@ export class SupabaseMedicationCatalogProvider
                 "medication_regulatory_rules"
               )
               .select(
-                "id, regulatory_class, prescription_model, vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
+                "id, regulatory_class, prescription_model, prescription_model_code, vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
               )
               .eq(
                 "substance_id",
@@ -2336,7 +2351,7 @@ export class SupabaseMedicationCatalogProvider
             "medication_regulatory_rules"
           )
           .select(
-            "id, regulatory_class, prescription_model, vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
+            "id, regulatory_class, prescription_model, prescription_model_code, vault_prescription_type, source_version_id, effective_from, effective_until, verified_at"
           )
           .eq(
             "substance_id",
@@ -2710,7 +2725,7 @@ export class SupabaseMedicationCatalogProvider
           "medication_regulatory_rule_exceptions"
         )
         .select(
-          "id, regulatory_rule_id, label, condition_schema_version, conditions, override_prescription_model, override_vault_prescription_type, source_version_id, effective_from, effective_until, verified_at, notes"
+          "id, regulatory_rule_id, label, condition_schema_version, conditions, override_prescription_model, override_prescription_model_code, override_vault_prescription_type, source_version_id, effective_from, effective_until, verified_at, notes"
         )
         .in(
           "regulatory_rule_id",
