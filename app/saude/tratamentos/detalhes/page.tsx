@@ -41,8 +41,6 @@ import { DocumentCard } from "@/components/DocumentCard";
 
 import { useTratamentos } from "@/hooks/useTratamentos";
 
-import { useMedicamentos } from "@/hooks/useMedicamentos";
-
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 
 import { useCids } from "@/hooks/useCids";
@@ -271,9 +269,10 @@ function TratamentoContent() {
 
   const { activePersonId } = useActivePersonId();
 
-  const { getTratamento } = useTratamentos();
-
-  const { medicamentos = [] } = useMedicamentos();
+  const {
+    getTratamento,
+    getMedicamentosDoTratamento,
+  } = useTratamentos();
 
   const { renovacoes = [] } = useRenovacoes();
 
@@ -303,9 +302,32 @@ function TratamentoContent() {
   // ESTADO
   // ==========================================================
 
-  const [tratamento, setTratamento] = useState<Tratamento | null>(null);
+  const [tratamento, setTratamento] =
+    useState<Tratamento | null>(
+      null
+    );
 
-  const [isLoading, setIsLoading] = useState(true);
+  /*
+   * Estado próprio dos medicamentos vinculados.
+   *
+   * Não usamos mais [] da lista global como sinônimo de
+   * "nenhum medicamento", porque [] também pode significar
+   * "useLiveQuery ainda não terminou".
+   */
+  const [
+    linkedMedicamentos,
+    setLinkedMedicamentos,
+  ] =
+    useState<
+      Medicamento[]
+    >(
+      []
+    );
+
+  const [isLoading, setIsLoading] =
+    useState(
+      true
+    );
 
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
@@ -318,52 +340,147 @@ function TratamentoContent() {
   useEffect(() => {
     let cancelled = false;
 
-    const fetchTratamento = async () => {
-      setIsLoading(true);
+    const fetchTratamento =
+      async () => {
+        setIsLoading(
+          true
+        );
 
-      if (!id || !activePersonId) {
-        if (!cancelled) {
-          setTratamento(null);
+        setTratamento(
+          null
+        );
 
-          setIsLoading(false);
-        }
+        setLinkedMedicamentos(
+          []
+        );
 
-        return;
-      }
+        if (
+          !id ||
+          !activePersonId
+        ) {
+          if (
+            !cancelled
+          ) {
+            setIsLoading(
+              false
+            );
+          }
 
-      try {
-        const data = await getTratamento(id);
-
-        if (cancelled) {
           return;
         }
 
-        if (!data || data.person_id !== activePersonId) {
-          setTratamento(null);
+        try {
+          /*
+           * Tratamento e vínculos são uma única unidade
+           * visual para esta tela.
+           *
+           * A página só sai do skeleton quando os dois
+           * terminaram de carregar.
+           */
+          const [
+            data,
+            medicamentosVinculados,
+          ] =
+            await Promise.all([
+              getTratamento(
+                id
+              ),
 
-          return;
-        }
+              getMedicamentosDoTratamento(
+                id
+              ),
+            ]);
 
-        setTratamento(data);
-      } catch (error) {
-        console.error("[TratamentoDetalhes] Erro ao buscar tratamento:", error);
+          if (
+            cancelled
+          ) {
+            return;
+          }
 
-        if (!cancelled) {
-          setTratamento(null);
+          if (
+            !data ||
+            data.person_id !==
+              activePersonId
+          ) {
+            setTratamento(
+              null
+            );
+
+            setLinkedMedicamentos(
+              []
+            );
+
+            return;
+          }
+
+          /*
+           * Defesa adicional:
+           * mesmo que o repository/hook já seja person-scoped,
+           * a tela não aceita vínculo de outra pessoa.
+           */
+          const safeMedicamentos =
+            medicamentosVinculados.filter(
+              (
+                medicamento
+              ) =>
+                medicamento.person_id ===
+                activePersonId &&
+                medicamento.tratamento_ids?.includes(
+                  id
+                ) ===
+                  true
+            );
+
+          setTratamento(
+            data
+          );
+
+          setLinkedMedicamentos(
+            safeMedicamentos
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "[TratamentoDetalhes] Erro ao carregar tratamento e medicamentos:",
+            error
+          );
+
+          if (
+            !cancelled
+          ) {
+            setTratamento(
+              null
+            );
+
+            setLinkedMedicamentos(
+              []
+            );
+          }
+        } finally {
+          if (
+            !cancelled
+          ) {
+            setIsLoading(
+              false
+            );
+          }
         }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
+      };
 
     void fetchTratamento();
 
     return () => {
-      cancelled = true;
+      cancelled =
+        true;
     };
-  }, [id, activePersonId, getTratamento]);
+  }, [
+    id,
+    activePersonId,
+    getTratamento,
+    getMedicamentosDoTratamento,
+  ]);
+
 
   // ==========================================================
   // PREFERÊNCIA LOCAL DO CARD DE ECONOMIA
@@ -403,15 +520,6 @@ function TratamentoContent() {
   // MEDICAMENTOS VINCULADOS
   // ==========================================================
 
-  const linkedMedicamentos = useMemo(() => {
-    if (!id) {
-      return [];
-    }
-
-    return medicamentos.filter(
-      (medicamento) => medicamento.tratamento_ids?.includes(id) === true,
-    );
-  }, [medicamentos, id]);
 
   // ==========================================================
   // RENOVAÇÕES DO TRATAMENTO

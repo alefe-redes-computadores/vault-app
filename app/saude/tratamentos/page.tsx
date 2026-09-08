@@ -882,7 +882,7 @@ function TratamentoListContent() {
                         "vibrate"
                       );
 
-                      router.push(
+                      router.replace(
                         `/saude/tratamentos/detalhes?id=${tratamento.id}`
                       );
                     }}
