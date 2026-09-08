@@ -331,6 +331,49 @@ function inferVaultFormatFromOfficialPresentation(
       value
     )} `;
 
+  /*
+   * catalog-high-confidence-form-aliases-v3
+   */
+  if (
+    /\bcomp(?:rimido)?\b|\bcomp rev\b|\bcomprim\b/.test(
+      text
+    )
+  ) {
+    return "comprimido";
+  }
+
+  if (
+    /\bcaps(?:ula)?\b|\bcap dura\b|\bcap mole\b/.test(
+      text
+    )
+  ) {
+    return "capsula";
+  }
+
+  if (
+    /\bgota(?:s)?\b|\bgot\b|\bsol oral got\b|\bsol or got\b/.test(
+      text
+    )
+  ) {
+    return "gota";
+  }
+
+  if (
+    /\bsusp(?:ensao)? oral\b|\bsusp or\b/.test(
+      text
+    )
+  ) {
+    return "suspensao";
+  }
+
+  if (
+    /\bsolucao oral\b|\bsol oral\b|\bsol or\b/.test(
+      text
+    )
+  ) {
+    return "solucao";
+  }
+
   if (
     /\binj(?:ecao|etavel)?\b|\bsol inj\b|\bampola\b|\bseringa\b/.test(
       text
@@ -2153,6 +2196,11 @@ export default function NovoMedicamentoPage() {
                 results.length >
                   0
               );
+
+                void supabaseMedicationCatalogProvider.prefetchQuickResults(
+                  results,
+                  1
+                );
             } catch (
               error
             ) {
@@ -2192,7 +2240,7 @@ export default function NovoMedicamentoPage() {
               }
             }
           },
-          350
+          220
         );
 
       return () => {
@@ -4247,9 +4295,25 @@ export default function NovoMedicamentoPage() {
                         : ""
                     }`}
                   >
+                    <div className="mb-3 rounded-2xl border border-ice/20 bg-ice/[0.055] px-3.5 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-ice/25 bg-ice/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-ice">
+                          Busca inteligente
+                        </span>
+
+                        <span className="text-[9px] font-semibold text-ink-faint">
+                          Catálogo ANVISA
+                        </span>
+                      </div>
+
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-ink-muted">
+                        Pesquise pelo nome comercial ou princípio ativo. Ao escolher uma referência, o Vault pode identificar apresentações, formato e validações regulatórias disponíveis.
+                      </p>
+                    </div>
+
                     <Input
                       label="Medicamento"
-                      placeholder="Ex: Sertralina"
+                      placeholder="Nome comercial ou princípio ativo"
                       value={
                         nome
                       }
@@ -4277,6 +4341,34 @@ export default function NovoMedicamentoPage() {
                         errors.nome
                       }
                     />
+
+                    <AnimatePresence>
+                      {isCatalogSearching && (
+                        <motion.div
+                          initial={{
+                            opacity:
+                              0,
+                            y:
+                              -2,
+                          }}
+                          animate={{
+                            opacity:
+                              1,
+                            y:
+                              0,
+                          }}
+                          exit={{
+                            opacity:
+                              0,
+                          }}
+                          className="mt-2 flex items-center gap-2 text-[9px] font-semibold text-ice"
+                        >
+                          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-ice" />
+
+                          Consultando catálogo ANVISA…
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     <AnimatePresence>
                       {nome.trim().length >=
@@ -4382,6 +4474,72 @@ export default function NovoMedicamentoPage() {
                                               setHydratedCatalogResult(
                                                 hydrated
                                               );
+
+                                              /*
+                                               * catalog-auto-format-v3
+                                               *
+                                               * Só preenche formato quando
+                                               * todas as evidências reconhecidas
+                                               * convergem para um único valor.
+                                               */
+                                              if (
+                                                hydrated
+                                                  ?.reference
+                                              ) {
+                                                const inferredFormats =
+                                                  Array.from(
+                                                    new Set(
+                                                      [
+                                                        ...(
+                                                          hydrated.reference
+                                                            .pharmaceuticalForms ??
+                                                          []
+                                                        ),
+
+                                                        ...(
+                                                          hydrated.reference
+                                                            .presentations ??
+                                                          []
+                                                        ).flatMap(
+                                                          (
+                                                            presentation
+                                                          ) => [
+                                                            presentation.label,
+                                                            presentation.pharmaceuticalForm ??
+                                                              "",
+                                                          ]
+                                                        ),
+                                                      ]
+                                                        .map(
+                                                          (
+                                                            value
+                                                          ) =>
+                                                            inferVaultFormatFromOfficialPresentation(
+                                                              value
+                                                            )
+                                                        )
+                                                        .filter(
+                                                          (
+                                                            value
+                                                          ): value is string =>
+                                                            Boolean(
+                                                              value
+                                                            )
+                                                        )
+                                                    )
+                                                  );
+
+                                                if (
+                                                  inferredFormats.length ===
+                                                  1
+                                                ) {
+                                                  setFormato(
+                                                    inferredFormats[
+                                                      0
+                                                    ]
+                                                  );
+                                                }
+                                              }
                                             } catch (
                                               error
                                             ) {
@@ -6030,6 +6188,46 @@ export default function NovoMedicamentoPage() {
                     <h3 className="text-sm font-semibold text-ink-primary">
                       Receita & Vínculos
                     </h3>
+                  </div>
+
+                  <div
+                    className={`mb-4 rounded-2xl border px-3.5 py-3 ${
+                      !catalogReference
+                        ? "border-surface-border/40 bg-surface-raised/45"
+                        : catalogRegulatoryIssues.length > 0
+                          ? "border-amber-400/30 bg-amber-400/[0.07]"
+                          : (catalogReference.regulatoryRules?.length ?? 0) > 0
+                            ? "border-emerald-400/20 bg-emerald-400/[0.05]"
+                            : "border-ice/20 bg-ice/[0.045]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[9px] font-black uppercase tracking-[0.14em] text-ink-faint">
+                        Verificação regulatória
+                      </p>
+
+                      {catalogReference && (
+                        <span className="rounded-full border border-ice/15 bg-ice/[0.06] px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-ice">
+                          ANVISA
+                        </span>
+                      )}
+                    </div>
+
+                    <p
+                      className={`mt-1.5 text-[10px] font-semibold leading-relaxed ${
+                        catalogRegulatoryIssues.length > 0
+                          ? "text-amber-300"
+                          : "text-ink-muted"
+                      }`}
+                    >
+                      {!catalogReference
+                        ? "Escolha uma referência do catálogo para verificar o tipo de receita."
+                        : catalogRegulatoryIssues.length > 0
+                          ? "Revisar tipo de receita: existe uma divergência regulatória conclusiva com a referência selecionada."
+                          : (catalogReference.regulatoryRules?.length ?? 0) > 0
+                            ? "Nenhuma divergência conclusiva foi encontrada com as regras e o contexto disponíveis."
+                            : "A referência está identificada, mas a base ainda não possui classificação regulatória conclusiva suficiente para sugerir correção de receita."}
+                    </p>
                   </div>
 
                   <SeletorReceita

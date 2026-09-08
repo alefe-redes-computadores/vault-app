@@ -909,13 +909,21 @@ export class SupabaseMedicationCatalogProvider
     limit: number,
     minimumScore: number
   ): Promise<MedicationCatalogQuickSearchResult[]> {
-    const { data, error } =
+    const {
+      data,
+      error,
+    } =
       await supabase.rpc(
         "search_medication_catalog",
         {
-          p_query: normalized,
-          p_limit: limit,
-          p_min_score: minimumScore,
+          p_query:
+            normalized,
+
+          p_limit:
+            limit,
+
+          p_min_score:
+            minimumScore,
         }
       );
 
@@ -926,130 +934,81 @@ export class SupabaseMedicationCatalogProvider
     }
 
     const rows =
-      (data ?? []) as SearchRpcRow[];
+      (data ??
+        []) as SearchRpcRow[];
 
-    if (rows.length === 0) {
-      return [];
-    }
+    /*
+     * FAST PATH
+     * ---------
+     * A lista do autocomplete usa apenas o retorno da RPC.
+     * Não consulta products/substances novamente.
+     *
+     * A referência oficial completa é hidratada quando
+     * selecionada ou prefetada.
+     */
+    return rows.map(
+      (
+        row
+      ) => ({
+        referenceId:
+          row.reference_id,
 
-    const productIds =
-      Array.from(
-        new Set(
-          rows
-            .filter(
-              row =>
-                row.reference_type ===
-                "product"
-            )
-            .map(row => row.reference_id)
-        )
-      );
+        referenceType:
+          row.reference_type,
 
-    const substanceIds =
-      Array.from(
-        new Set(
-          rows
-            .filter(
-              row =>
-                row.reference_type ===
-                "substance"
-            )
-            .map(row => row.reference_id)
-        )
-      );
+        canonicalName:
+          row.matched_text,
 
-    const [
-      productsResult,
-      substancesResult,
-    ] =
-      await Promise.all([
-        productIds.length > 0
-          ? supabase
-              .from("medication_products")
-              .select("id, product_name")
-              .in("id", productIds)
-          : Promise.resolve({
-              data: [],
-              error: null,
-            }),
+        matchedText:
+          row.matched_text,
 
-        substanceIds.length > 0
-          ? supabase
-              .from("medication_substances")
-              .select("id, canonical_name")
-              .in("id", substanceIds)
-          : Promise.resolve({
-              data: [],
-              error: null,
-            }),
-      ]);
-
-    if (productsResult.error) {
-      throw new Error(
-        `Falha ao carregar nomes de produtos: ${productsResult.error.message}`
-      );
-    }
-
-    if (substancesResult.error) {
-      throw new Error(
-        `Falha ao carregar nomes de substâncias: ${substancesResult.error.message}`
-      );
-    }
-
-    const productNameMap =
-      new Map(
-        (productsResult.data ?? []).map(
-          row => [
-            row.id,
-            row.product_name,
-          ]
-        )
-      );
-
-    const substanceNameMap =
-      new Map(
-        (substancesResult.data ?? []).map(
-          row => [
-            row.id,
-            row.canonical_name,
-          ]
-        )
-      );
-
-    return rows
-      .map(row => {
-        const canonicalName =
-          row.reference_type ===
-          "product"
-            ? productNameMap.get(
-                row.reference_id
-              )
-            : substanceNameMap.get(
-                row.reference_id
-              );
-
-        if (!canonicalName) {
-          return null;
-        }
-
-        return {
-          referenceId:
-            row.reference_id,
-          referenceType:
-            row.reference_type,
-          canonicalName,
-          matchedText:
-            row.matched_text,
-          score:
-            Number(row.score),
-        };
+        score:
+          Number(
+            row.score
+          ),
       })
-      .filter(
-        (
-          item
-        ): item is MedicationCatalogQuickSearchResult =>
-          item !== null
+    );
+  }
+
+
+  async prefetchQuickResults(
+    results:
+      MedicationCatalogQuickSearchResult[],
+    limit:
+      number = 1
+  ): Promise<void> {
+    const safeLimit =
+      Math.max(
+        0,
+        Math.min(
+          limit,
+          2
+        )
       );
+
+    if (
+      safeLimit === 0 ||
+      results.length === 0
+    ) {
+      return;
+    }
+
+    await Promise.allSettled(
+      results
+        .slice(
+          0,
+          safeLimit
+        )
+        .map(
+          (
+            result
+          ) =>
+            this.getByTypedId(
+              result.referenceId,
+              result.referenceType
+            )
+        )
+    );
   }
 
   async hydrateQuickResult(

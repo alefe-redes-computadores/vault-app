@@ -245,6 +245,10 @@ export default function HojePage() {
     dataSelecionada <
     hoje;
 
+  const isFuturo =
+    dataSelecionada >
+    hoje;
+
   const ontem =
     addDaysToLocalDate(
       hoje,
@@ -619,7 +623,9 @@ export default function HojePage() {
   const cirurgiasHoje = useMemo(
     () =>
       cirurgias.filter(
-        (c: any) => c.data === hoje
+        (c: any) =>
+          c.data ===
+          dataSelecionada
       ),
     [
       cirurgias,
@@ -639,6 +645,125 @@ export default function HojePage() {
       dataSelecionada,
     ]
   );
+
+  const eventosMedicamentoHoje =
+    useMemo(
+      () => {
+        if (
+          !activePersonId
+        ) {
+          return [];
+        }
+
+        const eventos:
+          Array<{
+            id: string;
+            tipo:
+              | "retirada_sus"
+              | "renovacao_receita";
+            medicamentoId: string;
+            medicamentoNome: string;
+            titulo: string;
+            descricao: string;
+            cor: string;
+          }> = [];
+
+        for (
+          const medicamento of
+            medicamentos
+        ) {
+          if (
+            !medicamento.id ||
+            medicamento.person_id !==
+              activePersonId
+          ) {
+            continue;
+          }
+
+          const retornoSus =
+            String(
+              (medicamento as any)
+                .data_retorno_sus ||
+              ""
+            ).slice(
+              0,
+              10
+            );
+
+          if (
+            retornoSus ===
+            dataSelecionada
+          ) {
+            eventos.push({
+              id:
+                `retirada-sus-${medicamento.id}-${dataSelecionada}`,
+
+              tipo:
+                "retirada_sus",
+
+              medicamentoId:
+                medicamento.id,
+
+              medicamentoNome:
+                medicamento.nome,
+
+              titulo:
+                `Retirada de ${medicamento.nome}`,
+
+              descricao:
+                "Retirada programada no SUS",
+
+              cor:
+                "ice",
+            });
+          }
+
+          const renovacaoReceita =
+            String(
+              medicamento.proxima_renovacao ||
+              ""
+            ).slice(
+              0,
+              10
+            );
+
+          if (
+            renovacaoReceita ===
+            dataSelecionada
+          ) {
+            eventos.push({
+              id:
+                `renovacao-receita-${medicamento.id}-${dataSelecionada}`,
+
+              tipo:
+                "renovacao_receita",
+
+              medicamentoId:
+                medicamento.id,
+
+              medicamentoNome:
+                medicamento.nome,
+
+              titulo:
+                `Renovar receita de ${medicamento.nome}`,
+
+              descricao:
+                "Data planejada para renovação da receita",
+
+              cor:
+                "amber",
+            });
+          }
+        }
+
+        return eventos;
+      },
+      [
+        medicamentos,
+        activePersonId,
+        dataSelecionada,
+      ]
+    );
 
   const [filtroStatus, setFiltroStatus] =
     useState<FiltroStatus>("todos");
@@ -1489,12 +1614,23 @@ export default function HojePage() {
   ]);
 
   const assistenteDiario = useMemo(
-    () =>
-      analisarRotinaDiaria(
+    () => {
+      if (
+        !isHoje
+      ) {
+        return null;
+      }
+
+      return analisarRotinaDiaria(
         doses,
         compromissosFiltrados
-      ),
-    [doses, compromissosFiltrados]
+      );
+    },
+    [
+      isHoje,
+      doses,
+      compromissosFiltrados,
+    ]
   );
 
   const dosesFiltradas = useMemo(() => {
@@ -1507,13 +1643,22 @@ export default function HojePage() {
     } else if (
       filtroStatus === "pendentes"
     ) {
-      result = result.filter(
-        (d) =>
-          !d.tomada &&
-          !d.ignorada &&
-          !d.isSintoma &&
-          !d.isExpectedUnconfirmed
-      );
+      result =
+        isHoje
+          ? result.filter(
+              (d) =>
+                !d.tomada &&
+                !d.ignorada &&
+                !d.isSintoma &&
+                !d.isExpectedUnconfirmed
+            )
+          : result.filter(
+              (d) =>
+                !d.tomada &&
+                !d.ignorada &&
+                !d.isSintoma &&
+                d.isExpectedUnconfirmed
+            );
     } else if (
       filtroStatus === "ignorados"
     ) {
@@ -1535,6 +1680,7 @@ export default function HojePage() {
     doses,
     filtroStatus,
     filtroPeriodo,
+    isHoje,
   ]);
 
   const dosesAgrupadas = useMemo(() => {
@@ -1626,6 +1772,17 @@ export default function HojePage() {
 
   const totalRegistros =
     metricItems.length;
+
+  const totalCompromissosDoDia =
+    compromissosFiltrados.length;
+
+  const totalEventosMedicamento =
+    eventosMedicamentoHoje.length;
+
+  const totalItensPlanejados =
+    totalEsperadasSemConfirmacao +
+    totalCompromissosDoDia +
+    totalEventosMedicamento;
 
   const percentualConclusao =
     totalRegistros > 0
@@ -2223,10 +2380,23 @@ export default function HojePage() {
 
             <div className="shrink-0 text-right">
               <span className="inline-flex items-center rounded-full border border-ice/20 bg-ice/10 px-3 py-1.5 font-mono text-[10px] font-bold text-ice">
-                {totalTomadas}{" "}
-                {totalTomadas === 1
-                  ? "registro"
-                  : "registros"}
+                {isFuturo ? (
+                  <>
+                    {totalItensPlanejados}{" "}
+                    {totalItensPlanejados ===
+                    1
+                      ? "item"
+                      : "itens"}{" "}
+                    previstos
+                  </>
+                ) : (
+                  <>
+                    {totalTomadas}{" "}
+                    {totalTomadas === 1
+                      ? "registro"
+                      : "registros"}
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -2360,12 +2530,17 @@ export default function HojePage() {
                   className="text-ice"
                 />
                 <span className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-                  Progresso
+                  {isFuturo
+                    ? "Eventos"
+                    : "Progresso"}
                 </span>
               </div>
 
               <p className="mt-1 font-mono text-sm font-bold text-ice">
-                {percentualConclusao}%
+                {isFuturo
+                  ? totalCompromissosDoDia +
+                    totalEventosMedicamento
+                  : `${percentualConclusao}%`}
               </p>
             </div>
           </div>
@@ -2402,8 +2577,17 @@ export default function HojePage() {
                     : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                 }`}
               >
-                <AlertTriangle size={12} />
-                Pendentes ({totalPendentes})
+                {isFuturo ? (
+                  <Clock size={12} />
+                ) : (
+                  <AlertTriangle size={12} />
+                )}
+
+                {isHoje
+                  ? `Pendentes (${totalPendentes})`
+                  : isPassado
+                    ? `Sem confirmação (${totalEsperadasSemConfirmacao})`
+                    : `Previstas (${totalEsperadasSemConfirmacao})`}
               </button>
 
               <button
@@ -2831,6 +3015,142 @@ export default function HojePage() {
           )}
 
           {/* =======================================================
+              CUIDADOS DO DIA
+          ======================================================= */}
+
+          {eventosMedicamentoHoje.length >
+            0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Pill
+                    size={
+                      16
+                    }
+                    className="text-ice"
+                  />
+
+                  <div>
+                    <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
+                      Cuidados do dia
+                    </h2>
+
+                    <p className="mt-0.5 text-[9px] text-ink-faint">
+                      Eventos planejados dos seus medicamentos
+                    </p>
+                  </div>
+                </div>
+
+                <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 font-mono text-[9px] font-bold text-ice">
+                  {
+                    eventosMedicamentoHoje.length
+                  }
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {eventosMedicamentoHoje.map(
+                  (
+                    evento
+                  ) => {
+                    const isRetirada =
+                      evento.tipo ===
+                      "retirada_sus";
+
+                    return (
+                      <motion.button
+                        key={
+                          evento.id
+                        }
+                        type="button"
+                        whileTap={{
+                          scale:
+                            0.985,
+                        }}
+                        onClick={
+                          () => {
+                            trigger(
+                              "vibrate"
+                            );
+
+                            router.push(
+                              `/saude/medicamentos/detalhes?id=${evento.medicamentoId}`
+                            );
+                          }
+                        }
+                        className={`w-full rounded-[22px] border p-3.5 text-left transition-all ${
+                          isRetirada
+                            ? "border-ice/25 bg-ice/[0.055]"
+                            : "border-amber-400/25 bg-amber-400/[0.055]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                              isRetirada
+                                ? "bg-ice/15 text-ice"
+                                : "bg-amber-400/15 text-amber-400"
+                            }`}
+                          >
+                            {isRetirada ? (
+                              <Pill
+                                size={
+                                  18
+                                }
+                              />
+                            ) : (
+                              <FileWarning
+                                size={
+                                  18
+                                }
+                              />
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-[13px] font-bold text-ink-primary">
+                                {
+                                  evento.titulo
+                                }
+                              </p>
+
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide ${
+                                  isRetirada
+                                    ? "bg-ice/10 text-ice"
+                                    : "bg-amber-400/10 text-amber-400"
+                                }`}
+                              >
+                                {isRetirada
+                                  ? "SUS"
+                                  : "Receita"}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-[10px] text-ink-muted">
+                              {
+                                evento.descricao
+                              }
+                            </p>
+                          </div>
+
+                          <ChevronRight
+                            size={
+                              16
+                            }
+                            className="shrink-0 text-ink-faint"
+                          />
+                        </div>
+                      </motion.button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* =======================================================
               COMPROMISSOS
           ======================================================= */}
           {compromissosFiltrados.length >
@@ -3213,6 +3533,7 @@ export default function HojePage() {
                           }
 
                           const isAtrasado =
+                            isHoje &&
                             !item.tomada &&
                             !item.ignorada &&
                             item.horario <
@@ -3220,10 +3541,24 @@ export default function HojePage() {
                             !item.isAvulsa;
 
                           const isProximo =
+                            isHoje &&
                             !item.tomada &&
                             !item.ignorada &&
                             item.horario >=
                               horaAtual &&
+                            !item.isAvulsa;
+
+                          const isPrevistoFuturo =
+                            isFuturo &&
+                            !item.tomada &&
+                            !item.ignorada &&
+                            !item.isAvulsa;
+
+                          const isHistoricoSemConfirmacao =
+                            isPassado &&
+                            item.isExpectedUnconfirmed &&
+                            !item.tomada &&
+                            !item.ignorada &&
                             !item.isAvulsa;
 
                           const isEstoqueZerado =
@@ -3287,6 +3622,36 @@ export default function HojePage() {
 
                             statusColor =
                               "text-ink-muted";
+                          } else if (
+                            isPrevistoFuturo
+                          ) {
+                            statusIcon = (
+                              <Clock
+                                size={12}
+                                className="text-violet-300"
+                              />
+                            );
+
+                            statusText =
+                              "Prevista";
+
+                            statusColor =
+                              "text-violet-300";
+                          } else if (
+                            isHistoricoSemConfirmacao
+                          ) {
+                            statusIcon = (
+                              <Clock
+                                size={12}
+                                className="text-ice"
+                              />
+                            );
+
+                            statusText =
+                              "Sem confirmação";
+
+                            statusColor =
+                              "text-ice";
                           } else if (
                             isAtrasado
                           ) {
@@ -3377,6 +3742,10 @@ export default function HojePage() {
                                   ? "border-emerald-400/30 bg-emerald-400/5 opacity-90"
                                   : item.ignorada
                                   ? "border-ink-muted/20 bg-surface-raised/50 opacity-60"
+                                  : isPrevistoFuturo
+                                  ? "border-violet-400/25 bg-violet-400/[0.045]"
+                                  : isHistoricoSemConfirmacao
+                                  ? "border-ice/20 bg-ice/[0.035]"
                                   : isAtrasado
                                   ? "border-coral/50 bg-coral/5"
                                   : isProximo

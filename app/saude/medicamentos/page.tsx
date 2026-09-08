@@ -644,6 +644,70 @@ export default function MedicamentosListPage() {
   // CARD
   // ==========================================================
 
+  const humanizeStockText =
+    (
+      text:
+        string
+    ) =>
+      text
+        .replace(
+          /(\d+(?:[.,]\d+)?)\s+comprimido\(s\)/gi,
+          (
+            _match,
+            value
+          ) =>
+            `${value} ${
+              Number(
+                String(
+                  value
+                ).replace(
+                  ",",
+                  "."
+                )
+              ) === 1
+                ? "comprimido"
+                : "comprimidos"
+            }`
+        )
+        .replace(
+          /(\d+(?:[.,]\d+)?)\s+gota\(s\)/gi,
+          (
+            _match,
+            value
+          ) =>
+            `${value} ${
+              Number(
+                String(
+                  value
+                ).replace(
+                  ",",
+                  "."
+                )
+              ) === 1
+                ? "gota"
+                : "gotas"
+            }`
+        )
+        .replace(
+          /(\d+(?:[.,]\d+)?)\s+cápsula\(s\)/gi,
+          (
+            _match,
+            value
+          ) =>
+            `${value} ${
+              Number(
+                String(
+                  value
+                ).replace(
+                  ",",
+                  "."
+                )
+              ) === 1
+                ? "cápsula"
+                : "cápsulas"
+            }`
+        );
+
   const renderCard =
     (
       item:
@@ -796,7 +860,7 @@ export default function MedicamentosListPage() {
                       ? `${formatQuantidade(
                           quantidadeTomadaHoje
                         )} ${doseUnidade}`
-                      : "Uso quando necessário",
+                      : "Uso se necessário",
                   tone:
                     "text-emerald-400",
                 }
@@ -804,7 +868,7 @@ export default function MedicamentosListPage() {
                   label:
                     "Quando necessário",
                   detail:
-                    "Nenhum uso registrado hoje",
+                    "Nenhum uso hoje",
                   tone:
                     "text-ink-muted",
                 }
@@ -818,7 +882,7 @@ export default function MedicamentosListPage() {
                         ? `Tomado às ${horarioTomado}`
                         : "Dose concluída",
                   detail:
-                    "Rotina de hoje em dia",
+                    "Tudo certo hoje",
                   tone:
                     "text-emerald-400",
                 }
@@ -906,7 +970,7 @@ export default function MedicamentosListPage() {
             />
           }
         >
-          <div className="flex min-w-0 flex-col gap-3 py-0.5">
+          <div className="flex min-w-0 flex-col gap-2.5">
             {/* IDENTIDADE */}
 
             <div className="flex min-w-0 items-start justify-between gap-3">
@@ -927,10 +991,10 @@ export default function MedicamentosListPage() {
                   )}
                 </div>
 
-                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+                <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
                   {receita && (
                     <span
-                      className={`inline-flex h-6 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
+                      className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
                       style={{
                         borderColor:
                           `${cardColor}45`,
@@ -954,7 +1018,7 @@ export default function MedicamentosListPage() {
                   )}
 
                   {med.medico && (
-                    <span className="inline-flex h-6 max-w-[150px] items-center gap-1 rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted">
+                    <span className="inline-flex h-5.5 max-w-[132px] items-center gap-1 rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted">
                       <Stethoscope
                         size={
                           10
@@ -1006,76 +1070,98 @@ export default function MedicamentosListPage() {
               )}
             </div>
 
-            {/* PAINEL OPERACIONAL */}
+            {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="min-w-0 rounded-xl border border-surface-border/35 bg-black/[0.08] px-3 py-2.5">
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className="text-[8px] font-black uppercase tracking-[0.16em] text-ink-faint">
-                    Hoje
-                  </span>
-                </div>
+            <div className="rounded-xl border border-surface-border/35 bg-black/[0.07] px-3 py-2">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    {rotinaConcluida ||
+                    sosTomadoHoje ? (
+                      <CheckCircle2
+                        size={
+                          12
+                        }
+                        className="shrink-0 text-emerald-400"
+                      />
+                    ) : (
+                      <Circle
+                        size={
+                          10
+                        }
+                        className="shrink-0 text-ink-faint"
+                      />
+                    )}
 
-                <div className={`flex min-w-0 items-center gap-1.5 text-[10px] font-bold ${todayStatus.tone}`}>
-                  {rotinaConcluida ||
-                  sosTomadoHoje ? (
-                    <CheckCircle2
-                      size={
-                        12
-                      }
-                      className="shrink-0"
-                    />
-                  ) : (
-                    <Circle
-                      size={
-                        10
-                      }
-                      className="shrink-0"
-                    />
-                  )}
+                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                      Hoje
+                    </span>
+                  </div>
 
-                  <span className="truncate">
+                  <p
+                    className={`mt-1 whitespace-normal break-words text-[10px] font-bold leading-snug ${todayStatus.tone}`}
+                  >
                     {
                       todayStatus.label
                     }
-                  </span>
+                  </p>
+
+                  {todayStatus.detail &&
+                    todayStatus.detail !==
+                      "Tudo certo hoje" && (
+                    <p className="mt-0.5 whitespace-normal break-words text-[8px] font-medium leading-snug text-ink-faint">
+                      {
+                        todayStatus.detail
+                      }
+                    </p>
+                  )}
                 </div>
 
-                <p className="mt-0.5 truncate pl-[18px] text-[8px] font-medium text-ink-faint">
-                  {
-                    todayStatus.detail
-                  }
-                </p>
-              </div>
+                <div className="h-9 w-px shrink-0 bg-surface-border/35" />
 
-              <div
-                className={`min-w-0 rounded-xl border px-3 py-2.5 ${estoqueTone}`}
-              >
-                <div className="mb-1 flex items-center gap-1.5">
-                  <Droplet
-                    size={
-                      9
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <Droplet
+                      size={
+                        9
+                      }
+                      className={
+                        isEstoqueZerado
+                          ? "text-coral"
+                          : isEstoqueCritico
+                            ? "text-amber-400"
+                            : "text-emerald-400"
+                      }
+                    />
+
+                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                      Estoque
+                    </span>
+                  </div>
+
+                  <p
+                    className={`mt-1 whitespace-normal break-words text-[10px] font-black leading-snug ${
+                      isEstoqueZerado
+                        ? "text-coral"
+                        : isEstoqueCritico
+                          ? "text-amber-400"
+                          : "text-emerald-400"
+                    }`}
+                  >
+                    {
+                      humanizeStockText(
+                        textoEstoquePrincipal
+                      )
                     }
-                    className="opacity-70"
-                  />
+                  </p>
 
-                  <span className="text-[8px] font-black uppercase tracking-[0.16em] opacity-70">
-                    Estoque
-                  </span>
+                  <p className="mt-0.5 whitespace-normal break-words text-[8px] font-semibold leading-snug text-ink-faint">
+                    {
+                      textoEstoqueSecundario ||
+                      estoqueStatus
+                    }
+                  </p>
                 </div>
-
-                <p className="truncate text-[10px] font-black">
-                  {
-                    textoEstoquePrincipal
-                  }
-                </p>
-
-                <p className="mt-0.5 truncate text-[8px] font-semibold opacity-70">
-                  {
-                    textoEstoqueSecundario ||
-                    estoqueStatus
-                  }
-                </p>
               </div>
             </div>
 
@@ -1089,7 +1175,7 @@ export default function MedicamentosListPage() {
                 ) ||
                 insight.deveRenovar
               ) && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-surface-border/30 pt-2.5">
+              <div className="flex flex-wrap items-center gap-2 border-t border-surface-border/25 pt-2">
                 {canQuickDose &&
                   quickDoseLabel && (
                   <button
@@ -1109,7 +1195,7 @@ export default function MedicamentosListPage() {
                         );
                       }
                     }
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
+                    className={`inline-flex h-7.5 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
                       isSOS
                         ? "border-amber-400/20 bg-amber-400/[0.08] text-amber-400"
                         : "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-400"
@@ -1146,7 +1232,7 @@ export default function MedicamentosListPage() {
                         );
                       }
                     }
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
+                    className={`inline-flex h-7.5 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
                       insight.urgencia ===
                       "alta"
                         ? "border-coral/25 bg-coral/[0.08] text-coral"
@@ -1323,8 +1409,8 @@ export default function MedicamentosListPage() {
             }
           />
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="rounded-xl border border-amber-400/15 bg-amber-400/[0.045] px-3 py-2.5">
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-amber-400/15 bg-amber-400/[0.045] px-3 py-2">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
                 Atenção
               </p>
@@ -1336,7 +1422,7 @@ export default function MedicamentosListPage() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.045] px-3 py-2.5">
+            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.045] px-3 py-2">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
                 Em dia
               </p>
