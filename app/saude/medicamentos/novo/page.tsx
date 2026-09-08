@@ -1658,6 +1658,14 @@ export default function NovoMedicamentoPage() {
     );
 
   const [
+    isRegulatoryReviewOpen,
+    setIsRegulatoryReviewOpen,
+  ] =
+    useState(
+      true
+    );
+
+  const [
     catalogSearchError,
     setCatalogSearchError,
   ] =
@@ -2236,6 +2244,10 @@ export default function NovoMedicamentoPage() {
 
         setHydratedCatalogResult(
           null
+        );
+
+        setIsRegulatoryReviewOpen(
+          true
         );
 
         setIsCatalogPresentationOpen(
@@ -4593,6 +4605,10 @@ export default function NovoMedicamentoPage() {
                                                 hydrated
                                               );
 
+                                              setIsRegulatoryReviewOpen(
+                                                true
+                                              );
+
                                               setIsCatalogPresentationOpen(
                                                 true
                                               );
@@ -4798,7 +4814,8 @@ export default function NovoMedicamentoPage() {
 
 
                     {catalogRegulatoryIssues.length >
-                      0 && (
+                      0 &&
+                      isRegulatoryReviewOpen && (
                       <div className="mt-3 space-y-2">
                         {catalogRegulatoryIssues.map(
                           (
@@ -4819,11 +4836,32 @@ export default function NovoMedicamentoPage() {
                                 />
 
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-semibold text-ink-primary">
-                                    {
-                                      issue.title
-                                    }
-                                  </p>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-xs font-semibold text-ink-primary">
+                                      {
+                                        issue.title
+                                      }
+                                    </p>
+
+                                    <button
+                                      type="button"
+                                      aria-label="Fechar revisão regulatória"
+                                      onClick={
+                                        () => {
+                                          setIsRegulatoryReviewOpen(
+                                            false
+                                          );
+
+                                          trigger(
+                                            "vibrate"
+                                          );
+                                        }
+                                      }
+                                      className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-400/15 bg-black/10 text-lg leading-none text-ink-muted transition-colors hover:text-ink-primary"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
 
                                   <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
                                     {
@@ -4904,6 +4942,51 @@ export default function NovoMedicamentoPage() {
                         )}
                       </div>
                     )}
+
+                    {catalogRegulatoryIssues.length >
+                      0 &&
+                      !isRegulatoryReviewOpen && (
+                        <button
+                          type="button"
+                          onClick={
+                            () => {
+                              setIsRegulatoryReviewOpen(
+                                true
+                              );
+
+                              trigger(
+                                "vibrate"
+                              );
+                            }
+                          }
+                          className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/[0.07] px-3.5 py-3 text-left transition-colors hover:bg-amber-400/10"
+                        >
+                          <AlertTriangle
+                            size={
+                              16
+                            }
+                            className="shrink-0 text-amber-400"
+                          />
+
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-ink-primary">
+                              Receita merece revisão
+                            </p>
+
+                            <p className="mt-0.5 text-[10px] leading-relaxed text-ink-muted">
+                              {catalogRegulatoryIssues[
+                                0
+                              ]?.suggestedValue
+                                ? `Esperado pelo catálogo: ${catalogRegulatoryIssues[0].suggestedValue}`
+                                : "Toque para rever a regra e as evidências regulatórias."}
+                            </p>
+                          </div>
+
+                          <span className="shrink-0 text-sm text-amber-300">
+                            ›
+                          </span>
+                        </button>
+                      )}
 
                               {catalogNameIsDifferent && (
                                 <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
