@@ -126,6 +126,119 @@ function evaluateText(
   );
 }
 
+
+type RegulatoryPharmaceuticalFormCategory =
+  | "topical"
+  | "non_topical"
+  | "unknown";
+
+/**
+ * Classificação farmacêutica propositalmente conservadora.
+ *
+ * Prova clara de tópico      => topical
+ * Prova clara de outra via   => non_topical
+ * Qualquer dúvida            => unknown
+ */
+function classifyRegulatoryPharmaceuticalForm(
+  value:
+    string
+): RegulatoryPharmaceuticalFormCategory {
+  const normalized =
+    normalizeText(
+      value
+    );
+
+  if (
+    !normalized
+  ) {
+    return "unknown";
+  }
+
+  const topicalEvidence = [
+    "creme dermatologico",
+    "creme topico",
+    "pomada dermatologica",
+    "pomada topica",
+    "solucao dermatologica",
+    "solucao topica",
+    "locao dermatologica",
+    "locao topica",
+    "gel dermatologico",
+    "gel topico",
+    "uso dermatologico",
+    "uso topico",
+  ];
+
+  if (
+    topicalEvidence.some(
+      (
+        token
+      ) =>
+        normalized.includes(
+          token
+        )
+    )
+  ) {
+    return "topical";
+  }
+
+  /*
+   * Creme e pomada isolados são formas suficientemente
+   * fortes para a categoria tópica.
+   *
+   * Gel isolado NÃO é categorizado automaticamente.
+   */
+  if (
+    normalized ===
+      "creme" ||
+    normalized.startsWith(
+      "creme "
+    ) ||
+    normalized ===
+      "pomada" ||
+    normalized.startsWith(
+      "pomada "
+    )
+  ) {
+    return "topical";
+  }
+
+  const nonTopicalEvidence = [
+    "comprimido",
+    "capsula",
+    "solucao oral",
+    "suspensao oral",
+    "xarope",
+    "solucao injetavel",
+    "suspensao injetavel",
+    "injetavel",
+    "ampola",
+    "seringa",
+    "implante",
+    "supositorio",
+    "ovulo",
+    "colirio",
+    "solucao oftalmica",
+    "inalador",
+    "solucao inalatoria",
+  ];
+
+  if (
+    nonTopicalEvidence.some(
+      (
+        token
+      ) =>
+        normalized.includes(
+          token
+        )
+    )
+  ) {
+    return "non_topical";
+  }
+
+  return "unknown";
+}
+
 function result(
   condition:
     MedicationRegulatoryCondition,
@@ -281,6 +394,46 @@ export function evaluateMedicationRegulatoryCondition(
           ? "applicable"
           : "not_applicable",
         `Forma farmacêutica: ${context.pharmaceuticalForm}.`
+      );
+    }
+
+    case "pharmaceutical_form_category": {
+      if (
+        !context
+          .pharmaceuticalForm
+      ) {
+        return result(
+          condition,
+          "unknown",
+          undefined,
+          "Forma farmacêutica não disponível para determinar a categoria de uso."
+        );
+      }
+
+      const category =
+        classifyRegulatoryPharmaceuticalForm(
+          context.pharmaceuticalForm
+        );
+
+      if (
+        category ===
+        "unknown"
+      ) {
+        return result(
+          condition,
+          "unknown",
+          `Forma farmacêutica: ${context.pharmaceuticalForm}.`,
+          "A forma farmacêutica não permite concluir com segurança se o medicamento é de uso tópico."
+        );
+      }
+
+      return result(
+        condition,
+        category ===
+          condition.value
+          ? "applicable"
+          : "not_applicable",
+        `Forma farmacêutica: ${context.pharmaceuticalForm}; categoria regulatória: ${category}.`
       );
     }
 
@@ -472,6 +625,11 @@ export type ResolveMedicationRegulatoryPrescriptionInput = {
   basePrescriptionModel?:
     string;
 
+  basePrescriptionModelCode?:
+    MedicationRegulatoryResolution[
+      "prescriptionModelCode"
+    ];
+
   exceptions:
     MedicationRegulatoryException[];
 
@@ -529,6 +687,11 @@ export function resolveMedicationRegulatoryPrescription(
           prescriptionModel?:
             string;
 
+          prescriptionModelCode?:
+            MedicationRegulatoryResolution[
+              "prescriptionModelCode"
+            ];
+
           exceptionIds:
             string[];
         }
@@ -549,9 +712,14 @@ export function resolveMedicationRegulatoryPrescription(
         exception
           .overridePrescriptionModel;
 
+      const modelCode =
+        exception
+          .overridePrescriptionModelCode;
+
       if (
         !type &&
-        !model
+        !model &&
+        !modelCode
       ) {
         return {
           status:
@@ -562,6 +730,9 @@ export function resolveMedicationRegulatoryPrescription(
 
           basePrescriptionModel:
             input.basePrescriptionModel,
+
+          basePrescriptionModelCode:
+            input.basePrescriptionModelCode,
 
           exceptionEvaluations:
             evaluations,
@@ -586,6 +757,9 @@ export function resolveMedicationRegulatoryPrescription(
               null,
             model ??
               null,
+
+            modelCode ??
+              null,
           ]
         );
 
@@ -609,6 +783,9 @@ export function resolveMedicationRegulatoryPrescription(
 
             prescriptionModel:
               model,
+
+            prescriptionModelCode:
+              modelCode,
 
             exceptionIds: [
               exception.id,
@@ -660,6 +837,12 @@ export function resolveMedicationRegulatoryPrescription(
                   exception
                     .overridePrescriptionModel
                     ? ` / ${exception.overridePrescriptionModel}`
+                    : ""
+                ) +
+                (
+                  exception
+                    .overridePrescriptionModelCode
+                    ? ` / ${exception.overridePrescriptionModelCode}`
                     : ""
                 )
               );
@@ -744,11 +927,18 @@ export function resolveMedicationRegulatoryPrescription(
         resolvedOverride
           .prescriptionModel,
 
+      prescriptionModelCode:
+        resolvedOverride
+          .prescriptionModelCode,
+
       baseVaultPrescriptionType:
         input.baseVaultPrescriptionType,
 
       basePrescriptionModel:
         input.basePrescriptionModel,
+
+      basePrescriptionModelCode:
+        input.basePrescriptionModelCode,
 
       exceptionEvaluations:
         evaluations,
@@ -834,6 +1024,9 @@ export function resolveMedicationRegulatoryPrescription(
       basePrescriptionModel:
         input.basePrescriptionModel,
 
+      basePrescriptionModelCode:
+        input.basePrescriptionModelCode,
+
       exceptionEvaluations:
         evaluations,
 
@@ -862,11 +1055,17 @@ export function resolveMedicationRegulatoryPrescription(
       prescriptionModel:
         input.basePrescriptionModel,
 
+      prescriptionModelCode:
+        input.basePrescriptionModelCode,
+
       baseVaultPrescriptionType:
         input.baseVaultPrescriptionType,
 
       basePrescriptionModel:
         input.basePrescriptionModel,
+
+      basePrescriptionModelCode:
+        input.basePrescriptionModelCode,
 
       exceptionEvaluations:
         evaluations,

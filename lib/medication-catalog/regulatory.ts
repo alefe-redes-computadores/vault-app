@@ -132,6 +132,19 @@ export type MedicationRegulatoryCondition =
         string | string[];
     }
   | {
+      /**
+       * Categoria farmacêutica conservadora.
+       *
+       * "topical" só é aplicável quando a forma oficial
+       * fornece evidência inequívoca.
+       */
+      kind:
+        "pharmaceutical_form_category";
+
+      value:
+        "topical";
+    }
+  | {
       kind:
         "product_id";
 
