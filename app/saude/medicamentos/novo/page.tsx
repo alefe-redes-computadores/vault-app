@@ -323,13 +323,100 @@ function extractCatalogPresentationDosage(
   return null;
 }
 
+function normalizeCatalogPresentationText(
+  value: string
+): string {
+  return String(
+    value ?? ""
+  )
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .toLocaleLowerCase(
+      "pt-BR"
+    )
+    .replace(
+      /[^a-z0-9]+/g,
+      " "
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
 function inferVaultFormatFromOfficialPresentation(
   value: string
 ): string | null {
   const text =
-    ` ${normalizeCatalogComparisonText(
+    ` ${normalizeCatalogPresentationText(
       value
     )} `;
+
+  /*
+   * catalog-official-form-aliases-v4
+   *
+   * Exemplos reais:
+   * COM CT          -> comprimido
+   * COM REV         -> comprimido
+   * CAP DURA        -> cápsula
+   * SOL INJ         -> injeção
+   * SOL OR          -> solução
+   * SOL OR GOT      -> gotas
+   * SUSP OR         -> suspensão
+   */
+  if (
+    /\bsol inj\b|\bsolucao injetavel\b|\binjetavel\b|\bamp\b|\bampola\b|\bseringa\b/.test(
+      text
+    )
+  ) {
+    return "injecao";
+  }
+
+  if (
+    /\bcom ct\b|\bcomp ct\b|\bcom rev\b|\bcomp rev\b|\bcomprimido\b|\bcomprim\b/.test(
+      text
+    )
+  ) {
+    return "comprimido";
+  }
+
+  if (
+    /\bcap dura\b|\bcap mole\b|\bcaps dura\b|\bcaps mole\b|\bcapsula\b|\bcaps\b/.test(
+      text
+    )
+  ) {
+    return "capsula";
+  }
+
+  if (
+    /\bsol or got\b|\bsol oral got\b|\bgota\b|\bgotas\b|\bgot\b/.test(
+      text
+    )
+  ) {
+    return "gota";
+  }
+
+  if (
+    /\bsusp or\b|\bsusp oral\b|\bsuspensao oral\b|\bsuspensao\b/.test(
+      text
+    )
+  ) {
+    return "suspensao";
+  }
+
+  if (
+    /\bsol or\b|\bsol oral\b|\bsolucao oral\b/.test(
+      text
+    )
+  ) {
+    return "solucao";
+  }
 
   /*
    * catalog-high-confidence-form-aliases-v3
@@ -1563,6 +1650,14 @@ export default function NovoMedicamentoPage() {
     );
 
   const [
+    isCatalogPresentationOpen,
+    setIsCatalogPresentationOpen,
+  ] =
+    useState(
+      true
+    );
+
+  const [
     catalogSearchError,
     setCatalogSearchError,
   ] =
@@ -2141,6 +2236,10 @@ export default function NovoMedicamentoPage() {
 
         setHydratedCatalogResult(
           null
+        );
+
+        setIsCatalogPresentationOpen(
+          true
         );
 
         setIsCatalogOpen(
@@ -4115,6 +4214,25 @@ export default function NovoMedicamentoPage() {
         10
       );
 
+  const selectedCatalogPresentation =
+    catalogPresentationSuggestions.find(
+      (
+        suggestion
+      ) =>
+        normalizeCatalogComparisonText(
+          dosagem
+        ) ===
+          normalizeCatalogComparisonText(
+            suggestion.dosage
+          ) &&
+        (
+          !suggestion.format ||
+          formato ===
+            suggestion.format
+        )
+    ) ??
+    null;
+
   const formatCanBeChecked =
     Boolean(
       catalogReference
@@ -4473,6 +4591,10 @@ export default function NovoMedicamentoPage() {
 
                                               setHydratedCatalogResult(
                                                 hydrated
+                                              );
+
+                                              setIsCatalogPresentationOpen(
+                                                true
                                               );
 
                                               /*
@@ -4844,7 +4966,8 @@ export default function NovoMedicamentoPage() {
                               )}
 
                               {catalogPresentationSuggestions.length >
-                                0 && (
+                                0 &&
+                                isCatalogPresentationOpen && (
                                 <div className="mt-4 border-t border-ice/10 pt-4">
                                   <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-faint">
                                     Apresentações encontradas
@@ -4901,6 +5024,10 @@ export default function NovoMedicamentoPage() {
                                                   );
                                                 }
 
+                                                setIsCatalogPresentationOpen(
+                                                  false
+                                                );
+
                                                 trigger(
                                                   "vibrate"
                                                 );
@@ -4922,8 +5049,9 @@ export default function NovoMedicamentoPage() {
 
                                                 <p className="mt-0.5 text-[11px] font-medium text-ice">
                                                   {
-                                                    suggestion.formatLabel ??
-                                                    "Formato não confirmado"
+                                                    suggestion.formatLabel
+                                                      ? `${suggestion.formatLabel} identificado`
+                                                      : "Formato não confirmado"
                                                   }
                                                 </p>
                                               </div>
@@ -4954,6 +5082,55 @@ export default function NovoMedicamentoPage() {
                                   </p>
                                 </div>
                               )}
+
+                              {catalogPresentationSuggestions.length >
+                                0 &&
+                                !isCatalogPresentationOpen &&
+                                selectedCatalogPresentation && (
+                                  <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.055] px-3.5 py-3">
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle2
+                                          size={
+                                            14
+                                          }
+                                          className="shrink-0 text-emerald-400"
+                                        />
+
+                                        <p className="text-xs font-semibold text-ink-primary">
+                                          {
+                                            selectedCatalogPresentation.dosage
+                                          }
+                                          {selectedCatalogPresentation.formatLabel
+                                            ? ` · ${selectedCatalogPresentation.formatLabel}`
+                                            : ""}
+                                        </p>
+                                      </div>
+
+                                      <p className="mt-1 text-[9px] leading-relaxed text-ink-faint">
+                                        Apresentação selecionada no catálogo ANVISA
+                                      </p>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={
+                                        () => {
+                                          setIsCatalogPresentationOpen(
+                                            true
+                                          );
+
+                                          trigger(
+                                            "vibrate"
+                                          );
+                                        }
+                                      }
+                                      className="shrink-0 rounded-xl border border-ice/20 bg-ice/[0.07] px-3 py-1.5 text-[10px] font-semibold text-ice"
+                                    >
+                                      Alterar apresentação
+                                    </button>
+                                  </div>
+                                )}
                             </div>
                           </div>
                         </div>
