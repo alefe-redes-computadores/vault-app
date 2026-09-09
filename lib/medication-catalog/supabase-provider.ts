@@ -431,7 +431,9 @@ function isStringOrStringArray(
 
 function parseRegulatoryCondition(
   value:
-    unknown
+    unknown,
+  schemaVersion:
+    number
 ): MedicationRegulatoryCondition | null {
   if (
     !value ||
@@ -517,6 +519,32 @@ function parseRegulatoryCondition(
       };
     }
 
+    case "pharmaceutical_form_category": {
+      /*
+       * Esta condição nasceu no condition schema V2.
+       *
+       * Não aceitamos a condição dentro de payload V1:
+       * versões antigas continuam significando exatamente
+       * o mesmo que significavam quando foram persistidas.
+       */
+      if (
+        schemaVersion !==
+          2 ||
+        row.value !==
+          "topical"
+      ) {
+        return null;
+      }
+
+      return {
+        kind:
+          "pharmaceutical_form_category",
+
+        value:
+          "topical",
+      };
+    }
+
     default:
       return null;
   }
@@ -529,8 +557,12 @@ function parseRegulatoryConditions(
     number
 ): MedicationRegulatoryCondition[] | null {
   if (
-    schemaVersion !==
-      1 ||
+    (
+      schemaVersion !==
+        1 &&
+      schemaVersion !==
+        2
+    ) ||
     !Array.isArray(
       value
     ) ||
@@ -542,7 +574,13 @@ function parseRegulatoryConditions(
 
   const parsed =
     value.map(
-      parseRegulatoryCondition
+      (
+        condition
+      ) =>
+        parseRegulatoryCondition(
+          condition,
+          schemaVersion
+        )
     );
 
   if (
