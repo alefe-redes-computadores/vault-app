@@ -12,6 +12,7 @@ import type {
   Medicamento,
   UpdateMedicamentoInput,
   Renovacao,
+  Retirada,
   Vault,
   VaultMember,
   Medico,
@@ -134,6 +135,7 @@ class VaultDB extends Dexie {
 
   medicamentos!: Table<Medicamento, string>;
   renovacoes!: Table<Renovacao, string>;
+  retiradas!: Table<Retirada, string>;
 
   vaults!: Table<Vault, string>;
   vaultMembers!: Table<VaultMember, string>;
@@ -1303,6 +1305,12 @@ class VaultDB extends Dexie {
             );
         }
       });
+    // ==========================================================
+    // VERSÃO 35 — Retiradas
+    // ==========================================================
+    this.version(35).stores({
+      retiradas: 'id, user_id, person_id, medicamento_id, renovacao_origem_id, renovacao_realizada_id, data, status, synced, updated_at',
+    });
   }
 }
 
@@ -1726,6 +1734,13 @@ export async function safeDeleteRenovacao(
     id
   );
 }
+
+// ============================================================
+// RETIRADAS
+// ============================================================
+export async function safeAddRetirada(data: Omit<Retirada,'id'|'created_at'|'updated_at'|'synced'> & Partial<Pick<Retirada,'id'|'created_at'|'updated_at'|'synced'>>): Promise<string> { const t=nowIso(); const id=data.id||generateId(); await db.retiradas.add({...data,id,created_at:data.created_at||t,updated_at:data.updated_at||t,synced:false}); return id; }
+export async function safeUpdateRetirada(id:string,changes:Partial<Retirada>):Promise<void>{ if(!await db.retiradas.get(id)) throw new Error('Retirada não encontrada'); await db.retiradas.update(id,{...changes,synced:false}); }
+export async function safeDeleteRetirada(id:string):Promise<void>{ await db.retiradas.delete(id); }
 
 // ============================================================
 // DOSE LOGS

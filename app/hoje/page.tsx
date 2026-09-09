@@ -56,6 +56,7 @@ import {
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useRetiradas } from "@/hooks/useRetiradas";
 import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
@@ -64,7 +65,8 @@ type FiltroCompromisso =
   | "todos"
   | "consultas"
   | "cirurgias"
-  | "exames";
+  | "exames"
+  | "retiradas";
 
 function getPeriodoDoDia(horario: string) {
   const safeHorario = horario || "00:00";
@@ -400,6 +402,11 @@ export default function HojePage() {
     medicamentos: rawMedicamentos,
   } = useMedicamentos();
 
+  const {
+    retiradas,
+  } =
+    useRetiradas();
+
   const medicamentos =
     useMemo(
       () => {
@@ -646,7 +653,7 @@ export default function HojePage() {
     ]
   );
 
-  const eventosMedicamentoHoje =
+  const renovacoesReceitaHoje =
     useMemo(
       () => {
         if (
@@ -655,91 +662,33 @@ export default function HojePage() {
           return [];
         }
 
-        const eventos:
-          Array<{
-            id: string;
-            tipo:
-              | "retirada_sus"
-              | "renovacao_receita";
-            medicamentoId: string;
-            medicamentoNome: string;
-            titulo: string;
-            descricao: string;
-            cor: string;
-          }> = [];
-
-        for (
-          const medicamento of
-            medicamentos
-        ) {
-          if (
-            !medicamento.id ||
-            medicamento.person_id !==
-              activePersonId
-          ) {
-            continue;
-          }
-
-          const retornoSus =
-            String(
-              (medicamento as any)
-                .data_retorno_sus ||
-              ""
-            ).slice(
-              0,
-              10
-            );
-
-          if (
-            retornoSus ===
-            dataSelecionada
-          ) {
-            eventos.push({
-              id:
-                `retirada-sus-${medicamento.id}-${dataSelecionada}`,
-
-              tipo:
-                "retirada_sus",
-
-              medicamentoId:
-                medicamento.id,
-
-              medicamentoNome:
-                medicamento.nome,
-
-              titulo:
-                `Retirada de ${medicamento.nome}`,
-
-              descricao:
-                "Retirada programada no SUS",
-
-              cor:
-                "ice",
-            });
-          }
-
-          const renovacaoReceita =
-            String(
-              medicamento.proxima_renovacao ||
-              ""
-            ).slice(
-              0,
-              10
-            );
-
-          if (
-            renovacaoReceita ===
-            dataSelecionada
-          ) {
-            eventos.push({
+        return medicamentos
+          .filter(
+            (
+              medicamento
+            ) =>
+              medicamento.id &&
+              String(
+                medicamento.proxima_renovacao ||
+                ""
+              ).slice(
+                0,
+                10
+              ) ===
+                dataSelecionada
+          )
+          .map(
+            (
+              medicamento
+            ) => ({
               id:
                 `renovacao-receita-${medicamento.id}-${dataSelecionada}`,
 
               tipo:
-                "renovacao_receita",
+                "renovacao_receita" as const,
 
               medicamentoId:
-                medicamento.id,
+                medicamento.id!,
 
               medicamentoNome:
                 medicamento.nome,
@@ -749,18 +698,28 @@ export default function HojePage() {
 
               descricao:
                 "Data planejada para renovação da receita",
-
-              cor:
-                "amber",
-            });
-          }
-        }
-
-        return eventos;
+            })
+          );
       },
       [
         medicamentos,
         activePersonId,
+        dataSelecionada,
+      ]
+    );
+
+  const retiradasHoje =
+    useMemo(
+      () =>
+        retiradas.filter(
+          (
+            retirada
+          ) =>
+            retirada.data ===
+            dataSelecionada
+        ),
+      [
+        retiradas,
         dataSelecionada,
       ]
     );
@@ -1601,6 +1560,24 @@ export default function HojePage() {
       ];
     }
 
+    if (
+      filtroCompromisso === "todos" ||
+      filtroCompromisso === "retiradas"
+    ) {
+      items = [
+        ...items,
+        ...retiradasHoje.map(
+          (
+            retirada
+          ) => ({
+            ...retirada,
+            tipo:
+              "retirada",
+          })
+        ),
+      ];
+    }
+
     return items.sort((a, b) =>
       (a.horario || "00:00").localeCompare(
         b.horario || "00:00"
@@ -1610,6 +1587,7 @@ export default function HojePage() {
     consultasHoje,
     cirurgiasHoje,
     examesHoje,
+    retiradasHoje,
     filtroCompromisso,
   ]);
 
@@ -1777,7 +1755,7 @@ export default function HojePage() {
     compromissosFiltrados.length;
 
   const totalEventosMedicamento =
-    eventosMedicamentoHoje.length;
+    renovacoesReceitaHoje.length;
 
   const totalItensPlanejados =
     totalEsperadasSemConfirmacao +
@@ -2332,6 +2310,8 @@ export default function HojePage() {
         "/saude/cirurgias/detalhes",
       exame:
         "/saude/exames/detalhes",
+      retirada:
+        "/saude/retiradas/detalhes",
     };
 
     const rota = rotas[item.tipo];
@@ -3018,7 +2998,7 @@ export default function HojePage() {
               CUIDADOS DO DIA
           ======================================================= */}
 
-          {eventosMedicamentoHoje.length >
+          {renovacoesReceitaHoje.length >
             0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
@@ -3043,19 +3023,18 @@ export default function HojePage() {
 
                 <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 font-mono text-[9px] font-bold text-ice">
                   {
-                    eventosMedicamentoHoje.length
+                    renovacoesReceitaHoje.length
                   }
                 </span>
               </div>
 
               <div className="space-y-2.5">
-                {eventosMedicamentoHoje.map(
+                {renovacoesReceitaHoje.map(
                   (
                     evento
                   ) => {
                     const isRetirada =
-                      evento.tipo ===
-                      "retirada_sus";
+                      false;
 
                     return (
                       <motion.button
@@ -3092,19 +3071,11 @@ export default function HojePage() {
                                 : "bg-amber-400/15 text-amber-400"
                             }`}
                           >
-                            {isRetirada ? (
-                              <Pill
-                                size={
-                                  18
-                                }
-                              />
-                            ) : (
-                              <FileWarning
-                                size={
-                                  18
-                                }
-                              />
-                            )}
+                            <FileWarning
+                              size={
+                                18
+                              }
+                            />
                           </div>
 
                           <div className="min-w-0 flex-1">
@@ -3122,9 +3093,7 @@ export default function HojePage() {
                                     : "bg-amber-400/10 text-amber-400"
                                 }`}
                               >
-                                {isRetirada
-                                  ? "SUS"
-                                  : "Receita"}
+                                Receita
                               </span>
                             </div>
 
@@ -3184,6 +3153,10 @@ export default function HojePage() {
                       item.tipo ===
                       "cirurgia";
 
+                    const isRetirada =
+                      item.tipo ===
+                      "retirada";
+
                     const getIcon = () => {
                       if (isConsulta) {
                         return (
@@ -3199,6 +3172,15 @@ export default function HojePage() {
                           <Activity
                             size={18}
                             className="text-coral"
+                          />
+                        );
+                      }
+
+                      if (isRetirada) {
+                        return (
+                          <Pill
+                            size={18}
+                            className="text-ice"
                           />
                         );
                       }
@@ -3221,6 +3203,10 @@ export default function HojePage() {
                           return "border-coral/30 bg-coral/5";
                         }
 
+                        if (isRetirada) {
+                          return "border-ice/30 bg-ice/5";
+                        }
+
                         return "border-emerald-400/30 bg-emerald-400/5";
                       };
 
@@ -3234,6 +3220,10 @@ export default function HojePage() {
                           return "Procedimento cirúrgico";
                         }
 
+                        if (isRetirada) {
+                          return "Retirada de medicamento";
+                        }
+
                         return "Realização de exame";
                       };
 
@@ -3241,6 +3231,7 @@ export default function HojePage() {
                       item.especialidade ||
                       item.procedimento ||
                       item.nome ||
+                      item.medicamento_nome ||
                       "Compromisso de saúde";
 
                     return (
@@ -3274,7 +3265,9 @@ export default function HojePage() {
                                     ? "bg-ice/10 text-ice"
                                     : isCirurgia
                                     ? "bg-coral/10 text-coral"
-                                    : "bg-emerald-400/10 text-emerald-400"
+                                    : isRetirada
+                                      ? "bg-ice/10 text-ice"
+                                      : "bg-emerald-400/10 text-emerald-400"
                                 }`}
                               >
                                 {

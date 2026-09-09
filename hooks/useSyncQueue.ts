@@ -41,6 +41,7 @@ import type {
   Person,
   RegistroSaude,
   Renovacao,
+  Retirada,
   SyncQueueItem,
   Tratamento,
   Vault,
@@ -3272,6 +3273,86 @@ export function useSyncQueue() {
     };
 
   // ============================================================
+  // RETIRADAS
+  // ============================================================
+
+  const syncRetirada=async(item:SyncQueueItem)=>{
+    const client=requireSupabase();
+    const r=item.payload as unknown as Retirada;
+
+    switch(item.operation){
+      case "add":
+      case "update":{
+        if(!r.id)throw new Error("Retirada sem id.");
+
+        const personId=requirePersonId(r.person_id,"Retirada",r.id);
+        const userId=requireUserId(r.user_id,"Retirada",r.id);
+
+        const {data,error}=await client
+          .from("retiradas")
+          .upsert({
+            id:r.id,
+            user_id:userId,
+            person_id:personId,
+            medicamento_id:r.medicamento_id,
+            renovacao_origem_id:r.renovacao_origem_id??null,
+            renovacao_realizada_id:r.renovacao_realizada_id??null,
+            medico_id:r.medico_id??null,
+            farmacia_id:r.farmacia_id??null,
+            hospital_id:r.hospital_id??null,
+            local_id:r.local_id??null,
+            medicamento_nome:r.medicamento_nome??null,
+            medicamento_dosagem:r.medicamento_dosagem??null,
+            data:r.data,
+            horario:r.horario??null,
+            tipo:r.tipo,
+            status:r.status,
+            quantidade_prevista:r.quantidade_prevista??null,
+            quantidade_retirada:r.quantidade_retirada??null,
+            exige_nova_receita:r.exige_nova_receita??false,
+            observacoes:r.observacoes??null,
+            realizada_em:r.realizada_em??null,
+
+                  reagendamentos:
+                    r.reagendamentos ??
+                    [],
+            created_at:r.created_at,
+            updated_at:r.updated_at
+          },{onConflict:"id"})
+          .select("id");
+
+        if(error){
+          throw new Error(`Retiradas upsert error: ${error.message}`);
+        }
+
+        if(!data?.some(x=>x.id===r.id)){
+          throw new Error(`Retirada ${r.id} não confirmada pelo Supabase.`);
+        }
+
+        break;
+      }
+
+      case "delete":{
+        const id=requirePayloadId(item);
+
+        const {error}=await client
+          .from("retiradas")
+          .delete()
+          .eq("id",id);
+
+        if(error){
+          throw new Error(`Retiradas delete error: ${error.message}`);
+        }
+
+        break;
+      }
+
+      default:
+        throw new Error(`Operação não suportada em retiradas: ${item.operation}`);
+    }
+  };
+
+  // ============================================================
   // DOSE LOGS
   // ============================================================
 
@@ -4666,6 +4747,14 @@ export function useSyncQueue() {
           );
           break;
 
+        case "retiradas":
+          await markRecordSyncedIfCurrent(
+            db.retiradas,
+            payload.id,
+            expectedUpdatedAt
+          );
+          break;
+
         case "doseLogs":
           await markRecordSyncedIfCurrent(
             db.doseLogs,
@@ -4916,6 +5005,10 @@ export function useSyncQueue() {
           );
           return;
 
+        case "retiradas":
+          await syncRetirada(item);
+          return;
+
         case "doseLogs":
           await syncDoseLog(
             item
@@ -5101,6 +5194,7 @@ export function useSyncQueue() {
                   "cirurgias",
 
                   "renovacoes",
+                  "retiradas",
                   "doseLogs",
 
                   "anexos_clinicos",

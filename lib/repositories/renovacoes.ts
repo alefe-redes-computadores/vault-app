@@ -12,6 +12,8 @@ import {
   getLocalTodayISO,
 } from "@/lib/health-utils";
 
+import { detachOrDeleteRetiradaFromRenovacao, reconcileScheduledRetiradaFromRenovacao } from "@/lib/repositories/retiradas";
+
 import type {
   Farmacia,
   Medicamento,
@@ -1080,6 +1082,7 @@ export const renovacoesRepository = {
       "rw",
       [
         db.renovacoes,
+        db.retiradas,
         db.medicamentos,
         db.syncQueue,
       ],
@@ -1126,6 +1129,8 @@ export const renovacoesRepository = {
               false,
           }
         );
+
+        await reconcileScheduledRetiradaFromRenovacao(cleanRenovacao, medicamentoPersistido);
       }
     );
 
@@ -1352,6 +1357,8 @@ export const renovacoesRepository = {
       "rw",
       [
         db.renovacoes,
+        db.retiradas,
+        db.medicamentos,
         db.syncQueue,
       ],
       async () => {
@@ -1394,6 +1401,10 @@ export const renovacoesRepository = {
               false,
           }
         );
+
+        const medicamentoAtual = await db.medicamentos.get(renovacaoAtualizada.medicamento_id);
+        if (!medicamentoAtual || medicamentoAtual.person_id !== safePersonId) throw new Error("Medicamento da renovação não encontrado para reconciliar retirada.");
+        await reconcileScheduledRetiradaFromRenovacao(renovacaoAtualizada, medicamentoAtual);
       }
     );
 
@@ -1441,9 +1452,11 @@ export const renovacoesRepository = {
       "rw",
       [
         db.renovacoes,
+        db.retiradas,
         db.syncQueue,
       ],
       async () => {
+        await detachOrDeleteRetiradaFromRenovacao(renovacao);
         await db.renovacoes.delete(
           safeId
         );

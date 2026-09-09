@@ -46,6 +46,7 @@ import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useRetiradas } from "@/hooks/useRetiradas";
 
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
@@ -800,6 +801,11 @@ export default function HomePage() {
       []
     );
 
+  const {
+    retiradas,
+  } =
+    useRetiradas();
+
   // ==========================================================
   // COMPROMISSOS DE HOJE
   // ==========================================================
@@ -849,10 +855,29 @@ export default function HomePage() {
       ]
     );
 
+  const retiradasHoje =
+    useMemo(
+      () =>
+        retiradas.filter(
+          (
+            retirada
+          ) =>
+            retirada.data ===
+              hoje &&
+            retirada.status ===
+              "agendada"
+        ),
+      [
+        retiradas,
+        hoje,
+      ]
+    );
+
   const totalCompromissosHoje =
     consultasHoje.length +
     examesHoje.length +
-    cirurgiasHoje.length;
+    cirurgiasHoje.length +
+    retiradasHoje.length;
 
   // ==========================================================
   // DOSES PENDENTES
@@ -1397,7 +1422,7 @@ export default function HomePage() {
                 : `Você tem ${totalCompromissosHoje} compromissos`,
 
             description:
-              "Sua agenda clínica está organizada logo abaixo.",
+              "Sua agenda de saúde está organizada logo abaixo.",
 
             color:
               "#38BDF8",
@@ -2588,7 +2613,7 @@ export default function HomePage() {
                   </div>
 
                   <p className="mt-0.5 text-[10px] text-ink-muted">
-                    Sua agenda clínica do dia
+                    Sua agenda de saúde do dia
                   </p>
                 </div>
 
@@ -2748,6 +2773,56 @@ export default function HomePage() {
 
                       <span className="shrink-0 font-mono text-[11px] font-semibold text-coral">
                         Hoje
+                      </span>
+                    </button>
+                  )
+                )}
+
+                {retiradasHoje.map(
+                  (
+                    retirada
+                  ) => (
+                    <button
+                      type="button"
+                      key={
+                        retirada.id
+                      }
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        router.push(
+                          `/saude/retiradas/detalhes?id=${retirada.id}`
+                        );
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[20px] border border-ice/25 bg-ice/[0.04] p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+                        <Pill
+                          size={
+                            17
+                          }
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink-primary">
+                          {retirada.medicamento_nome ||
+                            "Retirada de medicamento"}
+                        </p>
+
+                        <p className="truncate text-[10px] text-ink-muted">
+                          {retirada.tipo ===
+                          "sus"
+                            ? "Retirada programada no SUS"
+                            : "Retirada programada"}
+                        </p>
+                      </div>
+
+                      <span className="shrink-0 font-mono text-[11px] font-semibold text-ice">
+                        {retirada.horario ||
+                          "Hoje"}
                       </span>
                     </button>
                   )

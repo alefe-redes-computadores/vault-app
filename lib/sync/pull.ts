@@ -1084,6 +1084,24 @@ export async function pullAllData(
 
     await processTable({
       remoteTable:
+        "retiradas",
+      queueTable:
+        "retiradas",
+      localTable:
+        db.retiradas,
+      query:
+        async () =>
+          await supabase
+            .from("retiradas")
+            .select("*")
+            .eq(
+              "user_id",
+              userId
+            ),
+    });
+
+    await processTable({
+      remoteTable:
         "dose_logs",
       queueTable:
         "doseLogs",

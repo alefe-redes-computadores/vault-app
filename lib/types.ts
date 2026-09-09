@@ -692,6 +692,7 @@ export interface SyncQueueItem {
     | "documents"
     | "medicamentos"
     | "renovacoes"
+    | "retiradas"
     | "vaults"
     | "vaultMembers"
     | "medicos"
@@ -980,6 +981,54 @@ export interface Renovacao {
   data_retorno_sus?:
     | string
     | null;
+}
+
+export type RetiradaStatus = "agendada" | "realizada" | "cancelada" | "nao_realizada";
+export type RetiradaTipo = "sus" | "farmacia" | "outro";
+
+export interface RetiradaReagendamento {
+  data_anterior: string;
+  horario_anterior?: string | null;
+
+  nova_data: string;
+  novo_horario?: string | null;
+
+  motivo?: string | null;
+
+  reagendada_em: string;
+}
+
+export interface Retirada {
+  id?: string;
+  user_id: string;
+  person_id: string;
+  medicamento_id: string;
+  renovacao_origem_id?: string | null;
+  renovacao_realizada_id?: string | null;
+  medico_id?: string | null;
+  farmacia_id?: string | null;
+  hospital_id?: string | null;
+  local_id?: string | null;
+  medicamento_nome?: string | null;
+  medicamento_dosagem?: string | null;
+  data: string;
+  horario?: string | null;
+  tipo: RetiradaTipo;
+  status: RetiradaStatus;
+  quantidade_prevista?: number | null;
+  quantidade_retirada?: number | null;
+  exige_nova_receita?: boolean;
+  observacoes?: string | null;
+  realizada_em?: string | null;
+
+  /**
+   * Histórico append-only de reagendamentos.
+   * Preserva o compromisso original sem criar inferências.
+   */
+  reagendamentos?: RetiradaReagendamento[];
+  created_at?: string;
+  updated_at?: string;
+  synced?: boolean;
 }
 
 export interface DoseLog {
