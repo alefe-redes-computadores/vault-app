@@ -19,6 +19,7 @@ import {
   Droplet,
   Eye,
   EyeOff,
+  History,
   Pill,
   Stethoscope,
   StickyNote,
@@ -1351,36 +1352,41 @@ export default function MedicamentosListPage() {
               : "ativos"
           }`}
           rightAction={
-            <button
-              type="button"
-              onClick={
-                handleToggleSuspensos
-              }
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
-                showDescontinuados
-                  ? "border-amber-400/50 bg-amber-400/10 text-amber-400"
-                  : "border-surface-border/50 bg-surface-raised text-ink-muted"
-              }`}
-              aria-label={
-                showDescontinuados
-                  ? "Ocultar medicamentos suspensos"
-                  : "Mostrar medicamentos suspensos"
-              }
-            >
-              {showDescontinuados ? (
-                <Eye
-                  size={
-                    18
-                  }
-                />
-              ) : (
-                <EyeOff
-                  size={
-                    18
-                  }
-                />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/saude/retiradas");
+                }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice transition-all active:scale-95"
+                aria-label="Abrir retiradas de medicamentos"
+                title="Retiradas"
+              >
+                <History size={18} />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleSuspensos}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                  showDescontinuados
+                    ? "border-amber-400/50 bg-amber-400/10 text-amber-400"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+                aria-label={
+                  showDescontinuados
+                    ? "Ocultar medicamentos suspensos"
+                    : "Mostrar medicamentos suspensos"
+                }
+              >
+                {showDescontinuados ? (
+                  <Eye size={18} />
+                ) : (
+                  <EyeOff size={18} />
+                )}
+              </button>
+            </div>
           }
         >
           <div className="flex w-full items-center gap-2">
