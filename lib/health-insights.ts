@@ -8,6 +8,10 @@ import {
   VALIDADE_RECEITA_DIAS,
 } from "./health-utils";
 
+import {
+  analyzeSosPattern,
+} from "./health-intelligence/sos-patterns";
+
 import type {
   Cid,
   Cirurgia,
@@ -8712,43 +8716,57 @@ export function gerarInsightsSaude(
       // SOS
       // -------------------------------------------------------
 
-      const tendenciaSOS =
-        analisarTendenciaSOS(
-          medicamento,
+      const padraoSOS =
+        analyzeSosPattern({
+          medication:
+            medicamento,
+
           logs,
-          7
-        );
+
+          today:
+            contexto.hoje ||
+            getLocalTodayISO(),
+
+          periodDays:
+            7,
+        });
 
       if (
-        tendenciaSOS
+        padraoSOS
       ) {
         insights.push({
           id:
-            `tendencia-sos-${medicamento.id}`,
+            `padrao-sos-v1-${medicamento.id}`,
 
           kind:
-            "pattern",
+            padraoSOS.level ===
+              "strong"
+              ? "alert"
+              : "pattern",
 
           categoria:
             "uso_sos",
 
           titulo:
-            `${medicamento.nome}: ${tendenciaSOS.titulo}`,
+            `${medicamento.nome}: ${padraoSOS.title}`,
 
           mensagem:
-            tendenciaSOS.mensagem,
+            `${padraoSOS.message} ${padraoSOS.recommendation}`,
 
           urgencia:
-            tendenciaSOS.atual >
-              tendenciaSOS.anterior
-              ? "media"
-              : "baixa",
+            padraoSOS.level ===
+              "strong"
+              ? "alta"
+              : padraoSOS.level ===
+                  "attention"
+                ? "media"
+                : "baixa",
 
           confianca:
-            tendenciaSOS.confianca,
+            padraoSOS.confidence,
 
           amostra:
-            tendenciaSOS.amostra,
+            padraoSOS.sample,
 
           periodoDias:
             14,
@@ -8760,12 +8778,10 @@ export function gerarInsightsSaude(
             medicamento.id,
 
           link:
-            `/saude/medicamentos/detalhes?id=${medicamento.id}`,
+            `/saude/medicamentos/historico?id=${medicamento.id}`,
 
-          evidencias: [
-            `${tendenciaSOS.atual} tomada(s) nos últimos 7 dias`,
-            `${tendenciaSOS.anterior} tomada(s) nos 7 dias anteriores`,
-          ],
+          evidencias:
+            padraoSOS.evidence,
         });
       }
 
