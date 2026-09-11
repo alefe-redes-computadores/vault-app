@@ -588,6 +588,12 @@ export default function MedicamentosListPage() {
             )
         );
 
+        const byName = (a: ProcessedMed, b: ProcessedMed) =>
+          String(a.med.nome || "").localeCompare(String(b.med.nome || ""), "pt-BR");
+
+        sos.sort(byName);
+        suspensos.sort(byName);
+
         return {
           medsPrioridade:
             prioridade,
@@ -1073,7 +1079,7 @@ export default function MedicamentosListPage() {
 
             {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="rounded-xl border border-surface-border/35 bg-black/[0.07] px-3 py-2">
+            <div className="min-h-[76px] rounded-xl border border-surface-border/35 bg-black/[0.07] px-3 py-2">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -1520,7 +1526,7 @@ export default function MedicamentosListPage() {
                     icon={
                       Zap
                     }
-                    title="Uso Esporádico (SOS)"
+                    title={`Uso esporádico (SOS) · ${medsSOS.length}`}
                   />
 
                   {medsSOS.map(
@@ -1536,7 +1542,7 @@ export default function MedicamentosListPage() {
                     icon={
                       EyeOff
                     }
-                    title="Suspensos"
+                    title={`Suspensos · ${medsSuspensos.length}`}
                   />
 
                   {medsSuspensos.map(

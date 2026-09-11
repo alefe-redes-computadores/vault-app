@@ -12,6 +12,8 @@ import {
   analyzeSosPattern,
 } from "./health-intelligence/sos-patterns";
 
+import { buildHydrationInsights } from "@/lib/health-intelligence/hydration-insights";
+
 import type {
   Cid,
   Cirurgia,
@@ -8012,6 +8014,10 @@ export interface HealthInsight {
    */
   evidencias?:
     string[];
+
+  /** Categorias internas realmente consultadas; não são fontes médicas externas. */
+  fontesInternas?:
+    string[];
 }
 
 // ============================================================
@@ -9153,6 +9159,12 @@ export function gerarInsightsSaude(
       ],
     });
   }
+
+  // ----------------------------------------------------------
+  // HIDRATAÇÃO — somente registros reais, nunca ausência = zero
+  // ----------------------------------------------------------
+
+  insights.push(...buildHydrationInsights(registrosSaude, contexto.hoje || getLocalTodayISO()));
 
   // ----------------------------------------------------------
   // DEDUPLICAÇÃO + ORDENAÇÃO

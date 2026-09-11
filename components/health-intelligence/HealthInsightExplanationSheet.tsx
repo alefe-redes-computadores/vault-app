@@ -115,6 +115,18 @@ function getDestinationLabel(
   }
 }
 
+function getInternalSources(insight: HealthInsight): string[] {
+  if (insight.fontesInternas?.length) return insight.fontesInternas;
+  switch (insight.categoria) {
+    case "adesao": case "rotina": return ["Medicamentos", "Registros de doses"];
+    case "uso_sos": return ["Medicamentos SOS", "Registros de doses"];
+    case "estoque": case "renovacao": return ["Medicamentos", "Aquisições e renovações"];
+    case "tratamento": return ["Tratamentos", "Medicamentos vinculados"];
+    case "sintomas": case "historico": return ["Registros de Saúde"];
+    default: return ["Dados da pessoa ativa"];
+  }
+}
+
 function formatCategory(
   category:
     string
@@ -486,6 +498,16 @@ export function HealthInsightExplanationSheet({
                         : "Histórico disponível"}
                     </p>
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-surface-border bg-surface p-3.5">
+                  <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-ink-faint">Fontes internas</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {getInternalSources(insight).map((source) => (
+                      <span key={source} className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 text-[9px] font-semibold text-violet-300">{source}</span>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[9px] leading-relaxed text-ink-faint">Fontes internas do histórico da pessoa ativa; não representam diagnóstico nem literatura médica externa.</p>
                 </div>
 
                 {insight.evidencias &&
