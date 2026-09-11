@@ -72,7 +72,11 @@ export type CardBrand =
   | "hipercard"
   | "unknown";
 
-export type CategoriaRegistro = "sintoma" | "medicao" | "humor";
+export type CategoriaRegistro =
+  | "sintoma"
+  | "medicao"
+  | "humor"
+  | "habito";
 
 // ============================================================
 // 2. PESSOAS E CATEGORIAS
@@ -1125,6 +1129,22 @@ export interface RegistroSaude {
   nome: string;
   intensidade?: number;
   valor_medicao?: string;
+
+  /** Valor estruturado quando o registro admite número simples. */
+  valor_numerico?: number;
+
+  /** Unidade explícita; nunca inferida na apresentação. */
+  unidade_medida?: string;
+
+  /** Chave canônica usada para agrupar uma série longitudinal. */
+  registro_chave?: string;
+
+  /** Duração observada, quando fizer sentido (sono, dor, atividade). */
+  duracao_minutos?: number;
+
+  /** Contexto descritivo opcional, sem inferência causal. */
+  contexto?: string;
+
   data: string;
   horario: string;
   observacoes?: string;

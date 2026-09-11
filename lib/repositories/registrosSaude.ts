@@ -11,6 +11,11 @@ import { supabase } from "@/lib/supabase/client";
 
 import type { RegistroSaude } from "@/lib/types";
 
+import {
+  buildHealthRecordKey,
+  normalizeRegistroSaudeFields,
+} from "@/lib/health-records";
+
 // ============================================================
 // TIPOS
 // ============================================================
@@ -421,16 +426,9 @@ export const registrosSaudeRepository = {
       return [];
     }
 
-    const nomeNormalizado =
-      String(registro.nome || "")
-        .trim()
-        .toLocaleLowerCase(
-          "pt-BR"
-        );
-
-    if (!nomeNormalizado) {
-      return [];
-    }
+    const registroChave =
+      registro.registro_chave ||
+      buildHealthRecordKey(registro);
 
     const todos =
       await db.registros_saude
@@ -442,11 +440,9 @@ export const registrosSaudeRepository = {
       todos.filter(
         (item) =>
           item.id !== safeId &&
-          String(item.nome || "")
-            .trim()
-            .toLocaleLowerCase(
-              "pt-BR"
-            ) === nomeNormalizado
+          (item.registro_chave ||
+            buildHealthRecordKey(item)) ===
+          registroChave
       )
     ).slice(
       0,
@@ -499,8 +495,12 @@ export const registrosSaudeRepository = {
     const now =
       nowIso();
 
+    const normalizedFields =
+      normalizeRegistroSaudeFields(data);
+
     const novoRegistro = {
       ...data,
+      ...normalizedFields,
 
       id,
 
@@ -659,9 +659,16 @@ export const registrosSaudeRepository = {
      * 1. a fila recebe registro completo;
      * 2. null realmente limpa relações no sync remoto.
      */
+    const normalizedFields =
+      normalizeRegistroSaudeFields({
+        ...atual,
+        ...changes,
+      });
+
     const atualizado = {
       ...atual,
       ...changes,
+      ...normalizedFields,
 
       id:
         safeId,

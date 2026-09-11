@@ -4351,9 +4351,11 @@ export function analisarSerieRegistrosSaude(
   registro: RegistroSaude,
   historico: RegistroSaude[]
 ): RegistroSaudeSerieInsight {
-  const nomeNormalizado = normalizeText(
-    registro.nome || ""
-  );
+  const serieChave =
+    registro.registro_chave ||
+    `${registro.categoria}:${normalizeText(
+      registro.tipo || registro.nome || "geral"
+    )}`;
 
   const currentKey =
     registroSaudeDateTimeKey(
@@ -4370,10 +4372,13 @@ export function analisarSerieRegistrosSaude(
         return false;
       }
 
-      if (
-        normalizeText(item.nome || "") !==
-        nomeNormalizado
-      ) {
+      const itemChave =
+        item.registro_chave ||
+        `${item.categoria}:${normalizeText(
+          item.tipo || item.nome || "geral"
+        )}`;
+
+      if (itemChave !== serieChave) {
         return false;
       }
 

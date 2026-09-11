@@ -3761,6 +3761,26 @@ export function useSyncQueue() {
                     reg.valor_medicao ||
                     null,
 
+                  valor_numerico:
+                    reg.valor_numerico ??
+                    null,
+
+                  unidade_medida:
+                    reg.unidade_medida ||
+                    null,
+
+                  registro_chave:
+                    reg.registro_chave ||
+                    null,
+
+                  duracao_minutos:
+                    reg.duracao_minutos ??
+                    null,
+
+                  contexto:
+                    reg.contexto ||
+                    null,
+
                   data:
                     reg.data,
 

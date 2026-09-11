@@ -1311,6 +1311,28 @@ class VaultDB extends Dexie {
     this.version(35).stores({
       retiradas: 'id, user_id, person_id, medicamento_id, renovacao_origem_id, renovacao_realizada_id, data, status, synced, updated_at',
     });
+
+    // ==========================================================
+    // VERSÃO 36 — Registros de Saúde longitudinais
+    // ==========================================================
+    this.version(36).stores({
+      registros_saude:
+        'id, user_id, person_id, data, categoria, tipo, registro_chave, [person_id+data], [person_id+registro_chave], synced, updated_at',
+    }).upgrade(async (tx) => {
+      const table = tx.table('registros_saude');
+      const records = await table.toArray();
+
+      for (const record of records) {
+        const identity = String(record.tipo || record.nome || 'geral')
+          .trim().toLocaleLowerCase('pt-BR')
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'geral';
+
+        await table.update(record.id, {
+          registro_chave: record.registro_chave || `${record.categoria}:${identity}`,
+        });
+      }
+    });
   }
 }
 
