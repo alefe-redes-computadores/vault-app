@@ -66,6 +66,9 @@ import {
   db,
 } from "@/lib/db";
 
+import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
+import { useLiveQuery } from "dexie-react-hooks";
+
 // ============================================================
 // NOTIFICATION ACTION DATA
 // ============================================================
@@ -188,6 +191,11 @@ export function Providers({
     );
 
   useDoseNotificationActions();
+
+  const ownedPersonCount = useLiveQuery(
+    () => user ? db.persons.where("user_id").equals(user.id).count() : 0,
+    [user?.id]
+  );
 
   /*
    * Mantém o canal Realtime ativo enquanto a árvore principal
@@ -723,7 +731,9 @@ export function Providers({
         pathname ===
           "/login" ||
         pathname ===
-          "/auth/callback"
+          "/auth/callback" ||
+        pathname ===
+          "/onboarding"
       ) {
         return;
       }
@@ -743,6 +753,17 @@ export function Providers({
       router,
     ]
   );
+
+  // Só decide onboarding depois do pull remoto. Assim um segundo aparelho
+  // não fabrica uma pessoa duplicada antes de conhecer a nuvem.
+  useEffect(() => {
+    if (!loading && user && isPullDone && ownedPersonCount === 0 && pathname !== "/onboarding") {
+      router.replace("/onboarding");
+    }
+    if (!loading && user && ownedPersonCount && ownedPersonCount > 0 && pathname === "/onboarding") {
+      router.replace("/");
+    }
+  }, [loading, user, isPullDone, ownedPersonCount, pathname, router]);
 
   // ==========================================================
   // LOADING
@@ -774,7 +795,9 @@ export function Providers({
     pathname ===
       "/login" ||
     pathname ===
-      "/auth/callback"
+      "/auth/callback" ||
+    pathname ===
+      "/onboarding"
   ) {
     return (
         <ErrorBoundary>
@@ -815,12 +838,18 @@ export function Providers({
     );
   }
 
+  // Não libera o app normal enquanto o perfil principal ainda não existe.
+  if (ownedPersonCount === undefined || (isOnline && !isPullDone) || ownedPersonCount === 0) {
+    return <div className="min-h-screen bg-void" aria-hidden="true" />;
+  }
+
   // ==========================================================
   // APP
   // ==========================================================
 
   return (
       <ErrorBoundary>
+        <HealthReminderReconciler />
         <div className="min-h-screen pb-24">
           <Suspense
             fallback={

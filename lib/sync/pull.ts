@@ -411,6 +411,18 @@ export async function pullAllData(
       };
 
     // ==========================================================
+    // HEALTH REMINDERS (person-scoped, sincronizados)
+    // ==========================================================
+
+    await processTable({
+      remoteTable: "health_reminders",
+      queueTable: "health_reminders",
+      localTable: db.health_reminders,
+      query: async () => await supabase.from("health_reminders").select("*").eq("user_id", userId),
+      mapRemote: (row) => ({ ...row, time: typeof row.time === "string" ? row.time.slice(0, 5) : row.time, weekdays: Array.isArray(row.weekdays) ? row.weekdays : [] }),
+    });
+
+    // ==========================================================
     // PERSONS
     // ==========================================================
 

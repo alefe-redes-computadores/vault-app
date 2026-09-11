@@ -33,6 +33,8 @@ import type {
   RegistroSaude,
 } from '@/lib/types';
 
+import type { HealthReminderRule } from '@/lib/health-reminders/types';
+
 import { deleteFile } from '@/lib/supabase/storage';
 import { getLocalTodayISO } from '@/lib/health-utils';
 
@@ -168,6 +170,8 @@ class VaultDB extends Dexie {
   versiculos!: Table<Versiculo, string>;
 
   registros_saude!: Table<RegistroSaude, string>;
+
+  health_reminders!: Table<HealthReminderRule, string>;
 
   constructor() {
     super('vault-db');
@@ -1332,6 +1336,14 @@ class VaultDB extends Dexie {
           registro_chave: record.registro_chave || `${record.categoria}:${identity}`,
         });
       }
+    });
+
+    // ==========================================================
+    // VERSÃO 37 — Regras sincronizadas de lembretes de saúde
+    // ==========================================================
+    this.version(37).stores({
+      health_reminders:
+        'id, user_id, person_id, status, time, target_type, [person_id+status], synced, updated_at',
     });
   }
 }
