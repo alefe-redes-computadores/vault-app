@@ -27,6 +27,8 @@ import {
   Zap,
   Trash2,
   RotateCcw,
+  Loader2,
+  ListChecks,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
@@ -157,6 +159,7 @@ interface DoseItemExt {
   estoqueTotal?: number;
   unidadeMedida?: string;
   unidadePorDose?: number;
+  unidadeDose?: string;
   medicoNome?: string;
   medicoId?: string;
   tratamentoNome?: string;
@@ -762,6 +765,18 @@ export default function HojePage() {
   const [isProcessing, setIsProcessing] =
     useState(false);
 
+  // HOJE V5 — CENTRAL DIÁRIA
+  // Relógio reativo: mantém atrasos, próximos horários e ações em lote
+  // corretos mesmo quando a PWA permanece aberta por muito tempo.
+  const [agora, setAgora] =
+    useState(() => new Date());
+
+  const [processandoTodos, setProcessandoTodos] =
+    useState(false);
+
+  const [loteConfirmado, setLoteConfirmado] =
+    useState<DoseItemExt[]>([]);
+
   const [isDoseModalOpen, setIsDoseModalOpen] =
     useState(false);
 
@@ -796,6 +811,37 @@ export default function HojePage() {
     useState(
       false
     );
+
+  useEffect(() => {
+    const atualizarRelogio = () =>
+      setAgora(new Date());
+
+    atualizarRelogio();
+
+    const intervalId = window.setInterval(
+      atualizarRelogio,
+      30_000
+    );
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        atualizarRelogio();
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const action = searchParams.get("action");
@@ -1186,13 +1232,10 @@ export default function HojePage() {
       );
     };
 
-  const horaAtual = new Date().toLocaleTimeString(
-    "pt-BR",
-    {
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-  );
+  const horaAtual = [
+    String(agora.getHours()).padStart(2, "0"),
+    String(agora.getMinutes()).padStart(2, "0"),
+  ].join(":");
 
   const doses = useMemo<DoseItemExt[]>(() => {
     const list: DoseItemExt[] = [];
@@ -1211,9 +1254,27 @@ export default function HojePage() {
       if (
         !med.id ||
         med.status === "descontinuado" ||
-        !med.estoque_horarios ||
-        med.estoque_horarios.length === 0
+        med.tipo_uso === "sos"
       ) {
+        continue;
+      }
+
+      // Horários são normalizados e deduplicados antes de formar slots.
+      // Um medicamento sem horário continua visível na seção de qualidade
+      // da rotina, mas jamais vira uma dose fictícia.
+      const horariosProgramados = Array.from(
+        new Set(
+          (med.estoque_horarios || [])
+            .map((horario: string) =>
+              String(horario || "").trim()
+            )
+            .filter((horario: string) =>
+              /^([01]\d|2[0-3]):[0-5]\d$/.test(horario)
+            )
+        )
+      ).sort();
+
+      if (horariosProgramados.length === 0) {
         continue;
       }
 
@@ -1323,7 +1384,7 @@ export default function HojePage() {
           )
         );
 
-      for (const horario of med.estoque_horarios) {
+      for (const horario of horariosProgramados) {
         if (!horario) continue;
 
         chavesProgramadas.add(
@@ -1358,8 +1419,13 @@ export default function HojePage() {
             med.estoque_unidade_medida ||
             "unidades",
           unidadePorDose:
-            med.estoque_unidade_por_dose ||
-            1,
+            med.estoque_unidade_por_dose,
+          unidadeDose:
+            String(med.forma_farmaceutica || med.formato || "")
+              .toLocaleLowerCase("pt-BR")
+              .includes("gota")
+              ? "gotas"
+              : med.estoque_unidade_medida || "unidades",
           medicoNome:
             medicoObj?.nome || med.medico,
           medicoId: medicoObj?.id,
@@ -1453,9 +1519,14 @@ export default function HojePage() {
               med.estoque_unidade_medida ||
               "unidades",
             unidadePorDose:
-              log.quantidade ||
-              med.estoque_unidade_por_dose ||
-              1,
+              log.quantidade ??
+              med.estoque_unidade_por_dose,
+            unidadeDose:
+              String(med.forma_farmaceutica || med.formato || "")
+                .toLocaleLowerCase("pt-BR")
+                .includes("gota")
+                ? "gotas"
+                : med.estoque_unidade_medida || "unidades",
             medicoNome:
               medicoObj?.nome ||
               med.medico,
@@ -1515,6 +1586,27 @@ export default function HojePage() {
     retroReviewMode,
     retroReviewMedicationId,
   ]);
+
+  const medicamentosSemHorario = useMemo(
+    () =>
+      medicamentos.filter((med) => {
+        if (
+          !med.id ||
+          med.status === "descontinuado" ||
+          med.tipo_uso === "sos"
+        ) {
+          return false;
+        }
+
+        return !(med.estoque_horarios || []).some(
+          (horario: string) =>
+            /^([01]\d|2[0-3]):[0-5]\d$/.test(
+              String(horario || "").trim()
+            )
+        );
+      }),
+    [medicamentos]
+  );
 
   const compromissosFiltrados = useMemo(() => {
     let items: any[] = [];
@@ -1704,12 +1796,15 @@ export default function HojePage() {
     );
   }, [dosesFiltradas]);
 
+  // Métricas de adesão contam somente slots programados.
+  // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
+  // inflam nem derrubam artificialmente o progresso da rotina.
   const metricItems =
     doses.filter(
-      (
-        dose
-      ) =>
-        !dose.isExpectedUnconfirmed
+      (dose) =>
+        !dose.isExpectedUnconfirmed &&
+        !dose.isAvulsa &&
+        !dose.isSintoma
     );
 
   const totalTomadas =
@@ -1767,6 +1862,17 @@ export default function HojePage() {
             100
         )
       : 0;
+
+  const dosesElegiveisLote =
+    isHoje
+      ? metricItems.filter(
+          (dose) =>
+            Boolean(dose.medicamentoId) &&
+            !dose.tomada &&
+            !dose.ignorada &&
+            dose.horario <= horaAtual
+        )
+      : [];
 
   const isLoading =
     rawMedicamentos === undefined ||
@@ -2150,6 +2256,110 @@ export default function HojePage() {
     }
   };
 
+  const handleTomarTodos = async () => {
+    if (
+      processandoTodos ||
+      processandoDoseId ||
+      dosesElegiveisLote.length < 2
+    ) {
+      return;
+    }
+
+    setProcessandoTodos(true);
+    setLoteConfirmado([]);
+
+    const confirmadas: DoseItemExt[] = [];
+    let falhas = 0;
+
+    // Serial de propósito: duas doses do mesmo medicamento nunca
+    // disputam a leitura/gravação do saldo de estoque.
+    for (const dose of dosesElegiveisLote) {
+      if (!dose.medicamentoId) continue;
+
+      try {
+        await marcarDose(
+          dose.medicamentoId,
+          dose.horario,
+          dose.unidadePorDose
+        );
+
+        confirmadas.push(dose);
+      } catch (error) {
+        falhas += 1;
+        console.error(
+          "Erro ao registrar dose no lote:",
+          error
+        );
+      }
+    }
+
+    setLoteConfirmado(confirmadas);
+    setProcessandoTodos(false);
+
+    if (confirmadas.length > 0) {
+      trigger("success");
+      showToast(
+        `${confirmadas.length} ${
+          confirmadas.length === 1 ? "dose registrada" : "doses registradas"
+        }`,
+        "success"
+      );
+    }
+
+    if (falhas > 0) {
+      trigger("error");
+      showToast(
+        `${falhas} ${falhas === 1 ? "dose não foi registrada" : "doses não foram registradas"}`,
+        "error"
+      );
+    }
+  };
+
+  const handleDesfazerLote = async () => {
+    if (
+      processandoTodos ||
+      processandoDoseId ||
+      loteConfirmado.length === 0
+    ) {
+      return;
+    }
+
+    setProcessandoTodos(true);
+
+    const naoDesfeitas: DoseItemExt[] = [];
+
+    for (const dose of loteConfirmado) {
+      if (!dose.medicamentoId) continue;
+
+      try {
+        await desmarcarDose(
+          dose.medicamentoId,
+          dose.horario
+        );
+      } catch (error) {
+        naoDesfeitas.push(dose);
+        console.error(
+          "Erro ao desfazer dose do lote:",
+          error
+        );
+      }
+    }
+
+    setLoteConfirmado(naoDesfeitas);
+    setProcessandoTodos(false);
+
+    if (naoDesfeitas.length === 0) {
+      trigger("vibrate");
+      showToast("Lote desfeito com segurança", "info");
+    } else {
+      trigger("error");
+      showToast(
+        "Algumas doses não puderam ser desfeitas",
+        "error"
+      );
+    }
+  };
+
   const handleIgnorar = async (
     item: DoseItemExt
   ) => {
@@ -2371,8 +2581,8 @@ export default function HojePage() {
                   <>
                     {totalTomadas}{" "}
                     {totalTomadas === 1
-                      ? "registro"
-                      : "registros"}
+                      ? "dose"
+                      : "doses"}
                   </>
                 )}
               </span>
@@ -2691,6 +2901,82 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-4 px-4 pt-3">
+          {isHoje && dosesElegiveisLote.length > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[26px] border border-emerald-400/20 bg-gradient-to-br from-emerald-400/10 to-ice/5 p-4 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-400">
+                  <ListChecks size={19} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">
+                    Agora
+                  </p>
+                  <h2 className="mt-1 text-sm font-bold text-ink-primary">
+                    {dosesElegiveisLote.length} doses aguardando
+                  </h2>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                    Confirma somente doses programadas que já chegaram ao horário. SOS e doses futuras ficam de fora.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void handleTomarTodos()}
+                disabled={processandoTodos || Boolean(processandoDoseId)}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {processandoTodos ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={15} />
+                )}
+                {processandoTodos
+                  ? "Registrando com segurança..."
+                  : `Tomar todas (${dosesElegiveisLote.length})`}
+              </button>
+            </motion.div>
+          )}
+
+          {isHoje && medicamentosSemHorario.length > 0 && (
+            <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/5 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-ink-primary">
+                    Rotina sem horário
+                  </p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                    Estes medicamentos estão ativos, mas não geram doses pendentes porque nenhum horário válido foi configurado.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {medicamentosSemHorario.map((med) => (
+                      <button
+                        key={med.id}
+                        type="button"
+                        onClick={() => {
+                          trigger("vibrate");
+                          router.push(
+                            `/saude/medicamentos/editar?id=${med.id}`
+                          );
+                        }}
+                        className="rounded-full border border-amber-400/20 bg-void/30 px-3 py-1.5 text-[10px] font-semibold text-amber-300"
+                      >
+                        {med.nome} · configurar
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {retroReviewMode && (
             <motion.div
               initial={{
@@ -3873,6 +4159,11 @@ export default function HojePage() {
 
                                     {!item.isAvulsa && (
                                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                        <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                                          Dose: {item.unidadePorDose !== undefined
+                                            ? `${item.unidadePorDose} ${item.unidadeDose || "unidades"}`
+                                            : "quantidade não informada"}
+                                        </span>
                                         {(
                                           item.estoqueRestante ??
                                           0
@@ -4496,6 +4787,44 @@ export default function HojePage() {
                 </p>
               </motion.div>
             </>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {loteConfirmado.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.96 }}
+              className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-md rounded-[22px] border border-emerald-400/25 bg-surface/95 p-3 shadow-2xl backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-400">
+                  <CheckCircle2 size={17} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-ink-primary">
+                    {loteConfirmado.length} {loteConfirmado.length === 1 ? "dose registrada" : "doses registradas"}
+                  </p>
+                  <p className="mt-0.5 text-[9px] text-ink-muted">
+                    Estoque movimentado pela quantidade real de cada dose.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDesfazerLote()}
+                  disabled={processandoTodos}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-surface-raised px-3 py-2 text-[10px] font-bold text-ice disabled:opacity-50"
+                >
+                  {processandoTodos ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <RotateCcw size={13} />
+                  )}
+                  Desfazer
+                </button>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
