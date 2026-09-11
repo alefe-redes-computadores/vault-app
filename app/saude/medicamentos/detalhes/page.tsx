@@ -27,6 +27,7 @@ import {
   Award,
   Building2,
   Calendar,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -3947,6 +3948,36 @@ function MedicamentoDetalhesContent() {
               </div>
             </section>
           )}
+
+          {/* ==================================================
+              HISTÓRICO DE DOSES
+              ================================================== */}
+
+          <button
+            type="button"
+            onClick={() => {
+              trigger("vibrate");
+              router.push(
+                `/saude/medicamentos/historico?id=${id}`
+              );
+            }}
+            className="flex w-full items-center justify-between gap-4 rounded-[24px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
+                <CalendarDays size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-ink-primary">
+                  Histórico e calendário de doses
+                </p>
+                <p className="mt-0.5 text-[10px] text-ink-muted">
+                  Veja tomadas, horários, SOS e dias sem confirmação
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-ice" />
+          </button>
 
           {/* ==================================================
               ESTOQUE
