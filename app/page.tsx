@@ -24,6 +24,7 @@ import {
   FolderHeart,
   FolderLock,
   HeartPulse,
+  Droplets,
   Info,
   Landmark,
   MapPin,
@@ -1837,6 +1838,10 @@ export default function HomePage() {
         "/saude/medicamentos",
     },
 
+    { id: "hidratacao", label: "Hidratação", description: "Água registrada", icon: Droplets, path: "/saude/hidratacao" },
+
+    { id: "lembretes", label: "Lembretes", description: "Regras de saúde", icon: Bell, path: "/saude/lembretes" },
+
     {
       id:
         "cirurgias",
@@ -3256,7 +3261,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {quickActions.map(
                 (
                   action

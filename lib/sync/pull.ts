@@ -411,6 +411,12 @@ export async function pullAllData(
       };
 
     // ==========================================================
+    // HEALTH GOALS (person-scoped, sincronizados)
+    // ==========================================================
+
+    await processTable({ remoteTable: "health_goals", queueTable: "health_goals", localTable: db.health_goals, query: async () => await supabase.from("health_goals").select("*").eq("user_id", userId) });
+
+    // ==========================================================
     // HEALTH REMINDERS (person-scoped, sincronizados)
     // ==========================================================
 

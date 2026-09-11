@@ -34,6 +34,7 @@ import type {
 } from '@/lib/types';
 
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
+import type { HealthGoal } from '@/lib/health-goals/types';
 
 import { deleteFile } from '@/lib/supabase/storage';
 import { getLocalTodayISO } from '@/lib/health-utils';
@@ -172,6 +173,7 @@ class VaultDB extends Dexie {
   registros_saude!: Table<RegistroSaude, string>;
 
   health_reminders!: Table<HealthReminderRule, string>;
+  health_goals!: Table<HealthGoal, string>;
 
   constructor() {
     super('vault-db');
@@ -1344,6 +1346,10 @@ class VaultDB extends Dexie {
     this.version(37).stores({
       health_reminders:
         'id, user_id, person_id, status, time, target_type, [person_id+status], synced, updated_at',
+    });
+
+    this.version(38).stores({
+      health_goals: 'id, user_id, person_id, goal_type, [person_id+goal_type], synced, updated_at',
     });
   }
 }

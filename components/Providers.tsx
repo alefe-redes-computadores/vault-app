@@ -757,13 +757,13 @@ export function Providers({
   // Só decide onboarding depois do pull remoto. Assim um segundo aparelho
   // não fabrica uma pessoa duplicada antes de conhecer a nuvem.
   useEffect(() => {
-    if (!loading && user && isPullDone && ownedPersonCount === 0 && pathname !== "/onboarding") {
+    if (!loading && user && (isPullDone || !isOnline) && ownedPersonCount === 0 && pathname !== "/onboarding") {
       router.replace("/onboarding");
     }
     if (!loading && user && ownedPersonCount && ownedPersonCount > 0 && pathname === "/onboarding") {
       router.replace("/");
     }
-  }, [loading, user, isPullDone, ownedPersonCount, pathname, router]);
+  }, [loading, user, isOnline, isPullDone, ownedPersonCount, pathname, router]);
 
   // ==========================================================
   // LOADING

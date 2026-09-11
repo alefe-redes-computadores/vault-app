@@ -716,7 +716,8 @@ export interface SyncQueueItem {
     | "settings"
     | "versiculos"
     | "registros_saude"
-    | "health_reminders";
+    | "health_reminders"
+    | "health_goals";
   operation: "add" | "update" | "delete";
   payload: Record<string, unknown>;
   created_at: string;
