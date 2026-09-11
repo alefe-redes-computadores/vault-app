@@ -104,6 +104,8 @@ function extractMedicationName(
     /^(.+): houve alguns atrasos de horário$/,
     /^O horário de (.+) variou recentemente$/,
     /^(.+): vale observar os próximos horários$/,
+    /^Rotina de (.+)$/,
+    /^([^:]+): .+$/,
   ];
 
   for (const pattern of patterns) {
@@ -137,19 +139,39 @@ function strongestConfidence(
     )[0]?.confianca ?? "baixa";
 }
 
-function aggregateDelayPatterns(
+function isMedicationRoutinePattern(
+  insight: HealthInsight
+): boolean {
+  return (
+    insight.id.startsWith(
+      "atraso-real-"
+    ) ||
+    insight.id.startsWith(
+      "adesao-"
+    ) ||
+    insight.id.startsWith(
+      "horario-adesao-"
+    ) ||
+    insight.id.startsWith(
+      "consumo-rotina-"
+    )
+  );
+}
+
+function aggregateMedicationRoutinePatterns(
   eligible: HealthInsight[]
 ): HealthInsight[] {
-  const delayPatterns =
+  const routinePatterns =
     eligible.filter(
-      (insight) =>
-        insight.id.startsWith(
-          "atraso-real-"
-        )
+      isMedicationRoutinePattern
     );
 
+  /*
+   * Um único sinal não precisa ser transformado em resumo.
+   * A consolidação existe justamente para impedir repetição.
+   */
   if (
-    delayPatterns.length <
+    routinePatterns.length <
     2
   ) {
     return eligible;
@@ -158,14 +180,20 @@ function aggregateDelayPatterns(
   const names =
     Array.from(
       new Set(
-        delayPatterns.map(
-          extractMedicationName
-        )
+        routinePatterns
+          .map(
+            extractMedicationName
+          )
+          .filter(
+            (name) =>
+              name !==
+              "medicamento"
+          )
       )
     );
 
   const sample =
-    delayPatterns.reduce(
+    routinePatterns.reduce(
       (total, insight) =>
         total +
         insight.amostra,
@@ -173,31 +201,44 @@ function aggregateDelayPatterns(
     );
 
   const evidence =
-    delayPatterns.flatMap(
+    routinePatterns.flatMap(
       (insight) => {
         const name =
           extractMedicationName(
             insight
           );
 
-        return (
-          insight.evidencias ||
-          []
-        )
+        const prefix =
+          name ===
+          "medicamento"
+            ? ""
+            : `${name}: `;
+
+        const details =
+          insight.evidencias &&
+          insight.evidencias.length >
+            0
+            ? insight.evidencias
+            : [
+                insight.mensagem,
+              ];
+
+        return details
           .slice(
             0,
             3
           )
           .map(
             (item) =>
-              `${name}: ${item}`
+              `${prefix}${item}`
           );
       }
     );
 
-  const aggregate: HealthInsight = {
+  const aggregate:
+    HealthInsight = {
     id:
-      "padrao-horarios-medicamentos",
+      "padrao-rotina-medicamentos",
 
     kind:
       "pattern",
@@ -206,19 +247,22 @@ function aggregateDelayPatterns(
       "adesao",
 
     titulo:
-      "Sua rotina tem apresentado atrasos de horário",
+      "Sua rotina de medicamentos merece atenção",
 
     mensagem:
-      `O Vault encontrou atrasos recorrentes em ${delayPatterns.length} medicamentos no período analisado. Em vez de repetir o mesmo alerta para cada um, este cartão reúne o padrão e mantém os detalhes individuais nas evidências.${names.length > 0 ? ` Medicamentos envolvidos: ${names.join(", ")}.` : ""}`,
+      names.length >
+      0
+        ? `O Vault encontrou sinais recorrentes na rotina de ${names.length} medicamento(s). Para evitar vários cartões dizendo praticamente a mesma coisa, os detalhes foram reunidos aqui. Medicamentos envolvidos: ${names.join(", ")}.`
+        : "O Vault encontrou mais de um sinal relacionado à rotina dos medicamentos. Os detalhes foram reunidos neste cartão para evitar alertas repetidos.",
 
     urgencia:
       strongestUrgency(
-        delayPatterns
+        routinePatterns
       ),
 
     confianca:
       strongestConfidence(
-        delayPatterns
+        routinePatterns
       ),
 
     amostra:
@@ -226,7 +270,7 @@ function aggregateDelayPatterns(
 
     periodoDias:
       Math.max(
-        ...delayPatterns.map(
+        ...routinePatterns.map(
           (item) =>
             item.periodoDias ||
             0
@@ -240,15 +284,19 @@ function aggregateDelayPatterns(
       "/saude/medicamentos",
 
     evidencias:
-      evidence,
+      Array.from(
+        new Set(
+          evidence
+        )
+      ),
   };
 
   return [
     aggregate,
     ...eligible.filter(
       (insight) =>
-        !insight.id.startsWith(
-          "atraso-real-"
+        !isMedicationRoutinePattern(
+          insight
         )
     ),
   ].sort(
@@ -287,7 +335,7 @@ export function selectHealthHighlights(
       );
 
   const eligible =
-    aggregateDelayPatterns(
+    aggregateMedicationRoutinePatterns(
       baseEligible
     );
 

@@ -1144,12 +1144,15 @@ export default function HomePage() {
           exames,
 
           cirurgias,
+
+          retiradas,
         }),
       [
         medicamentosAtivos,
         consultas,
         exames,
         cirurgias,
+        retiradas,
       ]
     );
 

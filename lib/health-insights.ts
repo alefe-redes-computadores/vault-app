@@ -18,6 +18,7 @@ import type {
   Medicamento,
   RegistroSaude,
   Renovacao,
+  Retirada,
   Tratamento,
   TipoReceita,
 } from "./types";
@@ -3075,6 +3076,15 @@ export function gerarAlertasVisaoGeral(
 
     cirurgias:
       Cirurgia[];
+
+    /**
+     * Retirada é a fonte canônica para compromissos de
+     * obtenção do medicamento.
+     *
+     * data_retorno_sus permanece somente como fallback legado.
+     */
+    retiradas?:
+      Retirada[];
   }
 ): AlertaVisaoGeral[] {
   const alerts:
@@ -3095,6 +3105,10 @@ export function gerarAlertasVisaoGeral(
       30
     );
 
+  const retiradas =
+    contexto.retiradas ||
+    [];
+
   contexto.medicamentos.forEach(
     (medicamento) => {
       if (
@@ -3114,6 +3128,131 @@ export function gerarAlertasVisaoGeral(
         insight.motivo ===
           "nenhum"
       ) {
+        return;
+      }
+
+      const retiradaAgendada =
+        medicamento.id
+          ? retiradas
+              .filter(
+                (retirada) =>
+                  retirada.medicamento_id ===
+                    medicamento.id &&
+                  retirada.status ===
+                    "agendada"
+              )
+              .map(
+                (retirada) => ({
+                  retirada,
+                  dias:
+                    getDaysUntil(
+                      retirada.data
+                    ),
+                })
+              )
+              .filter(
+                (
+                  item
+                ): item is {
+                  retirada: Retirada;
+                  dias: number;
+                } =>
+                  item.dias !==
+                    null &&
+                  item.dias >=
+                    0
+              )
+              .sort(
+                (a, b) => {
+                  if (
+                    a.dias !==
+                    b.dias
+                  ) {
+                    return (
+                      a.dias -
+                      b.dias
+                    );
+                  }
+
+                  return String(
+                    a.retirada.horario ||
+                      "23:59"
+                  ).localeCompare(
+                    String(
+                      b.retirada.horario ||
+                        "23:59"
+                    )
+                  );
+                }
+              )[0] ||
+            null
+          : null;
+
+      /*
+       * Quando o medicamento possui uma Retirada real
+       * agendada, ela substitui data_retorno_sus como fonte
+       * temporal. Isso impede que um campo legado diga
+       * "hoje" enquanto a agenda real diz "amanhã".
+       */
+      if (
+        insight.motivo ===
+          "sus" &&
+        retiradaAgendada
+      ) {
+        if (
+          retiradaAgendada.dias >
+          7
+        ) {
+          return;
+        }
+
+        const diasRetirada =
+          retiradaAgendada.dias;
+
+        alerts.push({
+          id:
+            `sus-retirada-${retiradaAgendada.retirada.id || medicamento.id}`,
+
+          tipo:
+            "sus",
+
+          titulo:
+            `Retirada de ${medicamento.nome}`,
+
+          mensagem:
+            diasRetirada ===
+              0
+              ? `A retirada de "${medicamento.nome}" está agendada para hoje.`
+              : diasRetirada ===
+                  1
+                ? `A retirada de "${medicamento.nome}" está agendada para amanhã.`
+                : `A retirada de "${medicamento.nome}" está agendada para daqui a ${diasRetirada} dias.`,
+
+          urgencia:
+            diasRetirada <=
+            1
+              ? "alta"
+              : "media",
+
+          link:
+            retiradaAgendada
+              .retirada.id
+              ? `/saude/retiradas/detalhes?id=${retiradaAgendada.retirada.id}`
+              : `/saude/retiradas`,
+
+          entidadeId:
+            retiradaAgendada
+              .retirada.id ||
+            medicamento.id,
+
+          data:
+            retiradaAgendada
+              .retirada.data,
+
+          dias:
+            diasRetirada,
+        });
+
         return;
       }
 
