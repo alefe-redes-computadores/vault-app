@@ -1887,6 +1887,11 @@ export function getMedicamentoAlerts(
             med.tipo_receita
           );
 
+        /*
+         * proxima_renovacao é planejamento operacional.
+         * A validade clínica da receita usa data_receita +
+         * tipo_receita no cérebro canônico.
+         */
         const daysUntil =
           getDaysUntil(
             med.proxima_renovacao

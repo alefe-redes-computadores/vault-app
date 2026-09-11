@@ -87,6 +87,10 @@ import {
 } from "@/hooks/useCids";
 
 import {
+  useRetiradas,
+} from "@/hooks/useRetiradas";
+
+import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
 
@@ -107,7 +111,6 @@ import {
 } from "@/components/list";
 
 import {
-  isReceitaVencidaSegura,
   sugerirRenovacao,
 } from "@/lib/health-insights";
 
@@ -350,6 +353,11 @@ export default function RedeSaudePage() {
 
   const router =
     useRouter();
+
+  const {
+    retiradas,
+  } =
+    useRetiradas();
 
   const searchParams =
     useSearchParams();
@@ -1222,36 +1230,13 @@ export default function RedeSaudePage() {
             });
           }
 
-          if (
-            medicamento.proxima_renovacao &&
-            (
-              !insight.deveRenovar ||
-              insight.motivo !==
-                "receita"
-            ) &&
-            isReceitaVencidaSegura(
-              medicamento.proxima_renovacao
-            )
-          ) {
-            alerts.push({
-              id:
-                `receita-${medicamento.id}`,
-
-              tipo:
-                "receita",
-
-              mensagem:
-                `Validade registrada da receita de ${medicamento.nome} terminou em ${formatDateDisplay(
-                  medicamento.proxima_renovacao
-                )}.`,
-
-              urgencia:
-                "alta",
-
-              link:
-                `/saude/medicamentos/detalhes?id=${medicamento.id}`,
-            });
-          }
+          /*
+           * Validade vencida isoladamente não gera alerta aqui.
+           *
+           * sugerirRenovacao() já considera estoque e necessidade
+           * operacional. A receita histórica continua disponível
+           * nos detalhes/acervo.
+           */
         }
 
         // ------------------------------------------------------
@@ -1498,6 +1483,9 @@ export default function RedeSaudePage() {
           renovacoes:
             filteredRenovacoes.length,
 
+          retiradas:
+            retiradas.length,
+
           consultas:
             filteredConsultas.length,
 
@@ -1527,6 +1515,7 @@ export default function RedeSaudePage() {
         filteredTratamentos,
         filteredRegistros,
         filteredRenovacoes,
+        retiradas,
         filteredConsultas,
         filteredExames,
         filteredCirurgias,
@@ -2069,6 +2058,24 @@ export default function RedeSaudePage() {
                       () =>
                         router.push(
                           "/saude/renovacao"
+                        )
+                    }
+                  />
+
+                  <ResumoCard
+                    icon={
+                      Clock
+                    }
+                    label="Retiradas"
+                    value={
+                      stats.retiradas
+                    }
+                    sub="Agenda e histórico"
+                    color="#38BDF8"
+                    onClick={
+                      () =>
+                        router.push(
+                          "/saude/retiradas"
                         )
                     }
                   />

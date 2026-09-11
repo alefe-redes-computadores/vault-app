@@ -1233,6 +1233,27 @@ export default function HomePage() {
         const alert of
           documentInsights
       ) {
+        /*
+         * Receita expirada continua no acervo clínico, mas não
+         * vira alerta operacional da Home por validade isolada.
+         *
+         * A continuidade medicamentosa é tratada pelo cérebro
+         * usando estoque, rotina e renovação.
+         */
+        const documentAlertText =
+          `${alert.title} ${alert.subtitle}`
+            .toLocaleLowerCase(
+              "pt-BR"
+            );
+
+        if (
+          documentAlertText.includes(
+            "receita"
+          )
+        ) {
+          continue;
+        }
+
         result.push({
           id:
             `documento-${alert.id}`,
@@ -1342,6 +1363,8 @@ export default function HomePage() {
 
           renovacoes,
 
+          retiradas,
+
           limit:
             3,
         }),
@@ -1349,6 +1372,7 @@ export default function HomePage() {
         medicamentosAtivos,
         tratamentos,
         renovacoes,
+        retiradas,
       ]
     );
 

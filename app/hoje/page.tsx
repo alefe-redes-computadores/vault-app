@@ -49,7 +49,7 @@ import {
   getDaysUntil,
 } from "@/lib/health-utils";
 import {
-  sugerirRenovacao,
+  isReceitaAtualVencida,sugerirRenovacao,
   isReceitaVencidaSegura,
   analisarComportamentoUso,
   analisarRotinaDiaria,
@@ -1312,9 +1312,7 @@ export default function HojePage() {
         sugerirRenovacao(med);
 
       const receitaVencida =
-        isReceitaVencidaSegura(
-          med.proxima_renovacao
-        );
+        isReceitaAtualVencida(med);
 
       const comportamento =
         analisarComportamentoUso(

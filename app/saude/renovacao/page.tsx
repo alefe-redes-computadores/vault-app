@@ -15,6 +15,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  FileText,
   FileWarning,
   MessageCircle,
   Pill,
@@ -133,9 +134,27 @@ function formatDateDisplay(
 // PREÇO / AQUISIÇÃO
 // ============================================================
 
+function isPrescriptionOnly(
+  renovacao: Renovacao
+): boolean {
+  return (
+    !renovacao.tipo_aquisicao &&
+    !renovacao.data_aquisicao &&
+    renovacao.quantidade == null &&
+    renovacao.preco == null
+  );
+}
+
 function getAcquisitionLabel(
   renovacao: Renovacao
 ): string {
+  if (
+    isPrescriptionOnly(
+      renovacao
+    )
+  ) {
+    return "Receita";
+  }
   if (
     renovacao.tipo_aquisicao ===
     "sus"
@@ -176,9 +195,26 @@ function getEffectiveAcquisitionDate(
   );
 }
 
+function getEventDateLabel(
+  renovacao: Renovacao
+): string {
+  return isPrescriptionOnly(
+    renovacao
+  )
+    ? "Data da receita"
+    : "Data da compra/retirada";
+}
+
 function getAcquisitionTypeLabel(
   renovacao: Renovacao
 ): string {
+  if (
+    isPrescriptionOnly(
+      renovacao
+    )
+  ) {
+    return "Somente receita";
+  }
   if (
     renovacao.tipo_aquisicao ===
     "sus"
@@ -682,6 +718,30 @@ export default function RenovacoesPage() {
           title="Histórico de Renovações"
           badgeLabel="RECEITAS E AQUISIÇÕES"
           badgeColor="text-ice"
+          rightAction={
+            <button
+              type="button"
+              onClick={() => {
+                trigger(
+                  "vibrate"
+                );
+
+                router.push(
+                  "/saude/renovacao/nova-receita"
+                );
+              }}
+              className="flex h-11 items-center gap-2 rounded-2xl border border-ice/30 bg-ice/10 px-3 text-[10px] font-bold uppercase tracking-wide text-ice transition-all active:scale-95"
+              aria-label="Registrar somente uma nova receita"
+            >
+              <FileText
+                size={
+                  15
+                }
+              />
+
+              Receita
+            </button>
+          }
         >
           <ListSearch
             value={
@@ -1087,7 +1147,11 @@ export default function RenovacoesPage() {
                     <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                       <span
                         className="flex items-center gap-1 font-mono"
-                        title="Data da compra/retirada"
+                        title={
+                          getEventDateLabel(
+                            renovacao
+                          )
+                        }
                       >
                         <Calendar
                           size={
@@ -1117,20 +1181,32 @@ export default function RenovacoesPage() {
                           </span>
                         )}
 
-                      {/* AQUISIÇÃO */}
+                      {/* TIPO DO EVENTO */}
 
                       <span
                         className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          renovacao.tipo_aquisicao ===
-                            "sus" ||
-                          renovacao.tipo_aquisicao ===
-                            "gratuito"
-                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
-                            : "border-ice/20 bg-ice/10 text-ice"
+                          isPrescriptionOnly(
+                            renovacao
+                          )
+                            ? "border-violet-400/20 bg-violet-400/10 text-violet-300"
+                            : renovacao.tipo_aquisicao ===
+                                  "sus" ||
+                                renovacao.tipo_aquisicao ===
+                                  "gratuito"
+                              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                              : "border-ice/20 bg-ice/10 text-ice"
                         }`}
                       >
-                        {renovacao.tipo_aquisicao ===
-                        "comprado" ? (
+                        {isPrescriptionOnly(
+                          renovacao
+                        ) ? (
+                          <FileText
+                            size={
+                              10
+                            }
+                          />
+                        ) : renovacao.tipo_aquisicao ===
+                          "comprado" ? (
                           <Store
                             size={
                               10

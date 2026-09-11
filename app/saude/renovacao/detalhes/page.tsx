@@ -145,9 +145,27 @@ function formatDateDisplay(
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+function isPrescriptionOnly(
+  renovacao: Renovacao
+): boolean {
+  return (
+    !renovacao.tipo_aquisicao &&
+    !renovacao.data_aquisicao &&
+    renovacao.quantidade == null &&
+    renovacao.preco == null
+  );
+}
+
 function getPriceLabel(
   renovacao: Renovacao
 ): string {
+  if (
+    isPrescriptionOnly(
+      renovacao
+    )
+  ) {
+    return "Sem aquisição";
+  }
   if (
     renovacao.tipo_aquisicao ===
     "sus"
@@ -548,11 +566,24 @@ function DetalhesRenovacaoContent() {
         "Renovação"
     );
 
+  const somenteReceita =
+    Boolean(
+      renovacao &&
+      isPrescriptionOnly(
+        renovacao
+      )
+    );
+
   const tipoAquisicaoLabel =
-    renovacao?.tipo_aquisicao ===
-      "sus"
-      ? "SUS / Governo"
-      : "Particular";
+    somenteReceita
+      ? "Somente receita"
+      : renovacao?.tipo_aquisicao ===
+          "sus"
+        ? "SUS / Governo"
+        : renovacao?.tipo_aquisicao ===
+            "gratuito"
+          ? "Gratuito"
+          : "Particular";
 
   // ==========================================================
   // DELETE
@@ -1135,10 +1166,12 @@ function DetalhesRenovacaoContent() {
                   />
                 }
                 label={
-                  renovacao.tipo_aquisicao ===
-                  "sus"
-                    ? "Aquisição"
-                    : "Custo Registrado"
+                  somenteReceita
+                    ? "Evento"
+                    : renovacao.tipo_aquisicao ===
+                        "sus"
+                      ? "Aquisição"
+                      : "Custo Registrado"
                 }
                 value={
                   precoFormatado
@@ -1665,7 +1698,9 @@ function DetalhesRenovacaoContent() {
                 </p>
 
                 <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-                  Esta tela representa esta renovação específica. Mudanças posteriores no medicamento não alteram o custo, a forma de aquisição nem a referência histórica mostrados neste registro.
+                  {somenteReceita
+                    ? "Este registro representa somente a renovação da receita. Ele atualiza a referência clínica da prescrição sem registrar compra, retirada ou entrada de estoque."
+                    : "Esta tela representa esta renovação específica. Mudanças posteriores no medicamento não alteram o custo, a forma de aquisição nem a referência histórica mostrados neste registro."}
                 </p>
               </div>
             </div>

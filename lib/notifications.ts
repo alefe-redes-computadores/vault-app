@@ -646,7 +646,7 @@ export async function scheduleMedicationRenewalNotification(
           id,
 
           title:
-            "Medicamento precisa ser renovado",
+            "Planejamento de medicamento",
 
           body:
             medico.trim()
@@ -918,6 +918,12 @@ export async function reconcilePersistentNotifications(
         const id =
           medicamento.id?.trim();
 
+        /*
+         * proxima_renovacao é planejamento operacional.
+         *
+         * Este agendamento NÃO afirma que a receita clínica
+         * está vencida ou próxima do vencimento.
+         */
         const renewalDate =
           medicamento.proxima_renovacao?.trim();
 

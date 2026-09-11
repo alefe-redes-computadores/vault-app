@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { sugerirRenovacao } from "@/lib/health-insights";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -22,47 +23,60 @@ export function MedicamentosNotifications() {
   const { medicamentos } = useMedicamentos();
 
   const { alertas } = useMemo(() => {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const hojeISO = hoje.toISOString().slice(0, 10);
-
-    const limiteFuturo = new Date(hoje);
-    limiteFuturo.setDate(limiteFuturo.getDate() + 7);
-    const limiteISO = limiteFuturo.toISOString().slice(0, 10);
-
     const itensAlerta: any[] = [];
 
     medicamentos.forEach((med: any) => {
-      // 1. Lógica de Renovação de Receita
-      if (med.proxima_renovacao) {
-        if (med.proxima_renovacao < hojeISO) {
-          itensAlerta.push({
-            id: med.id,
-            tipo: "renovacao",
-            urgencia: "pendente",
-            titulo: "Receita Vencida",
-            descricao: med.nome,
-            data: med.proxima_renovacao,
-          });
-        } else if (med.proxima_renovacao === hojeISO) {
-          itensAlerta.push({
-            id: med.id,
-            tipo: "renovacao",
-            urgencia: "hoje",
-            titulo: "Renovar Receita Hoje",
-            descricao: med.nome,
-            data: med.proxima_renovacao,
-          });
-        } else if (med.proxima_renovacao <= limiteISO) {
-          itensAlerta.push({
-            id: med.id,
-            tipo: "renovacao",
-            urgencia: "proxima",
-            titulo: "Receita Vencendo",
-            descricao: med.nome,
-            data: med.proxima_renovacao,
-          });
-        }
+      // 1. Planejamento de renovação
+      //
+      // proxima_renovacao é uma data operacional. Ela NÃO
+      // representa validade clínica da receita.
+      //
+      // O cérebro decide se existe necessidade real de
+      // renovação considerando também estoque e contexto.
+      const renovacaoInsight =
+        sugerirRenovacao(
+          med
+        );
+
+      if (
+        renovacaoInsight.deveRenovar &&
+        renovacaoInsight.motivo ===
+          "receita"
+      ) {
+        const dias =
+          renovacaoInsight.diasAteRenovacao;
+
+        const dataPlanejada =
+          med.lembrete_receita_modo ===
+            "data_personalizada" &&
+          med.lembrete_receita_data
+            ? med.lembrete_receita_data
+            : med.proxima_renovacao ||
+              "";
+
+        itensAlerta.push({
+          id: med.id,
+          tipo: "renovacao",
+          urgencia:
+            renovacaoInsight.urgencia ===
+              "alta"
+              ? "pendente"
+              : dias === 0
+                ? "hoje"
+                : "proxima",
+          titulo:
+            dias === 0
+              ? "Planejar Receita Hoje"
+              : dias !== null &&
+                  dias < 0
+                ? "Renovação Pendente"
+                : "Planejar Nova Receita",
+          descricao:
+            renovacaoInsight.mensagem ||
+            med.nome,
+          data:
+            dataPlanejada,
+        });
       }
 
       // 2. Lógica de Estoque

@@ -77,7 +77,7 @@ import type {
 } from "@/lib/types";
 
 import {
-  analisarTratamento,
+  isReceitaAtualVencida,analisarTratamento,
   calcularEconomia,
   gerarLinhaDoTempoSaude,
   getCidInsights,
@@ -689,7 +689,7 @@ function TratamentoContent() {
       (medicamento): MedicamentoComAlertas => ({
         ...medicamento,
 
-        receitaVencida: isReceitaVencidaSegura(medicamento.proxima_renovacao),
+        receitaVencida: isReceitaAtualVencida(medicamento),
 
         insight: sugerirRenovacao(medicamento),
       }),

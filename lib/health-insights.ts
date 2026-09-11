@@ -1696,6 +1696,49 @@ export function sugerirRenovacao(
 }
 
 // ============================================================
+// CLASSIFICAÇÃO CANÔNICA — RECEITA × AQUISIÇÃO
+// ============================================================
+
+/**
+ * Evento que atualiza somente a prescrição clínica.
+ *
+ * Não representa:
+ * - compra;
+ * - retirada;
+ * - entrada de estoque;
+ * - gasto;
+ * - intervalo entre aquisições.
+ */
+export function isRenovacaoSomenteReceita(
+  renovacao:
+    Renovacao
+): boolean {
+  return (
+    !renovacao.tipo_aquisicao &&
+    !renovacao.data_aquisicao &&
+    renovacao.quantidade == null &&
+    renovacao.preco == null
+  );
+}
+
+/**
+ * Aquisição real, incluindo registros legados.
+ *
+ * Eventos antigos podem não possuir data_aquisicao ou
+ * tipo_aquisicao, por isso preservamos a compatibilidade:
+ * qualquer Renovacao que NÃO tenha a assinatura inequívoca
+ * de "somente receita" continua sendo considerada aquisição.
+ */
+export function isRenovacaoAquisicaoReal(
+  renovacao:
+    Renovacao
+): boolean {
+  return !isRenovacaoSomenteReceita(
+    renovacao
+  );
+}
+
+// ============================================================
 // 3. ANALISAR MELHOR FARMÁCIA
 // ============================================================
 
@@ -1823,6 +1866,14 @@ function toPositiveFiniteNumber(
 function getRenovacaoAcquisitionTime(
   renovacao: Renovacao
 ): number {
+  if (
+    !isRenovacaoAquisicaoReal(
+      renovacao
+    )
+  ) {
+    return 0;
+  }
+
   const rawDate =
     renovacao.data_aquisicao ||
     renovacao.data;
@@ -1868,6 +1919,14 @@ function getComparableRenovacaoPrice(
   renovacao:
     Renovacao
 ): RenovacaoComparablePrice | null {
+  if (
+    !isRenovacaoAquisicaoReal(
+      renovacao
+    )
+  ) {
+    return null;
+  }
+
   const gratuita =
     renovacao.tipo_aquisicao ===
       "sus" ||
@@ -2198,6 +2257,43 @@ export function sugerirHorarios(
  *
  * Para novos fluxos, prefira analisarValidadeReceita().
  */
+/**
+ * Informa se a RECEITA CLÍNICA ATUAL do medicamento está vencida.
+ *
+ * Regra importante:
+ *
+ * - data_receita = data clínica da prescrição atual;
+ * - tipo_receita = regra usada para interpretar validade;
+ * - proxima_renovacao = planejamento operacional e NÃO validade.
+ *
+ * Consumidores não devem comparar proxima_renovacao diretamente
+ * para decidir se a receita está vencida.
+ */
+export function isReceitaAtualVencida(
+  medicamento: Pick<
+    Medicamento,
+    | "data_receita"
+    | "tipo_receita"
+  >
+): boolean {
+  const dataReceita =
+    medicamento.data_receita
+      ?.trim();
+
+  if (!dataReceita) {
+    return false;
+  }
+
+  return analisarValidadeReceita(
+    dataReceita,
+    medicamento.tipo_receita
+  ).vencida;
+}
+
+// ============================================================
+// COMPATIBILIDADE COM DATA DE VALIDADE JÁ CALCULADA
+// ============================================================
+
 export function isReceitaVencidaSegura(
   dataValidade?: string
 ): boolean {
@@ -2815,17 +2911,32 @@ export function analisarTratamento(
         return;
       }
 
+      if (
+        !isRenovacaoAquisicaoReal(
+          renovacao
+        )
+      ) {
+        return;
+      }
+
+      /*
+       * A contagem inclui aquisições gratuitas/SUS.
+       * O total financeiro inclui apenas valores pagos
+       * efetivamente conhecidos.
+       */
+      aquisicoesCount += 1;
+
       const preco =
         toPositiveFiniteNumber(
           renovacao.preco
         );
 
-      if (preco === null) {
-        return;
+      if (
+        preco !== null
+      ) {
+        totalGasto +=
+          preco;
       }
-
-      totalGasto += preco;
-      aquisicoesCount += 1;
     }
   );
 
@@ -5878,12 +5989,11 @@ const DOSE_DELAY_TOLERANCE_MINUTES =
   15;
 
 /**
- * Referência puramente lúdica para dar dimensão de tempo.
+ * As mensagens do cérebro permanecem descritivas e auditáveis.
  *
- * Não participa de qualquer classificação clínica.
+ * Comparações lúdicas foram removidas dos padrões longitudinais
+ * para evitar repetição e ruído visual na Home.
  */
-const INTERSTELLAR_RUNTIME_MINUTES =
-  169;
 
 function parseIsoDateSafe(
   value?: string
@@ -5976,31 +6086,12 @@ function formatDelayDuration(
 }
 
 function buildInterstellarComparison(
-  totalMinutes:
+  _totalMinutes:
     number
 ): string | null {
-  if (
-    totalMinutes <
-    INTERSTELLAR_RUNTIME_MINUTES
-  ) {
-    return null;
-  }
-
-  const completos =
-    Math.floor(
-      totalMinutes /
-        INTERSTELLAR_RUNTIME_MINUTES
-    );
-
-  if (
-    completos <=
-    1
-  ) {
-    return "Isso já passa de um Interestelar inteiro — até os créditos.";
-  }
-
-  return `Isso já passa de ${completos} Interestelares completos — dá para ter uma boa noção do tamanho desse atraso acumulado.`;
+  return null;
 }
+
 
 /**
  * Distingue três horários diferentes:
@@ -6949,13 +7040,18 @@ export function analisarIntervaloRenovacoes(
         (renovacao) =>
           renovacao.medicamento_id ===
             medicamentoId &&
+          isRenovacaoAquisicaoReal(
+            renovacao
+          ) &&
           Boolean(
+            renovacao.data_aquisicao ||
             renovacao.data
           )
       )
       .map(
         (renovacao) =>
           parseLocalDate(
+            renovacao.data_aquisicao ||
             renovacao.data
           )
       )
@@ -7121,13 +7217,18 @@ export function analisarPadraoRenovacao(
         (renovacao) =>
           renovacao.medicamento_id ===
             medicamentoId &&
+          isRenovacaoAquisicaoReal(
+            renovacao
+          ) &&
           Boolean(
+            renovacao.data_aquisicao ||
             renovacao.data
           )
       )
       .map(
         (renovacao) =>
           parseLocalDate(
+            renovacao.data_aquisicao ||
             renovacao.data
           )
       )
@@ -7420,20 +7521,27 @@ export function gerarLinhaDoTempoSaude(
 
   contexto.renovacoes.forEach(
     (renovacao) => {
-      const dataAquisicao =
-        renovacao.data_aquisicao ||
-        renovacao.data;
+      const somenteReceita =
+        isRenovacaoSomenteReceita(
+          renovacao
+        );
+
+      const dataEvento =
+        somenteReceita
+          ? renovacao.data
+          : renovacao.data_aquisicao ||
+            renovacao.data;
 
       if (
         !renovacao.id ||
-        !dataAquisicao
+        !dataEvento
       ) {
         return;
       }
 
       const date =
         parseLocalDate(
-          dataAquisicao
+          dataEvento
         );
 
       if (
@@ -7450,10 +7558,17 @@ export function gerarLinhaDoTempoSaude(
           "renovacao",
 
         data:
-          dataAquisicao,
+          dataEvento,
 
         titulo:
-          "Aquisição / renovação",
+          somenteReceita
+            ? "Receita renovada"
+            : renovacao.tipo_aquisicao ===
+                "sus" ||
+              renovacao.tipo_aquisicao ===
+                "gratuito"
+              ? "Retirada / aquisição"
+              : "Aquisição de medicamento",
 
         descricao:
           getMedicationName(
@@ -8088,10 +8203,39 @@ export function gerarInsightsSaude(
             atrasoTomada.atrasoMedioMinutos >=
               60;
 
-          const titulo =
+          const titleVariants =
             frequente
-              ? `Horário de ${medicamento.nome} merece atenção`
-              : `Seu relógio e ${medicamento.nome} estão discutindo`;
+              ? [
+                  `A rotina de ${medicamento.nome} tem chegado mais tarde`,
+                  `Horários de ${medicamento.nome} estão fugindo do planejado`,
+                  `${medicamento.nome}: atrasos se repetiram no período`,
+                ]
+              : [
+                  `${medicamento.nome}: houve alguns atrasos de horário`,
+                  `O horário de ${medicamento.nome} variou recentemente`,
+                  `${medicamento.nome}: vale observar os próximos horários`,
+                ];
+
+          const titleSeed =
+            Array.from(
+              medicamento.nome
+            ).reduce(
+              (
+                total,
+                char
+              ) =>
+                total +
+                char.charCodeAt(
+                  0
+                ),
+              0
+            );
+
+          const titulo =
+            titleVariants[
+              titleSeed %
+              titleVariants.length
+            ];
 
           const mensagemBase =
             `Nos últimos ${atrasoTomada.periodoDias} dias, ${atrasoTomada.tomadasAtrasadas} de ${atrasoTomada.tomadasAnalisadas} tomada(s) foram informadas mais de ${DOSE_DELAY_TOLERANCE_MINUTES} minutos após o horário programado. O atraso médio entre essas tomadas foi de ${formatDelayDuration(

@@ -37,13 +37,10 @@ function urgencyScore(
   ) {
     case "alta":
       return 4;
-
     case "media":
       return 3;
-
     case "baixa":
       return 2;
-
     case "nenhuma":
     default:
       return 1;
@@ -59,10 +56,8 @@ function confidenceScore(
   ) {
     case "alta":
       return 3;
-
     case "media":
       return 2;
-
     case "baixa":
     default:
       return 1;
@@ -70,62 +65,200 @@ function confidenceScore(
 }
 
 function compareInsights(
-  a:
-    HealthInsight,
-  b:
-    HealthInsight
+  a: HealthInsight,
+  b: HealthInsight
 ): number {
   const urgencyDiff =
-    urgencyScore(
-      b
-    ) -
-    urgencyScore(
-      a
-    );
+    urgencyScore(b) -
+    urgencyScore(a);
 
-  if (
-    urgencyDiff !==
-    0
-  ) {
+  if (urgencyDiff !== 0) {
     return urgencyDiff;
   }
 
   const confidenceDiff =
-    confidenceScore(
-      b
-    ) -
-    confidenceScore(
-      a
-    );
+    confidenceScore(b) -
+    confidenceScore(a);
 
-  if (
-    confidenceDiff !==
-    0
-  ) {
+  if (confidenceDiff !== 0) {
     return confidenceDiff;
   }
 
-  if (
-    b.amostra !==
-    a.amostra
-  ) {
-    return (
-      b.amostra -
-      a.amostra
-    );
+  if (b.amostra !== a.amostra) {
+    return b.amostra - a.amostra;
   }
 
-  return a.id.localeCompare(
-    b.id
+  return a.id.localeCompare(b.id);
+}
+
+function extractMedicationName(
+  insight: HealthInsight
+): string {
+  const title =
+    insight.titulo;
+
+  const patterns = [
+    /^A rotina de (.+) tem chegado mais tarde$/,
+    /^Horários de (.+) estão fugindo do planejado$/,
+    /^(.+): atrasos se repetiram no período$/,
+    /^(.+): houve alguns atrasos de horário$/,
+    /^O horário de (.+) variou recentemente$/,
+    /^(.+): vale observar os próximos horários$/,
+  ];
+
+  for (const pattern of patterns) {
+    const match =
+      title.match(pattern);
+
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+
+  return "medicamento";
+}
+
+function strongestUrgency(
+  insights: HealthInsight[]
+): HealthInsight["urgencia"] {
+  return [...insights]
+    .sort(compareInsights)[0]
+    ?.urgencia ?? "baixa";
+}
+
+function strongestConfidence(
+  insights: HealthInsight[]
+): HealthInsight["confianca"] {
+  return [...insights]
+    .sort(
+      (a, b) =>
+        confidenceScore(b) -
+        confidenceScore(a)
+    )[0]?.confianca ?? "baixa";
+}
+
+function aggregateDelayPatterns(
+  eligible: HealthInsight[]
+): HealthInsight[] {
+  const delayPatterns =
+    eligible.filter(
+      (insight) =>
+        insight.id.startsWith(
+          "atraso-real-"
+        )
+    );
+
+  if (
+    delayPatterns.length <
+    2
+  ) {
+    return eligible;
+  }
+
+  const names =
+    Array.from(
+      new Set(
+        delayPatterns.map(
+          extractMedicationName
+        )
+      )
+    );
+
+  const sample =
+    delayPatterns.reduce(
+      (total, insight) =>
+        total +
+        insight.amostra,
+      0
+    );
+
+  const evidence =
+    delayPatterns.flatMap(
+      (insight) => {
+        const name =
+          extractMedicationName(
+            insight
+          );
+
+        return (
+          insight.evidencias ||
+          []
+        )
+          .slice(
+            0,
+            3
+          )
+          .map(
+            (item) =>
+              `${name}: ${item}`
+          );
+      }
+    );
+
+  const aggregate: HealthInsight = {
+    id:
+      "padrao-horarios-medicamentos",
+
+    kind:
+      "pattern",
+
+    categoria:
+      "adesao",
+
+    titulo:
+      "Sua rotina tem apresentado atrasos de horário",
+
+    mensagem:
+      `O Vault encontrou atrasos recorrentes em ${delayPatterns.length} medicamentos no período analisado. Em vez de repetir o mesmo alerta para cada um, este cartão reúne o padrão e mantém os detalhes individuais nas evidências.${names.length > 0 ? ` Medicamentos envolvidos: ${names.join(", ")}.` : ""}`,
+
+    urgencia:
+      strongestUrgency(
+        delayPatterns
+      ),
+
+    confianca:
+      strongestConfidence(
+        delayPatterns
+      ),
+
+    amostra:
+      sample,
+
+    periodoDias:
+      Math.max(
+        ...delayPatterns.map(
+          (item) =>
+            item.periodoDias ||
+            0
+        )
+      ),
+
+    entidadeTipo:
+      "rotina_medicamentos",
+
+    link:
+      "/saude/medicamentos",
+
+    evidencias:
+      evidence,
+  };
+
+  return [
+    aggregate,
+    ...eligible.filter(
+      (insight) =>
+        !insight.id.startsWith(
+          "atraso-real-"
+        )
+    ),
+  ].sort(
+    compareInsights
   );
 }
 
 export function selectHealthHighlights(
-  insights:
-    HealthInsight[],
-
-  options:
-    HealthHighlightOptions = {}
+  insights: HealthInsight[],
+  options: HealthHighlightOptions = {}
 ) {
   const limit =
     options.limit ??
@@ -135,12 +268,10 @@ export function selectHealthHighlights(
     options.minimumSample ??
     3;
 
-  const eligible =
+  const baseEligible =
     insights
       .filter(
-        (
-          insight
-        ) =>
+        (insight) =>
           insight.kind ===
             "pattern" &&
           Boolean(
@@ -155,24 +286,22 @@ export function selectHealthHighlights(
         compareInsights
       );
 
+  const eligible =
+    aggregateDelayPatterns(
+      baseEligible
+    );
+
   const semanticKeys =
-    new Set<
-      string
-    >();
+    new Set<string>();
 
   const entityKeys =
-    new Set<
-      string
-    >();
+    new Set<string>();
 
   const unique:
     HealthInsight[] =
     [];
 
-  for (
-    const insight of
-      eligible
-  ) {
+  for (const insight of eligible) {
     const semanticKey =
       insight.categoria +
       ":" +
@@ -206,9 +335,7 @@ export function selectHealthHighlights(
       semanticKey
     );
 
-    if (
-      entityKey
-    ) {
+    if (entityKey) {
       entityKeys.add(
         entityKey
       );
@@ -224,22 +351,12 @@ export function selectHealthHighlights(
     [];
 
   const selectedIds =
-    new Set<
-      string
-    >();
+    new Set<string>();
 
   const categories =
-    new Set<
-      string
-    >();
+    new Set<string>();
 
-  /*
-   * Primeiro tentamos diversidade de categorias.
-   */
-  for (
-    const insight of
-      unique
-  ) {
+  for (const insight of unique) {
     if (
       selected.length >=
       limit
@@ -268,14 +385,7 @@ export function selectHealthHighlights(
     );
   }
 
-  /*
-   * Depois completamos as vagas restantes com os
-   * melhores padrões disponíveis.
-   */
-  for (
-    const insight of
-      unique
-  ) {
+  for (const insight of unique) {
     if (
       selected.length >=
       limit

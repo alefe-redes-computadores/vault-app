@@ -85,6 +85,17 @@ type RenovacaoUpdateInput = Omit<
 
 export type RenovacaoCreateOptions = {
   proximaRenovacao?: string | null;
+
+  /**
+   * Registra apenas a nova prescrição/receita.
+   *
+   * Não representa compra ou retirada e, portanto:
+   * - não cria data de aquisição;
+   * - não altera estoque;
+   * - não altera farmácia/tipo de aquisição atual do medicamento;
+   * - não cria/reconcilia Retirada.
+   */
+  somenteReceita?: boolean;
 };
 
 // ============================================================
@@ -776,13 +787,19 @@ export const renovacoesRepository = {
         "Data da prescrição"
       );
 
+    const somenteReceita =
+      options.somenteReceita ===
+      true;
+
     const dataAquisicao =
-      data.data_aquisicao
-        ? requireDate(
-            data.data_aquisicao,
-            "Data da aquisição"
-          )
-        : getLocalTodayISO();
+      somenteReceita
+        ? null
+        : data.data_aquisicao
+          ? requireDate(
+              data.data_aquisicao,
+              "Data da aquisição"
+            )
+          : getLocalTodayISO();
 
     // ========================================================
     // RELAÇÕES
@@ -818,16 +835,20 @@ export const renovacoesRepository = {
     // ========================================================
 
     const quantidade =
-      normalizeNullableNumber(
-        data.quantidade,
-        "Quantidade"
-      );
+      somenteReceita
+        ? null
+        : normalizeNullableNumber(
+            data.quantidade,
+            "Quantidade"
+          );
 
     const preco =
-      normalizeNullableNumber(
-        data.preco,
-        "Preço"
-      );
+      somenteReceita
+        ? null
+        : normalizeNullableNumber(
+            data.preco,
+            "Preço"
+          );
 
     const medico =
       await getMedicoForUser(
@@ -893,13 +914,24 @@ export const renovacoesRepository = {
         medicoId,
 
       farmacia_id:
-        farmaciaId,
+        somenteReceita
+          ? null
+          : farmaciaId,
 
       hospital_id:
-        hospitalId,
+        somenteReceita
+          ? null
+          : hospitalId,
 
       local_id:
-        localId,
+        somenteReceita
+          ? null
+          : localId,
+
+      tipo_aquisicao:
+        somenteReceita
+          ? undefined
+          : data.tipo_aquisicao,
 
       quantidade,
 
@@ -939,16 +971,20 @@ export const renovacoesRepository = {
         ),
 
       data_proxima_retirada:
-        normalizeOptionalDate(
-          data.data_proxima_retirada,
-          "Data da próxima retirada"
-        ),
+        somenteReceita
+          ? null
+          : normalizeOptionalDate(
+              data.data_proxima_retirada,
+              "Data da próxima retirada"
+            ),
 
       data_retorno_sus:
-        normalizeOptionalDate(
-          data.data_retorno_sus,
-          "Data de retorno do SUS"
-        ),
+        somenteReceita
+          ? null
+          : normalizeOptionalDate(
+              data.data_retorno_sus,
+              "Data de retorno do SUS"
+            ),
 
       created_at:
         timestamp,
@@ -986,17 +1022,12 @@ export const renovacoesRepository = {
       Medicamento = {
       ...medicamento,
 
+      /*
+       * A receita nova sempre atualiza a referência clínica
+       * atual do medicamento.
+       */
       data_receita:
         dataPrescricao,
-
-      tipo_aquisicao:
-        data.tipo_aquisicao ===
-        "sus"
-          ? "sus"
-          : data.tipo_aquisicao ===
-              "gratuito"
-            ? "gratuito"
-            : "comprado",
 
       ...(data.document_id !==
       undefined
@@ -1013,25 +1044,45 @@ export const renovacoesRepository = {
 
       medico:
         medico?.nome ||
+        medicamento.medico ||
         "",
 
-      farmacia_id:
-        farmaciaId ||
-        undefined,
+      /*
+       * Somente uma aquisição pode alterar origem logística.
+       *
+       * "Somente receita" preserva farmácia, forma de aquisição,
+       * retirada SUS e estoque já existentes no medicamento.
+       */
+      ...(!somenteReceita
+        ? {
+            tipo_aquisicao:
+              data.tipo_aquisicao ===
+              "sus"
+                ? "sus"
+                : data.tipo_aquisicao ===
+                    "gratuito"
+                  ? "gratuito"
+                  : "comprado",
 
-      farmacia:
-        farmacia?.nome ||
-        undefined,
+            farmacia_id:
+              farmaciaId ||
+              undefined,
 
-      data_retorno_sus:
-        data.tipo_aquisicao ===
-        "sus"
-          ? normalizeOptionalDate(
-              data.data_proxima_retirada,
-              "Data da próxima retirada"
-            ) ||
-            undefined
-          : undefined,
+            farmacia:
+              farmacia?.nome ||
+              undefined,
+
+            data_retorno_sus:
+              data.tipo_aquisicao ===
+              "sus"
+                ? normalizeOptionalDate(
+                    data.data_proxima_retirada,
+                    "Data da próxima retirada"
+                  ) ||
+                  undefined
+                : undefined,
+          }
+        : {}),
 
       ...(options.proximaRenovacao !==
       undefined
@@ -1043,14 +1094,12 @@ export const renovacoesRepository = {
         : {}),
 
       /*
-       * Estoque só é alterado quando a quantidade adquirida
-       * foi explicitamente informada.
-       *
-       * A referência agora é a DATA DA AQUISIÇÃO, não mais a
-       * data da receita.
+       * Estoque só é alterado por uma aquisição real.
        */
-      ...(typeof quantidade ===
-      "number"
+      ...(!somenteReceita &&
+      typeof quantidade ===
+        "number" &&
+      dataAquisicao
         ? {
             estoque_quantidade:
               (typeof medicamento.estoque_quantidade ===
@@ -1130,7 +1179,14 @@ export const renovacoesRepository = {
           }
         );
 
-        await reconcileScheduledRetiradaFromRenovacao(cleanRenovacao, medicamentoPersistido);
+        if (
+          !somenteReceita
+        ) {
+          await reconcileScheduledRetiradaFromRenovacao(
+            cleanRenovacao,
+            medicamentoPersistido
+          );
+        }
       }
     );
 

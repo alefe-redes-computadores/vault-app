@@ -3,6 +3,7 @@
 import type {
   Medicamento,
   Renovacao,
+  Retirada,
   Tratamento,
 } from "@/lib/types";
 
@@ -78,6 +79,9 @@ interface MedicationCareInput {
   renovacoes:
     Renovacao[];
 
+  retiradas?:
+    Retirada[];
+
   limit?:
     number;
 }
@@ -91,6 +95,63 @@ function getEffectiveRenewalDate(
     renovacao.data?.trim() ||
     renovacao.created_at?.trim() ||
     ""
+  );
+}
+
+function getNextScheduledWithdrawal(
+  medicamentoId:
+    string,
+  retiradas:
+    Retirada[]
+): Retirada | null {
+  const today =
+    new Date()
+      .toLocaleDateString(
+        "en-CA"
+      );
+
+  return (
+    retiradas
+      .filter(
+        (
+          retirada
+        ) =>
+          retirada.medicamento_id ===
+            medicamentoId &&
+          retirada.status ===
+            "agendada" &&
+          retirada.data >=
+            today
+      )
+      .sort(
+        (
+          first,
+          second
+        ) => {
+          const date =
+            first.data.localeCompare(
+              second.data
+            );
+
+          if (
+            date !==
+            0
+          ) {
+            return date;
+          }
+
+          return String(
+            first.horario ||
+              "23:59"
+          ).localeCompare(
+            String(
+              second.horario ||
+                "23:59"
+            )
+          );
+        }
+      )[0] ??
+    null
   );
 }
 
@@ -282,6 +343,7 @@ function buildMessage({
   estoqueZerado,
   renewalCount,
   insightMessage,
+  scheduledWithdrawal,
 }: {
   medicamento:
     Medicamento;
@@ -303,6 +365,9 @@ function buildMessage({
 
   insightMessage:
     string;
+
+  scheduledWithdrawal:
+    Retirada | null;
 }): string {
   const parts:
     string[] = [];
@@ -344,10 +409,19 @@ function buildMessage({
   }
 
   if (
+    scheduledWithdrawal
+  ) {
+    const when =
+      scheduledWithdrawal.data;
+
+    parts.push(
+      `Existe uma retirada agendada para ${when}. O Vault considera esse compromisso no contexto de continuidade.`
+    );
+  } else if (
     renewalCount === 0
   ) {
     parts.push(
-      "Não encontrei renovação registrada para este medicamento."
+      "Não encontrei renovação nem retirada futura registrada para este medicamento."
     );
   } else {
     parts.push(
@@ -362,6 +436,7 @@ export function buildMedicationCareOpportunities({
   medicamentos,
   tratamentos,
   renovacoes,
+  retiradas = [],
   limit = 3,
 }: MedicationCareInput): MedicationCareOpportunity[] {
   const opportunities:
@@ -430,6 +505,12 @@ export function buildMedicationCareOpportunities({
       getActiveTreatment(
         medicamento,
         tratamentos
+      );
+
+    const scheduledWithdrawal =
+      getNextScheduledWithdrawal(
+        medicamento.id,
+        retiradas
       );
 
     const medRenewals =
@@ -515,6 +596,8 @@ export function buildMedicationCareOpportunities({
 
           insightMessage:
             insight.mensagem,
+
+          scheduledWithdrawal,
         }),
 
       treatmentId,
