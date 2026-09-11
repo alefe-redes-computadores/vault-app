@@ -1254,7 +1254,8 @@ export default function HojePage() {
       if (
         !med.id ||
         med.status === "descontinuado" ||
-        med.tipo_uso === "sos"
+        med.tipo_uso === "sos" ||
+        med.tipo_uso === "esporadico"
       ) {
         continue;
       }
@@ -1593,7 +1594,7 @@ export default function HojePage() {
         if (
           !med.id ||
           med.status === "descontinuado" ||
-          med.tipo_uso === "sos"
+          med.tipo_uso !== "continuo"
         ) {
           return false;
         }
@@ -2537,7 +2538,7 @@ export default function HojePage() {
         {/* =========================================================
             HEADER
         ========================================================= */}
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-3 pt-safe backdrop-blur-xl">
+        <header className="relative z-10 border-b border-surface-border/30 bg-void px-4 pb-3 pt-safe">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -2672,7 +2673,7 @@ export default function HojePage() {
           )}
 
           {/* RESUMO */}
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
             <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2
@@ -2734,7 +2735,7 @@ export default function HojePage() {
           </div>
 
           {/* FILTROS */}
-          <div className="mt-3 -mx-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="mt-2 -mx-1 overflow-x-auto pb-1 scrollbar-none">
             <div className="flex min-w-max items-center gap-2 px-1">
               <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1.5">
                 <Filter
@@ -2900,7 +2901,7 @@ export default function HojePage() {
         {/* =========================================================
             CONTEÚDO
         ========================================================= */}
-        <section className="space-y-4 px-4 pt-3">
+        <section className="space-y-5 px-4 pt-4">
           {isHoje && dosesElegiveisLote.length > 1 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
