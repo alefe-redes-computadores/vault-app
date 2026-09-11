@@ -482,6 +482,21 @@ export default function RegistrosSaudePage() {
             </button>
           }
         >
+          <button
+            type="button"
+            onClick={() => {
+              trigger("vibrate");
+              router.push("/saude/registros/evolucao");
+            }}
+            className="mt-3 flex w-full items-center justify-between rounded-2xl border border-ice/20 bg-ice/10 px-4 py-3 text-left transition-all active:scale-[0.99]"
+          >
+            <span>
+              <span className="block text-xs font-semibold text-ice">Ver evolução</span>
+              <span className="block text-[10px] text-ink-muted">Séries de 7, 30 e 90 dias</span>
+            </span>
+            <Calendar size={17} className="text-ice" />
+          </button>
+
           <div className="relative mt-3 w-full">
               <Search
                 size={15}
