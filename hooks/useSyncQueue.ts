@@ -3865,6 +3865,53 @@ export function useSyncQueue() {
     };
 
   // ============================================================
+  // LEMBRETES E METAS DE SAÚDE
+  // ============================================================
+
+  const syncHealthReminder = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const rule = item.payload as Record<string, unknown>;
+    if (item.operation === "delete") {
+      const { error } = await client.from("health_reminders").delete().eq("id", requirePayloadId(item));
+      if (error) throw new Error(`Health reminders delete error: ${error.message}`);
+      return;
+    }
+    const id = requirePayloadId(item);
+    const personId = requirePersonId(typeof rule.person_id === "string" ? rule.person_id : undefined, "Lembrete de saúde", id);
+    const time = typeof rule.time === "string" ? rule.time.slice(0, 5) : "";
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error(`Lembrete ${id} sem horário válido.`);
+    const frequency = rule.frequency;
+    if (!['daily','weekly','custom'].includes(String(frequency))) throw new Error(`Lembrete ${id} sem frequência válida.`);
+    const weekdays = Array.isArray(rule.weekdays) ? [...new Set(rule.weekdays.filter(v => Number.isInteger(v) && Number(v) >= 0 && Number(v) <= 6).map(Number))].sort() : [];
+    const { error } = await client.from("health_reminders").upsert({
+      id, user_id: rule.user_id, person_id: personId, title: rule.title, body: rule.body || null,
+      target_type: rule.target_type, target_route: rule.target_route, time, frequency,
+      weekdays, status: rule.status === "paused" ? "paused" : "active",
+      created_at: rule.created_at, updated_at: rule.updated_at,
+    }, { onConflict: "id" });
+    if (error) throw new Error(`Health reminders upsert error: ${error.message}`);
+  };
+
+  const syncHealthGoal = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    const goal = item.payload as Record<string, unknown>;
+    if (item.operation === "delete") {
+      const { error } = await client.from("health_goals").delete().eq("id", requirePayloadId(item));
+      if (error) throw new Error(`Health goals delete error: ${error.message}`);
+      return;
+    }
+    const id = requirePayloadId(item);
+    const personId = requirePersonId(typeof goal.person_id === "string" ? goal.person_id : undefined, "Meta de saúde", id);
+    const target = Number(goal.target_value);
+    if (goal.goal_type !== "hydration_ml" || goal.unit !== "ml" || !Number.isFinite(target) || target <= 0) throw new Error(`Meta de saúde ${id} inválida.`);
+    const { error } = await client.from("health_goals").upsert({
+      id, user_id: goal.user_id, person_id: personId, goal_type: "hydration_ml",
+      target_value: target, unit: "ml", created_at: goal.created_at, updated_at: goal.updated_at,
+    }, { onConflict: "id" });
+    if (error) throw new Error(`Health goals upsert error: ${error.message}`);
+  };
+
+  // ============================================================
   // VAULTS
   // ============================================================
 
@@ -4799,6 +4846,14 @@ export function useSyncQueue() {
           );
           break;
 
+        case "health_reminders":
+          await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
+          break;
+
+        case "health_goals":
+          await markRecordSyncedIfCurrent(db.health_goals, payload.id, expectedUpdatedAt);
+          break;
+
         case "vaults":
           await markRecordSyncedIfCurrent(
             db.vaults,
@@ -5047,6 +5102,14 @@ export function useSyncQueue() {
           );
           return;
 
+        case "health_reminders":
+          await syncHealthReminder(item);
+          return;
+
+        case "health_goals":
+          await syncHealthGoal(item);
+          return;
+
         case "credentials":
           await syncCredential(
             item
@@ -5219,6 +5282,8 @@ export function useSyncQueue() {
 
                   "anexos_clinicos",
                   "registros_saude",
+                  "health_goals",
+                  "health_reminders",
 
                   "credentials",
                   "cards",

@@ -1,13 +1,17 @@
 {
   "name": "Vault — Seus documentos, sempre à mão",
   "short_name": "Vault",
-  "description": "Guarde prontuários, receitas, laudos e documentos pessoais com acesso offline garantido.",
+  "description": "Organize prontuários, receitas, laudos e documentos pessoais, com recursos locais quando disponíveis.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0C0F",
   "theme_color": "#0A0C0F",
   "orientation": "portrait",
-  "categories": ["productivity", "organization", "utilities"],
+  "categories": [
+    "productivity",
+    "organization",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -26,6 +30,18 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hoje",
+      "short_name": "Hoje",
+      "url": "/hoje"
+    },
+    {
+      "name": "Registrar água",
+      "short_name": "Água",
+      "url": "/saude/hidratacao"
     }
   ]
 }

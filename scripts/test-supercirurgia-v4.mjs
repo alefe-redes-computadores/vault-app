@@ -1,0 +1,15 @@
+import fs from "node:fs";
+const read=p=>fs.readFileSync(p,"utf8");const checks=[];const ok=(name,value)=>{if(!value)throw new Error(`FALHOU: ${name}`);console.log(`OK: ${name}`);checks.push(name)};
+const sync=read("hooks/useSyncQueue.ts"),rt=read("hooks/useSupabaseRealtime.ts"),scheduler=read("lib/health-reminders/scheduler.ts"),reconciler=read("components/HealthReminderReconciler.tsx"),sw=read("public/sw.js"),manifest=read("public/manifest.json");
+ok("lembretes possuem push",sync.includes('from("health_reminders")')&&sync.includes('case "health_reminders"'));
+ok("metas possuem push",sync.includes('from("health_goals")')&&sync.includes('case "health_goals"'));
+ok("entidades novas marcam synced",sync.includes('db.health_reminders, payload.id')&&sync.includes('db.health_goals, payload.id'));
+ok("realtime exige usuário dono",rt.includes('owner !== user.id'));
+ok("realtime preserva fila local",rt.includes('db.syncQueue.filter')&&rt.includes('local?.synced === false'));
+ok("realtime mapeia nomes remotos",rt.includes('dose_logs:{local:"doseLogs"')&&rt.includes('cards:{local:"bankCards"'));
+ok("notificações incluem todas as pessoas do usuário",reconciler.includes('where("user_id")'));
+ok("toque revalida regra local",reconciler.includes('rule.user_id!==user.id')&&reconciler.includes('rule.status!=="active"'));
+ok("agenda possui teto operacional",scheduler.includes('MAX_PENDING=60')&&scheduler.includes('.slice(0,MAX_PENDING)'));
+ok("PWA não promete offline garantido",!manifest.includes('offline garantido'));
+ok("navegação usa rede antes do fallback",sw.includes('req.mode==="navigate"')&&sw.includes('fetch(req).catch'));
+console.log(`CONTRATOS SUPERCIRURGIA V4: OK (${checks.length})`);
