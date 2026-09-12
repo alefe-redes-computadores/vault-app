@@ -63,4 +63,25 @@ export const healthGoalsRepository = {
     solicitarProcessamentoSync();
     return row;
   },
+
+  async clearHydration(personIdValue: string) {
+    const personId = requirePerson(personIdValue);
+    const userId = await authenticatedUserId();
+    await assertOwnedPerson(personId, userId);
+    const current = await this.getHydration(personId);
+    if (!current) return false;
+    if (current.user_id !== userId) {
+      throw new Error("Meta não pertence ao usuário autenticado.");
+    }
+    await db.transaction("rw", [db.health_goals, db.syncQueue], async () => {
+      await db.health_goals.delete(current.id);
+      await enfileirarOperacao("health_goals", "delete", {
+        id: current.id,
+        user_id: userId,
+        person_id: personId,
+      }, { dispatchSync: false });
+    });
+    solicitarProcessamentoSync();
+    return true;
+  },
 };

@@ -3872,7 +3872,9 @@ export function useSyncQueue() {
     const client = requireSupabase();
     const rule = item.payload as Record<string, unknown>;
     if (item.operation === "delete") {
-      const { error } = await client.from("health_reminders").delete().eq("id", requirePayloadId(item));
+      const id = requirePayloadId(item);
+      const userId = requireUserId(typeof rule.user_id === "string" ? rule.user_id : undefined, "Lembrete de saúde", id);
+      const { error } = await client.from("health_reminders").delete().eq("id", id).eq("user_id", userId);
       if (error) throw new Error(`Health reminders delete error: ${error.message}`);
       return;
     }
@@ -3896,7 +3898,9 @@ export function useSyncQueue() {
     const client = requireSupabase();
     const goal = item.payload as Record<string, unknown>;
     if (item.operation === "delete") {
-      const { error } = await client.from("health_goals").delete().eq("id", requirePayloadId(item));
+      const id = requirePayloadId(item);
+      const userId = requireUserId(typeof goal.user_id === "string" ? goal.user_id : undefined, "Meta de saúde", id);
+      const { error } = await client.from("health_goals").delete().eq("id", id).eq("user_id", userId);
       if (error) throw new Error(`Health goals delete error: ${error.message}`);
       return;
     }

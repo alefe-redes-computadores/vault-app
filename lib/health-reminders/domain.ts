@@ -8,8 +8,8 @@ const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export const HEALTH_REMINDER_TARGETS = [
   { type: "health_record:agua", route: "/saude/hidratacao", label: "Registrar hidratação", description: "Abre os atalhos e o histórico de água." },
-  { type: "health_record:medicao", route: "/saude/registros/novo", label: "Registrar medição", description: "Abre um novo Registro de Saúde." },
-  { type: "health_record:sintoma", route: "/saude/registros/novo", label: "Registrar sintoma", description: "Abre um novo Registro de Saúde." },
+  { type: "health_record:medicao", route: "/saude/registros/novo?preset=medicao", label: "Registrar medição", description: "Abre um novo registro já preparado para uma medição." },
+  { type: "health_record:sintoma", route: "/saude/registros/novo?preset=sintoma", label: "Registrar sintoma", description: "Abre um novo registro já preparado para um sintoma." },
 ] as const;
 
 export type HealthReminderTargetType = typeof HEALTH_REMINDER_TARGETS[number]["type"];

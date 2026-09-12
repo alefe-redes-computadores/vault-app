@@ -112,6 +112,7 @@ export default function MaisPage() {
 
   const {
     processQueue,
+    resetFailedItems,
     isOnline,
     syncLogs,
     clearLogs,
@@ -231,6 +232,7 @@ export default function MaisPage() {
         db.documents.clear(),
         db.medicamentos.clear(),
         db.renovacoes.clear(),
+        db.retiradas.clear(),
         db.vaults.clear(),
         db.vaultMembers.clear(),
         db.medicos.clear(),
@@ -247,6 +249,13 @@ export default function MaisPage() {
         db.tratamentos.clear(),
         db.cids.clear(),
         db.anexos_clinicos.clear(),
+        db.medicamento_tratamentos.clear(),
+        db.exame_tratamentos.clear(),
+        db.registros_saude.clear(),
+        db.health_reminders.clear(),
+        db.health_goals.clear(),
+        db.settings.clear(),
+        db.versiculos.clear(),
         db.syncQueue.clear(),
       ]);
 
@@ -279,12 +288,12 @@ export default function MaisPage() {
     setIsLoading(true);
 
     try {
-      await db.syncQueue.clear();
+      await resetFailedItems();
 
       trigger("success");
 
       showSuccess(
-        "Fila destravada com sucesso! Você já pode salvar os itens novamente.",
+        "Itens com falha foram preservados e reativados para envio.",
         4000
       );
     } catch (error) {
@@ -1215,7 +1224,7 @@ export default function MaisPage() {
 
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-ink-primary">
-                          Destravar sincronização
+                          Repetir itens com falha
                         </p>
 
                         <p className="text-xs text-ink-muted">
@@ -1509,9 +1518,9 @@ export default function MaisPage() {
             setShowUnlockModal(false)
           }
           onConfirm={unlockSyncQueue}
-          title="Destravar Sincronização"
-          message="Isso apagará os itens que falharam permanentemente e estão travando a fila. Você precisará abrir os registros no app e salvá-los novamente para enviá-los à nuvem. Deseja continuar?"
-          confirmLabel="Limpar Fila"
+          title="Repetir itens com falha"
+          message="Os itens serão preservados, terão o estado de falha removido e passarão novamente pela fila oficial. Nenhuma alteração local será descartada."
+          confirmLabel="Tentar novamente"
           cancelLabel="Cancelar"
           isLoading={isLoading}
           type="warning"

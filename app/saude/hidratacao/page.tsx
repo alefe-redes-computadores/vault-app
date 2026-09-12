@@ -44,7 +44,7 @@ export default function HydrationPage() {
   const { showToast } = useToast();
   const { trigger } = useHapticFeedback();
   const { registros, isLoading: recordsLoading, createRegistro, deleteRegistro } = useRegistrosSaude();
-  const { hydrationGoal, isLoading: goalLoading, setHydrationGoal } = useHealthGoals();
+  const { hydrationGoal, isLoading: goalLoading, setHydrationGoal, clearHydrationGoal } = useHealthGoals();
   const [goalDraft, setGoalDraft] = useState("");
   const [custom, setCustom] = useState("350");
   const [busy, setBusy] = useState<string | null>(null);
@@ -139,6 +139,22 @@ export default function HydrationPage() {
     }
   }
 
+  async function clearGoal() {
+    if (!window.confirm("Remover a meta diária? Seus registros de água serão preservados.")) return;
+    setBusy("goal");
+    try {
+      await clearHydrationGoal();
+      setGoalDraft("");
+      trigger("success");
+      showToast("Meta removida; registros preservados", "success");
+    } catch (error) {
+      trigger("error");
+      showToast(error instanceof Error ? error.message : "Não foi possível remover a meta", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const loading = recordsLoading || goalLoading;
 
   return (
@@ -178,6 +194,7 @@ export default function HydrationPage() {
           <input type="number" min="1" max="20000" placeholder={goal ? String(goal) : "Defina se desejar"} value={goalDraft} onChange={(event) => setGoalDraft(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-surface-border bg-void p-3" />
           <button disabled={busy !== null || !goalDraft} onClick={() => void saveGoal()} className="flex items-center gap-2 rounded-xl bg-ice px-4 font-semibold text-void disabled:opacity-40">{busy === "goal" ? <Loader2 size={18} className="animate-spin" /> : <Target size={17} />}Salvar</button>
         </div>
+        {goal !== null && <button disabled={busy !== null} onClick={() => void clearGoal()} className="mt-2 text-xs font-medium text-coral disabled:opacity-40">Remover meta (mantém os registros)</button>}
       </section>
 
       {todayRecords.length > 0 && (

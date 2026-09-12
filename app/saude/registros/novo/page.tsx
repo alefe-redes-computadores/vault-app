@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -717,6 +718,22 @@ export default function NovoRegistroSaudePage() {
     >(
       []
     );
+
+  const notificationPresetApplied = useRef(false);
+
+  useEffect(() => {
+    if (notificationPresetApplied.current) return;
+    const requested = new URLSearchParams(window.location.search).get("preset");
+    if (requested !== "medicao" && requested !== "sintoma") return;
+    const preset = TIPOS_PREDEFINIDOS.find((item) => item.categoria === requested);
+    if (!preset) return;
+    notificationPresetApplied.current = true;
+    setCategoria(preset.categoria);
+    setTipoSelecionado(preset.tipo);
+    setNome(preset.nome);
+    setValorMedicao("");
+    setIntensidade(preset.categoria === "sintoma" ? 5 : undefined);
+  }, []);
 
   // ==========================================================
   // DERIVADOS
