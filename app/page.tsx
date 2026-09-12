@@ -77,7 +77,6 @@ import {
   type PendingDose,
   type PendingDoseResolution,
 } from "@/components/PendingDosesModal";
-import { VersiculoDia } from "@/components/VersiculoDia";
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 
 // ============================================================
@@ -1844,19 +1843,19 @@ export default function HomePage() {
 
     {
       id:
-        "cirurgias",
+        "retiradas",
 
       label:
-        "Cirurgias",
+        "Retiradas",
 
       description:
-        "Procedimentos",
+        "Medicamentos agendados",
 
       icon:
-        Syringe,
+        Store,
 
       path:
-        "/saude/cirurgias",
+        "/saude/retiradas",
     },
   ];
 
@@ -3714,26 +3713,6 @@ export default function HomePage() {
             </div>
           </motion.section>
 
-          {/* ===================================================
-              VERSÍCULO — ENCERRAMENTO
-          =================================================== */}
-
-          <motion.section
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.24,
-              delay: 0.2,
-            }}
-          >
-            <VersiculoDia />
-          </motion.section>
         </section>
 
         {/* =====================================================

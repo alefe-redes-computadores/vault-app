@@ -902,7 +902,7 @@ function CredentialDetailsContent() {
                 </p>
 
                 <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                  A senha permanece criptografada enquanto está armazenada. Revelar ou copiar exige confirmação de identidade.
+                  A senha fica cifrada no armazenamento. A chave atual é gerenciada pelo cliente e isso não equivale a um cofre zero-knowledge. Revelar ou copiar exige confirmação de identidade.
                 </p>
               </div>
             </div>

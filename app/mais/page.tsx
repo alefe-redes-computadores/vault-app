@@ -28,6 +28,7 @@ import {
   ChevronUp,
   Trash2,
   AlertTriangle,
+  BrainCircuit,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -614,6 +615,16 @@ export default function MaisPage() {
   // ============================================================
 
   const quickAccessItems = [
+    {
+      id: "inteligencia",
+      icon: BrainCircuit,
+      label: "Inteligência do cofre",
+      description: "Organização e segurança explicáveis",
+      onClick: () => {
+        trigger("vibrate");
+        router.push("/inteligencia");
+      },
+    },
     {
       id: "senhas",
       icon: KeyRound,
