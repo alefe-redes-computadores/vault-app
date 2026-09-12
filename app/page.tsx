@@ -78,6 +78,7 @@ import {
   type PendingDoseResolution,
 } from "@/components/PendingDosesModal";
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
+import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 
 // ============================================================
 // HELPERS
@@ -3227,6 +3228,12 @@ export default function HomePage() {
               ACESSO RÁPIDO
           =================================================== */}
 
+          <HomeCommandCenter
+            gastoMes={metricasFinanceiras.gastoMesAtual}
+            diferencaMes={metricasFinanceiras.diff}
+            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length}
+          />
+
           <motion.section
             initial={{
               opacity: 0,
@@ -3240,6 +3247,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.1,
             }}
+            className="hidden"
           >
             <div className="mb-3 flex items-center gap-2">
               <ClipboardList
@@ -3340,7 +3348,7 @@ export default function HomePage() {
                 "/saude/registros"
               );
             }}
-            className="flex w-full items-center justify-between gap-3 rounded-[22px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+            className="hidden w-full items-center justify-between gap-3 rounded-[22px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
           >
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
@@ -3387,6 +3395,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.14,
             }}
+            className="hidden"
           >
             <div className="mb-3 flex items-center gap-2">
               <FolderLock
@@ -3519,7 +3528,7 @@ export default function HomePage() {
                 "/saude/renovacao"
               );
             }}
-            className="flex w-full items-center justify-between gap-4 rounded-[22px] border border-emerald-400/15 bg-gradient-to-r from-emerald-400/8 via-surface to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
+            className="hidden w-full items-center justify-between gap-4 rounded-[22px] border border-emerald-400/15 bg-gradient-to-r from-emerald-400/8 via-surface to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
           >
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
@@ -3606,7 +3615,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.18,
             }}
-            className="space-y-3"
+            className="hidden space-y-3"
           >
             <div className="flex items-end justify-between gap-3">
               <div>

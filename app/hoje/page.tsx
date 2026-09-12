@@ -748,6 +748,7 @@ export default function HojePage() {
 
   const [filtroStatus, setFiltroStatus] =
     useState<FiltroStatus>("todos");
+  const [mostrarConcluidas, setMostrarConcluidas] = useState(false);
 
   const [filtroPeriodo, setFiltroPeriodo] =
     useState<FiltroPeriodo>("todos");
@@ -1785,6 +1786,15 @@ export default function HojePage() {
     isHoje,
   ]);
 
+  const dosesParaExibir = useMemo(() => {
+    if (!isHoje || filtroStatus !== "todos" || mostrarConcluidas) return dosesFiltradas;
+    return dosesFiltradas.filter((dose) => !dose.tomada && !dose.ignorada);
+  }, [dosesFiltradas, filtroStatus, isHoje, mostrarConcluidas]);
+
+  const concluidasOcultas = isHoje && filtroStatus === "todos" && !mostrarConcluidas
+    ? dosesFiltradas.filter((dose) => dose.tomada || dose.ignorada).length
+    : 0;
+
   const dosesAgrupadas = useMemo(() => {
     const grupos: Record<
       string,
@@ -1815,7 +1825,7 @@ export default function HojePage() {
       },
     };
 
-    dosesFiltradas.forEach((d) => {
+    dosesParaExibir.forEach((d) => {
       const periodo =
         getPeriodoDoDia(d.horario);
 
@@ -1828,7 +1838,7 @@ export default function HojePage() {
       ([, grupo]) =>
         grupo.items.length > 0
     );
-  }, [dosesFiltradas]);
+  }, [dosesParaExibir]);
 
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
@@ -3685,7 +3695,14 @@ export default function HojePage() {
           {/* =======================================================
               TIMELINE / DOSES
           ======================================================= */}
-          {dosesFiltradas.length === 0 ? (
+          {isHoje && filtroStatus === "todos" && dosesFiltradas.some((dose) => dose.tomada || dose.ignorada) && (
+            <button type="button" onClick={() => setMostrarConcluidas((value) => !value)} className="flex w-full items-center justify-between rounded-[20px] border border-emerald-400/15 bg-emerald-400/[0.045] px-4 py-3 text-left">
+              <div className="flex items-center gap-2.5"><CheckCircle2 size={17} className="text-emerald-400" /><div><p className="text-xs font-semibold text-ink-primary">{mostrarConcluidas ? "Ocultar rotina concluída" : "Rotina concluída"}</p><p className="mt-0.5 text-[9px] text-ink-muted">{mostrarConcluidas ? "Deixe a agenda focada no que ainda importa" : `${concluidasOcultas} registro(s) resumido(s) para reduzir ruído`}</p></div></div>
+              <ChevronRight size={16} className={`text-emerald-400 transition-transform ${mostrarConcluidas ? "rotate-90" : ""}`} />
+            </button>
+          )}
+
+          {dosesParaExibir.length === 0 && concluidasOcultas > 0 ? null : dosesParaExibir.length === 0 ? (
             <EmptyState
               icon={Pill}
               title={
