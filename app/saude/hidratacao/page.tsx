@@ -46,7 +46,8 @@ export default function HydrationPage() {
   const { registros, isLoading: recordsLoading, createRegistro, deleteRegistro } = useRegistrosSaude();
   const { hydrationGoal, isLoading: goalLoading, setHydrationGoal, clearHydrationGoal } = useHealthGoals();
   const [goalDraft, setGoalDraft] = useState("");
-  const [custom, setCustom] = useState("350");
+  const [custom, setCustom] = useState("");
+  const [showGoalEditor, setShowGoalEditor] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const today = localDateKey(new Date());
   const goal = hydrationGoal?.target_value ?? null;
@@ -165,14 +166,14 @@ export default function HydrationPage() {
         <button onClick={() => router.push("/saude/lembretes")} className="rounded-xl border border-surface-border p-2" aria-label="Abrir lembretes"><Bell size={20} /></button>
       </header>
 
-      <section className="mx-auto mt-6 max-w-xl rounded-3xl border border-ice/20 bg-surface p-5">
+      <section className="mx-auto mt-6 max-w-xl overflow-hidden rounded-[32px] border border-ice/25 bg-gradient-to-br from-ice/10 via-surface to-surface p-5 shadow-[0_24px_70px_rgba(56,189,248,0.08)]">
         <div className="flex items-center gap-3">
           <Droplets className="text-ice" />
           <div className="min-w-0 flex-1">
             <p className="text-3xl font-bold">{loading ? "—" : `${total} ml`}</p>
             <p className="text-sm text-ink-muted">registrados hoje{goal ? ` · meta manual ${goal} ml` : " · sem meta definida"}</p>
           </div>
-          {progress !== null && <span className="font-mono text-sm font-bold text-ice">{progress}%</span>}
+          {progress !== null && <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-ice/25 bg-void/60 font-mono text-sm font-bold text-ice">{progress}%</div>}
         </div>
         {goal ? (
           <div className="mt-4 h-3 overflow-hidden rounded-full bg-void"><div className="h-full rounded-full bg-ice transition-all" style={{ width: `${progress}%` }} /></div>
@@ -180,21 +181,24 @@ export default function HydrationPage() {
           <div className="mt-4 flex items-start gap-2 rounded-2xl bg-ice/5 p-3"><Info size={15} className="mt-0.5 shrink-0 text-ice" /><p className="text-xs text-ink-muted">O Vault não presume uma meta de consumo. Se quiser acompanhar progresso, informe manualmente uma meta escolhida por você.</p></div>
         )}
 
-        <div className="mt-4 flex gap-2">
-          <button disabled={busy !== null} onClick={() => void add(250)} className="flex-1 rounded-xl bg-ice/10 p-3 font-semibold text-ice disabled:opacity-40">+250 ml</button>
-          <button disabled={busy !== null} onClick={() => void add(500)} className="flex-1 rounded-xl bg-ice/10 p-3 font-semibold text-ice disabled:opacity-40">+500 ml</button>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button disabled={busy !== null} onClick={() => void add(250)} className="rounded-2xl border border-ice/20 bg-ice/10 p-4 text-left disabled:opacity-40"><span className="block text-lg font-bold text-ice">+250 ml</span><span className="text-[10px] text-ink-muted">Copo pequeno</span></button>
+          <button disabled={busy !== null} onClick={() => void add(500)} className="rounded-2xl border border-ice/20 bg-ice/10 p-4 text-left disabled:opacity-40"><span className="block text-lg font-bold text-ice">+500 ml</span><span className="text-[10px] text-ink-muted">Garrafa ou copo grande</span></button>
         </div>
         <div className="mt-3 flex gap-2">
           <input inputMode="numeric" placeholder="Outro valor em ml" value={custom} onChange={(event) => setCustom(event.target.value.replace(/[^0-9]/g, ""))} className="min-w-0 flex-1 rounded-xl border border-surface-border bg-void p-3" />
           <button disabled={busy !== null || !custom} onClick={() => void add(Number(custom))} className="rounded-xl border border-ice/40 px-4 disabled:opacity-40">Registrar</button>
         </div>
 
-        <label className="mt-5 block text-xs text-ink-muted">Meta diária manual e sincronizada (ml)</label>
-        <div className="mt-1 flex gap-2">
+        <button type="button" onClick={() => { setShowGoalEditor((value) => !value); setGoalDraft(goal ? String(goal) : ""); }} className="mt-5 flex w-full items-center justify-between rounded-2xl border border-surface-border/60 bg-void/50 p-3 text-left">
+          <span><span className="block text-xs font-semibold text-ink-primary">Meta diária opcional</span><span className="text-[10px] text-ink-muted">{goal ? `${goal} ml · sincronizada` : "Nenhuma meta definida"}</span></span>
+          <Target size={17} className="text-ice" />
+        </button>
+        {showGoalEditor && <div className="mt-2 flex gap-2">
           <input type="number" min="1" max="20000" placeholder={goal ? String(goal) : "Defina se desejar"} value={goalDraft} onChange={(event) => setGoalDraft(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-surface-border bg-void p-3" />
           <button disabled={busy !== null || !goalDraft} onClick={() => void saveGoal()} className="flex items-center gap-2 rounded-xl bg-ice px-4 font-semibold text-void disabled:opacity-40">{busy === "goal" ? <Loader2 size={18} className="animate-spin" /> : <Target size={17} />}Salvar</button>
-        </div>
-        {goal !== null && <button disabled={busy !== null} onClick={() => void clearGoal()} className="mt-2 text-xs font-medium text-coral disabled:opacity-40">Remover meta (mantém os registros)</button>}
+        </div>}
+        {showGoalEditor && goal !== null && <button disabled={busy !== null} onClick={() => void clearGoal()} className="mt-2 text-xs font-medium text-coral disabled:opacity-40">Remover meta (mantém os registros)</button>}
       </section>
 
       {todayRecords.length > 0 && (
@@ -214,7 +218,7 @@ export default function HydrationPage() {
       <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-surface-border bg-surface p-5">
         <h2 className="font-semibold">Histórico observado</h2>
         <p className="mt-1 text-sm text-ink-muted">{average === null ? "Ainda não há dias registrados para calcular média." : `Média dos ${days.length} dias com registros: ${average} ml.`}</p>
-        <div className="mt-3 grid gap-2">{days.map(([date, value]) => <div key={date} className="flex justify-between rounded-xl bg-void p-3"><span>{formatDate(date)}</span><strong>{value} ml</strong></div>)}</div>
+        <div className="mt-3 grid gap-2">{days.map(([date, value]) => <div key={date} className="rounded-xl bg-void p-3"><div className="flex justify-between"><span>{formatDate(date)}</span><strong>{value} ml</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised"><div className="h-full rounded-full bg-ice/70" style={{ width: `${Math.min(100, Math.round((value / Math.max(...days.map(([, amount]) => amount), 1)) * 100))}%` }} /></div></div>)}</div>
         <p className="mt-3 text-xs text-ink-muted">Dias sem registro não são tratados como consumo zero. Esta visão é descritiva e não substitui orientação profissional.</p>
       </section>
     </main>

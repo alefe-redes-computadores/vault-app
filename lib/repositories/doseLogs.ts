@@ -85,6 +85,10 @@ interface RegistrarTomadaAvulsaInput {
   horario: string;
 
   quantidade?: number;
+
+  doseKind?: "sos" | "extra";
+
+  motivo?: string;
 }
 
 interface RemoveDoseLogByIdInput {
@@ -1182,6 +1186,10 @@ export const doseLogsRepository = {
             quantidade:
               doseQuantity,
 
+            dose_kind:
+              existing?.dose_kind ||
+              "scheduled",
+
             tomado_em:
               status ===
               "taken"
@@ -1273,6 +1281,8 @@ export const doseLogsRepository = {
     data,
     horario,
     quantidade,
+    doseKind = "sos",
+    motivo,
   }: RegistrarTomadaAvulsaInput): Promise<string> {
     const safePersonId =
       requirePersonId(
@@ -1350,6 +1360,12 @@ export const doseLogsRepository = {
 
           quantidade:
             doseQuantity,
+
+          dose_kind:
+            doseKind,
+
+          motivo:
+            motivo?.trim() || undefined,
 
           tomado_em:
             timestamp,

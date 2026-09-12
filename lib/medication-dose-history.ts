@@ -17,6 +17,8 @@ export type DoseHistoryEvent = {
   ignoradoEm?: string;
   quantidade?: number;
   kind: DoseHistoryEventKind;
+  origin?: "scheduled" | "sos" | "extra";
+  motivo?: string;
 };
 
 export type DoseHistoryDay = {
@@ -119,7 +121,10 @@ function knownRoutineStart(medication: Medicamento): string | null {
 }
 
 function eventFromLog(log: DoseLog, schedules: string[]): DoseHistoryEvent {
-  const scheduled = schedules.includes(log.horario);
+  const scheduled =
+    log.dose_kind !== "extra" &&
+    log.dose_kind !== "sos" &&
+    schedules.includes(log.horario);
 
   return {
     id: log.id,
@@ -127,6 +132,8 @@ function eventFromLog(log: DoseLog, schedules: string[]): DoseHistoryEvent {
     tomadoEm: log.tomado_em,
     ignoradoEm: log.ignorado_em,
     quantidade: log.quantidade,
+    origin: log.dose_kind || (scheduled ? "scheduled" : "sos"),
+    motivo: log.motivo,
     kind: scheduled
       ? log.tomado_em
         ? "scheduled_taken"

@@ -189,6 +189,9 @@ interface DoseLogLike {
 
   quantidade?: number;
 
+  dose_kind?:
+    "scheduled" | "sos" | "extra";
+
   /**
    * Momento em que o registro entrou ou foi alterado no Vault.
    *
@@ -8332,6 +8335,95 @@ export function gerarInsightsSaude(
         medicamento.tipo_uso ===
         "continuo"
       ) {
+        const hojeAnalise =
+          contexto.hoje ||
+          getLocalTodayISO();
+
+        const limiteExtras =
+          parseLocalDate(
+            hojeAnalise
+          );
+
+        limiteExtras?.setDate(
+          limiteExtras.getDate() - 6
+        );
+
+        const extrasRecentes =
+          logs.filter((log) => {
+            if (
+              log.dose_kind !== "extra" ||
+              !log.tomado_em ||
+              !log.data ||
+              !limiteExtras
+            ) {
+              return false;
+            }
+
+            const data =
+              parseLocalDate(log.data);
+
+            return Boolean(
+              data &&
+              data >= limiteExtras &&
+              log.data <= hojeAnalise
+            );
+          });
+
+        if (extrasRecentes.length > 0) {
+          const diasComExtra =
+            new Set(
+              extrasRecentes.map(
+                (log) => log.data
+              )
+            ).size;
+
+          insights.push({
+            id:
+              `doses-extras-${medicamento.id}`,
+
+            kind:
+              "observation",
+
+            categoria:
+              "rotina",
+
+            titulo:
+              `${medicamento.nome}: doses extras registradas`,
+
+            mensagem:
+              `Há ${extrasRecentes.length} dose(s) marcada(s) explicitamente como extra em ${diasComExtra} dia(s) dos últimos 7 dias. O Vault descreve os registros e não avalia indicação, segurança ou necessidade da dose.`,
+
+            urgencia:
+              "baixa",
+
+            confianca:
+              extrasRecentes.length >= 3
+                ? "media"
+                : "baixa",
+
+            amostra:
+              extrasRecentes.length,
+
+            periodoDias:
+              7,
+
+            entidadeTipo:
+              "medicamento",
+
+            entidadeId:
+              medicamento.id,
+
+            link:
+              `/saude/medicamentos/historico?id=${medicamento.id}`,
+
+            evidencias: [
+              `${extrasRecentes.length} evento(s) com origem “dose extra”`,
+              `${diasComExtra} dia(s) com ao menos um registro extra`,
+              "Fonte interna: histórico de doses da pessoa ativa",
+            ],
+          });
+        }
+
         const atrasoTomada =
           analisarAtrasosTomadaMedicamento(
             medicamento,

@@ -1351,6 +1351,9 @@ class VaultDB extends Dexie {
     this.version(38).stores({
       health_goals: 'id, user_id, person_id, goal_type, [person_id+goal_type], synced, updated_at',
     });
+
+    // V39 — metadados aditivos de origem da dose; sem novo índice.
+    this.version(39).stores({});
   }
 }
 

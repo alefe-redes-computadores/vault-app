@@ -766,6 +766,12 @@ export function QuickDoseModal({
       null
     );
 
+  const [registerAsExtra, setRegisterAsExtra] =
+    useState(false);
+
+  const [doseReason, setDoseReason] =
+    useState("");
+
   // ==========================================================
   // MEDICAMENTO SELECIONADO
   // ==========================================================
@@ -811,7 +817,9 @@ export function QuickDoseModal({
             log.data ===
               today &&
             log.horario ===
-              doseHora
+              doseHora &&
+            log.dose_kind !== "extra" &&
+            log.dose_kind !== "sos"
         );
       },
       [
@@ -828,7 +836,8 @@ export function QuickDoseModal({
       "continuo" &&
     horariosProgramados.includes(
       doseHora
-    )
+    ) &&
+    !registerAsExtra
       ? "scheduled"
       : "ad-hoc";
 
@@ -979,6 +988,9 @@ export function QuickDoseModal({
         null
       );
 
+      setRegisterAsExtra(false);
+      setDoseReason("");
+
       if (
         preselectedMedicamentoId
       ) {
@@ -996,6 +1008,9 @@ export function QuickDoseModal({
       setDoseQtd(
         1
       );
+
+      setRegisterAsExtra(false);
+      setDoseReason("");
 
       setDoseHora(
         getCurrentTime()
@@ -1502,6 +1517,14 @@ export function QuickDoseModal({
 
             quantidade:
               doseQtd,
+
+            doseKind:
+              selectedMed.tipo_uso === "continuo"
+                ? "extra"
+                : "sos",
+
+            motivo:
+              doseReason,
           });
         }
 
@@ -1529,7 +1552,9 @@ export function QuickDoseModal({
               ? scheduledAlreadyTaken
                 ? `Registro de ${selectedMed.nome} atualizado.`
                 : `Dose de ${selectedMed.nome} registrada.`
-              : `Tomada de ${selectedMed.nome} registrada.`,
+              : selectedMed.tipo_uso === "continuo"
+                ? `Dose extra de ${selectedMed.nome} registrada.`
+                : `Tomada SOS de ${selectedMed.nome} registrada.`,
           "success"
         );
 
@@ -2905,6 +2930,49 @@ export function QuickDoseModal({
               </p>
             </div>
           </div>
+
+          {selectedMed?.tipo_uso === "continuo" &&
+            existingScheduledLog?.tomado_em && (
+              <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3.5">
+                <p className="text-xs font-bold text-amber-300">
+                  Já existe uma tomada neste horário
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                  Escolha se deseja corrigir a tomada existente ou registrar outro evento no histórico.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRegisterAsExtra(false)}
+                    className={`rounded-xl border px-3 py-2 text-[11px] font-semibold ${!registerAsExtra ? "border-ice bg-ice/15 text-ice" : "border-surface-border text-ink-muted"}`}
+                  >
+                    Corrigir existente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegisterAsExtra(true)}
+                    className={`rounded-xl border px-3 py-2 text-[11px] font-semibold ${registerAsExtra ? "border-amber-400 bg-amber-400/15 text-amber-300" : "border-surface-border text-ink-muted"}`}
+                  >
+                    Registrar dose extra
+                  </button>
+                </div>
+              </div>
+            )}
+
+          {selectedMed && doseMode === "ad-hoc" && (
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                Motivo ou contexto (opcional)
+              </span>
+              <input
+                value={doseReason}
+                onChange={(event) => setDoseReason(event.target.value)}
+                maxLength={160}
+                placeholder={selectedMed.tipo_uso === "continuo" ? "Ex.: orientação excepcional" : "Ex.: sintoma observado"}
+                className="mt-2 h-[52px] w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 text-sm text-ink-primary outline-none focus:border-ice/50"
+              />
+            </label>
+          )}
 
           {/* ==================================================
               AVISO DE ESTOQUE NEGATIVO / INSUFICIENTE

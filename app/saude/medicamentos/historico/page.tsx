@@ -414,7 +414,9 @@ function HistoryContent() {
                       <p className="font-mono text-xs font-bold text-ink-primary">{event.horario}</p>
                       <p className="mt-0.5 text-[9px] text-ink-muted">
                         {event.kind === "avulsa"
-                          ? "Dose SOS / avulsa registrada"
+                          ? event.origin === "extra"
+                            ? "Dose extra registrada"
+                            : "Dose SOS / avulsa registrada"
                           : "Registro real fora da rotina reconstruída"}
                       </p>
                     </div>

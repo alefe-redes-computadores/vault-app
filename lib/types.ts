@@ -1047,6 +1047,10 @@ export interface DoseLog {
   tomado_em?: string;
   ignorado_em?: string;
   quantidade?: number;
+  /** Origem explícita do evento; legado sem valor continua compatível. */
+  dose_kind?: "scheduled" | "sos" | "extra";
+  /** Contexto livre informado pelo usuário, nunca inferido pelo Vault. */
+  motivo?: string;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;

@@ -3461,6 +3461,14 @@ export function useSyncQueue() {
                       ? log.quantidade
                       : null,
 
+                  dose_kind:
+                    log.dose_kind ||
+                    null,
+
+                  motivo:
+                    log.motivo ||
+                    null,
+
                   created_at:
                     log.created_at,
 

@@ -381,7 +381,11 @@ export function useDoseLogs(
         horario:
           string,
         quantidade?:
-          number
+          number,
+        doseKind?:
+          "sos" | "extra",
+        motivo?:
+          string
       ) => {
         if (
           !activePersonId
@@ -403,6 +407,10 @@ export function useDoseLogs(
           horario,
 
           quantidade,
+
+          doseKind,
+
+          motivo,
         });
       },
       [

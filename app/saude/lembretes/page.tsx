@@ -197,25 +197,32 @@ export default function HealthRemindersPage() {
           {editing && <button onClick={reset} aria-label="Cancelar edição"><X size={18} /></button>}
         </div>
         <div className="grid gap-3">
-          <label className="grid gap-1 text-xs text-ink-muted">O que registrar
-            <select value={targetType} onChange={(event) => changeTarget(event.target.value as HealthReminderTargetType)} className="rounded-xl border border-surface-border bg-void p-3 text-sm text-ink-primary">
-              {HEALTH_REMINDER_TARGETS.map((target) => <option key={target.type} value={target.type}>{target.label}</option>)}
-            </select>
-          </label>
-          <p className="-mt-1 text-[10px] text-ink-faint">{selectedTarget.description}</p>
+          <fieldset>
+            <legend className="text-xs font-medium text-ink-muted">O que deseja lembrar?</legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              {HEALTH_REMINDER_TARGETS.map((target) => {
+                const selected = target.type === targetType;
+                return <button type="button" key={target.type} onClick={() => changeTarget(target.type)} className={`rounded-2xl border p-3 text-left transition-all ${selected ? "border-ice bg-ice/10 text-ice" : "border-surface-border bg-void text-ink-muted"}`}>
+                  <span className="block text-xs font-bold">{target.label.replace("Registrar ", "")}</span>
+                  <span className="mt-1 block text-[10px] leading-snug opacity-75">{target.description}</span>
+                </button>;
+              })}
+            </div>
+          </fieldset>
           <label className="grid gap-1 text-xs text-ink-muted">Título
             <input value={title} onChange={(event) => setTitle(event.target.value)} className="rounded-xl border border-surface-border bg-void p-3 text-sm text-ink-primary" />
           </label>
           <label className="grid gap-1 text-xs text-ink-muted">Horário
             <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="rounded-xl border border-surface-border bg-void p-3 text-sm text-ink-primary" />
           </label>
-          <label className="grid gap-1 text-xs text-ink-muted">Frequência
-            <select value={frequency} onChange={(event) => { setFrequency(event.target.value as HealthReminderFrequency); setWeekdays([]); }} className="rounded-xl border border-surface-border bg-void p-3 text-sm text-ink-primary">
-              <option value="daily">Todos os dias</option>
-              <option value="weekly">Uma vez por semana</option>
-              <option value="custom">Dias personalizados</option>
-            </select>
-          </label>
+          <fieldset>
+            <legend className="text-xs font-medium text-ink-muted">Frequência</legend>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {([['daily','Todos os dias'],['weekly','Uma vez por semana'],['custom','Dias personalizados']] as const).map(([value,label]) => (
+                <button type="button" key={value} onClick={() => { setFrequency(value); setWeekdays([]); }} className={`rounded-xl border px-2 py-3 text-[11px] font-semibold ${frequency === value ? "border-ice bg-ice/10 text-ice" : "border-surface-border bg-void text-ink-muted"}`}>{label}</button>
+              ))}
+            </div>
+          </fieldset>
           {frequency !== "daily" && (
             <div className="grid grid-cols-7 gap-1">
               {WEEKDAYS.map((label, day) => (

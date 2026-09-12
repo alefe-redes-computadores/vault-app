@@ -768,7 +768,7 @@ export function BottomNav() {
                       )
                     }
                     className={`
-                      relative flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
+                      relative isolate flex flex-col items-center gap-1 overflow-hidden rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
                       ${
                         active
                           ? "text-ice"
@@ -783,8 +783,7 @@ export function BottomNav() {
                   >
                     {active && (
                       <motion.div
-                        layoutId="active-pill"
-                        className="absolute inset-0 rounded-2xl bg-ice/10"
+                        className="pointer-events-none absolute inset-0 rounded-2xl bg-ice/10"
                         transition={{
                           type: "spring",
                           stiffness: 320,

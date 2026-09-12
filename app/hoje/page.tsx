@@ -180,6 +180,7 @@ interface DoseItemExt {
   comportamento?: any;
   isAvulsa?: boolean;
   motivoAvulsa?: string;
+  doseKind?: "sos" | "extra";
   logId?: string;
 
   /**
@@ -1401,7 +1402,9 @@ export default function HojePage() {
         const log = (doseLogs || []).find(
           (l) =>
             l.medicamento_id === med.id &&
-            l.horario === horario
+            l.horario === horario &&
+            l.dose_kind !== "extra" &&
+            l.dose_kind !== "sos"
         );
 
         const tomada = !!log?.tomado_em;
@@ -1484,7 +1487,9 @@ export default function HojePage() {
         chavesProgramadas.has(chaveProgramada);
 
       if (
-        !isOficialTomada &&
+        (!isOficialTomada ||
+          log.dose_kind === "extra" ||
+          log.dose_kind === "sos") &&
         log.tomado_em
       ) {
         const jaExisteAvulsa =
@@ -1545,8 +1550,12 @@ export default function HojePage() {
               tratamentoObj?.cor,
             isAvulsa: true,
             motivoAvulsa:
-              (log as any).observacoes ||
-              "Dose avulsa / SOS",
+              log.motivo ||
+              (log.dose_kind === "extra"
+                ? "Dose extra"
+                : "Dose avulsa / SOS"),
+            doseKind:
+              log.dose_kind === "extra" ? "extra" : "sos",
             logId: log.id,
           });
         }
@@ -3448,6 +3457,13 @@ export default function HojePage() {
                       item.tipo ===
                       "retirada";
 
+                    const compromissoConcluido =
+                      item.status === "realizada";
+
+                    const compromissoCancelado =
+                      item.status === "cancelada" ||
+                      item.status === "nao_realizada";
+
                     const getIcon = () => {
                       if (isConsulta) {
                         return (
@@ -3486,6 +3502,13 @@ export default function HojePage() {
 
                     const getColor =
                       () => {
+                        if (compromissoConcluido) {
+                          return "border-emerald-400/35 bg-emerald-400/8";
+                        }
+
+                        if (compromissoCancelado) {
+                          return "border-surface-border/50 bg-surface/60 opacity-70";
+                        }
                         if (isConsulta) {
                           return "border-ice/30 bg-ice/5";
                         }
@@ -3503,6 +3526,13 @@ export default function HojePage() {
 
                     const getLabel =
                       () => {
+                        if (compromissoConcluido) {
+                          return "Compromisso concluído";
+                        }
+
+                        if (compromissoCancelado) {
+                          return "Compromisso encerrado";
+                        }
                         if (isConsulta) {
                           return "Consulta agendada";
                         }
@@ -3552,7 +3582,11 @@ export default function HojePage() {
 
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                                  isConsulta
+                                  compromissoConcluido
+                                    ? "bg-emerald-400/15 text-emerald-400"
+                                    : compromissoCancelado
+                                      ? "bg-ink-muted/10 text-ink-muted"
+                                  : isConsulta
                                     ? "bg-ice/10 text-ice"
                                     : isCirurgia
                                     ? "bg-coral/10 text-coral"
@@ -3562,7 +3596,11 @@ export default function HojePage() {
                                 }`}
                               >
                                 {
-                                  dataSelecionadaLabel
+                                  compromissoConcluido
+                                    ? "Concluído"
+                                    : compromissoCancelado
+                                      ? "Encerrado"
+                                      : dataSelecionadaLabel
                                 }
                               </span>
                             </div>
@@ -3574,7 +3612,7 @@ export default function HojePage() {
 
                           <div className="flex shrink-0 flex-col items-end gap-1.5">
                             {item.horario && (
-                              <span className="rounded-lg bg-coral/10 px-2 py-1 font-mono text-[10px] font-bold text-coral">
+                              <span className={`rounded-lg px-2 py-1 font-mono text-[10px] font-bold ${compromissoConcluido ? "bg-emerald-400/10 text-emerald-400" : "bg-coral/10 text-coral"}`}>
                                 {item.horario}
                               </span>
                             )}
