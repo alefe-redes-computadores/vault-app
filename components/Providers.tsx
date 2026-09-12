@@ -185,10 +185,15 @@ export function Providers({
       false
     );
 
+  const [pullError, setPullError] = useState<string | null>(null);
+  const [pullAttempt, setPullAttempt] = useState(0);
+
   const hasPulledRef =
     useRef(
       false
     );
+
+  const pullUserRef = useRef<string | null>(null);
 
   useDoseNotificationActions();
 
@@ -202,6 +207,15 @@ export function Providers({
    * do Vault estiver montada.
    */
   useSupabaseRealtime();
+
+  useEffect(() => {
+    const nextUserId = user?.id || null;
+    if (pullUserRef.current === nextUserId) return;
+    pullUserRef.current = nextUserId;
+    hasPulledRef.current = false;
+    setIsPullDone(false);
+    setPullError(null);
+  }, [user?.id]);
 
   // ==========================================================
   // NATIVE / DEBUG BOOTSTRAP
@@ -275,13 +289,17 @@ export function Providers({
       hasPulledRef.current =
         true;
 
+      setPullError(null);
+
       console.log(
         "Executando pullAllData unificado..."
       );
 
-      pullAllData(
-        user.id
-      )
+      const timeout = new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error("A sincronização inicial demorou mais que 15 segundos.")), 15_000);
+      });
+
+      Promise.race([pullAllData(user.id), timeout])
         .then(
           () => {
             console.log(
@@ -304,6 +322,8 @@ export function Providers({
 
             hasPulledRef.current =
               false;
+
+            setPullError(error instanceof Error ? error.message : "Não foi possível atualizar os dados da nuvem.");
           }
         );
     },
@@ -312,6 +332,7 @@ export function Providers({
       loading,
       isOnline,
       isPullDone,
+      pullAttempt,
     ]
   );
 
@@ -839,8 +860,30 @@ export function Providers({
   }
 
   // Não libera o app normal enquanto o perfil principal ainda não existe.
-  if (ownedPersonCount === undefined || (isOnline && !isPullDone) || ownedPersonCount === 0) {
-    return <div className="min-h-screen bg-void" aria-hidden="true" />;
+  if (ownedPersonCount === undefined) {
+    return <div className="flex min-h-screen items-center justify-center bg-void text-sm text-ink-muted" role="status">Carregando seus dados locais…</div>;
+  }
+
+  if (ownedPersonCount === 0 && isOnline && !isPullDone) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-void p-5 text-ink-primary">
+        <section className="w-full max-w-sm rounded-3xl border border-surface-border bg-surface p-5 text-center shadow-vault" aria-live="polite">
+          <h1 className="font-display text-lg font-semibold">Preparando seu Vault</h1>
+          <p className="mt-2 text-sm text-ink-muted">
+            {pullError || "Buscando seu perfil antes de liberar o aplicativo neste aparelho."}
+          </p>
+          {pullError && (
+            <button onClick={() => setPullAttempt((value) => value + 1)} className="mt-4 w-full rounded-2xl bg-ice px-4 py-3 text-sm font-semibold text-void">
+              Tentar novamente
+            </button>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  if (ownedPersonCount === 0) {
+    return <div className="min-h-screen bg-void" role="status" aria-label="Abrindo configuração de perfil" />;
   }
 
   // ==========================================================

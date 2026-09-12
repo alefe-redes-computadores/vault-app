@@ -1,0 +1,14 @@
+import fs from "node:fs";
+const read=(path)=>fs.readFileSync(path,"utf8");let count=0;
+const ok=(condition,label)=>{if(!condition)throw new Error(`FALHOU: ${label}`);count++;console.log(`OK: ${label}`)};
+const providers=read("components/Providers.tsx");const layout=read("app/layout.tsx");const sw=read("public/sw.js");
+ok(!providers.includes('(isOnline && !isPullDone) || ownedPersonCount === 0'),"pessoa local não é bloqueada pelo pull remoto");
+ok(providers.includes("Promise.race")&&providers.includes("15_000"),"pull inicial possui timeout");
+ok(providers.includes("setPullError")&&providers.includes("Tentar novamente"),"falha de pull possui recuperação visível");
+ok(providers.includes("pullUserRef")&&providers.includes("hasPulledRef.current = false"),"troca de sessão reinicia estado do pull");
+ok(layout.includes('serviceWorker.register("/sw.js"'),"Service Worker possui registro explícito");
+ok(sw.includes('await cache.add(OFFLINE_URL)')&&!sw.includes("Promise.allSettled(PRECACHE"),"fallback offline é obrigatório na instalação");
+ok(sw.includes("cache.put(request, response.clone())"),"navegação online alimenta cache offline");
+ok(sw.includes('cache.match(request)')&&sw.includes('cache.match("/")')&&sw.includes("cache.match(OFFLINE_URL)"),"navegação offline usa cadeia de fallback");
+ok(sw.includes('url.pathname.startsWith("/_next/static/")'),"chunks utilizados pelo Next são armazenados");
+console.log(`CONTRATOS RECUPERAÇÃO V6.1: OK (${count})`);

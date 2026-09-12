@@ -142,6 +142,12 @@ export default function RootLayout({
 
   useEffect(
     () => {
+      if ("serviceWorker" in navigator) {
+        void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+          console.error("Erro ao registrar Service Worker:", error);
+        });
+      }
+
       if (
         typeof window !==
           "undefined" &&

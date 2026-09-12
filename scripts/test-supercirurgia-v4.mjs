@@ -11,5 +11,5 @@ ok("notificações incluem todas as pessoas do usuário",reconciler.includes('wh
 ok("toque revalida regra local",/rule\.user_id\s*!==\s*user\.id/.test(reconciler)&&/rule\.status\s*!==\s*"active"/.test(reconciler));
 ok("agenda possui teto operacional",/MAX_PENDING\s*=\s*60/.test(scheduler)&&/\.slice\(0,\s*MAX_PENDING\)/.test(scheduler));
 ok("PWA não promete offline garantido",!manifest.includes('offline garantido'));
-ok("navegação usa rede antes do fallback",sw.includes('req.mode==="navigate"')&&sw.includes('fetch(req).catch'));
+ok("navegação usa rede antes do fallback",(sw.includes('req.mode==="navigate"')&&sw.includes('fetch(req).catch'))||(sw.includes('request.mode === "navigate"')&&sw.includes('networkFirstNavigation(request)')&&sw.includes('await fetch(request)')));
 console.log(`CONTRATOS SUPERCIRURGIA V4: OK (${checks.length})`);
