@@ -526,3 +526,14 @@ export function useDoseLogs(
     removerDosePorId,
   };
 }
+
+
+// Histórico completo da pessoa ativa para o Prontuário.
+export function useAllDoseLogs() {
+  const { activePersonId } = useActivePersonId();
+  const rows = useLiveQuery<DoseLog[]>(
+    () => activePersonId ? doseLogsRepository.getAll(activePersonId) : [],
+    [activePersonId]
+  );
+  return { allDoseLogs: rows ?? [], isLoading: rows === undefined };
+}
