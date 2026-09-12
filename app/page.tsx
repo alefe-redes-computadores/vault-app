@@ -2152,7 +2152,7 @@ export default function HomePage() {
             <div className="px-5 pb-4">
               <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-medium text-ink-muted">
                 <span>
-                  Doses de hoje
+                  Rotina programada
                 </span>
 
                 <span className="font-mono text-ink-primary">
@@ -2307,13 +2307,11 @@ export default function HomePage() {
                     className="text-violet-400"
                   />
 
-                  Tomadas
+                  SOS / extra
                 </div>
 
                 <p className="mt-1 font-mono text-base font-bold text-ink-primary">
-                  {
-                    dosesTomadasHoje
-                  }
+                  {Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
                 </p>
               </button>
             </div>

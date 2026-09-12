@@ -43,10 +43,6 @@ import {
 } from "@/components/ThemeProvider";
 
 import {
-  RouteProgress,
-} from "@/components/loading/RouteProgress";
-
-import {
   PersonProvider,
 } from "@/contexts/PersonContext";
 
@@ -268,7 +264,6 @@ export default function RootLayout({
             null
           }
         >
-          <RouteProgress />
         </Suspense>
 
         <ErrorBoundary>

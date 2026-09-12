@@ -332,8 +332,9 @@ export default function RetiradasPage() {
             />
           </div>
 
-          <div className="mt-3 -mx-1 overflow-x-auto pb-1 scrollbar-none">
-            <div className="flex min-w-max gap-2 px-1">
+          <details className="group mt-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-2">
+            <summary className="cursor-pointer list-none text-xs font-semibold text-ice">Filtrar retiradas{status !== "todos" ? " · filtro ativo" : ""}</summary>
+            <div className="mt-2 flex flex-wrap gap-2">
               {[
                 ["todos", "Todos"],
                 ["agendada", "Agendadas"],
@@ -358,7 +359,7 @@ export default function RetiradasPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </details>
         </header>
 
         <section className="space-y-4 px-5 pt-4">
