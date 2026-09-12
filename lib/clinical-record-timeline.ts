@@ -15,6 +15,7 @@ export type ClinicalEvent = {
 };
 
 export type ClinicalWeek = { key: string; label: string; events: ClinicalEvent[] };
+export type ClinicalDay = { key: string; label: string; events: ClinicalEvent[] };
 export type ClinicalMonth = { key: string; label: string; weeks: ClinicalWeek[]; events: ClinicalEvent[] };
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -81,4 +82,16 @@ export function buildClinicalMonth(events: ClinicalEvent[], monthKey: string): C
     return { key, label: `${shortDate(key)} – ${shortDate(localDateKey(end))}`, events: items };
   });
   return { key: monthKey, label: clinicalMonthLabel(monthKey), weeks, events: selected };
+}
+
+export function buildClinicalDays(events: ClinicalEvent[]): ClinicalDay[] {
+  const groups = new Map<string, ClinicalEvent[]>();
+  for (const event of events) groups.set(event.date, [...(groups.get(event.date) || []), event]);
+  return [...groups.entries()].sort(([a], [b]) => b.localeCompare(a)).map(([key, items]) => {
+    const [year, month, day] = key.split("-").map(Number);
+    const date = new Date(year, month - 1, day, 12);
+    const today = localDateKey();
+    const label = key === today ? "Hoje" : new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "short" }).format(date).replace(".", "");
+    return { key, label, events: items };
+  });
 }
