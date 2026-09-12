@@ -856,8 +856,14 @@ export default function HojePage() {
 
   const historicoDosesCompleto =
     useLiveQuery(
-      () => db.doseLogs.toArray(),
-      []
+      () =>
+        activePersonId
+          ? db.doseLogs
+              .where("person_id")
+              .equals(activePersonId)
+              .toArray()
+          : [],
+      [activePersonId]
     ) || [];
 
   const retroReviewSummary =

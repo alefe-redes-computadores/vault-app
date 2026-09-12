@@ -45,7 +45,7 @@ export type DoseHistoryMonth = {
     avulsas: number;
     knownQuantity: number;
     logsWithoutQuantity: number;
-    adherencePercent: number | null;
+    recordCoveragePercent: number | null;
   };
 };
 
@@ -249,8 +249,8 @@ export function buildMedicationDoseHistoryMonth({
       avulsas,
       knownQuantity: quantities.reduce((total, value) => total + value, 0),
       logsWithoutQuantity: takenEvents.length - quantities.length,
-      adherencePercent: expected > 0
-        ? Math.min(100, Math.round((taken / expected) * 100))
+      recordCoveragePercent: expected > 0
+        ? Math.min(100, Math.round(((taken + ignored) / expected) * 100))
         : null,
     },
   };

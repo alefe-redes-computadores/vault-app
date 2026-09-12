@@ -321,9 +321,9 @@ function HistoryContent() {
             <div className="rounded-[20px] border border-ice/20 bg-ice/5 p-3">
               <CalendarDays size={14} className="text-ice" />
               <p className="mt-2 font-mono text-lg font-bold text-ice">
-                {model.summary.adherencePercent === null ? "—" : model.summary.adherencePercent + "%"}
+                {model.summary.recordCoveragePercent === null ? "—" : model.summary.recordCoveragePercent + "%"}
               </p>
-              <p className="text-[9px] text-ink-muted">registros da rotina</p>
+              <p className="text-[9px] text-ink-muted">horários revisados</p>
             </div>
             <div className="rounded-[20px] border border-violet-400/20 bg-violet-400/5 p-3">
               <Zap size={14} className="text-violet-400" />
