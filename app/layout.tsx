@@ -62,6 +62,10 @@ import {
   ToastProvider,
 } from "@/components/ToastProvider";
 
+import {
+  AuthProvider,
+} from "@/hooks/useAuth";
+
 const display =
   Space_Grotesk({
     subsets: [
@@ -283,9 +287,10 @@ export default function RootLayout({
              * PersonProvider precisa envolver Providers
              * porque Providers usa useActivePersonId().
              */}
-            <ToastProvider>
-              <PersonProvider>
-                <Providers>
+            <AuthProvider>
+              <ToastProvider>
+                <PersonProvider>
+                  <Providers>
                   <SplashScreen>
                     <BiometricLock>
                       {!isAuthPage && (
@@ -309,9 +314,10 @@ export default function RootLayout({
                       }
                     </BiometricLock>
                   </SplashScreen>
-                </Providers>
-              </PersonProvider>
-            </ToastProvider>
+                  </Providers>
+                </PersonProvider>
+              </ToastProvider>
+            </AuthProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </body>

@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const read=(path)=>fs.readFileSync(path,"utf8");let count=0;
+const ok=(condition,label)=>{if(!condition)throw new Error(`FALHOU: ${label}`);count++;console.log(`OK: ${label}`)};
+const auth=read("hooks/useAuth.ts");const layout=read("app/layout.tsx");
+ok(auth.includes("createContext")&&auth.includes("AuthProvider"),"autenticação possui provider único");
+ok(auth.includes("useContext(AuthContext)"),"consumidores compartilham o mesmo estado");
+ok((auth.match(/onAuthStateChange/g)||[]).length===1,"existe um único listener por árvore");
+ok(auth.includes("getPersistedSession"),"provider restaura sessão local");
+ok(auth.includes('event === "SIGNED_OUT"')&&auth.includes('event === "INITIAL_SESSION"'),"sessão nula só é aplicada em eventos explícitos");
+ok(layout.includes("<AuthProvider>")&&layout.indexOf("<AuthProvider>")<layout.indexOf("<PersonProvider>"),"auth envolve contexto de pessoa");
+ok(auth.includes("if (!context) throw new Error"),"uso fora do provider falha de forma visível");
+console.log(`CONTRATOS AUTH SINGLETON V6.3: OK (${count})`);

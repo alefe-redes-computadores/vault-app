@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { signIn, signUp, signOut, getPersistedSession } from "@/lib/supabase/auth";
-import type { User, AuthError } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 
-export function useAuth() {
+function useAuthState() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -17,29 +17,25 @@ export function useAuth() {
       try {
         const { session, error } = await getPersistedSession();
         if (error) throw error;
-        if (mounted) {
-          setUser(session?.user || null);
-          setLoading(false);
-        }
+        if (mounted) setUser(session?.user || null);
       } catch (error) {
         console.error("Erro ao restaurar sessão local:", error);
-        if (mounted) {
-          setUser(null);
-          setLoading(false);
-        }
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
     void restoreSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (mounted) {
-          setUser(session?.user || null);
-          setLoading(false);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      if (session?.user) {
+        setUser(session.user);
+      } else if (event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
+        setUser(null);
       }
-    );
+      setLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -49,18 +45,12 @@ export function useAuth() {
 
   const login = useCallback(async (email: string, password: string) => {
     const result = await signIn(email, password);
-    if (result.error) {
-      return { data: null, error: result.error };
-    }
-    return { data: result.data, error: null };
+    return result.error ? { data: null, error: result.error } : { data: result.data, error: null };
   }, []);
 
   const register = useCallback(async (email: string, password: string) => {
     const result = await signUp(email, password);
-    if (result.error) {
-      return { data: null, error: result.error };
-    }
-    return { data: result.data, error: null };
+    return result.error ? { data: null, error: result.error } : { data: result.data, error: null };
   }, []);
 
   const logout = useCallback(async () => {
@@ -69,12 +59,19 @@ export function useAuth() {
     setUser(null);
   }, []);
 
-  return {
-    user,
-    loading,
-    isSyncing,
-    login,
-    register,
-    logout,
-  };
+  return { user, loading, isSyncing, login, register, logout };
+}
+
+type AuthContextValue = ReturnType<typeof useAuthState>;
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const value = useAuthState();
+  return createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth precisa estar dentro de AuthProvider.");
+  return context;
 }
