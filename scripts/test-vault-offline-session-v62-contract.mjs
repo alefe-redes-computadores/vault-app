@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const read=(path)=>fs.readFileSync(path,"utf8");let count=0;
+const ok=(condition,label)=>{if(!condition)throw new Error(`FALHOU: ${label}`);count++;console.log(`OK: ${label}`)};
+const hook=read("hooks/useAuth.ts");const auth=read("lib/supabase/auth.ts");const providers=read("components/Providers.tsx");
+ok(auth.includes("getPersistedSession")&&auth.includes("supabase.auth.getSession()"),"sessão persistida possui leitura local");
+ok(hook.includes("getPersistedSession")&&!hook.includes("getCurrentUser"),"boot não exige validação remota");
+ok(hook.includes("session?.user || null"),"usuário offline vem da sessão persistida");
+ok(hook.includes("onAuthStateChange"),"mudanças reais de autenticação continuam observadas");
+ok(!hook.includes('console.error("Erro ao buscar usuário:"'),"falha de rede não apaga usuário por getUser");
+ok(!providers.includes('(isOnline && !isPullDone) || ownedPersonCount === 0'),"interface local não depende do pull");
+console.log(`CONTRATOS SESSÃO OFFLINE V6.2: OK (${count})`);

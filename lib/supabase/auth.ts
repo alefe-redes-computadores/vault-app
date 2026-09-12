@@ -38,3 +38,13 @@ export async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
   return { user: data?.user, error };
 }
+
+/**
+ * Restaura a sessão persistida sem exigir uma consulta de rede.
+ * A biblioteca continua responsável por validar/renovar o token
+ * quando a conexão estiver disponível.
+ */
+export async function getPersistedSession() {
+  const { data, error } = await supabase.auth.getSession();
+  return { session: data.session, error };
+}

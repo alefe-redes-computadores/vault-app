@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { signIn, signUp, signOut, getCurrentUser } from "@/lib/supabase/auth";
+import { signIn, signUp, signOut, getPersistedSession } from "@/lib/supabase/auth";
 import type { User, AuthError } from "@supabase/supabase-js";
 
 export function useAuth() {
@@ -13,15 +13,16 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    const getUser = async () => {
+    const restoreSession = async () => {
       try {
-        const { user: currentUser } = await getCurrentUser();
+        const { session, error } = await getPersistedSession();
+        if (error) throw error;
         if (mounted) {
-          setUser(currentUser || null);
+          setUser(session?.user || null);
           setLoading(false);
         }
       } catch (error) {
-        console.error("Erro ao buscar usuário:", error);
+        console.error("Erro ao restaurar sessão local:", error);
         if (mounted) {
           setUser(null);
           setLoading(false);
@@ -29,7 +30,7 @@ export function useAuth() {
       }
     };
 
-    getUser();
+    void restoreSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
