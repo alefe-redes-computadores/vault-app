@@ -11,7 +11,6 @@ import {
 } from "next/navigation";
 
 import {
-  AnimatePresence,
   motion,
 } from "framer-motion";
 
@@ -19,7 +18,6 @@ import {
   ArrowLeft,
   Building2,
   ChevronRight,
-  FolderHeart,
   Loader2,
   MapPin,
   Pill,
@@ -210,6 +208,15 @@ export default function NovoTratamentoPage() {
     );
 
   const [
+    dataInicio,
+    setDataInicio,
+  ] = useState(
+    new Date().toLocaleDateString(
+      "en-CA"
+    )
+  );
+
+  const [
     observacoes,
     setObservacoes,
   ] =
@@ -256,14 +263,6 @@ export default function NovoTratamentoPage() {
   const [
     isCidModalOpen,
     setIsCidModalOpen,
-  ] =
-    useState(
-      false
-    );
-
-  const [
-    showAddCidPrompt,
-    setShowAddCidPrompt,
   ] =
     useState(
       false
@@ -473,7 +472,8 @@ export default function NovoTratamentoPage() {
              * canônica Medicamento.tratamento_ids dentro da
              * mesma transaction.
              */
-            await addTratamento({
+            const tratamentoId =
+              await addTratamento({
               nome:
                 nome.trim(),
 
@@ -500,7 +500,16 @@ export default function NovoTratamentoPage() {
 
               local_ids:
                 cleanLocais,
+
+              data_inicio:
+                dataInicio,
             });
+
+            router.replace(
+              `/saude/tratamentos/detalhes?id=${encodeURIComponent(
+                tratamentoId
+              )}`
+            );
           },
           {
             successMessage:
@@ -510,7 +519,7 @@ export default function NovoTratamentoPage() {
               "Erro ao salvar tratamento",
 
             goBackOnSuccess:
-              true,
+              false,
           }
         );
       } finally {
@@ -550,9 +559,7 @@ export default function NovoTratamentoPage() {
         false
       );
 
-      setShowAddCidPrompt(
-        true
-      );
+      // A seleção múltipla continua disponível no mesmo botão, sem modal intermediário.
     };
 
   const handleRemoveCid =
@@ -843,7 +850,9 @@ export default function NovoTratamentoPage() {
                     "vibrate"
                   );
 
-                  router.back();
+                  router.replace(
+                    "/saude/tratamentos"
+                  );
                 }
               }
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
@@ -952,6 +961,17 @@ export default function NovoTratamentoPage() {
               }
               required
               autoFocus
+            />
+
+            <Input
+              label="Data de início"
+              type="date"
+              value={dataInicio}
+              onChange={(event) =>
+                setDataInicio(
+                  event.target.value
+                )
+              }
             />
 
             {/* =================================================
@@ -1988,107 +2008,6 @@ export default function NovoTratamentoPage() {
           createNewLabel="Cadastrar Novo Local"
         />
 
-        {/* ====================================================
-            CONTINUAR ADICIONANDO CID
-            ==================================================== */}
-
-        <AnimatePresence>
-          {showAddCidPrompt && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 p-4 backdrop-blur-sm"
-              onClick={
-                () =>
-                  setShowAddCidPrompt(
-                    false
-                  )
-              }
-            >
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  scale: 0.95,
-                }}
-                animate={{
-                  opacity: 1,
-                  scale: 1,
-                }}
-                exit={{
-                  opacity: 0,
-                  scale: 0.95,
-                }}
-                onClick={
-                  (
-                    event
-                  ) =>
-                    event.stopPropagation()
-                }
-                className="w-full max-w-sm space-y-4 rounded-[28px] border border-surface-border bg-surface p-6 shadow-xl"
-              >
-                <div className="flex items-center gap-3 text-violet-400">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/10">
-                    <FolderHeart
-                      size={
-                        22
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <h3 className="font-display text-base font-bold text-ink-primary">
-                      Adicionar outro CID?
-                    </h3>
-
-                    <p className="text-xs text-ink-muted">
-                      Você pode vincular múltiplos diagnósticos.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={
-                      () => {
-                        trigger(
-                          "vibrate"
-                        );
-
-                        setShowAddCidPrompt(
-                          false
-                        );
-                      }
-                    }
-                    className="flex-1 rounded-2xl border border-surface-border/50 bg-surface-raised py-3 text-xs font-semibold text-ink-primary transition-all active:scale-95"
-                  >
-                    Não, finalizar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={
-                      () => {
-                        trigger(
-                          "vibrate"
-                        );
-
-                        setShowAddCidPrompt(
-                          false
-                        );
-
-                        setIsCidModalOpen(
-                          true
-                        );
-                      }
-                    }
-                    className="flex-1 rounded-2xl bg-violet-400 py-3 text-xs font-semibold text-void shadow-md shadow-violet-400/20 transition-all active:scale-95"
-                  >
-                    Sim, adicionar
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
       </main>
     </PageTransition>
   );

@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/registrosSaude.ts
 
 import { db } from "@/lib/db";
@@ -145,7 +146,7 @@ function hasOwn(
 
 async function getAuthenticatedUserId(): Promise<string> {
   const { data, error } =
-    await supabase.auth.getUser();
+    await getLocalFirstAuthUser();
 
   if (error) {
     throw error;

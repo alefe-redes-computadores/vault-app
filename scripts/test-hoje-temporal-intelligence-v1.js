@@ -97,10 +97,9 @@ expect(
 );
 
 expect(
-  source.includes(
-    ".data_retorno_sus"
-  ),
-  "timeline lê retirada SUS"
+  source.includes("useRetiradas") &&
+    source.includes("retiradasHoje"),
+  "timeline lê a entidade canônica de retirada"
 );
 
 expect(

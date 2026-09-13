@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/retiradas.ts
 import { db } from "@/lib/db";
 import { supabase } from "@/lib/supabase/client";
@@ -5,7 +6,7 @@ import { enfileirarOperacao, solicitarProcessamentoSync } from "@/lib/sync/enfil
 import type { Medicamento, Renovacao, Retirada } from "@/lib/types";
 
 export type RetiradaCreateInput=Omit<Retirada,"id"|"user_id"|"person_id"|"created_at"|"updated_at"|"synced">&{person_id:string};
-export type RetiradaUpdateInput=Partial<Omit<Retirada,"id"|"user_id"|"person_id"|"created_at"|"updated_at"|"synced">>;
+export type RetiradaUpdateInput=Partial<Omit<Retirada,"id"|"user_id"|"person_id"|"renovacao_origem_id"|"renovacao_realizada_id"|"created_at"|"updated_at"|"synced">>;
 
 const now=()=>new Date().toISOString();
 const genId=()=>typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
@@ -14,7 +15,7 @@ function req(v:string|undefined,l:string){const x=v?.trim();if(!x)throw new Erro
 function date(v:string,l:string){const x=req(v,l);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))throw new Error(l+" inválida.");return x}
 
 async function uid(){
-  const {data,error}=await supabase.auth.getUser();
+  const {data,error}=await getLocalFirstAuthUser();
   if(error)throw error;
   if(!data.user)throw new Error("Usuário não autenticado.");
   return data.user.id;
@@ -33,6 +34,10 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
     .where("renovacao_origem_id")
     .equals(r.id)
     .first();
+
+  if(ex&&(ex.person_id!==r.person_id||ex.user_id!==r.user_id)){
+    throw new Error("Retirada automática não pertence à renovação informada.");
+  }
 
   const target=r.tipo_aquisicao==="sus"
     ? (r.data_proxima_retirada?.trim()||r.data_retorno_sus?.trim()||"")
@@ -139,6 +144,10 @@ export async function detachOrDeleteRetiradaFromRenovacao(r:Renovacao){
     .first();
 
   if(!ex?.id)return;
+
+  if(ex.person_id!==r.person_id||ex.user_id!==r.user_id){
+    throw new Error("Retirada automática não pertence à renovação informada.");
+  }
 
   if(ex.status==="agendada"){
     await db.retiradas.delete(ex.id);
@@ -256,10 +265,23 @@ export const retiradasRepository={
   },
 
   async update(id:string,personId:string,changes:RetiradaUpdateInput){
+    const userId=await uid();
     const current=await this.getById(id,personId);
 
-    if(!current){
+    if(!current||current.user_id!==userId){
       throw new Error("Retirada não encontrada para a pessoa ativa.");
+    }
+
+    const nextMedicationId=changes.medicamento_id??current.medicamento_id;
+
+    if(current.renovacao_origem_id&&nextMedicationId!==current.medicamento_id){
+      throw new Error("A retirada criada por uma renovação deve manter o medicamento de origem.");
+    }
+
+    const medicamento=await med(nextMedicationId,current.person_id);
+
+    if(medicamento.user_id&&medicamento.user_id!==userId){
+      throw new Error("Medicamento não pertence ao usuário autenticado.");
     }
 
     const next:Retirada={
@@ -268,6 +290,11 @@ export const retiradasRepository={
       id:current.id,
       user_id:current.user_id,
       person_id:current.person_id,
+      renovacao_origem_id:current.renovacao_origem_id,
+      renovacao_realizada_id:current.renovacao_realizada_id,
+      medicamento_id:nextMedicationId,
+      medicamento_nome:medicamento.nome??current.medicamento_nome??null,
+      medicamento_dosagem:medicamento.dosagem??current.medicamento_dosagem??null,
       data:changes.data!==undefined
         ? date(changes.data,"Data da retirada")
         : current.data,
@@ -294,9 +321,10 @@ export const retiradasRepository={
   },
 
   async delete(id:string,personId:string){
+    const userId=await uid();
     const current=await this.getById(id,personId);
 
-    if(!current?.id){
+    if(!current?.id||current.user_id!==userId){
       throw new Error("Retirada não encontrada para a pessoa ativa.");
     }
 

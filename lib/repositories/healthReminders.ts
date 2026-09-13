@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 import { db } from "@/lib/db";
 import { normalizeHealthReminderInput } from "@/lib/health-reminders/domain";
 import type { CreateHealthReminderInput, HealthReminderRule, UpdateHealthReminderInput } from "@/lib/health-reminders/types";
@@ -13,7 +14,7 @@ const requirePersonId = (value?: string) => {
 };
 
 async function authenticatedUserId() {
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await getLocalFirstAuthUser();
   if (error || !data.user) throw new Error("Usuário não autenticado.");
   return data.user.id;
 }

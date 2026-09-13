@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/renovacoes.ts
 
 import { db } from "@/lib/db";
@@ -329,7 +330,7 @@ async function getAuthenticatedUserId(): Promise<string> {
     data,
     error,
   } =
-    await supabase.auth.getUser();
+    await getLocalFirstAuthUser();
 
   if (error) {
     throw error;

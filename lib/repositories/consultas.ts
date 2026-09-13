@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/consultas.ts
 
 import { db } from "@/lib/db";
@@ -134,7 +135,7 @@ export const consultasRepository = {
         user,
       },
     } =
-      await supabase.auth.getUser();
+      await getLocalFirstAuthUser();
 
     if (!user) {
       throw new Error(

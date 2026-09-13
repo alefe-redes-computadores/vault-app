@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/farmacias.ts
 
 import { db } from "@/lib/db";
@@ -71,7 +72,7 @@ export const farmaciasRepository = {
         user,
       },
     } =
-      await supabase.auth.getUser();
+      await getLocalFirstAuthUser();
 
     if (!user) {
       throw new Error(

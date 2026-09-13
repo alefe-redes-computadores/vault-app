@@ -69,6 +69,7 @@ import {
 import {
   buildMedicationCareOpportunities,
 } from "@/lib/health-intelligence/medication-care-opportunities";
+import { normalizedMedicationSchedules } from "@/lib/medication-dose-history";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -1049,11 +1050,8 @@ export default function HomePage() {
             medicamento.tipo_uso ===
             "continuo"
               ? total +
-                (
-                  medicamento.estoque_horarios ||
-                  []
-                ).filter(
-                  Boolean
+                normalizedMedicationSchedules(
+                  medicamento
                 ).length
               : total,
           0
@@ -1078,11 +1076,8 @@ export default function HomePage() {
             }
 
             const horarios =
-              (
-                medicamento.estoque_horarios ||
-                []
-              ).filter(
-                Boolean
+              normalizedMedicationSchedules(
+                medicamento
               );
 
             return (
@@ -1099,6 +1094,10 @@ export default function HomePage() {
                         medicamento.id &&
                       log.horario ===
                         horario &&
+                      log.dose_kind !==
+                        "sos" &&
+                      log.dose_kind !==
+                        "extra" &&
                       Boolean(
                         log.tomado_em
                       )

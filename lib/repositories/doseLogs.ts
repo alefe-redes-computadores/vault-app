@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/doseLogs.ts
 
 import {
@@ -542,7 +543,7 @@ async function requireAuthenticatedUser() {
     },
     error,
   } =
-    await supabase.auth.getUser();
+    await getLocalFirstAuthUser();
 
   if (
     error ||

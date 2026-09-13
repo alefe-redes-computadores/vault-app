@@ -712,7 +712,7 @@ function DetalhesFarmaciaContent() {
                     "vibrate"
                   );
 
-                  router.back();
+                  router.replace("/saude/farmacias");
                 }}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
                 aria-label="Voltar"

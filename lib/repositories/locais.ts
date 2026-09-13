@@ -1,3 +1,4 @@
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
  // lib/repositories/locais.ts
 
 import {
@@ -152,7 +153,7 @@ export const locaisRepository = {
         user,
       },
     } =
-      await supabase.auth.getUser();
+      await getLocalFirstAuthUser();
 
     if (
       !user
