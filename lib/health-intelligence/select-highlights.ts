@@ -324,8 +324,10 @@ export function selectHealthHighlights(
     insights
       .filter(
         (insight) =>
-          insight.kind ===
-            "pattern" &&
+          (insight.kind === "pattern" ||
+            (insight.kind === "alert" &&
+              (insight.gravidadeSeguranca === "importante" ||
+                insight.gravidadeSeguranca === "critica"))) &&
           Boolean(
             insight.link
           ) &&

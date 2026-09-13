@@ -2460,7 +2460,7 @@ export default function HomePage() {
                     />
 
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      Padrões percebidos
+                      Inteligência de saúde
                     </h2>
                   </div>
 
@@ -2546,12 +2546,12 @@ export default function HomePage() {
                           insight
                         );
                       }}
-                      className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left transition-all active:scale-[0.985]"
+                      className={`flex w-full items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300">
-                        <Activity
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-violet-400/10 text-violet-300"}`}>
+                        {(insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ? <AlertCircle size={17}/> : <Activity
                           size={17}
-                        />
+                        />}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -2579,6 +2579,7 @@ export default function HomePage() {
                               insight.amostra
                             }
                           </span>
+                          {insight.gravidadeSeguranca && <span className={`rounded-md px-1.5 py-0.5 font-mono text-[8px] uppercase ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-cyan-400/10 text-cyan-300"}`}>{insight.gravidadeSeguranca}</span>}
                         </div>
 
                         <p className="mt-1 line-clamp-1 text-xs font-bold text-ink-primary">

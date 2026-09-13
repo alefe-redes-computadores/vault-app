@@ -16,6 +16,8 @@ import { buildHydrationInsights } from "@/lib/health-intelligence/hydration-insi
 
 import { buildLongitudinalHealthInsights } from "@/lib/health-intelligence/longitudinal-insights";
 
+import { buildMedicationSafetyInsights } from "@/lib/health-intelligence/medication-safety";
+
 import type {
   Cid,
   Cirurgia,
@@ -8039,6 +8041,20 @@ export interface HealthInsight {
 
   /** Próximo passo seguro; nunca prescreve ou altera dose. */
   acaoSegura?: string;
+
+  /** Gravidade da triagem de segurança; não equivale a diagnóstico clínico. */
+  gravidadeSeguranca?: "informativa" | "atencao" | "importante" | "critica";
+
+  /** Referências externas revisadas usadas por uma regra farmacológica. */
+  fontesExternas?: Array<{
+    titulo: string;
+    autoridade: string;
+    url: string;
+    revisadoEm: string;
+  }>;
+
+  /** Limites concretos da regra para impedir falsa certeza. */
+  limitacaoSeguranca?: string;
 }
 
 // ============================================================
@@ -8334,6 +8350,10 @@ export function gerarInsightsSaude(
   // ----------------------------------------------------------
   // ADESÃO / HORÁRIOS / CONSUMO DE MEDICAMENTOS CONTÍNUOS
   // ----------------------------------------------------------
+
+  // A camada V15 entra primeiro para que substitua, por identidade,
+  // o padrão SOS legado quando ambos descrevem o mesmo medicamento.
+  insights.push(...buildMedicationSafetyInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude }));
 
   medicamentosAtivos.forEach(
     (medicamento) => {
