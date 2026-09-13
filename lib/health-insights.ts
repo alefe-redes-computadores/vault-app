@@ -14,6 +14,8 @@ import {
 
 import { buildHydrationInsights } from "@/lib/health-intelligence/hydration-insights";
 
+import { buildLongitudinalHealthInsights } from "@/lib/health-intelligence/longitudinal-insights";
+
 import type {
   Cid,
   Cirurgia,
@@ -8021,6 +8023,22 @@ export interface HealthInsight {
   /** Categorias internas realmente consultadas; não são fontes médicas externas. */
   fontesInternas?:
     string[];
+
+  /** Comparação entre janelas equivalentes, quando aplicável. */
+  comparacao?: {
+    janelaAtual: string;
+    janelaAnterior: string;
+    valorAtual: number;
+    valorAnterior: number;
+    variacaoPercentual: number | null;
+    tendencia: "aumento" | "queda" | "estavel";
+  };
+
+  /** Cobertura real de dias usada para calibrar confiança. */
+  coberturaDias?: { observados: number; total: number };
+
+  /** Próximo passo seguro; nunca prescreve ou altera dose. */
+  acaoSegura?: string;
 }
 
 // ============================================================
@@ -9257,6 +9275,9 @@ export function gerarInsightsSaude(
   // ----------------------------------------------------------
 
   insights.push(...buildHydrationInsights(registrosSaude, contexto.hoje || getLocalTodayISO()));
+
+  // Comparações longitudinais auditáveis; associação temporal não implica causalidade.
+  insights.push(...buildLongitudinalHealthInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude }));
 
   // ----------------------------------------------------------
   // DEDUPLICAÇÃO + ORDENAÇÃO

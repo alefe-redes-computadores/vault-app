@@ -289,6 +289,10 @@ function aggregateMedicationRoutinePatterns(
           evidence
         )
       ),
+
+    fontesInternas: Array.from(new Set(routinePatterns.flatMap((item) => item.fontesInternas || ["Medicamentos", "Registros de doses"]))),
+
+    acaoSegura: "Revise os horários registrados e converse com o profissional responsável antes de qualquer mudança.",
   };
 
   return [

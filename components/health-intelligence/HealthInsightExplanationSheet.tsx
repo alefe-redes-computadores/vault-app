@@ -500,6 +500,24 @@ export function HealthInsightExplanationSheet({
                   </div>
                 </div>
 
+                {insight.comparacao && (
+                  <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.04] p-3.5">
+                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-cyan-300">Comparação equivalente</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div><p className="text-[9px] text-ink-faint">{insight.comparacao.janelaAtual}</p><p className="mt-1 text-lg font-bold text-ink-primary">{insight.comparacao.valorAtual}</p></div>
+                      <div><p className="text-[9px] text-ink-faint">{insight.comparacao.janelaAnterior}</p><p className="mt-1 text-lg font-bold text-ink-muted">{insight.comparacao.valorAnterior}</p></div>
+                    </div>
+                    <p className="mt-2 text-[10px] text-ink-muted">Tendência: {insight.comparacao.tendencia}{insight.comparacao.variacaoPercentual !== null ? ` · ${insight.comparacao.variacaoPercentual > 0 ? "+" : ""}${insight.comparacao.variacaoPercentual}%` : ""}</p>
+                    {insight.coberturaDias && <p className="mt-1 text-[9px] text-ink-faint">Cobertura: {insight.coberturaDias.observados} de {insight.coberturaDias.total} dias</p>}
+                  </div>
+                )}
+
+                {insight.acaoSegura && (
+                  <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.04] p-3.5">
+                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-emerald-300">Próximo passo seguro</p>
+                    <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">{insight.acaoSegura}</p>
+                  </div>
+                )}
                 <div className="rounded-2xl border border-surface-border bg-surface p-3.5">
                   <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-ink-faint">Fontes internas</p>
                   <div className="mt-2 flex flex-wrap gap-2">
