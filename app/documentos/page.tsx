@@ -2070,52 +2070,6 @@ export default function DocumentsPage() {
           </section>
         </div>
 
-        {/* ====================================================
-            FAB MOBILE
-            ==================================================== */}
-
-        <motion.button
-          type="button"
-          initial={{
-            opacity:
-              0,
-
-            scale:
-              0.92,
-
-            y:
-              10,
-          }}
-          animate={{
-            opacity:
-              1,
-
-            scale:
-              1,
-
-            y:
-              0,
-          }}
-          transition={{
-            duration:
-              0.22,
-
-            delay:
-              0.1,
-          }}
-          onClick={
-            openNewDocument
-          }
-          className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full border border-ice/25 bg-ice text-void shadow-[0_12px_32px_rgba(56,189,248,0.24)] transition-transform active:scale-95 sm:hidden"
-          aria-label="Novo documento"
-        >
-          <Plus
-            size={
-              22
-            }
-          />
-        </motion.button>
-
         <ScrollToTop
           threshold={
             400

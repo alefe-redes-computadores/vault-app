@@ -2,7 +2,7 @@
 
 import { db } from "../db";
 import { enfileirarOperacao } from "../sync/enfileirarOperacao";
-import { supabase } from "@/lib/supabase/client";
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 import { encryptPassword } from "@/lib/crypto";
 
 import type {
@@ -94,7 +94,7 @@ async function getAuthenticatedUserId(): Promise<string> {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await getLocalFirstAuthUser();
 
   if (error) {
     throw new Error(
@@ -542,7 +542,11 @@ export const cardsRepository = {
         await enfileirarOperacao(
           "cards",
           "delete",
-          { id }
+          {
+            id,
+            user_id: userId,
+            person_id: personId,
+          }
         );
       }
     );

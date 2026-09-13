@@ -29,6 +29,17 @@ function expiryDate(value?: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function documentExpiry(document: Document): { raw: string | null; parsed: Date | null } {
+  const metadata = document.metadata || {};
+  const value = metadata.expiry_date ?? metadata.data_validade ?? metadata.validade ?? metadata.renewal_date;
+  if (typeof value !== "string" || !value.trim()) return { raw: null, parsed: null };
+  return { raw: value.trim(), parsed: expiryDate(value.trim()) };
+}
+
+function daysUntil(date: Date, now: Date): number {
+  return Math.ceil((date.getTime() - now.getTime()) / 86400000);
+}
+
 function credentialInsights(credentials: Credential[], now: Date): VaultGeneralInsight[] {
   if (!credentials.length) return [];
   const encrypted = credentials.filter((item) => Boolean(item.password_encrypted)).length;
@@ -77,6 +88,7 @@ function cardInsights(cards: BankCard[], now: Date): VaultGeneralInsight[] {
     return Boolean(expiry && expiry.getTime() < now.getTime());
   });
   const incompleteAccounts = accounts.filter((item) => !item.agency?.trim() || !item.account?.trim());
+  const invalidExpiry = paymentCards.filter((item) => Boolean(item.expiry_date?.trim()) && !expiryDate(item.expiry_date));
   const result: VaultGeneralInsight[] = [];
   if (expired.length || expiring.length) result.push({
     id: "card-expiry-review",
@@ -94,22 +106,41 @@ function cardInsights(cards: BankCard[], now: Date): VaultGeneralInsight[] {
     confidence: "alta", sample: accounts.length, sources: ["Metadados locais de contas"],
     evidence: [`${incompleteAccounts.length} conta(s) com campo ausente`], actionLabel: "Revisar contas", href: "/contas", priority: 25,
   });
+  if (invalidExpiry.length) result.push({
+    id: "card-expiry-data-quality", kind: "data_quality", title: "Validades de cartão não interpretadas",
+    message: `${invalidExpiry.length} cartão(ões) possuem validade preenchida em formato que o Vault não conseguiu interpretar. Esses itens não entraram no alerta de vencimento.`,
+    confidence: "alta", sample: paymentCards.length, sources: ["Validade cadastrada nos cartões"],
+    evidence: [`${invalidExpiry.length} validade(s) não interpretada(s)`], actionLabel: "Corrigir cartões", href: "/cartoes", priority: 18,
+  });
   return result;
 }
 
-function documentInsights(documents: Document[]): VaultGeneralInsight[] {
+function documentInsights(documents: Document[], now: Date): VaultGeneralInsight[] {
   if (!documents.length) return [];
   const withoutAttachment = documents.filter((item) => !item.attachments?.length).length;
   const duplicates = duplicateGroups(documents, (item) => `${item.type}|${normalize(item.title)}`);
-  if (!withoutAttachment && !duplicates) return [];
-  return [{
+  const expiries = documents.map((document) => ({ document, ...documentExpiry(document) }));
+  const invalidExpiry = expiries.filter((item) => item.raw && !item.parsed).length;
+  const expired = expiries.filter((item) => item.parsed && daysUntil(item.parsed, now) < 0).length;
+  const expiring = expiries.filter((item) => item.parsed && daysUntil(item.parsed, now) >= 0 && daysUntil(item.parsed, now) <= 60).length;
+  const result: VaultGeneralInsight[] = [];
+  if (expired || expiring) result.push({
+    id: "personal-document-expiry", kind: "attention", title: "Validade de documentos pessoais",
+    message: `${expired} documento(s) aparecem vencidos e ${expiring} vencem em até 60 dias, conforme as datas cadastradas.`,
+    confidence: "alta", sample: expiries.filter((item) => item.parsed).length,
+    sources: ["Campos de validade dos documentos da pessoa ativa"],
+    evidence: [`${expired} vencido(s)`, `${expiring} próximo(s) do vencimento`],
+    actionLabel: "Ver documentos", href: "/documentos", priority: expired ? 3 : 13,
+  });
+  if (withoutAttachment || duplicates || invalidExpiry) result.push({
     id: "personal-document-coverage", kind: "data_quality", title: "Cobertura do cofre de documentos",
-    message: `${withoutAttachment} documento(s) não possuem anexo e ${duplicates} grupo(s) repetem tipo e título. Ausência de anexo não significa documento inválido.`,
+    message: `${withoutAttachment} documento(s) não possuem anexo, ${duplicates} grupo(s) repetem tipo e título e ${invalidExpiry} validade(s) não foram interpretadas. Ausência de anexo não significa documento inválido.`,
     confidence: "alta", sample: documents.length,
     sources: ["Metadados e anexos dos documentos da pessoa ativa"],
-    evidence: [`${withoutAttachment} sem anexo`, `${duplicates} grupo(s) possivelmente repetido(s)`],
+    evidence: [`${withoutAttachment} sem anexo`, `${duplicates} grupo(s) possivelmente repetido(s)`, `${invalidExpiry} validade(s) não interpretada(s)`],
     actionLabel: "Organizar documentos", href: "/documentos", priority: 30,
-  }];
+  });
+  return result;
 }
 
 export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now = new Date()): VaultIntelligenceResult {
@@ -120,7 +151,14 @@ export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now 
   const vaultIds = new Set(vaults.map((item) => item.id).filter(Boolean));
   const pendingInvites = snapshot.members.filter((item) => vaultIds.has(item.vault_id) && item.status === "pending");
   const unsynced = [...credentials, ...cards, ...documents, ...vaults].filter((item) => item.synced === false).length;
+  const total = credentials.length + cards.length + documents.length + vaults.length;
   const operationalInsights: VaultGeneralInsight[] = [];
+  if (!total) operationalInsights.push({
+    id: "general-empty-scope", kind: "data_quality", title: "Ainda não há base para analisar",
+    message: "A pessoa ativa ainda não possui credenciais, cartões, contas, documentos pessoais ou cofres no escopo desta central. Sem dados, o Vault não conclui que está tudo certo.",
+    confidence: "alta", sample: 0, sources: ["Cobertura local da pessoa ativa"],
+    evidence: ["0 itens analisáveis"], actionLabel: "Abrir documentos", href: "/documentos", priority: 1,
+  });
   if (pendingInvites.length) operationalInsights.push({
     id: "vault-pending-invitations", kind: "attention", title: "Convites de compartilhamento pendentes",
     message: `${pendingInvites.length} convite(s) de cofre ainda aparecem pendentes. O status descreve o registro atual e não confirma que a pessoa recebeu ou leu o convite.`,
@@ -132,14 +170,20 @@ export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now 
     message: `${unsynced} item(ns) desta pessoa estão marcados localmente como não sincronizados. Eles permanecem no aparelho enquanto o fluxo de sincronização tenta enviá-los.`,
     confidence: "alta", sample: credentials.length + cards.length + documents.length + vaults.length,
     sources: ["Marcadores locais de sincronização"], evidence: [`${unsynced} registro(s) com synced=false`],
-    actionLabel: "Ver diagnóstico", href: "/mais", priority: 8,
+    actionLabel: "Ver diagnóstico", href: "/diagnostico", priority: 8,
   });
-  const insights = [...credentialInsights(credentials, now), ...cardInsights(cards, now), ...documentInsights(documents), ...operationalInsights]
+  if (vaults.length && !snapshot.members.length) operationalInsights.push({
+    id: "vault-sharing-empty", kind: "organization", title: "Cofres ainda sem compartilhamento",
+    message: `${vaults.length} cofre(s) próprio(s) não possuem membros ou convites registrados. Isso é apenas uma oportunidade de organização; compartilhar continua opcional.`,
+    confidence: "alta", sample: vaults.length, sources: ["Cofres e membros da pessoa ativa"],
+    evidence: [`${vaults.length} cofre(s)`, "0 membros ou convites"], actionLabel: "Ver cofres", href: "/vaults", priority: 40,
+  });
+  const insights = [...credentialInsights(credentials, now), ...cardInsights(cards, now), ...documentInsights(documents, now), ...operationalInsights]
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
   const accounts = cards.filter((item) => accountTypes.has(item.type)).length;
   return {
     insights,
     highlights: insights.slice(0, 3),
-    coverage: { credentials: credentials.length, cards: cards.length - accounts, accounts, documents: documents.length, vaults: vaults.length, total: credentials.length + cards.length + documents.length + vaults.length },
+    coverage: { credentials: credentials.length, cards: cards.length - accounts, accounts, documents: documents.length, vaults: vaults.length, total },
   };
 }

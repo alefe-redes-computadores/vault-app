@@ -14,9 +14,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
 interface AreaTabsProps {
   activeArea: CategoryId | null;
   onAreaChange: (areaId: CategoryId | null) => void;
+  showAll?: boolean;
+  allLabel?: string;
 }
 
-export function AreaTabs({ activeArea, onAreaChange }: AreaTabsProps) {
+export function AreaTabs({ activeArea, onAreaChange, showAll = false, allLabel = "Todos" }: AreaTabsProps) {
   const { trigger } = useHapticFeedback();
   const areasArray = Object.values(AREAS);
 
@@ -27,6 +29,23 @@ export function AreaTabs({ activeArea, onAreaChange }: AreaTabsProps) {
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {showAll && (
+        <button
+          type="button"
+          onClick={() => {
+            trigger("vibrate");
+            onAreaChange(null);
+          }}
+          className={`flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] ${
+            activeArea === null
+              ? "border-ice bg-ice/12 text-ice shadow-sm shadow-ice/10"
+              : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-surface-border hover:text-ink-primary"
+          }`}
+        >
+          <FolderOpen size={15} />
+          <span>{allLabel}</span>
+        </button>
+      )}
       {areasArray.map((area) => {
         const Icon = ICON_MAP[area.icon] || FolderOpen;
         const isActive = activeArea === area.id;

@@ -2,7 +2,7 @@
 
 import { db } from "../db";
 import { enfileirarOperacao } from "../sync/enfileirarOperacao";
-import { supabase } from "@/lib/supabase/client";
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 
 import type {
   Person,
@@ -36,7 +36,7 @@ async function requireUser() {
   const {
     data: { user },
   } =
-    await supabase.auth.getUser();
+    await getLocalFirstAuthUser();
 
   if (!user) {
     throw new Error(
@@ -380,7 +380,7 @@ export const personsRepository = {
     const {
       data: { user },
     } =
-      await supabase.auth.getUser();
+      await getLocalFirstAuthUser();
 
     if (!user) {
       return null;

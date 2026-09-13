@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
-import { supabase } from "@/lib/supabase/client";
+import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 
 import type {
   Document,
@@ -151,7 +151,7 @@ async function getAuthenticatedUser() {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await getLocalFirstAuthUser();
 
   if (error) {
     throw new Error(
@@ -1000,6 +1000,8 @@ export const vaultsRepository = {
           "delete",
           {
             id: vault.id!,
+            user_id: vault.user_id,
+            person_id: vault.person_id,
           }
         );
       }

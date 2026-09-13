@@ -38,9 +38,6 @@ import {
   InfiniteScrollTrigger,
 } from "@/components/InfiniteScrollTrigger";
 import {
-  EmptyState,
-} from "@/components/EmptyState";
-import {
   PageTransition,
 } from "@/components/PageTransition";
 import {
@@ -143,7 +140,7 @@ export default function FavoritesPage() {
             HEADER
             ==================================================== */}
 
-        <header className="bg-aurora sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 backdrop-blur-xl header-safe-top">
+        <header className="border-b border-surface-border/30 bg-void px-5 pb-4 header-safe-top">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -152,7 +149,7 @@ export default function FavoritesPage() {
                   "vibrate"
                 );
 
-                router.back();
+                router.replace("/mais");
               }}
               aria-label="Voltar"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
@@ -198,7 +195,7 @@ export default function FavoritesPage() {
               FILTRO POR CATEGORIA
               ================================================== */}
 
-          <div className="mt-5 rounded-[24px] border border-surface-border/40 bg-surface/70 px-4 py-4">
+          {(totalCount > 0 || selectedCategory) && <div className="mt-5 rounded-[22px] border border-surface-border/40 bg-surface px-3 py-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Categoria
             </p>
@@ -210,8 +207,9 @@ export default function FavoritesPage() {
               onAreaChange={
                 setSelectedCategory
               }
+              showAll
             />
-          </div>
+          </div>}
         </header>
 
         {/* ====================================================
@@ -251,27 +249,12 @@ export default function FavoritesPage() {
                     0.22,
                 }}
               >
-                <EmptyState
-                  icon={
-                    Heart
-                  }
-                  title="Nenhum favorito"
-                  description={
-                    selectedCategory
-                      ? "A pessoa ativa ainda não possui documentos favoritos nesta categoria."
-                      : "Marque documentos como favoritos para acessá-los rapidamente. Basta tocar na estrela em qualquer documento."
-                  }
-                  actionLabel="Voltar para a Home"
-                  onAction={() => {
-                    trigger(
-                      "vibrate"
-                    );
-
-                    router.push(
-                      "/"
-                    );
-                  }}
-                />
+                <div className="mx-auto flex max-w-xl flex-col items-center rounded-[26px] border border-surface-border/40 bg-surface px-6 py-9 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-ice/15 bg-ice/5 text-ice"><Heart size={25}/></div>
+                  <h2 className="mt-5 text-lg font-bold text-ink-primary">{selectedCategory ? "Nada nesta categoria" : "Sua coleção começa aqui"}</h2>
+                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-muted">{selectedCategory ? "Não há favoritos deste tipo para a pessoa ativa. Você pode voltar a ver todas as categorias." : "Marque documentos com a estrela para reuni-los aqui sem duplicar arquivos."}</p>
+                  <button type="button" onClick={() => { trigger("vibrate"); selectedCategory ? setSelectedCategory(null) : router.push("/documentos"); }} className="mt-5 rounded-full bg-ice px-5 py-3 text-sm font-bold text-void transition active:scale-95">{selectedCategory ? "Ver todos" : "Explorar documentos"}</button>
+                </div>
               </motion.div>
             ) : (
               <motion.div

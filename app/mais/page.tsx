@@ -29,6 +29,7 @@ import {
   Trash2,
   AlertTriangle,
   BrainCircuit,
+  Landmark,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -638,11 +639,21 @@ export default function MaisPage() {
     {
       id: "cartoes",
       icon: CreditCard,
-      label: "Bancos & Cartões",
-      description: "Contas e cartões",
+      label: "Cartões",
+      description: "Crédito e débito",
       onClick: () => {
         trigger("vibrate");
         router.push("/cartoes");
+      },
+    },
+    {
+      id: "contas",
+      icon: Landmark,
+      label: "Contas bancárias",
+      description: "Agência e conta",
+      onClick: () => {
+        trigger("vibrate");
+        router.push("/contas");
       },
     },
     {
