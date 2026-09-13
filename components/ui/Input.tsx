@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, InputHTMLAttributes, ReactNode } from "react";
+import { forwardRef, InputHTMLAttributes, ReactNode, useId } from "react";
 import { motion } from "framer-motion";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -12,10 +12,13 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, icon, containerClassName = "", className = "", ...props }, ref) => {
+    const generatedId = useId();
+    const inputId = props.id || generatedId;
+    const errorId = `${inputId}-error`;
     return (
       <div className={`space-y-1.5 ${containerClassName}`}>
         {label && (
-          <label className="block text-sm font-medium text-ink-primary">
+          <label htmlFor={inputId} className="block text-sm font-medium text-ink-primary">
             {label}
           </label>
         )}
@@ -27,6 +30,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             ref={ref}
+            id={inputId}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : props["aria-describedby"]}
             className={`
               w-full rounded-xl bg-surface-raised border border-surface-border/50 
               px-4 py-3 text-ink-primary placeholder:text-ink-muted/50
@@ -41,6 +47,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         </div>
         {error && (
           <motion.p
+            id={errorId}
+            role="alert"
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-xs text-coral"

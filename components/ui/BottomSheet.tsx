@@ -78,6 +78,10 @@ export function BottomSheet({
       document.body.style.overflow =
         "hidden";
 
+      window.requestAnimationFrame(() => {
+        sheetRef.current?.focus();
+      });
+
       return () => {
         document.removeEventListener(
           "keydown",
@@ -132,6 +136,7 @@ export function BottomSheet({
           sheetRef
         }
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-label={
           title ??
@@ -144,7 +149,7 @@ export function BottomSheet({
             event.stopPropagation()
         }
         className={`
-          relative w-full max-w-lg overflow-hidden rounded-sheet
+          relative w-full max-w-lg overflow-hidden rounded-t-[28px] sm:rounded-sheet
           border border-surface-border bg-surface-raised shadow-vault
           animate-in slide-in-from-bottom duration-300
           ${heights[height]}
@@ -184,7 +189,7 @@ export function BottomSheet({
           </button>
         </div>
 
-        <div className="max-h-[calc(90dvh-4rem)] overflow-y-auto p-4">
+        <div className="max-h-[calc(90dvh-4rem)] overflow-y-auto overscroll-contain p-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
           {
             children
           }

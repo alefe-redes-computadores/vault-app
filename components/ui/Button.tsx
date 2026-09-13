@@ -10,6 +10,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   haptic?: "vibrate" | "success" | "error" | "heavy" | "light";
   fullWidth?: boolean;
   loading?: boolean;
+  loadingLabel?: string;
 }
 
 function ButtonComponent(
@@ -20,6 +21,7 @@ function ButtonComponent(
     haptic = "vibrate",
     fullWidth = false,
     loading = false,
+    loadingLabel = "Carregando...",
     className = "",
     onClick,
     disabled,
@@ -65,7 +67,7 @@ function ButtonComponent(
         ${loading ? loadingStates[variant] : ""}
         ${sizes[size]}
         ${fullWidth ? "w-full" : ""}
-        rounded-xl font-medium transition-all duration-150
+        min-h-11 rounded-xl font-medium transition-all duration-150
         disabled:opacity-50 disabled:cursor-not-allowed
         focus:outline-none focus:ring-2 focus:ring-ice/40 focus:ring-offset-2 focus:ring-offset-void
         ${className}
@@ -75,7 +77,7 @@ function ButtonComponent(
       {loading ? (
         <span className="flex items-center justify-center gap-2">
           <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          Carregando...
+          {loadingLabel}
         </span>
       ) : (
         children

@@ -63,6 +63,40 @@ body.page-transitioning {
   -webkit-tap-highlight-color: transparent;
 }
 
+button,
+[role="button"],
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgb(var(--ice-rgb) / 0.75);
+  outline-offset: 2px;
+}
+
+.page-safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .shadow-vault {
   box-shadow: var(--shadow-vault);
 }

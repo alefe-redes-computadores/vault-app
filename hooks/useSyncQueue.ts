@@ -48,12 +48,18 @@ import type {
   VaultMember,
 } from "@/lib/types";
 
+import {
+  getSyncQueueState,
+  resetSyncFailure,
+  SYNC_MAX_RETRIES,
+} from "@/lib/sync/queue-health";
+
 // ============================================================
 // CONSTANTES
 // ============================================================
 
 const MAX_RETRIES =
-  5;
+  SYNC_MAX_RETRIES;
 
 const MAX_BACKOFF_MS =
   60_000;
@@ -5235,13 +5241,7 @@ export function useSyncQueue() {
                     (
                       item
                     ) =>
-                      item.failed !==
-                        true &&
-                      (
-                        item.retry_count ||
-                        0
-                      ) <
-                        MAX_RETRIES
+                      getSyncQueueState(item) === "ready"
                   )
                   .toArray();
 
@@ -5249,6 +5249,18 @@ export function useSyncQueue() {
                 queue.length ===
                 0
               ) {
+                const deferredItems =
+                  await db.syncQueue
+                    .toCollection()
+                    .filter(
+                      (item) =>
+                        getSyncQueueState(item) === "deferred"
+                    )
+                    .toArray();
+
+                result.remaining =
+                  deferredItems.length;
+
                 result.permanentlyFailed =
                   await db.syncQueue
                     .toCollection()
@@ -5256,10 +5268,33 @@ export function useSyncQueue() {
                       (
                         item
                       ) =>
-                        item.failed ===
-                        true
+                        getSyncQueueState(item) === "failed"
                     )
                     .count();
+
+                const nextWakeAt =
+                  deferredItems
+                    .map((item) =>
+                      item.next_retry_at
+                        ? new Date(item.next_retry_at).getTime()
+                        : Number.NaN
+                    )
+                    .filter(Number.isFinite)
+                    .sort((a, b) => a - b)[0];
+
+                if (
+                  nextWakeAt &&
+                  typeof window !== "undefined"
+                ) {
+                  if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                  timeoutRef.current = setTimeout(
+                    () => {
+                      timeoutRef.current = null;
+                      window.dispatchEvent(new Event("sync:process"));
+                    },
+                    Math.max(250, Math.min(nextWakeAt - Date.now(), MAX_BACKOFF_MS))
+                  );
+                }
 
                 return result;
               }
@@ -5515,13 +5550,7 @@ export function useSyncQueue() {
                     (
                       item
                     ) =>
-                      item.failed !==
-                        true &&
-                      (
-                        item.retry_count ||
-                        0
-                      ) <
-                        MAX_RETRIES
+                      getSyncQueueState(item) !== "failed"
                   )
                   .count();
 
@@ -5532,8 +5561,7 @@ export function useSyncQueue() {
                     (
                       item
                     ) =>
-                      item.failed ===
-                      true
+                        getSyncQueueState(item) === "failed"
                   )
                   .count();
 
@@ -5614,8 +5642,7 @@ export function useSyncQueue() {
                     (
                       item
                     ) =>
-                      item.failed ===
-                      true
+                      getSyncQueueState(item) === "failed"
                   )
                   .count();
 
@@ -5668,8 +5695,7 @@ export function useSyncQueue() {
               (
                 item
               ) =>
-                item.failed ===
-                true
+                getSyncQueueState(item) === "failed"
             )
             .toArray();
 
@@ -5691,16 +5717,7 @@ export function useSyncQueue() {
 
           await db.syncQueue.update(
             item.id,
-            {
-              failed:
-                false,
-
-              retry_count:
-                0,
-
-              error:
-                undefined,
-            }
+            resetSyncFailure(item)
           );
         }
 
