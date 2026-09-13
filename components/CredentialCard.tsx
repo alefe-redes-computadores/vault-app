@@ -45,6 +45,14 @@ function getCategoryColor(
   );
 }
 
+function getCredentialIconUrl(value?: string): string {
+  if (!value) return "";
+  try {
+    const url = new URL(value.startsWith("http") ? value : `https://${value}`);
+    return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=128`;
+  } catch { return ""; }
+}
+
 export function CredentialCard({
   credential,
   onClick,
@@ -58,6 +66,8 @@ export function CredentialCard({
     getCategoryColor(
       credential.category
     );
+
+  const iconUrl = getCredentialIconUrl(credential.url);
 
   return (
     <motion.article
@@ -75,7 +85,7 @@ export function CredentialCard({
           aria-label={`Abrir ${credential.title}`}
         >
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border shadow-inner"
             style={{
               backgroundColor:
                 `${color}15`,
@@ -84,9 +94,8 @@ export function CredentialCard({
               color,
             }}
           >
-            <KeyRound
-              size={22}
-            />
+            <KeyRound size={22} />
+            {iconUrl && <img src={iconUrl} alt="" className="absolute inset-0 h-full w-full bg-surface object-contain p-2.5" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
           </div>
 
           <div className="min-w-0 flex-1">

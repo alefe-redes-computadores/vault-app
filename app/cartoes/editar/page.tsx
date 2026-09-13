@@ -26,9 +26,14 @@ import { useHapticFeedback } from "@/lib/haptics";
 import {
   detectCardBrand,
   formatCardNumber,
+  formatCvv,
   formatExpiryDate,
   getBankLogoUrl,
   getBrandLabel,
+  getCardNumberLength,
+  getCvvLength,
+  isValidExpiryDate,
+  isValidLuhn,
 } from "@/lib/utils/card-helper";
 import {
   decryptPassword,
@@ -320,6 +325,10 @@ function EditCardContent() {
         formatExpiryDate(value);
     }
 
+    if (field === "cvv") {
+      formattedValue = formatCvv(value, detectedBrand);
+    }
+
     setFormData((previous) => ({
       ...previous,
       [field]: formattedValue,
@@ -358,6 +367,12 @@ function EditCardContent() {
       newErrors.bank_name =
         "O nome do banco é obrigatório";
     }
+
+    const cleanNumber = formData.card_number.replace(/\D/g, "");
+    if (cleanNumber && cleanNumber.length !== getCardNumberLength(detectedBrand)) newErrors.card_number = "Número incompleto para a bandeira identificada";
+    else if (cleanNumber && !isValidLuhn(cleanNumber)) newErrors.card_number = "Confira o número do cartão";
+    if (formData.expiry_date && !isValidExpiryDate(formData.expiry_date)) newErrors.expiry_date = "Validade inválida ou vencida";
+    if (formData.cvv && formData.cvv.length !== getCvvLength(detectedBrand)) newErrors.cvv = detectedBrand === "amex" ? "A American Express usa 4 dígitos" : "O código de segurança deve ter 3 dígitos";
 
     setErrors(newErrors);
 

@@ -32,7 +32,7 @@ import {
   ListSearch,
 } from "@/components/list";
 
-import { getBankLogoUrl } from "@/lib/utils/card-helper";
+import { getBankCode, getBankDisplayName, getBankLogoUrl, maskAccount } from "@/lib/utils/card-helper";
 
 const CONTA_COLOR = "#34D399";
 
@@ -325,6 +325,8 @@ export default function ContasPage() {
                     getBankLogoUrl(
                       item.bank_name
                     );
+                  const bankCode = getBankCode(item.bank_name);
+                  const typeLabel = item.type === "conta_corrente" ? "Conta corrente" : item.type === "conta_poupanca" ? "Poupança" : "Conta digital";
 
                   return (
                     <ListCard
@@ -358,7 +360,7 @@ export default function ContasPage() {
                             alt={
                               item.bank_name
                             }
-                            className="h-7 w-7 object-contain"
+                            className="h-full w-full object-contain p-1.5"
                             onError={(
                               event
                             ) => {
@@ -413,8 +415,17 @@ export default function ContasPage() {
                       <p className="mt-1 truncate text-sm text-ink-muted">
                         {isPrivate
                           ? "••••••"
-                          : item.bank_name}
+                          : getBankDisplayName(item.bank_name)}
                       </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-ink-muted">
+                        {bankCode && <span className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1">Banco {bankCode}</span>}
+                        <span className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1">{typeLabel}</span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 border-t border-surface-border/35 pt-3">
+                        <div><p className="text-[9px] uppercase tracking-wider text-ink-faint">Agência</p><p className="mt-1 text-xs font-semibold text-ink-primary">{isPrivate ? "••••" : item.agency || "Não informada"}</p></div>
+                        <div><p className="text-[9px] uppercase tracking-wider text-ink-faint">Conta</p><p className="mt-1 text-xs font-semibold text-ink-primary">{isPrivate ? "••••••" : item.account ? maskAccount(item.account) : "Não informada"}</p></div>
+                      </div>
                     </ListCard>
                   );
                 }

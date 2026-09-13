@@ -25,7 +25,9 @@ import { useHapticFeedback } from "@/lib/haptics";
 import {
   getBankLogoUrl,
   getBrandLabel,
+  maskCardNumber,
 } from "@/lib/utils/card-helper";
+import { decryptPassword } from "@/lib/crypto";
 
 import { PageTransition } from "@/components/PageTransition";
 import { EmptyState } from "@/components/EmptyState";
@@ -40,6 +42,12 @@ import {
 
 const CARD_COLOR =
   "#38BDF8";
+
+function readMaskedCardNumber(encrypted?: string): string {
+  if (!encrypted) return "Número não informado";
+  try { return maskCardNumber(decryptPassword(encrypted)); }
+  catch { return "Número protegido"; }
+}
 
 export default function CartoesPage() {
   const router =
@@ -438,6 +446,8 @@ export default function CartoesPage() {
                         ? "Crédito"
                         : "Débito";
 
+                    const maskedNumber = readMaskedCardNumber(card.card_number_encrypted);
+
                     const subtitleParts =
                       [
                         bankName,
@@ -491,7 +501,7 @@ export default function CartoesPage() {
                                       ? "do banco"
                                       : card.bank_name
                                   }`}
-                                  className="h-7 w-7 object-contain"
+                                  className="h-full w-full object-contain p-1.5"
                                   onError={(
                                     event
                                   ) => {
@@ -525,6 +535,13 @@ export default function CartoesPage() {
                                   " • "
                                 )}
                               </p>
+                              <p className="mt-2 font-mono text-xs tracking-wide text-ink-primary">
+                                {isPrivate ? "•••• •••• •••• ••••" : maskedNumber}
+                              </p>
+                              <div className="mt-2 flex gap-2 text-[10px] text-ink-faint">
+                                <span>{typeLabel}</span>
+                                {card.expiry_date && <span>• vence {isPrivate ? "••/••" : card.expiry_date}</span>}
+                              </div>
                             </div>
 
                             <CreditCard

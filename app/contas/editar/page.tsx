@@ -23,7 +23,7 @@ import {
 
 import { useCards } from "@/hooks/useCards";
 import { useHapticFeedback } from "@/lib/haptics";
-import { getBankLogoUrl } from "@/lib/utils/card-helper";
+import { formatAccount, formatAgency, getBankLogoUrl } from "@/lib/utils/card-helper";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -258,9 +258,10 @@ function EditAccountContent() {
     field: AccountTextField,
     value: string
   ) => {
+    const formattedValue = field === "agency" ? formatAgency(value) : field === "account" ? formatAccount(value) : value;
     setFormData((previous) => ({
       ...previous,
-      [field]: value,
+      [field]: formattedValue,
     }));
 
     if (errors[field]) {

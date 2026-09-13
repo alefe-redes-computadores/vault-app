@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import { useHapticFeedback } from "@/lib/haptics";
-import { getBankLogoUrl } from "@/lib/utils/card-helper";
+import { formatAccount, formatAgency, getBankLogoUrl } from "@/lib/utils/card-helper";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -147,11 +147,12 @@ export default function NewAccountPage() {
       AccountTextField,
     value: string
   ) => {
+    const formattedValue = field === "agency" ? formatAgency(value) : field === "account" ? formatAccount(value) : value;
     setFormData(
       (previous) => ({
         ...previous,
         [field]:
-          value,
+          formattedValue,
       })
     );
 

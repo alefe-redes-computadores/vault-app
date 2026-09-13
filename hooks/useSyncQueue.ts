@@ -4328,14 +4328,7 @@ export function useSyncQueue() {
             );
           }
 
-          const {
-            error,
-          } =
-            await client
-              .from(
-                "credentials"
-              )
-              .upsert(
+          const remoteCredential =
                 {
                   id:
                     credential.id,
@@ -4380,12 +4373,26 @@ export function useSyncQueue() {
 
                   updated_at:
                     credential.updated_at,
-                },
+                };
+
+          let { error } =
+            await client
+              .from("credentials")
+              .upsert(
+                remoteCredential,
                 {
                   onConflict:
                     "id",
                 }
               );
+
+          if (error && /history.*schema cache|column.*history/i.test(error.message)) {
+            const { history: _localHistory, ...compatibleCredential } = remoteCredential;
+            const fallback = await client
+              .from("credentials")
+              .upsert(compatibleCredential, { onConflict: "id" });
+            error = fallback.error;
+          }
 
           if (
             error
