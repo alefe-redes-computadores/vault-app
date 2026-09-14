@@ -112,9 +112,8 @@ jobs:
 
       - name: Gerar identidade visual Android
         run: |
-          mkdir -p assets
-          cp public/icon-512x512.png assets/icon.png
-          cp public/icon-512x512.png assets/splash.png
+          test -f assets/icon.png
+          test -f assets/splash.png
           npx @capacitor/assets generate --android
 
       - name: Sincronizar Capacitor
