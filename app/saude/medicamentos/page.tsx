@@ -4,6 +4,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -21,9 +22,11 @@ import {
   EyeOff,
   History,
   Pill,
+  Search,
   Stethoscope,
   StickyNote,
   Syringe,
+  X,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -63,10 +66,6 @@ import {
 import {
   QuickDoseModal,
 } from "@/components/saude/QuickDoseModal";
-
-import {
-  DailyProgress,
-} from "@/components/saude/DailyProgress";
 
 import {
   processarListaMedicamentos,
@@ -185,7 +184,7 @@ const SectionTitle = ({
   icon: LucideIcon;
   title: string;
 }) => (
-  <div className="mb-2 mt-6 flex items-center gap-2 pl-2 opacity-80">
+  <div className="mb-1.5 mt-4 flex items-center gap-2 pl-1 opacity-80">
     <Icon
       size={16}
       className="text-ink-muted"
@@ -245,6 +244,50 @@ export default function MedicamentosListPage() {
     useState(
       ""
     );
+
+  /*
+   * MEDICATION_LIST_VISUAL_V25_3
+   *
+   * A busca permanece recolhida enquanto não estiver em uso.
+   * Isso preserva espaço sem remover a funcionalidade.
+   */
+  const [
+    isSearchOpen,
+    setIsSearchOpen,
+  ] =
+    useState(
+      false
+    );
+
+  const searchInputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    );
+
+  useEffect(
+    () => {
+      if (
+        !isSearchOpen
+      ) {
+        return;
+      }
+
+      const frame =
+        window.requestAnimationFrame(
+          () => {
+            searchInputRef.current?.focus();
+          }
+        );
+
+      return () =>
+        window.cancelAnimationFrame(
+          frame
+        );
+    },
+    [
+      isSearchOpen,
+    ]
+  );
 
   const [
     showDescontinuados,
@@ -809,12 +852,62 @@ export default function MedicamentosListPage() {
           ? "none"
           : cor1;
 
+      /*
+       * A borda agora possui uma única linguagem:
+       * estado operacional do medicamento.
+       *
+       * Tarja e receita permanecem nos selos próprios. Assim a
+       * cor física do comprimido ou um perfil regulatório não
+       * parece um alerta clínico aleatório.
+       */
       const cardColor =
         isSuspenso
           ? "#fb7185"
-          : regulatoryProfiles[med.id]?.verified
-            ? regulatoryProfiles[med.id].accent
-            : receita?.corBorda || cor1;
+          : isEstoqueZerado ||
+              (
+                insight.deveRenovar &&
+                insight.urgencia ===
+                  "alta"
+              )
+            ? "#fb7185"
+            : isEstoqueCritico ||
+                insight.deveRenovar ||
+                dosesPendentesHoje >
+                  0
+              ? "#fbbf24"
+              : isSOS
+                ? "#a78bfa"
+                : dosesEsperadasHoje >
+                      0 &&
+                    dosesPendentesHoje ===
+                      0
+                  ? "#34d399"
+                  : "#64748b";
+
+      const cardColorMeaning =
+        isSuspenso
+          ? "Medicamento suspenso"
+          : isEstoqueZerado
+            ? "Estoque zerado"
+            : insight.deveRenovar &&
+                insight.urgencia ===
+                  "alta"
+              ? "Receita exige atenção"
+              : isEstoqueCritico
+                ? "Estoque baixo"
+                : insight.deveRenovar
+                  ? "Renovação próxima"
+                  : dosesPendentesHoje >
+                      0
+                    ? "Dose pendente hoje"
+                    : isSOS
+                      ? "Uso quando necessário"
+                      : dosesEsperadasHoje >
+                            0 &&
+                          dosesPendentesHoje ===
+                            0
+                        ? "Rotina concluída"
+                        : "Sem ação prevista";
 
       const regulatoryProfile =
         regulatoryProfiles[med.id];
@@ -976,7 +1069,7 @@ export default function MedicamentosListPage() {
           icon={
             <SelectedFormatIcon
               size={
-                24
+                20
               }
               fill={
                 fillValue
@@ -987,28 +1080,44 @@ export default function MedicamentosListPage() {
             />
           }
         >
-          <div className="flex min-w-0 flex-col gap-2.5">
+          <div className="flex min-w-0 flex-col gap-2">
             {/* IDENTIDADE */}
 
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor:
+                        cardColor,
+                    }}
+                    title={
+                      cardColorMeaning
+                    }
+                    aria-label={
+                      cardColorMeaning
+                    }
+                  />
+
+                  <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <h3 className="min-w-0 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
                     {
                       med.nome
                     }
                   </h3>
 
-                  {med.dosagem && (
-                    <span className="shrink-0 text-[11px] font-semibold text-ink-muted">
-                      {
-                        med.dosagem
-                      }
-                    </span>
-                  )}
+                    {med.dosagem && (
+                      <span className="shrink-0 text-[11px] font-semibold text-ink-muted">
+                        {
+                          med.dosagem
+                        }
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
                   {regulatoryProfile ? (
                     <span
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatoryProfile.badgeClass}`}
@@ -1097,7 +1206,7 @@ export default function MedicamentosListPage() {
 
             {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="min-h-[76px] rounded-xl border border-surface-border/35 bg-black/[0.07] px-3 py-2">
+            <div className="rounded-xl border border-surface-border/35 bg-black/[0.07] px-2.5 py-1.5">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -1134,7 +1243,7 @@ export default function MedicamentosListPage() {
                   {todayStatus.detail &&
                     todayStatus.detail !==
                       "Tudo certo hoje" && (
-                    <p className="mt-0.5 whitespace-normal break-words text-[8px] font-medium leading-snug text-ink-faint">
+                    <p className="mt-0.5 line-clamp-1 text-[8px] font-medium leading-snug text-ink-faint">
                       {
                         todayStatus.detail
                       }
@@ -1180,7 +1289,7 @@ export default function MedicamentosListPage() {
                     }
                   </p>
 
-                  <p className="mt-0.5 whitespace-normal break-words text-[8px] font-semibold leading-snug text-ink-faint">
+                  <p className="mt-0.5 line-clamp-1 text-[8px] font-semibold leading-snug text-ink-faint">
                     {
                       textoEstoqueSecundario ||
                       estoqueStatus
@@ -1376,14 +1485,37 @@ export default function MedicamentosListPage() {
               : "ativos"
           }`}
           rightAction={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  trigger(
+                    "vibrate"
+                  );
+
+                  setIsSearchOpen(
+                    true
+                  );
+                }}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                  isSearchOpen ||
+                  searchQuery
+                    ? "border-ice/40 bg-ice/10 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+                aria-label="Pesquisar medicamentos"
+                title="Pesquisar"
+              >
+                <Search size={17} />
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
                   trigger("vibrate");
                   router.push("/saude/retiradas");
                 }}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice transition-all active:scale-95"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice transition-all active:scale-95"
                 aria-label="Abrir retiradas de medicamentos"
                 title="Retiradas"
               >
@@ -1413,68 +1545,150 @@ export default function MedicamentosListPage() {
             </div>
           }
         >
-          <div className="flex w-full items-center gap-2">
-            <ListSearch
-              value={
-                searchQuery
-              }
-              onChange={
-                setSearchQuery
-              }
-              placeholder="Buscar remédio ou médico..."
-            />
-          </div>
+          {isSearchOpen && (
+            <div className="flex w-full items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+                />
 
+                <input
+                  ref={
+                    searchInputRef
+                  }
+                  type="search"
+                  value={
+                    searchQuery
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setSearchQuery(
+                        event.target.value
+                      )
+                  }
+                  placeholder="Remédio ou médico..."
+                  aria-label="Buscar medicamento"
+                  className="h-11 w-full rounded-2xl border border-ice/20 bg-surface-raised pl-10 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/45"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(
+                      ""
+                    );
+
+                    setIsSearchOpen(
+                      false
+                    );
+
+                    trigger(
+                      "vibrate"
+                    );
+                  }}
+                  aria-label="Fechar pesquisa"
+                  className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl text-ink-muted active:scale-95"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </ListPageHeader>
 
         {/* CONTEÚDO */}
 
         <section className="px-5 pt-4">
-          <DailyProgress
-            total={
-              statsProgresso.total
-            }
-            completed={
-              statsProgresso.completados
-            }
-          />
+          <div className="mb-3 rounded-[18px] border border-surface-border/45 bg-surface px-3 py-2.5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                  Rotina de hoje
+                </p>
 
-          <div className="mt-2.5 grid grid-cols-3 gap-2">
-            <div className="rounded-xl border border-amber-400/15 bg-amber-400/[0.045] px-3 py-2">
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
-                Atenção
-              </p>
+                <p className="mt-0.5 text-sm font-bold text-ink-primary">
+                  {statsProgresso.total > 0
+                    ? `${statsProgresso.completados} de ${statsProgresso.total} doses concluídas`
+                    : "Nenhuma dose programada"}
+                </p>
+              </div>
 
-              <p className="mt-0.5 text-base font-black tabular-nums text-amber-400">
-                {
-                  medsPrioridade.length
-                }
-              </p>
+              <div
+                className={`shrink-0 rounded-xl px-2.5 py-1.5 text-xs font-black tabular-nums ${
+                  statsProgresso.total > 0 &&
+                  statsProgresso.completados >=
+                    statsProgresso.total
+                    ? "bg-emerald-400/10 text-emerald-400"
+                    : "bg-ice/10 text-ice"
+                }`}
+              >
+                {statsProgresso.total > 0
+                  ? `${Math.round(
+                      (
+                        statsProgresso.completados /
+                        statsProgresso.total
+                      ) * 100
+                    )}%`
+                  : "—"}
+              </div>
             </div>
 
-            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.045] px-3 py-2">
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
-                Em dia
-              </p>
+            {statsProgresso.total > 0 && (
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised">
+                <div
+                  className="h-full rounded-full bg-emerald-400 transition-[width]"
+                  style={{
+                    width:
+                      `${Math.min(
+                        100,
+                        (
+                          statsProgresso.completados /
+                          statsProgresso.total
+                        ) * 100
+                      )}%`,
+                  }}
+                />
+              </div>
+            )}
 
-              <p className="mt-0.5 text-base font-black tabular-nums text-emerald-400">
-                {
-                  medsEmDia.length
-                }
-              </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-semibold">
+              <span className="text-amber-400">
+                {medsPrioridade.length} precisam de atenção
+              </span>
+
+              <span className="text-emerald-400">
+                {medsEmDia.length} em dia
+              </span>
+
+              <span className="text-violet-400">
+                {medsSOS.length} SOS
+              </span>
             </div>
+          </div>
 
-            <div className="rounded-xl border border-surface-border/40 bg-surface-raised/40 px-3 py-2.5">
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
-                SOS
-              </p>
+          <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[8px] font-semibold text-ink-faint">
+            <span className="inline-flex items-center gap-1">
+              <i className="h-1.5 w-1.5 rounded-full bg-coral" />
+              ação importante
+            </span>
 
-              <p className="mt-0.5 text-base font-black tabular-nums text-ink-primary">
-                {
-                  medsSOS.length
-                }
-              </p>
-            </div>
+            <span className="inline-flex items-center gap-1">
+              <i className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              pendência
+            </span>
+
+            <span className="inline-flex items-center gap-1">
+              <i className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              concluído
+            </span>
+
+            <span className="inline-flex items-center gap-1">
+              <i className="h-1.5 w-1.5 rounded-full bg-violet-400" />
+              SOS
+            </span>
           </div>
 
           {listaProcessada.length ===
@@ -1504,7 +1718,7 @@ export default function MedicamentosListPage() {
               }
             />
           ) : (
-            <div className="space-y-3.5 pb-8">
+            <div className="space-y-2.5 pb-8">
               {medsPrioridade.length >
                 0 && (
                 <>
