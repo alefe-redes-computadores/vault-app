@@ -500,6 +500,15 @@ export default function MaisPage() {
     }
 
     trigger("vibrate");
+
+    if (!Capacitor.isNativePlatform()) {
+      showInfo(
+        "Os lembretes com ações estão disponíveis no aplicativo Android (APK).",
+        5000
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -530,7 +539,7 @@ export default function MaisPage() {
         !granted
       ) {
         showError(
-          "Permissão de notificação negada pelo sistema."
+          "Notificações bloqueadas. No Android, abra Configurações > Apps > Vault > Notificações."
         );
 
         return;
@@ -934,7 +943,9 @@ export default function MaisPage() {
                   </p>
 
                   <p className="truncate text-xs text-ink-muted">
-                    Notificações de doses
+                    {Capacitor.isNativePlatform()
+                      ? "Doses, receitas e documentos"
+                      : "Disponível no aplicativo Android"}
                   </p>
                 </div>
 
@@ -945,9 +956,11 @@ export default function MaisPage() {
                       : "bg-surface-border text-ink-muted"
                   }`}
                 >
-                  {isNotificationsEnabled
-                    ? "Ativo"
-                    : "Inativo"}
+                  {!Capacitor.isNativePlatform()
+                    ? "No APK"
+                    : isNotificationsEnabled
+                      ? "Ativo"
+                      : "Inativo"}
                 </span>
               </button>
             </div>
@@ -989,7 +1002,9 @@ export default function MaisPage() {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className="group flex min-h-[104px] flex-col items-center justify-center rounded-[22px] border border-surface-border/50 bg-surface px-3 py-3 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97]"
+                    className={`group flex min-h-[104px] flex-col items-center justify-center rounded-[22px] border border-surface-border/50 bg-surface px-3 py-3 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${
+                      item.id === "favoritos" ? "col-span-2 min-h-[88px]" : ""
+                    }`}
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-ice/15 bg-ice/10 text-ice transition-transform duration-200 group-hover:scale-105">
                       <Icon size={20} />

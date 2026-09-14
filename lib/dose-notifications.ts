@@ -9,8 +9,10 @@ import {
 } from "@capacitor/local-notifications";
 
 import {
+  ensureVaultNotificationChannel,
   isNotificationPreferenceEnabled,
   requestNotificationPermissions,
+  VAULT_NOTIFICATION_CHANNEL_ID,
 } from "@/lib/notifications";
 
 // ============================================================
@@ -239,6 +241,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
     return false;
   }
 
+  await ensureVaultNotificationChannel();
   await registerNotificationActions();
 
   return true;
@@ -352,6 +355,9 @@ export async function scheduleDoseNotifications(
 
           actionTypeId:
             ACTION_TYPE_ID,
+
+          channelId:
+            VAULT_NOTIFICATION_CHANNEL_ID,
 
           schedule: {
             on: {

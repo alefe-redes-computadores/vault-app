@@ -119,6 +119,12 @@ jobs:
       - name: Sincronizar Capacitor
         run: npx cap sync android
 
+      - name: Instalar ícone de notificações Android
+        run: |
+          test -f assets/android/ic_stat_vault.xml
+          mkdir -p android/app/src/main/res/drawable
+          cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
+
       - name: Compilar APK de teste
         working-directory: android
         run: |

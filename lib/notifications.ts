@@ -20,6 +20,32 @@ import type {
 export const NOTIFICATION_PREFERENCE_STORAGE_KEY =
   "vault_notifications_enabled";
 
+export const VAULT_NOTIFICATION_CHANNEL_ID =
+  "vault_reminders";
+
+export function supportsNativeNotifications(): boolean {
+  return Capacitor.isNativePlatform();
+}
+
+export async function ensureVaultNotificationChannel(): Promise<void> {
+  if (
+    !Capacitor.isNativePlatform() ||
+    Capacitor.getPlatform() !== "android"
+  ) {
+    return;
+  }
+
+  await LocalNotifications.createChannel({
+    id: VAULT_NOTIFICATION_CHANNEL_ID,
+    name: "Lembretes do Vault",
+    description: "Doses, receitas e documentos importantes",
+    importance: 4,
+    visibility: 1,
+    vibration: true,
+    lights: true,
+  });
+}
+
 export function isNotificationPreferenceEnabled(): boolean {
   if (
     typeof window ===
@@ -348,16 +374,22 @@ export async function requestNotificationPermissions(): Promise<boolean> {
       current.display ===
       "granted"
     ) {
+      await ensureVaultNotificationChannel();
       return true;
     }
 
     const result =
       await LocalNotifications.requestPermissions();
 
-    return (
+    const granted =
       result.display ===
-      "granted"
-    );
+      "granted";
+
+    if (granted) {
+      await ensureVaultNotificationChannel();
+    }
+
+    return granted;
   } catch (
     error
   ) {
@@ -503,6 +535,9 @@ export async function scheduleDocumentExpiryNotification(
 
           sound:
             "default",
+
+          channelId:
+            VAULT_NOTIFICATION_CHANNEL_ID,
 
           extra: {
             type:
@@ -660,6 +695,9 @@ export async function scheduleMedicationRenewalNotification(
 
           sound:
             "default",
+
+          channelId:
+            VAULT_NOTIFICATION_CHANNEL_ID,
 
           extra: {
             type:

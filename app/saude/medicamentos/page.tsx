@@ -1477,7 +1477,7 @@ export default function MedicamentosListPage() {
         {/* HEADER */}
 
         <ListPageHeader
-          title="Meus medicamentos"
+          title="Medicamentos"
           subtitle={`${totalAtivos} ${
             totalAtivos ===
             1
