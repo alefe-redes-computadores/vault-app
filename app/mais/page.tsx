@@ -1,7 +1,7 @@
 // app/mais/page.tsx
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -30,6 +30,12 @@ import {
   AlertTriangle,
   BrainCircuit,
   Landmark,
+  Sun,
+  Moon,
+  Monitor,
+  Smartphone,
+  BookOpen,
+  CheckCircle2,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -50,7 +56,9 @@ import {
   reconcilePersistentNotifications,
 } from "@/lib/notifications";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { useTheme } from "next-themes";
+import { Capacitor } from "@capacitor/core";
+import { useBiometric } from "@/hooks/useBiometric";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
 import type {
@@ -97,11 +105,47 @@ function RigorousConfirmInput({
   );
 }
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
+const DIAGNOSTIC_OWNER_EMAIL = "alefejohsefe@gmail.com";
+
+const HELP_STEPS = [
+  {
+    title: "Escolha a pessoa certa",
+    description:
+      "Os dados de saúde e documentos pessoais seguem a pessoa ativa. Confira o perfil no topo antes de registrar informações.",
+    icon: Users,
+  },
+  {
+    title: "Registre sua rotina",
+    description:
+      "Use Hoje para doses e compromissos. O botão central adiciona medicamentos, tratamentos, consultas, exames e registros.",
+    icon: Activity,
+  },
+  {
+    title: "Entenda os alertas",
+    description:
+      "A Inteligência explica o motivo, as fontes e a cobertura de cada achado. Ela orienta revisão, mas não substitui avaliação profissional.",
+    icon: BrainCircuit,
+  },
+  {
+    title: "Seus dados continuam locais",
+    description:
+      "O Vault funciona local-first. A sincronização mantém uma cópia na nuvem e o diagnóstico ajuda quando houver divergências.",
+    icon: Shield,
+  },
+] as const;
 
 export default function MaisPage() {
   const { trigger } = useHapticFeedback();
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+
+  const [themeMounted, setThemeMounted] =
+    useState(false);
+
+  useEffect(() => {
+    setThemeMounted(true);
+  }, []);
 
   const { user, logout } = useAuth();
 
@@ -126,6 +170,11 @@ export default function MaisPage() {
   } = useBiometricPreference();
 
   const {
+    isAvailable: isBiometricAvailable,
+    isLoading: isBiometricChecking,
+  } = useBiometric();
+
+  const {
     isEnabled: isNotificationsEnabled,
     enable: enableNotifications,
     disable: disableNotifications,
@@ -144,6 +193,8 @@ export default function MaisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpStep, setHelpStep] = useState(0);
 
   // ============================================================
   // DADOS LOCAIS
@@ -399,14 +450,40 @@ export default function MaisPage() {
   // ============================================================
 
   const handleBiometricToggle = () => {
-    toggleBiometric();
-
     trigger("vibrate");
+
+    if (!Capacitor.isNativePlatform()) {
+      showToast(
+        "A biometria fica disponível somente no aplicativo instalado. O navegador e o PWA não conseguem usar a proteção nativa com segurança.",
+        "info",
+        6000
+      );
+      return;
+    }
+
+    if (isBiometricChecking) {
+      showToast(
+        "Verificando a biometria do dispositivo...",
+        "info"
+      );
+      return;
+    }
+
+    if (!isBiometricAvailable) {
+      showToast(
+        "Este aparelho não disponibilizou biometria ao Vault. Confira se há impressão digital ou reconhecimento facial configurado no Android.",
+        "info",
+        6000
+      );
+      return;
+    }
+
+    toggleBiometric();
 
     showToast(
       isBiometricEnabled
         ? "Biometria desativada"
-        : "Biometria ativada",
+        : "Biometria ativada no aplicativo",
       "info"
     );
   };
@@ -611,6 +688,10 @@ export default function MaisPage() {
     user?.email?.split("@")[0] ||
     "Usuário";
 
+  const isDiagnosticOwner =
+    user?.email?.trim().toLowerCase() ===
+    DIAGNOSTIC_OWNER_EMAIL;
+
   // ============================================================
   // ACESSO RÁPIDO
   // ============================================================
@@ -623,7 +704,7 @@ export default function MaisPage() {
       description: "Organização e segurança explicáveis",
       onClick: () => {
         trigger("vibrate");
-        router.push("/inteligencia");
+        router.replace("/inteligencia");
       },
     },
     {
@@ -633,7 +714,7 @@ export default function MaisPage() {
       description: "Credenciais",
       onClick: () => {
         trigger("vibrate");
-        router.push("/senhas");
+        router.replace("/senhas");
       },
     },
     {
@@ -643,7 +724,7 @@ export default function MaisPage() {
       description: "Crédito e débito",
       onClick: () => {
         trigger("vibrate");
-        router.push("/cartoes");
+        router.replace("/cartoes");
       },
     },
     {
@@ -653,7 +734,7 @@ export default function MaisPage() {
       description: "Agência e conta",
       onClick: () => {
         trigger("vibrate");
-        router.push("/contas");
+        router.replace("/contas");
       },
     },
     {
@@ -663,7 +744,7 @@ export default function MaisPage() {
       description: "Documentos",
       onClick: () => {
         trigger("vibrate");
-        router.push("/vaults");
+        router.replace("/vaults");
       },
     },
     {
@@ -673,7 +754,7 @@ export default function MaisPage() {
       description: "Gerenciar pessoas",
       onClick: () => {
         trigger("vibrate");
-        router.push("/pessoas");
+        router.replace("/pessoas");
       },
     },
     {
@@ -683,7 +764,7 @@ export default function MaisPage() {
       description: "Documentos salvos",
       onClick: () => {
         trigger("vibrate");
-        router.push("/favoritos");
+        router.replace("/favoritos");
       },
     },
   ];
@@ -694,7 +775,7 @@ export default function MaisPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen overflow-y-auto bg-void pb-28">
+      <main className="min-h-[100dvh] overflow-y-auto bg-void pb-28">
         {/* =====================================================
             CABEÇALHO
         ===================================================== */}
@@ -709,7 +790,7 @@ export default function MaisPage() {
           </p>
         </header>
 
-        <section className="space-y-6 px-5 pt-6">
+        <section className="space-y-5 px-4 pt-4 sm:px-5">
           {/* ===================================================
               PERFIL
           =================================================== */}
@@ -726,7 +807,7 @@ export default function MaisPage() {
             transition={{
               duration: 0.28,
             }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm"
+            className="rounded-[26px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <div className="flex items-start gap-4">
               {/* Avatar */}
@@ -737,10 +818,10 @@ export default function MaisPage() {
                     src={avatarUrl}
                     alt={displayName}
                     loading="lazy"
-                    className="h-20 w-20 rounded-full border-2 border-ice/20 object-cover"
+                    className="h-16 w-16 rounded-full border-2 border-ice/20 object-cover"
                   />
                 ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-3xl text-ink-muted">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-2xl text-ink-muted">
                     {displayName
                       .charAt(0)
                       .toUpperCase()}
@@ -908,9 +989,9 @@ export default function MaisPage() {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className="group flex min-h-[132px] flex-col items-center justify-center rounded-[24px] border border-surface-border/50 bg-surface p-4 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97]"
+                    className="group flex min-h-[104px] flex-col items-center justify-center rounded-[22px] border border-surface-border/50 bg-surface px-3 py-3 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97]"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-ice/10 bg-ice/10 text-ice transition-transform duration-200 group-hover:scale-105">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-ice/15 bg-ice/10 text-ice transition-transform duration-200 group-hover:scale-105">
                       <Icon size={20} />
                     </div>
 
@@ -932,38 +1013,79 @@ export default function MaisPage() {
           =================================================== */}
 
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.28,
-              delay: 0.06,
-            }}
-            className="rounded-[22px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.06 }}
           >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/30 bg-surface-raised text-ink-muted">
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
+              Aparência
+            </h2>
+
+            <div className="rounded-[22px] border border-surface-border/50 bg-surface p-3 shadow-sm">
+              <div className="mb-3 flex items-center gap-3 px-1">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
                   <Settings size={18} />
                 </div>
 
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink-primary">
-                    Tema
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">
+                    Tema do Vault
                   </p>
-
-                  <p className="truncate text-xs text-ink-muted">
-                    Claro, escuro ou automático
+                  <p className="text-xs text-ink-muted">
+                    Escolha como o aplicativo deve aparecer
                   </p>
                 </div>
               </div>
 
-              <ThemeToggle />
+              <div
+                className="grid grid-cols-3 gap-1.5 rounded-[18px] border border-surface-border/40 bg-void/40 p-1.5"
+                aria-label="Escolher tema"
+              >
+                {[
+                  {
+                    id: "light",
+                    label: "Claro",
+                    icon: Sun,
+                  },
+                  {
+                    id: "dark",
+                    label: "Escuro",
+                    icon: Moon,
+                  },
+                  {
+                    id: "system",
+                    label: "Sistema",
+                    icon: Monitor,
+                  },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  const selected =
+                    themeMounted &&
+                    theme === option.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        trigger("vibrate");
+                        setTheme(option.id);
+                      }}
+                      aria-pressed={selected}
+                      className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[14px] border px-2 py-2 transition-all active:scale-95 ${
+                        selected
+                          ? "border-ice/30 bg-ice/12 text-ice"
+                          : "border-transparent text-ink-muted hover:bg-surface-raised"
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span className="text-[11px] font-medium">
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
 
@@ -1114,293 +1236,159 @@ export default function MaisPage() {
           </motion.div>
 
           {/* ===================================================
-              DIAGNÓSTICO
+              DIAGNÓSTICO — SOMENTE PROPRIETÁRIO
           =================================================== */}
 
-          <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.28,
-              delay: 0.1,
-            }}
-            className="overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface/60 shadow-sm"
-          >
-            <button
-              onClick={() => {
-                trigger("vibrate");
-                setDiagnosticOpen(
-                  !diagnosticOpen
-                );
-              }}
-              className="flex w-full items-center justify-between p-4 text-left transition-all active:scale-[0.98]"
+          {isDiagnosticOwner && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: 0.1 }}
+              className="overflow-hidden rounded-[22px] border border-violet-400/20 bg-violet-400/[0.035] shadow-sm"
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice">
-                  <Terminal size={18} />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink-primary">
-                    Ferramentas de diagnóstico
-                  </p>
-
-                  <p className="truncate text-xs text-ink-muted">
-                    {syncLogs.length > 0
-                      ? `${syncLogs.length} eventos registrados`
-                      : "Nenhum log disponível"}
-                  </p>
-                </div>
-              </div>
-
-              {diagnosticOpen ? (
-                <ChevronUp
-                  size={18}
-                  className="shrink-0 text-ink-faint"
-                />
-              ) : (
-                <ChevronDown
-                  size={18}
-                  className="shrink-0 text-ink-faint"
-                />
-              )}
-            </button>
-
-            <AnimatePresence>
-              {diagnosticOpen && (
-                <motion.div
-                  initial={{
-                    height: 0,
-                    opacity: 0,
-                  }}
-                  animate={{
-                    height: "auto",
-                    opacity: 1,
-                  }}
-                  exit={{
-                    height: 0,
-                    opacity: 0,
-                  }}
-                  transition={{
-                    duration: 0.3,
-                  }}
-                  className="overflow-hidden"
-                >
-                  <div className="space-y-2 border-t border-surface-border/30 px-4 pb-4 pt-3">
-                    {/* Diagnóstico */}
-
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        router.push(
-                          "/diagnostico"
-                        );
-                      }}
-                      className="flex w-full items-center gap-4 rounded-[20px] border border-surface-border/30 bg-surface p-3 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.985]"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
-                        <Activity size={16} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-primary">
-                          Diagnóstico de dados
-                        </p>
-
-                        <p className="text-xs text-ink-muted">
-                          Compara local com nuvem
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        size={16}
-                        className="shrink-0 text-ink-faint"
-                      />
-                    </button>
-
-                    {/* Destravar sincronização */}
-
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-                        setShowUnlockModal(true);
-                      }}
-                      disabled={
-                        pendingQueueCount === 0
-                      }
-                      className={`flex w-full items-center gap-4 rounded-[20px] border p-3 text-left shadow-sm transition-all active:scale-[0.985] ${
-                        pendingQueueCount === 0
-                          ? "border-surface-border/30 bg-surface/50 opacity-50"
-                          : "border-amber-400/20 bg-amber-400/5 hover:bg-amber-400/10"
-                      }`}
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-400/20 text-amber-400">
-                        <ShieldAlert size={16} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-primary">
-                          Repetir itens com falha
-                        </p>
-
-                        <p className="text-xs text-ink-muted">
-                          {pendingQueueCount ===
-                          0
-                            ? "Nenhum item travado"
-                            : `${pendingQueueCount} ${
-                                pendingQueueCount ===
-                                1
-                                  ? "item preso"
-                                  : "itens presos"
-                              } na fila`}
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        size={16}
-                        className="shrink-0 text-ink-faint"
-                      />
-                    </button>
-
-                    {/* Logs */}
-
-                    <button
-                      onClick={handleShowLogs}
-                      disabled={
-                        syncLogs.length === 0
-                      }
-                      className={`flex w-full items-center gap-4 rounded-[20px] border p-3 text-left shadow-sm transition-all active:scale-[0.985] ${
-                        syncLogs.length === 0
-                          ? "border-surface-border/30 bg-surface/50 opacity-50"
-                          : "border-surface-border/30 bg-surface hover:bg-surface-raised/80"
-                      }`}
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
-                        <Terminal size={16} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-primary">
-                          Ver logs de sincronização
-                        </p>
-
-                        <p className="text-xs text-ink-muted">
-                          {syncLogs.length > 0
-                            ? `${syncLogs.length} eventos registrados`
-                            : "Nenhum log disponível"}
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        size={16}
-                        className="shrink-0 text-ink-faint"
-                      />
-                    </button>
-
-                    {/* Limpar logs */}
-
-                    <button
-                      onClick={() => {
-                        trigger("vibrate");
-
-                        clearLogs();
-
-                        showToast(
-                          "Logs limpos com sucesso!",
-                          "info"
-                        );
-                      }}
-                      disabled={
-                        syncLogs.length === 0
-                      }
-                      className={`flex w-full items-center gap-4 rounded-[20px] border p-3 text-left shadow-sm transition-all active:scale-[0.985] ${
-                        syncLogs.length === 0
-                          ? "border-surface-border/30 bg-surface/50 opacity-50"
-                          : "border-surface-border/30 bg-surface hover:bg-surface-raised/80"
-                      }`}
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ice/10 text-ice">
-                        <RefreshCw size={16} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink-primary">
-                          Limpar logs
-                        </p>
-
-                        <p className="text-xs text-ink-muted">
-                          Remove os logs de sincronização
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        size={16}
-                        className="shrink-0 text-ink-faint"
-                      />
-                    </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  setDiagnosticOpen((current) => !current);
+                }}
+                aria-expanded={diagnosticOpen}
+                className="flex min-h-16 w-full items-center justify-between p-3.5 text-left transition-all active:scale-[0.99]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10 text-violet-400">
+                    <Terminal size={18} />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-ink-primary">
+                        Diagnóstico técnico
+                      </p>
+                      <span className="rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-300">
+                        Proprietário
+                      </span>
+                    </div>
+
+                    <p className="truncate text-xs text-ink-muted">
+                      {pendingQueueCount > 0
+                        ? `${pendingQueueCount} item(ns) aguardando análise`
+                        : syncLogs.length > 0
+                          ? `${syncLogs.length} eventos registrados`
+                          : "Fila limpa"}
+                    </p>
+                  </div>
+                </div>
+
+                {diagnosticOpen
+                  ? <ChevronUp size={17} className="text-ink-faint" />
+                  : <ChevronDown size={17} className="text-ink-faint" />}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {diagnosticOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid gap-2 border-t border-violet-400/10 p-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          trigger("vibrate");
+                          router.push("/diagnostico");
+                        }}
+                        className="flex min-h-14 items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface p-3 text-left active:scale-[0.985]"
+                      >
+                        <Activity size={17} className="text-ice" />
+                        <span className="text-xs font-medium text-ink-primary">
+                          Abrir diagnóstico
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={pendingQueueCount === 0}
+                        onClick={() => setShowUnlockModal(true)}
+                        className="flex min-h-14 items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface p-3 text-left active:scale-[0.985] disabled:opacity-40"
+                      >
+                        <ShieldAlert size={17} className="text-amber-400" />
+                        <span className="text-xs font-medium text-ink-primary">
+                          Repetir falhas
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={syncLogs.length === 0}
+                        onClick={handleShowLogs}
+                        className="flex min-h-14 items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface p-3 text-left active:scale-[0.985] disabled:opacity-40"
+                      >
+                        <Terminal size={17} className="text-violet-400" />
+                        <span className="text-xs font-medium text-ink-primary">
+                          Consultar logs
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={syncLogs.length === 0}
+                        onClick={() => {
+                          clearLogs();
+                          showToast("Logs limpos", "info");
+                        }}
+                        className="flex min-h-14 items-center gap-3 rounded-2xl border border-surface-border/40 bg-surface p-3 text-left active:scale-[0.985] disabled:opacity-40"
+                      >
+                        <Trash2 size={17} className="text-coral" />
+                        <span className="text-xs font-medium text-ink-primary">
+                          Limpar logs
+                        </span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
 
           {/* ===================================================
-              SUPORTE
+              AJUDA
           =================================================== */}
 
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.28,
-              delay: 0.12,
-            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, delay: 0.12 }}
           >
             <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-              Suporte
+              Ajuda
             </h2>
 
             <button
+              type="button"
               onClick={() => {
                 trigger("vibrate");
-
-                showToast(
-                  "Em breve...",
-                  "info"
-                );
+                setHelpStep(0);
+                setHelpOpen(true);
               }}
-              className="flex w-full items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.985]"
+              className="flex min-h-16 w-full items-center gap-3 rounded-[22px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3.5 text-left shadow-sm transition-all hover:bg-emerald-400/[0.06] active:scale-[0.985]"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice">
-                <HelpCircle size={18} />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-400">
+                <BookOpen size={19} />
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-ink-primary">
-                  Ajuda
+                <p className="text-sm font-semibold text-ink-primary">
+                  Conheça o Vault
                 </p>
-
                 <p className="text-xs text-ink-muted">
-                  Dúvidas e suporte
+                  Um guia rápido pelas funções principais
                 </p>
               </div>
 
-              <ChevronRight
-                size={16}
-                className="shrink-0 text-ink-faint"
-              />
+              <ChevronRight size={16} className="text-ink-faint" />
             </button>
           </motion.div>
 
@@ -1490,6 +1478,102 @@ export default function MaisPage() {
             </p>
           </motion.div>
         </section>
+
+        <AnimatePresence>
+          {helpOpen && (() => {
+            const step = HELP_STEPS[helpStep];
+            const StepIcon = step.icon;
+            const isLast =
+              helpStep === HELP_STEPS.length - 1;
+
+            return (
+              <motion.div
+                className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setHelpOpen(false)}
+              >
+                <motion.section
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Guia do Vault"
+                  initial={{ y: 36, opacity: 0, scale: 0.98 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 30, opacity: 0, scale: 0.98 }}
+                  onClick={(event) => event.stopPropagation()}
+                  className="w-full max-w-md rounded-[28px] border border-surface-border/60 bg-surface p-5 shadow-2xl"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ice">
+                      Guia do Vault
+                    </span>
+                    <span className="text-xs text-ink-muted">
+                      {helpStep + 1}/{HELP_STEPS.length}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 flex h-16 w-16 items-center justify-center rounded-[22px] border border-ice/20 bg-ice/10 text-ice">
+                    <StepIcon size={28} />
+                  </div>
+
+                  <h2 className="mt-5 font-display text-xl font-semibold text-ink-primary">
+                    {step.title}
+                  </h2>
+
+                  <p className="mt-2 min-h-20 text-sm leading-relaxed text-ink-muted">
+                    {step.description}
+                  </p>
+
+                  <div className="mt-5 flex gap-1.5">
+                    {HELP_STEPS.map((_, index) => (
+                      <span
+                        key={index}
+                        className={`h-1.5 flex-1 rounded-full ${
+                          index <= helpStep
+                            ? "bg-ice"
+                            : "bg-surface-border"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (helpStep === 0) {
+                          setHelpOpen(false);
+                        } else {
+                          setHelpStep((current) => current - 1);
+                        }
+                      }}
+                      className="min-h-12 rounded-2xl border border-surface-border/60 bg-surface-raised px-4 text-sm font-semibold text-ink-primary active:scale-95"
+                    >
+                      {helpStep === 0 ? "Fechar" : "Voltar"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trigger("success");
+
+                        if (isLast) {
+                          setHelpOpen(false);
+                        } else {
+                          setHelpStep((current) => current + 1);
+                        }
+                      }}
+                      className="min-h-12 rounded-2xl bg-ice px-4 text-sm font-bold text-void shadow-lg shadow-ice/15 active:scale-95"
+                    >
+                      {isLast ? "Concluir" : "Avançar"}
+                    </button>
+                  </div>
+                </motion.section>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
 
         {/* =====================================================
             MODAL — LOGOUT

@@ -543,7 +543,7 @@ export function BottomNav() {
     }
 
     trigger("vibrate");
-    router.push(path);
+    router.replace(path);
   };
 
   const isActive = (

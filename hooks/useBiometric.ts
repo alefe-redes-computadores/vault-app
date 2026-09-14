@@ -45,8 +45,14 @@ export function useBiometric(options: UseBiometricOptions = {}) {
             setBiometricType('iris');
           }
         } else {
-          setIsAvailable(true);
-          setBiometricType('fingerprint');
+          /*
+           * O plugin NativeBiometric só pode autenticar no
+           * aplicativo instalado pelo Capacitor. PWA e navegador
+           * não devem anunciar uma proteção que não conseguem
+           * executar.
+           */
+          setIsAvailable(false);
+          setBiometricType('none');
         }
       } catch (error) {
         console.error('Erro ao verificar biometria:', error);
@@ -60,7 +66,7 @@ export function useBiometric(options: UseBiometricOptions = {}) {
   }, []);
 
   const authenticate = async () => {
-    if (!isAvailable) {
+    if (!Capacitor.isNativePlatform() || !isAvailable) {
       const error = new Error('Biometria não disponível neste dispositivo');
       onError?.(error);
       return false;
