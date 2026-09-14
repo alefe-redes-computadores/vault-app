@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:export": "NEXT_CONFIG_FILE=next.config.export.js next build",
-    "start": "next start",
+    "check:versions": "node scripts/check-runtime-versions.mjs",
+    "build": "npm run check:versions && node node_modules/next/dist/bin/next build",
+    "build:export": "npm run check:versions && CAPACITOR_BUILD=1 node node_modules/next/dist/bin/next build",
+    "start": "node node_modules/next/dist/bin/next start",
     "lint": "next lint",
-    "cap:sync": "npx cap sync",
-    "cap:android": "npx cap open android",
-    "cap:build": "npm run build:export && npx cap sync"
+    "cap:sync": "node node_modules/@capacitor/cli/bin/capacitor sync android",
+    "cap:android": "node node_modules/@capacitor/cli/bin/capacitor open android",
+    "cap:build": "npm run build:export && npm run cap:sync"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.0",

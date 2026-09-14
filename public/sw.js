@@ -1,4 +1,4 @@
-const CACHE_NAME = "vault-shell-v6-1";
+const CACHE_NAME = "vault-shell-v24";
 const OFFLINE_URL = "/offline.html";
 const OPTIONAL_SHELL = ["/manifest.json", "/icon-192x192.png", "/icon-512x512.png"];
 

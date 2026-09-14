@@ -82,6 +82,8 @@ import {
   ListSearch,
 } from "@/components/list";
 
+import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -321,6 +323,11 @@ export default function MedicamentosListPage() {
         medicamentosTodas,
         activePersonId,
       ]
+    );
+
+  const regulatoryProfiles =
+    useMedicationRegulatoryProfiles(
+      medicamentosDaPessoa
     );
 
   // ==========================================================
@@ -805,9 +812,12 @@ export default function MedicamentosListPage() {
       const cardColor =
         isSuspenso
           ? "#fb7185"
-          : receita
-              ?.corBorda ||
-            cor1;
+          : regulatoryProfiles[med.id]?.verified
+            ? regulatoryProfiles[med.id].accent
+            : receita?.corBorda || cor1;
+
+      const regulatoryProfile =
+        regulatoryProfiles[med.id];
 
       const rotinaParcial =
         !isSOS &&
@@ -999,7 +1009,15 @@ export default function MedicamentosListPage() {
                 </div>
 
                 <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
-                  {receita && (
+                  {regulatoryProfile ? (
+                    <span
+                      className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatoryProfile.badgeClass}`}
+                      title={`${regulatoryProfile.detail}${regulatoryProfile.sourceLabel ? ` Fonte: ${regulatoryProfile.sourceLabel}.` : ""}`}
+                    >
+                      {regulatoryProfile.label}
+                      {!regulatoryProfile.verified && regulatoryProfile.tone !== "unknown" ? " · cadastro" : ""}
+                    </span>
+                  ) : receita && (
                     <span
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
                       style={{

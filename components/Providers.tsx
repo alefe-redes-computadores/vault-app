@@ -254,7 +254,7 @@ export function Providers({
 
         void StatusBar.setStyle({
           style:
-            Style.Dark,
+            Style.Light,
         }).catch(
           (
             error

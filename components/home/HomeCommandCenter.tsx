@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Activity, Bell, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 
 type Props = {
@@ -41,6 +41,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <button type="button" key={path} onClick={() => go(path)} className={`flex min-h-[88px] items-center gap-3 rounded-[20px] border p-3 text-left ${tone}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17} /></div><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">{label}</p><p className="mt-0.5 line-clamp-2 text-[9px] text-ink-muted">{sub}</p></div></button>)}
 
           <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-400/20 bg-rose-400/8 p-3 text-left"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17} /></div><div><p className="text-xs font-semibold text-ink-primary">Cirurgias</p><p className="mt-0.5 text-[9px] text-ink-muted">Procedimentos</p></div></button>
+          <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-300/20 bg-rose-300/[0.055] p-3 text-left"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-200"><BookHeart size={17} /></div><div><p className="text-xs font-semibold text-ink-primary">Plano de segurança</p><p className="mt-0.5 text-[9px] text-ink-muted">Apoio e contatos</p></div></button>
         </div>
       </div>
 

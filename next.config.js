@@ -1,16 +1,22 @@
 /** @type {import('next').NextConfig} */
 const { withSentryConfig } = require("@sentry/nextjs");
 
+const isCapacitorExport = process.env.CAPACITOR_BUILD === "1";
+
 const nextConfig = {
+  ...(isCapacitorExport
+    ? {
+        output: "export",
+        trailingSlash: true,
+      }
+    : {}),
+
   images: {
     unoptimized: true,
   },
 
   reactStrictMode: true,
 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 module.exports = withSentryConfig(nextConfig, {
@@ -32,4 +38,8 @@ module.exports = withSentryConfig(nextConfig, {
   widenClientFileUpload: false,
 
   disableLogger: true,
+
+  sourcemaps: {
+    disable: isCapacitorExport,
+  },
 });

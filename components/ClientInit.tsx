@@ -9,7 +9,7 @@ export default function ClientInit() {
     if (Capacitor.isNativePlatform()) {
       try {
         StatusBar.setOverlaysWebView({ overlay: true });
-        StatusBar.setStyle({ style: Style.Dark });
+        StatusBar.setStyle({ style: Style.Light });
       } catch (e) {
         console.error('Erro ao configurar StatusBar nativa:', e);
       }

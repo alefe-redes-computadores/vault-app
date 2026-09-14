@@ -8,17 +8,17 @@ import {
 import {
   normalizeMedicationInput,
   normalizeMedicationText,
-  normalizeMedicationUnit,
 } from "./normalize";
 
 import type {
-  MedicationPresentation,
   MedicationReference,
   MedicationReferenceMatch,
   MedicationValidationInput,
   MedicationValidationIssue,
   MedicationValidationResult,
 } from "./types";
+
+import { presentationMatchesDosage } from "./presentation-match";
 
 import type {
   MedicationCatalogProvider,
@@ -44,49 +44,6 @@ function buildIssueId(
       "no-reference",
   ].join(
     ":"
-  );
-}
-
-function presentationsMatch(
-  presentation:
-    MedicationPresentation,
-  dosageValue: number,
-  dosageUnit: string
-): boolean {
-  if (
-    presentation.value !==
-      undefined &&
-    presentation.unit
-  ) {
-    return (
-      presentation.value ===
-        dosageValue &&
-      normalizeMedicationUnit(
-        presentation.unit
-      ) ===
-        dosageUnit
-    );
-  }
-
-  const normalizedLabel =
-    normalizeMedicationText(
-      presentation.label
-    ).replace(
-      /\s+/g,
-      ""
-    );
-
-  const expected =
-    normalizeMedicationText(
-      `${dosageValue} ${dosageUnit}`
-    ).replace(
-      /\s+/g,
-      ""
-    );
-
-  return (
-    normalizedLabel ===
-    expected
   );
 }
 
@@ -181,10 +138,9 @@ function validatePresentation(
       (
         presentation
       ) =>
-        presentationsMatch(
+        presentationMatchesDosage(
           presentation,
-          input.dosageValue!,
-          input.dosageUnit!
+          input.originalDosage ?? `${input.dosageValue} ${input.dosageUnit}`
         )
     );
 

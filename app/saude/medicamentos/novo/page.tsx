@@ -7,6 +7,7 @@ import {
 
 
 import { validateMedication } from "@/lib/medication-intelligence/validate";
+import { assessMedicationCatalogQuality } from "@/lib/medication-catalog/data-quality";
 import { Info as InfoIcon } from "lucide-react";
 import {
   useEffect,
@@ -1542,6 +1543,9 @@ export default function NovoMedicamentoPage() {
       false
     );
 
+  const dosageAcknowledgementRef =
+    useRef<string | null>(null);
+
   const fileInputRef =
     useRef<HTMLInputElement>(
       null
@@ -2067,6 +2071,11 @@ export default function NovoMedicamentoPage() {
     useState(
       false
     );
+
+  const [
+    showDosageConfirmation,
+    setShowDosageConfirmation,
+  ] = useState(false);
 
   const [
     retroactivePreview,
@@ -3064,6 +3073,20 @@ export default function NovoMedicamentoPage() {
 
   const handleSubmit =
     () => {
+      const dosageSignature = [
+        catalogReference?.id ?? "no-reference",
+        dosagem.trim(),
+      ].join("|");
+
+      if (
+        catalogPresentationIssue &&
+        dosageAcknowledgementRef.current !== dosageSignature
+      ) {
+        trigger("error");
+        setShowDosageConfirmation(true);
+        return;
+      }
+
       const preview =
         buildRetroactivePreview();
 
@@ -4114,20 +4137,18 @@ export default function NovoMedicamentoPage() {
     catalogPresentations.length >
       0;
 
-  const dosageMatchesCatalog =
-    !dosageCanBeChecked ||
-    catalogPresentations.some(
-      (
-        presentation
-      ) =>
-        normalizeCatalogComparisonText(
-          presentation.label
-        ).includes(
-          normalizeCatalogComparisonText(
-            dosagem
-          )
-        )
-    );
+  const catalogDosageQuality = assessMedicationCatalogQuality(
+    dosagem,
+    catalogPresentations,
+    Boolean(catalogReference)
+  );
+
+  const dosageMatchesCatalog = catalogDosageQuality.matches;
+
+  const catalogPresentationIssue =
+    catalogValidation?.issues.find(
+      (issue) => issue.code === "presentation_not_found" && issue.confidence === "high"
+    ) ?? null;
 
   const catalogPresentationSuggestions =
     Array.from(
@@ -7435,6 +7456,24 @@ export default function NovoMedicamentoPage() {
             </>
           )}
         </AnimatePresence>
+
+        <ConfirmationModal
+          isOpen={showDosageConfirmation}
+          onClose={() => setShowDosageConfirmation(false)}
+          onConfirm={() => {
+            dosageAcknowledgementRef.current = [
+              catalogReference?.id ?? "no-reference",
+              dosagem.trim(),
+            ].join("|");
+            setShowDosageConfirmation(false);
+            window.setTimeout(handleSubmit, 0);
+          }}
+          title="Conferir concentração"
+          message={`A concentração "${dosagem}" não foi encontrada nas apresentações consultadas para ${catalogReference?.canonicalName ?? nome}. Confira a receita ou a embalagem. Se a informação estiver correta, você pode mantê-la como dado manual.`}
+          confirmLabel="Manter como informado"
+          cancelLabel="Revisar cadastro"
+          type="warning"
+        />
 
         <ConfirmationModal
           isOpen={

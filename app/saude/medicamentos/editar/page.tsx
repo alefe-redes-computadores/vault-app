@@ -1496,6 +1496,9 @@ function EditarMedicamentoContent() {
       false
     );
 
+  const dosageAcknowledgementRef =
+    useRef<string | null>(null);
+
   // ==========================================================
   // ESTADO GERAL
   // ==========================================================
@@ -1539,6 +1542,11 @@ function EditarMedicamentoContent() {
     useState(
       false
     );
+
+  const [
+    showDosageConfirmation,
+    setShowDosageConfirmation,
+  ] = useState(false);
 
   const [
     quickDoseOpen,
@@ -3875,6 +3883,20 @@ function EditarMedicamentoContent() {
         return;
       }
 
+      const dosageSignature = [
+        catalogReference?.id ?? "no-reference",
+        dosagem.trim(),
+      ].join("|");
+
+      if (
+        catalogPresentationIssue &&
+        dosageAcknowledgementRef.current !== dosageSignature
+      ) {
+        trigger("error");
+        setShowDosageConfirmation(true);
+        return;
+      }
+
       trigger(
         "vibrate"
       );
@@ -5026,6 +5048,11 @@ function EditarMedicamentoContent() {
           "prescription_type_mismatch"
       ) ??
     [];
+
+  const catalogPresentationIssue =
+    catalogValidation?.issues.find(
+      (issue) => issue.code === "presentation_not_found" && issue.confidence === "high"
+    ) ?? null;
 
   const catalogNameIsDifferent =
     Boolean(
@@ -8786,6 +8813,24 @@ function EditarMedicamentoContent() {
               );
             }
           }
+        />
+
+        <ConfirmationModal
+          isOpen={showDosageConfirmation}
+          onClose={() => setShowDosageConfirmation(false)}
+          onConfirm={() => {
+            dosageAcknowledgementRef.current = [
+              catalogReference?.id ?? "no-reference",
+              dosagem.trim(),
+            ].join("|");
+            setShowDosageConfirmation(false);
+            window.setTimeout(() => void handleSubmit(), 0);
+          }}
+          title="Conferir concentração"
+          message={`A concentração "${dosagem}" não foi encontrada nas apresentações consultadas para ${catalogReference?.canonicalName ?? nome}. Confira a receita ou a embalagem. Se a informação estiver correta, você pode mantê-la como dado manual.`}
+          confirmLabel="Manter como informado"
+          cancelLabel="Revisar cadastro"
+          type="warning"
         />
 
         <ConfirmationModal

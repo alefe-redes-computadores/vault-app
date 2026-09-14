@@ -22,7 +22,11 @@ ok("inteligência geral fica no Mais", more.includes('router.push("/inteligencia
 ok("inteligência possui página explicável", intelligence.includes("VaultInsightSheet") && intelligence.includes("evidências"));
 ok("motor não descriptografa segredos", !engine.includes("decryptPassword") && !repo.includes("decryptPassword"));
 ok("escopo usa pessoa e usuário", repo.includes("personId") && repo.includes("userId"));
-ok("postura não promete segurança absoluta", intelligence.includes("não afirma segurança absoluta"));
+ok(
+  "postura não promete segurança absoluta",
+  intelligence.includes("não afirma segurança absoluta") ||
+    intelligence.includes("não promete segurança absoluta")
+);
 
 for (const label of checks) console.log(`OK: ${label}`);
 console.log(`CONTRATOS CONSOLIDAÇÃO V8-R2: OK (${checks.length})`);

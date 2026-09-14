@@ -1,0 +1,15 @@
+import fs from "node:fs";
+const page = fs.readFileSync("app/diagnostico/page.tsx", "utf8");
+let count = 0;
+const ok = (condition, label) => { if (!condition) throw new Error(`FALHOU: ${label}`); count += 1; console.log(`OK: ${label}`); };
+ok(page.includes("Reconciliação de doses"), "diagnóstico possui reconciliação por ID");
+ok(page.includes('.from("dose_logs")') && page.includes("remoteById"), "auditoria compara nuvem e aparelho por ID");
+ok(page.includes("localOnly") && page.includes("remoteOnly") && page.includes("divergent") && page.includes("invalidLocal"), "auditoria classifica quatro estados");
+ok(page.includes("validLocalDose") && page.includes("person.user_id !== user.id"), "reparo valida usuário e pessoa");
+ok(page.includes("medication.person_id !== current.person_id"), "reparo valida vínculo do medicamento");
+ok(page.includes('enfileirarOperacao("doseLogs", "add"'), "reparo reutiliza fila canônica");
+ok(page.includes("await processQueue()"), "reparo usa processador oficial");
+ok(!page.includes("db.doseLogs.delete") && !page.includes('.from("dose_logs").delete'), "reconciliação não apaga doses");
+ok(page.includes("repairArmed") && page.includes("Confirmar envio"), "reparo exige confirmação em dois passos");
+ok(page.includes("Nada é apagado ou sobrescrito automaticamente"), "interface explica postura conservadora");
+console.log(`CONTRATOS RECONCILIAÇÃO V25.1: OK (${count})`);
