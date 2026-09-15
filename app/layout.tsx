@@ -230,7 +230,7 @@ export default function RootLayout({
 
         <link
           rel="apple-touch-icon"
-          href="/icon-192x192.png"
+          href="/apple-icon.png?v=2"
         />
 
         <meta
@@ -255,7 +255,7 @@ export default function RootLayout({
 
         <meta
           name="msapplication-TileImage"
-          content="/icon-144x144.png"
+          content="/icon-v2-512x512.png"
         />
       </head>
 

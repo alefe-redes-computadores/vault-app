@@ -1,6 +1,6 @@
-const CACHE_NAME = "vault-shell-v24";
+const CACHE_NAME = "vault-shell-v25-6";
 const OFFLINE_URL = "/offline.html";
-const OPTIONAL_SHELL = ["/manifest.json", "/icon-192x192.png", "/icon-512x512.png"];
+const OPTIONAL_SHELL = ["/manifest.json", "/icon-v2-192x192.png", "/icon-v2-512x512.png", "/icon-maskable-v2-1024x1024.png", "/apple-icon.png?v=2"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {

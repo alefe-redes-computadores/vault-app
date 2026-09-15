@@ -12,10 +12,6 @@ import {
   useReducedMotion,
 } from "framer-motion";
 
-import {
-  ShieldCheck,
-} from "lucide-react";
-
 interface SplashScreenProps {
   children: React.ReactNode;
   minDisplayTime?: number;
@@ -160,12 +156,15 @@ export function SplashScreen({
                     1,
                   ],
                 }}
-                className="ring-gradient glow-ice flex h-[72px] w-[72px] items-center justify-center rounded-[22px]"
+                className="flex items-center justify-center"
               >
-                <ShieldCheck
-                  size={34}
-                  className="text-void"
-                  strokeWidth={1.9}
+                <img
+                  src="/icon-v2-192x192.png"
+                  alt=""
+                  width={96}
+                  height={96}
+                  className="h-24 w-24 object-contain"
+                  aria-hidden="true"
                 />
               </motion.div>
 

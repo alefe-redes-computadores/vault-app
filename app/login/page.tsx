@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2, ArrowRight, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthDeepLink } from "@/lib/hooks/useAuthDeepLink";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -120,9 +120,13 @@ export default function LoginPage() {
           transition={{ duration: 0.4 }}
           className="mb-8 text-center"
         >
-          <div className="ring-gradient glow-ice mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[22px]">
-            <ShieldCheck size={30} className="text-void" strokeWidth={2.2} />
-          </div>
+          <img
+            src="/icon-v2-192x192.png"
+            alt="Vault"
+            width={80}
+            height={80}
+            className="mb-4 inline-block h-20 w-20 object-contain"
+          />
           <h1 className="text-gradient font-display text-3xl font-bold">Vault</h1>
           <p className="mt-1 text-sm text-ink-muted">
             Seus documentos, sempre à mão
