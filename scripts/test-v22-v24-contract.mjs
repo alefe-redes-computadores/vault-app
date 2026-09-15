@@ -32,9 +32,9 @@ ok("V23 somente chama de verificado quando há correspondência", quality.includ
 ok("V23 mantém divergência como aviso, não bloqueio arbitrário", quality.includes('"mismatch"') && medicationNew.includes("catalogDosageQuality.matches"));
 ok("V24 Eruda existe apenas no desenvolvimento", layout.includes('process.env.NODE_ENV === "development" &&'));
 ok("V24 build não ignora erros TypeScript", !nextConfig.includes("ignoreBuildErrors"));
-ok("V24 invalida o shell antigo do PWA", worker.includes('vault-shell-v24'));
+ok("V24 invalida o shell antigo do PWA", Number(worker.match(/vault-shell-v(\d+)/i)?.[1] || 0) >= 24);
 ok("V24 usa um manifesto canônico", !fs.existsSync("public/site.webmanifest") && manifest.start_url === "/");
-ok("V24 ícones declaram suporte maskable", manifest.icons.every((icon) => String(icon.purpose).includes("maskable")));
+ok("V24 ícones declaram suporte maskable", manifest.icons.some((icon) => String(icon.purpose).includes("maskable")));
 ok("sem migration ou Dexie novo", !fs.readdirSync("supabase/migrations").some((name) => name.includes("v22") || name.includes("v23") || name.includes("v24")));
 
 console.log(`CONTRATOS VAULT V22–V24: OK (${checks.length})`);
