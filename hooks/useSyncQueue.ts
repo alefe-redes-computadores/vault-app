@@ -4468,42 +4468,67 @@ export function useSyncQueue() {
       ) {
         case "add":
         case "update": {
-          const {
-            error,
-          } =
+          if (!settings.user_id) {
+            throw new Error("Settings sync error: user_id ausente.");
+          }
+
+          const updatedAt =
+            settings.updated_at || new Date().toISOString();
+
+          const { data: remoteSetting, error: lookupError } =
             await client
-              .from(
-                "settings"
-              )
-              .upsert(
-                {
-                  id:
-                    settings.id,
+              .from("settings")
+              .select("id")
+              .eq("user_id", settings.user_id)
+              .maybeSingle();
 
-                  user_id:
-                    settings.user_id,
+          if (lookupError) {
+            throw new Error(`Settings lookup error: ${lookupError.message}`);
+          }
 
-                  default_person_id:
-                    settings.default_person_id ||
-                    null,
+          const remoteId = remoteSetting?.id || settings.id;
 
-                  updated_at:
-                    settings.updated_at ||
-                    new Date()
-                      .toISOString(),
-                },
-                {
-                  onConflict:
-                    "id",
-                }
-              );
+          const { error } = remoteSetting?.id
+            ? await client
+                .from("settings")
+                .update({
+                  default_person_id: settings.default_person_id || null,
+                  updated_at: updatedAt,
+                })
+                .eq("id", remoteSetting.id)
+                .eq("user_id", settings.user_id)
+            : await client
+                .from("settings")
+                .insert({
+                  id: settings.id,
+                  user_id: settings.user_id,
+                  default_person_id: settings.default_person_id || null,
+                  updated_at: updatedAt,
+                });
 
-          if (
-            error
-          ) {
-            throw new Error(
-              `Settings sync error: ${error.message}`
-            );
+          if (error) {
+            throw new Error(`Settings sync error: ${error.message}`);
+          }
+
+          /*
+           * Uma configuração é única por usuário. Se a nuvem já possuía
+           * outro UUID, adotamos esse UUID localmente para impedir duas
+           * configurações concorrentes nos próximos pulls.
+           */
+          if (remoteId && settings.id && remoteId !== settings.id) {
+            const localSetting = await db.settings.get(settings.id);
+
+            if (localSetting) {
+              await db.transaction("rw", db.settings, async () => {
+                await db.settings.delete(settings.id!);
+                await db.settings.put({
+                  ...localSetting,
+                  id: remoteId,
+                  updated_at: updatedAt,
+                  synced: true,
+                });
+              });
+            }
           }
 
           break;

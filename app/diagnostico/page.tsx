@@ -107,6 +107,10 @@ export default function DiagnosticoPage() {
   const queueHealth = useMemo(() => summarizeSyncQueue(queue), [queue]);
   const failed = queueHealth.failed;
   const deferred = queueHealth.deferred;
+  const failedItems = useMemo(
+    () => queue.filter((item) => getSyncQueueState(item) === "failed"),
+    [queue]
+  );
   const byTable = useMemo(
     () =>
       queue.reduce<Record<string, { total: number; failed: number }>>((result, item) => {
@@ -276,8 +280,8 @@ export default function DiagnosticoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void px-5 pb-28 text-ink-primary">
-        <header className="sticky top-0 z-20 -mx-5 flex items-center gap-3 border-b border-surface-border/40 bg-void/90 px-5 header-safe-top pb-4 backdrop-blur-xl">
+      <main className="min-h-[100dvh] bg-void px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] text-ink-primary">
+        <header className="sticky top-0 z-20 -mx-4 flex items-center gap-3 border-b border-surface-border/40 bg-void/90 px-4 header-safe-top pb-3 backdrop-blur-xl">
           <button onClick={() => router.replace("/mais")} aria-label="Voltar para Mais" className="rounded-full border border-surface-border p-3">
             <ArrowLeft size={18} />
           </button>
@@ -286,7 +290,7 @@ export default function DiagnosticoPage() {
 
         {!isOnline && <div className="mt-5 flex gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4"><WifiOff className="shrink-0 text-amber-400" /><p className="text-sm text-ink-muted">Sem rede. Seus dados permanecem no aparelho e a fila será retomada quando a conexão voltar.</p></div>}
 
-        <section className="mt-5 grid grid-cols-3 gap-2">
+        <section className="mt-4 grid grid-cols-3 gap-2">
           {([ ["Prontos", queueHealth.ready], ["Com falha", failed], ["Aguardando", deferred] ] as const).map(([label, value]) => <div key={label} className={`rounded-2xl border bg-surface p-3 text-center ${label === "Com falha" && value > 0 ? "border-coral/35" : "border-surface-border"}`}><strong className="text-xl">{value}</strong><p className="text-[11px] text-ink-muted">{label}</p></div>)}
         </section>
         <p className="mt-2 text-xs text-ink-muted">{queue[0] ? `Item mais antigo ${ageLabel(queue[0].created_at)}.` : "Nenhuma alteração aguardando envio."}</p>
@@ -295,19 +299,38 @@ export default function DiagnosticoPage() {
           <button disabled={!isOnline || syncing || isProcessing} onClick={() => void syncNow()} className="flex items-center justify-center gap-2 rounded-2xl bg-ice p-3 font-semibold text-void disabled:opacity-40">{syncing || isProcessing ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}Sincronizar</button>
           <button disabled={!isOnline || failed === 0 || isProcessing} onClick={() => void resetFailedItems()} className="rounded-2xl border border-amber-400/40 p-3 text-sm font-semibold text-amber-300 disabled:opacity-40">Repetir falhas</button>
         </div>
-        <p className="mt-2 text-xs text-ink-muted">Nenhum item é descartado por esta tela. Reenvios sempre passam pela fila oficial do Vault.</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Nenhum item é descartado por esta tela. Reenvios sempre passam pela fila oficial do Vault.</p>
 
-        <section className="mt-6 rounded-3xl border border-surface-border bg-surface p-4">
+        {failedItems.length > 0 && (
+          <section className="mt-4 rounded-[20px] border border-coral/25 bg-coral/[0.05] p-3.5">
+            <div className="flex items-center gap-2 text-coral">
+              <TriangleAlert size={16} />
+              <h2 className="text-sm font-semibold">Motivo da falha</h2>
+            </div>
+            <div className="mt-2 space-y-2">
+              {failedItems.map((item) => (
+                <div key={item.id} className="rounded-xl bg-void/70 px-3 py-2.5">
+                  <p className="text-xs font-semibold text-ink-primary">{item.table}</p>
+                  <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-muted">
+                    {item.error || "O servidor não informou o motivo da falha."}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mt-4 rounded-[22px] border border-surface-border bg-surface p-3.5">
           <h2 className="font-semibold">Fila por área</h2>
           {Object.keys(byTable).length === 0 ? <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400"><CheckCircle2 size={18} />Fila limpa</div> : <div className="mt-3 grid gap-2">{Object.entries(byTable).map(([table, state]) => <div key={table} className="flex items-center justify-between rounded-xl bg-void p-3 text-sm"><span>{table}</span><div className="flex items-center gap-2">{state.failed > 0 && <span className="rounded-full bg-coral/10 px-2 py-0.5 text-[10px] text-coral">{state.failed} falha</span>}<strong>{state.total}</strong></div></div>)}</div>}
         </section>
 
-        <section className="mt-4 rounded-3xl border border-surface-border bg-surface p-4">
+        <section className="mt-3 rounded-[22px] border border-surface-border bg-surface p-3.5">
           <div className="flex items-center justify-between"><div><h2 className="font-semibold">Cobertura local × nuvem</h2><p className="text-xs text-ink-muted">Contagem é uma triagem; a reconciliação abaixo compara IDs.</p></div><button disabled={!isOnline || checking} onClick={() => void runCheck()} aria-label="Verificar contagens" className="rounded-xl border border-surface-border p-3">{checking ? <Loader2 className="animate-spin" size={17} /> : <Database size={17} />}</button></div>
           <div className="mt-3 grid gap-2">{checks.map((check) => <div key={check.key} className="rounded-xl bg-void p-3"><div className="flex items-center gap-2"><Smartphone size={14} /><span className="min-w-0 flex-1 text-sm">{check.label}</span><span className="font-mono text-sm">{check.local ?? "—"}</span><Cloud size={14} /><span className="font-mono text-sm">{check.remote ?? "—"}</span></div>{check.error && <p className="mt-1 flex gap-1 text-xs text-coral"><TriangleAlert size={13} />{check.error}</p>}</div>)}</div>
         </section>
 
-        <section className="mt-4 rounded-3xl border border-ice/20 bg-surface p-4">
+        <section className="mt-3 rounded-[22px] border border-ice/20 bg-surface p-3.5">
           <div className="flex items-start gap-3"><div className="rounded-2xl bg-ice/10 p-3 text-ice"><ShieldCheck size={20} /></div><div className="min-w-0 flex-1"><h2 className="font-semibold">Reconciliação de doses</h2><p className="mt-1 text-xs leading-relaxed text-ink-muted">Compara os IDs e o conteúdo. Nada é apagado ou sobrescrito automaticamente.</p></div></div>
           <button disabled={!isOnline || auditingDoses || repairingDoses} onClick={() => void runDoseAudit()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-ice/30 p-3 text-sm font-semibold text-ice disabled:opacity-40">{auditingDoses ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}Comparar registros</button>
           {doseAudit && <div className="mt-4"><div className="grid grid-cols-2 gap-2">{([ ["Só no aparelho", doseAudit.localOnly.length, "text-amber-300"], ["Só na nuvem", doseAudit.remoteOnly.length, "text-ice"], ["Divergentes", doseAudit.divergent.length, "text-coral"], ["Locais inválidos", doseAudit.invalidLocal.length, "text-coral"] ] as const).map(([label, value, tone]) => <div key={label} className="rounded-2xl bg-void p-3"><strong className={`text-xl ${tone}`}>{value}</strong><p className="mt-1 text-[11px] text-ink-muted">{label}</p></div>)}</div>

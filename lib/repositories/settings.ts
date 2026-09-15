@@ -48,6 +48,7 @@ export const settingsRepository = {
           id: existing.id,
           user_id: userId,
           default_person_id: personId,
+          updated_at: now,
         });
       });
     }
