@@ -1,20 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { StatusBar, Style } from '@capacitor/status-bar';
-
+/**
+ * Mantido por compatibilidade com imports antigos.
+ *
+ * A configuração nativa da StatusBar vive exclusivamente em Providers,
+ * que também reaplica o contrato edge-to-edge quando o app volta ao
+ * primeiro plano.
+ */
 export default function ClientInit() {
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      try {
-        StatusBar.setOverlaysWebView({ overlay: true });
-        StatusBar.setStyle({ style: Style.Light });
-      } catch (e) {
-        console.error('Erro ao configurar StatusBar nativa:', e);
-      }
-    }
-  }, []);
-
   return null;
 }

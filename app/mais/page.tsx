@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { db } from "@/lib/db";
@@ -154,6 +155,23 @@ export default function MaisPage() {
   }, []);
 
   const { user, logout } = useAuth();
+  const { activePersonId } = useActivePersonId();
+
+  const activePerson = useLiveQuery(
+    async () => {
+      if (!activePersonId || !user?.id) return null;
+
+      const person = await db.persons.get(activePersonId);
+
+      if (!person || person.user_id !== user.id) {
+        return null;
+      }
+
+      return person;
+    },
+    [activePersonId, user?.id],
+    null
+  );
 
   const {
     showToast,
@@ -447,9 +465,16 @@ export default function MaisPage() {
   const handleEditProfile = () => {
     trigger("vibrate");
 
-    showToast(
-      "Editar perfil em breve...",
-      "info"
+    if (!activePersonId) {
+      showToast(
+        "Selecione uma pessoa antes de editar o perfil.",
+        "info"
+      );
+      return;
+    }
+
+    router.push(
+      `/pessoas/editar?id=${encodeURIComponent(activePersonId)}`
     );
   };
 
@@ -698,9 +723,11 @@ export default function MaisPage() {
   // ============================================================
 
   const avatarUrl =
+    activePerson?.avatar_url ||
     user?.user_metadata?.avatar_url;
 
   const displayName =
+    activePerson?.name ||
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0] ||
     "Usuário";

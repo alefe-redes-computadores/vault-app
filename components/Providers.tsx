@@ -18,6 +18,10 @@ import {
 } from "@capacitor/core";
 
 import {
+  App,
+} from "@capacitor/app";
+
+import {
   StatusBar,
   Style,
 } from "@capacitor/status-bar";
@@ -238,33 +242,72 @@ export function Providers({
       if (
         Capacitor.isNativePlatform()
       ) {
-        void StatusBar.setOverlaysWebView({
-          overlay:
-            true,
-        }).catch(
-          (
-            error
-          ) => {
-            console.error(
-              "Erro ao configurar overlay da StatusBar nativa:",
-              error
-            );
+        const applyNativeSystemBars =
+          async () => {
+            try {
+              // O WebView desenha por baixo da barra: sem faixa nativa
+              // separada no topo.
+              await StatusBar.setOverlaysWebView({
+                overlay: true,
+              });
+
+              // Fundo escuro do Vault => ícones/textos claros.
+              await StatusBar.setStyle({
+                style: Style.Light,
+              });
+
+              // Evita "flash" de outra cor enquanto a janela nativa
+              // recompõe a área edge-to-edge.
+              document.documentElement.style.backgroundColor =
+                "rgb(var(--bg-void))";
+              document.body.style.backgroundColor =
+                "rgb(var(--bg-void))";
+            } catch (error) {
+              console.error(
+                "Erro ao configurar StatusBar nativa:",
+                error
+              );
+            }
+          };
+
+        void applyNativeSystemBars();
+
+        const visibilityHandler = () => {
+          if (document.visibilityState === "visible") {
+            void applyNativeSystemBars();
           }
+        };
+
+        document.addEventListener(
+          "visibilitychange",
+          visibilityHandler
         );
 
-        void StatusBar.setStyle({
-          style:
-            Style.Light,
-        }).catch(
-          (
-            error
-          ) => {
-            console.error(
-              "Erro ao configurar estilo da StatusBar nativa:",
-              error
-            );
+        let appStateListener:
+          | { remove: () => Promise<void> }
+          | undefined;
+
+        void App.addListener(
+          "appStateChange",
+          ({ isActive }) => {
+            if (isActive) {
+              void applyNativeSystemBars();
+            }
           }
-        );
+        ).then((listener) => {
+          appStateListener = listener;
+        });
+
+        return () => {
+          document.removeEventListener(
+            "visibilitychange",
+            visibilityHandler
+          );
+
+          if (appStateListener) {
+            void appStateListener.remove();
+          }
+        };
       }
     },
     []
