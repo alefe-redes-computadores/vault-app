@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NativeBiometric } from 'capacitor-native-biometric';
-import { Capacitor } from '@capacitor/core';
+import { isVaultNative } from '@/lib/native-runtime';
 
 interface UseBiometricOptions {
   onSuccess?: () => void;
@@ -29,7 +29,7 @@ export function useBiometric(options: UseBiometricOptions = {}) {
   useEffect(() => {
     const checkAvailability = async () => {
       try {
-        if (Capacitor.isNativePlatform()) {
+        if (isVaultNative()) {
           const result = await NativeBiometric.isAvailable();
           setIsAvailable(result.isAvailable);
           
@@ -66,7 +66,7 @@ export function useBiometric(options: UseBiometricOptions = {}) {
   }, []);
 
   const authenticate = async () => {
-    if (!Capacitor.isNativePlatform() || !isAvailable) {
+    if (!isVaultNative() || !isAvailable) {
       const error = new Error('Biometria não disponível neste dispositivo');
       onError?.(error);
       return false;

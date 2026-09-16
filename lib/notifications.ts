@@ -1,8 +1,9 @@
 // lib/notifications.ts
 
 import {
-  Capacitor,
-} from "@capacitor/core";
+  isVaultAndroid,
+  isVaultNative,
+} from "@/lib/native-runtime";
 
 import {
   LocalNotifications,
@@ -24,13 +25,12 @@ export const VAULT_NOTIFICATION_CHANNEL_ID =
   "vault_reminders";
 
 export function supportsNativeNotifications(): boolean {
-  return Capacitor.isNativePlatform();
+  return isVaultNative();
 }
 
 export async function ensureVaultNotificationChannel(): Promise<void> {
   if (
-    !Capacitor.isNativePlatform() ||
-    Capacitor.getPlatform() !== "android"
+    !isVaultAndroid()
   ) {
     return;
   }
@@ -95,7 +95,7 @@ export function setNotificationPreferenceEnabled(
 // ============================================================
 
 function isNativePlatform(): boolean {
-  return Capacitor.isNativePlatform();
+  return isVaultNative();
 }
 
 function hashToId(

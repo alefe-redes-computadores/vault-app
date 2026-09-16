@@ -1,8 +1,8 @@
 // lib/dose-notifications.ts
 
 import {
-  Capacitor,
-} from "@capacitor/core";
+  isVaultNative,
+} from "@/lib/native-runtime";
 
 import {
   LocalNotifications,
@@ -55,7 +55,7 @@ const ACTION_IGNORED =
 // ============================================================
 
 function isNativePlatform(): boolean {
-  return Capacitor.isNativePlatform();
+  return isVaultNative();
 }
 
 function normalizeHorario(

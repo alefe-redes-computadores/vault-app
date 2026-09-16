@@ -54,6 +54,9 @@ jobs:
       - name: Executar contrato V28
         run: node scripts/test-v28-perfis-edge-to-edge-contract.mjs
 
+      - name: Executar contrato V29
+        run: node scripts/test-v29-native-runtime-contract.mjs
+
       - name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
@@ -120,6 +123,9 @@ jobs:
 
       - name: Sincronizar Capacitor
         run: npx cap sync android
+
+      - name: Validar bridge e plugins nativos V29
+        run: node scripts/validate-android-bridge-v29.mjs
 
       - name: Aplicar edge-to-edge nativo
         run: node scripts/patch-android-edge-to-edge-v28.mjs

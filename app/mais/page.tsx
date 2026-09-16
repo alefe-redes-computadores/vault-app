@@ -59,7 +59,7 @@ import {
 } from "@/lib/notifications";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useTheme } from "next-themes";
-import { Capacitor } from "@capacitor/core";
+import { getVaultRuntime } from "@/lib/native-runtime";
 import { useBiometric } from "@/hooks/useBiometric";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -149,10 +149,15 @@ export default function MaisPage() {
 
   const [themeMounted, setThemeMounted] =
     useState(false);
+  const [nativeRuntime, setNativeRuntime] =
+    useState<"android" | "ios" | "web">("web");
 
   useEffect(() => {
     setThemeMounted(true);
+    setNativeRuntime(getVaultRuntime());
   }, []);
+
+  const isNativeApp = nativeRuntime !== "web";
 
   const { user, logout } = useAuth();
   const { activePersonId } = useActivePersonId();
@@ -485,7 +490,7 @@ export default function MaisPage() {
   const handleBiometricToggle = () => {
     trigger("vibrate");
 
-    if (!Capacitor.isNativePlatform()) {
+    if (!isNativeApp) {
       showToast(
         "A biometria fica disponível somente no aplicativo instalado. O navegador e o PWA não conseguem usar a proteção nativa com segurança.",
         "info",
@@ -534,7 +539,7 @@ export default function MaisPage() {
 
     trigger("vibrate");
 
-    if (!Capacitor.isNativePlatform()) {
+    if (!isNativeApp) {
       showInfo(
         "Os lembretes com ações estão disponíveis no aplicativo Android (APK).",
         5000
@@ -1018,7 +1023,7 @@ export default function MaisPage() {
                   </p>
 
                   <p className="truncate text-xs text-ink-muted">
-                    {Capacitor.isNativePlatform()
+                    {isNativeApp
                       ? "Doses, receitas e documentos"
                       : "Disponível no aplicativo Android"}
                   </p>
@@ -1031,7 +1036,7 @@ export default function MaisPage() {
                       : "bg-surface-border text-ink-muted"
                   }`}
                 >
-                  {!Capacitor.isNativePlatform()
+                  {!isNativeApp
                     ? "No APK"
                     : isNotificationsEnabled
                       ? "Ativo"
