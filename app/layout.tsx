@@ -137,51 +137,17 @@ export default function RootLayout({
       "/auth/callback";
 
   // ==========================================================
-  // ERUDA / MOBILE DEBUG
+  // SERVICE WORKER
   // ==========================================================
 
   useEffect(
     () => {
       if ("serviceWorker" in navigator) {
-        void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
-          console.error("Erro ao registrar Service Worker:", error);
-        });
-      }
-
-      if (
-        process.env.NODE_ENV === "development" &&
-        typeof window !==
-          "undefined" &&
-        !document.getElementById(
-          "eruda-script"
-        )
-      ) {
-        const script =
-          document.createElement(
-            "script"
-          );
-
-        script.id =
-          "eruda-script";
-
-        script.src =
-          "https://cdnjs.cloudflare.com/ajax/libs/eruda/3.0.1/eruda.min.js";
-
-        script.onload =
-          () => {
-            const erudaWindow =
-              window as typeof window & {
-                eruda?: {
-                  init: () => void;
-                };
-              };
-
-            erudaWindow.eruda?.init();
-          };
-
-        document.body.appendChild(
-          script
-        );
+        void navigator.serviceWorker
+          .register("/sw.js", { scope: "/" })
+          .catch((error) => {
+            console.error("Erro ao registrar Service Worker:", error);
+          });
       }
     },
     []

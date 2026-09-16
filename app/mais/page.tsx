@@ -36,6 +36,7 @@ import {
   Smartphone,
   BookOpen,
   CheckCircle2,
+  Bug,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +66,11 @@ import type {
   Document,
   Medicamento,
 } from "@/lib/types";
+import {
+  disableEruda,
+  enableEruda,
+  isErudaPreferenceEnabled,
+} from "@/lib/diagnostics/eruda";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -193,6 +199,8 @@ export default function MaisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
+  const [erudaEnabled, setErudaEnabled] = useState(false);
+  const [erudaLoading, setErudaLoading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpStep, setHelpStep] = useState(0);
 
@@ -700,6 +708,46 @@ export default function MaisPage() {
   const isDiagnosticOwner =
     user?.email?.trim().toLowerCase() ===
     DIAGNOSTIC_OWNER_EMAIL;
+
+  useEffect(() => {
+    if (!isDiagnosticOwner) {
+      setErudaEnabled(false);
+      return;
+    }
+
+    const enabled = isErudaPreferenceEnabled();
+    setErudaEnabled(enabled);
+
+    if (enabled) {
+      void enableEruda().catch(() => {
+        setErudaEnabled(false);
+      });
+    }
+  }, [isDiagnosticOwner]);
+
+  const handleErudaToggle = useCallback(async () => {
+    if (!isDiagnosticOwner || erudaLoading) return;
+
+    trigger("vibrate");
+    setErudaLoading(true);
+
+    try {
+      if (erudaEnabled) {
+        disableEruda();
+        setErudaEnabled(false);
+        showToast("Console avançado desativado", "info");
+      } else {
+        await enableEruda();
+        setErudaEnabled(true);
+        showToast("Console avançado ativado neste dispositivo", "success");
+      }
+    } catch (error) {
+      console.error("[Diagnóstico] Falha ao alterar Eruda:", error);
+      showError("Não foi possível carregar o console avançado.");
+    } finally {
+      setErudaLoading(false);
+    }
+  }, [isDiagnosticOwner, erudaLoading, erudaEnabled, trigger, showToast, showError]);
 
   // ============================================================
   // ACESSO RÁPIDO
@@ -1359,6 +1407,36 @@ export default function MaisPage() {
                         <Trash2 size={17} className="text-coral" />
                         <span className="text-xs font-medium text-ink-primary">
                           Limpar logs
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={erudaLoading}
+                        onClick={() => void handleErudaToggle()}
+                        className={`flex min-h-14 items-center gap-3 rounded-2xl border p-3 text-left active:scale-[0.985] disabled:opacity-50 sm:col-span-2 ${
+                          erudaEnabled
+                            ? "border-emerald-400/25 bg-emerald-400/[0.06]"
+                            : "border-surface-border/40 bg-surface"
+                        }`}
+                      >
+                        {erudaLoading
+                          ? <Loader2 size={17} className="animate-spin text-violet-400" />
+                          : <Bug size={17} className={erudaEnabled ? "text-emerald-400" : "text-violet-400"} />}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-medium text-ink-primary">
+                            Console avançado
+                          </span>
+                          <span className="mt-0.5 block text-[10px] text-ink-muted">
+                            {erudaEnabled ? "Ativo somente neste dispositivo" : "Carregar apenas quando necessário"}
+                          </span>
+                        </span>
+                        <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase ${
+                          erudaEnabled
+                            ? "bg-emerald-400/15 text-emerald-400"
+                            : "bg-surface-raised text-ink-muted"
+                        }`}>
+                          {erudaEnabled ? "Ativo" : "Inativo"}
                         </span>
                       </button>
                     </div>

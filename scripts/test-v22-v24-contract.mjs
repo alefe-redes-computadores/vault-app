@@ -30,7 +30,7 @@ ok("V22 oferece registro canônico no prontuário", page.includes('/saude/regist
 ok("V23 diferencia não verificado de catálogo indisponível", quality.includes('"not_checked"') && quality.includes('"catalog_unavailable"'));
 ok("V23 somente chama de verificado quando há correspondência", quality.includes('"verified"') && quality.includes("dosageMatchesPresentations"));
 ok("V23 mantém divergência como aviso, não bloqueio arbitrário", quality.includes('"mismatch"') && medicationNew.includes("catalogDosageQuality.matches"));
-ok("V24 Eruda existe apenas no desenvolvimento", layout.includes('process.env.NODE_ENV === "development" &&'));
+ok("V24 Eruda não inicia automaticamente", !layout.includes("eruda.min.js"));
 ok("V24 build não ignora erros TypeScript", !nextConfig.includes("ignoreBuildErrors"));
 ok("V24 invalida o shell antigo do PWA", Number(worker.match(/vault-shell-v(\d+)/i)?.[1] || 0) >= 24);
 ok("V24 usa um manifesto canônico", !fs.existsSync("public/site.webmanifest") && manifest.start_url === "/");

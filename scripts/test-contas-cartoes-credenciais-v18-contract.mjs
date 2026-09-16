@@ -9,6 +9,7 @@ const cartoes = read("app/cartoes/page.tsx");
 const credentialCard = read("components/CredentialCard.tsx");
 const sync = read("hooks/useSyncQueue.ts");
 const diagnostic = read("app/diagnostico/page.tsx");
+const queueHealth = read("lib/sync/queue-health.ts");
 const migration = read("supabase/migrations/20260913_add_credentials_history.sql");
 
 const checks = [
@@ -25,7 +26,7 @@ const checks = [
  ["credencial possui fallback visual", credentialCard.includes("<KeyRound size={22}")],
  ["sync de credenciais tolera schema antigo", sync.includes("compatibleCredential") && sync.includes("schema cache")],
  ["migration persiste histórico criptografado", migration.includes("add column if not exists history jsonb")],
- ["diagnóstico reconhece tentativas esgotadas", diagnostic.includes("Number(item.retry_count||0)>=5")],
+ ["diagnóstico reconhece tentativas esgotadas", diagnostic.includes("getSyncQueueState(item)") && queueHealth.includes("retries >= SYNC_MAX_RETRIES")],
  ["dados continuam person-scoped", read("lib/repositories/cards.ts").includes("person_id") && read("lib/repositories/credentials.ts").includes("person_id")],
 ];
 let failed = false;
