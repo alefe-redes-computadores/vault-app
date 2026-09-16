@@ -18,10 +18,19 @@ import { settingsRepository } from "@/lib/repositories/settings";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 
+interface PersonContextPerson {
+  id?: string;
+  name: string;
+  email?: string | null;
+  avatar_url?: string | null;
+  color?: string | null;
+}
+
 interface PersonContextType {
   activePersonId: string | null;
   changePerson: (id: string) => Promise<void>;
   loading: boolean;
+  persons: PersonContextPerson[];
 }
 
 const PersonContext =
@@ -389,11 +398,13 @@ export function PersonProvider({
         activePersonId,
         changePerson,
         loading,
+        persons,
       }),
       [
         activePersonId,
         changePerson,
         loading,
+        persons,
       ]
     );
 

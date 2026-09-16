@@ -1971,7 +1971,7 @@ export default function HomePage() {
             HEADER
         ===================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-5 pb-3 pt-safe backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-5 pb-3 pt-3 backdrop-blur-xl">
           <motion.div
             initial={{
               opacity: 0,

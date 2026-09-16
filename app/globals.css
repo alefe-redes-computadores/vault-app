@@ -133,8 +133,21 @@ textarea:focus-visible {
 }
 
 /* ============================================================
-   STATUS BAR IMERSIVA (Capacitor overlaysWebView: true)
+   SYSTEM BARS / SAFE AREA
    ============================================================ */
+
+/*
+ * Há um único owner da safe-area superior: o header global.
+ * Isso impede a Home (ou outra tela) de somar inset novamente.
+ *
+ * No browser/PWA env() pode ser zero. No APK edge-to-edge ele
+ * representa a área dos ícones do Android.
+ */
+.app-system-header {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+}
+
+/* Compatibilidade para telas antigas que ainda usam o helper. */
 .header-safe-top {
   padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
 }

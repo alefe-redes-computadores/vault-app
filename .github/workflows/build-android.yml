@@ -51,6 +51,9 @@ jobs:
           node scripts/test-cadastro-medicamento-v17-contract.mjs
           node scripts/test-seguranca-regulatoria-v16-contract.mjs
 
+      - name: Executar contrato V28
+        run: node scripts/test-v28-perfis-edge-to-edge-contract.mjs
+
       - name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
@@ -117,6 +120,9 @@ jobs:
 
       - name: Sincronizar Capacitor
         run: npx cap sync android
+
+      - name: Aplicar edge-to-edge nativo
+        run: node scripts/patch-android-edge-to-edge-v28.mjs
 
       - name: Instalar ícone de notificações Android
         run: |

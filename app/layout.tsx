@@ -153,35 +153,6 @@ export default function RootLayout({
     []
   );
 
-  // ==========================================================
-  // CAPACITOR SAFE AREA REFLOW
-  // ==========================================================
-
-  useEffect(
-    () => {
-      const forceReflow =
-        () => {
-          void window.innerHeight;
-
-          document.body.style.paddingTop =
-            "0.1px";
-
-          window.setTimeout(
-            () => {
-              document.body.style.paddingTop =
-                "0px";
-            },
-            50
-          );
-        };
-
-      forceReflow();
-    },
-    [
-      pathname,
-    ]
-  );
-
   return (
     <html
       lang="pt-BR"
@@ -256,7 +227,7 @@ export default function RootLayout({
                   <SplashScreen>
                     <BiometricLock>
                       {!isAuthPage && (
-                        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 py-3 backdrop-blur-xl">
+                        <header className="app-system-header sticky top-0 z-30 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-3 pt-3 backdrop-blur-xl">
                           <div className="flex min-w-0 items-center gap-3">
                             <SyncStatusIndicator />
                           </div>

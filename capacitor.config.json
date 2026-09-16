@@ -15,8 +15,7 @@
     },
     "StatusBar": {
       "overlaysWebView": true,
-      "style": "LIGHT",
-      "backgroundColor": "#06090E"
+      "style": "LIGHT"
     },
     "LocalNotifications": {
       "smallIcon": "ic_stat_vault",

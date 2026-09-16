@@ -161,6 +161,8 @@ export function Providers({
   const {
     activePersonId,
     changePerson,
+    loading: activePersonLoading,
+    persons,
   } =
     useActivePersonId();
 
@@ -205,6 +207,42 @@ export function Providers({
     () => user ? db.persons.where("user_id").equals(user.id).count() : 0,
     [user?.id]
   );
+
+  const [profileGateReady, setProfileGateReady] = useState(false);
+  const [profileGateOpen, setProfileGateOpen] = useState(false);
+  const [profileGateBusy, setProfileGateBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id || activePersonLoading || ownedPersonCount === undefined) {
+      setProfileGateReady(false);
+      return;
+    }
+
+    const selectable = persons.filter((person) => Boolean(person.id));
+    if (ownedPersonCount <= 1 || selectable.length <= 1) {
+      setProfileGateOpen(false);
+      setProfileGateReady(true);
+      return;
+    }
+
+    const key = `vault-profile-selected:${user.id}`;
+    let selected = false;
+    try { selected = sessionStorage.getItem(key) === "1"; } catch {}
+    setProfileGateOpen(!selected);
+    setProfileGateReady(true);
+  }, [user?.id, activePersonLoading, ownedPersonCount, persons]);
+
+  const selectOpeningProfile = async (personId: string) => {
+    if (!user?.id || profileGateBusy) return;
+    setProfileGateBusy(personId);
+    try {
+      await changePerson(personId);
+      try { sessionStorage.setItem(`vault-profile-selected:${user.id}`, "1"); } catch {}
+      setProfileGateOpen(false);
+    } finally {
+      setProfileGateBusy(null);
+    }
+  };
 
   /*
    * Mantém o canal Realtime ativo enquanto a árvore principal
@@ -256,12 +294,6 @@ export function Providers({
                 style: Style.Light,
               });
 
-              // Evita "flash" de outra cor enquanto a janela nativa
-              // recompõe a área edge-to-edge.
-              document.documentElement.style.backgroundColor =
-                "rgb(var(--bg-void))";
-              document.body.style.backgroundColor =
-                "rgb(var(--bg-void))";
             } catch (error) {
               console.error(
                 "Erro ao configurar StatusBar nativa:",
@@ -927,6 +959,39 @@ export function Providers({
 
   if (ownedPersonCount === 0) {
     return <div className="min-h-screen bg-void" role="status" aria-label="Abrindo configuração de perfil" />;
+  }
+
+  if (user && (!profileGateReady || (ownedPersonCount !== undefined && ownedPersonCount > 0 && activePersonLoading))) {
+    return <div className="min-h-[100dvh] bg-void" role="status" aria-label="Preparando perfis" />;
+  }
+
+  if (user && profileGateOpen && persons.length > 1) {
+    return (
+      <main className="fixed inset-0 z-[9999] overflow-y-auto bg-void text-ink-primary">
+        <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
+          <div className="mb-8">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-ice/20 bg-ice/10"><span className="font-display text-lg font-bold text-ice">V</span></div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ice/80">Vault</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-ink-primary">Quem está usando o Vault?</h1>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">Escolha o perfil para abrir os dados corretos.</p>
+          </div>
+          <div className="space-y-3">
+            {persons.filter((person) => Boolean(person.id)).map((person) => {
+              const personId = person.id!;
+              const busy = profileGateBusy === personId;
+              return (
+                <button key={personId} type="button" disabled={Boolean(profileGateBusy)} onClick={() => void selectOpeningProfile(personId)} className="group flex w-full items-center gap-4 rounded-3xl border border-surface-border/60 bg-surface-raised/80 p-4 text-left shadow-lg shadow-black/10 transition active:scale-[0.985] disabled:opacity-60" style={{ borderColor: person.color ? `${person.color}55` : undefined }}>
+                  {person.avatar_url ? <img src={person.avatar_url} alt={person.name} className="h-14 w-14 shrink-0 rounded-2xl border border-white/10 object-cover" /> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white" style={{ backgroundColor: person.color || "#38BDF8" }}>{person.name?.charAt(0).toUpperCase() || "?"}</div>}
+                  <div className="min-w-0 flex-1"><span className="block truncate font-display text-base font-semibold text-ink-primary">{person.name}</span><span className="mt-1 block text-xs text-ink-muted">{busy ? "Abrindo perfil..." : "Continuar com este perfil"}</span></div>
+                  <span className="text-xl text-ink-faint transition-transform group-active:translate-x-1">›</span>
+                </button>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => router.push("/pessoas")} className="mt-6 self-center rounded-xl px-4 py-2 text-sm font-medium text-ink-muted transition active:scale-95">Gerenciar pessoas</button>
+        </div>
+      </main>
+    );
   }
 
   // ==========================================================
