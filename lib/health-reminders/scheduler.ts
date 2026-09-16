@@ -1,3 +1,4 @@
+import { isVaultNative } from "@/lib/native-runtime";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { reminderRunsOnWeekday } from "./domain";
@@ -50,7 +51,7 @@ export function notificationId(ruleId: string, date: Date) {
 }
 
 export async function getHealthReminderPermission(): Promise<HealthReminderScheduleResult["permission"]> {
-  if (!Capacitor.isNativePlatform()) return "unavailable";
+  if (!isVaultNative()) return "unavailable";
   const permission = await LocalNotifications.checkPermissions();
   return permission.display === "granted"
     ? "granted"
@@ -60,7 +61,7 @@ export async function getHealthReminderPermission(): Promise<HealthReminderSched
 }
 
 export async function requestHealthReminderPermission() {
-  if (!Capacitor.isNativePlatform()) return "unavailable" as const;
+  if (!isVaultNative()) return "unavailable" as const;
   const permission = await LocalNotifications.requestPermissions();
   return permission.display === "granted" ? "granted" as const : "denied" as const;
 }
@@ -68,7 +69,7 @@ export async function requestHealthReminderPermission() {
 export async function reconcileHealthReminderNotifications(
   rules: HealthReminderRule[]
 ): Promise<HealthReminderScheduleResult> {
-  if (!Capacitor.isNativePlatform()) {
+  if (!isVaultNative()) {
     return { native: false, permission: "unavailable", scheduled: 0 };
   }
 

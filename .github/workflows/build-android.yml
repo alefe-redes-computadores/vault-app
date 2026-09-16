@@ -57,7 +57,9 @@ jobs:
       - name: Executar contrato V29
         run: node scripts/test-v29-native-runtime-contract.mjs
 
-      - name: Exportar aplicação para o Capacitor
+      - name: Executar contrato V30.2
+        run: node scripts/test-v30-2-native-contract.mjs
+- name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -129,8 +131,7 @@ jobs:
 
       - name: Aplicar edge-to-edge nativo
         run: node scripts/patch-android-edge-to-edge-v28.mjs
-
-      - name: Instalar ícone de notificações Android
+- name: Instalar ícone de notificações Android
         run: |
           test -f assets/android/ic_stat_vault.xml
           mkdir -p android/app/src/main/res/drawable

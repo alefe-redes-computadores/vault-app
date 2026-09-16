@@ -1,3 +1,4 @@
+import { isVaultNative } from "@/lib/native-runtime";
 'use client'
 import { useEffect, useState } from 'react'
 import { App } from '@capacitor/app'
@@ -11,7 +12,7 @@ export function useAuthDeepLink() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return
+    if (!isVaultNative()) return
 
     const listener = App.addListener('appUrlOpen', async ({ url }) => {
       if (!url.includes('callback')) return

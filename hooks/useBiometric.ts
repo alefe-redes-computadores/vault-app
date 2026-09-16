@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NativeBiometric } from 'capacitor-native-biometric';
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import { isVaultNative } from '@/lib/native-runtime';
 
 interface UseBiometricOptions {

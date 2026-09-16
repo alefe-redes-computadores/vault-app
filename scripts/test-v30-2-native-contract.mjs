@@ -1,0 +1,13 @@
+import fs from "node:fs";
+const r=f=>fs.readFileSync(f,"utf8"),ok=(v,m)=>{if(!v)throw Error(m)};
+const p=JSON.parse(r("package.json")),l=r("package-lock.json"),b=r("hooks/useBiometric.ts"),rt=r("lib/native-runtime.ts"),w=r(".github/workflows/build-android.yml");
+ok(/^6\./.test(p.dependencies?.["@capgo/capacitor-native-biometric"]||""),"Capgo não está na major 6");
+ok(!p.dependencies?.["@rolster/capacitor-native-biometric"],"Rolster ainda presente");
+ok(!p.dependencies?.["capacitor-native-biometric"],"plugin legado ainda presente");
+ok(!l.includes("node_modules/@rolster/capacitor-native-biometric"),"Rolster ainda no lock");
+ok(!l.includes('"node_modules/capacitor-native-biometric"'),"legado ainda no lock");
+ok(b.includes("@capgo/capacitor-native-biometric"),"hook não migrado");
+ok(rt.includes("NEXT_PUBLIC_VAULT_NATIVE_RUNTIME"),"fallback nativo perdido");
+ok(p.scripts["build:export"].includes("NEXT_PUBLIC_VAULT_NATIVE_RUNTIME=android"),"build APK sem marcador Android");
+ok(!w.includes("patch-android-biometric-v30.mjs"),"patch Rolster ainda no CI");
+console.log("V30.2 CONTRATOS OK");

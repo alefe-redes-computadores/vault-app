@@ -1,4 +1,5 @@
 "use client";
+import { isVaultNative } from "@/lib/native-runtime";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -62,7 +63,7 @@ export default function HealthRemindersPage() {
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [permission, setPermission] = useState<HealthReminderScheduleResult["permission"]>(
-    Capacitor.isNativePlatform() ? "prompt" : "unavailable"
+    isVaultNative() ? "prompt" : "unavailable"
   );
 
   const selectedTarget = useMemo(

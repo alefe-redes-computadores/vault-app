@@ -1,3 +1,4 @@
+import { isVaultNative } from "@/lib/native-runtime";
 // hooks/useDoseNotificationActions.ts
 "use client";
 
@@ -142,7 +143,7 @@ export function useDoseNotificationActions() {
   useEffect(
     () => {
       if (
-        !Capacitor.isNativePlatform()
+        !isVaultNative()
       ) {
         return;
       }

@@ -1,3 +1,4 @@
+import { isVaultNative } from "@/lib/native-runtime";
 // components/Providers.tsx
 "use client";
 
@@ -278,7 +279,7 @@ export function Providers({
       }
 
       if (
-        Capacitor.isNativePlatform()
+        isVaultNative()
       ) {
         const applyNativeSystemBars =
           async () => {

@@ -1,3 +1,4 @@
+import { isVaultNative } from "@/lib/native-runtime";
 // hooks/useNotifications.ts
 "use client";
 
@@ -81,7 +82,7 @@ export function useNotifications() {
         ) => void
       ) => {
         if (
-          !Capacitor.isNativePlatform()
+          !isVaultNative()
         ) {
           return () => {};
         }

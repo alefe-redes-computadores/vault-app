@@ -1,4 +1,5 @@
 "use client";
+import { isVaultNative } from "@/lib/native-runtime";
 
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -37,7 +38,7 @@ export function HealthReminderReconciler() {
   }, [reconcile]);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!isVaultNative()) return;
     const handleManualReconcile = () => reconcile();
     window.addEventListener(HEALTH_REMINDERS_RECONCILE_EVENT, handleManualReconcile);
     let removeResume: (() => void) | undefined;
@@ -51,7 +52,7 @@ export function HealthReminderReconciler() {
   }, [reconcile]);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !user) return;
+    if (!isVaultNative() || !user) return;
     let removeAction: (() => void) | undefined;
     void LocalNotifications.addListener(
       "localNotificationActionPerformed",

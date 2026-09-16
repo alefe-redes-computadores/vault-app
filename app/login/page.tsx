@@ -1,4 +1,5 @@
 "use client";
+import { isVaultNative } from "@/lib/native-runtime";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -72,7 +73,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const isNative = Capacitor.isNativePlatform();
+      const isNative = isVaultNative();
 
       const redirectUrl = isNative
         ? "vault://callback"
