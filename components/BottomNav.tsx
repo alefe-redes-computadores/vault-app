@@ -567,10 +567,9 @@ export function BottomNav() {
   const showCompose =
     composeOptions.length > 0;
 
-  if (
-    !shouldShowNav(pathname) ||
-    isBiometricLocked
-  ) {
+  // V31.2: a rota decide se a navegação existe.
+  // A biometria apenas oculta visualmente a barra enquanto o lock estiver ativo.
+  if (!shouldShowNav(pathname)) {
     return null;
   }
 
@@ -739,7 +738,12 @@ export function BottomNav() {
           )}
       </AnimatePresence>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 bg-surface">
+      <nav
+        aria-hidden={isBiometricLocked}
+        className={`fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity ${
+          isBiometricLocked ? "pointer-events-none invisible opacity-0" : "visible opacity-100"
+        }`}
+      >
         <div className="border-t border-surface-border/40 bg-surface px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-2">
           <div
             className={`relative mx-auto grid max-w-md ${gridClass} items-end justify-items-center`}
