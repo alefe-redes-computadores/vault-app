@@ -739,8 +739,8 @@ export function BottomNav() {
           )}
       </AnimatePresence>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-surface pb-safe">
-        <div className="border-t border-surface-border/40 bg-surface px-4 pb-5 pt-2">
+      <nav className="fixed inset-x-0 bottom-0 z-50 bg-surface">
+        <div className="border-t border-surface-border/40 bg-surface px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-2">
           <div
             className={`relative mx-auto grid max-w-md ${gridClass} items-end justify-items-center`}
           >

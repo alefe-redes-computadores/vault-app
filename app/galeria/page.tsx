@@ -579,7 +579,7 @@ function DocumentViewer({
       }}
       className="fixed inset-0 z-[100] flex flex-col bg-black"
     >
-      <header className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/80 to-transparent px-4 pb-8 pt-safe">
+      <header className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/80 to-transparent px-4 pb-8 pt-4">
         <div className="flex items-center justify-between pt-3">
           <button
             type="button"
@@ -1284,7 +1284,7 @@ function GaleriaContent() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-void pb-[calc(6rem+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 pt-safe backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 pt-4 backdrop-blur-xl">
         <div className="flex items-center justify-between px-5 pb-3 pt-4">
           <div className="flex min-w-0 items-center gap-3">
             <button

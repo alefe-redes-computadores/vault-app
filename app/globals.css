@@ -147,9 +147,9 @@ textarea:focus-visible {
   padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
 }
 
-/* Compatibilidade para telas antigas que ainda usam o helper. */
+/* Headers internos usam respiro visual; o inset pertence ao header global. */
 .header-safe-top {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+  padding-top: 1rem;
 }
 
 /* ============================================================

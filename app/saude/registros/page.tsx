@@ -52,7 +52,7 @@ export default function RegistrosSaudePage() {
   if (isLoading || dosesLoading) return <CardListSkeleton />;
   const selectFilter = (next: ViewFilter) => { trigger("vibrate"); setFilter(next); };
   return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
-    <header className="sticky top-0 z-20 border-b border-surface-border/40 bg-void/90 px-5 pb-4 pt-safe backdrop-blur-xl print:static print:bg-white">
+    <header className="sticky top-0 z-20 border-b border-surface-border/40 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl print:static print:bg-white">
       <div className="flex items-center gap-3">
         <button type="button" onClick={() => router.replace("/")} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised print:hidden" aria-label="Voltar"><ArrowLeft size={18}/></button>
         <div className="min-w-0 flex-1"><p className="font-mono text-[9px] uppercase tracking-[0.24em] text-ice">Prontuário clínico</p><h1 className="truncate font-display text-xl font-semibold text-ink-primary">Linha de cuidado</h1><p className="text-[10px] text-ink-muted">Registros e doses, sem substituir avaliação profissional</p></div>

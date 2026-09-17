@@ -1114,7 +1114,7 @@ export default function DocumentsPage() {
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-5 pb-4 backdrop-blur-xl header-safe-top">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 backdrop-blur-xl">
           <div className="mx-auto max-w-5xl">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">

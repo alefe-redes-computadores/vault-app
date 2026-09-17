@@ -223,7 +223,7 @@ function HistoryContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-4 pt-safe backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl">
           <div className="flex items-center gap-3 pt-3">
             <button
               type="button"

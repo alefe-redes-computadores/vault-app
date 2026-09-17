@@ -2581,7 +2581,7 @@ export default function HojePage() {
         {/* =========================================================
             HEADER
         ========================================================= */}
-        <header className="relative z-10 border-b border-surface-border/30 bg-void px-4 pb-3 pt-safe">
+        <header className="relative z-10 border-b border-surface-border/30 bg-void px-4 pb-3 pt-3">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">

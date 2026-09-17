@@ -1568,7 +1568,7 @@ export default function DocumentDetailPage() {
     return (
       <PageTransition>
         <main className="min-h-[100dvh] bg-void pb-28">
-          <header className="border-b border-surface-border/30 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <header className="border-b border-surface-border/30 px-5 pb-4 pt-4">
             <div className="mx-auto flex max-w-3xl items-center gap-3">
               <div className="h-11 w-11 animate-pulse rounded-full bg-surface-raised" />
 
@@ -1713,7 +1713,7 @@ export default function DocumentDetailPage() {
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-4 backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <button
               type="button"

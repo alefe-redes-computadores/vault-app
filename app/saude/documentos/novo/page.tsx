@@ -4204,7 +4204,7 @@ export default function NovoDocumentoSaudePage() {
           }
         />
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-4 backdrop-blur-xl">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button

@@ -869,7 +869,7 @@ export default function MaisPage() {
             CABEÇALHO
         ===================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-2 backdrop-blur-xl header-safe-top">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-3 backdrop-blur-xl">
           <h1 className="font-display text-xl font-semibold text-ink-primary">
             Mais
           </h1>
