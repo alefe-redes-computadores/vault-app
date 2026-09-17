@@ -1,5 +1,5 @@
+'use client';
 import { isVaultNative } from "@/lib/native-runtime";
-'use client'
 import { useEffect, useState } from 'react'
 import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'

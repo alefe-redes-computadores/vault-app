@@ -1,6 +1,6 @@
+"use client";
 import { isVaultNative } from "@/lib/native-runtime";
 // hooks/useDoseNotificationActions.ts
-"use client";
 
 import {
   useEffect,

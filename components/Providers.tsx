@@ -1,6 +1,6 @@
+"use client";
 import { isVaultNative } from "@/lib/native-runtime";
 // components/Providers.tsx
-"use client";
 
 import {
   Suspense,

@@ -1,6 +1,6 @@
+"use client";
 import { isVaultNative } from "@/lib/native-runtime";
 // hooks/useNotifications.ts
-"use client";
 
 import {
   useCallback,
