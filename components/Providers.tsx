@@ -278,8 +278,16 @@ export function Providers({
           db;
       }
 
+      // V30.5:
+      // Android System Bars pertencem exclusivamente à camada nativa.
+      // O patch pós-cap-sync configura edge-to-edge, transparência
+      // e contraste dos ícones. Não deixar o plugin JS sobrescrever
+      // WindowInsetsController depois que a Activity iniciar.
+      //
+      // iOS continua usando @capacitor/status-bar.
       if (
-        isVaultNative()
+        isVaultNative() &&
+        Capacitor.getPlatform() !== "android"
       ) {
         const applyNativeSystemBars =
           async () => {
