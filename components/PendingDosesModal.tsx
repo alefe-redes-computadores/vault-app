@@ -174,6 +174,7 @@ export function PendingDosesModal({
     );
 
   const [isProcessingAll, setIsProcessingAll] = useState(false);
+  const [bulkResolutionOpen, setBulkResolutionOpen] = useState(false);
 
   const existeProcessamento =
     Boolean(
@@ -364,34 +365,38 @@ export function PendingDosesModal({
       onExpand();
     };
 
-  const handleResolveAll =
-    async () => {
-      if (existeProcessamento || doses.length < 2) return;
+  const handleResolveAll = async (
+    resolution: Extract<
+      PendingDoseResolution,
+      { kind: "scheduled" | "now" }
+    >
+  ) => {
+    if (existeProcessamento || doses.length < 2) return;
 
-      trigger("vibrate");
-      setIsProcessingAll(true);
-      let successCount = 0;
+    trigger("vibrate");
+    setIsProcessingAll(true);
 
-      try {
-        // Serial: reutiliza o mesmo contrato individual; evita corrida
-        // de DoseLog/estoque e preserva idempotência/sincronização do pai.
-        for (const dose of doses) {
-          try {
-            await onResolveDose(dose, { kind: "scheduled" });
-            successCount += 1;
-          } catch (error) {
-            console.error("[PendingDosesModal] Falha no lote:", error);
-          }
+    let successCount = 0;
+
+    try {
+      for (const dose of doses) {
+        try {
+          await onResolveDose(dose, resolution);
+          successCount += 1;
+        } catch (error) {
+          console.error("[PendingDosesModal] Falha no lote:", error);
         }
-      } finally {
-        setIsProcessingAll(false);
       }
+    } finally {
+      setIsProcessingAll(false);
+    }
 
-      if (successCount === doses.length) {
-        setSelectedDoseKey(null);
-        setCustomTimeOpen(false);
-      }
-    };
+    if (successCount === doses.length) {
+      setSelectedDoseKey(null);
+      setCustomTimeOpen(false);
+      setBulkResolutionOpen(false);
+    }
+  };
 
   const handleSelectDose =
     (
@@ -413,6 +418,8 @@ export function PendingDosesModal({
           dose
         )
       );
+
+      setBulkResolutionOpen(false);
 
       setCustomTakenAt(
         getDefaultCustomValue(
@@ -999,13 +1006,75 @@ export function PendingDosesModal({
                 </p>
                 <button
                   type="button"
-                  onClick={() => void handleResolveAll()}
+                  onClick={() => {
+                  trigger("vibrate");
+                  setBulkResolutionOpen(true);
+                }}
                   disabled={existeProcessamento}
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void active:scale-[0.98] disabled:opacity-50"
                 >
                   {isProcessingAll ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
                   {isProcessingAll ? "Registrando com segurança..." : `Tomar todas (${doses.length})`}
                 </button>
+
+            {bulkResolutionOpen && doses.length > 1 && (
+              <div className="rounded-[22px] border border-ice/20 bg-ice/5 p-3.5">
+                <p className="text-sm font-semibold text-ink-primary">
+                  Quando você tomou essas doses?
+                </p>
+                <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                  Escolha o que realmente aconteceu. O Vault usa esse horário no histórico.
+                </p>
+
+                <div className="mt-3 space-y-2">
+                  <button
+                    type="button"
+                    disabled={existeProcessamento}
+                    onClick={() => void handleResolveAll({ kind: "scheduled" })}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={18} className="shrink-0 text-emerald-400" />
+                    <span>
+                      <span className="block text-sm font-semibold text-ink-primary">
+                        Tomei nos horários programados
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-ink-muted">
+                        Cada dose mantém o horário previsto no histórico.
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={existeProcessamento}
+                    onClick={() => void handleResolveAll({ kind: "now" })}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-ice/25 bg-ice/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <Timer size={18} className="shrink-0 text-ice" />
+                    <span>
+                      <span className="block text-sm font-semibold text-ink-primary">
+                        Tomei todas agora · {getCurrentTimeHHMM()}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-ink-muted">
+                        Registra o horário atual como horário real das doses.
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={existeProcessamento}
+                    onClick={() => {
+                      trigger("vibrate");
+                      setBulkResolutionOpen(false);
+                    }}
+                    className="w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-xs font-semibold text-ink-muted disabled:opacity-50"
+                  >
+                    Revisar individualmente
+                  </button>
+                </div>
+              </div>
+            )}
               </div>
             )}
 

@@ -6,7 +6,7 @@ const B=fs.readFileSync("components/BiometricLock.tsx","utf8");
 ok(P.includes('localStorage.getItem(key) === "1"'),"perfil persistente ausente");
 ok(P.includes('localStorage.setItem(key, "1")'),"gravação perfil ausente");
 ok(D.includes("const handleResolveAll ="),"lote pendente ausente");
-ok(D.includes('await onResolveDose(dose, { kind: "scheduled" })'),"lote não reutiliza contrato individual");
+ok(D.includes('await onResolveDose(dose, resolution)'),"lote não reutiliza contrato individual");
 ok(D.includes("for (const dose of doses)"),"lote não serial");
 ok(D.includes("Tomar todas ("),"botão Tomar todas ausente");
 ok(D.includes("Abrir cronograma completo"),"cronograma ausente");
