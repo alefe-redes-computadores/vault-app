@@ -365,7 +365,7 @@ function AccountDetailsContent() {
   const handleBack = () => {
     trigger("vibrate");
 
-    router.back();
+    router.replace("/contas");
   };
 
   const handleCopy =
@@ -480,7 +480,7 @@ function AccountDetailsContent() {
           false
         );
 
-        router.back();
+        router.replace("/contas");
       } catch (error) {
         console.error(
           "Erro ao excluir conta:",

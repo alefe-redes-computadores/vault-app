@@ -1,5 +1,6 @@
 // app/mais/page.tsx
 "use client";
+import { isVaultNative } from "@/lib/native-runtime";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -201,7 +202,13 @@ export default function MaisPage() {
   const {
     isAvailable: isBiometricAvailable,
     isLoading: isBiometricChecking,
-  } = useBiometric();
+    authenticate: authenticateSensitiveAction,
+  } = useBiometric({
+    title: "Confirmar identidade",
+    subtitle: "Proteção do Vault",
+    description: "Confirme sua identidade para excluir os dados locais deste dispositivo.",
+    fallbackTitle: "Usar credencial do aparelho",
+  });
 
   const {
     isEnabled: isNotificationsEnabled,
@@ -302,6 +309,21 @@ export default function MaisPage() {
   // ============================================================
 
   const clearLocalData = async () => {
+    // VAULT_CLEAR_DATA_BIOMETRIC_V32
+    // APK + biometria ativa: identidade antes da operação destrutiva.
+    // PWA continua protegido pelo RigorousConfirmInput/EXCLUIR.
+    if (isVaultNative() && isBiometricEnabled) {
+      if (!isBiometricAvailable || isBiometricChecking) {
+        showError("A biometria ainda não está disponível para confirmar esta exclusão.");
+        return;
+      }
+
+      const authenticated = await authenticateSensitiveAction();
+      if (!authenticated) {
+        showInfo("Exclusão cancelada: identidade não confirmada.");
+        return;
+      }
+    }
     setIsLoading(true);
 
     try {

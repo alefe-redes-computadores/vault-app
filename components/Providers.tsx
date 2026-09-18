@@ -226,9 +226,14 @@ export function Providers({
       return;
     }
 
+    // V33: não reabrir o seletor só porque o WebView criou outra sessão.
     const key = `vault-profile-selected:${user.id}`;
     let selected = false;
-    try { selected = sessionStorage.getItem(key) === "1"; } catch {}
+    try {
+      selected =
+        localStorage.getItem(key) === "1" ||
+        sessionStorage.getItem(key) === "1";
+    } catch {}
     setProfileGateOpen(!selected);
     setProfileGateReady(true);
   }, [user?.id, activePersonLoading, ownedPersonCount, persons]);
@@ -238,7 +243,11 @@ export function Providers({
     setProfileGateBusy(personId);
     try {
       await changePerson(personId);
-      try { sessionStorage.setItem(`vault-profile-selected:${user.id}`, "1"); } catch {}
+      try {
+        const key = `vault-profile-selected:${user.id}`;
+        localStorage.setItem(key, "1");
+        sessionStorage.setItem(key, "1");
+      } catch {}
       setProfileGateOpen(false);
     } finally {
       setProfileGateBusy(null);

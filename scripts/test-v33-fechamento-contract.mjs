@@ -1,0 +1,15 @@
+import fs from "node:fs";
+const ok=(v,m)=>{if(!v)throw new Error(m)};
+const P=fs.readFileSync("components/Providers.tsx","utf8");
+const D=fs.readFileSync("components/PendingDosesModal.tsx","utf8");
+const B=fs.readFileSync("components/BiometricLock.tsx","utf8");
+ok(P.includes('localStorage.getItem(key) === "1"'),"perfil persistente ausente");
+ok(P.includes('localStorage.setItem(key, "1")'),"gravação perfil ausente");
+ok(D.includes("const handleResolveAll ="),"lote pendente ausente");
+ok(D.includes('await onResolveDose(dose, { kind: "scheduled" })'),"lote não reutiliza contrato individual");
+ok(D.includes("for (const dose of doses)"),"lote não serial");
+ok(D.includes("Tomar todas ("),"botão Tomar todas ausente");
+ok(D.includes("Abrir cronograma completo"),"cronograma ausente");
+ok(B.includes("removeListener: (() => void) | undefined"),"V32.1 biometria regrediu");
+ok(P.includes('Capacitor.getPlatform() !== "android"'),"V30.5 StatusBar regrediu");
+console.log("V33 CONTRACT: OK");

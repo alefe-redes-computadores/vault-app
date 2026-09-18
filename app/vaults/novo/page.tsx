@@ -166,7 +166,7 @@ export default function NovoVaultPage() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace("/vaults");
   };
 
   const handleSubmit = async (

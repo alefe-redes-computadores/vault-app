@@ -306,7 +306,7 @@ function EditCardContent() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace(id ? `/cartoes/detalhes?id=${encodeURIComponent(id)}` : "/cartoes");
   };
 
   const handleChange = (

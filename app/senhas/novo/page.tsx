@@ -283,7 +283,7 @@ export default function NewPasswordPage() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace("/senhas");
   };
 
   const handleTextChange = (

@@ -465,7 +465,7 @@ function EditPasswordContent() {
         }
 
         if (!authenticated) {
-          router.back();
+          router.replace(id ? `/senhas/detalhes?id=${encodeURIComponent(id)}` : "/senhas");
           return;
         }
 
@@ -552,7 +552,7 @@ function EditPasswordContent() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace(id ? `/senhas/detalhes?id=${encodeURIComponent(id)}` : "/senhas");
   };
 
   const handleTextChange = (

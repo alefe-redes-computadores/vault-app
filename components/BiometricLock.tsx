@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { App } from "@capacitor/app";
+import { isVaultNative } from "@/lib/native-runtime";
 import { motion } from "framer-motion";
 import { Fingerprint, ShieldAlert } from "lucide-react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
@@ -20,6 +22,40 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(!isEnabled);
   const [authError, setAuthError] = useState<string | null>(null);
   const hasAutoPrompted = useRef(false);
+
+  // VAULT_BIOMETRIC_LIFECYCLE_V32
+  // A preferência é carregada depois do primeiro render. Quando ela chega
+  // habilitada, o Vault precisa efetivamente entrar em estado bloqueado.
+  useEffect(() => {
+    if (!isEnabled) {
+      setIsAuthenticated(true);
+      hasAutoPrompted.current = false;
+      return;
+    }
+
+    setIsAuthenticated(false);
+    hasAutoPrompted.current = false;
+  }, [isEnabled]);
+
+  // No APK, sair do app encerra a sessão biométrica da interface.
+  // Ao voltar, a tela de bloqueio reaparece e o auto-prompt existente
+  // solicita a biometria novamente. PWA não tenta usar plugin nativo.
+  useEffect(() => {
+    if (!isEnabled || !isVaultNative()) return;
+
+    let removeListener: (() => void) | undefined;
+    void App.addListener("appStateChange", ({ isActive }) => {
+      if (!isActive) {
+        setIsAuthenticated(false);
+        setAuthError(null);
+        hasAutoPrompted.current = false;
+      }
+    }).then((handle) => {
+      removeListener = () => void handle.remove();
+    });
+
+    return () => removeListener?.();
+  }, [isEnabled]);
 
   const { isAvailable, isLoading, authenticate } = useBiometric({
     title: "Desbloquear Vault",

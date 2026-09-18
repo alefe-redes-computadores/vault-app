@@ -139,7 +139,7 @@ export default function NewAccountPage() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace("/contas");
   };
 
   const handleChange = (

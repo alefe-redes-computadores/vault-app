@@ -224,7 +224,7 @@ export default function NewCardPage() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace("/cartoes");
   };
 
   const validateForm =

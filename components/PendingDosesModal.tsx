@@ -173,10 +173,13 @@ export function PendingDosesModal({
       false
     );
 
+  const [isProcessingAll, setIsProcessingAll] = useState(false);
+
   const existeProcessamento =
     Boolean(
       isProcessingDose
-    );
+    ) ||
+    isProcessingAll;
 
   const selectedDose =
     useMemo(
@@ -361,6 +364,35 @@ export function PendingDosesModal({
       onExpand();
     };
 
+  const handleResolveAll =
+    async () => {
+      if (existeProcessamento || doses.length < 2) return;
+
+      trigger("vibrate");
+      setIsProcessingAll(true);
+      let successCount = 0;
+
+      try {
+        // Serial: reutiliza o mesmo contrato individual; evita corrida
+        // de DoseLog/estoque e preserva idempotência/sincronização do pai.
+        for (const dose of doses) {
+          try {
+            await onResolveDose(dose, { kind: "scheduled" });
+            successCount += 1;
+          } catch (error) {
+            console.error("[PendingDosesModal] Falha no lote:", error);
+          }
+        }
+      } finally {
+        setIsProcessingAll(false);
+      }
+
+      if (successCount === doses.length) {
+        setSelectedDoseKey(null);
+        setCustomTimeOpen(false);
+      }
+    };
+
   const handleSelectDose =
     (
       dose:
@@ -508,12 +540,7 @@ export function PendingDosesModal({
                     1
                       ? "dose precisa"
                       : "doses precisam"
-                  } ser resolvida${
-                    doses.length ===
-                    1
-                      ? ""
-                      : "s"
-                  } individualmente.`}
+                  } de revisão. Confira medicamento, dia e horário antes de confirmar.`}
             </p>
 
             {doses.length >
@@ -962,29 +989,40 @@ export function PendingDosesModal({
               )}
             </div>
 
+            {doses.length > 1 && (
+              <div className="rounded-[22px] border border-emerald-400/20 bg-emerald-400/[0.06] p-3.5">
+                <p className="text-xs font-bold text-ink-primary">
+                  Confirmar todas no horário programado
+                </p>
+                <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                  Registra cada dose no dia e horário exibidos. Se alguma foi tomada em outro horário, revise essa dose individualmente.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleResolveAll()}
+                  disabled={existeProcessamento}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isProcessingAll ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                  {isProcessingAll ? "Registrando com segurança..." : `Tomar todas (${doses.length})`}
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
-              onClick={
-                handleExpand
-              }
-              disabled={
-                existeProcessamento
-              }
+              onClick={handleExpand}
+              disabled={existeProcessamento}
               className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-surface-raised p-3.5 text-xs font-semibold text-ink-primary active:scale-95 disabled:opacity-50"
             >
-              Ver cronograma
-
-              <ChevronRight
-                size={
-                  14
-                }
-              />
+              Abrir cronograma completo
+              <ChevronRight size={14} />
             </button>
 
             {doses.length >
               1 && (
               <p className="text-center text-[9px] leading-relaxed text-ink-faint">
-                Cada dose é revisada separadamente para preservar o horário real da tomada.
+                O lote preserva dia e horário programados. Use a revisão individual quando o horário real tiver sido diferente.
               </p>
             )}
           </>

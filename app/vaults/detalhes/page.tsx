@@ -541,7 +541,7 @@ function VaultDetailContent() {
         "vibrate"
       );
 
-      router.back();
+      router.replace("/vaults");
     };
 
   const handleMembers =

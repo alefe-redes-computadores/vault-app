@@ -465,7 +465,7 @@ function CardDetailsContent() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace("/cartoes");
   };
 
   const handleEdit = () => {
@@ -518,7 +518,7 @@ function CardDetailsContent() {
           false
         );
 
-        router.back();
+        router.replace("/cartoes");
       } catch (error) {
         console.error(
           "Erro ao excluir cartão:",

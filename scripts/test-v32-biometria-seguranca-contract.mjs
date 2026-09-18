@@ -1,0 +1,16 @@
+import fs from "node:fs";
+const r=(f)=>fs.readFileSync(f,"utf8");
+const ok=(v,m)=>{if(!v)throw new Error(m)};
+const b=r("components/BiometricLock.tsx");
+const m=r("app/mais/page.tsx");
+const p=r("components/Providers.tsx");
+const a=r("scripts/patch-android-edge-to-edge-v28.mjs");
+ok(b.includes("VAULT_BIOMETRIC_LIFECYCLE_V32"),"lifecycle biométrico V32 ausente");
+ok(b.includes('App.addListener("appStateChange"'),"bloqueio no background ausente");
+ok(b.includes("setIsAuthenticated(false)"),"estado bloqueado ausente");
+ok(m.includes("VAULT_CLEAR_DATA_BIOMETRIC_V32"),"proteção de exclusão ausente");
+ok(m.includes("authenticateSensitiveAction"),"autenticação destrutiva ausente");
+ok(m.includes("RigorousConfirmInput"),"confirmação EXCLUIR do PWA foi perdida");
+ok(p.includes("V30.5:"),"V30.5 System Bars alterada/perdida");
+ok(a.includes("VAULT_EDGE_TO_EDGE_V28"),"V28 edge-to-edge alterada/perdida");
+console.log("V32 BIOMETRIA/SEGURANÇA CONTRATOS OK");

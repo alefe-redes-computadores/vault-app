@@ -251,7 +251,7 @@ function EditAccountContent() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace(id ? `/contas/detalhes?id=${encodeURIComponent(id)}` : "/contas");
   };
 
   const handleChange = (

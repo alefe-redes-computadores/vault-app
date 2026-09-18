@@ -304,7 +304,7 @@ function CredentialDetailsContent() {
 
   const handleBack = () => {
     trigger("vibrate");
-    router.back();
+    router.replace("/senhas");
   };
 
   const handleEdit = () => {
