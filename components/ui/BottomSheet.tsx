@@ -3,7 +3,12 @@
 import {
   useEffect,
   useRef,
+  useState,
 } from "react";
+
+import {
+  createPortal,
+} from "react-dom";
 
 import {
   X,
@@ -36,6 +41,12 @@ export function BottomSheet({
   title,
   height = "auto",
 }: BottomSheetProps) {
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
   const {
     trigger,
   } =
@@ -99,7 +110,8 @@ export function BottomSheet({
   );
 
   if (
-    !isOpen
+    !isOpen ||
+    !portalReady
   ) {
     return null;
   }
@@ -115,9 +127,9 @@ export function BottomSheet({
       "h-[90dvh]",
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 px-0 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm animate-in fade-in duration-200 sm:p-4"
+      className="vault-modal-layer fixed inset-0 z-[100] flex items-end justify-center bg-black/60 px-0 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm animate-in fade-in duration-200 sm:p-4"
       onPointerDown={
         (
           event
@@ -195,6 +207,7 @@ export function BottomSheet({
           }
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

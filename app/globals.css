@@ -315,3 +315,25 @@ html.light input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     padding-top: max(env(safe-area-inset-top, 0px), 0px);
   }
 }
+
+
+/* VAULT_MODAL_LAYER_V34_1 */
+/*
+ * Modal aberto: BottomNav permanece montado (contrato V31.2), porém
+ * não compete visualmente nem por toque com dialogs/bottom sheets.
+ * O modal continua sendo a camada de interação ativa.
+ */
+body:has([role="dialog"][aria-modal="true"]) .vault-bottom-nav {
+  z-index: 20 !important;
+  pointer-events: none;
+}
+
+/*
+ * QuickDose é um modal customizado e precisa participar explicitamente
+ * da camada de diálogo global mesmo quando seu ancestral cria stacking
+ * context. O isolation evita que filhos internos disputem com a nav.
+ */
+.vault-modal-layer {
+  isolation: isolate;
+  z-index: 100 !important;
+}

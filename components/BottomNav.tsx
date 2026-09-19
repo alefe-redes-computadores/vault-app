@@ -740,7 +740,7 @@ export function BottomNav() {
 
       <nav
         aria-hidden={isBiometricLocked}
-        className={`fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity ${
+        className={`vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity ${
           isBiometricLocked ? "pointer-events-none invisible opacity-0" : "visible opacity-100"
         }`}
       >

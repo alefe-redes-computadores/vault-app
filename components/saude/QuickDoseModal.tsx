@@ -8,6 +8,10 @@ import {
 } from "react";
 
 import {
+  createPortal,
+} from "react-dom";
+
+import {
   AnimatePresence,
   motion,
 } from "framer-motion";
@@ -634,6 +638,12 @@ export function QuickDoseModal({
   preselectedMedicamentoId,
   onSuccess,
 }: QuickDoseModalProps) {
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
   const {
     trigger,
   } =
@@ -1593,7 +1603,8 @@ export function QuickDoseModal({
   // ==========================================================
 
   if (
-    !isOpen
+    !isOpen ||
+    !portalReady
   ) {
     return null;
   }
@@ -1621,9 +1632,12 @@ export function QuickDoseModal({
       ?.estoque_unidade_medida ||
     "unidade(s)";
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-void/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Registrar dose"
+      className="vault-modal-layer fixed inset-0 z-[100] flex items-end justify-center bg-void/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
       onClick={
         handleClose
       }
@@ -3058,6 +3072,7 @@ export function QuickDoseModal({
           </button>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

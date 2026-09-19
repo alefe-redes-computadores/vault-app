@@ -1,0 +1,14 @@
+import fs from "node:fs";
+const read=p=>fs.readFileSync(p,"utf8");
+const ok=(v,m)=>{if(!v)throw new Error(`V34.1: ${m}`)};
+const nav=read("components/BottomNav.tsx");
+const css=read("app/globals.css");
+const quick=read("components/saude/QuickDoseModal.tsx");
+const sheet=read("components/ui/BottomSheet.tsx");
+ok(/if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\)\s*\{\s*return null;\s*\}/s.test(nav),"V31.2 mount por rota regrediu");
+ok(nav.includes("vault-bottom-nav"),"marcador BottomNav ausente");
+ok(nav.includes("aria-hidden={isBiometricLocked}"),"V31.2 biometria visual regrediu");
+ok(css.includes("VAULT_MODAL_LAYER_V34_1"),"CSS V34.1 ausente");
+ok(quick.includes("vault-modal-layer"),"QuickDose layer ausente");
+ok(sheet.includes("vault-modal-layer"),"BottomSheet layer ausente");
+console.log("V34.1 MODAL LAYER CONTRACT: OK");

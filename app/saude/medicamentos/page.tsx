@@ -343,6 +343,11 @@ export default function MedicamentosListPage() {
       null
     );
 
+  const [
+    expandedRegulatoryMedId,
+    setExpandedRegulatoryMedId,
+  ] = useState<string | null>(null);
+
   // ==========================================================
   // PREFERÊNCIA DE SUSPENSOS
   // ==========================================================
@@ -945,6 +950,19 @@ export default function MedicamentosListPage() {
       const regulatoryProfile =
         regulatoryProfiles[med.id];
 
+      const regulatoryBorderColor =
+        regulatoryProfile?.tone === "black"
+          ? "#050505"
+          : regulatoryProfile?.accent ||
+            receita?.corBorda ||
+            "#64748b";
+
+      const regulatoryMeaning =
+        regulatoryProfile
+          ? `${regulatoryProfile.label}: ${regulatoryProfile.detail}${regulatoryProfile.sourceLabel ? ` Fonte: ${regulatoryProfile.sourceLabel}.` : ""}`
+          : receita?.tooltip ||
+            "Sem categoria regulatória especial registrada";
+
       const rotinaParcial =
         !isSOS &&
         !isSuspenso &&
@@ -1083,7 +1101,7 @@ export default function MedicamentosListPage() {
             med.id
           }
           color={
-            cardColor
+            regulatoryBorderColor
           }
           onClick={
             () => {
@@ -1178,13 +1196,24 @@ export default function MedicamentosListPage() {
 
                 <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
                   {regulatoryProfile ? (
-                    <span
+                    <button
+                      type="button"
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatoryProfile.badgeClass}`}
-                      title={`${regulatoryProfile.detail}${regulatoryProfile.sourceLabel ? ` Fonte: ${regulatoryProfile.sourceLabel}.` : ""}`}
+                      title={regulatoryMeaning}
+                      aria-expanded={expandedRegulatoryMedId === med.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        trigger("vibrate");
+                        setExpandedRegulatoryMedId(
+                          expandedRegulatoryMedId === med.id
+                            ? null
+                            : med.id!
+                        );
+                      }}
                     >
                       {regulatoryProfile.label}
                       {!regulatoryProfile.verified && regulatoryProfile.tone !== "unknown" ? " · cadastro" : ""}
-                    </span>
+                    </button>
                   ) : receita && (
                     <span
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
@@ -1238,6 +1267,23 @@ export default function MedicamentosListPage() {
                     </span>
                   )}
                 </div>
+
+                {/* VAULT_REGULATORY_EXPLANATION_V35_1 */}
+                {expandedRegulatoryMedId === med.id && regulatoryProfile && (
+                  <div
+                    className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2 text-[10px] leading-relaxed text-ink-muted"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <strong className="text-ink-primary">
+                      {regulatoryProfile.label}
+                    </strong>
+                    {" · "}
+                    {regulatoryProfile.detail}
+                    {regulatoryProfile.sourceLabel
+                      ? ` Fonte: ${regulatoryProfile.sourceLabel}.`
+                      : ""}
+                  </div>
+                )}
               </div>
 
               {insight?.deveRenovar && (

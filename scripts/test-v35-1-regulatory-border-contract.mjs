@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const s=fs.readFileSync("app/saude/medicamentos/page.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw new Error(`V35.1: ${m}`)};
+ok(s.includes("useMedicationRegulatoryProfiles"),"hook regulatório");
+ok(s.includes("regulatoryProfiles[med.id]"),"perfil por medicamento");
+ok(s.includes("regulatoryProfile?.accent"),"accent regulatório não controla identidade");
+ok(s.includes('regulatoryProfile?.tone === "black"'),"tarja/receita preta sem faixa preta");
+ok(s.includes("regulatoryBorderColor"),"faixa regulatória ausente");
+ok(s.includes("expandedRegulatoryMedId"),"badge não é expansível");
+ok(s.includes("VAULT_REGULATORY_EXPLANATION_V35_1"),"explicação móvel ausente");
+ok(s.includes("cardColor"),"estado operacional foi removido indevidamente");
+console.log("V35.1 REGULATORY BORDER CONTRACT: OK");

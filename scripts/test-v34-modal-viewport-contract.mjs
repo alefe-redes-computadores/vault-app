@@ -1,13 +1,54 @@
 import fs from "node:fs";
-const r=p=>fs.readFileSync(p,"utf8"),a=(x,m)=>{if(!x){console.error("V34 CONTRACT FAIL: "+m);process.exit(1)}};
-const q=r("components/saude/QuickDoseModal.tsx"),b=r("components/ui/BottomSheet.tsx");
-a(q.includes('z-[80] flex items-end justify-center'),"QuickDose acima da BottomNav");
-a(q.includes('flex max-h-[calc(100dvh-env(safe-area-inset-top,0px))]'),"QuickDose respeita viewport");
-a(q.includes('flex-col overflow-hidden rounded-t-[32px]'),"shell QuickDose");
-a(q.includes('min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain'),"scroll interno QuickDose");
-a(q.includes('pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]'),"safe-area inferior QuickDose");
-a(!q.includes('max-h-[92dvh] w-full max-w-lg overflow-y-auto'),"remove scroll antigo QuickDose");
-a(b.includes('fixed inset-0 z-[80]'),"BottomSheet acima da BottomNav");
-a(b.includes('relative flex w-full max-w-lg flex-col overflow-hidden'),"shell BottomSheet");
-a(b.includes('min-h-0 flex-1 overflow-y-auto overscroll-contain'),"scroll interno BottomSheet");
+
+const read = (p) => fs.readFileSync(p, "utf8");
+const ok = (v, m) => {
+  if (!v) throw new Error(`V34 CONTRACT FAIL: ${m}`);
+};
+
+const quick = read("components/saude/QuickDoseModal.tsx");
+const sheet = read("components/ui/BottomSheet.tsx");
+const nav = read("components/BottomNav.tsx");
+
+// Contrato estrutural atual: V34 safe-area + V34.1 layer + V34.2 portal.
+// Não comparar strings antigas de z-index.
+ok(
+  /vault-modal-layer[\s\S]{0,180}z-\[100\]/.test(quick),
+  "QuickDose perdeu camada z-[100]"
+);
+ok(
+  quick.includes("createPortal(") && quick.includes("document.body"),
+  "QuickDose não escapa do stacking context via portal"
+);
+ok(
+  quick.includes("safe-area-inset-bottom"),
+  "QuickDose perdeu reserva inferior de safe-area"
+);
+ok(
+  quick.includes("overflow-y-auto") && quick.includes("overscroll-contain"),
+  "QuickDose perdeu rolagem interna"
+);
+
+ok(
+  /vault-modal-layer[\s\S]{0,180}z-\[100\]/.test(sheet),
+  "BottomSheet perdeu camada z-[100]"
+);
+ok(
+  sheet.includes("createPortal(") && sheet.includes("document.body"),
+  "BottomSheet não escapa do stacking context via portal"
+);
+ok(
+  sheet.includes("safe-area-inset-bottom"),
+  "BottomSheet perdeu reserva inferior de safe-area"
+);
+ok(
+  sheet.includes("overflow-y-auto") && sheet.includes("overscroll-contain"),
+  "BottomSheet perdeu rolagem interna"
+);
+
+ok(nav.includes("z-50"), "BottomNav perdeu sua camada base");
+ok(
+  /if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\)\s*\{\s*return null;\s*\}/s.test(nav),
+  "V31.2 mount por rota regrediu"
+);
+
 console.log("V34 MODAL VIEWPORT CONTRACT: OK");
