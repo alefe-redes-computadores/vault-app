@@ -1,0 +1,13 @@
+import fs from "node:fs";
+const r=p=>fs.readFileSync(p,"utf8"),a=(x,m)=>{if(!x){console.error("V34 CONTRACT FAIL: "+m);process.exit(1)}};
+const q=r("components/saude/QuickDoseModal.tsx"),b=r("components/ui/BottomSheet.tsx");
+a(q.includes('z-[80] flex items-end justify-center'),"QuickDose acima da BottomNav");
+a(q.includes('flex max-h-[calc(100dvh-env(safe-area-inset-top,0px))]'),"QuickDose respeita viewport");
+a(q.includes('flex-col overflow-hidden rounded-t-[32px]'),"shell QuickDose");
+a(q.includes('min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain'),"scroll interno QuickDose");
+a(q.includes('pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)]'),"safe-area inferior QuickDose");
+a(!q.includes('max-h-[92dvh] w-full max-w-lg overflow-y-auto'),"remove scroll antigo QuickDose");
+a(b.includes('fixed inset-0 z-[80]'),"BottomSheet acima da BottomNav");
+a(b.includes('relative flex w-full max-w-lg flex-col overflow-hidden'),"shell BottomSheet");
+a(b.includes('min-h-0 flex-1 overflow-y-auto overscroll-contain'),"scroll interno BottomSheet");
+console.log("V34 MODAL VIEWPORT CONTRACT: OK");

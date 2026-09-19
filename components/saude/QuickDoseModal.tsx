@@ -1623,7 +1623,7 @@ export function QuickDoseModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-void/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-void/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
       onClick={
         handleClose
       }
@@ -1675,7 +1675,7 @@ export function QuickDoseModal({
           ) =>
             event.stopPropagation()
         }
-        className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[32px] border border-surface-border bg-surface shadow-2xl sm:rounded-[32px]"
+        className="relative flex max-h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full max-w-lg flex-col overflow-hidden rounded-t-[32px] border border-surface-border bg-surface shadow-2xl sm:max-h-[92dvh] sm:rounded-[32px]"
       >
         <AnimatePresence>
           {quantitySafetyOpen &&
@@ -2274,7 +2274,7 @@ export function QuickDoseModal({
           <div className="h-1 w-10 rounded-full bg-surface-border" />
         </div>
 
-        <div className="space-y-5 p-6 pt-4 sm:pt-6">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-6 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] touch-pan-y sm:pt-6">
           {/* ==================================================
               HEADER
               ================================================== */}
