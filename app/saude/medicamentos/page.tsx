@@ -48,6 +48,14 @@ import {
 } from "@/hooks/useActivePersonId";
 
 import {
+  useTratamentos,
+} from "@/hooks/useTratamentos";
+
+import {
+  getClinicalTheme,
+} from "@/lib/health-utils";
+
+import {
   useHapticFeedback,
 } from "@/lib/haptics";
 
@@ -219,6 +227,34 @@ export default function MedicamentosListPage() {
     activePersonId,
   } =
     useActivePersonId();
+
+  const {
+    tratamentos,
+  } =
+    useTratamentos();
+
+  const tratamentosPorId =
+    useMemo(
+      () =>
+        new Map(
+          (tratamentos || [])
+            .filter(
+              (tratamento) =>
+                Boolean(
+                  tratamento.id
+                )
+            )
+            .map(
+              (tratamento) => [
+                tratamento.id!,
+                tratamento,
+              ]
+            )
+        ),
+      [
+        tratamentos,
+      ]
+    );
 
   const hojeString =
     useMemo(
@@ -853,61 +889,58 @@ export default function MedicamentosListPage() {
           : cor1;
 
       /*
-       * A borda agora possui uma única linguagem:
-       * estado operacional do medicamento.
+       * V34 — identidade visual ≠ estado operacional.
        *
-       * Tarja e receita permanecem nos selos próprios. Assim a
-       * cor física do comprimido ou um perfil regulatório não
-       * parece um alerta clínico aleatório.
+       * A lateral identifica o contexto clínico do tratamento.
+       * Alertas continuam nos seus próprios sinais: Hoje,
+       * Estoque, Receita, SOS e agrupamento de prioridade.
        */
-      const cardColor =
-        isSuspenso
-          ? "#fb7185"
-          : isEstoqueZerado ||
-              (
-                insight.deveRenovar &&
-                insight.urgencia ===
-                  "alta"
+      const tratamentosVinculados =
+        (
+          med.tratamento_ids ||
+          []
+        )
+          .map(
+            (tratamentoId) =>
+              tratamentosPorId.get(
+                tratamentoId
               )
-            ? "#fb7185"
-            : isEstoqueCritico ||
-                insight.deveRenovar ||
-                dosesPendentesHoje >
-                  0
-              ? "#fbbf24"
-              : isSOS
-                ? "#a78bfa"
-                : dosesEsperadasHoje >
-                      0 &&
-                    dosesPendentesHoje ===
-                      0
-                  ? "#34d399"
-                  : "#64748b";
+          )
+          .filter(
+            (
+              tratamento
+            ): tratamento is NonNullable<typeof tratamento> =>
+              Boolean(
+                tratamento
+              )
+          );
+
+      const tratamentoThemes =
+        tratamentosVinculados.map(
+          (tratamento) => ({
+            tratamento,
+            theme:
+              getClinicalTheme(
+                tratamento.nome ||
+                  ""
+              ),
+          })
+        );
+
+      const tratamentoPrincipal =
+        tratamentoThemes[0];
+
+      const cardColor =
+        tratamentoPrincipal?.theme.hex ||
+        "#64748b";
 
       const cardColorMeaning =
-        isSuspenso
-          ? "Medicamento suspenso"
-          : isEstoqueZerado
-            ? "Estoque zerado"
-            : insight.deveRenovar &&
-                insight.urgencia ===
-                  "alta"
-              ? "Receita exige atenção"
-              : isEstoqueCritico
-                ? "Estoque baixo"
-                : insight.deveRenovar
-                  ? "Renovação próxima"
-                  : dosesPendentesHoje >
-                      0
-                    ? "Dose pendente hoje"
-                    : isSOS
-                      ? "Uso quando necessário"
-                      : dosesEsperadasHoje >
-                            0 &&
-                          dosesPendentesHoje ===
-                            0
-                        ? "Rotina concluída"
-                        : "Sem ação prevista";
+        tratamentoPrincipal
+          ? tratamentoThemes.length >
+              1
+            ? `${tratamentoPrincipal.tratamento.nome} + ${tratamentoThemes.length - 1} tratamento(s)`
+            : `Tratamento: ${tratamentoPrincipal.tratamento.nome}`
+          : "Sem tratamento vinculado";
 
       const regulatoryProfile =
         regulatoryProfiles[med.id];
@@ -1066,6 +1099,7 @@ export default function MedicamentosListPage() {
           isDisabled={
             isSuspenso
           }
+          density="compact"
           icon={
             <SelectedFormatIcon
               size={
@@ -1080,25 +1114,50 @@ export default function MedicamentosListPage() {
             />
           }
         >
-          <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-1.5">
             {/* IDENTIDADE */}
 
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        cardColor,
-                    }}
+                    className="flex shrink-0 items-center gap-0.5"
                     title={
                       cardColorMeaning
                     }
                     aria-label={
                       cardColorMeaning
                     }
-                  />
+                  >
+                    {tratamentoThemes.length >
+                    0 ? (
+                      tratamentoThemes
+                        .slice(
+                          0,
+                          3
+                        )
+                        .map(
+                          (
+                            item,
+                            index
+                          ) => (
+                            <span
+                              key={
+                                item.tratamento.id ||
+                                index
+                              }
+                              className="h-2 w-2 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  item.theme.hex,
+                              }}
+                            />
+                          )
+                        )
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-slate-500" />
+                    )}
+                  </span>
 
                   <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <h3 className="min-w-0 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
@@ -1117,7 +1176,7 @@ export default function MedicamentosListPage() {
                   </div>
                 </div>
 
-                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
                   {regulatoryProfile ? (
                     <span
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatoryProfile.badgeClass}`}
@@ -1204,9 +1263,57 @@ export default function MedicamentosListPage() {
               )}
             </div>
 
+            {/* CONTEXTO CLÍNICO */}
+            {tratamentoThemes.length >
+              0 && (
+              <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+                {tratamentoThemes
+                  .slice(
+                    0,
+                    2
+                  )
+                  .map(
+                    (
+                      item
+                    ) => (
+                      <span
+                        key={
+                          item.tratamento.id
+                        }
+                        className="inline-flex h-5 min-w-0 max-w-[150px] items-center rounded-lg border px-2 text-[9px] font-semibold"
+                        style={{
+                          color:
+                            item.theme.hex,
+                          borderColor:
+                            `${item.theme.hex}30`,
+                          backgroundColor:
+                            `${item.theme.hex}0D`,
+                        }}
+                      >
+                        <span className="truncate">
+                          {
+                            item.tratamento.nome
+                          }
+                        </span>
+                      </span>
+                    )
+                  )}
+
+                {tratamentoThemes.length >
+                  2 && (
+                  <span className="shrink-0 text-[9px] font-semibold text-ink-faint">
+                    +{
+                      tratamentoThemes.length -
+                      2
+                    }
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="rounded-xl border border-surface-border/35 bg-black/[0.07] px-2.5 py-1.5">
+            <div className="rounded-xl border border-surface-border/30 bg-black/[0.05] px-2.5 py-1">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -1309,7 +1416,7 @@ export default function MedicamentosListPage() {
                 ) ||
                 insight.deveRenovar
               ) && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-surface-border/25 pt-2">
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-surface-border/20 pt-1.5">
                 {canQuickDose &&
                   quickDoseLabel && (
                   <button

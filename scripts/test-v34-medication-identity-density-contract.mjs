@@ -1,0 +1,18 @@
+import fs from "node:fs";
+const page = fs.readFileSync("app/saude/medicamentos/page.tsx", "utf8");
+const card = fs.readFileSync("components/list/ListCard.tsx", "utf8");
+const ok = (v, m) => { if (!v) { console.error("V34 FAIL:", m); process.exit(1); } };
+ok(page.includes("useTratamentos"), "useTratamentos");
+ok(page.includes("getClinicalTheme"), "getClinicalTheme");
+ok(page.includes("const tratamentosPorId ="), "índice tratamentos");
+ok(page.includes("const tratamentoThemes ="), "temas vinculados");
+ok(page.includes("tratamentoPrincipal?.theme.hex"), "lateral por tratamento");
+ok(page.includes('density="compact"'), "medicamentos opt-in compacto");
+ok(page.includes("CONTEXTO CLÍNICO"), "contexto clínico");
+ok(card.includes('density?: "default" | "compact"'), "prop density");
+ok(card.includes('density = "default"'), "default preservado");
+ok(card.includes('const isCompact = density === "compact"'), "runtime");
+ok(card.includes('isCompact ? "p-3 pl-4" : "p-4 pl-5"'), "padding");
+ok(card.includes('isCompact ? "gap-2.5" : "gap-3.5"'), "gap");
+ok(card.includes('isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"'), "ícone");
+console.log("V34 MEDICAMENTOS — IDENTIDADE + DENSIDADE CONTRACT: OK");

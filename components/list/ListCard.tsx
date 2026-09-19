@@ -12,11 +12,11 @@ export interface ListCardProps {
   color: string;
   /** Callback ao clicar no card (navegação) */
   onClick: () => void;
-  /** Ícone renderizado (48x48 com fundo colorido) */
+  /** Ícone renderizado */
   icon: ReactNode;
-  /** Conteúdo principal do card (título, badges, metadados) */
+  /** Conteúdo principal do card */
   children: ReactNode;
-  /** Ações internas (ex: Editar, Excluir) – renderizadas fora do botão principal */
+  /** Ações internas – renderizadas fora do botão principal */
   actions?: ReactNode;
   /** Classes adicionais para o container */
   className?: string;
@@ -30,6 +30,8 @@ export interface ListCardProps {
   contentClassName?: string;
   /** Se deve exibir a seta à direita (padrão: true) */
   showChevron?: boolean;
+  /** Densidade visual opt-in. O padrão preserva todos os demais cards. */
+  density?: "default" | "compact";
 }
 
 export function ListCard({
@@ -45,7 +47,10 @@ export function ListCard({
   disabledBorderColor = "border-coral/30",
   contentClassName = "",
   showChevron = true,
+  density = "default",
 }: ListCardProps) {
+  const isCompact = density === "compact";
+
   return (
     <motion.article
       key={id}
@@ -74,7 +79,6 @@ export function ListCard({
         borderColor: isDisabled ? undefined : `${color}40`,
       }}
     >
-      {/* Barra lateral de identidade */}
       <div
         className={`
           absolute
@@ -84,37 +88,34 @@ export function ListCard({
         `}
         style={
           !isDisabled
-            ? {
-                backgroundColor: color,
-              }
+            ? { backgroundColor: color }
             : undefined
         }
       />
 
-      <div className="p-4 pl-5">
-        {/* Conteúdo principal do card com navegação */}
+      <div className={isCompact ? "p-3 pl-4" : "p-4 pl-5"}>
         <button
           type="button"
           onClick={onClick}
           className={`
             flex w-full
-            items-start gap-3.5
+            items-start
+            ${isCompact ? "gap-2.5" : "gap-3.5"}
             text-left
             outline-none
             ${contentClassName}
           `}
         >
-          {/* Ícone */}
           <div
-            className="
-              flex h-12 w-12
+            className={`
+              flex
+              ${isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
               shrink-0
               items-center
               justify-center
-              rounded-2xl
               border
               shadow-inner
-            "
+            `}
             style={{
               backgroundColor: `${color}15`,
               borderColor: `${color}30`,
@@ -124,18 +125,28 @@ export function ListCard({
             {icon}
           </div>
 
-          {/* Conteúdo */}
           <div className="min-w-0 flex-1">{children}</div>
 
-          {/* Chevron (seta) */}
           {showChevron && (
-            <ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint" />
+            <ChevronRight
+              size={isCompact ? 14 : 16}
+              className={
+                isCompact
+                  ? "mt-1.5 shrink-0 text-ink-faint"
+                  : "mt-2 shrink-0 text-ink-faint"
+              }
+            />
           )}
         </button>
 
-        {/* Ações internas (fora do botão principal) */}
         {actions && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-surface-border/40">
+          <div
+            className={
+              isCompact
+                ? "mt-2 flex flex-wrap items-center gap-1.5 border-t border-surface-border/40 pt-1.5"
+                : "mt-3 flex flex-wrap items-center gap-2 border-t border-surface-border/40 pt-2"
+            }
+          >
             {actions}
           </div>
         )}
