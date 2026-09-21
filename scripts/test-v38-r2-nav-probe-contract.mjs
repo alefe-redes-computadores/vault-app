@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const n=fs.readFileSync("components/BottomNav.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw Error(m)};
+ok(n.includes("VAULT_NAV_PROBE_V38_R2"),"marker ausente");
+ok(n.includes('data-vault-nav-probe="v38-r2"'),"HUD ausente");
+ok(n.includes("setNavProbe"),"telemetria ausente");
+ok(n.includes("window.location.pathname"),"rota real ausente");
+ok(n.includes("VAULT_HOME_NAV_FALLBACK_V37"),"V37 perdida");
+ok(n.includes("router.replace(path);"),"V33.1 perdida");
+ok(n.includes("if (!shouldShowNav(pathname))"),"V31.2 perdida");
+console.log("V38 R2 NAV PROBE CONTRACT: OK");

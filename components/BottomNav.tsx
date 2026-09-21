@@ -535,9 +535,14 @@ export function BottomNav() {
     setIsComposeMenuOpen(false);
   }, [pathname]);
 
+  // VAULT_NAV_PROBE_V38_R2 — temporario
+  const [navProbe, setNavProbe] = useState("pronto");
+
   const handleNavigate = (
     path: string
   ) => {
+    setNavProbe(`tap=${path} before=${pathname}`);
+
     if (path === pathname) {
       return;
     }
@@ -547,6 +552,14 @@ export function BottomNav() {
     // A navegação normal continua sendo client-side e usando replace,
     // preservando o contrato V33.1 sem acumular histórico entre abas.
     router.replace(path);
+
+    if (typeof window !== "undefined") {
+      window.setTimeout(() => {
+        setNavProbe(
+          `tap=${path} before=${pathname} after=${window.location.pathname}`
+        );
+      }, 180);
+    }
 
     // Em alguns WebViews/APKs o roteador pode, raramente, não concluir
     // a transição para a raiz. Só nesse caso fazemos um fallback real.
@@ -751,6 +764,13 @@ export function BottomNav() {
             </>
           )}
       </AnimatePresence>
+
+      <div
+        data-vault-nav-probe="v38-r2"
+        className="fixed left-2 right-2 top-[calc(env(safe-area-inset-top,0px)+4.5rem)] z-[200] rounded-xl border border-cyan-400/50 bg-black/90 px-3 py-2 font-mono text-[11px] leading-4 text-cyan-200 shadow-2xl pointer-events-none"
+      >
+        V38 · pathname={pathname} · {navProbe}
+      </div>
 
       <nav
         aria-hidden={isBiometricLocked}
