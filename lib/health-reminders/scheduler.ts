@@ -1,6 +1,11 @@
+import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import { isVaultNative } from "@/lib/native-runtime";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import {
+  isNotificationPreferenceEnabled,
+  ensureVaultNotificationChannel,
+} from "@/lib/notifications";
 import { reminderRunsOnWeekday } from "./domain";
 import type { HealthReminderRule } from "./types";
 
@@ -82,11 +87,22 @@ export async function reconcileHealthReminderNotifications(
   if (ours.length > 0) await LocalNotifications.cancel({ notifications: ours });
 
   const active = rules.filter((rule) => rule.status === "active");
+
+  /*
+   * V36: a preferência local é a autoridade para este aparelho.
+   * Os agendamentos antigos já foram cancelados acima, então OFF
+   * realmente significa silêncio sem apagar as regras sincronizadas.
+   */
+  if (!isNotificationPreferenceEnabled() || !isVaultNotificationCategoryEnabled("lembretes_saude")) {
+    return { native: true, permission: await getHealthReminderPermission(), scheduled: 0 };
+  }
+
   const permission = await getHealthReminderPermission();
   if (permission !== "granted" || active.length === 0) {
     return { native: true, permission, scheduled: 0 };
   }
 
+  await ensureVaultNotificationChannel();
   await LocalNotifications.createChannel({
     id: CHANNEL_ID,
     name: "Lembretes de saúde",

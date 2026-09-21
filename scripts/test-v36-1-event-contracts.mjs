@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const s=fs.readFileSync("components/HealthReminderReconciler.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw new Error("V36.1: "+m)};
+ok(s.includes("item.id?.trim()"),"id opcional não protegido");
+ok(s.includes("item.person_id?.trim()"),"person_id opcional não protegido");
+ok(s.includes("if (!id || !personId || !eventUserId) continue;"),"registro incompleto não é descartado");
+ok(!s.includes("status: item.status,\n          targetRoute: `/saude/exames"),"Exame ainda depende de status inexistente");
+ok(s.includes('kind: "exame"') && s.includes('status: "agendada"'),"Exame não usa contrato real de existência/data/hora");
+ok(s.includes("encodeURIComponent(id)"),"deep-link não usa id refinado");
+ok(s.includes('kind: "consulta"') && s.includes('kind: "retirada"'),"consulta/retirada perdidas");
+console.log("V36.1 EVENT CONTRACTS: OK");

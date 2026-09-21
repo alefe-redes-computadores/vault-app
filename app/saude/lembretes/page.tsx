@@ -1,5 +1,6 @@
 "use client";
 import { isVaultNative } from "@/lib/native-runtime";
+import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ import type {
   HealthReminderRule,
 } from "@/lib/health-reminders/types";
 import { useHapticFeedback } from "@/lib/haptics";
+import { setNotificationPreferenceEnabled } from "@/lib/notifications";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const DEFAULT_TARGET = HEALTH_REMINDER_TARGETS[0];
@@ -149,6 +151,7 @@ export default function HealthRemindersPage() {
       const next = await requestHealthReminderPermission();
       setPermission(next);
       if (next === "granted") {
+        setNotificationPreferenceEnabled(true);
         window.dispatchEvent(new Event(HEALTH_REMINDERS_RECONCILE_EVENT));
         trigger("success");
         showToast("Notificações permitidas neste aparelho", "success");
@@ -166,6 +169,7 @@ export default function HealthRemindersPage() {
 
   return (
     <main className="min-h-screen bg-void px-4 pb-28 pt-6 text-ink-primary">
+        <NotificationPreferencesPanel />
       <header className="mx-auto flex max-w-xl items-center gap-3">
         <button onClick={() => router.replace("/saude/registros")} className="rounded-xl border border-surface-border p-2" aria-label="Voltar">
           <ArrowLeft size={20} />

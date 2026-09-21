@@ -1,5 +1,6 @@
 // lib/dose-notifications.ts
 
+import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import {
   isVaultNative,
 } from "@/lib/native-runtime";
@@ -387,6 +388,10 @@ export async function scheduleDoseNotifications(
     );
 
   try {
+    if (!isVaultNotificationCategoryEnabled("doses")) {
+      return;
+    }
+
     await LocalNotifications.schedule({
       notifications,
     });

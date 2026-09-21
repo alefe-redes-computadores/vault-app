@@ -1,5 +1,6 @@
 // lib/notifications.ts
 
+import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import {
   isVaultAndroid,
   isVaultNative,
@@ -442,6 +443,7 @@ export async function scheduleDocumentExpiryNotification(
   if (
     !isNativePlatform()
   ) {
+  if (!isVaultNotificationCategoryEnabled("documentos")) return;
     return;
   }
 
@@ -612,6 +614,7 @@ export async function scheduleMedicationRenewalNotification(
   if (
     !isNativePlatform()
   ) {
+  if (!isVaultNotificationCategoryEnabled("renovacoes")) return;
     return;
   }
 

@@ -543,7 +543,21 @@ export function BottomNav() {
     }
 
     trigger("vibrate");
+    // VAULT_HOME_NAV_FALLBACK_V37
+    // A navegação normal continua sendo client-side e usando replace,
+    // preservando o contrato V33.1 sem acumular histórico entre abas.
     router.replace(path);
+
+    // Em alguns WebViews/APKs o roteador pode, raramente, não concluir
+    // a transição para a raiz. Só nesse caso fazemos um fallback real.
+    // Não recarrega quando a navegação funcionou normalmente.
+    if (path === "/" && typeof window !== "undefined") {
+      window.setTimeout(() => {
+        if (window.location.pathname !== "/") {
+          window.location.assign("/");
+        }
+      }, 450);
+    }
   };
 
   const isActive = (

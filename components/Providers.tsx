@@ -72,6 +72,7 @@ import {
 } from "@/lib/db";
 
 import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
+import { InsightNotificationReconciler } from "@/components/InsightNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
 
 // ============================================================
@@ -1019,6 +1020,7 @@ export function Providers({
   return (
       <ErrorBoundary>
         <HealthReminderReconciler />
+      <InsightNotificationReconciler />
         <div className="min-h-screen pb-24">
           <Suspense
             fallback={
