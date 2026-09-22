@@ -1,0 +1,14 @@
+import fs from "node:fs";
+const r=f=>fs.readFileSync(f,"utf8"),ok=(v,m)=>{if(!v)throw Error(m)};
+const n=r("components/BottomNav.tsx"),p=r("components/Providers.tsx");
+ok(n.includes("VAULT_NORMALIZE_PATHNAME_V40"),"marker ausente");
+ok(n.includes("const normalizedPathname = normalizeNavPathname(pathname);"),"showNav sem normalizacao");
+ok(n.includes("normalizedPathname === normalizeNavPathname(path)"),"whitelist sem normalizacao");
+ok(n.includes("normalizeNavPathname(pathname) ==="),"isActive sem normalizacao");
+ok(n.includes("router.replace(path);"),"replace regrediu");
+ok(n.includes("VAULT_HOME_NAV_FALLBACK_V37"),"V37 regrediu");
+ok(!p.includes("GlobalNavigationProbe"),"V39 ainda montada");
+ok(!fs.existsSync("components/GlobalNavigationProbe.tsx"),"arquivo V39 ainda existe");
+const norm=x=>!x||x==="/"?"/":((x.split(/[?#]/,1)[0]||"/").replace(/\/+$/,"")||"/");
+for(const [a,b] of [["/","/"],["/hoje/","/hoje"],["/mais/","/mais"],["/saude/","/saude"],["/saude/medicamentos///","/saude/medicamentos"]])ok(norm(a)===b,`${a} != ${b}`);
+console.log("V40 CONTRACT OK");

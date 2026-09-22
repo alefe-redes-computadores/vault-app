@@ -403,21 +403,28 @@ const ALLOWED_NAV_PATHS = [
   "/saude/registros",
 ];
 
+// VAULT_NORMALIZE_PATHNAME_V40
+function normalizeNavPathname(pathname: string): string {
+  if (!pathname || pathname === "/") return "/";
+  const clean = pathname.split(/[?#]/, 1)[0] || "/";
+  return clean.replace(/\/+$/, "") || "/";
+}
+
 function shouldShowNav(
   pathname: string
 ): boolean {
+  const normalizedPathname = normalizeNavPathname(pathname);
   if (
-    pathname.includes("/novo") ||
-    pathname.includes("/editar") ||
-    pathname.includes("/nova")
+    normalizedPathname.includes("/novo") ||
+    normalizedPathname.includes("/editar") ||
+    normalizedPathname.includes("/nova")
   ) {
     return false;
   }
 
   return ALLOWED_NAV_PATHS.some(
     (path) =>
-      pathname === path ||
-      pathname.startsWith(`${path}?`)
+      normalizedPathname === normalizeNavPathname(path)
   );
 }
 
@@ -537,7 +544,10 @@ export function BottomNav() {
   const handleNavigate = (
     path: string
   ) => {
-    if (path === pathname) {
+    if (
+      normalizeNavPathname(path) ===
+      normalizeNavPathname(pathname)
+    ) {
       return;
     }
 
@@ -551,7 +561,9 @@ export function BottomNav() {
     // Não recarrega quando a navegação funcionou normalmente.
     if (path === "/" && typeof window !== "undefined") {
       window.setTimeout(() => {
-        if (window.location.pathname !== "/") {
+        if (
+          normalizeNavPathname(window.location.pathname) !== "/"
+        ) {
           window.location.assign("/");
         }
       }, 450);
@@ -562,11 +574,8 @@ export function BottomNav() {
     path: string
   ) => {
     return (
-      pathname === path ||
-      (
-        path === "/" &&
-        pathname === "/"
-      )
+      normalizeNavPathname(pathname) ===
+      normalizeNavPathname(path)
     );
   };
 

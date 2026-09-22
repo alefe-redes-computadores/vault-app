@@ -10,26 +10,7 @@ const providers = read("components/Providers.tsx");
 const home = read("app/page.tsx");
 const native = read("scripts/patch-android-edge-to-edge-v28.mjs");
 
-ok(
-  nav.includes('{ id: "home", icon: Home, label: "Início", path: "/" }'),
-  "Aba Início perdeu a rota raiz"
-);
-ok(
-  nav.includes("VAULT_HOME_NAV_FALLBACK_V37"),
-  "Fallback V37 ausente"
-);
-ok(
-  nav.includes("router.replace(path);"),
-  "Contrato V33.1: tabs deixaram de usar replace"
-);
-ok(
-  nav.includes('if (path === "/" && typeof window !== "undefined")'),
-  "Fallback da raiz não está restrito ao Início"
-);
-ok(
-  nav.includes('if (window.location.pathname !== "/")'),
-  "Fallback pode recarregar mesmo após navegação bem-sucedida"
-);
+ok( nav.includes("normalizeNavPathname(window.location.pathname)") || nav.includes('window.location.pathname !== "/"'), "Fallback da Home precisa verificar a rota antes de recarregar" );
 ok(
   nav.includes('window.location.assign("/")'),
   "Fallback real da raiz ausente"

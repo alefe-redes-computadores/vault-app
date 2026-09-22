@@ -1,5 +1,4 @@
 "use client";
-import { GlobalNavigationProbe } from "@/components/GlobalNavigationProbe";
 import { isVaultNative } from "@/lib/native-runtime";
 // components/Providers.tsx
 
@@ -1020,8 +1019,6 @@ export function Providers({
 
   return (
       <ErrorBoundary>
-        {/* VAULT_GLOBAL_PROBE_MOUNT_V39_R3 */}
-          <GlobalNavigationProbe />
           <HealthReminderReconciler />
       <InsightNotificationReconciler />
         <div className="min-h-screen pb-24">
