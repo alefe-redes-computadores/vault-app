@@ -18,6 +18,8 @@ import {
   doseLogsRepository,
 } from "@/lib/repositories/doseLogs";
 
+import { cancelOverdueDoseNotification } from "@/lib/overdue-dose-notifications";
+
 import {
   addDaysToLocalDate,
   getLocalTodayISO,
@@ -28,6 +30,7 @@ type DoseReminderExtra = {
   medicamentoId?: string;
   personId?: string;
   horario?: string;
+  data?: string;
 };
 
 function isValidHorario(
@@ -172,8 +175,10 @@ export function useDoseNotificationActions() {
 
               if (
                 !extra ||
-                extra.type !==
-                  "dose_reminder"
+                (
+                  extra.type !== "dose_reminder" &&
+                  extra.type !== "dose_overdue"
+                )
               ) {
                 return;
               }
@@ -215,7 +220,15 @@ export function useDoseNotificationActions() {
                 return;
               }
 
+              const exactOverdueDate =
+                extra.type === "dose_overdue" &&
+                typeof extra.data === "string" &&
+                /^\d{4}-\d{2}-\d{2}$/.test(extra.data)
+                  ? extra.data
+                  : null;
+
               const slotDate =
+                exactOverdueDate ??
                 resolveDoseNotificationSlotDate(
                   horario
                 );
@@ -234,6 +247,13 @@ export function useDoseNotificationActions() {
                     "taken",
                 });
 
+                await cancelOverdueDoseNotification({
+                  personId,
+                  medicamentoId,
+                  data: slotDate,
+                  horario,
+                });
+
                 return;
               }
 
@@ -249,6 +269,13 @@ export function useDoseNotificationActions() {
                   horario,
                   status:
                     "ignored",
+                });
+
+                await cancelOverdueDoseNotification({
+                  personId,
+                  medicamentoId,
+                  data: slotDate,
+                  horario,
                 });
               }
             } catch (

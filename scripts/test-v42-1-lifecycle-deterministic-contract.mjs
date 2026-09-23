@@ -1,0 +1,14 @@
+import fs from "node:fs";
+const s=fs.readFileSync("components/BiometricLock.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw Error("V42.1: "+m)};
+ok(s.includes("VAULT_NATIVE_UI_TRANSITION_V42_1"),"marker ausente");
+ok(s.includes("filePickerArmedAtRef"),"arm picker ausente");
+ok(s.includes("nativeUiTransitionRef"),"transição ausente");
+ok(s.includes("FILE_PICKER_ARM_WINDOW_MS = 2500"),"janela curta ausente");
+ok(s.includes('nativeUiTransitionRef.current = "file"'),"picker não classificado");
+ok(s.includes('nativeUiTransitionRef.current = "biometric"'),"biometria não classificada");
+ok(s.includes("nativeUiTransitionRef.current !== null"),"retorno não consumido");
+ok(!s.includes("NATIVE_UI_GRACE_MS"),"grace antiga ainda existe");
+ok(!s.includes("nativeUiGraceUntilRef"),"ref antiga ainda existe");
+ok(s.includes("!isAuthenticated && ("),"overlay V41 regrediu");
+console.log("V42.1 LIFECYCLE DETERMINISTIC CONTRACT: OK");

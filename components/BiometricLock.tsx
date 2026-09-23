@@ -37,19 +37,78 @@ export function BiometricLock({ children }: BiometricLockProps) {
     hasAutoPrompted.current = false;
   }, [isEnabled]);
 
-  // No APK, sair do app encerra a sessão biométrica da interface.
-  // Ao voltar, a tela de bloqueio reaparece e o auto-prompt existente
-  // solicita a biometria novamente. PWA não tenta usar plugin nativo.
+  // VAULT_BIOMETRIC_LIFECYCLE_V41
+  //
+  // Android também sinaliza inactive ao abrir UI nativa transitória
+  // (biometria, seletor de arquivos, câmera etc.). Não bloqueamos nesse
+  // instante: medimos a ausência e decidimos somente quando o app volta.
+  // O overlay de lock também deixa os children montados, preservando
+  // formulários, wizard, File/Blob e demais estados locais.
+  const backgroundedAtRef = useRef<number | null>(null);
+  const filePickerArmedAtRef = useRef<number | null>(null);
+  const nativeUiTransitionRef = useRef<"file" | "biometric" | null>(null);
+  const REAL_BACKGROUND_THRESHOLD_MS = 1500;
+  const FILE_PICKER_ARM_WINDOW_MS = 2500;
+
+  // VAULT_NATIVE_UI_TRANSITION_V42_1
+  // O clique apenas arma o picker por uma janela curta. A exceção só nasce
+  // se o Android realmente emitir inactive logo depois. No retorno consumimos
+  // exatamente uma transição nativa, sem uma janela cega de vários minutos.
+  useEffect(() => {
+    if (!isEnabled || !isVaultNative()) return;
+
+    const armFilePicker = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (target.type !== "file") return;
+      filePickerArmedAtRef.current = Date.now();
+    };
+
+    document.addEventListener("click", armFilePicker, true);
+    return () => document.removeEventListener("click", armFilePicker, true);
+  }, [isEnabled]);
+
   useEffect(() => {
     if (!isEnabled || !isVaultNative()) return;
 
     let removeListener: (() => void) | undefined;
+
     void App.addListener("appStateChange", ({ isActive }) => {
       if (!isActive) {
-        setIsAuthenticated(false);
-        setAuthError(null);
-        hasAutoPrompted.current = false;
+        const now = Date.now();
+        const armedAt = filePickerArmedAtRef.current;
+        filePickerArmedAtRef.current = null;
+
+        if (
+          nativeUiTransitionRef.current === null &&
+          armedAt !== null &&
+          now - armedAt <= FILE_PICKER_ARM_WINDOW_MS
+        ) {
+          nativeUiTransitionRef.current = "file";
+        }
+
+        backgroundedAtRef.current = now;
+        return;
       }
+
+      const backgroundedAt = backgroundedAtRef.current;
+      backgroundedAtRef.current = null;
+      filePickerArmedAtRef.current = null;
+
+      if (backgroundedAt === null) return;
+
+      if (nativeUiTransitionRef.current !== null) {
+        nativeUiTransitionRef.current = null;
+        return;
+      }
+
+      const awayForMs = Date.now() - backgroundedAt;
+
+      if (awayForMs < REAL_BACKGROUND_THRESHOLD_MS) return;
+
+      setIsAuthenticated(false);
+      setAuthError(null);
+      hasAutoPrompted.current = false;
     }).then((handle) => {
       removeListener = () => void handle.remove();
     });
@@ -95,14 +154,24 @@ export function BiometricLock({ children }: BiometricLockProps) {
     if (!isAvailable) return; // ainda checando disponibilidade
 
     hasAutoPrompted.current = true;
-    authenticate();
+    nativeUiTransitionRef.current = "biometric";
+    void authenticate().finally(() => {
+      if (nativeUiTransitionRef.current === "biometric") {
+        nativeUiTransitionRef.current = null;
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEnabled, isAuthenticated, isAvailable, isLoading]);
 
   const handleAuthenticate = () => {
     trigger("vibrate");
     setAuthError(null);
-    authenticate();
+    nativeUiTransitionRef.current = "biometric";
+    void authenticate().finally(() => {
+      if (nativeUiTransitionRef.current === "biometric") {
+        nativeUiTransitionRef.current = null;
+      }
+    });
   };
 
   const handleContinueWithoutBiometric = () => {
@@ -111,11 +180,19 @@ export function BiometricLock({ children }: BiometricLockProps) {
   };
 
   if (!isEnabled) return <>{children}</>;
-  if (isAuthenticated) return <>{children}</>;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-void px-6">
-      <motion.div
+    <>
+      <div
+        aria-hidden={!isAuthenticated}
+        className={isAuthenticated ? "" : "pointer-events-none select-none"}
+      >
+        {children}
+      </div>
+
+      {!isAuthenticated && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-void px-6">
+          <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.28 }}
@@ -199,7 +276,9 @@ export function BiometricLock({ children }: BiometricLockProps) {
             Continuar mesmo assim
           </motion.button>
         )}
-      </motion.div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </>
   );
 }

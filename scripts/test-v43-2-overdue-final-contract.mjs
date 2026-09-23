@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const c=fs.readFileSync("components/OverdueDoseNotificationReconciler.tsx","utf8");
+const a=fs.readFileSync("hooks/useDoseNotificationActions.ts","utf8");
+const ok=(v,m)=>{if(!v)throw Error("V43.2: "+m)};
+ok(c.includes("const [preferenceRevision, setPreferenceRevision]"),"revision state ausente");
+ok(c.includes("[activePersonId,medicamentos,logs,preferenceRevision]"),"preferência não reconcilia imediatamente");
+ok(a.includes("data?: string;"),"data exata ausente no extra");
+ok(a.includes('extra.type === "dose_overdue"'),"tipo overdue ausente");
+ok(a.includes("/^\\d{4}-\\d{2}-\\d{2}$/.test(extra.data)"),"data overdue não validada");
+ok(a.includes("exactOverdueDate ??"),"fallback de data ausente");
+console.log("V43.2 OVERDUE FINAL CONTRACT: OK");
