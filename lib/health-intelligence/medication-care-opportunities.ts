@@ -8,8 +8,8 @@ import type {
 } from "@/lib/types";
 
 import {
-  computeEstoqueInfo,
-} from "@/lib/health-utils";
+  getClinicalStockSnapshot,
+} from "@/lib/health-intelligence/clinical-stock";
 
 import {
   sugerirRenovacao,
@@ -460,16 +460,20 @@ export function buildMedicationCareOpportunities({
         medicamento
       );
 
-    const estoque =
-      computeEstoqueInfo(
+    // VAULT_CLINICAL_STOCK_V47
+    const stockSnapshot =
+      getClinicalStockSnapshot(
         medicamento
       );
 
+    const estoque =
+      stockSnapshot.info;
+
     const estoqueZerado =
-      Boolean(
-        estoque &&
-        estoque.quantidadeRestante <= 0
-      );
+      stockSnapshot.state ===
+        "empty" ||
+      stockSnapshot.state ===
+        "negative";
 
     const stockDays =
       estoque

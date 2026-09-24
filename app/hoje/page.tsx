@@ -64,6 +64,7 @@ import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 import { useHealthReminders } from "@/hooks/useHealthReminders";
 import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
+import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -457,6 +458,7 @@ export default function HojePage() {
   const {
     doseLogs,
     marcarComoTomada: marcarDose,
+    marcarComoTomadaEm,
     marcarComoTomadaHistoricaEm,
     marcarComoIgnorada,
     marcarComoIgnoradaHistorica,
@@ -796,6 +798,14 @@ export default function HojePage() {
 
   const [loteConfirmado, setLoteConfirmado] =
     useState<DoseItemExt[]>([]);
+
+  // VAULT_MOTOR_TEMPORAL_V46
+  // Slot programado e instante real da tomada são conceitos distintos.
+  const [isBatchTimeModalOpen, setIsBatchTimeModalOpen] =
+    useState(false);
+
+  const [batchCustomTime, setBatchCustomTime] =
+    useState("");
 
   const [isDoseModalOpen, setIsDoseModalOpen] =
     useState(false);
@@ -1796,49 +1806,45 @@ export default function HojePage() {
     : 0;
 
   const dosesAgrupadas = useMemo(() => {
-    const grupos: Record<
-      string,
-      {
-        label: string;
-        sub: string;
-        icon: any;
-        items: DoseItemExt[];
-      }
-    > = {
-      manha: {
-        label: "Manhã",
-        sub: "Início do dia",
-        icon: Sunrise,
-        items: [],
-      },
-      tarde: {
-        label: "Tarde",
-        sub: "Período da tarde",
-        icon: Sun,
-        items: [],
-      },
-      noite: {
-        label: "Noite",
-        sub: "Final do dia",
-        icon: Moon,
-        items: [],
-      },
-    };
+    const grupos: Record<string, { label: string; sub: string; icon: any; items: DoseItemExt[] }> = isHoje
+      ? {
+          // VAULT_TODAY_V3_V49 — prioridade operacional:
+          // agora → atrasadas → próximas → SOS/extra → concluído.
+          agora: { label: "Agora", sub: "No horário ou muito próximo dele", icon: Clock, items: [] },
+          atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle, items: [] },
+          depois: { label: "Depois", sub: "Próximas doses de hoje", icon: ChevronRight, items: [] },
+          avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap, items: [] },
+          concluidas: { label: "Concluído", sub: "Doses resolvidas hoje", icon: CheckCircle2, items: [] },
+        }
+      : {
+          manha: { label: "Manhã", sub: "Início do dia", icon: Sunrise, items: [] },
+          tarde: { label: "Tarde", sub: "Período da tarde", icon: Sun, items: [] },
+          noite: { label: "Noite", sub: "Final do dia", icon: Moon, items: [] },
+        };
 
-    dosesParaExibir.forEach((d) => {
-      const periodo =
-        getPeriodoDoDia(d.horario);
-
-      if (grupos[periodo.key]) {
-        grupos[periodo.key].items.push(d);
+    dosesParaExibir.forEach((dose) => {
+      if (!isHoje) {
+        const periodo = getPeriodoDoDia(dose.horario);
+        grupos[periodo.key]?.items.push(dose);
+        return;
       }
+      if (dose.isAvulsa) { grupos.avulsas.items.push(dose); return; }
+      if (dose.tomada || dose.ignorada) { grupos.concluidas.items.push(dose); return; }
+      const temporalBucket = classifyClinicalSchedule({
+        eventDate: dataSelecionada,
+        scheduledTime: dose.horario,
+        today: hoje,
+        nowTime: horaAtual,
+        nowWindowMinutes: 15,
+      });
+
+      if (temporalBucket === "now") grupos.agora.items.push(dose);
+      else if (temporalBucket === "past" || temporalBucket === "past-day") grupos.atrasadas.items.push(dose);
+      else grupos.depois.items.push(dose);
     });
-
-    return Object.entries(grupos).filter(
-      ([, grupo]) =>
-        grupo.items.length > 0
-    );
-  }, [dosesParaExibir]);
+    for (const grupo of Object.values(grupos)) grupo.items.sort((a,b)=>a.horario.localeCompare(b.horario));
+    return Object.entries(grupos).filter(([, grupo]) => grupo.items.length > 0);
+  }, [dosesParaExibir, horaAtual, isHoje]);
 
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
@@ -1907,14 +1913,26 @@ export default function HojePage() {
         )
       : 0;
 
+  // VAULT_HOJE_DOSES_V45
+  // Somente slots programados vencidos/agora e ainda não resolvidos.
+  // A chave medicamento+horário impede baixa dupla por dado legado.
   const dosesElegiveisLote =
     isHoje
-      ? metricItems.filter(
-          (dose) =>
-            Boolean(dose.medicamentoId) &&
-            !dose.tomada &&
-            !dose.ignorada &&
-            dose.horario <= horaAtual
+      ? Array.from(
+          metricItems
+            .filter(
+              (dose) =>
+                Boolean(dose.medicamentoId) &&
+                !dose.tomada &&
+                !dose.ignorada &&
+                dose.horario <= horaAtual
+            )
+            .reduce((map, dose) => {
+              const key = `${dose.medicamentoId}-${dose.horario}`;
+              if (!map.has(key)) map.set(key, dose);
+              return map;
+            }, new Map<string, DoseItemExt>())
+            .values()
         )
       : [];
 
@@ -2027,7 +2045,8 @@ export default function HojePage() {
           await marcarComoTomadaHistoricaEm(
             item.medicamentoId,
             item.horario,
-            takenAt.toISOString()
+            takenAt.toISOString(),
+            item.unidadePorDose
           );
 
           trigger(
@@ -2092,7 +2111,8 @@ export default function HojePage() {
           await marcarComoTomadaHistoricaEm(
             item.medicamentoId,
             item.horario,
-            takenAt.toISOString()
+            takenAt.toISOString(),
+            item.unidadePorDose
           );
 
           trigger(
@@ -2109,7 +2129,8 @@ export default function HojePage() {
         ) {
           await marcarComoIgnoradaHistorica(
             item.medicamentoId,
-            item.horario
+            item.horario,
+            item.unidadePorDose
           );
 
           trigger(
@@ -2271,9 +2292,12 @@ export default function HojePage() {
       // O repository registra o DoseLog e movimenta o estoque.
       // ======================================================
 
+      // VAULT_HOJE_DOSES_V45 — ação individual e lote usam
+      // a quantidade real da dose; o repository continua dono do estoque.
       await marcarDose(
         item.medicamentoId,
-        item.horario
+        item.horario,
+        item.unidadePorDose
       );
 
       trigger(
@@ -2300,7 +2324,7 @@ export default function HojePage() {
     }
   };
 
-  const handleTomarTodos = async () => {
+  const handleTomarTodos = () => {
     if (
       processandoTodos ||
       processandoDoseId ||
@@ -2309,21 +2333,99 @@ export default function HojePage() {
       return;
     }
 
+    trigger("vibrate");
+
+    const hhmm =
+      `${String(agora.getHours()).padStart(2, "0")}:${String(
+        agora.getMinutes()
+      ).padStart(2, "0")}`;
+
+    setBatchCustomTime(hhmm);
+    setIsBatchTimeModalOpen(true);
+  };
+
+  type BatchTimeMode =
+    | "now"
+    | "scheduled"
+    | "custom";
+
+  const executarTomadaEmLote = async (
+    mode: BatchTimeMode
+  ) => {
+    if (
+      processandoTodos ||
+      processandoDoseId ||
+      dosesElegiveisLote.length < 2
+    ) {
+      return;
+    }
+
+    let customTakenAt: Date | null = null;
+
+    if (mode === "custom") {
+      if (
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(
+          batchCustomTime
+        )
+      ) {
+        showToast("Informe um horário válido", "error");
+        return;
+      }
+
+      customTakenAt = new Date(
+        `${dataSelecionada}T${batchCustomTime}:00`
+      );
+
+      if (
+        Number.isNaN(customTakenAt.getTime()) ||
+        customTakenAt.getTime() > Date.now()
+      ) {
+        showToast(
+          "O horário da tomada não pode estar no futuro",
+          "error"
+        );
+        return;
+      }
+    }
+
+    // Um único instante para todo o lote no modo "agora".
+    const batchNow =
+      mode === "now"
+        ? new Date()
+        : null;
+
     setProcessandoTodos(true);
     setLoteConfirmado([]);
 
     const confirmadas: DoseItemExt[] = [];
     let falhas = 0;
 
-    // Serial de propósito: duas doses do mesmo medicamento nunca
-    // disputam a leitura/gravação do saldo de estoque.
+    // Serial de propósito: protege duas doses do mesmo medicamento
+    // contra disputa de leitura/gravação do saldo.
     for (const dose of dosesElegiveisLote) {
       if (!dose.medicamentoId) continue;
 
       try {
-        await marcarDose(
+        let takenAt: Date;
+
+        if (mode === "scheduled") {
+          takenAt = new Date(
+            `${dataSelecionada}T${dose.horario}:00`
+          );
+        } else if (mode === "custom") {
+          takenAt = customTakenAt!;
+        } else {
+          takenAt = batchNow!;
+        }
+
+        if (Number.isNaN(takenAt.getTime())) {
+          throw new Error("Horário real da tomada inválido.");
+        }
+
+        await marcarComoTomadaEm(
           dose.medicamentoId,
           dose.horario,
+          takenAt.toISOString(),
           dose.unidadePorDose
         );
 
@@ -2331,7 +2433,7 @@ export default function HojePage() {
       } catch (error) {
         falhas += 1;
         console.error(
-          "Erro ao registrar dose no lote:",
+          "Erro ao registrar dose no lote temporal:",
           error
         );
       }
@@ -2341,21 +2443,25 @@ export default function HojePage() {
     setProcessandoTodos(false);
 
     if (confirmadas.length > 0) {
+      setIsBatchTimeModalOpen(false);
       trigger("success");
-      showToast(
-        `${confirmadas.length} ${
-          confirmadas.length === 1 ? "dose registrada" : "doses registradas"
-        }`,
-        "success"
-      );
-    }
 
-    if (falhas > 0) {
-      trigger("error");
+      const descricao =
+        mode === "scheduled"
+          ? "nos horários programados"
+          : mode === "custom"
+            ? `às ${batchCustomTime}`
+            : "agora";
+
       showToast(
-        `${falhas} ${falhas === 1 ? "dose não foi registrada" : "doses não foram registradas"}`,
-        "error"
+        falhas > 0
+          ? `${confirmadas.length} doses registradas ${descricao}; ${falhas} falharam`
+          : `${confirmadas.length} doses registradas ${descricao}`,
+        falhas > 0 ? "info" : "success"
       );
+    } else {
+      trigger("error");
+      showToast("Nenhuma dose pôde ser registrada", "error");
     }
   };
 
@@ -2964,7 +3070,7 @@ export default function HojePage() {
                     {dosesElegiveisLote.length} doses aguardando
                   </h2>
                   <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                    Confirma somente doses programadas que já chegaram ao horário. SOS e doses futuras ficam de fora.
+                    Doses programadas já vencidas. Antes de registrar, o Vault pergunta quando elas foram realmente tomadas. SOS e doses futuras ficam de fora.
                   </p>
                 </div>
               </div>
@@ -4553,6 +4659,125 @@ export default function HojePage() {
             </section>
           )}
         </section>
+
+        {/* =========================================================
+            V46 — CONFIRMAÇÃO TEMPORAL DO LOTE
+        ========================================================= */}
+        <AnimatePresence>
+          {isBatchTimeModalOpen && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Fechar confirmação de doses"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  if (!processandoTodos) {
+                    setIsBatchTimeModalOpen(false);
+                  }
+                }}
+                className="fixed inset-0 z-[98] bg-black/70 backdrop-blur-sm"
+              />
+
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Quando as doses foram tomadas"
+                initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 24, scale: 0.98 }}
+                className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[99] mx-auto max-w-md rounded-[28px] border border-surface-border bg-surface p-4 shadow-2xl"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                    <Clock size={19} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">
+                      Confirmação temporal
+                    </p>
+                    <h3 className="mt-1 text-base font-bold text-ink-primary">
+                      Quando você tomou essas {dosesElegiveisLote.length} doses?
+                    </h3>
+                    <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                      O horário programado continua como referência. O horário real é salvo separadamente para o histórico e para a inteligência do Vault.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    disabled={processandoTodos}
+                    onClick={() => void executarTomadaEmLote("now")}
+                    className="flex w-full items-center justify-between rounded-2xl bg-emerald-400 px-4 py-3.5 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">Tomei agora</p>
+                      <p className="mt-0.5 text-[9px] opacity-70">
+                        Mesmo instante real para todo o lote
+                      </p>
+                    </div>
+                    {processandoTodos ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={18} />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={processandoTodos}
+                    onClick={() => void executarTomadaEmLote("scheduled")}
+                    className="flex w-full items-center justify-between rounded-2xl border border-ice/20 bg-ice/5 px-4 py-3.5 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
+                  >
+                    <div>
+                      <p className="text-xs font-bold">Tomei nos horários programados</p>
+                      <p className="mt-0.5 text-[9px] text-ink-muted">
+                        Cada dose mantém seu próprio horário previsto
+                      </p>
+                    </div>
+                    <Clock size={18} className="text-ice" />
+                  </button>
+
+                  <div className="rounded-2xl border border-surface-border bg-surface-raised p-3">
+                    <label htmlFor="vault-batch-real-time" className="text-[10px] font-semibold text-ink-muted">
+                      Tomei todas em outro horário
+                    </label>
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        id="vault-batch-real-time"
+                        type="time"
+                        value={batchCustomTime}
+                        onChange={(event) => setBatchCustomTime(event.target.value)}
+                        disabled={processandoTodos}
+                        className="min-w-0 flex-1 rounded-xl border border-surface-border bg-void px-3 py-2.5 text-sm font-semibold text-ink-primary outline-none focus:border-ice/50 disabled:opacity-50"
+                      />
+                      <button
+                        type="button"
+                        disabled={processandoTodos || !batchCustomTime}
+                        onClick={() => void executarTomadaEmLote("custom")}
+                        className="rounded-xl border border-ice/25 bg-ice/10 px-4 py-2.5 text-xs font-bold text-ice transition-all active:scale-[0.98] disabled:opacity-40"
+                      >
+                        Registrar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={processandoTodos}
+                  onClick={() => setIsBatchTimeModalOpen(false)}
+                  className="mt-3 w-full rounded-2xl px-4 py-2.5 text-xs font-semibold text-ink-muted transition-all active:scale-[0.99] disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* =========================================================
             MODAL — DOSE AVULSA

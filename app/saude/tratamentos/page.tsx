@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   History,
   Pill,
-  Plus,
+
   Search,
   X,
 } from "lucide-react";
@@ -1003,27 +1003,7 @@ function TratamentoListContent() {
               }
             )
           )}
-        </section>
-
-        {/* ====================================================
-            FAB — NOVO TRATAMENTO
-            ==================================================== */}
-
-        <button
-          type="button"
-          onClick={
-            handleCreate
-          }
-          aria-label="Criar novo tratamento"
-          className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full border border-ice/25 bg-ice text-void shadow-[0_12px_32px_rgba(56,189,248,0.24)] transition-transform active:scale-95"
-        >
-          <Plus
-            size={
-              22
-            }
-          />
-        </button>
-      </main>
+        </section>      </main>
     </PageTransition>
   );
 }

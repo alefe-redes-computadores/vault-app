@@ -191,15 +191,32 @@ export function analyzeSosPattern({
   const difference = current.count - previous.count;
   const ratio = previous.count > 0 ? current.count / previous.count : null;
 
+  // VAULT_BRAIN_V50_SOS_QUANTITY
+  // Quantidade só participa da gravidade quando todos os registros
+  // da janela possuem quantidade conhecida. Nunca inventamos quantidade.
+  const quantityDifference =
+    current.quantityComplete && previous.quantityComplete
+      ? current.knownQuantity - previous.knownQuantity
+      : null;
+
+  const quantityRatio =
+    current.quantityComplete && previous.quantityComplete && previous.knownQuantity > 0
+      ? current.knownQuantity / previous.knownQuantity
+      : null;
+
   const strongChange =
     current.count >= 21 ||
+    (current.quantityComplete && current.knownQuantity >= 21) ||
     (ratio !== null && ratio >= 3 && difference >= 10) ||
+    (quantityRatio !== null && quantityRatio >= 3 && quantityDifference !== null && quantityDifference >= 10) ||
     intervals.shortIntervals >= 5 ||
     (consecutive >= 7 && current.count >= 14);
 
   const attentionChange =
     current.count >= 7 ||
+    (current.quantityComplete && current.knownQuantity >= 7) ||
     (ratio !== null && ratio >= 1.5 && difference >= 3) ||
+    (quantityRatio !== null && quantityRatio >= 1.5 && quantityDifference !== null && quantityDifference >= 3) ||
     intervals.shortIntervals >= 2 ||
     (consecutive >= 4 && current.count >= 4);
 

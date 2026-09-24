@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Clock,
   Pill,
-  Plus,
+
   Search,
   Store,
   XCircle,
@@ -284,18 +284,6 @@ export default function RetiradasPage() {
                 </h1>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                trigger("vibrate");
-                router.push("/saude/retiradas/nova");
-              }}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ice text-void active:scale-95"
-              aria-label="Nova retirada"
-            >
-              <Plus size={19} />
-            </button>
           </div>
 
           <div className="mt-4 grid grid-cols-4 gap-2">

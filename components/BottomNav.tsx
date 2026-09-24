@@ -263,6 +263,24 @@ const CIDS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   },
 ];
 
+const REGISTROS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  {
+    id: "novo-registro",
+    label: "Novo Registro",
+    icon: Activity,
+    path: "/saude/registros/novo",
+  },
+];
+
+const RETIRADAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  {
+    id: "nova-retirada",
+    label: "Nova Retirada",
+    icon: Pill,
+    path: "/saude/retiradas/nova",
+  },
+];
+
 const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "cartao",
@@ -312,56 +330,65 @@ function getComposeOptions(
   pathname: string,
   searchParams: URLSearchParams
 ): ComposeOption[] {
-  if (pathname === "/") return SAUDE_COMPOSE_OPTIONS;
-  if (pathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
-  if (pathname === "/saude/documentos") {
+  // VAULT_CONTEXTUAL_FAB_PATH_NORMALIZATION_V44
+  const normalizedPathname = normalizeNavPathname(pathname);
+
+  if (normalizedPathname === "/") return SAUDE_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/saude/documentos") {
     return SAUDE_DOCUMENTOS_COMPOSE_OPTIONS;
   }
-  if (pathname === "/hoje") return HOJE_COMPOSE_OPTIONS;
-  if (pathname === "/mais") return [];
+  if (normalizedPathname === "/hoje") return HOJE_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/mais") return [];
 
-  if (pathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
-  if (pathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
-  if (pathname === "/contas") return CONTAS_COMPOSE_OPTIONS;
-  if (pathname === "/vaults") return VAULTS_COMPOSE_OPTIONS;
-  if (pathname === "/senhas") return SENHAS_COMPOSE_OPTIONS;
-  if (pathname === "/favoritos") return [];
+  if (normalizedPathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/contas") return CONTAS_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/vaults") return VAULTS_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/senhas") return SENHAS_COMPOSE_OPTIONS;
+  if (normalizedPathname === "/favoritos") return [];
 
-  if (pathname === "/saude/medicos") {
+  if (normalizedPathname === "/saude/medicos") {
     return MEDICOS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/medicamentos") {
+  if (normalizedPathname === "/saude/medicamentos") {
     return MEDICAMENTOS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/farmacias") {
+  if (normalizedPathname === "/saude/farmacias") {
     return FARMACIAS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/tratamentos") {
+  if (normalizedPathname === "/saude/tratamentos") {
     return TRATAMENTOS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/hospitais") {
+  if (normalizedPathname === "/saude/hospitais") {
     return HOSPITAIS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/locais") {
+  if (normalizedPathname === "/saude/locais") {
     return LOCAIS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/renovacao") {
+  if (normalizedPathname === "/saude/renovacao") {
     return RENOVACOES_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/exames") {
+  if (normalizedPathname === "/saude/exames") {
     return EXAMES_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/consultas") {
+  if (normalizedPathname === "/saude/consultas") {
     return CONSULTAS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/cirurgias") {
+  if (normalizedPathname === "/saude/cirurgias") {
     return CIRURGIAS_LIST_COMPOSE_OPTIONS;
   }
-  if (pathname === "/saude/cids") {
+  if (normalizedPathname === "/saude/cids") {
     return CIDS_LIST_COMPOSE_OPTIONS;
   }
+  if (normalizedPathname === "/saude/registros") {
+    return REGISTROS_LIST_COMPOSE_OPTIONS;
+  }
+  if (normalizedPathname === "/saude/retiradas") {
+    return RETIRADAS_LIST_COMPOSE_OPTIONS;
+  }
 
-  if (pathname === "/saude/rede") {
+  if (normalizedPathname === "/saude/rede") {
     const tab = searchParams.get("tab");
 
     if (tab === "medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
@@ -392,6 +419,8 @@ const ALLOWED_NAV_PATHS = [
   "/saude/medicamentos",
   "/saude/medicos",
   "/saude/farmacias",
+  "/saude/tratamentos",
+  "/saude/retiradas",
   "/saude/hospitais",
   "/saude/locais",
   "/saude/renovacao",
@@ -581,7 +610,7 @@ export function BottomNav() {
 
   const composeOptions =
     getComposeOptions(
-      pathname,
+      normalizeNavPathname(pathname),
       searchParams
     );
 

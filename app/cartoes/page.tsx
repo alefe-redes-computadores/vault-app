@@ -13,7 +13,7 @@ import {
   EyeOff,
   Landmark,
   Loader2,
-  Plus,
+
   Trash2,
 } from "lucide-react";
 
@@ -609,26 +609,7 @@ export default function CartoesPage() {
               )}
             </>
           )}
-        </section>
-
-        <button
-          type="button"
-          onClick={
-            handleCreateCard
-          }
-          aria-label="Adicionar cartão"
-          className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-lg shadow-ice/20 transition-all active:scale-95"
-        >
-          <Plus
-            size={22}
-            strokeWidth={
-              2.5
-            }
-            aria-hidden="true"
-          />
-        </button>
-
-        <ScrollToTop
+        </section>        <ScrollToTop
           threshold={200}
         />
 

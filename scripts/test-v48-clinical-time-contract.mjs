@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const t=fs.readFileSync("lib/health-intelligence/clinical-time.ts","utf8");
+const hoje=fs.readFileSync("app/hoje/page.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw Error("V48: "+m)};
+for(const x of ["eventDate","scheduledTime","actualAt","recordedAt"]) ok(t.includes(x),"eixo temporal ausente "+x);
+ok(t.includes('Math.abs(delta) <= windowMinutes'),"janela Agora ausente");
+ok(t.includes('return delta < 0 ? "past" : "upcoming"'),"classificação temporal ausente");
+ok(hoje.includes("classifyClinicalSchedule"),"Hoje não usa motor temporal");
+ok(hoje.includes("nowWindowMinutes: 15"),"janela operacional não explícita");
+ok(hoje.includes("marcarComoTomadaEm"),"horário real V46 regrediu");
+console.log("V48 CLINICAL TIME CONTRACT: OK");

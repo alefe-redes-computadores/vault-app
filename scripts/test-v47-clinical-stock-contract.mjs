@@ -1,0 +1,18 @@
+import fs from "node:fs";
+const stock=fs.readFileSync("lib/health-intelligence/clinical-stock.ts","utf8");
+const notif=fs.readFileSync("components/MedicamentosNotifications.tsx","utf8");
+const care=fs.readFileSync("lib/health-intelligence/medication-care-opportunities.ts","utf8");
+const dose=fs.readFileSync("lib/repositories/doseLogs.ts","utf8");
+const ren=fs.readFileSync("lib/repositories/renovacoes.ts","utf8");
+const ok=(v,m)=>{if(!v)throw Error("V47: "+m)};
+for(const x of ['"unknown"','"empty"','"available"','"negative"']) ok(stock.includes(x),"estado ausente "+x);
+ok(stock.includes("registeredQuantity === null"),"unknown não explícito");
+ok(notif.includes("getClinicalStockSnapshot"),"notificações ainda usam saldo bruto");
+ok(!notif.includes("med.estoque_quantidade <= 3"),"limite bruto <=3 permaneceu");
+ok(care.includes("stockSnapshot.state"),"care opportunities sem estado clínico");
+ok(dose.includes("historicalQuantity"),"undo perdeu quantidade histórica");
+ok(dose.includes("stockDelta"),"repository perdeu autoridade de estoque");
+ok(dose.includes("historicalStockAmount"),"restauração histórica perdida");
+ok(ren.includes("Estoque só é alterado por uma aquisição real."),"Receita != Aquisição regrediu");
+ok(ren.includes("!somenteReceita"),"receita isolada pode alterar estoque");
+console.log("V47 CLINICAL STOCK CONTRACT: OK");

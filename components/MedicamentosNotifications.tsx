@@ -14,6 +14,7 @@ import {
 import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { sugerirRenovacao } from "@/lib/health-insights";
+import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -79,27 +80,46 @@ export function MedicamentosNotifications() {
         });
       }
 
-      // 2. Lógica de Estoque
-      if (med.estoque_quantidade !== undefined && med.estoque_quantidade !== null) {
-        if (med.estoque_quantidade === 0) {
-          itensAlerta.push({
-            id: med.id,
-            tipo: "estoque",
-            urgencia: "pendente",
-            titulo: "Sem Estoque",
-            descricao: `${med.nome} acabou`,
-            data: "Imediato",
-          });
-        } else if (med.estoque_quantidade <= 3) {
-          itensAlerta.push({
-            id: med.id,
-            tipo: "estoque",
-            urgencia: "hoje",
-            titulo: "Estoque Baixo",
-            descricao: `Restam apenas ${med.estoque_quantidade} de ${med.nome}`,
-            data: "Comprar em breve",
-          });
-        }
+      // 2. Estoque clínico V2 — VAULT_CLINICAL_STOCK_V47
+      // Ausência de saldo NÃO significa zero. Quando a estimativa por dose
+      // é confiável, priorizamos dias/doses; caso contrário preservamos
+      // somente o saldo conhecido, sem inventar conversão clínica.
+      const stock = getClinicalStockSnapshot(med);
+
+      if (stock.state === "empty" || stock.state === "negative") {
+        itensAlerta.push({
+          id: med.id,
+          tipo: "estoque",
+          urgencia: "pendente",
+          titulo: "Sem Estoque",
+          descricao:
+            stock.state === "negative"
+              ? `${med.nome} está com saldo negativo e precisa de conferência`
+              : `${med.nome} acabou`,
+          data: "Imediato",
+        });
+      } else if (
+        stock.state === "available" &&
+        (
+          (stock.daysRemaining !== null && stock.daysRemaining <= 3) ||
+          (stock.daysRemaining === null &&
+            stock.dosesRemaining !== null &&
+            stock.dosesRemaining <= 3)
+        )
+      ) {
+        const restante =
+          stock.daysRemaining !== null
+            ? `${stock.daysRemaining} dia${stock.daysRemaining === 1 ? "" : "s"}`
+            : `${stock.dosesRemaining} dose${stock.dosesRemaining === 1 ? "" : "s"}`;
+
+        itensAlerta.push({
+          id: med.id,
+          tipo: "estoque",
+          urgencia: "hoje",
+          titulo: "Estoque Baixo",
+          descricao: `${med.nome}: cerca de ${restante} restante`,
+          data: "Comprar em breve",
+        });
       }
     });
 

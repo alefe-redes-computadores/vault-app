@@ -135,6 +135,12 @@ function urgency(severity: SafetySeverity): HealthInsight["urgencia"] {
 }
 
 function buildUsePattern(context: HealthInsightContext, medication: Medication, now: Date): HealthInsight | null {
+  // VAULT_BRAIN_V50_CANONICAL_SOS
+  // SOS/esporádico pertence ao analisador canônico com baseline próprio.
+  // Esta regra permanece para dose extra/não planejada de medicamento não-SOS.
+  if (medication.tipo_uso === "sos" || medication.tipo_uso === "esporadico") {
+    return null;
+  }
   const logs = medicationLogs(context, medication.id).filter((dose) => isTaken(dose) && isUnplanned(dose));
   const last24h = recent(logs, now, 24);
   const last7d = recent(logs, now, 24 * 7);
@@ -145,7 +151,7 @@ function buildUsePattern(context: HealthInsightContext, medication: Medication, 
 
   return {
     // Reutiliza a identidade canônica para substituir o padrão V1 na deduplicação final.
-    id: `padrao-sos-v1-${medication.id}`,
+    id: `seguranca-uso-extra-${medication.id}`,
     kind: severity === "importante" ? "alert" : "pattern",
     categoria: "uso_sos",
     titulo: `${medication.nome}: uso SOS/extra concentrado`,

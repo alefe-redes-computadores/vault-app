@@ -289,24 +289,7 @@ export default function VaultsPage() {
 
         {/* =============================================== */}
         {/* FAB */}
-        {/* =============================================== */}
-
-        {vaults.length > 0 && (
-          <button
-            type="button"
-            onClick={
-              handleCreateVault
-            }
-            className="fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-ice text-void shadow-xl transition-transform active:scale-95"
-            aria-label="Criar novo cofre"
-          >
-            <Lock
-              size={22}
-              aria-hidden="true"
-            />
-          </button>
-        )}
-      </main>
+        {/* =============================================== */}      </main>
     </PageTransition>
   );
 }

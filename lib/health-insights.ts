@@ -8284,6 +8284,16 @@ export function gerarInsightsSaude(
 
       evidencias:
         validation.inconsistencias,
+
+      // VAULT_BRAIN_V50_DATA_QUALITY
+      fontesInternas: [
+        "Contexto da pessoa ativa",
+        "Registros locais do Vault",
+      ],
+      acaoSegura:
+        "Revise os registros indicados antes de usar este histórico como referência.",
+      limitacaoSeguranca:
+        "Os registros descartados não participam dos demais padrões e tendências desta análise.",
     });
   }
 
@@ -8923,6 +8933,49 @@ export function gerarInsightsSaude(
 
           evidencias:
             padraoSOS.evidence,
+
+          // VAULT_BRAIN_V50_EXPLAINABLE_SOS
+          fontesInternas: [
+            "Medicamentos SOS",
+            "Registros de doses SOS/extra",
+          ],
+
+          comparacao: {
+            janelaAtual: "7 dias atuais",
+            janelaAnterior: "7 dias anteriores",
+            valorAtual: padraoSOS.currentCount,
+            valorAnterior: padraoSOS.previousCount,
+            variacaoPercentual:
+              padraoSOS.previousCount > 0
+                ? Number((((padraoSOS.currentCount - padraoSOS.previousCount) / padraoSOS.previousCount) * 100).toFixed(1))
+                : null,
+            tendencia:
+              padraoSOS.currentCount > padraoSOS.previousCount
+                ? "aumento"
+                : padraoSOS.currentCount < padraoSOS.previousCount
+                  ? "queda"
+                  : "estavel",
+          },
+
+          coberturaDias: {
+            observados: padraoSOS.currentDaysWithUse + padraoSOS.previousDaysWithUse,
+            total: 14,
+          },
+
+          gravidadeSeguranca:
+            padraoSOS.level === "strong"
+              ? "importante"
+              : padraoSOS.level === "attention"
+                ? "atencao"
+                : "informativa",
+
+          acaoSegura:
+            padraoSOS.recommendation,
+
+          limitacaoSeguranca:
+            padraoSOS.currentQuantityComplete
+              ? "A análise descreve somente os registros salvos no Vault e os compara com o histórico recente da própria pessoa. Ela não determina diagnóstico, intoxicação, tolerância ou necessidade de alterar dose."
+              : "Há registro(s) sem quantidade confirmada. Por segurança, o Vault usa frequência, dias e intervalos sem inventar quantidade e não determina diagnóstico ou alteração de dose.",
         });
       }
 

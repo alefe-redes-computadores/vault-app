@@ -1,0 +1,16 @@
+import fs from "node:fs";
+const h=fs.readFileSync("app/hoje/page.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw Error("V49: "+m)};
+ok(h.includes("VAULT_TODAY_V3_V49"),"marker ausente");
+const now=h.indexOf('agora: { label: "Agora"');
+const late=h.indexOf('atrasadas: { label: "Atrasadas"');
+const next=h.indexOf('depois: { label: "Depois"');
+const extra=h.indexOf('avulsas: { label: "SOS e extras"');
+const done=h.indexOf('concluidas: { label: "Concluído"');
+ok(now>=0&&now<late&&late<next&&next<extra&&extra<done,"ordem operacional incorreta");
+ok(h.includes("mostrarConcluidas"),"concluídos deixaram de ser recolhíveis");
+ok(h.includes("dosesElegiveisLote"),"Tomar todas perdido");
+ok(h.includes("handleDesfazerLote"),"desfazer lote perdido");
+ok(h.includes("QuickDoseModal"),"dose extra/SOS perdida");
+ok(h.includes("Compromissos do Dia"),"compromissos perdidos");
+console.log("V49 TODAY V3 CONTRACT: OK");
