@@ -457,15 +457,23 @@ export function Providers({
             setVaultSyncRuntime({ phase: "idle", error: null });
             return;
           }
-          if (result.failed > 0 || result.permanentlyFailed > 0) {
+          // VAULT_SYNC_TERMINAL_STATE_V50_1_1
+          // result.failed é histórico de tentativas da execução, não o
+          // estado terminal da fila.
+          if (result.fatalError || result.permanentlyFailed > 0) {
             setVaultSyncRuntime({
               phase: "error",
-              error: result.permanentlyFailed > 0
-                ? "Há itens que precisam de revisão na sincronização."
-                : "Alguns itens não puderam ser sincronizados agora.",
+              error: result.fatalError ||
+                "Há itens que precisam de revisão na sincronização.",
             });
             return;
           }
+
+          if (result.remaining > 0) {
+            setVaultSyncRuntime({ phase: "pushing", error: null });
+            return;
+          }
+
           setVaultSyncRuntime({ phase: "synced", error: null });
         } catch (error) {
           if (cancelled) return;

@@ -94,6 +94,7 @@ export interface SyncProcessResult {
   remaining: number;
   permanentlyFailed: number;
   offline: boolean;
+  fatalError: string | null;
 }
 
 interface AnexoClinico {
@@ -152,6 +153,9 @@ function emptySyncResult(
 
     offline:
       false,
+
+    fatalError:
+      null,
 
     ...overrides,
   };
@@ -5655,7 +5659,12 @@ export function useSyncQueue() {
                 "error"
               );
 
+              // VAULT_SYNC_TERMINAL_STATE_V50_1_1
+              // "failed" conta tentativas falhas nesta execução.
+              // fatalError representa falha global do processador.
               result.failed++;
+              result.fatalError =
+                errorMessage;
 
               result.remaining =
                 await db.syncQueue.count();
