@@ -396,11 +396,21 @@ export function Providers({
         "Executando pullAllData unificado..."
       );
 
-      const timeout = new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error("A sincronização inicial demorou mais que 15 segundos.")), 15_000);
-      });
+      // VAULT_PULL_AUTHORITATIVE_V50_1_2
+      // O pull real decide sucesso/erro. O limiar de 15s serve apenas
+      // para diagnóstico de lentidão e nunca cria um falso erro.
+      let slowPullTimer: number | null =
+        window.setTimeout(
+          () => {
+            slowPullTimer = null;
+            console.info(
+              "Sincronização inicial ainda em andamento após 15 segundos."
+            );
+          },
+          15_000
+        );
 
-      Promise.race([pullAllData(user.id), timeout])
+      pullAllData(user.id)
         .then(
           () => {
             console.log(
@@ -427,6 +437,14 @@ export function Providers({
             const message = error instanceof Error ? error.message : "Não foi possível atualizar os dados da nuvem.";
             setPullError(message);
             setVaultSyncRuntime({ phase: "error", error: message });
+          }
+        )
+        .finally(
+          () => {
+            if (slowPullTimer !== null) {
+              window.clearTimeout(slowPullTimer);
+              slowPullTimer = null;
+            }
           }
         );
     },
