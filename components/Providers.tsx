@@ -68,6 +68,10 @@ import {
 } from "@/lib/sync/pull";
 
 import {
+  setVaultSyncRuntime,
+} from "@/lib/sync/runtime-status";
+
+import {
   db,
 } from "@/lib/db";
 
@@ -269,6 +273,7 @@ export function Providers({
     hasPulledRef.current = false;
     setIsPullDone(false);
     setPullError(null);
+    setVaultSyncRuntime({ phase: "idle", error: null });
   }, [user?.id]);
 
   // ==========================================================
@@ -385,6 +390,7 @@ export function Providers({
         true;
 
       setPullError(null);
+      setVaultSyncRuntime({ phase: "pulling", error: null });
 
       console.log(
         "Executando pullAllData unificado..."
@@ -418,7 +424,9 @@ export function Providers({
             hasPulledRef.current =
               false;
 
-            setPullError(error instanceof Error ? error.message : "Não foi possível atualizar os dados da nuvem.");
+            const message = error instanceof Error ? error.message : "Não foi possível atualizar os dados da nuvem.";
+            setPullError(message);
+            setVaultSyncRuntime({ phase: "error", error: message });
           }
         );
     },
@@ -437,24 +445,38 @@ export function Providers({
 
   useEffect(
     () => {
-      if (
-        isOnline &&
-        user &&
-        isPullDone
-      ) {
-        console.log(
-          "Executando push da fila de sincronização..."
-        );
-
-        void processQueue();
-      }
+      if (!isOnline || !user || !isPullDone) return;
+      let cancelled = false;
+      void (async () => {
+        setVaultSyncRuntime({ phase: "pushing", error: null });
+        console.log("Executando push da fila de sincronização...");
+        try {
+          const result = await processQueue();
+          if (cancelled) return;
+          if (result.offline) {
+            setVaultSyncRuntime({ phase: "idle", error: null });
+            return;
+          }
+          if (result.failed > 0 || result.permanentlyFailed > 0) {
+            setVaultSyncRuntime({
+              phase: "error",
+              error: result.permanentlyFailed > 0
+                ? "Há itens que precisam de revisão na sincronização."
+                : "Alguns itens não puderam ser sincronizados agora.",
+            });
+            return;
+          }
+          setVaultSyncRuntime({ phase: "synced", error: null });
+        } catch (error) {
+          if (cancelled) return;
+          const message = error instanceof Error ? error.message : "Não foi possível concluir a sincronização.";
+          console.error("Erro ao processar fila após o pull:", error);
+          setVaultSyncRuntime({ phase: "error", error: message });
+        }
+      })();
+      return () => { cancelled = true; };
     },
-    [
-      isOnline,
-      user,
-      isPullDone,
-      processQueue,
-    ]
+    [isOnline, user, isPullDone, processQueue]
   );
 
   // ==========================================================

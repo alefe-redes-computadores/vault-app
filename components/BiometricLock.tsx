@@ -46,9 +46,17 @@ export function BiometricLock({ children }: BiometricLockProps) {
   // formulários, wizard, File/Blob e demais estados locais.
   const backgroundedAtRef = useRef<number | null>(null);
   const filePickerArmedAtRef = useRef<number | null>(null);
+  const biometricArmedAtRef = useRef<number | null>(null);
   const nativeUiTransitionRef = useRef<"file" | "biometric" | null>(null);
   const REAL_BACKGROUND_THRESHOLD_MS = 1500;
   const FILE_PICKER_ARM_WINDOW_MS = 2500;
+  const BIOMETRIC_ARM_WINDOW_MS = 5000;
+
+  // VAULT_BIOMETRIC_TRANSITION_V50_2
+  // "biometric" só vira transição nativa quando o Android realmente
+  // emitir inactive logo após iniciarmos a autenticação. Isso evita:
+  // 1) limpar a exceção cedo demais no finally (race com appState active);
+  // 2) deixar uma exceção biométrica solta que poderia engolir uma saída real.
 
   // VAULT_NATIVE_UI_TRANSITION_V42_1
   // O clique apenas arma o picker por uma janela curta. A exceção só nasce
@@ -76,15 +84,23 @@ export function BiometricLock({ children }: BiometricLockProps) {
     void App.addListener("appStateChange", ({ isActive }) => {
       if (!isActive) {
         const now = Date.now();
-        const armedAt = filePickerArmedAtRef.current;
+        const fileArmedAt = filePickerArmedAtRef.current;
+        const biometricArmedAt = biometricArmedAtRef.current;
         filePickerArmedAtRef.current = null;
+        biometricArmedAtRef.current = null;
 
         if (
           nativeUiTransitionRef.current === null &&
-          armedAt !== null &&
-          now - armedAt <= FILE_PICKER_ARM_WINDOW_MS
+          fileArmedAt !== null &&
+          now - fileArmedAt <= FILE_PICKER_ARM_WINDOW_MS
         ) {
           nativeUiTransitionRef.current = "file";
+        } else if (
+          nativeUiTransitionRef.current === null &&
+          biometricArmedAt !== null &&
+          now - biometricArmedAt <= BIOMETRIC_ARM_WINDOW_MS
+        ) {
+          nativeUiTransitionRef.current = "biometric";
         }
 
         backgroundedAtRef.current = now;
@@ -94,6 +110,7 @@ export function BiometricLock({ children }: BiometricLockProps) {
       const backgroundedAt = backgroundedAtRef.current;
       backgroundedAtRef.current = null;
       filePickerArmedAtRef.current = null;
+      biometricArmedAtRef.current = null;
 
       if (backgroundedAt === null) return;
 
@@ -146,6 +163,22 @@ export function BiometricLock({ children }: BiometricLockProps) {
     window.dispatchEvent(new Event("biometric:lockchange"));
   }, [isAuthenticated]);
 
+  const runBiometricAuthentication = () => {
+    const armedAt = Date.now();
+    biometricArmedAtRef.current = armedAt;
+
+    void authenticate().finally(() => {
+      // O Promise pode resolver antes do appState active no Android.
+      // Mantemos apenas a armação temporária; sem inactive correspondente
+      // ela expira e nunca vira exceção de lifecycle.
+      window.setTimeout(() => {
+        if (biometricArmedAtRef.current === armedAt) {
+          biometricArmedAtRef.current = null;
+        }
+      }, BIOMETRIC_ARM_WINDOW_MS);
+    });
+  };
+
   // Dispara a biometria automaticamente assim que a tela de bloqueio aparece
   // (só uma vez, evita loop se o usuário cancelar)
   useEffect(() => {
@@ -154,24 +187,14 @@ export function BiometricLock({ children }: BiometricLockProps) {
     if (!isAvailable) return; // ainda checando disponibilidade
 
     hasAutoPrompted.current = true;
-    nativeUiTransitionRef.current = "biometric";
-    void authenticate().finally(() => {
-      if (nativeUiTransitionRef.current === "biometric") {
-        nativeUiTransitionRef.current = null;
-      }
-    });
+    runBiometricAuthentication();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEnabled, isAuthenticated, isAvailable, isLoading]);
 
   const handleAuthenticate = () => {
     trigger("vibrate");
     setAuthError(null);
-    nativeUiTransitionRef.current = "biometric";
-    void authenticate().finally(() => {
-      if (nativeUiTransitionRef.current === "biometric") {
-        nativeUiTransitionRef.current = null;
-      }
-    });
+    runBiometricAuthentication();
   };
 
   const handleContinueWithoutBiometric = () => {

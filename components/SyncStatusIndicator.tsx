@@ -21,6 +21,10 @@ import {
   db,
 } from "@/lib/db";
 
+import {
+  useVaultSyncRuntime,
+} from "@/lib/sync/runtime-status";
+
 function useOnlineStatus() {
   const [
     online,
@@ -85,6 +89,9 @@ export function SyncStatusIndicator({
 }: SyncStatusIndicatorProps) {
   const online =
     useOnlineStatus();
+
+  const syncRuntime =
+    useVaultSyncRuntime();
 
   const pendingCount =
     useLiveQuery(
@@ -160,6 +167,18 @@ export function SyncStatusIndicator({
   }
 
   if (
+    syncRuntime.phase === "pulling" ||
+    syncRuntime.phase === "pushing"
+  ) {
+    return (
+      <div className="flex items-center gap-1.5 text-ice" role="status" aria-live="polite">
+        <RefreshCw size={14} className="animate-spin" />
+        <span className="text-[11px] font-medium">Sincronizando…</span>
+      </div>
+    );
+  }
+
+  if (
     failedCount >
     0
   ) {
@@ -216,17 +235,26 @@ export function SyncStatusIndicator({
     );
   }
 
+  if (syncRuntime.phase === "error") {
+    return (
+      <div className="flex items-center gap-1.5 text-coral" role="status" title={syncRuntime.error || "Erro de sincronização"}>
+        <AlertTriangle size={14} />
+        <span className="text-[11px] font-medium">Erro</span>
+      </div>
+    );
+  }
+  if (syncRuntime.phase !== "synced") {
+    return (
+      <div className="flex items-center gap-1.5 text-ice" role="status" aria-live="polite">
+        <RefreshCw size={14} className="animate-spin" />
+        <span className="text-[11px] font-medium">Sincronizando…</span>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-1.5 text-emerald-400">
-      <CheckCircle2
-        size={
-          14
-        }
-      />
-
-      <span className="text-[11px] font-medium">
-        Sincronizado
-      </span>
+      <CheckCircle2 size={14} />
+      <span className="text-[11px] font-medium">Sincronizado</span>
     </div>
   );
 }
