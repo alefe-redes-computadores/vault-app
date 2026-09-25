@@ -223,7 +223,6 @@ export function SyncStatusIndicator({
           size={
             14
           }
-          className="animate-spin"
         />
 
         <span className="text-[11px] font-medium">
@@ -239,17 +238,27 @@ export function SyncStatusIndicator({
 
   if (syncRuntime.phase === "error") {
     return (
-      <div className="flex items-center gap-1.5 text-coral" role="status" title={syncRuntime.error || "Erro de sincronização"}>
+      <button
+        type="button"
+        onClick={() => router.push("/diagnostico")}
+        className="flex items-center gap-1.5 text-coral transition-opacity hover:opacity-80"
+        role="status"
+        title={syncRuntime.error || "Erro de sincronização"}
+      >
         <AlertTriangle size={14} />
-        <span className="text-[11px] font-medium">Erro</span>
-      </div>
+        <span className="text-[11px] font-medium">Ver sincronização</span>
+      </button>
     );
   }
-  if (syncRuntime.phase !== "synced") {
+
+  // VAULT_SYNC_IDLE_TRUTH_V63
+  // "idle" significa que nenhuma operação está rodando. Nunca mostrar
+  // spinner nesse estado, mesmo antes da primeira sincronização da sessão.
+  if (syncRuntime.phase === "idle" && !syncRuntime.lastSyncedAt) {
     return (
-      <div className="flex items-center gap-1.5 text-ice" role="status" aria-live="polite">
-        <RefreshCw size={14} className="animate-spin" />
-        <span className="text-[11px] font-medium">Sincronizando…</span>
+      <div className="flex items-center gap-1.5 text-ink-muted" role="status">
+        <RefreshCw size={14} />
+        <span className="text-[11px] font-medium">Pronto</span>
       </div>
     );
   }

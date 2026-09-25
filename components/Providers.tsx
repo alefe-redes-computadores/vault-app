@@ -398,17 +398,20 @@ export function Providers({
       );
 
       // VAULT_PULL_AUTHORITATIVE_V50_1_2
-      // O pull real decide sucesso/erro. O limiar de 15s serve apenas
-      // para diagnóstico de lentidão e nunca cria um falso erro.
+      // VAULT_SYNC_WATCHDOG_V63
+      // O pull real continua sendo autoritativo. O watchdog apenas encerra
+      // o spinner infinito e comunica que a operação está lenta; se o pull
+      // concluir depois, o fluxo avança normalmente para o push.
       let slowPullTimer: number | null =
         window.setTimeout(
           () => {
             slowPullTimer = null;
-            console.info(
-              "Sincronização inicial ainda em andamento após 15 segundos."
-            );
+            const message =
+              "A atualização da nuvem está demorando mais que o esperado.";
+            console.info(message);
+            setVaultSyncRuntime({ phase: "error", error: message });
           },
-          15_000
+          30_000
         );
 
       pullAllData(user.id)
@@ -489,7 +492,10 @@ export function Providers({
           }
 
           if (result.remaining > 0) {
-            setVaultSyncRuntime({ phase: "pushing", error: null });
+            // Itens em backoff continuam preservados na fila, mas o
+            // processador desta rodada já terminou. Não manter a interface
+            // fingindo que existe um envio ativo.
+            setVaultSyncRuntime({ phase: "idle", error: null });
             return;
           }
 

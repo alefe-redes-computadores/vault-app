@@ -25,7 +25,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Configurar Java JDK 17
@@ -37,28 +37,8 @@ jobs:
       - name: Instalar dependências reproduzíveis
         run: npm ci
 
-      - name: Validar versões e TypeScript
-        run: |
-          npm run check:versions
-          node node_modules/typescript/bin/tsc --noEmit
-
-      - name: Executar contratos pré-APK
-        run: |
-          node scripts/test-pre-apk-v25-contract.mjs
-          node scripts/test-v22-v24-contract.mjs
-          node scripts/test-v19-v21-contract.mjs
-          node scripts/test-contas-cartoes-credenciais-v18-contract.mjs
-          node scripts/test-cadastro-medicamento-v17-contract.mjs
-          node scripts/test-seguranca-regulatoria-v16-contract.mjs
-
-      - name: Executar contrato V28
-        run: node scripts/test-v28-perfis-edge-to-edge-contract.mjs
-
-      - name: Executar contrato V29
-        run: node scripts/test-v29-native-runtime-contract.mjs
-
-      - name: Executar contrato V30.2
-        run: node scripts/test-v30-2-native-contract.mjs
+      - name: Executar gate canônico de release V63
+        run: npm run test:release
       - name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
