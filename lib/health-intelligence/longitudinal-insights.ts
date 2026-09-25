@@ -233,6 +233,7 @@ export function buildLongitudinalHealthInsights(context: HealthInsightContext): 
     doseLogs: context.doseLogs.filter((item) => item.person_id === context.personId),
     renovacoes: context.renovacoes.filter((item) => item.person_id === context.personId),
     tratamentos: context.tratamentos.filter((item) => item.person_id === context.personId),
+    retiradas: context.retiradas.filter((item) => item.person_id === context.personId),
     registrosSaude: context.registrosSaude.filter((item) => item.person_id === context.personId),
     consultas: context.consultas.filter((item) => item.person_id === context.personId),
     exames: context.exames.filter((item) => item.person_id === context.personId),

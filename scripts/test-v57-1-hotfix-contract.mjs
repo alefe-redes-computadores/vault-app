@@ -1,0 +1,10 @@
+import fs from "node:fs";
+const b=fs.readFileSync("lib/health-insights.ts","utf8");
+const t=fs.readFileSync("app/saude/tratamentos/detalhes/page.tsx","utf8");
+const ok=(v,m)=>{if(!v)throw new Error(`FALHOU: ${m}`);console.log(`OK: ${m}`)};
+ok(!b.includes("item.data,\n      contexto.hoje || getLocalTodayISO()"),"assinatura inválida removida");
+ok(b.includes("startOfToday(\n        contexto.hoje"),"agenda respeita data-base contextual");
+ok(b.includes("retiradas: Array<"),"HealthInsightContext continua estrito");
+ok(t.includes("retiradas: []"),"timeline manual declara retiradas");
+ok(b.includes("VAULT_HEALTH_AGENDA_V57"),"V57 preservada");
+console.log("VAULT V57.1 R2 — CONTRATO OK");

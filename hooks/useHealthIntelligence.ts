@@ -30,6 +30,11 @@ import {
   selectHealthHighlights,
 } from "@/lib/health-intelligence/select-highlights";
 
+import {
+  selectContextualHealthInsights,
+  type HealthInsightEntityType,
+} from "@/lib/health-intelligence/contextual";
+
 export type HealthIntelligenceSource = {
   key: string;
   label: string;
@@ -257,6 +262,19 @@ export function useHealthIntelligence() {
                 0) >
               0,
           },
+          {
+            key:
+              "retiradas",
+            label:
+              "Retiradas",
+            count:
+              context?.retiradas.length ??
+              0,
+            hasData:
+              (context?.retiradas.length ??
+                0) >
+              0,
+          },
         ];
 
         const sourcesWithData =
@@ -345,6 +363,14 @@ export function useHealthIntelligence() {
       ]
     );
 
+  // VAULT_HEALTH_CONTEXT_API_V57
+  const getInsightsForEntity = (
+    entityType: HealthInsightEntityType,
+    entityId?: string | null,
+    limit = 3
+  ) =>
+    selectContextualHealthInsights(insights, entityType, entityId, limit);
+
   return {
     context:
       context ??
@@ -353,6 +379,8 @@ export function useHealthIntelligence() {
     insights,
 
     highlights,
+
+    getInsightsForEntity,
 
     validation,
 

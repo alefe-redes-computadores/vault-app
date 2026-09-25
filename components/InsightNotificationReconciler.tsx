@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { LocalNotifications } from "@capacitor/local-notifications";
+
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 import { isVaultNative } from "@/lib/native-runtime";
@@ -11,19 +12,27 @@ import {
   VAULT_NOTIFICATION_CHANNEL_ID,
 } from "@/lib/notifications";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
-
-const PREFIX = "vault_insight_notified_v36:";
-const COOLDOWN_MS = 12 * 60 * 60 * 1000;
+import {
+  getHealthInsightNotificationRoute,
+  rankHealthInsightNotificationCandidates,
+} from "@/lib/health-intelligence/notification-policy";
+import {
+  recordHealthInsightDelivery,
+  shouldDeliverHealthInsight,
+} from "@/lib/health-intelligence/insight-memory";
 
 function stableId(value: string) {
   let hash = 2166136261;
+
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
+
   return 1_500_000_000 + ((hash >>> 0) % 400_000_000);
 }
 
+// VAULT_INSIGHT_RECONCILER_V61
 export function InsightNotificationReconciler() {
   const { activePersonId } = useActivePersonId();
   const { insights } = useHealthIntelligence();
@@ -33,60 +42,73 @@ export function InsightNotificationReconciler() {
     if (!isNotificationPreferenceEnabled()) return;
     if (!isVaultNotificationCategoryEnabled("insights")) return;
 
-    const eligible = insights
-      .filter(
-        (item) =>
-          (item.kind === "alert" || item.kind === "pattern") &&
-          (item.gravidadeSeguranca === "importante" ||
-            item.gravidadeSeguranca === "critica")
-      )
-      .slice(0, 1);
+    const eligible = rankHealthInsightNotificationCandidates(insights).map(
+      (candidate) => ({
+        candidate,
+        decision: shouldDeliverHealthInsight(activePersonId, candidate),
+      })
+    );
 
-    if (eligible.length === 0) return;
+    const selected = eligible.find((item) => item.decision.deliver);
+
+    if (!selected) return;
+
+    const { candidate, decision } = selected;
 
     void (async () => {
-      const permission = await LocalNotifications.checkPermissions();
+      const permission =
+        await LocalNotifications.checkPermissions();
+
       if (permission.display !== "granted") return;
 
       await ensureVaultNotificationChannel();
 
-      const now = Date.now();
-      const notifications = eligible.flatMap((insight) => {
-        const storageKey = `${PREFIX}${activePersonId}:${insight.id}`;
-        const last = Number(window.localStorage.getItem(storageKey) || 0);
+      const scheduledAt = Date.now() + 2500;
 
-        if (Number.isFinite(last) && now - last < COOLDOWN_MS) return [];
-
-        window.localStorage.setItem(storageKey, String(now));
-
-        return [
+      await LocalNotifications.schedule({
+        notifications: [
           {
-            id: stableId(`${activePersonId}:${insight.id}`),
-            title: insight.titulo || "Insight importante do Vault",
+            id: stableId(
+              `${activePersonId}:${candidate.id}`
+            ),
+            title:
+              candidate.titulo ||
+              "Insight importante do Vault",
             body:
-              insight.mensagem ||
+              candidate.mensagem ||
               "Há um sinal de saúde que merece sua atenção.",
             schedule: {
-              at: new Date(now + 2500),
+              at: new Date(scheduledAt),
               allowWhileIdle: true,
             },
-            channelId: VAULT_NOTIFICATION_CHANNEL_ID,
+            channelId:
+              VAULT_NOTIFICATION_CHANNEL_ID,
             extra: {
               type: "health_insight",
               vaultHealthInsight: true,
               personId: activePersonId,
-              insightId: insight.id,
-              targetRoute: insight.link || "/saude",
+              insightId: candidate.id,
+              targetRoute:
+                getHealthInsightNotificationRoute(
+                  candidate
+                ),
+              memoryReason: decision.reason,
             },
           },
-        ];
+        ],
       });
 
-      if (notifications.length > 0) {
-        await LocalNotifications.schedule({ notifications });
-      }
+      // Só grava memória depois que o SO aceitou o agendamento.
+      recordHealthInsightDelivery(
+        activePersonId,
+        candidate,
+        scheduledAt
+      );
     })().catch((error) =>
-      console.error("[Insight notifications]", error)
+      console.error(
+        "[Insight notifications V61]",
+        error
+      )
     );
   }, [activePersonId, insights]);
 

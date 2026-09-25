@@ -90,6 +90,7 @@ import {
 } from "@/components/list";
 
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 
 // ============================================================
 // HELPERS
@@ -894,11 +895,12 @@ export default function MedicamentosListPage() {
           : cor1;
 
       /*
-       * V34 — identidade visual ≠ estado operacional.
+       * VAULT_REGULATORY_IDENTITY_V59
        *
-       * A lateral identifica o contexto clínico do tratamento.
-       * Alertas continuam nos seus próprios sinais: Hoje,
-       * Estoque, Receita, SOS e agrupamento de prioridade.
+       * Identidade principal do medicamento = classificação regulatória.
+       * Tratamento permanece como contexto clínico secundário.
+       * SOS, estoque, rotina e renovação continuam estados operacionais
+       * independentes e nunca substituem a identidade regulatória.
        */
       const tratamentosVinculados =
         (
@@ -932,30 +934,17 @@ export default function MedicamentosListPage() {
           })
         );
 
-      const tratamentoPrincipal =
-        tratamentoThemes[0];
-
-      const cardColor =
-        tratamentoPrincipal?.theme.hex ||
-        "#64748b";
-
-      const cardColorMeaning =
-        tratamentoPrincipal
-          ? tratamentoThemes.length >
-              1
-            ? `${tratamentoPrincipal.tratamento.nome} + ${tratamentoThemes.length - 1} tratamento(s)`
-            : `Tratamento: ${tratamentoPrincipal.tratamento.nome}`
-          : "Sem tratamento vinculado";
-
       const regulatoryProfile =
         regulatoryProfiles[med.id];
 
+      const regulatorySurface =
+        getMedicationRegulatorySurface(
+          regulatoryProfile,
+          receita?.corBorda
+        );
+
       const regulatoryBorderColor =
-        regulatoryProfile?.tone === "black"
-          ? "#050505"
-          : regulatoryProfile?.accent ||
-            receita?.corBorda ||
-            "#64748b";
+        regulatorySurface.rail;
 
       const regulatoryMeaning =
         regulatoryProfile
@@ -1119,17 +1108,16 @@ export default function MedicamentosListPage() {
           }
           density="compact"
           icon={
-            <SelectedFormatIcon
-              size={
-                20
-              }
-              fill={
-                fillValue
-              }
-              stroke={
-                strokeValue
-              }
-            />
+            <span
+              className={`flex h-10 w-10 items-center justify-center rounded-[13px] border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
+              title={regulatoryMeaning}
+            >
+              <SelectedFormatIcon
+                size={20}
+                fill={fillValue}
+                stroke={strokeValue}
+              />
+            </span>
           }
         >
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -1139,43 +1127,14 @@ export default function MedicamentosListPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className="flex shrink-0 items-center gap-0.5"
-                    title={
-                      cardColorMeaning
-                    }
-                    aria-label={
-                      cardColorMeaning
-                    }
-                  >
-                    {tratamentoThemes.length >
-                    0 ? (
-                      tratamentoThemes
-                        .slice(
-                          0,
-                          3
-                        )
-                        .map(
-                          (
-                            item,
-                            index
-                          ) => (
-                            <span
-                              key={
-                                item.tratamento.id ||
-                                index
-                              }
-                              className="h-2 w-2 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  item.theme.hex,
-                              }}
-                            />
-                          )
-                        )
-                    ) : (
-                      <span className="h-2 w-2 rounded-full bg-slate-500" />
-                    )}
-                  </span>
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full border ${regulatorySurface.dotClass} ${regulatorySurface.glowClass}`}
+                    style={{
+                      backgroundColor:
+                        regulatorySurface.accent,
+                    }}
+                    title={regulatoryMeaning}
+                    aria-label={regulatoryMeaning}
+                  />
 
                   <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <h3 className="min-w-0 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
@@ -1198,7 +1157,7 @@ export default function MedicamentosListPage() {
                   {regulatoryProfile ? (
                     <button
                       type="button"
-                      className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatoryProfile.badgeClass}`}
+                      className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatorySurface.badgeClass}`}
                       title={regulatoryMeaning}
                       aria-expanded={expandedRegulatoryMedId === med.id}
                       onClick={(event) => {
@@ -1219,9 +1178,9 @@ export default function MedicamentosListPage() {
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
                       style={{
                         borderColor:
-                          `${cardColor}45`,
+                          `${regulatoryBorderColor}55`,
                         backgroundColor:
-                          `${cardColor}12`,
+                          `${regulatoryBorderColor}12`,
                       }}
                       title={
                         receita.tooltip

@@ -1,0 +1,17 @@
+import fs from "node:fs";
+const r=f=>fs.readFileSync(f,"utf8");
+const ok=(v,m)=>{if(!v)throw new Error(`FALHOU: ${m}`);console.log(`OK: ${m}`)};
+const b=r("lib/health-insights.ts"),c=r("lib/health-intelligence/context.ts");
+const h=r("hooks/useHealthIntelligence.ts"),p=r("lib/health-intelligence/notification-policy.ts");
+const x=r("lib/health-intelligence/contextual.ts"),n=r("components/InsightNotificationReconciler.tsx");
+ok(b.includes("retiradas: Array<"),"retiradas no contexto");
+ok(c.includes("db.retiradas"),"loader carrega retiradas");
+ok(b.includes("VAULT_HEALTH_AGENDA_V57"),"agenda comportamental");
+ok(b.includes('| "agenda"'),"categoria agenda");
+ok(b.includes("não confirma comparecimento"),"limite de inferência");
+ok(x.includes("VAULT_CONTEXTUAL_BRAIN_V57"),"seletor contextual");
+ok(h.includes("getInsightsForEntity"),"API contextual no hook");
+ok(h.includes('"Retiradas"'),"maturidade inclui retiradas");
+ok(p.includes('"agenda"'),"push não duplica agenda");
+ok(n.includes("rankHealthInsightNotificationCandidates") || n.includes("selectHealthInsightNotificationCandidate"),"política central no reconciliador");
+console.log("VAULT V57 R2 CÉREBRO V3 — CONTRATO OK");

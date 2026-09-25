@@ -23,13 +23,15 @@ import { ptBR } from "date-fns/locale";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useFarmacias } from "@/hooks/useFarmacias";
+import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { EmptyState } from "@/components/EmptyState";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import type { Retirada, RetiradaStatus } from "@/lib/types";
 
-type StatusFilter = "todos" | RetiradaStatus;
+type StatusFilter = "todos" | "atrasada" | RetiradaStatus;
 
 type MedicationGroup = {
   key: string;
@@ -115,6 +117,8 @@ export default function RetiradasPage() {
   const { retiradas } = useRetiradas();
   const { medicamentos = [] } = useMedicamentos();
   const { farmacias = [] } = useFarmacias();
+  const regulatoryProfiles =
+    useMedicationRegulatoryProfiles(medicamentos);
 
   const hoje = getLocalTodayISO();
   const currentMonth = hoje.slice(0, 7);
@@ -151,7 +155,24 @@ export default function RetiradasPage() {
     const query = normalize(search);
 
     return retiradas.filter((retirada) => {
-      if (status !== "todos" && retirada.status !== status) return false;
+      if (
+        status === "atrasada" &&
+        !(
+          retirada.status === "agendada" &&
+          retirada.data < hoje
+        )
+      ) {
+        return false;
+      }
+
+      if (
+        status !== "todos" &&
+        status !== "atrasada" &&
+        retirada.status !== status
+      ) {
+        return false;
+      }
+
       if (!query) return true;
 
       const med = medicationMap.get(retirada.medicamento_id);
@@ -173,7 +194,14 @@ export default function RetiradasPage() {
           .join(" ")
       ).includes(query);
     });
-  }, [retiradas, status, search, medicationMap, pharmacyMap]);
+  }, [
+    retiradas,
+    status,
+    search,
+    medicationMap,
+    pharmacyMap,
+    hoje,
+  ]);
 
   const grouped = useMemo<MonthGroup[]>(() => {
     const months = new Map<string, Map<string, MedicationGroup>>();
@@ -240,6 +268,11 @@ export default function RetiradasPage() {
         (r) => r.data === hoje && r.status === "agendada"
       ).length,
       agendadas: retiradas.filter((r) => r.status === "agendada").length,
+      atrasadas: retiradas.filter(
+        (r) =>
+          r.status === "agendada" &&
+          r.data < hoje
+      ).length,
       realizadas: retiradas.filter((r) => r.status === "realizada").length,
     }),
     [retiradas, hoje]
@@ -290,7 +323,7 @@ export default function RetiradasPage() {
             {[
               ["Total", counts.total],
               ["Hoje", counts.hoje],
-              ["Agend.", counts.agendadas],
+              ["Atras.", counts.atrasadas],
               ["Feitas", counts.realizadas],
             ].map(([label, value]) => (
               <div
@@ -326,6 +359,7 @@ export default function RetiradasPage() {
               {[
                 ["todos", "Todos"],
                 ["agendada", "Agendadas"],
+                ["atrasada", "Atrasadas"],
                 ["realizada", "Realizadas"],
                 ["nao_realizada", "Não realizadas"],
                 ["cancelada", "Canceladas"],
@@ -425,6 +459,16 @@ export default function RetiradasPage() {
                           const medicationExpanded =
                             expandedMedications.has(medication.key);
 
+                          const regulatoryProfile =
+                            regulatoryProfiles[
+                              medication.medicamentoId
+                            ];
+
+                          const regulatorySurface =
+                            getMedicationRegulatorySurface(
+                              regulatoryProfile
+                            );
+
                           return (
                             <div
                               key={medication.key}
@@ -445,7 +489,13 @@ export default function RetiradasPage() {
                                 className="flex min-h-[66px] w-full items-center justify-between gap-3 px-4 py-3 text-left active:bg-surface-raised/45"
                               >
                                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border border-amber-400/20 bg-amber-400/10 text-amber-400">
+                                  <div
+                                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
+                                    title={
+                                      regulatoryProfile?.label ||
+                                      "Classificação regulatória não confirmada"
+                                    }
+                                  >
                                     <Pill size={17} />
                                   </div>
                                   <div className="min-w-0 flex-1">
@@ -453,6 +503,13 @@ export default function RetiradasPage() {
                                       <p className="truncate text-[13px] font-semibold text-ink-primary">
                                         {medication.nome}
                                       </p>
+                                      {regulatoryProfile && (
+                                        <span
+                                          className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[8px] font-bold uppercase ${regulatorySurface.badgeClass}`}
+                                        >
+                                          {regulatoryProfile.label}
+                                        </span>
+                                      )}
                                       <span className="shrink-0 rounded-full bg-surface-raised px-2 py-0.5 font-mono text-[8px] text-ink-faint">
                                         {medication.retiradas.length}
                                       </span>
@@ -488,6 +545,10 @@ export default function RetiradasPage() {
                                         : undefined;
                                       const wasRescheduled =
                                         (retirada.reagendamentos || []).length > 0;
+
+                                      const isOverdue =
+                                        retirada.status === "agendada" &&
+                                        retirada.data < hoje;
 
                                       return (
                                         <button
@@ -528,9 +589,17 @@ export default function RetiradasPage() {
                                                 <p className="text-[11px] font-semibold text-ink-primary">
                                                   Retirada
                                                 </p>
-                                                {retirada.data === hoje && (
-                                                  <span className="rounded-full bg-coral/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-coral">
+                                                {retirada.data === hoje &&
+                                                  retirada.status ===
+                                                    "agendada" && (
+                                                  <span className="rounded-full bg-ice/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-ice">
                                                     Hoje
+                                                  </span>
+                                                )}
+
+                                                {isOverdue && (
+                                                  <span className="rounded-full bg-coral/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-coral">
+                                                    Atrasada
                                                   </span>
                                                 )}
                                                 {wasRescheduled && (

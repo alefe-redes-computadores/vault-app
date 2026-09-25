@@ -1,6 +1,8 @@
 // app/saude/exames/detalhes/page.tsx
 "use client";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import {
   Suspense,
   useEffect,
@@ -1243,6 +1245,12 @@ function DetalhesExameContent() {
             </div>
           </div>
         </header>
+        <ContextualHealthIntelligence
+          entityType="exame"
+          entityId={exame.id}
+          className="pt-4"
+        />
+
 
         <section className="space-y-5 px-5 pt-6">
           {exame.data_retorno && (

@@ -34,6 +34,8 @@ import {
   Bell,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
@@ -453,6 +455,11 @@ export default function HojePage() {
         rawMedicamentos,
         activePersonId,
       ]
+    );
+
+  const regulatoryProfiles =
+    useMedicationRegulatoryProfiles(
+      medicamentos
     );
 
   const {
@@ -4067,6 +4074,18 @@ export default function HojePage() {
                             item.cor ||
                             "#8B5CF6";
 
+                          const regulatoryProfile =
+                            item.medicamentoId
+                              ? regulatoryProfiles[
+                                  item.medicamentoId
+                                ]
+                              : undefined;
+
+                          const regulatorySurface =
+                            getMedicationRegulatorySurface(
+                              regulatoryProfile
+                            );
+
                           const isProcessando =
                             processandoDoseId ===
                             (item.logId
@@ -4232,7 +4251,7 @@ export default function HojePage() {
                                 scale: 0.99,
                               }}
                               style={{
-                                borderLeft: `4px solid ${tratamentoCor}`,
+                                borderLeft: `4px solid ${regulatorySurface.rail}`,
                               }}
                               className={`group relative w-full cursor-pointer rounded-[18px] border px-3 py-2.5 pr-8 text-left shadow-sm transition-all ${
                                 item.tomada
@@ -4325,6 +4344,15 @@ export default function HojePage() {
                                         {
                                           item.dosagem
                                         }
+                                      </span>
+                                    )}
+
+                                    {regulatoryProfile && (
+                                      <span
+                                        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase ${regulatorySurface.badgeClass}`}
+                                        title={regulatoryProfile.detail}
+                                      >
+                                        {regulatoryProfile.label}
                                       </span>
                                     )}
                                     </div>

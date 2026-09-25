@@ -172,6 +172,10 @@ export interface HealthInsightContext {
   documentos: Array<
     PersonScoped<VaultDocument>
   >;
+
+  retiradas: Array<
+    PersonScoped<Retirada>
+  >;
 }
 
 // ============================================================
@@ -7952,6 +7956,7 @@ export type HealthInsightCategory =
   | "rotina"
   | "sintomas"
   | "tratamento"
+  | "agenda"
   | "historico"
   | "dados";
 
@@ -8165,6 +8170,13 @@ export function validarHealthInsightContext(
 
       dados:
         contexto.documentos,
+    },
+    {
+      nome:
+        "retiradas",
+
+      dados:
+        contexto.retiradas,
     },
   ];
 
@@ -9342,6 +9354,130 @@ export function gerarInsightsSaude(
       ],
     });
   }
+
+  // ----------------------------------------------------------
+  // AGENDA COMPORTAMENTAL — VAULT_HEALTH_AGENDA_V57
+  // ----------------------------------------------------------
+
+  const addAgendaInsight = (item: {
+    tipo: "consulta" | "exame" | "retirada";
+    id?: string;
+    titulo: string;
+    data?: string;
+    horario?: string | null;
+    status?: string | null;
+    link: string;
+  }) => {
+    if (!item.id || !item.data) return;
+
+    const targetDate =
+      parseLocalDate(
+        item.data
+      );
+
+    if (!targetDate) return;
+
+    const baseDate =
+      startOfToday(
+        contexto.hoje
+      );
+
+    const targetDay =
+      startOfDay(
+        targetDate
+      );
+
+    const dias =
+      Math.round(
+        (
+          targetDay.getTime() -
+          baseDate.getTime()
+        ) /
+          (
+            24 *
+            60 *
+            60 *
+            1000
+          )
+      );
+
+    if (dias > 7) return;
+
+    const status = normalizeText(item.status || "");
+    if (status === "realizada" || status === "cancelada") return;
+
+    const atrasado = dias < 0;
+    const hojeAgenda = dias === 0;
+    const quando = atrasado
+      ? `há ${Math.abs(dias)} dia(s)`
+      : hojeAgenda ? "hoje" : `em ${dias} dia(s)`;
+
+    insights.push({
+      id: `agenda-${item.tipo}-${item.id}`,
+      kind: atrasado ? "alert" : "observation",
+      categoria: "agenda",
+      titulo: item.titulo,
+      mensagem: atrasado
+        ? `Este compromisso estava previsto ${quando} e ainda não consta como realizado ou cancelado.`
+        : `Compromisso previsto ${quando}${item.horario ? `, às ${item.horario}` : ""}.`,
+      urgencia: atrasado || hojeAgenda ? "media" : "baixa",
+      confianca: "alta",
+      amostra: 1,
+      entidadeTipo: item.tipo,
+      entidadeId: item.id,
+      link: item.link,
+      evidencias: [
+        `Data registrada: ${item.data}`,
+        ...(item.horario ? [`Horário registrado: ${item.horario}`] : []),
+        `Status registrado: ${item.status || "sem status explícito"}`,
+      ],
+      fontesInternas: [
+        item.tipo === "consulta" ? "Consultas" :
+        item.tipo === "exame" ? "Exames" : "Retiradas",
+      ],
+      acaoSegura: atrasado
+        ? "Revise o registro e atualize o status se o compromisso já aconteceu, foi reagendado ou cancelado."
+        : "Confira os detalhes registrados e mantenha o compromisso atualizado no Vault.",
+      gravidadeSeguranca: atrasado ? "atencao" : "informativa",
+      limitacaoSeguranca:
+        "O Vault usa somente data, horário e status registrados. Ele não confirma comparecimento nem interpreta resultado clínico.",
+    });
+  };
+
+  contexto.consultas.forEach((item) =>
+    addAgendaInsight({
+      tipo: "consulta",
+      id: item.id,
+      titulo: `${item.especialidade || "Consulta"}: compromisso registrado`,
+      data: item.data,
+      horario: item.horario,
+      status: item.status,
+      link: `/saude/consultas/detalhes?id=${item.id}`,
+    })
+  );
+
+  contexto.exames.forEach((item) =>
+    addAgendaInsight({
+      tipo: "exame",
+      id: item.id,
+      titulo: `${item.nome || "Exame"}: compromisso registrado`,
+      data: item.data,
+      horario: item.horario,
+      link: `/saude/exames/detalhes?id=${item.id}`,
+    })
+  );
+
+  contexto.retiradas.forEach((item) =>
+    addAgendaInsight({
+      tipo: "retirada",
+      id: item.id,
+      titulo: `${item.medicamento_nome || "Retirada"}: retirada registrada`,
+      data: item.data,
+      horario: item.horario,
+      status: item.status,
+      link: `/saude/retiradas/detalhes?id=${item.id}`,
+    })
+  );
 
   // ----------------------------------------------------------
   // HIDRATAÇÃO — somente registros reais, nunca ausência = zero

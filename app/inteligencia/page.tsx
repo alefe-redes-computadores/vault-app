@@ -41,7 +41,7 @@ export default function VaultIntelligencePage() {
   return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary">
     <header className="mx-auto flex max-w-2xl items-start gap-3">
       <button type="button" onClick={() => router.replace("/mais")} className="rounded-2xl border border-surface-border bg-surface p-3 text-ink-muted" aria-label="Voltar para Mais"><ChevronLeft size={20}/></button>
-      <div className="min-w-0"><p className="font-mono text-[9px] uppercase tracking-[0.25em] text-ice">Vault Intelligence</p><h1 className="text-2xl font-bold">Central de atenção</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prioriza vencimentos, inconsistências, organização e sinais financeiros sustentados pelos dados que o Vault realmente possui.</p></div>
+      <div className="min-w-0"><p className="font-mono text-[9px] uppercase tracking-[0.25em] text-ice">VAULT INSIGHT · V60</p><h1 className="text-2xl font-bold">Central de atenção</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prioriza vencimentos, inconsistências, organização e sinais financeiros sustentados pelos dados que o Vault realmente possui.</p></div>
     </header>
 
     <section className="mx-auto mt-6 max-w-2xl overflow-hidden rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-violet-400/[0.06]">

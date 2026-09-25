@@ -1,6 +1,8 @@
 // app/saude/retiradas/detalhes/page.tsx
 "use client";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import {
   Suspense,
   useMemo,
@@ -599,6 +601,12 @@ function DetalhesRetiradaContent() {
             </div>
           </div>
         </header>
+        <ContextualHealthIntelligence
+          entityType="retirada"
+          entityId={retirada.id}
+          className="pt-4"
+        />
+
 
         <section className="space-y-4 px-5 pt-5">
           <div className="rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface p-5">

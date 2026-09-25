@@ -56,6 +56,7 @@ export async function loadHealthInsightContext(
     cirurgias,
     cids,
     documentos,
+    retiradas,
   ] =
     await Promise.all([
       db.medicamentos
@@ -104,6 +105,11 @@ export async function loadHealthInsightContext(
         .toArray(),
 
       db.documents
+        .where("person_id")
+        .equals(safePersonId)
+        .toArray(),
+
+      db.retiradas
         .where("person_id")
         .equals(safePersonId)
         .toArray(),
@@ -172,6 +178,12 @@ export async function loadHealthInsightContext(
     documentos:
       scopeToPerson(
         documentos,
+        safePersonId
+      ),
+
+    retiradas:
+      scopeToPerson(
+        retiradas,
         safePersonId
       ),
   };

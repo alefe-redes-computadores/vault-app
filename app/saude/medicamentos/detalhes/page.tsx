@@ -1,6 +1,8 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import {
   Suspense,
   useEffect,
@@ -79,6 +81,8 @@ import {
 import {
   useMedicamentos,
 } from "@/hooks/useMedicamentos";
+import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 
 import {
   useRenovacoes,
@@ -832,6 +836,21 @@ function MedicamentoDetalhesContent() {
         activePersonId,
         getMedicamento,
       ]
+    );
+
+  const regulatoryProfiles =
+    useMedicationRegulatoryProfiles(
+      med ? [med] : []
+    );
+
+  const regulatoryProfile =
+    med?.id
+      ? regulatoryProfiles[med.id]
+      : undefined;
+
+  const regulatorySurface =
+    getMedicationRegulatorySurface(
+      regulatoryProfile
     );
 
   // ==========================================================
@@ -3102,6 +3121,12 @@ function MedicamentoDetalhesContent() {
             )}
           </AnimatePresence>
         </header>
+        <ContextualHealthIntelligence
+          entityType="medicamento"
+          entityId={id}
+          className="pt-4"
+        />
+
 
         <div className="mx-auto max-w-3xl space-y-6 px-5 pt-5">
           {/* ==================================================
@@ -3533,13 +3558,7 @@ function MedicamentoDetalhesContent() {
                   med.status ===
                   "descontinuado"
                     ? "#fb7185"
-                    : med.tipo_receita ===
-                        "amarela"
-                      ? "#fbbf24"
-                      : med.tipo_receita ===
-                          "azul"
-                        ? "#60a5fa"
-                        : personAccent,
+                    : regulatorySurface.rail,
               }}
             />
 
@@ -3588,6 +3607,20 @@ function MedicamentoDetalhesContent() {
                       "descontinuado" && (
                       <span className="rounded-full border border-coral/20 bg-coral/10 px-2 py-0.5 text-[9px] font-bold uppercase text-coral">
                         Suspenso
+                      </span>
+                    )}
+
+                    {regulatoryProfile && (
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${regulatorySurface.badgeClass}`}
+                        title={regulatoryProfile.detail}
+                      >
+                        {regulatoryProfile.label}
+                        {!regulatoryProfile.verified &&
+                        regulatoryProfile.tone !==
+                          "unknown"
+                          ? " · cadastro"
+                          : ""}
                       </span>
                     )}
                   </div>

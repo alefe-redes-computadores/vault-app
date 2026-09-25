@@ -1,6 +1,8 @@
 // app/saude/tratamentos/detalhes/page.tsx
 "use client";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -52,6 +54,8 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 
 import { useConsultas } from "@/hooks/useConsultas";
 
@@ -696,6 +700,9 @@ function TratamentoContent() {
     );
   }, [linkedMedicamentos]);
 
+  const regulatoryProfiles =
+    useMedicationRegulatoryProfiles(linkedMedicamentos);
+
   const medicamentosAtivos = useMemo(
     () =>
       medicamentosComAlertas.filter(
@@ -889,6 +896,8 @@ function TratamentoContent() {
         documentos: linkedDocuments.filter((documento) =>
           belongsToPerson(documento, activePersonId),
         ),
+
+        retiradas: [],
       },
       12,
     );
@@ -1169,6 +1178,12 @@ function TratamentoContent() {
             </div>
           </div>
         </header>
+        <ContextualHealthIntelligence
+          entityType="tratamento"
+          entityId={tratamento.id}
+          className="pt-4"
+        />
+
 
         <section className="space-y-6 px-5 pt-6">
           <motion.div
@@ -1887,12 +1902,15 @@ function TratamentoContent() {
                     }}
                     className="group relative w-full cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
                     style={{
-                      borderLeft: `4px solid ${theme.hex}`,
+                      borderLeft: `4px solid ${getMedicationRegulatorySurface(medicamento.id ? regulatoryProfiles[medicamento.id] : undefined).rail}`,
                     }}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ice/10 bg-ice/10 text-ice">
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${getMedicationRegulatorySurface(medicamento.id ? regulatoryProfiles[medicamento.id] : undefined).iconClass}`}
+                          title={medicamento.id ? regulatoryProfiles[medicamento.id]?.detail : "Classificação regulatória não confirmada"}
+                        >
                           <Pill size={18} />
                         </div>
 

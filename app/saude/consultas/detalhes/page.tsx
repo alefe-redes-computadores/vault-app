@@ -1,6 +1,8 @@
 // app/saude/consultas/detalhes/page.tsx
 "use client";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import {
   Suspense,
   useEffect,
@@ -1229,6 +1231,12 @@ function DetalhesConsultaContent() {
             </div>
           </div>
         </header>
+        <ContextualHealthIntelligence
+          entityType="consulta"
+          entityId={consulta.id}
+          className="pt-4"
+        />
+
 
         <section className="space-y-5 px-5 pt-6">
           {/* ==================================================
