@@ -78,6 +78,7 @@ import {
 import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
 import { InsightNotificationReconciler } from "@/components/InsightNotificationReconciler";
 import { OverdueDoseNotificationReconciler } from "@/components/OverdueDoseNotificationReconciler";
+import { ScheduledDoseNotificationReconciler } from "@/components/ScheduledDoseNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
 
 // ============================================================
@@ -804,8 +805,10 @@ export function Providers({
             }
 
             if (
-              data.type ===
-                "dose_reminder" &&
+              (data.type ===
+                "dose_reminder" ||
+               data.type ===
+                "dose_overdue") &&
               data.medicamentoId &&
               data.actionId !==
                 "TOMEI" &&
@@ -1071,6 +1074,7 @@ export function Providers({
           <HealthReminderReconciler />
       <InsightNotificationReconciler />
       <OverdueDoseNotificationReconciler />
+      <ScheduledDoseNotificationReconciler />
         <div className="min-h-screen pb-24">
           <Suspense
             fallback={

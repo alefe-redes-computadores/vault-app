@@ -25,6 +25,8 @@ type NotificationExtra = {
   userId?: string;
   personId?: string;
   targetRoute?: string;
+  vaultHealthInsight?: boolean;
+  insightId?: string;
 };
 
 export function HealthReminderReconciler() {
@@ -195,6 +197,21 @@ export function HealthReminderReconciler() {
             }
 
             router.push(rule.target_route);
+            return;
+          }
+
+          // VAULT_NOTIFICATION_INSIGHT_DEEPLINK_V51
+          if (
+            extra?.vaultHealthInsight === true &&
+            extra.personId &&
+            extra.targetRoute?.startsWith("/")
+          ) {
+            const person = await db.persons.get(extra.personId);
+            if (!person || person.user_id !== user.id) return;
+            if (extra.personId !== activePersonId) {
+              await changePerson(extra.personId);
+            }
+            router.push(extra.targetRoute);
             return;
           }
 

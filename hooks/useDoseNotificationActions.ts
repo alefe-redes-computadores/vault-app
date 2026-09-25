@@ -220,15 +220,16 @@ export function useDoseNotificationActions() {
                 return;
               }
 
-              const exactOverdueDate =
-                extra.type === "dose_overdue" &&
+              // VAULT_NOTIFICATION_EXACT_SLOT_V51
+              const exactNotificationDate =
+                (extra.type === "dose_overdue" || extra.type === "dose_reminder") &&
                 typeof extra.data === "string" &&
                 /^\d{4}-\d{2}-\d{2}$/.test(extra.data)
                   ? extra.data
                   : null;
 
               const slotDate =
-                exactOverdueDate ??
+                exactNotificationDate ??
                 resolveDoseNotificationSlotDate(
                   horario
                 );

@@ -492,7 +492,7 @@ export default function NovoHospitalPage() {
                   "vibrate"
                 );
 
-                router.back();
+                router.replace("/saude/hospitais");
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"

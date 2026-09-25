@@ -1608,7 +1608,7 @@ export default function NovoExamePage() {
                   "vibrate"
                 );
 
-                router.back();
+                router.replace("/saude/exames");
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
               aria-label="Voltar"

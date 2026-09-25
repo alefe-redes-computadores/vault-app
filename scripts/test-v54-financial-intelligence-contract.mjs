@@ -1,0 +1,16 @@
+import fs from "node:fs";
+const r=f=>fs.readFileSync(f,"utf8");
+const ok=(v,m)=>{if(!v)throw Error("V54: "+m);console.log("OK: "+m)};
+const f=r("lib/vault-intelligence/financial.ts"),t=r("lib/vault-intelligence/types.ts"),repo=r("lib/repositories/vaultIntelligence.ts"),e=r("lib/vault-intelligence/engine.ts"),p=r("app/inteligencia/page.tsx");
+ok(f.includes("VAULT_FINANCIAL_BRAIN_V54"),"cérebro financeiro presente");
+ok(f.includes('item.tipo_aquisicao === "comprado"'),"SUS/gratuito não viram gasto");
+ok(f.includes("item.data_aquisicao ?? item.data"),"data financeira canônica");
+ok(f.includes("Number.isFinite(item.preco)"),"preço validado sem estimativa");
+ok(f.includes("exclui esses registros dos totais em vez de estimar"),"ausência não vira zero");
+ok(f.includes("last30.length >= 2")&&f.includes("previous30.length >= 2"),"comparação exige amostra");
+ok(f.includes("share >= 60")&&f.includes("top.count >= 2"),"concentração exige evidência");
+ok(t.includes('| "financial"')&&t.includes("renovacoes: Renovacao[]"),"contratos integrados");
+ok(repo.includes('db.renovacoes.where("person_id")'),"snapshot financeiro person-owned");
+ok(e.includes("buildVaultFinancialIntelligence"),"motor geral integra financeiro");
+ok(p.includes('financial: { label: "Financeiro"')&&p.includes('{ label: "Compras"'),"Central exibe financeiro");
+console.log("V54 FINANCIAL INTELLIGENCE CONTRACT: OK");

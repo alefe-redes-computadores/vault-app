@@ -308,6 +308,19 @@ function aggregateMedicationRoutinePatterns(
   );
 }
 
+// VAULT_HEALTH_PRIORITIZATION_V55
+function safetyRank(insight: HealthInsight): number {
+  if (insight.gravidadeSeguranca === "critica") return 3;
+  if (insight.gravidadeSeguranca === "importante") return 2;
+  if (insight.kind === "alert") return 1;
+  return 0;
+}
+
+function v55Compare(a: HealthInsight, b: HealthInsight): number {
+  const safety = safetyRank(b) - safetyRank(a);
+  return safety !== 0 ? safety : compareInsights(a, b);
+}
+
 export function selectHealthHighlights(
   insights: HealthInsight[],
   options: HealthHighlightOptions = {}
@@ -343,7 +356,7 @@ export function selectHealthHighlights(
   const eligible =
     aggregateMedicationRoutinePatterns(
       baseEligible
-    );
+    ).sort(v55Compare);
 
   const semanticKeys =
     new Set<string>();

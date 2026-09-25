@@ -48,7 +48,12 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const filePickerArmedAtRef = useRef<number | null>(null);
   const biometricArmedAtRef = useRef<number | null>(null);
   const nativeUiTransitionRef = useRef<"file" | "biometric" | null>(null);
-  const REAL_BACKGROUND_THRESHOLD_MS = 1500;
+  // VAULT_BIOMETRIC_POLICY_V53
+  // Biometria V2: uma troca rápida de aplicativo não deve transformar o Vault
+  // em um segundo despertador. O lock volta somente após uma ausência real
+  // prolongada. UI nativa (arquivo/câmera/biometria) continua tendo precedência
+  // e é consumida como transição única pelas proteções V42.1/V50.2.
+  const REAL_BACKGROUND_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutos
   const FILE_PICKER_ARM_WINDOW_MS = 2500;
   const BIOMETRIC_ARM_WINDOW_MS = 5000;
 
@@ -121,6 +126,10 @@ export function BiometricLock({ children }: BiometricLockProps) {
 
       const awayForMs = Date.now() - backgroundedAt;
 
+      // Troca rápida de app / multitarefa: mantém a sessão desbloqueada.
+      // Ausência prolongada: exige biometria novamente. Não persistimos essa
+      // janela em storage; se o WebView/processo reiniciar, o estado inicial
+      // continua bloqueado e a biometria é exigida normalmente.
       if (awayForMs < REAL_BACKGROUND_THRESHOLD_MS) return;
 
       setIsAuthenticated(false);

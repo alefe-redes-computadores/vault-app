@@ -9,6 +9,8 @@ import {
   LocalNotifications,
 } from "@capacitor/local-notifications";
 
+import type { DoseLog, Medicamento } from "@/lib/types";
+
 import {
   ensureVaultNotificationChannel,
   isNotificationPreferenceEnabled,
@@ -620,4 +622,109 @@ export async function cancelAllDoseNotifications(
       error
     );
   }
+}
+
+// ============================================================
+// VAULT_SCHEDULED_DOSE_RECONCILER_V51
+// Notificações programadas por SLOT (data + horário), não recorrência cega.
+// Assim uma dose tomada/ignorada antes do horário cancela somente aquele slot,
+// preservando os próximos dias.
+// ============================================================
+
+const SCHEDULED_DOSE_HORIZON_DAYS_V51 = 7;
+const MAX_SCHEDULED_DOSE_PENDING_V51 = 80;
+
+function localDateKeyV51(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+
+function addLocalDaysV51(base: Date, days: number): Date {
+  const result = new Date(base);
+  result.setHours(12,0,0,0);
+  result.setDate(result.getDate()+days);
+  return result;
+}
+
+function scheduledDateAtV51(data: string, horario: string): Date | null {
+  const d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(data);
+  const h=/^(\d{2}):(\d{2})$/.exec(horario);
+  if(!d || !h) return null;
+  const result=new Date(+d[1],+d[2]-1,+d[3],+h[1],+h[2],0,0);
+  return Number.isNaN(result.getTime()) ? null : result;
+}
+
+function scheduledDoseResolvedV51(logs: DoseLog[], personId: string, medicamentoId: string, data: string, horario: string): boolean {
+  return logs.some((log) =>
+    log.person_id===personId &&
+    log.medicamento_id===medicamentoId &&
+    log.data===data &&
+    log.horario===horario &&
+    Boolean(log.tomado_em || log.ignorado_em)
+  );
+}
+
+export async function reconcileScheduledDoseNotifications(input: {
+  personId: string;
+  medicamentos: Medicamento[];
+  logs: DoseLog[];
+  now?: Date;
+}): Promise<number> {
+  if(!isNativePlatform()) return 0;
+  const personId=input.personId.trim();
+  if(!personId) return 0;
+
+  const pending=await LocalNotifications.getPending();
+  const oldDoseIds=pending.notifications
+    .filter((notification) => {
+      const extra=notification.extra as Record<string,unknown>|undefined;
+      return extra?.type==="dose_reminder";
+    })
+    .map((notification)=>({id:notification.id}));
+
+  // Remove tanto a agenda recorrente legada quanto os slots V51 e reconstrói
+  // a janela a partir do estado clínico atual do DoseLog.
+  if(oldDoseIds.length>0) await LocalNotifications.cancel({notifications:oldDoseIds});
+
+  if(!isNotificationPreferenceEnabled() || !isVaultNotificationCategoryEnabled("doses")) return 0;
+  const permission=await LocalNotifications.checkPermissions();
+  if(permission.display!=="granted") return 0;
+  await ensureVaultNotificationChannel();
+  await registerNotificationActions();
+
+  const now=input.now ?? new Date();
+  const notifications: Array<Record<string,unknown>>=[];
+  const meds=input.medicamentos.filter((med) =>
+    Boolean(med.id) && med.person_id===personId && med.status!=="descontinuado" &&
+    med.tipo_uso!=="sos" && med.tipo_uso!=="esporadico"
+  );
+
+  for(let offset=0; offset<SCHEDULED_DOSE_HORIZON_DAYS_V51; offset+=1){
+    const data=localDateKeyV51(addLocalDaysV51(now,offset));
+    for(const med of meds){
+      const medicamentoId=med.id!;
+      const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v))));
+      for(const horario of horarios){
+        if(scheduledDoseResolvedV51(input.logs,personId,medicamentoId,data,horario)) continue;
+        const at=scheduledDateAtV51(data,horario);
+        if(!at || at.getTime()<=now.getTime()) continue;
+        notifications.push({
+          id: hashToId(`dose:v51:${personId}:${medicamentoId}:${data}:${horario}`),
+          title:`Hora do ${med.nome}`,
+          body:med.dosagem?.trim() ? `${med.dosagem.trim()} — registre a dose no Vault` : "Registre a dose no Vault",
+          actionTypeId:ACTION_TYPE_ID,
+          channelId:VAULT_NOTIFICATION_CHANNEL_ID,
+          schedule:{at,allowWhileIdle:true},
+          extra:{type:"dose_reminder",medicamentoId,personId,horario,data,targetRoute:`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicamentoId)}`},
+        });
+        if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
+      }
+      if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
+    }
+    if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
+  }
+
+  if(notifications.length>0){
+    await LocalNotifications.schedule({notifications: notifications as unknown as Parameters<typeof LocalNotifications.schedule>[0]["notifications"]});
+  }
+  return notifications.length;
 }

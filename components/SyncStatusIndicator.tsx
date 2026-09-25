@@ -1,10 +1,12 @@
 // components/SyncStatusIndicator.tsx
 "use client";
+// VAULT_SYNC_INDICATOR_V56
 
 import {
   useEffect,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   AlertTriangle,
@@ -87,6 +89,7 @@ interface SyncStatusIndicatorProps {
 export function SyncStatusIndicator({
   onOpenDiagnostics,
 }: SyncStatusIndicatorProps) {
+  const router = useRouter();
   const online =
     useOnlineStatus();
 
@@ -144,8 +147,7 @@ export function SyncStatusIndicator({
         return;
       }
 
-      window.location.hash =
-        "#mais";
+      router.push("/diagnostico");
     };
 
   if (
@@ -251,10 +253,14 @@ export function SyncStatusIndicator({
       </div>
     );
   }
+  const lastSyncLabel = syncRuntime.lastSyncedAt
+    ? new Date(syncRuntime.lastSyncedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : null;
+
   return (
-    <div className="flex items-center gap-1.5 text-emerald-400">
+    <div className="flex items-center gap-1.5 text-emerald-400" title={lastSyncLabel ? `Última sincronização concluída às ${lastSyncLabel}` : "Sincronização concluída"}>
       <CheckCircle2 size={14} />
-      <span className="text-[11px] font-medium">Sincronizado</span>
+      <span className="text-[11px] font-medium">{lastSyncLabel ? `Sync ${lastSyncLabel}` : "Sincronizado"}</span>
     </div>
   );
 }

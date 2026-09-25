@@ -1276,7 +1276,7 @@ export default function MaisPage() {
                       : isSyncing
                       ? "Baixando e enviando dados..."
                       : pendingQueueCount > 0
-                      ? `⚠️ ${pendingQueueCount} ${pendingQueueCount === 1 ? "item travado" : "itens travados"} — Clique para ver`
+                      ? `${pendingQueueCount} ${pendingQueueCount === 1 ? "item aguardando envio" : "itens aguardando envio"} · Ver diagnóstico`
                       : `${totalLocalItems} registros locais · Sincronizado`}
                   </p>
                 </div>

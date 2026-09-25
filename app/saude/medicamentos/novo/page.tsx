@@ -3850,7 +3850,7 @@ export default function NovoMedicamentoPage() {
            * Cadastro comum preserva exatamente o efeito antigo
            * de goBackOnSuccess: true.
            */
-          router.back();
+          router.replace("/saude/medicamentos");
         }
       ).finally(
         () => {
@@ -3898,7 +3898,7 @@ export default function NovoMedicamentoPage() {
       /*
        * Equivalente ao antigo goBackOnSuccess.
        */
-      router.back();
+      router.replace("/saude/medicamentos");
     };
 
   // ==========================================================
@@ -4367,7 +4367,7 @@ export default function NovoMedicamentoPage() {
                 type="button"
                 onClick={
                   () =>
-                    router.back()
+                    router.replace("/saude/medicamentos")
                 }
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
                 aria-label="Voltar"

@@ -311,25 +311,12 @@ export function useHealthIntelligence() {
             1
           );
 
-        const learned =
-          Math.min(
-            insights.length /
-              10,
-            1
-          );
-
-        const score =
-          Math.min(
-            100,
-            Math.round(
-              coverage *
-                50 +
-              volume *
-                30 +
-              learned *
-                20
-            )
-          );
+        // VAULT_HEALTH_MATURITY_V55
+        // Maturidade mede cobertura do histórico, não quantidade de alertas.
+        const doseDays = new Set((context?.doseLogs ?? []).map((item) => item.data).filter(Boolean)).size;
+        const recordDays = new Set((context?.registrosSaude ?? []).map((item) => item.data).filter(Boolean)).size;
+        const temporalCoverage = Math.min((doseDays + recordDays) / 30, 1);
+        const score = Math.min(100, Math.round(coverage * 55 + volume * 25 + temporalCoverage * 20));
 
         const label =
           score <
@@ -355,7 +342,6 @@ export function useHealthIntelligence() {
       },
       [
         context,
-        insights.length,
       ]
     );
 

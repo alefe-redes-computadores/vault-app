@@ -1,6 +1,6 @@
-import type { BankCard, Credential, Document, Vault, VaultMember } from "@/lib/types";
+import type { BankCard, Credential, Document, Renovacao, Vault, VaultMember } from "@/lib/types";
 
-export type VaultInsightKind = "security" | "attention" | "organization" | "data_quality";
+export type VaultInsightKind = "security" | "attention" | "organization" | "data_quality" | "financial";
 export type VaultInsightConfidence = "baixa" | "media" | "alta";
 
 export interface VaultGeneralInsight {
@@ -25,6 +25,7 @@ export interface VaultIntelligenceSnapshot {
   documents: Document[];
   vaults: Vault[];
   members: VaultMember[];
+  renovacoes: Renovacao[];
 }
 
 export interface VaultIntelligenceResult {
@@ -36,6 +37,9 @@ export interface VaultIntelligenceResult {
     accounts: number;
     documents: number;
     vaults: number;
+    acquisitions: number;
+    financialSpend90d: number;
+    financialCoverage: number;
     total: number;
   };
 }

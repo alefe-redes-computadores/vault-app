@@ -4221,7 +4221,7 @@ export default function NovoDocumentoSaudePage() {
                     ) {
                       prevStep();
                     } else {
-                      router.back();
+                      router.replace("/saude/documentos");
                     }
                   }
                 }

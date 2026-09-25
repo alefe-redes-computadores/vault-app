@@ -1,0 +1,15 @@
+import fs from "node:fs";
+const s=fs.readFileSync("components/BiometricLock.tsx","utf8");
+const secure=fs.readFileSync("hooks/useSecureScreen.ts","utf8");
+const ok=(v,m)=>{if(!v)throw Error(`V53: ${m}`);console.log(`OK: ${m}`)};
+ok(s.includes("VAULT_BIOMETRIC_POLICY_V53"),"política Biometria V2 presente");
+ok(s.includes("REAL_BACKGROUND_THRESHOLD_MS = 2 * 60 * 1000"),"grace de multitarefa = 2 minutos");
+ok(!s.includes("REAL_BACKGROUND_THRESHOLD_MS = 1500"),"limiar agressivo de 1,5s removido");
+ok(s.includes("awayForMs < REAL_BACKGROUND_THRESHOLD_MS"),"retorno rápido preserva sessão");
+ok(s.includes("filePickerArmedAtRef")&&s.includes('nativeUiTransitionRef.current = "file"'),"file picker/câmera preservados");
+ok(s.includes("biometricArmedAtRef")&&s.includes('nativeUiTransitionRef.current = "biometric"'),"transição biométrica preservada");
+ok(s.includes("nativeUiTransitionRef.current !== null"),"UI nativa é consumida antes da política de background");
+ok(s.includes("!isAuthenticated && (")&&s.includes('className="fixed inset-0 z-[100]'),"overlay mantém children montados");
+ok(!s.includes('if (isAuthenticated) return <>{children}</>;'),"lock não desmonta árvore");
+ok(secure.includes("VAULT_SECURE_SCREEN_V42")&&!secure.includes("appStateChange")&&!secure.includes("authenticate("),"BiometricLock segue autoridade única");
+console.log("V53 BIOMETRIC POLICY CONTRACT: OK");

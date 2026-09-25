@@ -1,0 +1,17 @@
+import fs from "node:fs";
+const r=f=>fs.readFileSync(f,"utf8");
+const ok=(v,m)=>{if(!v)throw Error("V55: "+m);console.log("OK: "+m)};
+const h=r("hooks/useHealthIntelligence.ts");
+const s=r("lib/health-intelligence/select-highlights.ts");
+const p=r("app/inteligencia/page.tsx");
+const d=r("components/vault-intelligence/HealthInsightSheet.tsx");
+ok(h.includes("VAULT_HEALTH_MATURITY_V55"),"maturidade V3");
+ok(!h.includes("insights.length /"),"maturidade não premia quantidade de alertas");
+ok(h.includes("temporalCoverage"),"cobertura temporal");
+ok(s.includes("VAULT_HEALTH_PRIORITIZATION_V55")&&s.includes("safetyRank"),"priorização clínica");
+ok(s.includes("aggregateMedicationRoutinePatterns"),"anti-ruído preservado");
+ok(d.includes("VAULT_HEALTH_EXPLAINABILITY_V55")&&d.includes("Por que o Vault mostrou isso?"),"explicabilidade");
+ok(d.includes("Fontes internas")&&d.includes("Próximo passo seguro")&&d.includes("não diagnostica"),"fontes/ação/limite");
+ok(p.includes("useHealthIntelligence")&&p.includes("Saúde agora")&&p.includes("Cofre e organização"),"Central unificada");
+ok(p.includes("HealthInsightSheet"),"sheet conectado");
+console.log("V55 HEALTH INTELLIGENCE V3 CONTRACT: OK");

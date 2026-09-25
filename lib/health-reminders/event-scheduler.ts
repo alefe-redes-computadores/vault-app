@@ -1,5 +1,6 @@
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { formatReminderOffset, getVaultNotificationBrainSettings } from "@/lib/notification-brain";
 
 import { isVaultNative } from "@/lib/native-runtime";
 import {
@@ -8,7 +9,8 @@ import {
   VAULT_NOTIFICATION_CHANNEL_ID,
 } from "@/lib/notifications";
 
-const MAX_EVENT_PENDING = 30;
+const MAX_EVENT_PENDING = 60;
+// VAULT_EVENT_MULTI_REMINDER_V52
 const EVENT_MARKER = "vaultHealthEvent";
 
 export type HealthEventNotificationInput = {
@@ -69,11 +71,10 @@ function labelFor(kind: HealthEventNotificationInput["kind"]): string {
   return "Retirada";
 }
 
-function bodyFor(event: HealthEventNotificationInput, timing: "day" | "hour"): string {
+function bodyFor(event: HealthEventNotificationInput, offsetMinutes: number): string {
   const label = labelFor(event.kind);
-  return timing === "day"
-    ? `${label} amanhã às ${event.time}. ${event.title}`
-    : `${label} em cerca de 1 hora. ${event.title}`;
+  if (offsetMinutes === 0) return `${label} agora às ${event.time}. ${event.title}`;
+  return `${label} em ${formatReminderOffset(offsetMinutes).replace(" antes", "")}. ${event.title}`;
 }
 
 export async function reconcileHealthEventNotifications(
@@ -116,18 +117,18 @@ export async function reconcileHealthEventNotifications(
       const at = parseEventDate(event.date, event.time);
       if (!at || at <= now) return [];
 
-      const candidates: Array<{ timing: "day" | "hour"; at: Date }> = [];
+      const offsets = getVaultNotificationBrainSettings().eventOffsets[event.kind];
+      const candidates = offsets
+        .map((offsetMinutes) => ({
+          offsetMinutes,
+          at: new Date(at.getTime() - offsetMinutes * 60 * 1000),
+        }))
+        .filter((candidate) => candidate.at > now);
 
-      const dayBefore = new Date(at.getTime() - 24 * 60 * 60 * 1000);
-      if (dayBefore > now) candidates.push({ timing: "day", at: dayBefore });
-
-      const hourBefore = new Date(at.getTime() - 60 * 60 * 1000);
-      if (hourBefore > now) candidates.push({ timing: "hour", at: hourBefore });
-
-      return candidates.map(({ timing, at: notifyAt }) => ({
-        id: hash(`health-event:${event.kind}:${event.id}:${timing}`),
+      return candidates.map(({ offsetMinutes, at: notifyAt }) => ({
+        id: hash(`health-event:v52:${event.kind}:${event.id}:${offsetMinutes}`),
         title: `${labelFor(event.kind)} · ${event.time}`,
-        body: bodyFor(event, timing),
+        body: bodyFor(event, offsetMinutes),
         channelId: VAULT_NOTIFICATION_CHANNEL_ID,
         schedule: {
           at: notifyAt,
@@ -141,6 +142,7 @@ export async function reconcileHealthEventNotifications(
           userId: event.userId,
           personId: event.personId,
           targetRoute: event.targetRoute,
+          offsetMinutes,
         },
       }));
     })

@@ -1,6 +1,7 @@
 "use client";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
+import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -170,6 +171,7 @@ export default function HealthRemindersPage() {
   return (
     <main className="min-h-screen bg-void px-4 pb-28 pt-6 text-ink-primary">
         <NotificationPreferencesPanel />
+        <NotificationBrainPanel />
       <header className="mx-auto flex max-w-xl items-center gap-3">
         <button onClick={() => router.replace("/saude/registros")} className="rounded-xl border border-surface-border p-2" aria-label="Voltar">
           <ArrowLeft size={20} />

@@ -1,5 +1,6 @@
 import type { BankCard, Credential, Document } from "@/lib/types";
 import type { VaultGeneralInsight, VaultIntelligenceResult, VaultIntelligenceSnapshot } from "./types";
+import { buildVaultFinancialIntelligence } from "./financial";
 
 const accountTypes = new Set(["conta_corrente", "conta_poupanca", "conta_digital"]);
 const normalize = (value?: string) => (value || "").trim().toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -178,12 +179,13 @@ export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now 
     confidence: "alta", sample: vaults.length, sources: ["Cofres e membros da pessoa ativa"],
     evidence: [`${vaults.length} cofre(s)`, "0 membros ou convites"], actionLabel: "Ver cofres", href: "/vaults", priority: 40,
   });
-  const insights = [...credentialInsights(credentials, now), ...cardInsights(cards, now), ...documentInsights(documents, now), ...operationalInsights]
+  const financial = buildVaultFinancialIntelligence(snapshot.renovacoes, snapshot.personId, snapshot.userId, now);
+  const insights = [...credentialInsights(credentials, now), ...cardInsights(cards, now), ...documentInsights(documents, now), ...financial.insights, ...operationalInsights]
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
   const accounts = cards.filter((item) => accountTypes.has(item.type)).length;
   return {
     insights,
     highlights: insights.slice(0, 3),
-    coverage: { credentials: credentials.length, cards: cards.length - accounts, accounts, documents: documents.length, vaults: vaults.length, total },
+    coverage: { credentials: credentials.length, cards: cards.length - accounts, accounts, documents: documents.length, vaults: vaults.length, acquisitions: financial.paidAcquisitions, financialSpend90d: financial.spend90d, financialCoverage: financial.pricedCoverage, total },
   };
 }
