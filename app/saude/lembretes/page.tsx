@@ -1,3 +1,4 @@
+// app/saude/lembretes/page.tsx
 "use client";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
@@ -5,17 +6,19 @@ import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Capacitor } from "@capacitor/core";
 import {
   AlertTriangle,
   ArrowLeft,
   Bell,
   CheckCircle2,
+  ChevronDown,
   Loader2,
   Pause,
   Pencil,
   Play,
+  Plus,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
@@ -65,6 +68,8 @@ export default function HealthRemindersPage() {
   const [frequency, setFrequency] = useState<HealthReminderFrequency>("daily");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [permission, setPermission] = useState<HealthReminderScheduleResult["permission"]>(
     isVaultNative() ? "prompt" : "unavailable"
   );
@@ -80,6 +85,7 @@ export default function HealthRemindersPage() {
 
   useEffect(() => {
     if (!editing) return;
+    setFormOpen(true);
     const knownTarget = HEALTH_REMINDER_TARGETS.find((target) =>
       target.type === editing.target_type && target.route === editing.target_route
     );
@@ -97,6 +103,7 @@ export default function HealthRemindersPage() {
     setTime("10:00");
     setFrequency("daily");
     setWeekdays([]);
+    setFormOpen(false);
   }
 
   function changeTarget(nextType: HealthReminderTargetType) {
@@ -167,19 +174,19 @@ export default function HealthRemindersPage() {
   const invalidDays = frequency === "weekly"
     ? weekdays.length !== 1
     : frequency === "custom" && weekdays.length === 0;
+  const activeCount = reminders.filter((reminder) => reminder.status === "active").length;
 
   return (
     <main className="min-h-screen bg-void px-4 pb-28 pt-6 text-ink-primary">
-        <NotificationPreferencesPanel />
-        <NotificationBrainPanel />
       <header className="mx-auto flex max-w-xl items-center gap-3">
         <button onClick={() => router.replace("/saude/registros")} className="rounded-xl border border-surface-border p-2" aria-label="Voltar">
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-bold">Lembretes de saúde</h1>
-          <p className="text-sm text-ink-muted">Regras sincronizadas; agendamento local por aparelho.</p>
+          <p className="text-sm text-ink-muted">{isLoading ? "Carregando sua rotina…" : `${activeCount} ativo(s) · ${reminders.length} no total`}</p>
         </div>
+        <button type="button" onClick={() => { reset(); setFormOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice text-void" aria-label="Criar lembrete"><Plus size={20} /></button>
       </header>
 
       <section className="mx-auto mt-5 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">
@@ -198,10 +205,10 @@ export default function HealthRemindersPage() {
         )}
       </section>
 
-      <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">
+      {formOpen && <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-ice/20 bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="mb-3 flex items-center justify-between">
           <strong>{editing ? "Editar lembrete" : "Novo lembrete"}</strong>
-          {editing && <button onClick={reset} aria-label="Cancelar edição"><X size={18} /></button>}
+          <button type="button" onClick={reset} aria-label="Fechar formulário"><X size={18} /></button>
         </div>
         <div className="grid gap-3">
           <fieldset>
@@ -237,30 +244,39 @@ export default function HealthRemindersPage() {
               ))}
             </div>
           )}
-          <button disabled={busyId !== null || !title.trim() || !time || invalidDays} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-xl bg-ice p-3 font-semibold text-void disabled:opacity-40">
+          <button type="button" disabled={busyId !== null || !title.trim() || !time || invalidDays} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-xl bg-ice p-3 font-semibold text-void disabled:opacity-40">
             {busyId === "form" && <Loader2 size={17} className="animate-spin" />}
             {editing ? "Salvar alterações" : "Criar lembrete"}
           </button>
         </div>
-      </section>
+      </section>}
 
       <section className="mx-auto mt-4 grid max-w-xl gap-3">
         {isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-ice" /></div>}
         {!isLoading && reminders.length === 0 && (
-          <div className="rounded-3xl border border-dashed border-surface-border p-8 text-center"><Bell className="mx-auto text-ink-faint" /><p className="mt-3 text-sm font-semibold">Nenhum lembrete criado</p><p className="mt-1 text-xs text-ink-muted">Crie apenas os lembretes que forem úteis para sua rotina.</p></div>
+          <button type="button" onClick={() => setFormOpen(true)} className="rounded-3xl border border-dashed border-surface-border p-8 text-center"><Bell className="mx-auto text-ink-faint" /><p className="mt-3 text-sm font-semibold">Nenhum lembrete criado</p><p className="mt-1 text-xs text-ink-muted">Toque para criar apenas o que for útil para sua rotina.</p></button>
         )}
         {reminders.map((reminder) => (
-          <article key={reminder.id} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface p-4">
-            <Bell size={18} className={reminder.status === "paused" ? "text-ink-faint" : "text-ice"} />
+          <article key={reminder.id} className={`flex items-center gap-3 rounded-2xl border bg-surface p-4 ${reminder.status === "paused" ? "border-surface-border opacity-70" : "border-ice/20"}`}>
+            <div className={`rounded-xl p-2 ${reminder.status === "paused" ? "bg-void text-ink-faint" : "bg-ice/10 text-ice"}`}><Bell size={17} /></div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{reminder.title}</p>
               <p className="text-xs text-ink-muted">{reminder.time} · {reminder.frequency === "daily" ? "todos os dias" : reminder.weekdays.map((day) => WEEKDAYS[day]).join(", ")} · {reminder.status === "paused" ? "pausado" : "ativo"}</p>
             </div>
-            <button disabled={busyId !== null} aria-label="Editar" onClick={() => setEditing(reminder)} className="p-2"><Pencil size={17} /></button>
-            <button disabled={busyId !== null} aria-label={reminder.status === "paused" ? "Ativar" : "Pausar"} onClick={() => void run(reminder.id, () => pauseReminder(reminder.id, reminder.status !== "paused"), reminder.status === "paused" ? "Lembrete ativado" : "Lembrete pausado")} className="p-2">{busyId === reminder.id ? <Loader2 size={17} className="animate-spin" /> : reminder.status === "paused" ? <Play size={17} /> : <Pause size={17} />}</button>
-            <button disabled={busyId !== null} aria-label="Excluir" onClick={() => { if (window.confirm(`Excluir o lembrete “${reminder.title}”?`)) void run(reminder.id, () => deleteReminder(reminder.id), "Lembrete excluído"); }} className="p-2 text-coral"><Trash2 size={17} /></button>
+            <button type="button" disabled={busyId !== null} aria-label="Editar" onClick={() => setEditing(reminder)} className="rounded-lg p-2"><Pencil size={17} /></button>
+            <button type="button" disabled={busyId !== null} aria-label={reminder.status === "paused" ? "Ativar" : "Pausar"} onClick={() => void run(reminder.id, () => pauseReminder(reminder.id, reminder.status !== "paused"), reminder.status === "paused" ? "Lembrete ativado" : "Lembrete pausado")} className="rounded-lg p-2">{busyId === reminder.id ? <Loader2 size={17} className="animate-spin" /> : reminder.status === "paused" ? <Play size={17} /> : <Pause size={17} />}</button>
+            <button type="button" disabled={busyId !== null} aria-label="Excluir" onClick={() => { if (window.confirm(`Excluir o lembrete “${reminder.title}”?`)) void run(reminder.id, () => deleteReminder(reminder.id), "Lembrete excluído"); }} className="rounded-lg p-2 text-coral"><Trash2 size={17} /></button>
           </article>
         ))}
+      </section>
+
+      <section className="mx-auto mt-5 max-w-xl overflow-hidden rounded-3xl border border-surface-border bg-surface">
+        <button type="button" onClick={() => setAdvancedOpen((value) => !value)} className="flex w-full items-center gap-3 p-4 text-left" aria-expanded={advancedOpen}>
+          <div className="rounded-xl border border-surface-border bg-void p-2 text-ink-muted"><SlidersHorizontal size={17} /></div>
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Configurações avançadas</p><p className="mt-0.5 text-[11px] text-ink-muted">Categorias, antecedência e repetição dos avisos</p></div>
+          <ChevronDown size={18} className={`text-ink-muted transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+        </button>
+        {advancedOpen && <div className="grid gap-3 border-t border-surface-border p-3"><NotificationPreferencesPanel /><NotificationBrainPanel /></div>}
       </section>
     </main>
   );

@@ -6,7 +6,7 @@ const checks=[
  ["quantidade real individual",/marcarDose\(\s*item\.medicamentoId,\s*item\.horario,\s*item\.unidadePorDose\s*\)/s.test(hoje)],
  ["lote deduplicado",hoje.includes("new Map<string, DoseItemExt>()")],
  ["grupos operacionais",["Atrasadas","Agora","Depois","SOS e extras","Concluído"].every(x=>hoje.includes(`label: \"${x}\"`))],
- ["lote serial",hoje.includes("for (const dose of dosesElegiveisLote)")],
+ ["lote serial",hoje.includes("for (const dose of dosesElegiveisLote)")||hoje.includes("for (const dose of snapshotLote)")],
  ["desfazer",hoje.includes("handleDesfazerLote")],
  ["extra/SOS",hook.includes("registrarTomadaAvulsa")&&hook.includes('"sos" | "extra"')],
  ["histórico",hook.includes("marcarComoTomadaHistoricaEm")&&hook.includes("desmarcarDoseHistorica")],

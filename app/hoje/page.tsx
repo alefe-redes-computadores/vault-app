@@ -1,7 +1,7 @@
 // app/hoje/page.tsx
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -802,6 +802,10 @@ export default function HojePage() {
 
   const [processandoTodos, setProcessandoTodos] =
     useState(false);
+
+  // Mutex síncrono: dois toques antes do próximo render não podem
+  // iniciar dois lotes e disputar o mesmo estoque.
+  const batchOperationLock = useRef(false);
 
   const [loteConfirmado, setLoteConfirmado] =
     useState<DoseItemExt[]>([]);
@@ -2360,6 +2364,7 @@ export default function HojePage() {
     mode: BatchTimeMode
   ) => {
     if (
+      batchOperationLock.current ||
       processandoTodos ||
       processandoDoseId ||
       dosesElegiveisLote.length < 2
@@ -2401,15 +2406,17 @@ export default function HojePage() {
         ? new Date()
         : null;
 
+    batchOperationLock.current = true;
     setProcessandoTodos(true);
     setLoteConfirmado([]);
 
     const confirmadas: DoseItemExt[] = [];
     let falhas = 0;
+    const snapshotLote = [...dosesElegiveisLote];
 
     // Serial de propósito: protege duas doses do mesmo medicamento
     // contra disputa de leitura/gravação do saldo.
-    for (const dose of dosesElegiveisLote) {
+    for (const dose of snapshotLote) {
       if (!dose.medicamentoId) continue;
 
       try {
@@ -2448,6 +2455,7 @@ export default function HojePage() {
 
     setLoteConfirmado(confirmadas);
     setProcessandoTodos(false);
+    batchOperationLock.current = false;
 
     if (confirmadas.length > 0) {
       setIsBatchTimeModalOpen(false);
@@ -2474,6 +2482,7 @@ export default function HojePage() {
 
   const handleDesfazerLote = async () => {
     if (
+      batchOperationLock.current ||
       processandoTodos ||
       processandoDoseId ||
       loteConfirmado.length === 0
@@ -2481,6 +2490,7 @@ export default function HojePage() {
       return;
     }
 
+    batchOperationLock.current = true;
     setProcessandoTodos(true);
 
     const naoDesfeitas: DoseItemExt[] = [];
@@ -2504,6 +2514,7 @@ export default function HojePage() {
 
     setLoteConfirmado(naoDesfeitas);
     setProcessandoTodos(false);
+    batchOperationLock.current = false;
 
     if (naoDesfeitas.length === 0) {
       trigger("vibrate");
