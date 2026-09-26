@@ -84,6 +84,8 @@ import {
   PageTransition,
 } from "@/components/PageTransition";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import {
   DetailSkeleton,
 } from "@/components/loading/DetailSkeleton";
@@ -1706,6 +1708,14 @@ function DetalhesRenovacaoContent() {
             </div>
           </motion.div>
         </section>
+
+        <ContextualHealthIntelligence
+          entityType="renovacao"
+          entityId={renovacao.id}
+          relatedEntityType="medicamento"
+          relatedEntityId={renovacao.medicamento_id}
+          className="mt-5"
+        />
 
         {/* ====================================================
             DELETE MODAL

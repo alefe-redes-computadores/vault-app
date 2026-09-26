@@ -45,8 +45,10 @@ const contracts = [
   "scripts/test-v60-coherence-contract.mjs",
   "scripts/test-v61-behavioral-memory-contract.mjs",
   "scripts/test-v61-brain-memory-contract.mjs",
+  "scripts/test-v61-final-contract.mjs",
   "scripts/test-v62-final-experience-contract.mjs",
   "scripts/test-v63-sync-truth-contract.mjs",
+  "scripts/test-v64-super-final-contract.mjs",
   "scripts/test-vault-auth-singleton-v63-contract.mjs",
   "scripts/test-vault-offline-session-v62-contract.mjs",
 ];

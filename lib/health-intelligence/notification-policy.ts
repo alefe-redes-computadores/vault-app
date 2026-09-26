@@ -1,109 +1,75 @@
 import type { HealthInsight } from "@/lib/health-insights";
 
-const severity = {
+const SEVERITY_RANK: Record<string, number> = {
   critica: 0,
   importante: 1,
   atencao: 2,
   informativa: 3,
-} as const;
+};
 
-const urgency = {
+const URGENCY_RANK: Record<string, number> = {
   alta: 0,
   media: 1,
   baixa: 2,
   nenhuma: 3,
-} as const;
+};
 
-const confidence = {
+const CONFIDENCE_RANK: Record<string, number> = {
   alta: 0,
   media: 1,
   baixa: 2,
-} as const;
+};
 
-function severityRank(
-  value: HealthInsight["gravidadeSeguranca"]
-): number {
-  return severity[value || "informativa"];
+function score(map: Record<string, number>, value: unknown): number {
+  return map[String(value ?? "")] ?? 99;
 }
 
-function urgencyRank(
-  value: HealthInsight["urgencia"]
-): number {
-  return urgency[value];
-}
-
-function confidenceRank(
-  value: HealthInsight["confianca"]
-): number {
-  return confidence[value];
+function isEligibleForBehavioralPush(insight: HealthInsight): boolean {
+  if (insight.categoria === "agenda") return false;
+  if (insight.kind !== "alert" && insight.kind !== "pattern") return false;
+  return insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante";
 }
 
 // VAULT_INSIGHT_NOTIFICATION_POLICY_V57
-// VAULT_INSIGHT_NOTIFICATION_POLICY_V61
+// VAULT_INSIGHT_NOTIFICATION_POLICY_V61_FINAL
 export function rankHealthInsightNotificationCandidates(
-  insights: HealthInsight[]
+  insights: HealthInsight[],
+  limit = 5
 ): HealthInsight[] {
-  return insights
-      .filter(
-        (item) =>
-          item.categoria !== "agenda" &&
-          (item.kind === "alert" || item.kind === "pattern") &&
-          (item.gravidadeSeguranca === "importante" ||
-            item.gravidadeSeguranca === "critica")
-      )
-      .sort(
-        (a, b) =>
-          severityRank(a.gravidadeSeguranca) -
-            severityRank(b.gravidadeSeguranca) ||
-          urgencyRank(a.urgencia) -
-            urgencyRank(b.urgencia) ||
-          confidenceRank(a.confianca) -
-            confidenceRank(b.confianca) ||
-          b.amostra - a.amostra
-      );
+  const safeLimit = Math.max(1, Math.floor(limit));
+
+  return [...insights]
+    .filter(isEligibleForBehavioralPush)
+    .sort((a, b) => {
+      const severity = score(SEVERITY_RANK, a.gravidadeSeguranca) - score(SEVERITY_RANK, b.gravidadeSeguranca);
+      if (severity !== 0) return severity;
+
+      const urgency = score(URGENCY_RANK, a.urgencia) - score(URGENCY_RANK, b.urgencia);
+      if (urgency !== 0) return urgency;
+
+      const confidence = score(CONFIDENCE_RANK, a.confianca) - score(CONFIDENCE_RANK, b.confianca);
+      if (confidence !== 0) return confidence;
+
+      return (b.amostra ?? 0) - (a.amostra ?? 0);
+    })
+    .slice(0, safeLimit);
 }
 
+/** Compatibilidade com consumidores anteriores à V61. */
 export function selectHealthInsightNotificationCandidate(
   insights: HealthInsight[]
 ): HealthInsight | null {
-  return rankHealthInsightNotificationCandidates(insights)[0] || null;
+  return rankHealthInsightNotificationCandidates(insights, 1)[0] ?? null;
 }
 
-export function getHealthInsightNotificationCooldownMs(
-  insight: HealthInsight
-): number {
-  if (
-    insight.gravidadeSeguranca === "critica" ||
-    insight.urgencia === "alta"
-  ) {
-    return 6 * 60 * 60 * 1000;
+/**
+ * Mantém a rota contextual quando o insight aponta para uma rota interna.
+ * Links externos/malformados nunca entram no deep-link da notificação.
+ */
+export function getHealthInsightNotificationRoute(insight: HealthInsight): string {
+  const contextualRoute = insight.link?.trim();
+  if (contextualRoute?.startsWith("/") && !contextualRoute.startsWith("//")) {
+    return contextualRoute;
   }
-
-  if (insight.kind === "pattern") {
-    return 48 * 60 * 60 * 1000;
-  }
-
-  return 24 * 60 * 60 * 1000;
-}
-
-export function getHealthInsightNotificationRoute(
-  insight: HealthInsight
-): string {
-  const link = insight.link?.trim();
-
-  if (link?.startsWith("/")) {
-    return link;
-  }
-
   return "/inteligencia";
-}
-
-export function getHealthInsightNotificationPriority(
-  insight: HealthInsight
-): number {
-  return (
-    severityRank(insight.gravidadeSeguranca) * 100 +
-    urgencyRank(insight.urgencia) * 10 +
-    confidenceRank(insight.confianca)
-  );
 }

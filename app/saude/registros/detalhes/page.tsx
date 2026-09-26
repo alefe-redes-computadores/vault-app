@@ -73,6 +73,8 @@ import {
   PageTransition,
 } from "@/components/PageTransition";
 
+import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+
 import {
   DetailSkeleton,
 } from "@/components/loading/DetailSkeleton";
@@ -1559,6 +1561,14 @@ function DetalhesRegistroSaudeContent() {
             </motion.div>
           )}
         </section>
+
+        <ContextualHealthIntelligence
+          entityType="registro"
+          entityId={registro.id}
+          relatedEntityType={registro.medicamento_id ? "medicamento" : undefined}
+          relatedEntityId={registro.medicamento_id}
+          className="mt-5"
+        />
 
         {/* ====================================================
             DELETE

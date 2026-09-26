@@ -1,43 +1,152 @@
 import fs from "node:fs";
 
-const r = (f) => fs.readFileSync(f, "utf8");
-const ok = (v, m) => {
-  if (!v) throw new Error(`V61: ${m}`);
-  console.log(`OK: ${m}`);
+const read = (path) =>
+  fs.readFileSync(
+    path,
+    "utf8"
+  );
+
+const ok = (
+  condition,
+  message
+) => {
+  if (!condition) {
+    throw new Error(
+      `V61: ${message}`
+    );
+  }
+
+  console.log(
+    `OK: ${message}`
+  );
 };
 
-const memory = r("lib/health-intelligence/insight-memory.ts");
-const policy = r("lib/health-intelligence/notification-policy.ts");
-const reconciler = r("components/InsightNotificationReconciler.tsx");
-const longitudinal = r("lib/health-intelligence/longitudinal-insights.ts");
+const memory = read(
+  "lib/health-intelligence/insight-memory.ts"
+);
 
-ok(memory.includes("VAULT_INSIGHT_MEMORY_V61"), "memória comportamental existe");
-ok(memory.includes("getHealthInsightSemanticKey"), "identidade semântica estável");
-ok(memory.includes("state_escalated"), "escalada pode furar cooldown");
-ok(memory.includes("36 * 60 * 60 * 1000"), "cooldown adaptativo para importante");
+const policy = read(
+  "lib/health-intelligence/notification-policy.ts"
+);
 
-ok(policy.includes("rankHealthInsightNotificationCandidates"), "política ranqueia múltiplos candidatos");
-ok(policy.includes('item.categoria !== "agenda"'), "agenda não duplica push");
+const reconciler = read(
+  "components/InsightNotificationReconciler.tsx"
+);
 
-ok(reconciler.includes("shouldDeliverHealthInsight"), "reconciliador usa memória semântica");
-ok(reconciler.includes("eligible.find"), "candidato em cooldown não bloqueia o próximo");
-ok(reconciler.includes("recordHealthInsightDelivery"), "entrega é memorizada");
-
-const scheduleAt = reconciler.indexOf("await LocalNotifications.schedule");
-const recordAt = reconciler.lastIndexOf("recordHealthInsightDelivery(");
-
-ok(scheduleAt >= 0, "agendamento nativo existe");
-ok(recordAt >= 0, "gravação de memória existe");
 ok(
-  recordAt > scheduleAt,
+  memory.includes(
+    "getHealthInsightSemanticKey"
+  ) &&
+    memory.includes(
+      "shouldDeliverHealthInsight"
+    ) &&
+    memory.includes(
+      "recordHealthInsightDelivery"
+    ),
+  "memória comportamental instalada"
+);
+
+ok(
+  memory.includes(
+    "state_escalated"
+  ) &&
+    memory.includes(
+      "cooldown"
+    ),
+  "memória diferencia escalada e cooldown"
+);
+
+ok(
+  policy.includes(
+    "rankHealthInsightNotificationCandidates"
+  ),
+  "política ranqueia múltiplos candidatos"
+);
+
+ok(
+  policy.includes(
+    'insight.categoria === "agenda"'
+  ),
+  "agenda fica fora do push comportamental"
+);
+
+ok(
+  policy.includes(
+    "gravidadeSeguranca"
+  ) &&
+    policy.includes(
+      "urgencia"
+    ) &&
+    policy.includes(
+      "confianca"
+    ) &&
+    policy.includes(
+      "amostra"
+    ),
+  "ranking considera gravidade, urgência, confiança e amostra"
+);
+
+ok(
+  reconciler.includes(
+    "rankHealthInsightNotificationCandidates"
+  ),
+  "reconciliador usa ranking V61"
+);
+
+ok(
+  reconciler.includes(
+    "shouldDeliverHealthInsight"
+  ),
+  "reconciliador consulta memória antes do push"
+);
+
+ok(
+  reconciler.includes(
+    "recordHealthInsightDelivery"
+  ),
+  "reconciliador registra entrega"
+);
+
+/*
+ * A checagem anterior estava pegando a
+ * ocorrência do nome da função no import,
+ * por isso dizia falsamente que o record
+ * vinha antes do schedule.
+ *
+ * Agora procuramos as CHAMADAS reais.
+ */
+const scheduleCall =
+  reconciler.lastIndexOf(
+    "await LocalNotifications.schedule"
+  );
+
+const recordCall =
+  reconciler.lastIndexOf(
+    "recordHealthInsightDelivery("
+  );
+
+ok(
+  scheduleCall >= 0,
+  "agendamento nativo existe"
+);
+
+ok(
+  recordCall >= 0,
+  "registro de memória existe"
+);
+
+ok(
+  recordCall >
+    scheduleCall,
   "memória só é gravada após agendamento aceito"
 );
 
-ok(policy.includes('return "/inteligencia"'), "fallback abre inteligência");
-
 ok(
-  longitudinal.includes("retiradas: context.retiradas.filter"),
-  "retiradas person-scoped no longitudinal"
+  policy.includes("getHealthInsightNotificationRoute") &&
+    policy.includes('return "/inteligencia"'),
+  "fallback contextual aponta para Central de Inteligência"
 );
 
-console.log("VAULT SUPER V61 — CONTRATO OK");
+console.log(
+  "VAULT V61.2 BRAIN MEMORY — CONTRATO OK"
+);

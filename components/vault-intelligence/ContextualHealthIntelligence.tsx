@@ -18,6 +18,8 @@ import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsigh
 type Props = {
   entityType: HealthInsightEntityType;
   entityId?: string | null;
+  relatedEntityType?: HealthInsightEntityType;
+  relatedEntityId?: string | null;
   className?: string;
 };
 
@@ -45,16 +47,28 @@ function insightTone(insight: HealthInsight) {
 export function ContextualHealthIntelligence({
   entityType,
   entityId,
+  relatedEntityType,
+  relatedEntityId,
   className = "",
 }: Props) {
   const router = useRouter();
   const { getInsightsForEntity } = useHealthIntelligence();
   const [selected, setSelected] = useState<HealthInsight | null>(null);
 
-  const insights = useMemo(
-    () => getInsightsForEntity(entityType, entityId, 3),
-    [entityType, entityId, getInsightsForEntity]
-  );
+  const insights = useMemo(() => {
+    const direct = getInsightsForEntity(entityType, entityId, 3);
+    if (!relatedEntityType || !relatedEntityId) return direct;
+
+    const related = getInsightsForEntity(relatedEntityType, relatedEntityId, 3);
+    const seen = new Set<string>();
+    return [...direct, ...related]
+      .filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      })
+      .slice(0, 3);
+  }, [entityType, entityId, relatedEntityType, relatedEntityId, getInsightsForEntity]);
 
   if (!entityId || insights.length === 0) return null;
 
@@ -72,7 +86,7 @@ export function ContextualHealthIntelligence({
               </div>
               <div className="min-w-0">
                 <p className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-violet-300">
-                  VAULT INSIGHT · V60
+                  VAULT INSIGHT
                 </p>
                 <p className="truncate text-[10px] text-ink-faint">
                   Cérebro comportamental · {entityLabel.toLowerCase()}
