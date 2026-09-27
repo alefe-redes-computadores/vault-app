@@ -180,6 +180,21 @@ export function SyncStatusIndicator({
     );
   }
 
+  // VAULT_SYNC_BACKGROUND_V64
+  // Pull longo não é falha. Mantemos transparência sem spinner infinito.
+  if (syncRuntime.phase === "background") {
+    return (
+      <div
+        className="flex items-center gap-1.5 text-ink-muted"
+        role="status"
+        title="Atualização completa continua em segundo plano"
+      >
+        <RefreshCw size={14} />
+        <span className="text-[11px] font-medium">Atualizando</span>
+      </div>
+    );
+  }
+
   if (
     failedCount >
     0

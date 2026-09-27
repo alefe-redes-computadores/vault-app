@@ -1,7 +1,7 @@
 "use client";
 // VAULT_BOOT_SYNC_V50_1
 import { useSyncExternalStore } from "react";
-export type VaultSyncPhase = "idle" | "pulling" | "pushing" | "synced" | "error";
+export type VaultSyncPhase = "idle" | "pulling" | "background" | "pushing" | "synced" | "error";
 export interface VaultSyncRuntimeState { phase: VaultSyncPhase; error: string | null; lastSyncedAt: string | null; }
 // VAULT_SYNC_UX_V56
 const LAST_SYNC_KEY = "vault_last_sync";

@@ -41,6 +41,44 @@ function formatDate(value: string) {
   return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
+const SIGNAL_KIND_LABEL: Record<string, string> = {
+  trend: "Tendência",
+  change_point: "Mudança de padrão",
+  persistence: "Persistência",
+  recurrence: "Recorrência",
+  temporal_relation: "Relação temporal",
+};
+
+const SIGNAL_DIRECTION_LABEL: Record<string, string> = {
+  increasing: "aumentando",
+  decreasing: "diminuindo",
+  stable: "estável",
+  oscillating: "oscilando",
+};
+
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  dose: "Dose",
+  health_record: "Registro de saúde",
+  appointment: "Consulta",
+  exam: "Exame",
+  pickup: "Retirada",
+  renewal: "Renovação",
+  treatment: "Tratamento",
+};
+
+function humanSignalSubject(subject: string, medications: Array<{ id?: string; nome?: string }>) {
+  let value = subject;
+  for (const medication of medications) {
+    if (!medication.id || !medication.nome) continue;
+    value = value.replaceAll(`medicamento:${medication.id}`, medication.nome);
+  }
+  return value
+    .replace(/^sintoma:/i, "")
+    .replace(/^registro:/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default function HealthIntelligenceLabPage() {
   const router = useRouter();
   const health = useHealthIntelligence();
@@ -48,6 +86,10 @@ export default function HealthIntelligenceLabPage() {
   const [period, setPeriod] = useState<30 | 90>(30);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [feedbackRevision, setFeedbackRevision] = useState(0);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [signalsExpanded, setSignalsExpanded] = useState(false);
+  const [brainHealthExpanded, setBrainHealthExpanded] = useState(false);
+  const [feedbackExpanded, setFeedbackExpanded] = useState(false);
 
   const replay = useMemo(
     () => health.replayBrainV4(90, 7),
@@ -195,16 +237,21 @@ export default function HealthIntelligenceLabPage() {
           </div>
           <p className="mt-1 text-xs text-ink-muted">Eventos recentes usados para construir contexto, sem inferir causalidade.</p>
           <div className="mt-3 space-y-2">
-            {[...health.brainV4.timeline].reverse().slice(0, 12).map((event) => (
+            {[...health.brainV4.timeline].reverse().slice(0, timelineExpanded ? 20 : 5).map((event) => (
               <div key={event.id} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface px-4 py-3">
                 <div className="h-2 w-2 shrink-0 rounded-full bg-ice/70" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-semibold">{event.label}</p>
-                  <p className="mt-0.5 font-mono text-[9px] uppercase text-ink-faint">{event.type} · {formatDate(event.date)}</p>
+                  <p className="mt-0.5 text-[9px] text-ink-faint">{EVENT_TYPE_LABEL[event.type] ?? event.type} · {formatDate(event.date)}</p>
                 </div>
               </div>
             ))}
           </div>
+          {health.brainV4.timeline.length > 5 && (
+            <button type="button" onClick={() => setTimelineExpanded((value) => !value)} className="mt-2 w-full rounded-2xl border border-surface-border py-2.5 text-xs font-medium text-ink-muted active:scale-[0.99]">
+              {timelineExpanded ? "Mostrar menos" : `Ver mais eventos (${Math.min(20, health.brainV4.timeline.length)})`}
+            </button>
+          )}
         </section>
 
         <section className="mx-auto mt-6 max-w-2xl">
@@ -217,14 +264,14 @@ export default function HealthIntelligenceLabPage() {
             {health.brainV4.longitudinalSignals.length ? (
               [...health.brainV4.longitudinalSignals]
                 .sort((a, b) => b.confidenceScore - a.confidenceScore)
-                .slice(0, 8)
+                .slice(0, signalsExpanded ? 8 : 3)
                 .map((signal) => (
                   <div key={signal.id} className="rounded-[22px] border border-violet-400/15 bg-violet-400/[0.04] p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold">{signal.subject}</p>
+                      <p className="text-xs font-semibold">{humanSignalSubject(signal.subject, health.context?.medicamentos ?? [])}</p>
                       <span className="rounded-full bg-violet-400/10 px-2 py-1 font-mono text-[9px] text-violet-300">{signal.confidenceScore}%</span>
                     </div>
-                    <p className="mt-1 font-mono text-[9px] uppercase text-ink-faint">{signal.kind}{signal.direction ? ` · ${signal.direction}` : ""}</p>
+                    <p className="mt-1 font-mono text-[9px] uppercase text-ink-faint">{SIGNAL_KIND_LABEL[signal.kind] ?? signal.kind}{signal.direction ? ` · ${SIGNAL_DIRECTION_LABEL[signal.direction] ?? signal.direction}` : ""}</p>
                     {signal.evidence.map((line) => <p key={line} className="mt-2 text-xs text-ink-muted">{line}</p>)}
                   </div>
                 ))
@@ -234,6 +281,11 @@ export default function HealthIntelligenceLabPage() {
               </div>
             )}
           </div>
+          {health.brainV4.longitudinalSignals.length > 3 && (
+            <button type="button" onClick={() => setSignalsExpanded((value) => !value)} className="mt-2 w-full rounded-2xl border border-violet-400/15 py-2.5 text-xs font-medium text-violet-300 active:scale-[0.99]">
+              {signalsExpanded ? "Mostrar menos" : `Ver todos os ${health.brainV4.longitudinalSignals.length} sinais`}
+            </button>
+          )}
         </section>
 
         <section className="mx-auto mt-6 max-w-2xl">
@@ -281,18 +333,16 @@ export default function HealthIntelligenceLabPage() {
             <Activity size={17} className="text-sky-300" />
             <h2 className="font-bold">Saúde do cérebro</h2>
           </div>
-          <div className="mt-3 rounded-[24px] border border-sky-400/15 bg-sky-400/[0.03] p-4">
-            <div className="flex items-center justify-between">
-              <div><p className="text-sm font-semibold">{statusLabel}</p><p className="text-[10px] text-ink-muted">Mede dados e funcionamento do motor, não sua saúde.</p></div>
-              <ShieldCheck size={20} className="text-sky-300" />
+          <button type="button" onClick={() => setBrainHealthExpanded((value) => !value)} className="mt-3 flex w-full items-center justify-between rounded-[22px] border border-sky-400/15 bg-sky-400/[0.03] p-4 text-left">
+            <div><p className="text-sm font-semibold">{statusLabel}</p><p className="mt-0.5 text-[10px] text-ink-muted">{brainHealth.timelineEvents} eventos · {brainHealth.shadowSignals} sinais · {brainHealth.replayPoints} replays</p></div>
+            <ChevronRight size={17} className={`text-sky-300 transition-transform ${brainHealthExpanded ? "rotate-90" : ""}`} />
+          </button>
+          {brainHealthExpanded && (
+            <div className="mt-2 rounded-[22px] border border-sky-400/10 bg-sky-400/[0.02] p-4">
+              <p className="text-[10px] text-ink-muted">Mede dados e funcionamento do motor, não sua saúde.</p>
+              {brainHealth.notes.map((note) => <p key={note} className="mt-2 text-xs text-ink-muted">• {note}</p>)}
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div><strong>{brainHealth.timelineEvents}</strong><p className="text-[9px] text-ink-faint">eventos</p></div>
-              <div><strong>{brainHealth.shadowSignals}</strong><p className="text-[9px] text-ink-faint">sinais</p></div>
-              <div><strong>{brainHealth.replayPoints}</strong><p className="text-[9px] text-ink-faint">replays</p></div>
-            </div>
-            {brainHealth.notes.map((note) => <p key={note} className="mt-2 text-xs text-ink-muted">• {note}</p>)}
-          </div>
+          )}
         </section>
 
         <section className="mx-auto mt-6 max-w-2xl">
@@ -302,7 +352,7 @@ export default function HealthIntelligenceLabPage() {
           </div>
           <p className="mt-1 text-xs text-ink-muted">Seu feedback ajusta relevância futura; ele nunca altera fatos clínicos nem transforma uma hipótese em verdade.</p>
           <div className="mt-3 space-y-2">
-            {experienceInsights.map((insight) => (
+            {(feedbackExpanded ? experienceInsights : experienceInsights.slice(0, 1)).map((insight) => (
               <div key={insight.id} className="rounded-[22px] border border-surface-border bg-surface p-4">
                 <button type="button" onClick={() => setSelected(insight)} className="flex w-full items-center gap-2 text-left">
                   <p className="min-w-0 flex-1 text-xs font-semibold">{insight.titulo}</p>
@@ -329,6 +379,11 @@ export default function HealthIntelligenceLabPage() {
               </div>
             ))}
           </div>
+          {experienceInsights.length > 1 && (
+            <button type="button" onClick={() => setFeedbackExpanded((value) => !value)} className="mt-2 w-full rounded-2xl border border-surface-border py-2.5 text-xs font-medium text-ink-muted active:scale-[0.99]">
+              {feedbackExpanded ? "Mostrar menos" : `Avaliar mais ${experienceInsights.length - 1} insight(s)`}
+            </button>
+          )}
         </section>
 
         <section className="mx-auto mt-6 max-w-2xl rounded-[24px] border border-surface-border bg-surface/70 p-4">

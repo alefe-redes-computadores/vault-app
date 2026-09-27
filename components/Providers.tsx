@@ -399,20 +399,19 @@ export function Providers({
       );
 
       // VAULT_PULL_AUTHORITATIVE_V50_1_2
-      // VAULT_SYNC_WATCHDOG_V63
-      // O pull real continua sendo autoritativo. O watchdog apenas encerra
-      // o spinner infinito e comunica que a operação está lenta; se o pull
-      // concluir depois, o fluxo avança normalmente para o push.
+      // VAULT_SYNC_BACKGROUND_V64
+      // O pull completo continua autoritativo, porém não transforma uma
+      // operação saudável e apenas demorada em falso erro visual. Após uma
+      // janela curta, a atualização continua em segundo plano e o app segue
+      // utilizável. Erro continua reservado para rejeição real do pull/push.
       let slowPullTimer: number | null =
         window.setTimeout(
           () => {
             slowPullTimer = null;
-            const message =
-              "A atualização da nuvem está demorando mais que o esperado.";
-            console.info(message);
-            setVaultSyncRuntime({ phase: "error", error: message });
+            console.info("Pull ainda ativo; continuando em segundo plano.");
+            setVaultSyncRuntime({ phase: "background", error: null });
           },
-          30_000
+          8_000
         );
 
       pullAllData(user.id)

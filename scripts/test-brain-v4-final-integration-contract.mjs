@@ -57,7 +57,9 @@ ok(
 );
 
 ok(
-  page.includes("experienceInsights.map"),
+  page.includes("selectExperienceInsightsV4") &&
+    page.includes("readInsightFeedbackV4") &&
+    page.includes("feedbackRevision"),
   "feedback influencia a experiência exibida"
 );
 
