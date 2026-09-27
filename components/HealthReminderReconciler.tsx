@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { db } from "@/lib/db";
 import { isVaultNative } from "@/lib/native-runtime";
+import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 import { reconcileHealthReminderNotifications } from "@/lib/health-reminders/scheduler";
 import {
   reconcileHealthEventNotifications,
@@ -20,6 +21,7 @@ export const HEALTH_REMINDERS_RECONCILE_EVENT =
   "vault:health-reminders-reconcile";
 
 type NotificationExtra = {
+  type?: string;
   reminderId?: string;
   vaultHealthEvent?: boolean;
   userId?: string;
@@ -196,7 +198,9 @@ export function HealthReminderReconciler() {
               await changePerson(rule.person_id);
             }
 
-            router.push(rule.target_route);
+            runAfterVaultBiometricUnlock(() => {
+              router.push(rule.target_route);
+            });
             return;
           }
 
@@ -213,7 +217,9 @@ export function HealthReminderReconciler() {
               await changePerson(extra.personId);
             }
 
-            router.push("/hoje");
+            runAfterVaultBiometricUnlock(() => {
+              router.push("/hoje");
+            });
             return;
           }
 
@@ -228,7 +234,13 @@ export function HealthReminderReconciler() {
             if (extra.personId !== activePersonId) {
               await changePerson(extra.personId);
             }
-            router.push(extra.targetRoute);
+            const destination = extra.insightId
+              ? `/inteligencia?healthInsight=${encodeURIComponent(extra.insightId)}`
+              : "/inteligencia";
+
+            runAfterVaultBiometricUnlock(() => {
+              router.push(destination);
+            });
             return;
           }
 
@@ -245,7 +257,9 @@ export function HealthReminderReconciler() {
               await changePerson(extra.personId);
             }
 
-            router.push(extra.targetRoute);
+            runAfterVaultBiometricUnlock(() => {
+              router.push(extra.targetRoute!);
+            });
           }
         })().catch((error) =>
           console.error("[Health notification navigation]", error)

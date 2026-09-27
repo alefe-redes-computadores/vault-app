@@ -63,13 +63,15 @@ export function selectHealthInsightNotificationCandidate(
 }
 
 /**
- * Mantém a rota contextual quando o insight aponta para uma rota interna.
- * Links externos/malformados nunca entram no deep-link da notificação.
+ * VAULT_INSIGHT_EXACT_ENTRY_V1
+ *
+ * Uma notificação comportamental representa o próprio Insight. Portanto o
+ * primeiro destino é a Central com o card exato aberto. O link contextual do
+ * insight continua disponível dentro do sheet em "Abrir contexto".
  */
 export function getHealthInsightNotificationRoute(insight: HealthInsight): string {
-  const contextualRoute = insight.link?.trim();
-  if (contextualRoute?.startsWith("/") && !contextualRoute.startsWith("//")) {
-    return contextualRoute;
-  }
-  return "/inteligencia";
+  const insightId = insight.id?.trim();
+  return insightId
+    ? `/inteligencia?healthInsight=${encodeURIComponent(insightId)}`
+    : "/inteligencia";
 }

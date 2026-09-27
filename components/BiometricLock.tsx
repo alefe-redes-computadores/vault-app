@@ -22,6 +22,7 @@ export function BiometricLock({ children }: BiometricLockProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(!isEnabled);
   const [authError, setAuthError] = useState<string | null>(null);
   const hasAutoPrompted = useRef(false);
+  const authenticationInFlightRef = useRef(false);
 
   // VAULT_BIOMETRIC_LIFECYCLE_V32
   // A preferência é carregada depois do primeiro render. Quando ela chega
@@ -91,6 +92,13 @@ export function BiometricLock({ children }: BiometricLockProps) {
         const now = Date.now();
         const fileArmedAt = filePickerArmedAtRef.current;
         const biometricArmedAt = biometricArmedAtRef.current;
+
+        // VAULT_NOTIFICATION_BIOMETRIC_ENTRY_HOTFIX
+        // Se a UI biométrica já está realmente aberta, o lifecycle pertence
+        // à própria autenticação — nunca deve armar um segundo prompt.
+        if (authenticationInFlightRef.current) {
+          nativeUiTransitionRef.current = "biometric";
+        }
         filePickerArmedAtRef.current = null;
         biometricArmedAtRef.current = null;
 
@@ -116,6 +124,13 @@ export function BiometricLock({ children }: BiometricLockProps) {
       backgroundedAtRef.current = null;
       filePickerArmedAtRef.current = null;
       biometricArmedAtRef.current = null;
+
+      // O retorno do próprio prompt pode chegar antes da Promise nativa
+      // resolver. Consumimos essa volta sem rearmar o lock/auto-prompt.
+      if (authenticationInFlightRef.current) {
+        nativeUiTransitionRef.current = null;
+        return;
+      }
 
       if (backgroundedAt === null) return;
 
@@ -173,10 +188,15 @@ export function BiometricLock({ children }: BiometricLockProps) {
   }, [isAuthenticated]);
 
   const runBiometricAuthentication = () => {
+    if (authenticationInFlightRef.current) return;
+
+    authenticationInFlightRef.current = true;
     const armedAt = Date.now();
     biometricArmedAtRef.current = armedAt;
 
     void authenticate().finally(() => {
+      authenticationInFlightRef.current = false;
+
       // O Promise pode resolver antes do appState active no Android.
       // Mantemos apenas a armação temporária; sem inactive correspondente
       // ela expira e nunca vira exceção de lifecycle.

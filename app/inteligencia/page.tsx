@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, BrainCircuit, ChevronLeft, ChevronRight, CircleCheck, CreditCard, Database, FileText, KeyRound, Landmark, ShieldCheck, WalletCards } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
@@ -25,6 +25,29 @@ export default function VaultIntelligencePage() {
   const health = useHealthIntelligence();
   const [selected, setSelected] = useState<VaultGeneralInsight | null>(null);
   const [selectedHealth, setSelectedHealth] = useState<HealthInsight | null>(null);
+  const openedNotificationInsightRef = useRef<string | null>(null);
+
+  // VAULT_INSIGHT_EXACT_ENTRY_V1
+  // Deep-link nativo abre diretamente o sheet do Insight notificado.
+  useEffect(() => {
+    if (health.isLoading || typeof window === "undefined") return;
+
+    const insightId =
+      new URLSearchParams(window.location.search)
+        .get("healthInsight")
+        ?.trim();
+
+    if (!insightId || openedNotificationInsightRef.current === insightId) {
+      return;
+    }
+
+    openedNotificationInsightRef.current = insightId;
+
+    const match = health.insights.find((item) => item.id === insightId);
+    if (match) {
+      setSelectedHealth(match);
+    }
+  }, [health.isLoading, health.insights]);
   const grouped = useMemo(() => {
     const order: VaultInsightKind[] = ["attention", "financial", "security", "data_quality", "organization"];
     return order.map((kind) => ({ kind, items: intelligence.insights.filter((item) => item.kind === kind) })).filter((group) => group.items.length);

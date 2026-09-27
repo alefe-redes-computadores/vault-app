@@ -143,8 +143,9 @@ ok(
 
 ok(
   policy.includes("getHealthInsightNotificationRoute") &&
-    policy.includes('return "/inteligencia"'),
-  "fallback contextual aponta para Central de Inteligência"
+    policy.includes("healthInsight=") &&
+    policy.includes('"/inteligencia"'),
+  "Insight abre card exato e mantém fallback para Central de Inteligência"
 );
 
 console.log(

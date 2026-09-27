@@ -27,7 +27,12 @@ ok(/categoria === ["']agenda["']/.test(policy) && /return false/.test(policy), "
 ok(/gravidadeSeguranca/.test(policy) && /urgencia/.test(policy) && /confianca/.test(policy) && /amostra/.test(policy), "ranking usa gravidade, urgência, confiança e amostra");
 ok(/export function selectHealthInsightNotificationCandidate\s*\(/.test(policy), "compatibilidade antiga preservada");
 ok(/export function getHealthInsightNotificationRoute\s*\(/.test(policy), "helper de rota contextual existe");
-ok(/insight\.link\?\.trim\(\)/.test(policy) && /return ["']\/inteligencia["']/.test(policy), "helper preserva rota contextual e fallback Central");
+ok(
+  /healthInsight=/.test(policy) &&
+  /encodeURIComponent\(insightId\)/.test(policy) &&
+  /["']\/inteligencia["']/.test(policy),
+  "helper abre Central no Insight exato e preserva fallback"
+);
 
 ok(/rankHealthInsightNotificationCandidates\(insights\)/.test(reconciler), "reconciliador usa ranking múltiplo");
 ok(/shouldDeliverHealthInsight\(activePersonId, candidate\)/.test(reconciler), "memória é consultada por candidato antes da seleção");

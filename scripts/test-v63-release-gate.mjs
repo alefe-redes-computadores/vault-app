@@ -2,6 +2,8 @@
 import { spawnSync } from "node:child_process";
 
 const contracts = [
+  "scripts/test-notification-entry-biometric-hotfix-contract.mjs",
+  "scripts/test-pre-apk-grouped-dose-notifications.mjs",
   "scripts/test-pre-apk-global-audit-contract.mjs",
   "scripts/test-pre-apk-v25-contract.mjs",
   "scripts/test-v28-perfis-edge-to-edge-contract.mjs",

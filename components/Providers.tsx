@@ -80,6 +80,7 @@ import { InsightNotificationReconciler } from "@/components/InsightNotificationR
 import { OverdueDoseNotificationReconciler } from "@/components/OverdueDoseNotificationReconciler";
 import { ScheduledDoseNotificationReconciler } from "@/components/ScheduledDoseNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
+import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 
 // ============================================================
 // NOTIFICATION ACTION DATA
@@ -699,9 +700,9 @@ export function Providers({
                         documentId
                       );
 
-                      router.push(
-                        "/documentos"
-                      );
+                      runAfterVaultBiometricUnlock(() => {
+                        router.push("/documentos");
+                      });
 
                       return;
                     }
@@ -733,9 +734,9 @@ export function Providers({
                             documentId
                           )}`;
 
-                    router.push(
-                      destination
-                    );
+                    runAfterVaultBiometricUnlock(() => {
+                      router.push(destination);
+                    });
                   } catch (
                     error
                   ) {
@@ -774,9 +775,9 @@ export function Providers({
                         medicamentoId
                       );
 
-                      router.push(
-                        "/saude/medicamentos"
-                      );
+                      runAfterVaultBiometricUnlock(() => {
+                        router.push("/saude/medicamentos");
+                      });
 
                       return;
                     }
@@ -791,11 +792,13 @@ export function Providers({
                       );
                     }
 
-                    router.push(
-                      `/saude/medicamentos/detalhes?id=${encodeURIComponent(
-                        medicamentoId
-                      )}`
-                    );
+                    runAfterVaultBiometricUnlock(() => {
+                      router.push(
+                        `/saude/medicamentos/detalhes?id=${encodeURIComponent(
+                          medicamentoId
+                        )}`
+                      );
+                    });
                   } catch (
                     error
                   ) {
@@ -840,9 +843,9 @@ export function Providers({
                         medicamentoId
                       );
 
-                      router.push(
-                        "/saude/medicamentos"
-                      );
+                      runAfterVaultBiometricUnlock(() => {
+                        router.push("/saude/medicamentos");
+                      });
 
                       return;
                     }
@@ -857,11 +860,13 @@ export function Providers({
                       );
                     }
 
-                    router.push(
-                      `/saude/medicamentos/detalhes?id=${encodeURIComponent(
-                        medicamentoId
-                      )}`
-                    );
+                    runAfterVaultBiometricUnlock(() => {
+                      router.push(
+                        `/saude/medicamentos/detalhes?id=${encodeURIComponent(
+                          medicamentoId
+                        )}`
+                      );
+                    });
                   } catch (
                     error
                   ) {
