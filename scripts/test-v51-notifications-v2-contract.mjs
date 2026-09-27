@@ -7,7 +7,16 @@ const health=read("components/HealthReminderReconciler.tsx");
 const component=read("components/ScheduledDoseNotificationReconciler.tsx");
 const ok=(c,m)=>{if(!c){console.error(`FAIL: ${m}`);process.exit(1)}console.log(`OK: ${m}`)};
 ok(dose.includes("VAULT_SCHEDULED_DOSE_RECONCILER_V51"),"motor V51 presente");
-ok(dose.includes('extra:{type:"dose_reminder",medicamentoId,personId,horario,data'),"dose carrega data exata");
+ok(
+  dose.includes('type:"dose_reminder"') &&
+  dose.includes("data:first.data"),
+  "dose individual carrega data exata"
+);
+ok(
+  dose.includes('type:"dose_reminder_group"') &&
+  dose.includes("data:first.data"),
+  "dose agrupada carrega data exata"
+);
 ok(dose.includes("scheduledDoseResolvedV51"),"slot resolvido é excluído");
 ok(dose.includes('extra?.type==="dose_reminder"'),"agenda legada/antiga é reconciliada");
 ok(component.includes("db.doseLogs") && component.includes("reconcileScheduledDoseNotifications"),"DoseLog dispara reconciliação");

@@ -59,6 +59,7 @@ import {
   reconcilePersistentNotifications,
 } from "@/lib/notifications";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { ExportButton } from "@/components/ExportButton";
 import { useTheme } from "next-themes";
 import { getVaultRuntime } from "@/lib/native-runtime";
 import { useBiometric } from "@/hooks/useBiometric";
@@ -1289,37 +1290,7 @@ export default function MaisPage() {
 
 
               {/* Exportar */}
-
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-
-                  showToast(
-                    "Em breve...",
-                    "info"
-                  );
-                }}
-                className="flex w-full items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.985]"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-400">
-                  <Download size={18} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink-primary">
-                    Exportar dados
-                  </p>
-
-                  <p className="truncate text-xs text-ink-muted">
-                    Baixe seus dados em JSON
-                  </p>
-                </div>
-
-                <ChevronRight
-                  size={16}
-                  className="shrink-0 text-ink-faint"
-                />
-              </button>
+              <ExportButton variant="settings" />
 
               {/* Limpar dados */}
 

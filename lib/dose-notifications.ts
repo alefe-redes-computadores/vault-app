@@ -677,7 +677,7 @@ export async function reconcileScheduledDoseNotifications(input: {
   const oldDoseIds=pending.notifications
     .filter((notification) => {
       const extra=notification.extra as Record<string,unknown>|undefined;
-      return extra?.type==="dose_reminder";
+      return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group";
     })
     .map((notification)=>({id:notification.id}));
 
@@ -698,6 +698,21 @@ export async function reconcileScheduledDoseNotifications(input: {
     med.tipo_uso!=="sos" && med.tipo_uso!=="esporadico"
   );
 
+  // VAULT_GROUPED_DOSE_REMINDERS_PRE_APK
+  // Primeiro montamos os slots clínicos individuais. Só depois agrupamos os
+  // que compartilham pessoa + data + horário. Assim a resolução continua
+  // individual no DoseLog e o agrupamento é apenas uma decisão de UX.
+  type PendingDoseSlot = {
+    medicamentoId: string;
+    nome: string;
+    dosagem: string;
+    data: string;
+    horario: string;
+    at: Date;
+  };
+
+  const slots: PendingDoseSlot[]=[];
+
   for(let offset=0; offset<SCHEDULED_DOSE_HORIZON_DAYS_V51; offset+=1){
     const data=localDateKeyV51(addLocalDaysV51(now,offset));
     for(const med of meds){
@@ -707,22 +722,75 @@ export async function reconcileScheduledDoseNotifications(input: {
         if(scheduledDoseResolvedV51(input.logs,personId,medicamentoId,data,horario)) continue;
         const at=scheduledDateAtV51(data,horario);
         if(!at || at.getTime()<=now.getTime()) continue;
-        notifications.push({
-          id: hashToId(`dose:v51:${personId}:${medicamentoId}:${data}:${horario}`),
-          title:`Hora do ${med.nome}`,
-          body:med.dosagem?.trim() ? `${med.dosagem.trim()} — registre a dose no Vault` : "Registre a dose no Vault",
-          actionTypeId:ACTION_TYPE_ID,
-          channelId:VAULT_NOTIFICATION_CHANNEL_ID,
-          schedule:{at,allowWhileIdle:true},
-          extra:{type:"dose_reminder",medicamentoId,personId,horario,data,targetRoute:`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicamentoId)}`},
+        slots.push({
+          medicamentoId,
+          nome: med.nome?.trim() || "Medicamento",
+          dosagem: med.dosagem?.trim() || "",
+          data,
+          horario,
+          at,
         });
-        if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
       }
-      if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
     }
-    if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
   }
 
+  const grouped=new Map<string,PendingDoseSlot[]>();
+  for(const slot of slots){
+    const key=`${slot.data}|${slot.horario}`;
+    const current=grouped.get(key) ?? [];
+    current.push(slot);
+    grouped.set(key,current);
+  }
+
+  const orderedGroups=Array.from(grouped.values()).sort(
+    (a,b)=>a[0].at.getTime()-b[0].at.getTime()
+  );
+
+  for(const group of orderedGroups){
+    if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
+
+    const first=group[0];
+
+    if(group.length===1){
+      notifications.push({
+        id: hashToId(`dose:v51:${personId}:${first.medicamentoId}:${first.data}:${first.horario}`),
+        title:`Hora do ${first.nome}`,
+        body:first.dosagem ? `${first.dosagem} — registre a dose no Vault` : "Registre a dose no Vault",
+        actionTypeId:ACTION_TYPE_ID,
+        channelId:VAULT_NOTIFICATION_CHANNEL_ID,
+        schedule:{at:first.at,allowWhileIdle:true},
+        extra:{
+          type:"dose_reminder",
+          medicamentoId:first.medicamentoId,
+          personId,
+          horario:first.horario,
+          data:first.data,
+          targetRoute:`/saude/medicamentos/detalhes?id=${encodeURIComponent(first.medicamentoId)}`,
+        },
+      });
+      continue;
+    }
+
+    const summary=group
+      .map((slot)=>slot.dosagem ? `${slot.nome} ${slot.dosagem}` : slot.nome)
+      .join(" · ");
+
+    notifications.push({
+      id:hashToId(`dose:group:v1:${personId}:${first.data}:${first.horario}`),
+      title:`${group.length} medicamentos para tomar agora`,
+      body:summary,
+      channelId:VAULT_NOTIFICATION_CHANNEL_ID,
+      schedule:{at:first.at,allowWhileIdle:true},
+      extra:{
+        type:"dose_reminder_group",
+        personId,
+        horario:first.horario,
+        data:first.data,
+        medicamentoIds:group.map((slot)=>slot.medicamentoId),
+        targetRoute:"/hoje",
+      },
+    });
+  }
   if(notifications.length>0){
     await LocalNotifications.schedule({notifications: notifications as unknown as Parameters<typeof LocalNotifications.schedule>[0]["notifications"]});
   }

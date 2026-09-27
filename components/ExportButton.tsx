@@ -9,7 +9,7 @@ import { useToast } from "@/components/ToastProvider";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 interface ExportButtonProps {
-  variant?: "icon" | "full";
+  variant?: "icon" | "full" | "settings";
 }
 
 export function ExportButton({ variant = "icon" }: ExportButtonProps) {
@@ -57,6 +57,23 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
           className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95 hover:bg-surface-border hover:text-ink-primary disabled:opacity-50"
         >
           {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+        </button>
+      ) : variant === "settings" ? (
+        <button
+          onClick={handleTrigger}
+          disabled={isExporting}
+          className="flex w-full items-center gap-4 rounded-[22px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.985] disabled:opacity-60"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-violet-400/20 bg-violet-400/10 text-violet-400">
+            {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-ink-primary">Exportar dados</p>
+            <p className="truncate text-xs text-ink-muted">
+              {isExporting ? "Preparando backup..." : "Baixe uma cópia dos seus dados em JSON"}
+            </p>
+          </div>
+          <span aria-hidden className="text-base text-ink-faint">›</span>
         </button>
       ) : (
         <button

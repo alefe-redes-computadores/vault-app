@@ -200,6 +200,23 @@ export function HealthReminderReconciler() {
             return;
           }
 
+          // VAULT_GROUPED_DOSE_DEEPLINK_PRE_APK
+          if (
+            extra?.type === "dose_reminder_group" &&
+            extra.personId &&
+            extra.targetRoute === "/hoje"
+          ) {
+            const person = await db.persons.get(extra.personId);
+            if (!person || person.user_id !== user.id) return;
+
+            if (extra.personId !== activePersonId) {
+              await changePerson(extra.personId);
+            }
+
+            router.push("/hoje");
+            return;
+          }
+
           // VAULT_NOTIFICATION_INSIGHT_DEEPLINK_V51
           if (
             extra?.vaultHealthInsight === true &&
