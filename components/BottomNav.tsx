@@ -1,5 +1,6 @@
 // components/BottomNav.tsx
 "use client";
+// VAULT_INTELLIGENCE_NAV_CONTEXT_V65
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -339,7 +340,7 @@ function getComposeOptions(
     return SAUDE_DOCUMENTOS_COMPOSE_OPTIONS;
   }
   if (normalizedPathname === "/hoje") return HOJE_COMPOSE_OPTIONS;
-  if (normalizedPathname === "/mais") return [];
+  if ((normalizedPathname === "/mais" || normalizedPathname.startsWith("/inteligencia"))) return [];
 
   if (normalizedPathname === "/pessoas") return PESSOAS_COMPOSE_OPTIONS;
   if (normalizedPathname === "/cartoes") return CARDS_COMPOSE_OPTIONS;

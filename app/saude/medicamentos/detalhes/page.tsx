@@ -1,5 +1,7 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
+// VAULT_MEDICATION_BACK_CONTRACT_V65
+// Detalhes de medicamento sempre retornam à lista de medicamentos.
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 

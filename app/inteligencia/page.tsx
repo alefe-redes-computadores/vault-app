@@ -1,4 +1,6 @@
 "use client";
+// VAULT_INTELLIGENCE_HIERARCHY_V65
+// Mais -> Central de atenção -> Saúde longitudinal.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
