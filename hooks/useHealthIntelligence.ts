@@ -31,6 +31,11 @@ import {
 } from "@/lib/health-intelligence/select-highlights";
 
 import {
+  buildBrainV4Snapshot,
+  replayBrainV4,
+} from "@/lib/health-intelligence/brain-v4";
+
+import {
   selectContextualHealthInsights,
   type HealthInsightEntityType,
 } from "@/lib/health-intelligence/contextual";
@@ -96,6 +101,18 @@ export function useHealthIntelligence() {
       [
         context,
       ]
+    );
+
+  // VAULT_BRAIN_V4_SHADOW_CORE
+  // O V4 observa o mesmo contexto e os mesmos Insights do motor estável.
+  // Não substitui ranking, UI ou notificações nesta fase.
+  const brainV4 =
+    useMemo(
+      () =>
+        context
+          ? buildBrainV4Snapshot(context, insights)
+          : null,
+      [context, insights]
     );
 
   const highlights =
@@ -379,6 +396,11 @@ export function useHealthIntelligence() {
     insights,
 
     highlights,
+
+    brainV4,
+
+    replayBrainV4: (days = 90, stepDays = 7) =>
+      context ? replayBrainV4(context, days, stepDays) : [],
 
     getInsightsForEntity,
 

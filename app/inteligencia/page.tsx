@@ -64,12 +64,21 @@ export default function VaultIntelligencePage() {
   return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary">
     <header className="mx-auto flex max-w-2xl items-start gap-3">
       <button type="button" onClick={() => router.replace("/mais")} className="rounded-2xl border border-surface-border bg-surface p-3 text-ink-muted" aria-label="Voltar para Mais"><ChevronLeft size={20}/></button>
-      <div className="min-w-0"><p className="font-mono text-[9px] uppercase tracking-[0.25em] text-ice">VAULT INSIGHT · V60</p><h1 className="text-2xl font-bold">Central de atenção</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prioriza vencimentos, inconsistências, organização e sinais financeiros sustentados pelos dados que o Vault realmente possui.</p></div>
+      <div className="min-w-0"><p className="font-mono text-[9px] uppercase tracking-[0.25em] text-ice">VAULT INSIGHT</p><h1 className="text-2xl font-bold">Central de atenção</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prioriza vencimentos, inconsistências, organização e sinais financeiros sustentados pelos dados que o Vault realmente possui.</p></div>
     </header>
 
     <section className="mx-auto mt-6 max-w-2xl overflow-hidden rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-violet-400/[0.06]">
       <div className="flex items-start gap-3 p-5"><div className="rounded-2xl bg-ice/10 p-3 text-ice"><ShieldCheck size={22}/></div><div><h2 className="font-bold">Leitura local e explicável</h2><p className="mt-1 text-xs leading-relaxed text-ink-muted">O motor cruza apenas metadados da pessoa ativa. Não abre senhas, número completo de cartão ou CVV e não promete segurança absoluta.</p></div></div>
       <div className="grid grid-cols-5 border-t border-surface-border/50">{counters.map(({ label, value, icon: Icon }) => <div key={label} className="flex min-w-0 flex-col items-center border-r border-surface-border/40 px-1 py-3 last:border-r-0"><Icon size={15} className="text-ice"/><strong className="mt-1 text-base">{value}</strong><span className="max-w-full truncate text-[8px] uppercase text-ink-faint">{label}</span></div>)}</div>
+    </section>
+
+    {/* VAULT_BRAIN_V4_EXPERIENCE_ENTRY */}
+    <section className="mx-auto mt-6 max-w-2xl">
+      <button type="button" onClick={() => router.push("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[26px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Saúde longitudinal</p><p className="mt-1 text-xs text-ink-muted">Briefing, revisão semanal, timeline, padrões e preparação para consulta.</p></div>
+        <ChevronRight size={17} className="text-ink-faint"/>
+      </button>
     </section>
 
     <section className="mx-auto mt-6 max-w-2xl">

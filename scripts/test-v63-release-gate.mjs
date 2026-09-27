@@ -2,6 +2,9 @@
 import { spawnSync } from "node:child_process";
 
 const contracts = [
+  "scripts/test-brain-v4-final-integration-contract.mjs",
+  "scripts/test-brain-v4-experience-clinical-contract.mjs",
+  "scripts/test-brain-v4-core-contract.mjs",
   "scripts/test-notification-entry-biometric-hotfix-contract.mjs",
   "scripts/test-pre-apk-grouped-dose-notifications.mjs",
   "scripts/test-pre-apk-global-audit-contract.mjs",
