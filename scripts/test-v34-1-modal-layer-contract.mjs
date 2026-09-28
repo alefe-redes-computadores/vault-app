@@ -7,7 +7,7 @@ const quick=read("components/saude/QuickDoseModal.tsx");
 const sheet=read("components/ui/BottomSheet.tsx");
 ok(/if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\)\s*\{\s*return null;\s*\}/s.test(nav),"V31.2 mount por rota regrediu");
 ok(nav.includes("vault-bottom-nav"),"marcador BottomNav ausente");
-ok(nav.includes("aria-hidden={isBiometricLocked}"),"V31.2 biometria visual regrediu");
+ok(!nav.includes("isBiometricLocked")&&!nav.includes("biometric-locked"),"BottomNav ainda depende de lock biométrico global");
 ok(css.includes("VAULT_MODAL_LAYER_V34_1"),"CSS V34.1 ausente");
 ok(quick.includes("vault-modal-layer"),"QuickDose layer ausente");
 ok(sheet.includes("vault-modal-layer"),"BottomSheet layer ausente");

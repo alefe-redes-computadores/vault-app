@@ -31,6 +31,6 @@ const pending = read("components/PendingDosesModal.tsx");
 ok(pending.includes("const handleResolveAll ="), "V33 doses em lote regrediu");
 
 const bio = read("components/BiometricLock.tsx");
-ok(bio.includes("removeListener: (() => void) | undefined"), "V32.1 biometria regrediu");
+ok(bio.includes("VAULT_BIOMETRIC_POLICY_V66") && !bio.includes("appStateChange") && !bio.includes("authenticate("), "biometria seletiva V66 regrediu");
 
 console.log("V33.1 NAVIGATION CONTRACT: OK");

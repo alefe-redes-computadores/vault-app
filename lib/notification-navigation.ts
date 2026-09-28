@@ -1,52 +1,45 @@
-// lib/notification-navigation.ts
 "use client";
 
 type NotificationNavigationTask = () => void | Promise<void>;
 
-function isBiometricLocked(): boolean {
-  return typeof document !== "undefined" &&
-    document.body.classList.contains("biometric-locked");
-}
-
 /**
- * VAULT_NOTIFICATION_UNLOCK_GATE_V1
+ * VAULT_NOTIFICATION_NAVIGATION_V66
  *
- * O evento da notificação pode chegar enquanto o overlay biométrico ainda
- * protege o app. Não perdemos o destino e não navegamos "por baixo" do lock:
- * a ação é concluída assim que o BiometricLock anuncia o desbloqueio.
+ * Notificações não dependem mais de um lock biométrico global.
+ *
+ * O destino deve ser executado imediatamente. Se a página de destino
+ * possuir uma ação realmente sensível, o próprio domínio é responsável
+ * por solicitar biometria no momento dessa ação.
+ *
+ * O nome público foi preservado para compatibilidade com Providers e
+ * reconciliadores existentes, evitando reescrever os fluxos de deep-link.
  */
 export function runAfterVaultBiometricUnlock(
   task: NotificationNavigationTask
 ): () => void {
+  let active = true;
+
   const invoke = () => {
+    if (!active) return;
+
     try {
       void Promise.resolve(task()).catch((error) => {
-        console.error("[Notification navigation] Falha no deep-link:", error);
+        console.error(
+          "[Notification navigation] Falha no deep-link:",
+          error
+        );
       });
     } catch (error) {
-      console.error("[Notification navigation] Falha no deep-link:", error);
+      console.error(
+        "[Notification navigation] Falha no deep-link:",
+        error
+      );
     }
   };
 
-  if (typeof window === "undefined" || !isBiometricLocked()) {
-    invoke();
-    return () => {};
-  }
+  invoke();
 
-  let active = true;
-
-  const cleanup = () => {
-    if (!active) return;
+  return () => {
     active = false;
-    window.removeEventListener("biometric:lockchange", handleLockChange);
   };
-
-  function handleLockChange() {
-    if (!active || isBiometricLocked()) return;
-    cleanup();
-    invoke();
-  }
-
-  window.addEventListener("biometric:lockchange", handleLockChange);
-  return cleanup;
 }

@@ -1,21 +1,38 @@
 import fs from "node:fs";
-const s=fs.readFileSync("components/BiometricLock.tsx","utf8");
-for(const n of [
- "VAULT_BIOMETRIC_LIFECYCLE_V41",
- "backgroundedAtRef",
- "REAL_BACKGROUND_THRESHOLD_MS",
- 'App.addListener("appStateChange"',
- "backgroundedAtRef",
- "REAL_BACKGROUND_THRESHOLD_MS",
- "awayForMs < REAL_BACKGROUND_THRESHOLD_MS",
- "!isAuthenticated && (",
- 'className="fixed inset-0 z-[100]'
-]) if(!s.includes(n)) throw new Error(`V41 ausente: ${n}`);
-if(s.includes('if (isAuthenticated) return <>{children}</>;'))
- throw new Error("V41: lock ainda desmonta children");
-const a=s.indexOf('App.addListener("appStateChange"');
-const b=s.indexOf("const backgroundedAt",a);
-const inactive=s.slice(a,b);
-if(inactive.includes("setIsAuthenticated(false)"))
- throw new Error("V41: inactive ainda bloqueia imediatamente");
-console.log("V41 BIOMETRIC LIFECYCLE CONTRACT: OK");
+
+const s = fs.readFileSync(
+  "components/BiometricLock.tsx",
+  "utf8"
+);
+
+const ok = (value, message) => {
+  if (!value) throw new Error(`V41/V66: ${message}`);
+  console.log(`OK: ${message}`);
+};
+
+ok(
+  s.includes("VAULT_BIOMETRIC_POLICY_V66"),
+  "política seletiva V66 presente"
+);
+
+ok(
+  !s.includes('App.addListener("appStateChange"'),
+  "BiometricLock não observa lifecycle"
+);
+
+ok(
+  !s.includes("authenticate("),
+  "BiometricLock não autentica globalmente"
+);
+
+ok(
+  !s.includes("biometric-locked"),
+  "BiometricLock não cria estado global bloqueado"
+);
+
+ok(
+  s.includes("return <>{children}</>"),
+  "árvore do Vault permanece sempre disponível"
+);
+
+console.log("V41 -> V66 BIOMETRIC LIFECYCLE CONTRACT: OK");

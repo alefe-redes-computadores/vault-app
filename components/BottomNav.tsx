@@ -517,56 +517,14 @@ export function BottomNav() {
     useSearchParams();
 
   const [
-    isBiometricLocked,
-    setIsBiometricLocked,
-  ] = useState(false);
-
-  const [
     isComposeMenuOpen,
     setIsComposeMenuOpen,
   ] = useState(false);
 
-  useEffect(() => {
-    const checkLock = () => {
-      setIsBiometricLocked(
-        document.body.classList.contains(
-          "biometric-locked"
-        )
-      );
-    };
-
-    checkLock();
-
-    const handleLockChange = () =>
-      checkLock();
-
-    window.addEventListener(
-      "biometric:lockchange",
-      handleLockChange
-    );
-
-    const observer =
-      new MutationObserver(() =>
-        checkLock()
-      );
-
-    observer.observe(
-      document.body,
-      {
-        attributes: true,
-        attributeFilter: ["class"],
-      }
-    );
-
-    return () => {
-      window.removeEventListener(
-        "biometric:lockchange",
-        handleLockChange
-      );
-
-      observer.disconnect();
-    };
-  }, []);
+  // VAULT_BOTTOM_NAV_BIOMETRIC_V66
+  // O Vault não possui mais lock biométrico global.
+  // A barra inferior permanece disponível na navegação normal;
+  // autenticação pertence exclusivamente às ações sensíveis.
 
   useEffect(() => {
     setIsComposeMenuOpen(false);
@@ -789,10 +747,7 @@ export function BottomNav() {
           )}
       </AnimatePresence>
       <nav
-        aria-hidden={isBiometricLocked}
-        className={`vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity ${
-          isBiometricLocked ? "pointer-events-none invisible opacity-0" : "visible opacity-100"
-        }`}
+        className="vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity visible opacity-100"
       >
         <div className="border-t border-surface-border/40 bg-surface px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-2">
           <div

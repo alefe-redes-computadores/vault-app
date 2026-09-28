@@ -1,19 +1,54 @@
 import fs from "node:fs";
-const b=fs.readFileSync("components/BiometricLock.tsx","utf8");
-const s=fs.readFileSync("hooks/useSecureScreen.ts","utf8");
-const l=fs.readFileSync("app/layout.tsx","utf8");
-const ok=(v,m)=>{if(!v)throw Error(m)};
-ok(b.includes("VAULT_NATIVE_UI_GRACE_V42") || b.includes("VAULT_NATIVE_UI_TRANSITION_V42_1"),"proteção de UI nativa ausente");
-ok(b.includes('target.type !== "file"'),"file picker ausente");
-ok(b.includes("nativeUiGraceUntilRef") || b.includes("nativeUiTransitionRef"),"controle de UI nativa ausente");
-ok(b.includes("now <= nativeUiGraceUntilRef.current") || b.includes("nativeUiTransitionRef.current !== null"),"retorno picker sem proteção");
-ok(b.includes('App.addListener("appStateChange"'),"autoridade global ausente");
-ok(b.includes("!isAuthenticated && ("),"V41 overlay regrediu");
-ok(s.includes("VAULT_SECURE_SCREEN_V42"),"shim ausente");
-ok(!s.includes("@capacitor/app"),"segunda autoridade Capacitor");
-ok(!s.includes("appStateChange"),"segundo lifecycle listener");
-ok(!s.includes("authenticate("),"segunda autenticacao");
-ok(!s.includes("router.replace"),"navegacao concorrente");
-ok(l.includes("<BiometricLock>"),"BiometricLock fora do layout");
-ok(l.includes('content="black-translucent"'),"imersao PWA regrediu");
-console.log("V42 LIFECYCLE SINGLE AUTHORITY CONTRACT: OK");
+
+const bio = fs.readFileSync(
+  "components/BiometricLock.tsx",
+  "utf8"
+);
+
+const secure = fs.readFileSync(
+  "hooks/useSecureScreen.ts",
+  "utf8"
+);
+
+const layout = fs.readFileSync(
+  "app/layout.tsx",
+  "utf8"
+);
+
+const ok = (value, message) => {
+  if (!value) throw new Error(`V42/V66: ${message}`);
+  console.log(`OK: ${message}`);
+};
+
+ok(
+  layout.includes("<BiometricLock>"),
+  "boundary estrutural permanece no layout"
+);
+
+ok(
+  bio.includes("return <>{children}</>"),
+  "boundary é passivo"
+);
+
+ok(
+  !bio.includes("@capacitor/app"),
+  "boundary não controla AppState"
+);
+
+ok(
+  !bio.includes("useBiometric("),
+  "boundary não possui autenticação própria"
+);
+
+ok(
+  !secure.includes("@capacitor/app") &&
+    !secure.includes("authenticate("),
+  "secure screen não cria autoridade concorrente"
+);
+
+ok(
+  layout.includes('content="black-translucent"'),
+  "imersão PWA preservada"
+);
+
+console.log("V42 -> V66 SINGLE AUTHORITY CONTRACT: OK");

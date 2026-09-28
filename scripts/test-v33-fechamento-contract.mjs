@@ -10,6 +10,6 @@ ok(D.includes('await onResolveDose(dose, resolution)'),"lote não reutiliza cont
 ok(D.includes("for (const dose of doses)"),"lote não serial");
 ok(D.includes("Tomar todas ("),"botão Tomar todas ausente");
 ok(D.includes("Abrir cronograma completo"),"cronograma ausente");
-ok(B.includes("removeListener: (() => void) | undefined"),"V32.1 biometria regrediu");
+ok(B.includes("VAULT_BIOMETRIC_POLICY_V66")&&!B.includes("appStateChange")&&!B.includes("authenticate("),"biometria seletiva V66 regrediu");
 ok(P.includes('Capacitor.getPlatform() !== "android"'),"V30.5 StatusBar regrediu");
 console.log("V33 CONTRACT: OK");
