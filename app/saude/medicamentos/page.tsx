@@ -91,6 +91,8 @@ import {
 
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
+import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 // ============================================================
 // HELPERS
@@ -344,10 +346,8 @@ export default function MedicamentosListPage() {
       null
     );
 
-  const [
-    expandedRegulatoryMedId,
-    setExpandedRegulatoryMedId,
-  ] = useState<string | null>(null);
+  const [selectedRegulatory, setSelectedRegulatory] =
+    useState<MedicationRegulatoryVisual | null>(null);
 
   // ==========================================================
   // PREFERÊNCIA DE SUSPENSOS
@@ -1160,15 +1160,11 @@ export default function MedicamentosListPage() {
                       type="button"
                       className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatorySurface.badgeClass}`}
                       title={regulatoryMeaning}
-                      aria-expanded={expandedRegulatoryMedId === med.id}
+                      aria-haspopup="dialog"
                       onClick={(event) => {
                         event.stopPropagation();
                         trigger("vibrate");
-                        setExpandedRegulatoryMedId(
-                          expandedRegulatoryMedId === med.id
-                            ? null
-                            : med.id!
-                        );
+                        setSelectedRegulatory(regulatoryProfile);
                       }}
                     >
                       {regulatoryProfile.label}
@@ -1228,22 +1224,6 @@ export default function MedicamentosListPage() {
                   )}
                 </div>
 
-                {/* VAULT_REGULATORY_EXPLANATION_V35_1 */}
-                {expandedRegulatoryMedId === med.id && regulatoryProfile && (
-                  <div
-                    className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2 text-[10px] leading-relaxed text-ink-muted"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <strong className="text-ink-primary">
-                      {regulatoryProfile.label}
-                    </strong>
-                    {" · "}
-                    {regulatoryProfile.detail}
-                    {regulatoryProfile.sourceLabel
-                      ? ` Fonte: ${regulatoryProfile.sourceLabel}.`
-                      : ""}
-                  </div>
-                )}
               </div>
 
               {insight?.deveRenovar && (
@@ -1932,6 +1912,64 @@ export default function MedicamentosListPage() {
             }
           }
         />
+
+        <BottomSheet
+          isOpen={Boolean(selectedRegulatory)}
+          onClose={() => setSelectedRegulatory(null)}
+          title="Classificação da receita"
+        >
+          {selectedRegulatory && (
+            <div className="space-y-4">
+              <div
+                className="rounded-[22px] border bg-surface p-4"
+                style={{
+                  borderColor: `${selectedRegulatory.accent}55`,
+                  boxShadow: `inset 4px 0 0 ${selectedRegulatory.accent}`,
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: selectedRegulatory.accent }}
+                  />
+                  <div>
+                    <p className="font-display text-lg font-semibold text-ink-primary">
+                      {selectedRegulatory.label}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+                      {selectedRegulatory.detail}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-surface-border/50 bg-surface px-3 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-ink-faint">Origem</p>
+                  <p className="mt-1 text-sm font-medium text-ink-primary">
+                    {selectedRegulatory.sourceLabel || "Cadastro do medicamento"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-surface-border/50 bg-surface px-3 py-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-ink-faint">Situação</p>
+                  <p className="mt-1 text-sm font-medium text-ink-primary">
+                    {selectedRegulatory.verified ? "Confirmada" : "Informada no cadastro"}
+                  </p>
+                </div>
+              </div>
+
+              {!selectedRegulatory.verified && (
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-200">
+                  Esta classificação ainda não foi confirmada pelo catálogo regulatório. O Vault preservou a informação cadastrada manualmente.
+                </div>
+              )}
+
+              <p className="text-[11px] leading-relaxed text-ink-faint">
+                A classificação ajuda a organizar receitas e renovações. Ela não substitui a orientação do profissional responsável nem as regras vigentes de dispensação.
+              </p>
+            </div>
+          )}
+        </BottomSheet>
       </main>
     </PageTransition>
   );

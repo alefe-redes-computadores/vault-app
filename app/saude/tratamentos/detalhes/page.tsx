@@ -56,6 +56,7 @@ import { useLocais } from "@/hooks/useLocais";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
 import { useConsultas } from "@/hooks/useConsultas";
 
@@ -1911,7 +1912,11 @@ function TratamentoContent() {
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${getMedicationRegulatorySurface(medicamento.id ? regulatoryProfiles[medicamento.id] : undefined).iconClass}`}
                           title={medicamento.id ? regulatoryProfiles[medicamento.id]?.detail : "Classificação regulatória não confirmada"}
                         >
-                          <Pill size={18} />
+                          <MedicationFormatIcon
+                            formato={medicamento.formato}
+                            cores={medicamento.cores}
+                            size={18}
+                          />
                         </div>
 
                         <div className="min-w-0">

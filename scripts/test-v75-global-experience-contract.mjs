@@ -15,7 +15,7 @@ const locations = read("app/saude/locais/page.tsx");
 const bottomNav = read("components/BottomNav.tsx");
 
 ok(!layout.includes("<SyncStatusIndicator") && !layout.includes("<PersonSelector"), "régua global redundante removida");
-ok(more.includes("<PersonSelector") && more.includes("Pessoa ativa"), "troca de pessoa centralizada em Mais");
+ok(more.includes("<PersonSelector") && (more.includes("Pessoa ativa") || more.includes("Perfis do Vault")), "troca de pessoa centralizada em Mais");
 ok(more.includes("Sincronizar agora") && more.includes("handleSync"), "sincronização permanece acessível em Mais");
 ok(more.includes("space-y-2") && more.includes("Biometria") && more.includes("Lembretes"), "controles de proteção não ficam espremidos");
 ok(more.includes("border-violet-400") && more.includes("border-emerald-400") && more.includes("border-amber-400"), "atalhos usam identidade cromática variada");

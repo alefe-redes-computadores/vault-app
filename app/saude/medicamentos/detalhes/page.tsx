@@ -3197,32 +3197,6 @@ function MedicamentoDetalhesContent() {
                     </div>
                     <span className="text-sm font-medium">Excluir medicamento</span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={
-                      () => {
-                        setIsMenuFlutuanteOpen(
-                          false
-                        );
-
-                        router.push(`/saude/medicamentos/editar?id=${id}`);
-                      }
-                    }
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-surface-raised active:scale-[0.98] sm:hidden"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                      <Edit3
-                        size={
-                          16
-                        }
-                      />
-                    </div>
-
-                    <span className="text-sm font-medium text-ink-primary">
-                      Editar Medicamento
-                    </span>
-                  </button>
                 </motion.div>
               </>
             )}

@@ -11,9 +11,10 @@ import { useHapticFeedback } from "@/lib/haptics";
 
 interface PersonSelectorProps {
   className?: string;
+  mode?: "identity" | "action";
 }
 
-export function PersonSelector({ className = "" }: PersonSelectorProps) {
+export function PersonSelector({ className = "", mode = "identity" }: PersonSelectorProps) {
   const { trigger } = useHapticFeedback();
   const { activePersonId, changePerson } = useActivePersonId();
   const [isOpen, setIsOpen] = useState(false);
@@ -68,7 +69,9 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
           borderColor: activePerson?.color ? `${activePerson.color}60` : undefined,
         }}
       >
-        {activePerson?.avatar_url ? (
+        {mode === "action" ? (
+          <Users size={16} className="text-ice" />
+        ) : activePerson?.avatar_url ? (
           <img
             src={activePerson.avatar_url}
             alt={activePerson.name}
@@ -83,7 +86,7 @@ export function PersonSelector({ className = "" }: PersonSelectorProps) {
           </div>
         )}
         <span className="text-sm font-medium text-ink-primary max-w-[100px] truncate">
-          {activePerson?.name || "Selecionar"}
+          {mode === "action" ? "Trocar pessoa" : activePerson?.name || "Selecionar"}
         </span>
         <ChevronDown
           size={16}

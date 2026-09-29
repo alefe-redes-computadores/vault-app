@@ -181,6 +181,15 @@ export default function MaisPage() {
     null
   );
 
+  const personCount = useLiveQuery(
+    async () => {
+      if (!user?.id) return 0;
+      return db.persons.filter((person) => person.user_id === user.id).count();
+    },
+    [user?.id],
+    0
+  );
+
   const {
     showToast,
     showSuccess,
@@ -974,13 +983,15 @@ export default function MaisPage() {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-surface-border/40 bg-void/25 px-3 py-2.5">
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">Pessoa ativa</p>
-                <p className="truncate text-xs text-ink-muted">Troque o perfil usado nos registros</p>
+            {personCount > 1 && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-surface-border/40 bg-void/25 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">Perfis do Vault</p>
+                  <p className="truncate text-xs text-ink-muted">Escolha para quem os registros serão salvos</p>
+                </div>
+                <PersonSelector mode="action" className="shrink-0" />
               </div>
-              <PersonSelector className="shrink-0" />
-            </div>
+            )}
 
             {/* =================================================
                 TOGGLES
