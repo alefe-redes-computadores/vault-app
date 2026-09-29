@@ -1267,48 +1267,8 @@ export default function LocaisPage() {
               </div>
             )}
 
-          <button
-            type="button"
-            onClick={
-              () => {
-                trigger(
-                  "vibrate"
-                );
+          {/* VAULT_NO_DUPLICATE_CREATE_CTA_V70 */}
 
-                router.push(
-                  "/saude/locais/novo"
-                );
-              }
-            }
-            className="group relative w-full overflow-hidden rounded-[24px] border border-ice/25 bg-surface p-4 text-left shadow-sm transition-all hover:border-ice/40 active:scale-[0.985]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                <Plus
-                  size={
-                    22
-                  }
-                />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-ink-primary">
-                  Cadastrar local de saúde
-                </p>
-
-                <p className="mt-0.5 text-xs leading-5 text-ink-muted">
-                  Posto/UBS, laboratório, clínica ou outro estabelecimento.
-                </p>
-              </div>
-
-              <ChevronRight
-                size={
-                  18
-                }
-                className="shrink-0 text-ice transition-transform group-hover:translate-x-1"
-              />
-            </div>
-          </button>
 
           {filteredLocais.length ===
           0 ? (

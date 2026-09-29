@@ -189,7 +189,16 @@ export default function HealthRemindersPage() {
         <button type="button" onClick={() => { reset(); setFormOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice text-void" aria-label="Criar lembrete"><Plus size={20} /></button>
       </header>
 
-      <section className="mx-auto mt-5 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">
+      {/* VAULT_REMINDER_INTENT_UX_V67 */}
+      <section className="mx-auto mt-5 max-w-xl rounded-3xl border border-ice/15 bg-gradient-to-br from-ice/[0.06] to-surface p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ice">Rotina guiada</p>
+        <h2 className="mt-1 text-base font-bold">Lembre do que importa, do seu jeito</h2>
+        <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+          Escolha primeiro a finalidade do lembrete. Horário e frequência vêm depois — sem precisar configurar opções técnicas para começar.
+        </p>
+      </section>
+
+      <section className="mx-auto mt-3 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">
         {permission === "unavailable" ? (
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 shrink-0 text-amber-400" size={18} />

@@ -65,6 +65,7 @@ import { getVaultRuntime } from "@/lib/native-runtime";
 import { useBiometric } from "@/hooks/useBiometric";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
+import { APP_VERSION } from "@/lib/app-version";
 import type {
   Document,
   Medicamento,
@@ -114,7 +115,6 @@ function RigorousConfirmInput({
   );
 }
 
-const APP_VERSION = "1.1.0";
 const DIAGNOSTIC_OWNER_EMAIL = "alefejohsefe@gmail.com";
 
 const HELP_STEPS = [
@@ -544,7 +544,7 @@ export default function MaisPage() {
     showToast(
       isBiometricEnabled
         ? "Biometria desativada"
-        : "Biometria ativada no aplicativo",
+        : "Biometria ativada para ações sensíveis",
       "info"
     );
   };
@@ -812,8 +812,8 @@ export default function MaisPage() {
     {
       id: "inteligencia",
       icon: BrainCircuit,
-      label: "Inteligência do cofre",
-      description: "Organização e segurança explicáveis",
+      label: "Vault Insight",
+      description: "Brain V4 · inteligência local, longitudinal e explicável",
       onClick: () => {
         trigger("vibrate");
         router.replace("/inteligencia");
@@ -970,8 +970,8 @@ export default function MaisPage() {
                 TOGGLES
             ================================================= */}
 
-            <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {/* Biometria */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {/* Biometria — VAULT_MORE_COMPACT_V70 */}
 
               <button
                 onClick={handleBiometricToggle}
@@ -1000,7 +1000,7 @@ export default function MaisPage() {
                   </p>
 
                   <p className="truncate text-xs text-ink-muted">
-                    Desbloqueio rápido
+                    Proteção de ações sensíveis
                   </p>
                 </div>
 
@@ -1105,7 +1105,7 @@ export default function MaisPage() {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className={`group flex min-h-[104px] flex-col items-center justify-center rounded-[22px] border border-surface-border/50 bg-surface px-3 py-3 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${
+                    className={`group flex min-h-[88px] flex-col items-center justify-center rounded-[22px] border border-surface-border/50 bg-surface px-3 py-3 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${
                       item.id === "favoritos" ? "col-span-2 min-h-[88px]" : ""
                     }`}
                   >
@@ -1288,6 +1288,25 @@ export default function MaisPage() {
                 />
               </button>
 
+
+              {/* VAULT_RECOVERY_CENTER_V68 */}
+              <button
+                type="button"
+                onClick={() => {
+                  trigger("vibrate");
+                  router.push("/recuperacao");
+                }}
+                className="flex w-full items-center gap-4 rounded-[22px] border border-ice/15 bg-ice/[0.035] p-3.5 text-left shadow-sm transition-all hover:bg-ice/[0.06] active:scale-[0.985]"
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice">
+                  <Shield size={18} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink-primary">Segurança e recuperação</p>
+                  <p className="truncate text-xs text-ink-muted">Sync, fila, backup e diagnóstico em um só lugar</p>
+                </div>
+                <ChevronRight size={16} className="shrink-0 text-ink-faint" />
+              </button>
 
               {/* Exportar */}
               <ExportButton variant="settings" />
@@ -1575,7 +1594,7 @@ export default function MaisPage() {
               duration: 0.34,
               delay: 0.2,
             }}
-            className="pb-8 pt-2 text-center"
+            className="pb-3 pt-1 text-center"
           >
             <p className="text-xs text-ink-faint">
               Vault v{APP_VERSION}

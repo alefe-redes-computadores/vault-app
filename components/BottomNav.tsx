@@ -1,6 +1,7 @@
 // components/BottomNav.tsx
 "use client";
 // VAULT_INTELLIGENCE_NAV_CONTEXT_V65
+// VAULT_BOTTOM_NAV_POLISH_V70
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -749,7 +750,7 @@ export function BottomNav() {
       <nav
         className="vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity visible opacity-100"
       >
-        <div className="border-t border-surface-border/40 bg-surface px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-2">
+        <div className="border-t border-surface-border/40 bg-surface px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-1.5">
           <div
             className={`relative mx-auto grid max-w-md ${gridClass} items-end justify-items-center`}
           >
@@ -777,10 +778,10 @@ export function BottomNav() {
                       )
                     }
                     className={`
-                      relative isolate flex flex-col items-center gap-1 overflow-hidden rounded-2xl px-2 py-1.5 transition-all duration-200 active:scale-95
+                      relative isolate flex flex-col items-center gap-0.5 overflow-hidden rounded-xl px-2 py-1 transition-all duration-200 active:scale-95
                       ${
                         active
-                          ? "text-ice"
+                          ? "text-ink-primary"
                           : "text-ink-muted/65 hover:text-ink-primary"
                       }
                       ${
@@ -792,7 +793,7 @@ export function BottomNav() {
                   >
                     {active && (
                       <motion.div
-                        className="pointer-events-none absolute inset-0 rounded-2xl bg-ice/10"
+                        className="pointer-events-none absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-emerald-400/70"
                         transition={{
                           type: "spring",
                           stiffness: 320,
@@ -816,7 +817,7 @@ export function BottomNav() {
                       <span
                         className={`text-[10px] font-medium ${
                           active
-                            ? "text-ice"
+                            ? "text-ink-primary"
                             : "text-ink-muted/65"
                         }`}
                       >
@@ -843,7 +844,7 @@ export function BottomNav() {
                     : composeOptions[0]
                         .label
                 }
-                className="absolute left-1/2 top-0 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-[40%] items-center justify-center rounded-full border border-white/10 bg-ice text-void shadow-[0_12px_24px_rgba(47,227,201,0.35)] transition-all duration-300 active:scale-90"
+                className="absolute left-1/2 top-0 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[34%] items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400 text-void shadow-[0_10px_20px_rgba(52,211,153,0.22)] transition-all duration-300 active:scale-90"
               >
                 <motion.div
                   animate={{

@@ -1,5 +1,6 @@
 // app/saude/retiradas/page.tsx
 "use client";
+// VAULT_MEDICATION_ICON_INHERITANCE_V70
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -28,6 +29,7 @@ import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visu
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { EmptyState } from "@/components/EmptyState";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import type { Retirada, RetiradaStatus } from "@/lib/types";
 
@@ -38,6 +40,8 @@ type MedicationGroup = {
   medicamentoId: string;
   nome: string;
   dosagem?: string;
+  formato?: string;
+  cores?: string[];
   retiradas: Retirada[];
 };
 
@@ -221,6 +225,8 @@ export default function RetiradasPage() {
           nome: med?.nome || retirada.medicamento_nome || "Medicamento",
           dosagem:
             med?.dosagem || retirada.medicamento_dosagem || undefined,
+          formato: med?.formato,
+          cores: med?.cores,
           retiradas: [],
         });
       }
@@ -459,6 +465,11 @@ export default function RetiradasPage() {
                           const medicationExpanded =
                             expandedMedications.has(medication.key);
 
+                          const medicationEntity =
+                            medicationMap.get(
+                              medication.medicamentoId
+                            );
+
                           const regulatoryProfile =
                             regulatoryProfiles[
                               medication.medicamentoId
@@ -496,7 +507,7 @@ export default function RetiradasPage() {
                                       "Classificação regulatória não confirmada"
                                     }
                                   >
-                                    <Pill size={17} />
+                                    <MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={18} />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <div className="flex min-w-0 items-center gap-2">

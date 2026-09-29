@@ -56,10 +56,11 @@ export function ContextualHealthIntelligence({
   const [selected, setSelected] = useState<HealthInsight | null>(null);
 
   const insights = useMemo(() => {
-    const direct = getInsightsForEntity(entityType, entityId, 3);
+    // VAULT_CONTEXTUAL_COMPACT_V70
+    const direct = getInsightsForEntity(entityType, entityId, 2);
     if (!relatedEntityType || !relatedEntityId) return direct;
 
-    const related = getInsightsForEntity(relatedEntityType, relatedEntityId, 3);
+    const related = getInsightsForEntity(relatedEntityType, relatedEntityId, 2);
     const seen = new Set<string>();
     return [...direct, ...related]
       .filter((item) => {
@@ -78,7 +79,7 @@ export function ContextualHealthIntelligence({
   return (
     <>
       <section className={`mx-auto w-full max-w-2xl px-5 ${className}`} aria-label="Vault Insight">
-        <div className="overflow-hidden rounded-[26px] border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.07] via-surface to-ice/[0.04]">
+        <div className="overflow-hidden rounded-[22px] border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.07] via-surface to-ice/[0.04]">
           <div className="flex items-center justify-between gap-3 border-b border-surface-border/40 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-400/10 text-violet-300">

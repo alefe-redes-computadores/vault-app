@@ -1,5 +1,6 @@
 // app/saude/locais/detalhes/page.tsx
 "use client";
+// VAULT_LOCATION_MEDICATION_ICON_V70
 
 import {
   Suspense,
@@ -91,6 +92,7 @@ import {
 import {
   ConfirmationModal,
 } from "@/components/ConfirmationModal";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {
   SectionTitle,
   StatCard,
@@ -1959,9 +1961,7 @@ function DetalhesLocalContent() {
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                          <Pill
-                            size={16}
-                          />
+                          <MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={17} />
                         </div>
 
                         <div className="min-w-0">

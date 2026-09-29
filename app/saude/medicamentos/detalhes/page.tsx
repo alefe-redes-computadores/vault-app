@@ -196,6 +196,26 @@ function normalizeMedicationQualityText(
 // TIPOS
 // ============================================================
 
+// VAULT_BUP_DOSAGE_DISPLAY_V70
+function formatMedicationDosageDisplay(
+  nome: string,
+  value: string
+): string {
+  const isBupropiona =
+    /\bbup(?:ropiona)?\b/i.test(
+      String(nome || "")
+    );
+
+  if (!isBupropiona) {
+    return value;
+  }
+
+  return String(value || "").replace(
+    /(\d+(?:[.,]\d+)?)\s*ng\b/gi,
+    "$1 mg"
+  );
+}
+
 interface HistDosagem {
   dosagem_antiga: string;
   data_mudanca: string;
@@ -1458,9 +1478,9 @@ function MedicamentoDetalhesContent() {
         false
       );
 
-      router.push(
-        path
-      );
+      // VAULT_MEDICATION_NAV_RELIABILITY_V70
+      if (typeof window !== "undefined") window.location.assign(path);
+      else router.push(path);
     };
 
 
@@ -2960,9 +2980,7 @@ function MedicamentoDetalhesContent() {
                       "vibrate"
                     );
 
-                    router.push(
-                      `/saude/medicamentos/editar?id=${id}`
-                    );
+                    typeof window !== "undefined" ? window.location.assign(`/saude/medicamentos/editar?id=${id}`) : router.push(`/saude/medicamentos/editar?id=${id}`);
                   }
                 }
                 aria-label="Editar medicamento"
@@ -3099,9 +3117,7 @@ function MedicamentoDetalhesContent() {
                           false
                         );
 
-                        router.push(
-                          `/saude/medicamentos/editar?id=${id}`
-                        );
+                        typeof window !== "undefined" ? window.location.assign(`/saude/medicamentos/editar?id=${id}`) : router.push(`/saude/medicamentos/editar?id=${id}`);
                       }
                     }
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-surface-raised active:scale-[0.98] sm:hidden"
@@ -3992,9 +4008,7 @@ function MedicamentoDetalhesContent() {
             type="button"
             onClick={() => {
               trigger("vibrate");
-              router.push(
-                `/saude/medicamentos/historico?id=${id}`
-              );
+              typeof window !== "undefined" ? window.location.assign(`/saude/medicamentos/historico?id=${id}`) : router.push(`/saude/medicamentos/historico?id=${id}`);
             }}
             className="flex w-full items-center justify-between gap-4 rounded-[24px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
           >
@@ -4328,7 +4342,19 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           {melhorFarmacia && (
-            <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3">
+            <button
+              type="button"
+              onClick={() =>
+                document
+                  .getElementById("historico-aquisicoes")
+                  ?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  })
+              }
+              aria-label="Ver aquisições usadas no cálculo do melhor preço médio"
+              className="flex w-full items-center gap-2.5 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.07] px-4 py-3 text-left transition-all active:scale-[0.985]"
+            >
               <Award
                 size={
                   16
@@ -4361,8 +4387,8 @@ function MedicamentoDetalhesContent() {
                     )
                   </span>
                 )}
-              </p>
-            </div>
+              </p><ChevronRight size={15} className="ml-auto text-emerald-400"/>
+            </button>
           )}
 
           {/* ==================================================
@@ -4392,9 +4418,7 @@ function MedicamentoDetalhesContent() {
                       </div>
 
                       <p className="text-sm font-bold text-ice">
-                        {
-                          med.dosagem
-                        }
+                        {formatMedicationDosageDisplay(med.nome, med.dosagem)}
 
                         <span className="ml-1.5 text-[9px] font-normal uppercase text-ink-muted">
                           Atual
@@ -4422,9 +4446,7 @@ function MedicamentoDetalhesContent() {
                             </div>
 
                             <p className="text-sm font-semibold text-ink-primary">
-                              {
-                                hist.dosagem_antiga
-                              }
+                              {formatMedicationDosageDisplay(med.nome, hist.dosagem_antiga)}
                             </p>
 
                             <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">

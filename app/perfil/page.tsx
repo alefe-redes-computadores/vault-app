@@ -174,7 +174,7 @@ export default function ProfilePage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink-primary">Biometria</p>
                 <p className="mt-0.5 text-xs text-ink-muted">
-                  Proteção rápida para abrir o app com mais segurança
+                  Protege senhas, cartões e ações sensíveis quando necessário
                 </p>
               </div>
 

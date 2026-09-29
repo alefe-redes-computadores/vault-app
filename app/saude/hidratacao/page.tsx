@@ -46,7 +46,21 @@ export default function HydrationPage() {
     for (const record of validRecords) totals.set(record.data, (totals.get(record.data) || 0) + (record.valor_numerico || 0));
     return [...totals.entries()].sort((left, right) => right[0].localeCompare(left[0])).slice(0, 7);
   }, [validRecords]);
+  // VAULT_HYDRATION_EXPERIENCE_V67
+  // Média considera somente dias com registros; ausência nunca é tratada como zero.
   const average = days.length > 0 ? Math.round(days.reduce((sum, [, value]) => sum + value, 0) / days.length) : null;
+  const sevenDayCutoff = new Date();
+  sevenDayCutoff.setHours(0, 0, 0, 0);
+  sevenDayCutoff.setDate(sevenDayCutoff.getDate() - 6);
+  const sevenDayKeys = new Set(
+    validRecords
+      .filter((record) => {
+        const value = new Date(`${record.data}T12:00:00`).getTime();
+        return Number.isFinite(value) && value >= sevenDayCutoff.getTime();
+      })
+      .map((record) => record.data)
+  );
+  const sevenDayCoverage = sevenDayKeys.size;
   const progress = goal ? Math.min(100, Math.round((total / goal) * 100)) : null;
   const remaining = goal ? Math.max(0, goal - total) : null;
   const historyMax = Math.max(...days.map(([, amount]) => amount), 1);
@@ -152,6 +166,18 @@ export default function HydrationPage() {
 
       <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">
         <div className="flex items-center justify-between"><div><h2 className="font-semibold">Histórico observado</h2><p className="mt-1 text-[11px] text-ink-muted">{average === null ? "Ainda não há dias registrados." : `Média em ${days.length} dia(s) com registro: ${average} ml.`}</p></div><Droplets size={18} className="text-ice/70" /></div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-void p-3">
+            <p className="text-[9px] uppercase tracking-wide text-ink-faint">Média registrada</p>
+            <p className="mt-1 text-sm font-semibold">{average === null ? "—" : `${average} ml`}</p>
+            <p className="mt-1 text-[10px] text-ink-muted">Só dias com registro</p>
+          </div>
+          <div className="rounded-2xl bg-void p-3">
+            <p className="text-[9px] uppercase tracking-wide text-ink-faint">Cobertura · 7 dias</p>
+            <p className="mt-1 text-sm font-semibold">{sevenDayCoverage}/7 dias</p>
+            <p className="mt-1 text-[10px] text-ink-muted">Ausência não conta como zero</p>
+          </div>
+        </div>
         {days.length > 0 ? <div className="mt-4 grid gap-3">{days.map(([date, value]) => <div key={date}><div className="flex justify-between text-xs"><span className="capitalize text-ink-muted">{formatDate(date)}</span><strong>{value} ml</strong></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-raised"><div className="h-full rounded-full bg-ice/70" style={{ width: `${Math.min(100, Math.round((value / historyMax) * 100))}%` }} /></div></div>)}</div> : <div className="mt-4 rounded-2xl border border-dashed border-surface-border p-5 text-center text-xs text-ink-muted">Seus dias registrados aparecerão aqui.</div>}
         <p className="mt-4 text-[11px] leading-relaxed text-ink-muted">Dias sem registro não são tratados como consumo zero. Esta visão é descritiva e não substitui orientação profissional.</p>
       </section>

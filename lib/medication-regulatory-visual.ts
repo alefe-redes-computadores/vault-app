@@ -142,9 +142,9 @@ function visualForModel(
 function visualForLegacy(
   type?: TipoReceita
 ): MedicationRegulatoryVisual {
-  if (!type || type === "comum") {
-    return UNKNOWN;
-  }
+  // VAULT_REGULATORY_FALLBACK_V70
+  if (!type) return UNKNOWN;
+  if (type === "comum") return {tone:"neutral",label:"Receita comum",detail:"Classificação informada no cadastro do medicamento.",verified:false,sourceLabel:"Cadastro do Vault",accent:"#cbd5e1",badgeClass:"border-slate-300/25 bg-slate-300/10 text-slate-200"};
 
   const values: Record<
     Exclude<TipoReceita, "comum">,
@@ -241,7 +241,11 @@ export function resolveMedicationRegulatoryVisual(
       };
     }
 
-    return UNKNOWN;
+    // Regra ANVISA ambígua/excepcionada não autoriza
+    // inventar classificação. Preserva o tipo manual.
+    return visualForLegacy(
+      medication.tipo_receita
+    );
   }
 
   return visualForLegacy(

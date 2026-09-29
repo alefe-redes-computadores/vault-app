@@ -272,10 +272,12 @@ export function analyzeSosPattern({
     ? " No período anterior equivalente foram " + previous.count + "."
     : " Não há uso registrado no período anterior equivalente para formar uma linha de base.";
 
+  // VAULT_SOS_AGGREGATE_QUANTITY_V70
+  const quantityText=current.knownQuantity>0?(current.quantityComplete?" Somadas, essas tomadas registram "+current.knownQuantity+" unidade(s) no período.":" A soma conhecida é "+current.knownQuantity+" unidade(s), mas está incompleta."):"";
   const message =
     "Os registros de \"" + medication.nome + "\" mostram " + current.count +
     " tomada(s) nos últimos " + days + " dias, distribuídas em " +
-    current.daysWithUse + " dia(s)." + comparisonText +
+    current.daysWithUse + " dia(s)." + quantityText + comparisonText +
     (level === "strong"
       ? " A mudança ficou muito acima do padrão recente disponível."
       : level === "attention"

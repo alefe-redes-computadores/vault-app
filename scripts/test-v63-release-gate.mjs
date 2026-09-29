@@ -1,8 +1,11 @@
 // scripts/test-v63-release-gate.mjs
-import { spawnSync } from "node:child_process";
+import { spawnSync, execFileSync } from "node:child_process";
 
 const contracts = [
+  "scripts/test-v69-final-release-contract.mjs",
   "scripts/test-v66-selective-biometric-contract.mjs",
+  "scripts/test-v67-final-product-experience-contract.mjs",
+  "scripts/test-v68-resilience-recovery-contract.mjs",
   "scripts/test-v66-biometric-legacy-closure-contract.mjs",
   "scripts/test-pre-apk-intelligence-nav-contract.mjs",
   "scripts/test-final-pwa-polish-sync-contract.mjs",
@@ -69,4 +72,21 @@ for (const contract of contracts) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+
+console.log("\n=== V70 — SUPER INTEGRIDADE + UX ===");
+execFileSync(process.execPath, ["scripts/test-v70-super-integrity-ux-contract.mjs"], { stdio: "inherit" });
 console.log(`\nVAULT RELEASE GATE V63: ${contracts.length} CONTRATOS OK`);
+
+console.log(
+  "\n=== V70 FINAL — COMPLETUDE UX + INTEGRIDADE ==="
+);
+
+execFileSync(
+  process.execPath,
+  [
+    "scripts/test-v70-final-completeness-contract.mjs",
+  ],
+  {
+    stdio: "inherit",
+  }
+);

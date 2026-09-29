@@ -1,5 +1,6 @@
 // app/saude/tratamentos/page.tsx
 "use client";
+// VAULT_TREATMENT_DENSITY_V70
 
 import {
   Suspense,
@@ -69,6 +70,7 @@ import {
   ListCard,
   ListFilters,
   ListPageHeader,
+  ListSearch,
 } from "@/components/list";
 
 // ============================================================
@@ -755,61 +757,14 @@ function TratamentoListContent() {
             BUSCA
             ==================================================== */}
 
-        {listaEnriquecida.length >
-          0 && (
-          <section className="px-5 pt-4">
-            <div className="relative mx-auto max-w-3xl">
-              <Search
-                size={
-                  16
-                }
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-              />
-
-              <input
-                value={
-                  search
-                }
-                onChange={(
-                  event
-                ) =>
-                  setSearch(
-                    event
-                      .target
-                      .value
-                  )
-                }
-                type="search"
-                inputMode="search"
-                autoComplete="off"
+        {listaEnriquecida.length > 0 && (
+          <section className="px-5 pt-3">
+            <div className="mx-auto max-w-3xl">
+              <ListSearch
+                value={search}
+                onChange={setSearch}
                 placeholder="Buscar tratamento..."
-                aria-label="Buscar tratamento"
-                className="h-11 w-full rounded-[16px] border border-surface-border/40 bg-surface/80 pl-10 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/40 focus:bg-surface"
               />
-
-              {search.length >
-                0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    trigger(
-                      "vibrate"
-                    );
-
-                    setSearch(
-                      ""
-                    );
-                  }}
-                  aria-label="Limpar busca"
-                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary active:scale-95"
-                >
-                  <X
-                    size={
-                      15
-                    }
-                  />
-                </button>
-              )}
             </div>
           </section>
         )}
@@ -893,6 +848,7 @@ function TratamentoListContent() {
                       ) *
                       0.025
                     }
+                    density="compact"
                     icon={
                       <IconComp
                         size={

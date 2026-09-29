@@ -665,15 +665,10 @@ export function QuickDoseModal({
   } =
     useActivePersonId();
 
-  const today =
-    getLocalTodayISO();
-
-  const {
-    doseLogs,
-  } =
-    useDoseLogs(
-      today
-    );
+  const today = getLocalTodayISO();
+  // VAULT_RETROACTIVE_DOSE_V70
+  const [doseDate,setDoseDate]=useState(today);
+  const { doseLogs } = useDoseLogs(doseDate);
 
   // ==========================================================
   // MEDICAMENTOS DISPONÍVEIS
@@ -825,7 +820,7 @@ export function QuickDoseModal({
             log.medicamento_id ===
               selectedMed.id &&
             log.data ===
-              today &&
+              doseDate &&
             log.horario ===
               doseHora &&
             log.dose_kind !== "extra" &&
@@ -836,7 +831,7 @@ export function QuickDoseModal({
         doseLogs,
         doseHora,
         selectedMed?.id,
-        today,
+        doseDate,
       ]
     );
 
@@ -1000,6 +995,8 @@ export function QuickDoseModal({
 
       setRegisterAsExtra(false);
       setDoseReason("");
+      setDoseDate(today);
+      setDoseHora(getCurrentTime());
 
       if (
         preselectedMedicamentoId
@@ -1056,25 +1053,8 @@ export function QuickDoseModal({
         )
       );
 
-      if (
-        selectedMed.tipo_uso ===
-        "continuo"
-      ) {
-        const recommended =
-          findRecommendedSchedule(
-            selectedMed,
-            doseLogs
-          );
-
-        setDoseHora(
-          recommended ||
-            getCurrentTime()
-        );
-      } else {
-        setDoseHora(
-          getCurrentTime()
-        );
-      }
+      // V70: dose extra começa no horário real.
+      setDoseHora(getCurrentTime());
     },
     [
       isOpen,
@@ -1430,6 +1410,7 @@ export function QuickDoseModal({
         requestedStatus ===
           "taken" &&
         !options?.skipLatePrompt &&
+        doseDate === today &&
         delayMinutes >
           15
       ) {
@@ -1480,7 +1461,7 @@ export function QuickDoseModal({
               selectedMed.id,
 
             data:
-              today,
+              doseDate,
 
             horario:
               doseHora,
@@ -1520,7 +1501,7 @@ export function QuickDoseModal({
               selectedMed.id,
 
             data:
-              today,
+              doseDate,
 
             horario:
               doseHora,
@@ -2939,9 +2920,7 @@ export function QuickDoseModal({
                 />
               </div>
 
-              <p className="truncate px-1 text-[9px] text-ink-faint">
-                Data: hoje
-              </p>
+              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data da tomada</span><input type="date" value={doseDate} max={today} disabled={isSaving} onChange={e=>setDoseDate(e.target.value||today)} className="h-10 w-full rounded-xl border border-surface-border/50 bg-surface px-3 text-xs font-semibold text-ink-primary outline-none"/><span className="mt-1 block text-[9px] text-ink-faint">Hoje vem selecionado; altere apenas para uma tomada que já aconteceu.</span></label>
             </div>
           </div>
 

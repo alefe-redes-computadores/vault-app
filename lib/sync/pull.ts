@@ -1,5 +1,11 @@
 // lib/sync/pull.ts
 
+import {
+  beginPullDiagnostics,
+  finishPullDiagnostics,
+  recordPullTable,
+} from "@/lib/sync/diagnostics";
+
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
 
@@ -128,6 +134,7 @@ export async function pullAllData(
     console.log(
       "🔄 [Pull] Iniciando sincronização da nuvem para o dispositivo..."
     );
+    beginPullDiagnostics();
 
     const {
       data:
@@ -244,6 +251,8 @@ export async function pullAllData(
         query,
         mapRemote,
       }: ProcessTableOptions<T>): Promise<void> => {
+        const tableStartedAt = performance.now();
+        let tableOk = true;
         try {
           const {
             data,
@@ -252,6 +261,10 @@ export async function pullAllData(
             await query();
 
           if (error) {
+            // VAULT_FINAL_RELEASE_V69_QUERY_ERROR
+            // Erro retornado pela consulta também é falha da tabela,
+            // mesmo quando não lança exception.
+            tableOk = false;
             console.error(
               `❌ [Pull] Erro ao buscar ${remoteTable}:`,
               error
@@ -404,9 +417,12 @@ export async function pullAllData(
                   error
                 );
 
+          tableOk = false;
           console.error(
             `❌ [Pull] Erro ao processar ${remoteTable}: ${message}`
           );
+        } finally {
+          recordPullTable(remoteTable, performance.now() - tableStartedAt, tableOk);
         }
       };
 
@@ -1697,7 +1713,7 @@ export async function pullAllData(
 
     throw error;
   } finally {
-    isPullingGlobal =
-      false;
+    finishPullDiagnostics();
+    isPullingGlobal = false;
   }
 }

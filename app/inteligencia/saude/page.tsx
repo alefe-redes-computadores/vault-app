@@ -138,7 +138,7 @@ export default function HealthIntelligenceLabPage() {
     return (
       <PageTransition>
         <main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary">
-          <div className="mx-auto max-w-2xl rounded-[28px] border border-surface-border bg-surface p-5 text-sm text-ink-muted">
+          <div className="mx-auto max-w-2xl rounded-[24px] border border-surface-border bg-surface p-5 text-sm text-ink-muted">
             Organizando timeline, evidências e histórico longitudinal…
           </div>
         </main>
@@ -176,7 +176,7 @@ export default function HealthIntelligenceLabPage() {
           </div>
         </header>
 
-        <section className="mx-auto mt-6 max-w-2xl rounded-[28px] border border-violet-400/20 bg-gradient-to-br from-violet-400/10 via-surface to-ice/[0.05] p-5">
+        <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-violet-400/10 via-surface to-ice/[0.05] p-5">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl bg-violet-400/10 p-3 text-violet-300"><Sparkles size={21} /></div>
             <div className="min-w-0 flex-1">
@@ -205,7 +205,7 @@ export default function HealthIntelligenceLabPage() {
           </div>
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl">
+        <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
             <CalendarDays size={17} className="text-ice" />
             <h2 className="font-bold">Revisão dos últimos 7 dias</h2>
@@ -232,12 +232,21 @@ export default function HealthIntelligenceLabPage() {
           </div>
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl">
+        <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
             <History size={17} className="text-ice" />
             <h2 className="font-bold">Timeline de inteligência</h2>
           </div>
-          <p className="mt-1 text-xs text-ink-muted">Eventos recentes usados para construir contexto, sem inferir causalidade.</p>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <p className="text-xs text-ink-muted">Eventos recentes usados para construir contexto, sem inferir causalidade.</p>
+            <button
+              type="button"
+              onClick={() => router.push("/saude/timeline")}
+              className="shrink-0 rounded-full border border-ice/20 bg-ice/5 px-3 py-1.5 text-[10px] font-semibold text-ice"
+            >
+              Ver histórico completo
+            </button>
+          </div>
           <div className="mt-3 space-y-2">
             {[...health.brainV4.timeline].reverse().slice(0, timelineExpanded ? 20 : 5).map((event) => (
               <div key={event.id} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface px-4 py-3">
@@ -256,7 +265,7 @@ export default function HealthIntelligenceLabPage() {
           )}
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl">
+        <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
             <BrainCircuit size={17} className="text-violet-300" />
             <h2 className="font-bold">Sinais longitudinais</h2>
@@ -290,7 +299,7 @@ export default function HealthIntelligenceLabPage() {
           )}
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl">
+        <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Stethoscope size={17} className="text-emerald-300" />
@@ -330,7 +339,7 @@ export default function HealthIntelligenceLabPage() {
           </div>
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl">
+        <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
             <Activity size={17} className="text-sky-300" />
             <h2 className="font-bold">Saúde do cérebro</h2>
@@ -347,7 +356,7 @@ export default function HealthIntelligenceLabPage() {
           )}
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl">
+        <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
             <MessageSquareText size={17} className="text-ice" />
             <h2 className="font-bold">Ensinar relevância ao Vault</h2>
@@ -388,7 +397,7 @@ export default function HealthIntelligenceLabPage() {
           )}
         </section>
 
-        <section className="mx-auto mt-6 max-w-2xl rounded-[24px] border border-surface-border bg-surface/70 p-4">
+        <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-surface-border bg-surface/70 p-4">
           <div className="flex gap-3">
             <Database size={17} className="mt-0.5 shrink-0 text-ink-faint" />
             <p className="text-[10px] leading-relaxed text-ink-muted">
@@ -409,7 +418,7 @@ export default function HealthIntelligenceLabPage() {
           if (!explanation) return null;
 
           return (
-            <section className="mx-auto mt-6 max-w-2xl rounded-[24px] border border-violet-400/15 bg-violet-400/[0.03] p-4">
+            <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-violet-400/15 bg-violet-400/[0.03] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-300">
                 Por que o Vault mostrou isso?
               </p>
@@ -437,6 +446,18 @@ export default function HealthIntelligenceLabPage() {
               {explanation.evidence.slice(0, 3).map((line) => (
                 <p key={line} className="mt-2 text-xs leading-relaxed text-ink-muted">• {line}</p>
               ))}
+              {explanation.sources.length > 0 && (
+                <div className="mt-3 rounded-2xl border border-surface-border/60 bg-black/10 p-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-faint">Fontes internas consultadas</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{explanation.sources.join(" · ")}</p>
+                </div>
+              )}
+              {selected.acaoSegura && (
+                <div className="mt-3 rounded-2xl border border-ice/15 bg-ice/[0.05] p-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-ice">Próximo passo seguro</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{selected.acaoSegura}</p>
+                </div>
+              )}
               {explanation.missingData.slice(0, 2).map((line) => (
                 <p key={line} className="mt-2 text-xs leading-relaxed text-amber-300/80">• {line}</p>
               ))}
