@@ -27,10 +27,12 @@ ok(more.includes("personCount > 1"), "troca de pessoa só aparece com múltiplos
 ok(more.includes('mode="action"'), "seletor não repete identidade no cartão da conta");
 ok(selector.includes('mode === "action" ? "Trocar pessoa"'), "ação de troca possui semântica explícita");
 
-ok(list.includes('title="Classificação da receita"'), "classificação regulatória abre bottom sheet");
-ok(list.includes("setSelectedRegulatory(regulatoryProfile)"), "badge regulatório aciona explicação");
+ok(list.includes("VAULT_REGULATORY_EDGE_LABEL_V76_1"), "classificação regulatória usa etiqueta vertical compacta");
+ok(list.includes("setSelectedRegulatory"), "etiqueta regulatória aciona explicação");
 ok(list.includes("selectedRegulatory.sourceLabel"), "explicação informa a origem regulatória");
 ok(list.includes("selectedRegulatory.verified"), "explicação diferencia dado confirmado e cadastro");
+ok(list.includes("VAULT_REGULATORY_COMPACT_DIALOG_V76_1"), "explicação regulatória usa diálogo compacto");
+ok(!list.includes("<BottomSheet"), "explicação regulatória não usa bottom sheet grande");
 ok(!list.includes("expandedRegulatoryMedId"), "explicação antiga dentro do card foi removida");
 
 ok(treatment.includes("<MedicationFormatIcon"), "tratamento herda o formato visual do medicamento");

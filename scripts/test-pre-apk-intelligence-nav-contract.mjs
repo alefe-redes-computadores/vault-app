@@ -1,9 +1,14 @@
 import fs from "node:fs";
 
-const read = p => fs.readFileSync(p, "utf8");
+const read = p =>
+  fs.readFileSync(p, "utf8");
 
 function ok(v, msg) {
-  if (!v) throw new Error("PRE-APK NAV: " + msg);
+  if (!v) {
+    throw new Error(
+      "PRE-APK NAV: " + msg
+    );
+  }
   console.log("OK:", msg);
 }
 
@@ -25,6 +30,14 @@ const providers =
 const indicator =
   read("components/SyncStatusIndicator.tsx");
 
+/*
+ * VAULT_SAFE_BACK_CONTRACT_V76_1
+ *
+ * Valida o handleSafeBack real.
+ * Não depende de uma janela arbitrária antes
+ * do botão Voltar.
+ */
+
 const labelPos =
   med.indexOf('aria-label="Voltar"');
 
@@ -33,24 +46,57 @@ ok(
   "medicamento possui botão Voltar"
 );
 
-const medRegion =
-  med.slice(
-    Math.max(0, labelPos - 1200),
-    labelPos
+const safeBackStart =
+  med.indexOf("const handleSafeBack");
+
+ok(
+  safeBackStart >= 0,
+  "medicamento possui handleSafeBack"
+);
+
+const safeBackEnd =
+  med.indexOf(
+    "const {",
+    safeBackStart + 1
   );
 
 ok(
+  safeBackEnd > safeBackStart,
+  "handleSafeBack possui limite detectável"
+);
+
+const medRegion =
+  med.slice(
+    safeBackStart,
+    safeBackEnd
+  );
+
+ok(
+  medRegion.includes("router.back()"),
+  "Voltar tenta histórico interno"
+);
+
+ok(
   medRegion.includes("router.replace"),
-  "Voltar do medicamento usa navegação determinística"
+  "Voltar possui fallback determinístico"
 );
 
 ok(
   medRegion.includes("/saude/medicamentos"),
-  "Voltar do medicamento aponta para a lista"
+  "Voltar aponta para a lista"
 );
 
 ok(
-  med.includes("VAULT_MEDICATION_BACK_CONTRACT_V65"),
+  medRegion.includes(
+    "/saude/medicamentos/detalhes"
+  ),
+  "fallback detecta permanência nos detalhes"
+);
+
+ok(
+  med.includes(
+    "VAULT_MEDICATION_BACK_CONTRACT_V65"
+  ),
   "contrato de retorno do medicamento presente"
 );
 
@@ -60,17 +106,23 @@ ok(
 );
 
 ok(
-  central.includes('router.push("/inteligencia/saude")'),
+  central.includes(
+    'router.push("/inteligencia/saude")'
+  ),
   "Central abre Saúde longitudinal"
 );
 
 ok(
-  health.includes('router.replace("/inteligencia")'),
+  health.includes(
+    'router.replace("/inteligencia")'
+  ),
   "Saúde longitudinal retorna para Central"
 );
 
 ok(
-  bottom.includes("VAULT_INTELLIGENCE_NAV_CONTEXT_V65"),
+  bottom.includes(
+    "VAULT_INTELLIGENCE_NAV_CONTEXT_V65"
+  ),
   "BottomNav conhece contexto da Inteligência"
 );
 
@@ -80,17 +132,23 @@ ok(
 );
 
 ok(
-  providers.includes("VAULT_SYNC_BACKGROUND_V64"),
+  providers.includes(
+    "VAULT_SYNC_BACKGROUND_V64"
+  ),
   "sync background preservado"
 );
 
 ok(
-  providers.includes('phase: "background"'),
+  providers.includes(
+    'phase: "background"'
+  ),
   "pull longo possui estado background"
 );
 
 ok(
-  indicator.includes('syncRuntime.phase === "background"'),
+  indicator.includes(
+    'syncRuntime.phase === "background"'
+  ),
   "indicador representa atualização em background"
 );
 

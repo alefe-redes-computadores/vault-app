@@ -92,7 +92,6 @@ import {
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
-import { BottomSheet } from "@/components/ui/BottomSheet";
 
 // ============================================================
 // HELPERS
@@ -1121,22 +1120,91 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="relative flex min-w-0 flex-col gap-1 pl-2.5">
+            {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 */}
+            {(regulatoryProfile || receita) && (
+              <button
+                type="button"
+                aria-label={`Ver classificação da receita: ${
+                  regulatoryProfile?.label ||
+                  receita?.sigla ||
+                  "Receita"
+                }`}
+                aria-haspopup={
+                  regulatoryProfile
+                    ? "dialog"
+                    : undefined
+                }
+                title={regulatoryMeaning}
+                className={`absolute -left-2.5 top-1/2 z-[3] flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border bg-surface/95 px-1 py-1.5 shadow-md backdrop-blur-sm transition-transform active:scale-95 ${
+                  regulatoryProfile
+                    ? regulatoryProfile.badgeClass
+                    : ""
+                }`}
+                style={{
+                  borderColor:
+                    `${regulatoryBorderColor}70`,
+                  boxShadow:
+                    `0 3px 12px rgba(0,0,0,.28), 0 0 0 1px ${regulatoryBorderColor}18`,
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  if (!regulatoryProfile) {
+                    return;
+                  }
+
+                  trigger("vibrate");
+                  setSelectedRegulatory(
+                    regulatoryProfile
+                  );
+                }}
+              >
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor:
+                      regulatoryBorderColor,
+                  }}
+                  aria-hidden="true"
+                />
+
+                <span
+                  className="max-h-[58px] overflow-hidden text-[8px] font-black uppercase leading-none tracking-[0.06em]"
+                  style={{
+                    writingMode:
+                      "vertical-rl",
+                    transform:
+                      "rotate(180deg)",
+                  }}
+                >
+                  {(
+                    regulatoryProfile?.label ||
+                    receita?.sigla ||
+                    "Receita"
+                  ).replace(
+                    "Notificação ",
+                    "Notif. "
+                  )}
+                </span>
+
+                {regulatoryProfile && (
+                  <span
+                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current/30 text-[8px] font-black leading-none opacity-80"
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* IDENTIDADE */}
 
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className={`h-2.5 w-2.5 shrink-0 rounded-full border ${regulatorySurface.dotClass} ${regulatorySurface.glowClass}`}
-                    style={{
-                      backgroundColor:
-                        regulatorySurface.accent,
-                    }}
-                    title={regulatoryMeaning}
-                    aria-label={regulatoryMeaning}
-                  />
-
                   <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <h3 className="min-w-0 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
                     {
@@ -1155,40 +1223,6 @@ export default function MedicamentosListPage() {
                 </div>
 
                 <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
-                  {regulatoryProfile ? (
-                    <button
-                      type="button"
-                      className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${regulatorySurface.badgeClass}`}
-                      title={regulatoryMeaning}
-                      aria-haspopup="dialog"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        trigger("vibrate");
-                        setSelectedRegulatory(regulatoryProfile);
-                      }}
-                    >
-                      {regulatoryProfile.label}
-                      {!regulatoryProfile.verified && regulatoryProfile.tone !== "unknown" ? " · cadastro" : ""}
-                    </button>
-                  ) : receita && (
-                    <span
-                      className={`inline-flex h-5.5 shrink-0 items-center rounded-lg border px-2 text-[9px] font-black uppercase tracking-wide ${receita.textColorClass}`}
-                      style={{
-                        borderColor:
-                          `${regulatoryBorderColor}55`,
-                        backgroundColor:
-                          `${regulatoryBorderColor}12`,
-                      }}
-                      title={
-                        receita.tooltip
-                      }
-                    >
-                      {
-                        receita.sigla
-                      }
-                    </span>
-                  )}
-
                   {isSOS && (
                     <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.07] px-2 text-[9px] font-bold uppercase tracking-wide text-amber-400">
                       SOS
@@ -1913,63 +1947,108 @@ export default function MedicamentosListPage() {
           }
         />
 
-        <BottomSheet
-          isOpen={Boolean(selectedRegulatory)}
-          onClose={() => setSelectedRegulatory(null)}
-          title="Classificação da receita"
-        >
-          {selectedRegulatory && (
-            <div className="space-y-4">
-              <div
-                className="rounded-[22px] border bg-surface p-4"
-                style={{
-                  borderColor: `${selectedRegulatory.accent}55`,
-                  boxShadow: `inset 4px 0 0 ${selectedRegulatory.accent}`,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="h-3 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: selectedRegulatory.accent }}
-                  />
-                  <div>
-                    <p className="font-display text-lg font-semibold text-ink-primary">
-                      {selectedRegulatory.label}
-                    </p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                      {selectedRegulatory.detail}
-                    </p>
-                  </div>
+        {/* VAULT_REGULATORY_COMPACT_DIALOG_V76_1 */}
+        {selectedRegulatory && (
+          <div
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 px-5 backdrop-blur-[2px]"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                setSelectedRegulatory(
+                  null
+                );
+              }
+            }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="vault-regulatory-dialog-title"
+              className="w-full max-w-[330px] rounded-[22px] border border-surface-border/60 bg-surface-raised p-4 shadow-2xl"
+              style={{
+                boxShadow:
+                  `0 20px 60px rgba(0,0,0,.45), inset 3px 0 0 ${selectedRegulatory.accent}`,
+              }}
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className="mt-1 h-8 w-1 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor:
+                      selectedRegulatory.accent,
+                  }}
+                />
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                    Classificação da receita
+                  </p>
+
+                  <h2
+                    id="vault-regulatory-dialog-title"
+                    className="mt-1 font-display text-base font-semibold text-ink-primary"
+                  >
+                    {
+                      selectedRegulatory.label
+                    }
+                  </h2>
+
+                  <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                    {
+                      selectedRegulatory.detail
+                    }
+                  </p>
                 </div>
+
+                <button
+                  type="button"
+                  aria-label="Fechar classificação da receita"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-surface-border/60 bg-black/10 text-ink-muted transition-transform active:scale-95"
+                  onClick={() =>
+                    setSelectedRegulatory(
+                      null
+                    )
+                  }
+                >
+                  <X size={15} />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-surface-border/50 bg-surface px-3 py-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-ink-faint">Origem</p>
-                  <p className="mt-1 text-sm font-medium text-ink-primary">
-                    {selectedRegulatory.sourceLabel || "Cadastro do medicamento"}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-surface-border/50 bg-surface px-3 py-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-ink-faint">Situação</p>
-                  <p className="mt-1 text-sm font-medium text-ink-primary">
-                    {selectedRegulatory.verified ? "Confirmada" : "Informada no cadastro"}
-                  </p>
-                </div>
+              <div className="mt-3 flex flex-wrap gap-1.5 border-t border-surface-border/40 pt-3">
+                <span className="rounded-full border border-surface-border/50 bg-black/[0.06] px-2.5 py-1 text-[9px] font-semibold text-ink-secondary">
+                  {
+                    selectedRegulatory.sourceLabel ||
+                    "Cadastro do medicamento"
+                  }
+                </span>
+
+                <span className="rounded-full border border-surface-border/50 bg-black/[0.06] px-2.5 py-1 text-[9px] font-semibold text-ink-secondary">
+                  {
+                    selectedRegulatory.verified
+                      ? "Confirmada"
+                      : "Informada no cadastro"
+                  }
+                </span>
               </div>
 
               {!selectedRegulatory.verified && (
-                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-200">
-                  Esta classificação ainda não foi confirmada pelo catálogo regulatório. O Vault preservou a informação cadastrada manualmente.
-                </div>
+                <p className="mt-2.5 text-[10px] leading-relaxed text-amber-200">
+                  Classificação ainda não confirmada pelo catálogo regulatório.
+                </p>
               )}
 
-              <p className="text-[11px] leading-relaxed text-ink-faint">
-                A classificação ajuda a organizar receitas e renovações. Ela não substitui a orientação do profissional responsável nem as regras vigentes de dispensação.
+              <p className="mt-2.5 text-[9px] leading-relaxed text-ink-faint">
+                Informação para organização de receitas e renovações.
               </p>
-            </div>
-          )}
-        </BottomSheet>
+            </section>
+          </div>
+        )}
       </main>
     </PageTransition>
   );

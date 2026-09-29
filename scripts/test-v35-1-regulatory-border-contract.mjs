@@ -4,6 +4,7 @@ const page = fs.readFileSync(
   "app/saude/medicamentos/page.tsx",
   "utf8"
 );
+
 const visual = fs.readFileSync(
   "lib/medication-regulatory-visual.ts",
   "utf8"
@@ -11,7 +12,9 @@ const visual = fs.readFileSync(
 
 const ok = (value, message) => {
   if (!value) {
-    throw new Error(`V35.1/V59: ${message}`);
+    throw new Error(
+      `V35.1/V59/V76.1: ${message}`
+    );
   }
 };
 
@@ -19,42 +22,58 @@ ok(
   page.includes("useMedicationRegulatoryProfiles"),
   "hook regulatório"
 );
+
 ok(
   page.includes("regulatoryProfiles[med.id]"),
   "perfil por medicamento"
 );
+
 ok(
   page.includes("getMedicationRegulatorySurface"),
   "superfície regulatória central"
 );
+
 ok(
   page.includes("regulatorySurface.rail"),
-  "faixa principal não é regulatória"
+  "borda usa identidade regulatória"
 );
+
 ok(
-  page.includes("expandedRegulatoryMedId"),
-  "badge não é expansível"
+  page.includes("regulatoryProfile.badgeClass"),
+  "identidade visual regulatória preservada"
 );
+
 ok(
-  page.includes("VAULT_REGULATORY_EXPLANATION_V35_1"),
-  "explicação móvel ausente"
+  page.includes("VAULT_REGULATORY_EDGE_LABEL_V76_1"),
+  "etiqueta vertical presente"
 );
+
+ok(
+  page.includes("VAULT_REGULATORY_COMPACT_DIALOG_V76_1"),
+  "explicação compacta presente"
+);
+
+ok(
+  !page.includes("expandedRegulatoryMedId"),
+  "expansão antiga removida"
+);
+
 ok(
   visual.includes('tone === "black"'),
-  "dark mode da classificação preta ausente"
+  "dark mode da classificação preta"
 );
+
 ok(
   visual.includes("bg-black/70") &&
     visual.includes("#94a3b8"),
-  "preta não recebeu contraste dark-mode"
+  "contraste da classificação preta"
 );
+
 ok(
-  !page.includes(
-    'regulatoryProfile?.tone === "black"'
-  ),
-  "hack visual antigo ainda está na página"
+  !page.includes('regulatoryProfile?.tone === "black"'),
+  "hack antigo ausente"
 );
 
 console.log(
-  "V35.1/V59 REGULATORY IDENTITY CONTRACT: OK"
+  "V35.1/V59/V76.1 REGULATORY CONTRACT: OK"
 );
