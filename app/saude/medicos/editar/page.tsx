@@ -778,7 +778,8 @@ function EditarMedicoContent() {
         <button
           type="button"
           onClick={() =>
-            router.back()
+            // VAULT_RELIABLE_PARENT_NAV_V72: /saude/medicos
+                router.replace("/saude/medicos")
           }
           className="mt-4 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
         >
@@ -814,7 +815,7 @@ function EditarMedicoContent() {
                   "vibrate"
                 );
 
-                router.back();
+                router.replace("/saude/medicos");
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"

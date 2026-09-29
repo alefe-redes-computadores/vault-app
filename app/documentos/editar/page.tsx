@@ -2080,7 +2080,8 @@ export default function EditarDocumentoPage() {
                   "vibrate"
                 );
 
-                router.back();
+                // VAULT_RELIABLE_PARENT_NAV_V72: /documentos
+                router.replace("/documentos");
               }}
               disabled={
                 loading

@@ -1081,6 +1081,7 @@ export default function MedicamentosListPage() {
               ? null
               : "Tomar";
 
+      // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
         <ListCard
           key={
@@ -1120,7 +1121,7 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex min-w-0 flex-col gap-1">
             {/* IDENTIDADE */}
 
             <div className="flex min-w-0 items-start justify-between gap-3">
@@ -1199,7 +1200,7 @@ export default function MedicamentosListPage() {
                   )}
 
                   {med.medico && (
-                    <span className="inline-flex h-5.5 max-w-[132px] items-center gap-1 rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted">
+                    <span className="hidden h-5.5 max-w-[132px] items-center gap-1 rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted min-[390px]:inline-flex">
                       <Stethoscope
                         size={
                           10
@@ -1318,7 +1319,7 @@ export default function MedicamentosListPage() {
 
             {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="rounded-xl border border-surface-border/30 bg-black/[0.05] px-2.5 py-1">
+            <div className="rounded-xl border border-surface-border/30 bg-black/[0.04] px-2.5 py-0.5">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">

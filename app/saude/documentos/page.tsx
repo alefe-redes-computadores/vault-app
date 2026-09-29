@@ -4402,7 +4402,8 @@ export default function DocumentsPage() {
                       "vibrate"
                     );
 
-                    router.back();
+                    // VAULT_RELIABLE_PARENT_NAV_V72: /saude/documentos
+                router.replace("/saude/documentos");
                   }
                 }
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"

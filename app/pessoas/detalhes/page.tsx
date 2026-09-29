@@ -977,7 +977,8 @@ export default function PessoaDetalhesPage() {
                       "vibrate"
                     );
 
-                    router.back();
+                    // VAULT_RELIABLE_PARENT_NAV_V72: /pessoas
+                router.replace("/pessoas");
                   }
                 }
                 aria-label="Voltar"

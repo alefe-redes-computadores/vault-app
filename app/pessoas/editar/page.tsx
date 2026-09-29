@@ -592,7 +592,8 @@ export default function EditarPessoaPage() {
                   "vibrate"
                 );
 
-                router.back();
+                // VAULT_RELIABLE_PARENT_NAV_V72: /pessoas
+                router.replace("/pessoas");
               }}
               aria-label="Voltar"
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95 disabled:opacity-50"

@@ -154,7 +154,8 @@ export default function VaultInvitesPage() {
     }
 
     trigger("vibrate");
-    router.back();
+    // VAULT_RELIABLE_PARENT_NAV_V72: /vaults
+                router.replace("/vaults");
   };
 
   const handleAccept =

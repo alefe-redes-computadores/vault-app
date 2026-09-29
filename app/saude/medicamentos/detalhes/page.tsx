@@ -3175,15 +3175,187 @@ function MedicamentoDetalhesContent() {
             )}
           </AnimatePresence>
         </header>
-        <ContextualHealthIntelligence
+
+
+
+        <div className="mx-auto max-w-3xl space-y-6 px-5 pt-5">
+          {/* VAULT_MEDICATION_HIERARCHY_V72 */}
+          {/* ==================================================
+              HERO
+              ================================================== */}
+
+          <section className="relative overflow-hidden rounded-[24px] border border-surface-border/70 bg-surface shadow-lg">
+            <div
+              className="absolute bottom-0 left-0 top-0 w-1.5"
+              style={{
+                backgroundColor:
+                  med.status ===
+                  "descontinuado"
+                    ? "#fb7185"
+                    : regulatorySurface.rail,
+              }}
+            />
+
+            <div className="p-4 pl-5 sm:p-5 sm:pl-6">
+              <div className="flex items-start gap-4">
+                <ListIcon
+                  color={
+                    color1
+                  }
+                  color2={
+                    color2
+                  }
+                  isGradient={
+                    Boolean(
+                      color2
+                    )
+                  }
+                  size={
+                    32
+                  }
+                  icon={
+                    <SelectedFormatIcon
+                      size={
+                        30
+                      }
+                      stroke={
+                        color1
+                      }
+                      strokeWidth={
+                        2
+                      }
+                      fill={`${color1}44`}
+                    />
+                  }
+                />
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="break-words text-lg font-bold uppercase tracking-wide text-ink-primary sm:text-xl">
+                      {
+                        med.nome
+                      }
+                    </h2>
+
+                    {med.status ===
+                      "descontinuado" && (
+                      <span className="rounded-full border border-coral/20 bg-coral/10 px-2 py-0.5 text-[9px] font-bold uppercase text-coral">
+                        Suspenso
+                      </span>
+                    )}
+
+                    {regulatoryProfile && (
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${regulatorySurface.badgeClass}`}
+                        title={regulatoryProfile.detail}
+                      >
+                        {regulatoryProfile.label}
+                        {!regulatoryProfile.verified &&
+                        regulatoryProfile.tone !==
+                          "unknown"
+                          ? " · cadastro"
+                          : ""}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-sm font-medium text-ink-muted">
+                    {
+                      med.dosagem
+                    }
+
+                    <span>
+                      {" "}
+                      •{" "}
+                      {isSOS
+                        ? "Uso Esporádico / SOS"
+                        : "Uso Contínuo"}
+                    </span>
+                  </p>
+
+                  {tratamentos.length >
+                    0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {tratamentos.map(
+                        (
+                          tratamento:
+                            Tratamento
+                        ) => (
+                          <span
+                            key={
+                              tratamento.id
+                            }
+                            className="rounded-full border border-surface-border bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ink-muted"
+                          >
+                            {
+                              tratamento.nome
+                            }
+                          </span>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  {cids.length >
+                    0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {cids.map(
+                        (
+                          cid:
+                            Cid
+                        ) => {
+                          const theme =
+                            getClinicalTheme(
+                              cid.descricao ||
+                                cid.codigo
+                            );
+
+                          const Icon =
+                            theme.icon;
+
+                          return (
+                            <span
+                              key={
+                                cid.id
+                              }
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${theme.tagClass}`}
+                            >
+                              <Icon
+                                size={
+                                  10
+                                }
+                              />
+
+                              {
+                                cid.codigo
+                              }
+                            </span>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+
+          {/* ==================================================
+              INTELIGÊNCIA E ATENÇÃO — V72
+              A identidade essencial permanece sempre primeiro.
+              ================================================== */}
+
+          <div className="space-y-3">
+            <ContextualHealthIntelligence
           entityType="medicamento"
           entityId={id}
           className="pt-4"
         />
+          </div>
 
-
-        <div className="mx-auto max-w-3xl space-y-6 px-5 pt-5">
-          {/* ==================================================
+          <div className="space-y-3">
+{/* ==================================================
               QUALIDADE DO CADASTRO
               ================================================== */}
 
@@ -3212,9 +3384,9 @@ function MedicamentoDetalhesContent() {
                     height:
                       0,
                   }}
-                  className="overflow-hidden rounded-[24px] border border-amber-400/30 bg-amber-400/10"
+                  className="overflow-hidden rounded-[20px] border border-amber-400/25 bg-amber-400/[0.07]"
                 >
-                  <div className="p-4">
+                  <div className="p-3.5">
                     <div className="flex items-start gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400">
                         <FileWarning
@@ -3599,168 +3771,9 @@ function MedicamentoDetalhesContent() {
               </div>
             </motion.div>
           )}
+          </div>
 
-          {/* ==================================================
-              HERO
-              ================================================== */}
-
-          <section className="relative overflow-hidden rounded-[30px] border border-surface-border/70 bg-surface shadow-lg">
-            <div
-              className="absolute bottom-0 left-0 top-0 w-1.5"
-              style={{
-                backgroundColor:
-                  med.status ===
-                  "descontinuado"
-                    ? "#fb7185"
-                    : regulatorySurface.rail,
-              }}
-            />
-
-            <div className="p-5 pl-6 sm:p-6 sm:pl-7">
-              <div className="flex items-start gap-4">
-                <ListIcon
-                  color={
-                    color1
-                  }
-                  color2={
-                    color2
-                  }
-                  isGradient={
-                    Boolean(
-                      color2
-                    )
-                  }
-                  size={
-                    32
-                  }
-                  icon={
-                    <SelectedFormatIcon
-                      size={
-                        30
-                      }
-                      stroke={
-                        color1
-                      }
-                      strokeWidth={
-                        2
-                      }
-                      fill={`${color1}44`}
-                    />
-                  }
-                />
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="break-words text-xl font-bold uppercase tracking-wide text-ink-primary sm:text-2xl">
-                      {
-                        med.nome
-                      }
-                    </h2>
-
-                    {med.status ===
-                      "descontinuado" && (
-                      <span className="rounded-full border border-coral/20 bg-coral/10 px-2 py-0.5 text-[9px] font-bold uppercase text-coral">
-                        Suspenso
-                      </span>
-                    )}
-
-                    {regulatoryProfile && (
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${regulatorySurface.badgeClass}`}
-                        title={regulatoryProfile.detail}
-                      >
-                        {regulatoryProfile.label}
-                        {!regulatoryProfile.verified &&
-                        regulatoryProfile.tone !==
-                          "unknown"
-                          ? " · cadastro"
-                          : ""}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="mt-1 text-sm font-medium text-ink-muted">
-                    {
-                      med.dosagem
-                    }
-
-                    <span>
-                      {" "}
-                      •{" "}
-                      {isSOS
-                        ? "Uso Esporádico / SOS"
-                        : "Uso Contínuo"}
-                    </span>
-                  </p>
-
-                  {tratamentos.length >
-                    0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {tratamentos.map(
-                        (
-                          tratamento:
-                            Tratamento
-                        ) => (
-                          <span
-                            key={
-                              tratamento.id
-                            }
-                            className="rounded-full border border-surface-border bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ink-muted"
-                          >
-                            {
-                              tratamento.nome
-                            }
-                          </span>
-                        )
-                      )}
-                    </div>
-                  )}
-
-                  {cids.length >
-                    0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {cids.map(
-                        (
-                          cid:
-                            Cid
-                        ) => {
-                          const theme =
-                            getClinicalTheme(
-                              cid.descricao ||
-                                cid.codigo
-                            );
-
-                          const Icon =
-                            theme.icon;
-
-                          return (
-                            <span
-                              key={
-                                cid.id
-                              }
-                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${theme.tagClass}`}
-                            >
-                              <Icon
-                                size={
-                                  10
-                                }
-                              />
-
-                              {
-                                cid.codigo
-                              }
-                            </span>
-                          );
-                        }
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ==================================================
+{/* ==================================================
               ROTINA E DOSES
               ================================================== */}
 

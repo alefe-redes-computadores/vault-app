@@ -1232,7 +1232,8 @@ function EditarCidContent() {
                   "vibrate"
                 );
 
-                router.back();
+                // VAULT_RELIABLE_PARENT_NAV_V72: /saude/cids
+                router.replace("/saude/cids");
               }}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
               aria-label="Voltar"

@@ -1294,7 +1294,8 @@ function GaleriaContent() {
                   "vibrate"
                 );
 
-                router.back();
+                // VAULT_RELIABLE_PARENT_NAV_V72: /galeria
+                router.replace("/galeria");
               }}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
               aria-label="Voltar"
