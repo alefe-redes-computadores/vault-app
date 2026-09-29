@@ -427,6 +427,11 @@ function NovaRenovacaoContent() {
   const searchParams =
     useSearchParams();
 
+  const rawReturnTo = searchParams.get("return_to");
+  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
+    ? rawReturnTo
+    : "/saude/renovacao";
+
   const autoSelectMedId =
     searchParams.get(
       "medicamento_id"
@@ -1757,7 +1762,7 @@ function NovaRenovacaoContent() {
                     "vibrate"
                   );
 
-                  router.replace("/saude/renovacao");
+                  router.replace(returnTo);
                 }
               }
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"

@@ -203,6 +203,11 @@ function DetalhesRenovacaoContent() {
   const searchParams =
     useSearchParams();
 
+  const rawReturnTo = searchParams.get("return_to");
+  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
+    ? rawReturnTo
+    : "/saude/renovacao";
+
   const id =
     searchParams.get(
       "id"
@@ -678,9 +683,7 @@ function DetalhesRenovacaoContent() {
           type="button"
           onClick={
             () =>
-              router.replace(
-                "/saude/renovacao"
-              )
+              router.replace(returnTo)
           }
           className="mt-5 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
         >
@@ -746,9 +749,7 @@ function DetalhesRenovacaoContent() {
                       "vibrate"
                     );
 
-                    router.replace(
-                    "/saude/renovacao"
-                  );
+                    router.replace(returnTo);
                   }
                 }
                 aria-label="Voltar"

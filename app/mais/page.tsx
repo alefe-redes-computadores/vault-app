@@ -44,6 +44,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
+import { PersonSelector } from "@/components/PersonSelector";
 import { db } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
@@ -814,6 +815,7 @@ export default function MaisPage() {
       icon: BrainCircuit,
       label: "Vault Insight",
       description: "Brain V4 · inteligência local, longitudinal e explicável",
+      tone: "border-violet-400/20 bg-violet-400/10 text-violet-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/inteligencia");
@@ -824,6 +826,7 @@ export default function MaisPage() {
       icon: KeyRound,
       label: "Senhas",
       description: "Credenciais",
+      tone: "border-amber-400/20 bg-amber-400/10 text-amber-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/senhas");
@@ -834,6 +837,7 @@ export default function MaisPage() {
       icon: CreditCard,
       label: "Cartões",
       description: "Crédito e débito",
+      tone: "border-sky-400/20 bg-sky-400/10 text-sky-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/cartoes");
@@ -844,6 +848,7 @@ export default function MaisPage() {
       icon: Landmark,
       label: "Contas bancárias",
       description: "Agência e conta",
+      tone: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/contas");
@@ -854,6 +859,7 @@ export default function MaisPage() {
       icon: Shield,
       label: "Cofres",
       description: "Documentos",
+      tone: "border-rose-400/20 bg-rose-400/10 text-rose-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/vaults");
@@ -864,6 +870,7 @@ export default function MaisPage() {
       icon: Users,
       label: "Pessoas",
       description: "Gerenciar pessoas",
+      tone: "border-orange-400/20 bg-orange-400/10 text-orange-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/pessoas");
@@ -874,6 +881,7 @@ export default function MaisPage() {
       icon: Star,
       label: "Favoritos",
       description: "Documentos salvos",
+      tone: "border-fuchsia-400/20 bg-fuchsia-400/10 text-fuchsia-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/favoritos");
@@ -892,17 +900,17 @@ export default function MaisPage() {
             CABEÇALHO
         ===================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 pb-4 pt-3 backdrop-blur-xl">
+        <header className="px-5 pb-2 pt-5 header-safe-top">
           <h1 className="font-display text-xl font-semibold text-ink-primary">
             Mais
           </h1>
 
-          <p className="mt-1 text-sm text-ink-muted">
-            Configurações, dados e opções da conta
+          <p className="mt-0.5 text-xs text-ink-muted">
+            Conta, preferências e dados do Vault
           </p>
         </header>
 
-        <section className="space-y-5 px-4 pt-4 sm:px-5">
+        <section className="space-y-4 px-4 pt-3 sm:px-5">
           {/* ===================================================
               PERFIL
           =================================================== */}
@@ -919,7 +927,7 @@ export default function MaisPage() {
             transition={{
               duration: 0.28,
             }}
-            className="rounded-[26px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
             <div className="flex items-start gap-4">
               {/* Avatar */}
@@ -966,16 +974,24 @@ export default function MaisPage() {
               </div>
             </div>
 
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-surface-border/40 bg-void/25 px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">Pessoa ativa</p>
+                <p className="truncate text-xs text-ink-muted">Troque o perfil usado nos registros</p>
+              </div>
+              <PersonSelector className="shrink-0" />
+            </div>
+
             {/* =================================================
                 TOGGLES
             ================================================= */}
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-3 space-y-2">
               {/* Biometria — VAULT_MORE_COMPACT_V70 */}
 
               <button
                 onClick={handleBiometricToggle}
-                className="flex items-center gap-3 rounded-[20px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
+                className="flex w-full items-center gap-3 rounded-[18px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
               >
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
@@ -999,7 +1015,7 @@ export default function MaisPage() {
                     Biometria
                   </p>
 
-                  <p className="truncate text-xs text-ink-muted">
+                  <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted">
                     Proteção de ações sensíveis
                   </p>
                 </div>
@@ -1021,7 +1037,7 @@ export default function MaisPage() {
 
               <button
                 onClick={handleNotificationsToggle}
-                className="flex items-center gap-3 rounded-[20px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
+                className="flex w-full items-center gap-3 rounded-[18px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
               >
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
@@ -1045,7 +1061,7 @@ export default function MaisPage() {
                     Lembretes
                   </p>
 
-                  <p className="truncate text-xs text-ink-muted">
+                  <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted">
                     {isNativeApp
                       ? "Doses, receitas e documentos"
                       : "Disponível no aplicativo Android"}
@@ -1105,21 +1121,15 @@ export default function MaisPage() {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className={`group flex min-h-[88px] flex-col items-center justify-center rounded-[22px] border border-surface-border/50 bg-surface px-3 py-3 text-center shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${
-                      item.id === "favoritos" ? "col-span-2 min-h-[88px]" : ""
-                    }`}
+                    className="group flex min-h-[72px] items-center gap-3 rounded-[18px] border border-surface-border/50 bg-surface px-3 py-2.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97]"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-ice/15 bg-ice/10 text-ice transition-transform duration-200 group-hover:scale-105">
-                      <Icon size={20} />
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105 ${item.tone}`}>
+                      <Icon size={18} />
                     </div>
-
-                    <p className="mt-3 text-sm font-semibold text-ink-primary">
-                      {item.label}
-                    </p>
-
-                    <p className="mt-0.5 line-clamp-1 text-[10px] text-ink-muted">
-                      {item.description}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-ink-primary">{item.label}</p>
+                      <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-ink-muted">{item.description}</p>
+                    </div>
                   </button>
                 );
               })}

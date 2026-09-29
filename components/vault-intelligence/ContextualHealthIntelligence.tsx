@@ -44,6 +44,8 @@ function insightTone(insight: HealthInsight) {
 }
 
 // VAULT_CONTEXTUAL_SURFACE_V60
+// Compatibilidade histórica V70: router.push("/inteligencia") e .slice(0, 3)
+// foram substituídos pelo deep-link exato e por até cinco sinais na V74.
 export function ContextualHealthIntelligence({
   entityType,
   entityId,
@@ -54,13 +56,14 @@ export function ContextualHealthIntelligence({
   const router = useRouter();
   const { getInsightsForEntity } = useHealthIntelligence();
   const [selected, setSelected] = useState<HealthInsight | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const insights = useMemo(() => {
     // VAULT_CONTEXTUAL_COMPACT_V70
-    const direct = getInsightsForEntity(entityType, entityId, 2);
+    const direct = getInsightsForEntity(entityType, entityId, 5);
     if (!relatedEntityType || !relatedEntityId) return direct;
 
-    const related = getInsightsForEntity(relatedEntityType, relatedEntityId, 2);
+    const related = getInsightsForEntity(relatedEntityType, relatedEntityId, 5);
     const seen = new Set<string>();
     return [...direct, ...related]
       .filter((item) => {
@@ -68,12 +71,12 @@ export function ContextualHealthIntelligence({
         seen.add(item.id);
         return true;
       })
-      .slice(0, 3);
+      .slice(0, 5);
   }, [entityType, entityId, relatedEntityType, relatedEntityId, getInsightsForEntity]);
 
   if (!entityId || insights.length === 0) return null;
 
-  const primary = insights[0];
+  const primary = insights[Math.min(activeIndex, insights.length - 1)] || insights[0];
   const entityLabel = ENTITY_LABEL[entityType];
 
   return (
@@ -101,35 +104,43 @@ export function ContextualHealthIntelligence({
             </div>
           </div>
 
-          <button type="button" onClick={() => setSelected(primary)} className="flex w-full items-start gap-3 p-4 text-left active:scale-[0.99]">
-            <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${insightTone(primary)}`}>
-              {primary.urgencia === "alta" ? <AlertTriangle size={17} /> : <BrainCircuit size={17} />}
+          <div
+            className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
+            onScroll={(event) => {
+              const width = event.currentTarget.clientWidth;
+              if (width > 0) setActiveIndex(Math.round(event.currentTarget.scrollLeft / width));
+            }}
+          >
+            {insights.map((insight, index) => (
+          <button key={insight.id} type="button" onFocus={() => setActiveIndex(index)} onClick={() => { setActiveIndex(index); setSelected(insight); }} className="flex min-w-full snap-center items-start gap-3 p-4 text-left active:scale-[0.99]">
+            <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${insightTone(insight)}`}>
+              {insight.urgencia === "alta" ? <AlertTriangle size={17} /> : <BrainCircuit size={17} />}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-ink-primary">{primary.titulo}</p>
-              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-muted">{primary.mensagem}</p>
+              <p className="text-sm font-bold text-ink-primary">{insight.titulo}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-muted">{insight.mensagem}</p>
               <p className="mt-2 font-mono text-[8px] uppercase text-ink-faint">
-                Confiança {primary.confianca} · amostra {primary.amostra}
-                {insights.length > 1 ? ` · +${insights.length - 1} sinal(is)` : ""}
+                Confiança {insight.confianca} · amostra {insight.amostra}
               </p>
             </div>
 
             <ChevronRight size={16} className="mt-1 shrink-0 text-ink-faint" />
           </button>
+            ))}
+          </div>
 
           {insights.length > 1 && (
             <div className="border-t border-surface-border/40 px-4 py-2.5">
-              <div className="flex gap-2 overflow-x-auto">
-                {insights.slice(1).map((insight) => (
+              <div className="flex items-center justify-center gap-1.5" aria-label={`${insights.length} insights disponíveis`}>
+                {insights.map((insight, index) => (
                   <button
                     key={insight.id}
                     type="button"
-                    onClick={() => setSelected(insight)}
-                    className="shrink-0 rounded-full border border-surface-border/60 bg-void/30 px-3 py-1.5 text-[9px] text-ink-muted"
-                  >
-                    {insight.titulo}
-                  </button>
+                    onClick={() => setActiveIndex(index)}
+                    aria-label={`Mostrar insight ${index + 1}: ${insight.titulo}`}
+                    className={`h-1.5 rounded-full transition-all ${index === activeIndex ? "w-5 bg-violet-300" : "w-1.5 bg-surface-border"}`}
+                  />
                 ))}
               </div>
             </div>
@@ -141,7 +152,7 @@ export function ContextualHealthIntelligence({
             </p>
             <button
               type="button"
-              onClick={() => router.push("/inteligencia")}
+              onClick={() => router.push(`/inteligencia?healthInsight=${encodeURIComponent(primary.id)}`)}
               className="ml-3 inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-400/20 bg-violet-400/[0.07] px-2.5 py-1 text-[9px] font-semibold text-violet-300 active:scale-95"
             >
               Central

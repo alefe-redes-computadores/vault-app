@@ -146,7 +146,14 @@ function buildUsePattern(context: HealthInsightContext, medication: Medication, 
   const last7d = recent(logs, now, 24 * 7);
   if (last7d.length < 4 && last24h.length < 2) return null;
   const shortest = shortestInterval(last7d);
-  const severity = severityForPattern(last7d.length, last24h.length, shortest);
+  const quantityOf = (dose: Dose) => typeof dose.quantidade === "number" && dose.quantidade > 0 ? dose.quantidade : 1;
+  const quantity7d = last7d.reduce((total, dose) => total + quantityOf(dose), 0);
+  const quantity24h = last24h.reduce((total, dose) => total + quantityOf(dose), 0);
+  const configuredQuantity = typeof medication.estoque_unidade_por_dose === "number" && medication.estoque_unidade_por_dose > 0
+    ? medication.estoque_unidade_por_dose
+    : 1;
+  const quantityConcentrated = quantity24h >= Math.max(6, configuredQuantity * 3);
+  const severity = quantityConcentrated ? "importante" : severityForPattern(last7d.length, last24h.length, shortest);
   const days = new Set(last7d.map((dose) => dose.data).filter(Boolean)).size;
 
   return {
@@ -155,7 +162,7 @@ function buildUsePattern(context: HealthInsightContext, medication: Medication, 
     kind: severity === "importante" ? "alert" : "pattern",
     categoria: "uso_sos",
     titulo: `${medication.nome}: uso SOS/extra concentrado`,
-    mensagem: `Foram registradas ${last7d.length} tomadas SOS/extra em ${days} dia(s), sendo ${last24h.length} nas últimas 24 horas. Isso descreve o histórico salvo; sozinho, não confirma superdosagem, tolerância ou uso inadequado.`,
+    mensagem: `Foram registradas ${last7d.length} tomadas SOS/extra, somando ${quantity7d} ${medication.estoque_unidade_medida || "unidade(s)"}, em ${days} dia(s). Nas últimas 24 horas: ${last24h.length} tomada(s), total de ${quantity24h}. Isso descreve o histórico salvo; sozinho, não confirma superdosagem, tolerância ou uso inadequado.`,
     urgencia: urgency(severity),
     gravidadeSeguranca: severity,
     confianca: last7d.length >= 7 ? "alta" : "media",
@@ -166,7 +173,9 @@ function buildUsePattern(context: HealthInsightContext, medication: Medication, 
     link: `/saude/medicamentos/historico?id=${medication.id}`,
     evidencias: [
       `${last7d.length} tomada(s) SOS/extra nos últimos 7 dias`,
+      `${quantity7d} ${medication.estoque_unidade_medida || "unidade(s)"} registradas no período`,
       `${last24h.length} tomada(s) SOS/extra nas últimas 24 horas`,
+      `${quantity24h} ${medication.estoque_unidade_medida || "unidade(s)"} registradas nas últimas 24 horas`,
       `${days} dia(s) com uso registrado`,
       ...(shortest !== null ? [`Menor intervalo observado: ${shortest} minuto(s)`] : []),
     ],

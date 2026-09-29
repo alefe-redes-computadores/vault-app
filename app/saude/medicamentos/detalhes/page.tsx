@@ -1,6 +1,7 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
+// VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
@@ -50,6 +51,7 @@ import {
   Info,
   LineChart,
   MapPin,
+  MoreHorizontal,
   Package,
   Phone,
   Pill,
@@ -97,6 +99,8 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import { useBiometric } from "@/hooks/useBiometric";
+import { isVaultNative } from "@/lib/native-runtime";
 
 import {
   PageTransition,
@@ -826,6 +830,18 @@ function MedicamentoDetalhesContent() {
       false
     );
 
+  const [deletePhrase, setDeletePhrase] = useState("");
+  const [deleteAuthorized, setDeleteAuthorized] = useState(false);
+  const {
+    authenticate: authenticateDeletion,
+    isAvailable: deletionBiometricAvailable,
+  } = useBiometric({
+    title: "Excluir medicamento",
+    subtitle: "Ação sensível do Vault",
+    description: "Confirme sua identidade para continuar.",
+    fallbackTitle: "Usar credencial do aparelho",
+  });
+
   const [
     isQuickDoseOpen,
     setIsQuickDoseOpen,
@@ -1473,6 +1489,12 @@ function MedicamentoDetalhesContent() {
 
   const menuOptions = [
     {
+      id: "editar-medicamento",
+      label: "Editar medicamento",
+      icon: Edit3,
+      path: `/saude/medicamentos/editar?id=${id}`,
+    },
+    {
       id:
         "nova-renovacao",
 
@@ -1483,7 +1505,7 @@ function MedicamentoDetalhesContent() {
         FileWarning,
 
       path:
-        `/saude/renovacao/nova?medicamento_id=${id}`,
+        `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`,
     },
 
     {
@@ -1514,9 +1536,7 @@ function MedicamentoDetalhesContent() {
         false
       );
 
-      // VAULT_MEDICATION_NAV_RELIABILITY_V70
-      if (typeof window !== "undefined") window.location.assign(path);
-      else router.push(path);
+      router.push(path);
     };
 
 
@@ -2601,6 +2621,27 @@ function MedicamentoDetalhesContent() {
       }
     };
 
+  const requestDelete = async () => {
+    trigger("vibrate");
+    setDeletePhrase("");
+    setDeleteAuthorized(false);
+
+    if (isVaultNative() && deletionBiometricAvailable) {
+      const authenticated = await authenticateDeletion();
+      if (!authenticated) {
+        setToastMessage({
+          text: "Exclusão cancelada: identidade não confirmada.",
+          type: "error",
+        });
+        window.setTimeout(() => setToastMessage(null), 3000);
+        return;
+      }
+      setDeleteAuthorized(true);
+    }
+
+    setShowDeleteModal(true);
+  };
+
   // ==========================================================
   // AÇÕES
   // ==========================================================
@@ -2923,9 +2964,7 @@ function MedicamentoDetalhesContent() {
                     "vibrate"
                   );
 
-                  router.replace(
-                    "/saude/medicamentos"
-                  );
+                  handleSafeBack();
                 }
               }
               aria-label="Voltar"
@@ -3001,7 +3040,7 @@ function MedicamentoDetalhesContent() {
                 aria-label="Mais ações"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-ice/20 bg-ice/10 text-ice transition-all active:scale-95"
               >
-                <Plus
+                <MoreHorizontal
                   size={
                     18
                   }
@@ -3016,7 +3055,7 @@ function MedicamentoDetalhesContent() {
                       "vibrate"
                     );
 
-                    typeof window !== "undefined" ? window.location.assign(`/saude/medicamentos/editar?id=${id}`) : router.push(`/saude/medicamentos/editar?id=${id}`);
+                    router.push(`/saude/medicamentos/editar?id=${id}`);
                   }
                 }
                 aria-label="Editar medicamento"
@@ -3147,13 +3186,27 @@ function MedicamentoDetalhesContent() {
 
                   <button
                     type="button"
+                    onClick={() => {
+                      setIsMenuFlutuanteOpen(false);
+                      void requestDelete();
+                    }}
+                    className="mt-1 flex w-full items-center gap-3 rounded-2xl border-t border-surface-border/50 px-3 py-2.5 text-left text-coral transition-colors hover:bg-coral/10 active:scale-[0.98]"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral">
+                      <Trash2 size={16} />
+                    </div>
+                    <span className="text-sm font-medium">Excluir medicamento</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={
                       () => {
                         setIsMenuFlutuanteOpen(
                           false
                         );
 
-                        typeof window !== "undefined" ? window.location.assign(`/saude/medicamentos/editar?id=${id}`) : router.push(`/saude/medicamentos/editar?id=${id}`);
+                        router.push(`/saude/medicamentos/editar?id=${id}`);
                       }
                     }
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-surface-raised active:scale-[0.98] sm:hidden"
@@ -4057,7 +4110,7 @@ function MedicamentoDetalhesContent() {
             type="button"
             onClick={() => {
               trigger("vibrate");
-              typeof window !== "undefined" ? window.location.assign(`/saude/medicamentos/historico?id=${id}`) : router.push(`/saude/medicamentos/historico?id=${id}`);
+              router.push(`/saude/medicamentos/historico?id=${id}`);
             }}
             className="flex w-full items-center justify-between gap-4 rounded-[24px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
           >
@@ -4618,6 +4671,11 @@ function MedicamentoDetalhesContent() {
                 }
                 iconClassName="bg-ice/10 text-ice"
                 label="Médico Prescritor"
+                action={medico?.id ? (
+                  <button type="button" onClick={() => router.push(`/saude/medicos/detalhes?id=${medico.id}`)} aria-label="Abrir detalhes do médico" className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice active:scale-95">
+                    <ChevronRight size={17} />
+                  </button>
+                ) : undefined}
               >
                 <p className="truncate text-sm font-bold text-ink-primary">
                   {medico?.nome ||
@@ -4659,7 +4717,11 @@ function MedicamentoDetalhesContent() {
                   iconClassName="bg-violet-400/10 text-violet-400"
                   label="Hospital"
                   action={
-                    hospital.endereco ? (
+                    <>
+                    <button type="button" onClick={() => router.push(`/saude/hospitais/detalhes?id=${hospital.id}`)} aria-label="Abrir detalhes do hospital" className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400 active:scale-95">
+                      <ChevronRight size={17} />
+                    </button>
+                    {hospital.endereco ? (
                       <button
                         type="button"
                         onClick={
@@ -4677,7 +4739,8 @@ function MedicamentoDetalhesContent() {
                           }
                         />
                       </button>
-                    ) : undefined
+                    ) : null}
+                    </>
                   }
                 >
                   <p className="truncate text-sm font-bold text-ink-primary">
@@ -4708,7 +4771,11 @@ function MedicamentoDetalhesContent() {
                   iconClassName="bg-emerald-400/10 text-emerald-400"
                   label="Local de Saúde"
                   action={
-                    local.endereco ? (
+                    <>
+                    <button type="button" onClick={() => router.push(`/saude/locais/detalhes?id=${local.id}`)} aria-label="Abrir detalhes do local" className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400 active:scale-95">
+                      <ChevronRight size={17} />
+                    </button>
+                    {local.endereco ? (
                       <button
                         type="button"
                         onClick={
@@ -4726,7 +4793,8 @@ function MedicamentoDetalhesContent() {
                           }
                         />
                       </button>
-                    ) : undefined
+                    ) : null}
+                    </>
                   }
                 >
                   <p className="truncate text-sm font-bold text-ink-primary">
@@ -4756,6 +4824,11 @@ function MedicamentoDetalhesContent() {
                   label="Farmácia Vinculada"
                   action={
                     <>
+                      {farmacia?.id && (
+                        <button type="button" onClick={() => router.push(`/saude/farmacias/detalhes?id=${farmacia.id}`)} aria-label="Abrir detalhes da farmácia" className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 active:scale-95">
+                          <ChevronRight size={17} />
+                        </button>
+                      )}
                       {farmacia?.telefone && (
                         <button
                           type="button"
@@ -5021,7 +5094,7 @@ function MedicamentoDetalhesContent() {
 
           {renovacoes.length >
             0 && (
-            <section className="space-y-3">
+            <section id="historico-aquisicoes" className="scroll-mt-24 space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-ink-muted">
@@ -5098,7 +5171,10 @@ function MedicamentoDetalhesContent() {
                           "sus";
 
                       return (
-                        <motion.article
+                        <motion.button
+                          type="button"
+                          onClick={() => renovacao.id && router.push(`/saude/renovacao/detalhes?id=${renovacao.id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`)}
+                          aria-label={`Abrir aquisição de ${formatDate(renovacao.data || renovacao.created_at)}`}
                           key={
                             renovacao.id ||
                             index
@@ -5124,7 +5200,7 @@ function MedicamentoDetalhesContent() {
                             height:
                               0,
                           }}
-                          className={`rounded-[22px] border bg-surface p-3.5 ${
+                          className={`w-full rounded-[22px] border bg-surface p-3.5 text-left transition-transform active:scale-[0.99] ${
                             semCusto
                               ? "border-emerald-500/30 bg-emerald-500/5"
                               : "border-surface-border"
@@ -5241,7 +5317,7 @@ function MedicamentoDetalhesContent() {
                                   : "—"}
                             </p>
                           </div>
-                        </motion.article>
+                        </motion.button>
                       );
                     }
                   )}
@@ -5376,47 +5452,36 @@ function MedicamentoDetalhesContent() {
           isOpen={
             showDeleteModal
           }
-          onClose={
-            () =>
-              setShowDeleteModal(
-                false
-              )
-          }
+          onClose={() => {
+            setShowDeleteModal(false);
+            setDeletePhrase("");
+            setDeleteAuthorized(false);
+          }}
           onConfirm={
             handleDelete
           }
           title="Excluir medicamento"
-          message={`Excluir permanentemente "${med.nome}"? As doses e renovações vinculadas serão removidas. Outros registros históricos relacionados serão preservados quando aplicável.`}
+          message={isVaultNative() && deleteAuthorized ? (
+            `Identidade confirmada. Excluir permanentemente "${med.nome}"? As doses e renovações vinculadas serão removidas.`
+          ) : (
+            <div className="space-y-3">
+              <p>Excluir permanentemente <strong className="text-ink-primary">{med.nome}</strong>? As doses e renovações vinculadas serão removidas.</p>
+              <label className="block">
+                <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-coral">Digite EXCLUIR para confirmar</span>
+                <input value={deletePhrase} onChange={(event) => setDeletePhrase(event.target.value.toUpperCase())} placeholder="EXCLUIR" className="w-full rounded-2xl border border-coral/25 bg-surface-raised px-4 py-3 text-center font-mono text-sm uppercase tracking-widest text-ink-primary outline-none focus:border-coral" />
+              </label>
+              <button type="button" disabled={deletePhrase !== "EXCLUIR" || isDeleting} onClick={() => void handleDelete()} className="min-h-12 w-full rounded-2xl bg-coral px-4 text-sm font-bold text-white disabled:opacity-35">Excluir medicamento</button>
+            </div>
+          )}
           confirmLabel="Excluir"
           cancelLabel="Cancelar"
           isLoading={
             isDeleting
           }
           type="danger"
+          showActions={isVaultNative() && deleteAuthorized}
         />
 
-        <button
-          type="button"
-          onClick={
-            () => {
-              trigger(
-                "vibrate"
-              );
-
-              setShowDeleteModal(
-                true
-              );
-            }
-          }
-          aria-label="Excluir medicamento"
-          className="fixed bottom-5 right-5 z-20 flex h-12 w-12 items-center justify-center rounded-2xl border border-coral/20 bg-coral/10 text-coral shadow-lg backdrop-blur-xl transition-all active:scale-95 sm:right-8"
-        >
-          <Trash2
-            size={
-              18
-            }
-          />
-        </button>
       </main>
     </PageTransition>
   );

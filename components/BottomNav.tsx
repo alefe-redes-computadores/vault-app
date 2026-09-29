@@ -750,7 +750,7 @@ export function BottomNav() {
       <nav
         className="vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity visible opacity-100"
       >
-        <div className="border-t border-surface-border/40 bg-surface px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-1.5">
+        <div className="border-t border-surface-border/40 bg-surface/95 px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-xl">
           <div
             className={`relative mx-auto grid max-w-md ${gridClass} items-end justify-items-center`}
           >
@@ -778,7 +778,7 @@ export function BottomNav() {
                       )
                     }
                     className={`
-                      relative isolate flex flex-col items-center gap-0.5 overflow-hidden rounded-xl px-2 py-1 transition-all duration-200 active:scale-95
+                      relative isolate flex min-h-11 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-2 py-1 transition-all duration-200 active:scale-95
                       ${
                         active
                           ? "text-ink-primary"

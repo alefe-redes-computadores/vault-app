@@ -63,14 +63,14 @@ export default function VaultIntelligencePage() {
     { label: "Compras", value: coverage?.acquisitions || 0, icon: WalletCards },
   ];
 
-  return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-8 text-ink-primary">
+  return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-5 header-safe-top text-ink-primary">
     <header className="mx-auto flex max-w-2xl items-start gap-3">
       <button type="button" onClick={() => router.replace("/mais")} className="rounded-2xl border border-surface-border bg-surface p-3 text-ink-muted" aria-label="Voltar para Mais"><ChevronLeft size={20}/></button>
       <div className="min-w-0"><p className="font-mono text-[9px] uppercase tracking-[0.25em] text-ice">VAULT INSIGHT</p><h1 className="text-2xl font-bold">Vault Insight</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prioriza vencimentos, inconsistências, organização e sinais financeiros sustentados pelos dados que o Vault realmente possui.</p></div>
     </header>
 
-    <section className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-violet-400/[0.06]">
-      <div className="flex items-start gap-3 px-4 py-3"><div className="rounded-2xl bg-ice/10 p-3 text-ice"><ShieldCheck size={22}/></div><div><h2 className="font-bold">Leitura local e explicável</h2><p className="mt-1 text-xs leading-relaxed text-ink-muted">O motor cruza apenas metadados da pessoa ativa. Não abre senhas, número completo de cartão ou CVV e não promete segurança absoluta.</p></div></div>
+    <section className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-surface-border/70 bg-gradient-to-br from-emerald-400/[0.06] via-surface to-violet-400/[0.05]">
+      <div className="flex items-start gap-3 px-4 py-3"><div className="rounded-2xl bg-emerald-400/10 p-3 text-emerald-300"><ShieldCheck size={22}/></div><div><h2 className="font-bold">Leitura local e explicável</h2><p className="mt-1 text-xs leading-relaxed text-ink-muted">O motor cruza apenas metadados da pessoa ativa. Não abre senhas, número completo de cartão ou CVV e não promete segurança absoluta.</p></div></div>
       <div className="grid grid-cols-5 border-t border-surface-border/50">{counters.map(({ label, value, icon: Icon }) => <div key={label} className="flex min-w-0 flex-col items-center border-r border-surface-border/40 px-1 py-2 last:border-r-0"><Icon size={15} className="text-ice"/><strong className="mt-1 text-base">{value}</strong><span className="max-w-full truncate text-[8px] uppercase text-ink-faint">{label}</span></div>)}</div>
     </section>
 
@@ -78,7 +78,7 @@ export default function VaultIntelligencePage() {
     <section className="mx-auto mt-6 max-w-2xl">
       <button type="button" onClick={() => router.push("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
-        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Saúde & histórico</p><p className="mt-1 text-xs text-ink-muted">Briefing, revisão semanal, timeline, padrões e preparação para consulta.</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Brain V4</p><p className="mt-1 text-xs text-ink-muted">Inteligência de saúde: briefing, padrões, timeline e preparação para consulta.</p></div>
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
     </section>

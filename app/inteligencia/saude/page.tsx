@@ -167,9 +167,9 @@ export default function HealthIntelligenceLabPage() {
           </button>
           <div className="min-w-0">
             <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-violet-300">
-              VAULT INTELLIGENCE
+              BRAIN V4
             </p>
-            <h1 className="text-2xl font-bold">Saúde longitudinal</h1>
+            <h1 className="text-2xl font-bold">Inteligência de saúde</h1>
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               Timeline, evidências, padrões e preparação para consulta. O Vault descreve o histórico registrado; não faz diagnóstico.
             </p>

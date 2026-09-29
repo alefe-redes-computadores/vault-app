@@ -6,10 +6,6 @@ import {
   useEffect,
 } from "react";
 
-import {
-  usePathname,
-} from "next/navigation";
-
 import type {
   Viewport,
 } from "next";
@@ -46,13 +42,6 @@ import {
   PersonProvider,
 } from "@/contexts/PersonContext";
 
-import {
-  PersonSelector,
-} from "@/components/PersonSelector";
-
-import {
-  SyncStatusIndicator,
-} from "@/components/SyncStatusIndicator";
 
 import {
   ToastProvider,
@@ -127,15 +116,6 @@ export default function RootLayout({
   children:
     React.ReactNode;
 }) {
-  const pathname =
-    usePathname();
-
-  const isAuthPage =
-    pathname ===
-      "/login" ||
-    pathname ===
-      "/auth/callback";
-
   // ==========================================================
   // SERVICE WORKER
   // ==========================================================
@@ -226,22 +206,6 @@ export default function RootLayout({
                   <Providers>
                   <SplashScreen>
                     <BiometricLock>
-                      {!isAuthPage && (
-                        <header className="app-system-header sticky top-0 z-30 flex items-center justify-between border-b border-surface-border/30 bg-void/82 px-5 pb-3 pt-3 backdrop-blur-xl">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <SyncStatusIndicator />
-                          </div>
-
-                          <Suspense
-                            fallback={
-                              <div className="h-8 w-8 animate-pulse rounded-full bg-surface-raised" />
-                            }
-                          >
-                            <PersonSelector />
-                          </Suspense>
-                        </header>
-                      )}
-
                       {
                         children
                       }

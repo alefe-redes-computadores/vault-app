@@ -1335,6 +1335,7 @@ export default function LocaisPage() {
                       index *
                       0.025
                     }
+                    density="compact"
                     icon={
                       <Icon
                         size={
@@ -1390,7 +1391,7 @@ export default function LocaisPage() {
                       </div>
                     )}
 
-                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-2 sm:grid-cols-4">
+                    <div className="mt-2 hidden grid-cols-4 gap-2 border-t border-surface-border/40 pt-2 sm:grid">
                       <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
                         <p className="flex items-center justify-center gap-1 font-mono text-[9px] uppercase text-ink-muted">
                           <Calendar
