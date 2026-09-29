@@ -699,6 +699,42 @@ function MedicamentoDetalhesContent() {
   } =
     useHapticFeedback();
 
+  // VAULT_SAFE_BACK_V71_1
+  // WebView/PWA pode abrir a tela sem histórico interno confiável.
+  // Tenta o histórico e possui fallback determinístico para a lista.
+  const handleSafeBack =
+    () => {
+      trigger("vibrate");
+
+      if (
+        typeof window !== "undefined" &&
+        window.history.length > 1
+      ) {
+        router.back();
+
+        window.setTimeout(
+          () => {
+            if (
+              window.location.pathname.includes(
+                "/saude/medicamentos/detalhes"
+              )
+            ) {
+              router.replace(
+                "/saude/medicamentos"
+              );
+            }
+          },
+          350
+        );
+
+        return;
+      }
+
+      router.replace(
+        "/saude/medicamentos"
+      );
+    };
+
   const {
     deleteMedicamento,
     getMedicamento,

@@ -107,6 +107,10 @@ import {
 } from "@/components/ui/Input";
 
 import {
+  ListSearch,
+} from "@/components/list/ListSearch";
+
+import {
   ListCard,
 } from "@/components/list";
 
@@ -1800,42 +1804,21 @@ export default function RedeSaudePage() {
 
           {activeTab !==
             "visao-geral" && (
-            <div className="relative mt-4">
-              <Search
-                size={
-                  16
-                }
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-              />
-
-              <Input
+            <div className="mt-3 flex justify-end">
+              <ListSearch
+                value={search}
+                onChange={setSearch}
                 placeholder={`Buscar ${
-                  activeTab ===
-                  "medicos"
+                  activeTab === "medicos"
                     ? "médico"
-                    : activeTab ===
-                        "farmacias"
+                    : activeTab === "farmacias"
                       ? "farmácia"
-                      : activeTab ===
-                          "hospitais"
+                      : activeTab === "hospitais"
                         ? "hospital"
-                        : activeTab ===
-                            "locais"
+                        : activeTab === "locais"
                           ? "local"
                           : "tratamento"
                 }...`}
-                value={
-                  search
-                }
-                onChange={
-                  (
-                    event
-                  ) =>
-                    setSearch(
-                      event.target.value
-                    )
-                }
-                className="h-11 w-full rounded-2xl bg-surface-raised/60 pl-9 text-sm"
               />
             </div>
           )}

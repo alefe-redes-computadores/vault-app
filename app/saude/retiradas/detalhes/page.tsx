@@ -34,6 +34,14 @@ import {
 } from "@/hooks/useRetiradas";
 
 import {
+  useMedicamentos,
+} from "@/hooks/useMedicamentos";
+
+import {
+  MedicationFormatIcon,
+} from "@/components/saude/MedicationFormatIcon";
+
+import {
   useMedicos,
 } from "@/hooks/useMedicos";
 
@@ -102,6 +110,11 @@ function DetalhesRetiradaContent() {
     deleteRetirada,
   } =
     useRetiradas();
+
+  const {
+    medicamentos = [],
+  } =
+    useMedicamentos();
 
   const {
     medicos = [],
@@ -214,6 +227,15 @@ function DetalhesRetiradaContent() {
       </main>
     );
   }
+
+  const medicamento =
+    medicamentos.find(
+      (
+        item
+      ) =>
+        item.id ===
+        retirada.medicamento_id
+    );
 
   const medico =
     medicos.find(
@@ -612,7 +634,9 @@ function DetalhesRetiradaContent() {
           <div className="rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface p-5">
             <div className="flex items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                <Pill
+                <MedicationFormatIcon
+                  formato={medicamento?.formato}
+                  cores={medicamento?.cores}
                   size={21}
                 />
               </div>

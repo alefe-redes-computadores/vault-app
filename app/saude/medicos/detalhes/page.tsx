@@ -2152,7 +2152,7 @@ function DetalhesMedicoContent() {
                             );
 
                             router.push(
-                              `/saude/cid/detalhes?id=${cid.id}`
+                              `/saude/cids/detalhes?id=${cid.id}`
                             );
                           }}
                         />

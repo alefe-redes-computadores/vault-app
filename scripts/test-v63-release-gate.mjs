@@ -64,6 +64,7 @@ const contracts = [
   "scripts/test-v64-super-final-contract.mjs",
   "scripts/test-vault-auth-singleton-v63-contract.mjs",
   "scripts/test-vault-offline-session-v62-contract.mjs",
+  "scripts/test-v71-1-empirical-repair-contract.mjs",
 ];
 
 for (const contract of contracts) {
