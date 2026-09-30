@@ -53,7 +53,7 @@ export function ListSort({
   };
 
   return (
-    <div className={`relative shrink-0 ${className}`}>
+    <div className={`shrink-0 ${className}`}>
       <button
         type="button"
         onClick={() => {
@@ -95,7 +95,6 @@ export function ListSort({
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop invisível */}
             <motion.button
               type="button"
               aria-label="Fechar ordenação"
@@ -103,7 +102,7 @@ export function ListSort({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 z-40 cursor-default bg-transparent"
+              className="fixed inset-0 z-[100] bg-black/65 backdrop-blur-sm"
             />
 
             {/* Menu */}
@@ -127,9 +126,9 @@ export function ListSort({
                 duration: 0.15,
               }}
               className="
-                absolute right-0 top-12 z-50
-                w-44 overflow-hidden
-                rounded-[20px]
+                fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[101]
+                mx-auto w-auto max-w-lg overflow-hidden
+                rounded-[24px]
                 border border-surface-border/60
                 bg-surface
                 p-1.5

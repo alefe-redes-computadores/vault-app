@@ -540,6 +540,7 @@ export default function HospitaisPage() {
 
                 return (
                   <ListCard
+                    density="compact"
                     key={
                       hospital.id
                     }

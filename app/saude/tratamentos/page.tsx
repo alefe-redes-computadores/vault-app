@@ -657,6 +657,14 @@ function TratamentoListContent() {
                 : `${filteredList.length} resultados`
           }
         >
+          {listaEnriquecida.length > 0 && (
+            <ListSearch
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar tratamento..."
+            />
+          )}
+
           <ListFilters
             onClear={
               hasFilters
@@ -752,22 +760,6 @@ function TratamentoListContent() {
             </button>
           </ListFilters>
         </ListPageHeader>
-
-        {/* ====================================================
-            BUSCA
-            ==================================================== */}
-
-        {listaEnriquecida.length > 0 && (
-          <section className="px-5 pt-3">
-            <div className="mx-auto max-w-3xl">
-              <ListSearch
-                value={search}
-                onChange={setSearch}
-                placeholder="Buscar tratamento..."
-              />
-            </div>
-          </section>
-        )}
 
         {/* ====================================================
             LISTA

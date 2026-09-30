@@ -32,13 +32,41 @@ const PERSONAL_LISTS = new Set([
   "/favoritos",
 ]);
 
+const HEALTH_HUB_LISTS = new Set([
+  "/saude/medicamentos",
+  "/saude/tratamentos",
+  "/saude/renovacao",
+  "/saude/retiradas",
+  "/saude/consultas",
+  "/saude/exames",
+  "/saude/cirurgias",
+  "/saude/cids",
+  "/saude/medicos",
+  "/saude/farmacias",
+  "/saude/hospitais",
+  "/saude/locais",
+  "/saude/registros",
+  "/saude/documentos",
+  "/saude/hidratacao",
+  "/saude/lembretes",
+  "/saude/timeline",
+  "/saude/plano-seguranca",
+]);
+
 function getCanonicalBackUrl(pathname: string) {
   if (PERSONAL_LISTS.has(pathname)) {
     return "/mais";
   }
 
+  if (HEALTH_HUB_LISTS.has(pathname)) {
+    return "/saude/rede";
+  }
+
   if (pathname.startsWith("/saude/")) {
-    return "/";
+    const segments = pathname.split("/").filter(Boolean);
+    return segments.length > 2
+      ? `/${segments.slice(0, 2).join("/")}`
+      : "/saude/rede";
   }
 
   if (pathname === "/documentos") {
@@ -137,7 +165,7 @@ export function ListPageHeader({
       </div>
 
       {children && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
           {children}
         </div>
       )}

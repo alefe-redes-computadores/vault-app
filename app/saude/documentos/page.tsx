@@ -116,6 +116,7 @@ import {
 import {
   Input,
 } from "@/components/ui/Input";
+import { ListSearch } from "@/components/list";
 
 import {
   BottomSheet,
@@ -4402,8 +4403,7 @@ export default function DocumentsPage() {
                       "vibrate"
                     );
 
-                    // VAULT_RELIABLE_PARENT_NAV_V72: /saude/documentos
-                router.replace("/saude/documentos");
+                    router.replace("/saude/rede");
                   }
                 }
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised active:scale-95"
@@ -4480,28 +4480,11 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          <div className="relative mt-4">
-            <Search
-              size={
-                15
-              }
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-            />
-
-            <Input
+          <div className="mt-3 flex min-w-0 items-center gap-2">
+            <ListSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
               placeholder="Buscar documento, medicamento, médico, exame..."
-              value={
-                searchQuery
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  setSearchQuery(
-                    event.target.value
-                  )
-              }
-              className="border-surface-border/50 bg-surface-raised pl-9 text-sm"
             />
           </div>
         </header>

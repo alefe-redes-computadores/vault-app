@@ -47,6 +47,7 @@ import {
   ListCard,
   ListFilters,
   ListPageHeader,
+  ListSearch,
 } from "@/components/list";
 
 import type {
@@ -98,6 +99,14 @@ function getTodayISO(): string {
     );
 
   return `${year}-${month}-${day}`;
+}
+
+function normalizeSearch(value?: string): string {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function formatDateDisplay(
@@ -218,6 +227,8 @@ export default function CirurgiasPage() {
     useState<FiltroStatus>(
       "todos"
     );
+
+  const [search, setSearch] = useState("");
 
   // ==========================================================
   // CADASTROS GLOBAIS
@@ -379,23 +390,20 @@ export default function CirurgiasPage() {
 
   const listaExibida =
     useMemo(() => {
-      if (
-        filtroStatus ===
-        "todos"
-      ) {
-        return listaBase;
-      }
-
-      return listaBase.filter(
-        (
-          cirurgia
-        ) =>
-          cirurgia.status ===
-          filtroStatus
-      );
+      const term = normalizeSearch(search);
+      return listaBase.filter((cirurgia) => {
+        if (filtroStatus !== "todos" && cirurgia.status !== filtroStatus) return false;
+        if (!term) return true;
+        const medico = cirurgia.medico_id ? medicosMap.get(cirurgia.medico_id)?.nome : "";
+        const hospital = cirurgia.hospital_id ? hospitaisMap.get(cirurgia.hospital_id)?.nome : "";
+        return normalizeSearch([cirurgia.procedimento, medico, hospital].filter(Boolean).join(" ")).includes(term);
+      });
     }, [
       listaBase,
       filtroStatus,
+      search,
+      medicosMap,
+      hospitaisMap,
     ]);
 
   // ==========================================================
@@ -509,7 +517,7 @@ export default function CirurgiasPage() {
           }
           iconColor="text-coral"
         >
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised p-1">
+          <div className="order-3 grid w-full grid-cols-2 gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised p-1">
             <button
               type="button"
               onClick={() => {
@@ -569,7 +577,16 @@ export default function CirurgiasPage() {
             </button>
           </div>
 
+          <ListSearch
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar cirurgia, médico ou hospital..."
+            className="order-1"
+          />
+
           <ListFilters
+            className="order-2"
+            activeCount={(filtroStatus !== "todos" ? 1 : 0)}
             onClear={
               handleClearFilters
             }

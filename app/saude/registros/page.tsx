@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertTriangle, ArrowLeft, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Droplets, FileDown, HeartPulse, Pill, Plus, Search, Stethoscope, X } from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeft, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Droplets, FileDown, HeartPulse, Pill, Plus, Stethoscope } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { ListFilters, ListSearch } from "@/components/list";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useAllDoseLogs } from "@/hooks/useDoseLogs";
@@ -54,7 +55,7 @@ export default function RegistrosSaudePage() {
   return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
     <header className="sticky top-0 z-20 border-b border-surface-border/40 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl print:static print:bg-white">
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => router.replace("/")} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised print:hidden" aria-label="Voltar"><ArrowLeft size={18}/></button>
+        <button type="button" onClick={() => router.replace("/saude/rede")} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised print:hidden" aria-label="Voltar à Central de Saúde"><ArrowLeft size={18}/></button>
         <div className="min-w-0 flex-1"><p className="font-mono text-[9px] uppercase tracking-[0.24em] text-ice">Prontuário clínico</p><h1 className="truncate font-display text-xl font-semibold text-ink-primary">Linha de cuidado</h1><p className="text-[10px] text-ink-muted">Registros e doses, sem substituir avaliação profissional</p></div>
         <button type="button" onClick={() => router.push("/saude/registros/novo")} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice text-void print:hidden" aria-label="Novo registro"><Plus size={20}/></button>
       </div>
@@ -66,8 +67,12 @@ export default function RegistrosSaudePage() {
         <div className="mt-4 grid grid-cols-3 gap-2"><Metric label="Registros" value={stats.records}/><Metric label="Doses" value={stats.doses}/><Metric label="Destaques" value={stats.alerts} alert={stats.alerts>0}/></div>
         <div className="mt-3 grid grid-cols-2 gap-2 print:hidden"><button type="button" onClick={() => router.push("/saude/registros/evolucao")} className="flex items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised py-2.5 text-xs font-semibold"><BarChart3 size={15} className="text-violet-300"/>Ver evolução</button><button type="button" onClick={() => router.push("/saude/registros/relatorio")} className="flex items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised py-2.5 text-xs font-semibold"><FileDown size={15} className="text-emerald-300"/>Resumo clínico</button></div>
       </div>
-      <div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar na linha clínica" className="h-11 w-full rounded-2xl border border-surface-border bg-surface pl-9 pr-10 text-sm outline-none focus:border-ice/50"/>{search&&<button type="button" onClick={()=>setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-2"><X size={14}/></button>}</div>
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none print:hidden">{([['todos','Tudo'],['sintoma','Sintomas'],['medicao','Medições'],['hidratacao','Água'],['dose','Doses']] as [ViewFilter,string][]).map(([key,label])=><button key={key} type="button" onClick={()=>selectFilter(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${filter===key?'border-ice bg-ice/15 text-ice':'border-surface-border bg-surface-raised text-ink-muted'}`}>{label}</button>)}</div>
+      <div className="flex min-w-0 items-center gap-2 print:hidden">
+        <ListSearch value={search} onChange={setSearch} placeholder="Buscar na linha clínica" />
+        <ListFilters activeCount={filter === "todos" ? 0 : 1} onClear={() => setFilter("todos")} title="Filtrar linha de cuidado">
+          {([['todos','Tudo'],['sintoma','Sintomas'],['medicao','Medições'],['hidratacao','Água'],['dose','Doses']] as [ViewFilter,string][]).map(([key,label])=><button key={key} type="button" onClick={()=>selectFilter(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${filter===key?'border-ice bg-ice/15 text-ice':'border-surface-border bg-surface-raised text-ink-muted'}`}>{label}</button>)}
+        </ListFilters>
+      </div>
       {visibleEvents.length===0?<EmptyState icon={Activity} title="Nenhum evento encontrado" description={month.events.length?"Ajuste a busca ou o filtro selecionado.":"Nenhum registro ou dose foi encontrado neste período."} actionLabel="Novo registro" onAction={()=>router.push('/saude/registros/novo')}/>:month.weeks.map(week=>{const events=week.events.filter(e=>visibleIds.has(e.id));if(!events.length)return null;const forceOpen=Boolean(search.trim())||filter!=="todos";const isCurrentWeek=week.events.some(e=>e.date===localDateKey());return <details key={week.key} open={forceOpen||isCurrentWeek} className="group overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface"><summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3"><div><p className="font-mono text-[9px] uppercase tracking-widest text-ink-faint">Semana</p><h2 className="text-sm font-semibold text-ink-primary">{week.label}</h2></div><span className="flex items-center gap-2 text-xs text-ink-muted">{events.length} eventos<ChevronDown size={15} className="transition group-open:rotate-180"/></span></summary><div className="space-y-2 border-t border-surface-border/50 bg-void/20 p-2">{buildClinicalDays(events).map(day=><DayGroup key={day.key} date={day.key} label={day.label} events={day.events} forceOpen={forceOpen} onOpenRecord={id=>router.push(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`)}/>)}</div></details>})}
       <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-3 text-[11px] leading-relaxed text-ink-muted"><AlertTriangle size={14} className="mr-2 inline text-amber-300"/>Destaques são leituras dos registros nas datas informadas. O Vault não diagnostica, não prescreve e não recomenda alterar dose.</div>
     </section>

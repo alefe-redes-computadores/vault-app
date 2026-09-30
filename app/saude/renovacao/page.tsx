@@ -756,6 +756,7 @@ export default function RenovacoesPage() {
               setSearch
             }
             placeholder="Buscar medicamento, notas ou lote..."
+            className="order-1"
           />
 
           {/* ==================================================
@@ -764,7 +765,7 @@ export default function RenovacoesPage() {
 
           {indicadores.total >
             0 && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="order-3 grid w-full grid-cols-4 gap-2">
               <div className="rounded-2xl border border-surface-border/40 bg-surface-raised p-2.5 text-center">
                 <p className="font-mono text-base font-bold text-ink-primary">
                   {
@@ -815,16 +816,18 @@ export default function RenovacoesPage() {
             </div>
           )}
 
-          <div className="rounded-[22px] border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+          <div className="order-4 w-full rounded-[22px] border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
             <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Compras registradas</p><p className="mt-1 text-xs text-ink-muted">{comprasRegistradas.length} aquisições com valor informado</p></div><p className="font-mono text-lg font-bold text-ink-primary">{formatCurrency(totalCompras)}</p></div>
           </div>
-          {datasFuturas > 0 && <div className="rounded-2xl border border-amber-400/25 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-300"><strong>Data futura: confira este registro.</strong> {datasFuturas} item(ns) não entram como gasto atual até a data informada.</div>}
+          {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-amber-400/25 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-300"><strong>Data futura: confira este registro.</strong> {datasFuturas} item(ns) não entram como gasto atual até a data informada.</div>}
 
           {/* ==================================================
               FILTERS
               ================================================== */}
 
           <ListFilters
+            className="order-2"
+            activeCount={hasActiveFilters ? 1 : 0}
             onClear={
               handleClearFilters
             }

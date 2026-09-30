@@ -33,7 +33,6 @@ import {
   ListFilters,
   ListPageHeader,
   ListSearch,
-  ListSort,
 } from "@/components/list";
 
 import { useMedicos } from "@/hooks/useMedicos";
@@ -853,6 +852,8 @@ export default function MedicosPage() {
       setFiltroLocal(
         null
       );
+
+      setSortBy("name");
     };
 
   // ==========================================================
@@ -897,35 +898,28 @@ export default function MedicosPage() {
           }
           iconColor="text-ice"
         >
-          <div className="flex items-center gap-2">
-            <ListSearch
-              value={
-                search
-              }
-              onChange={
-                setSearch
-              }
-              placeholder="Buscar nome, especialidade ou CRM..."
-            />
-
-            <ListSort
-              options={
-                SORT_OPTIONS
-              }
-              value={
-                sortBy
-              }
-              onChange={
-                handleSortChange
-              }
-            />
-          </div>
+          <ListSearch
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar nome, especialidade ou CRM..."
+          />
 
           <ListFilters
             onClear={
               handleClearFilters
             }
+            activeCount={hasFilters || sortBy !== "name" ? 1 : 0}
           >
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => handleSortChange(option.value)}
+                className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${sortBy === option.value ? "border-ice bg-ice/20 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}
+              >
+                Ordenar: {option.label}
+              </button>
+            ))}
             {tratamentosUnicos
               .slice(
                 0,
@@ -1114,6 +1108,7 @@ export default function MedicosPage() {
 
                 return (
                   <ListCard
+                    density="compact"
                     key={
                       medico.id
                     }

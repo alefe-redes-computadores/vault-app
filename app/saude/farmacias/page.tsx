@@ -683,6 +683,7 @@ export default function FarmaciasPage() {
 
                 return (
                   <ListCard
+                    density="compact"
                     key={
                       farmacia.id
                     }

@@ -63,6 +63,7 @@ import {
   ListCard,
   ListFilters,
   ListPageHeader,
+  ListSearch,
 } from "@/components/list";
 
 import type {
@@ -115,6 +116,14 @@ function getTodayISO(): string {
     );
 
   return `${year}-${month}-${day}`;
+}
+
+function normalizeSearch(value?: string): string {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function getCivilDate(
@@ -319,6 +328,8 @@ export default function ConsultasPage() {
     useState<FiltroStatus>(
       "todos"
     );
+
+  const [search, setSearch] = useState("");
 
   // ==========================================================
   // GLOBAL INDEXES
@@ -585,24 +596,23 @@ export default function ConsultasPage() {
   const listaExibida =
     useMemo(
       () => {
-        if (
-          filtroStatus ===
-          "todos"
-        ) {
-          return listaBase;
-        }
-
-        return listaBase.filter(
-          (
-            consulta
-          ) =>
-            consulta.status ===
-            filtroStatus
-        );
+        const term = normalizeSearch(search);
+        return listaBase.filter((consulta) => {
+          if (filtroStatus !== "todos" && consulta.status !== filtroStatus) return false;
+          if (!term) return true;
+          const medico = consulta.medico_id ? medicosMap.get(consulta.medico_id)?.nome : "";
+          const hospital = consulta.hospital_id ? hospitaisMap.get(consulta.hospital_id)?.nome : "";
+          const local = consulta.local_id ? locaisMap.get(consulta.local_id)?.nome : "";
+          return normalizeSearch([medico, hospital, local, consulta.motivo].filter(Boolean).join(" ")).includes(term);
+        });
       },
       [
         listaBase,
         filtroStatus,
+        search,
+        medicosMap,
+        hospitaisMap,
+        locaisMap,
       ]
     );
 
@@ -739,7 +749,7 @@ export default function ConsultasPage() {
           }
           iconColor="text-ice"
         >
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised p-1">
+          <div className="order-3 grid w-full grid-cols-2 gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised p-1">
             <button
               type="button"
               onClick={
@@ -803,7 +813,16 @@ export default function ConsultasPage() {
             </button>
           </div>
 
+          <ListSearch
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar médico, local ou motivo..."
+            className="order-1"
+          />
+
           <ListFilters
+            className="order-2"
+            activeCount={(filtroStatus !== "todos" ? 1 : 0)}
             onClear={
               handleClearFilters
             }

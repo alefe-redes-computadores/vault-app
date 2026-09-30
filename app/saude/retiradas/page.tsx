@@ -307,7 +307,7 @@ export default function RetiradasPage() {
                 type="button"
                 onClick={() => {
                   trigger("vibrate");
-                  router.replace("/saude/medicamentos");
+                  router.replace("/saude/rede");
                 }}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95"
                 aria-label="Voltar para medicamentos"
