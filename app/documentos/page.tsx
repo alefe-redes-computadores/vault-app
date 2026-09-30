@@ -47,6 +47,7 @@ import {
 import {
   Input,
 } from "@/components/ui/Input";
+import { ListSearch } from "@/components/list/ListSearch";
 import {
   CardListSkeleton,
 } from "@/components/loading/CardListSkeleton";
@@ -1167,47 +1168,13 @@ export default function DocumentsPage() {
                 BUSCA
                 ================================================== */}
 
-            <div className="relative mt-4">
-              <Search
-                size={
-                  16
-                }
-                className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-ink-muted"
-              />
-
-              <Input
-                placeholder="Buscar por nome, número ou nota..."
-                value={
-                  searchQuery
-                }
-                onChange={(
-                  event
-                ) =>
-                  setSearchQuery(
-                    event.target.value
-                  )
-                }
-                className="border-surface-border/45 bg-surface-raised pl-10 pr-10"
-              />
-
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSearchQuery(
-                      ""
-                    )
-                  }
-                  className="absolute right-3 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-transform active:scale-90"
-                  aria-label="Limpar busca"
-                >
-                  <X
-                    size={
-                      14
-                    }
-                  />
-                </button>
-              )}
+            {/* VAULT_DOCUMENT_TOOLBAR_V79 */}
+            <div className="mt-4 flex items-center gap-2">
+              <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nome, número ou nota..." />
+              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
+                <SlidersHorizontal size={16} />
+                {activeFilterCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1 text-[9px] font-bold text-void">{activeFilterCount}</span>}
+              </button>
             </div>
 
             {/* ==================================================
@@ -1215,49 +1182,6 @@ export default function DocumentsPage() {
                 ================================================== */}
 
             <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  setShowFilters(
-                    (
-                      previous
-                    ) =>
-                      !previous
-                  );
-                }}
-                className={`relative flex h-10 items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-all active:scale-95 ${
-                  hasActiveFilters ||
-                  showFilters
-                    ? "border-ice/30 bg-ice/10 text-ice"
-                    : "border-surface-border/45 bg-surface-raised text-ink-muted"
-                }`}
-                aria-label="Abrir filtros"
-                aria-pressed={
-                  showFilters
-                }
-              >
-                <SlidersHorizontal
-                  size={
-                    15
-                  }
-                />
-
-                Filtros
-
-                {activeFilterCount >
-                  0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1.5 font-mono text-[9px] font-bold text-void">
-                    {
-                      activeFilterCount
-                    }
-                  </span>
-                )}
-              </button>
-
               <div className="ml-auto flex items-center gap-2">
                 <button
                   type="button"

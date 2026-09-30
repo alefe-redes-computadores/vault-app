@@ -14,7 +14,6 @@ import {
   Clock,
   Pill,
 
-  Search,
   Store,
   XCircle,
 } from "lucide-react";
@@ -29,6 +28,8 @@ import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visu
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { EmptyState } from "@/components/EmptyState";
+import { ListSearch } from "@/components/list/ListSearch";
+import { ListFilters } from "@/components/list/ListFilters";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import type { Retirada, RetiradaStatus } from "@/lib/types";
@@ -346,48 +347,15 @@ export default function RetiradasPage() {
             ))}
           </div>
 
-          <div className="relative mt-3">
-            <Search
-              size={15}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-            />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar medicamento, farmácia ou observação..."
-              className="w-full rounded-2xl border border-surface-border bg-surface py-3 pl-10 pr-4 text-sm text-ink-primary outline-none focus:border-ice/50"
-            />
-          </div>
-
-          <details className="group mt-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-2">
-            <summary className="cursor-pointer list-none text-xs font-semibold text-ice">Filtrar retiradas{status !== "todos" ? " · filtro ativo" : ""}</summary>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {[
-                ["todos", "Todos"],
-                ["agendada", "Agendadas"],
-                ["atrasada", "Atrasadas"],
-                ["realizada", "Realizadas"],
-                ["nao_realizada", "Não realizadas"],
-                ["cancelada", "Canceladas"],
-              ].map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    trigger("vibrate");
-                    setStatus(key as StatusFilter);
-                  }}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${
-                    status === key
-                      ? "border-ice bg-ice/15 text-ice"
-                      : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                  }`}
-                >
-                  {label}
-                </button>
+          {/* VAULT_COMPACT_SEARCH_FILTER_V79 */}
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." />
+            <ListFilters title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
+              {[["todos", "Todos"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (
+                <button key={key} type="button" onClick={() => { trigger("vibrate"); setStatus(key as StatusFilter); }} className={`shrink-0 rounded-full border px-3 py-2 text-[10px] font-bold uppercase ${status === key ? "border-ice bg-ice/15 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{label}</button>
               ))}
-            </div>
-          </details>
+            </ListFilters>
+          </div>
         </header>
 
         <section className="space-y-4 px-5 pt-4">

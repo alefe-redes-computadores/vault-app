@@ -1757,7 +1757,8 @@ export default function RedeSaudePage() {
             </div>
           </div>
 
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {/* VAULT_HEALTH_NETWORK_DISCOVERY_V79 */}
+          <div className="mt-4 grid grid-cols-3 gap-2">
             {tabs.map(
               (
                 tab
@@ -1781,7 +1782,7 @@ export default function RedeSaudePage() {
                           tab.id
                         )
                     }
-                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-95 ${
+                    className={`flex min-w-0 items-center justify-center gap-1.5 rounded-2xl border px-2 py-2 text-[11px] font-medium transition-all active:scale-95 ${
                       active
                         ? "border-ice bg-ice/12 text-ice"
                         : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
@@ -1877,6 +1878,11 @@ export default function RedeSaudePage() {
                 }}
                 className="space-y-4"
               >
+                <button type="button" onClick={() => router.push("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.055] p-3.5 text-left active:scale-[0.985]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><Activity size={19} /></div>
+                  <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">Inteligência de saúde</p><p className="text-[10px] text-ink-muted">Brain V4 · contexto, padrões e preparação para consulta</p></div><ArrowLeft size={16} className="rotate-180 text-violet-300" />
+                </button>
+
                 {alertas.length >
                   0 && (
                   <div className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm">

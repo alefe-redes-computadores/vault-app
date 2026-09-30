@@ -81,6 +81,7 @@ import { OverdueDoseNotificationReconciler } from "@/components/OverdueDoseNotif
 import { ScheduledDoseNotificationReconciler } from "@/components/ScheduledDoseNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
 import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
+import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
 
 // ============================================================
 // NOTIFICATION ACTION DATA
@@ -1085,6 +1086,7 @@ export function Providers({
       <InsightNotificationReconciler />
       <OverdueDoseNotificationReconciler />
       <ScheduledDoseNotificationReconciler />
+      <GlobalSyncIssueAlert />
         <div className="min-h-screen pb-24">
           <Suspense
             fallback={

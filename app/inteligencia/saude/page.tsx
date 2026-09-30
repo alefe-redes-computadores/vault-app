@@ -92,6 +92,8 @@ export default function HealthIntelligenceLabPage() {
   const [signalsExpanded, setSignalsExpanded] = useState(false);
   const [brainHealthExpanded, setBrainHealthExpanded] = useState(false);
   const [feedbackExpanded, setFeedbackExpanded] = useState(false);
+  const [dailyExpanded, setDailyExpanded] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const replay = useMemo(
     () => health.replayBrainV4(90, 7),
@@ -176,7 +178,7 @@ export default function HealthIntelligenceLabPage() {
           </div>
         </header>
 
-        <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-violet-400/10 via-surface to-ice/[0.05] p-5">
+        <section className="mx-auto mt-4 max-w-2xl rounded-[22px] border border-violet-400/20 bg-gradient-to-br from-violet-400/10 via-surface to-ice/[0.05] p-4">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl bg-violet-400/10 p-3 text-violet-300"><Sparkles size={21} /></div>
             <div className="min-w-0 flex-1">
@@ -184,8 +186,8 @@ export default function HealthIntelligenceLabPage() {
               <h2 className="mt-1 text-lg font-bold">{daily.headline}</h2>
             </div>
           </div>
-          <div className="mt-4 space-y-2">
-            {daily.items.map((item) => (
+          <div className="mt-3 space-y-2">
+            {(dailyExpanded ? daily.items : daily.items.slice(0, 2)).map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -203,6 +205,11 @@ export default function HealthIntelligenceLabPage() {
               </button>
             ))}
           </div>
+          {daily.items.length > 2 && (
+            <button type="button" onClick={() => setDailyExpanded((value) => !value)} className="mt-2 w-full rounded-xl py-2 text-[10px] font-semibold text-violet-300 active:scale-[0.99]">
+              {dailyExpanded ? "Resumir briefing" : `Ver mais ${daily.items.length - 2} item(ns)`}
+            </button>
+          )}
         </section>
 
         <section className="mx-auto mt-4 max-w-2xl">
@@ -225,12 +232,30 @@ export default function HealthIntelligenceLabPage() {
               ))}
             </div>
             <div className="mt-3 space-y-1.5">
-              {weekly.summary.map((line) => (
+              {weekly.summary.slice(0, 2).map((line) => (
                 <p key={line} className="text-xs leading-relaxed text-ink-muted">• {line}</p>
               ))}
             </div>
           </div>
         </section>
+
+        <section className="mx-auto mt-4 max-w-2xl">
+          <button
+            type="button"
+            onClick={() => setDetailsExpanded((value) => !value)}
+            className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/15 bg-violet-400/[0.04] p-3.5 text-left active:scale-[0.99]"
+          >
+            <BrainCircuit size={18} className="shrink-0 text-violet-300" />
+            <span className="min-w-0 flex-1">
+              <strong className="block text-sm">Histórico e ferramentas</strong>
+              <span className="block truncate text-[10px] text-ink-muted">Timeline, sinais, consulta e funcionamento do Brain</span>
+            </span>
+            <ChevronRight size={17} className={`text-violet-300 transition-transform ${detailsExpanded ? "rotate-90" : ""}`} />
+          </button>
+        </section>
+
+        {detailsExpanded && (
+          <>
 
         <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
@@ -396,6 +421,9 @@ export default function HealthIntelligenceLabPage() {
             </button>
           )}
         </section>
+
+          </>
+        )}
 
         <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-surface-border bg-surface/70 p-4">
           <div className="flex gap-3">

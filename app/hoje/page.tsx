@@ -4438,27 +4438,19 @@ export default function HojePage() {
                                           </span>
                                         )}
 
-                                        {item.diasRestantes !==
-                                          undefined &&
-                                          item.diasRestantes !==
-                                            null &&
-                                          item.diasRestantes >=
-                                            0 &&
-                                          item.diasRestantes <=
-                                            90 && (
+                                        {/* VAULT_RENEWAL_SEMANTICS_V78 */}
+                                        {item.insight?.deveRenovar === true &&
+                                          item.diasRestantes !== undefined &&
+                                          item.diasRestantes !== null &&
+                                          item.diasRestantes <= 90 && (
                                             <span
+                                              title={item.insight.mensagem}
                                               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${diasEstilo.cor} ${diasEstilo.bg}`}
                                             >
-                                              <Calendar
-                                                size={
-                                                  11
-                                                }
-                                              />
-
-                                              {
-                                                item.diasRestantes
-                                              }{" "}
-                                              dias
+                                              <Calendar size={11} />
+                                              {item.diasRestantes <= 0
+                                                ? "Renovar agora"
+                                                : `Renovar em ${item.diasRestantes} dia${item.diasRestantes === 1 ? "" : "s"}`}
                                             </span>
                                           )}
                                       </div>

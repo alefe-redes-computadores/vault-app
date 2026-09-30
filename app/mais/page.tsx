@@ -924,174 +924,41 @@ export default function MaisPage() {
               PERFIL
           =================================================== */}
 
-          <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.28,
-            }}
-            className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <div className="flex items-start gap-4">
-              {/* Avatar */}
-
-              <div className="relative shrink-0">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName}
-                    loading="lazy"
-                    className="h-16 w-16 rounded-full border-2 border-ice/20 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-2xl text-ink-muted">
-                    {displayName
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                )}
-
-                <button
-                  onClick={handleEditProfile}
-                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-colors hover:bg-ice/85 active:scale-95"
-                  aria-label="Editar perfil"
-                >
-                  <Pencil size={13} />
-                </button>
-              </div>
-
-              {/* Informações */}
-
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-ink-muted">
-                  Conta
-                </p>
-
-                <h2 className="truncate font-display text-lg font-semibold text-ink-primary">
-                  {displayName}
-                </h2>
-
-                <p className="mt-1 truncate text-sm text-ink-muted">
-                  {user?.email}
-                </p>
+          {/* VAULT_MORE_INFORMATION_ARCHITECTURE_V79 */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} className="space-y-4">
+            <div className="rounded-[22px] border border-surface-border/50 bg-surface p-3.5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="relative shrink-0">
+                  {avatarUrl ? <img src={avatarUrl} alt={displayName} loading="lazy" className="h-14 w-14 rounded-full border-2 border-ice/20 object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-xl text-ink-muted">{displayName.charAt(0).toUpperCase()}</div>}
+                  <button type="button" onClick={handleEditProfile} className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-void bg-ice text-void active:scale-95" aria-label="Editar perfil"><Pencil size={13} /></button>
+                </div>
+                <div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">Conta Vault</p><h2 className="truncate font-display text-lg font-semibold text-ink-primary">{displayName}</h2><p className="mt-1 truncate text-sm text-ink-muted">{user?.email}</p></div>
+                <button type="button" onClick={handleEditProfile} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações do perfil"><Settings size={17} /></button>
               </div>
             </div>
 
-            {personCount > 1 && (
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-surface-border/40 bg-void/25 px-3 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">Perfis do Vault</p>
-                  <p className="truncate text-xs text-ink-muted">Escolha para quem os registros serão salvos</p>
-                </div>
-                <PersonSelector mode="action" className="shrink-0" />
+            <div>
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Perfis do Vault</h2>
+              <div className="flex items-center justify-between gap-3 rounded-[20px] border border-orange-400/15 bg-orange-400/[0.035] p-3">
+                <div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">Pessoa ativa</p><p className="truncate text-[10px] text-ink-muted">Os registros de saúde seguem este perfil</p></div>
+                <PersonSelector mode="identity" className="shrink-0" />
               </div>
-            )}
+            </div>
 
-            {/* =================================================
-                TOGGLES
-            ================================================= */}
+            <div>
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências do aplicativo</h2>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={handleBiometricToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.035] p-3 text-left active:scale-[0.985]"><Fingerprint size={18} className={isBiometricEnabled ? "text-violet-300" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Biometria</p><p className="truncate text-[9px] text-ink-muted">{isBiometricEnabled ? "Ativa" : "Inativa"}</p></div></button>
+                <button type="button" onClick={handleNotificationsToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-left active:scale-[0.985]"><Bell size={18} className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Lembretes</p><p className="truncate text-[9px] text-ink-muted">{!isNativeApp ? "Somente APK" : isNotificationsEnabled ? "Ativos" : "Inativos"}</p></div></button>
+              </div>
+            </div>
 
-            <div className="mt-3 space-y-2">
-              {/* Biometria — VAULT_MORE_COMPACT_V70 */}
-
-              <button
-                onClick={handleBiometricToggle}
-                className="flex w-full items-center gap-3 rounded-[18px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
-              >
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
-                    isBiometricEnabled
-                      ? "border-ice/20 bg-ice/10"
-                      : "border-surface-border/50 bg-surface"
-                  }`}
-                >
-                  <Fingerprint
-                    size={18}
-                    className={
-                      isBiometricEnabled
-                        ? "text-ice"
-                        : "text-ink-muted"
-                    }
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink-primary">
-                    Biometria
-                  </p>
-
-                  <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted">
-                    Proteção de ações sensíveis
-                  </p>
-                </div>
-
-                <span
-                  className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${
-                    isBiometricEnabled
-                      ? "bg-ice/15 text-ice"
-                      : "bg-surface-border text-ink-muted"
-                  }`}
-                >
-                  {isBiometricEnabled
-                    ? "Ativa"
-                    : "Inativa"}
-                </span>
-              </button>
-
-              {/* Notificações */}
-
-              <button
-                onClick={handleNotificationsToggle}
-                className="flex w-full items-center gap-3 rounded-[18px] border border-surface-border/40 bg-surface-raised/60 p-3 text-left transition-all active:scale-[0.985]"
-              >
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
-                    isNotificationsEnabled
-                      ? "border-emerald-400/20 bg-emerald-400/10"
-                      : "border-surface-border/50 bg-surface"
-                  }`}
-                >
-                  <Bell
-                    size={18}
-                    className={
-                      isNotificationsEnabled
-                        ? "text-emerald-400"
-                        : "text-ink-muted"
-                    }
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink-primary">
-                    Lembretes
-                  </p>
-
-                  <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted">
-                    {isNativeApp
-                      ? "Doses, receitas e documentos"
-                      : "Disponível no aplicativo Android"}
-                  </p>
-                </div>
-
-                <span
-                  className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${
-                    isNotificationsEnabled
-                      ? "bg-emerald-400/15 text-emerald-400"
-                      : "bg-surface-border text-ink-muted"
-                  }`}
-                >
-                  {!isNativeApp
-                    ? "No APK"
-                    : isNotificationsEnabled
-                      ? "Ativo"
-                      : "Inativo"}
-                </span>
+            <div>
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Nuvem</h2>
+              <button type="button" onClick={() => pendingQueueCount > 0 ? router.push("/diagnostico") : handleSync()} disabled={!isOnline && pendingQueueCount === 0} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${pendingQueueCount > 0 ? "border-coral/30 bg-coral/[0.06]" : "border-emerald-400/15 bg-emerald-400/[0.035]"}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${pendingQueueCount > 0 ? "bg-coral/10 text-coral" : "bg-emerald-400/10 text-emerald-400"}`}>{isSyncing ? <Loader2 size={17} className="animate-spin" /> : pendingQueueCount > 0 ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />}</div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">{isSyncing ? "Sincronizando" : pendingQueueCount > 0 ? "Sincronização precisa de atenção" : "Sincronizado"}</p><p className="truncate text-[10px] text-ink-muted">{!isOnline ? "Sem conexão" : pendingQueueCount > 0 ? `${pendingQueueCount} item(ns) aguardando · abrir diagnóstico` : `${totalLocalItems} registros locais · toque para sincronizar`}</p></div>
+                <ChevronRight size={16} className="text-ink-faint" />
               </button>
             </div>
           </motion.div>
@@ -1251,65 +1118,6 @@ export default function MaisPage() {
             </h2>
 
             <div className="space-y-2">
-              {/* Sincronizar */}
-
-                            {/* Sincronizar */}
-              <button
-                onClick={() => {
-                  if (pendingQueueCount > 0) {
-                    trigger("vibrate");
-                    router.push("/diagnostico");
-                  } else {
-                    handleSync();
-                  }
-                }}
-                disabled={!isOnline && pendingQueueCount === 0}
-                className={`flex w-full items-center gap-4 rounded-[22px] border p-3.5 text-left shadow-sm transition-all active:scale-[0.985] ${
-                  !isOnline
-                    ? "border-surface-border/50 bg-surface/50 opacity-60"
-                    : pendingQueueCount > 0
-                    ? "border-coral/40 bg-coral/5 hover:bg-coral/10"
-                    : "border-surface-border/50 bg-surface hover:bg-surface-raised/80"
-                }`}
-              >
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${
-                  pendingQueueCount > 0 ? "border-coral/20 bg-coral/10 text-coral" : "border-ice/20 bg-ice/10 text-ice"
-                }`}>
-                  {isSyncing ? (
-                    <Loader2
-                      size={18}
-                      className="animate-spin"
-                    />
-                  ) : pendingQueueCount > 0 ? (
-                    <AlertTriangle size={18} />
-                  ) : (
-                    <RefreshCw size={18} />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink-primary">
-                    {pendingQueueCount > 0 ? "Fila com pendências" : "Sincronizar agora"}
-                  </p>
-
-                  <p className="truncate text-xs text-ink-muted">
-                    {!isOnline
-                      ? "Sem conexão com a internet"
-                      : isSyncing
-                      ? "Baixando e enviando dados..."
-                      : pendingQueueCount > 0
-                      ? `${pendingQueueCount} ${pendingQueueCount === 1 ? "item aguardando envio" : "itens aguardando envio"} · Ver diagnóstico`
-                      : `${totalLocalItems} registros locais · Sincronizado`}
-                  </p>
-                </div>
-
-                <ChevronRight
-                  size={16}
-                  className="shrink-0 text-ink-faint"
-                />
-              </button>
-
-
               {/* VAULT_RECOVERY_CENTER_V68 */}
               <button
                 type="button"

@@ -17,7 +17,10 @@ export function selectContextualHealthInsights(
   const id = entityId?.trim();
   if (!id) return [];
   return insights
-    .filter((item) => item.entidadeTipo === entityType && item.entidadeId === id)
+    .filter((item) =>
+      item.entidadeTipo === entityType &&
+      (item.entidadeId === id || item.entidadeIds?.includes(id) === true)
+    )
     .sort((a,b) =>
       urgency[a.urgencia] - urgency[b.urgencia] ||
       confidence[a.confianca] - confidence[b.confianca] ||

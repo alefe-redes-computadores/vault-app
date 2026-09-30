@@ -1,15 +1,7 @@
 // components/ui/AvatarMedicamento.tsx
 "use client";
 
-import { Pill, Circle, Droplet, Syringe, StickyNote } from "lucide-react";
-
-const FORMATOS = [
-  { id: "comprimido", label: "Redondo", icon: Circle },
-  { id: "capsula", label: "Cápsula", icon: Pill },
-  { id: "gota", label: "Gotas", icon: Droplet },
-  { id: "injecao", label: "Injeção", icon: Syringe },
-  { id: "adesivo", label: "Adesivo", icon: StickyNote },
-];
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
 interface AvatarMedicamentoProps {
   nome: string;
@@ -18,23 +10,26 @@ interface AvatarMedicamentoProps {
   tamanho?: number;
 }
 
-export function AvatarMedicamento({ 
-  nome, 
-  formato = "comprimido", 
-  cores = [], 
-  tamanho = 14 
+export function AvatarMedicamento({
+  nome,
+  formato = "comprimido",
+  cores = [],
+  tamanho = 14,
 }: AvatarMedicamentoProps) {
   const initial = nome.charAt(0).toUpperCase();
-  const color = cores?.[0] || "#60A5FA";
-  const Icon = FORMATOS.find((f) => f.id === formato)?.icon || Pill;
-  const sizeClass = `h-${tamanho} w-${tamanho}`;
-  
+  const color = cores[0] || "#9CA3AF";
+  const pixels = tamanho >= 14 ? 56 : 44;
+  const iconSize = tamanho >= 14 ? 28 : 22;
+
   return (
-    <div className="relative shrink-0">
-      <div className={`flex ${sizeClass} items-center justify-center rounded-full border-2 border-surface-border/50 bg-surface-raised shadow-inner`}>
-        <Icon size={tamanho >= 14 ? 24 : 18} stroke={color} strokeWidth={1.5} fill={color + "44"} />
+    <div className="relative shrink-0" style={{ width: pixels, height: pixels }}>
+      <div
+        className="flex h-full w-full items-center justify-center rounded-2xl border-2 bg-surface-raised shadow-inner"
+        style={{ borderColor: `${color}66` }}
+      >
+        <MedicationFormatIcon formato={formato} cores={cores} size={iconSize} />
       </div>
-      <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-void border border-surface-border/50 text-[8px] font-bold text-ink-muted">
+      <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-surface-border/50 bg-void text-[8px] font-bold text-ink-muted">
         {initial}
       </div>
     </div>

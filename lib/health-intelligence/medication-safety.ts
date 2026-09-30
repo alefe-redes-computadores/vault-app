@@ -202,6 +202,10 @@ function buildZolpidemCombination(context: HealthInsightContext, now: Date): Hea
   if (!companions.length) return null;
 
   const names = companions.map((item) => item.medication.nome);
+  const involvedMedicationIds = [
+    zolpidem.medication.id,
+    ...companions.map((item) => item.medication.id),
+  ].filter((id): id is string => Boolean(id));
   const opioid = companions.some((item) => item.profile.classes.includes("opioide"));
   return {
     id: `seguranca-zolpidem-depressores-${zolpidem.medication.id}`,
@@ -216,6 +220,7 @@ function buildZolpidemCombination(context: HealthInsightContext, now: Date): Hea
     periodoDias: 1,
     entidadeTipo: "medicamento",
     entidadeId: zolpidem.medication.id,
+    entidadeIds: involvedMedicationIds,
     link: `/saude/medicamentos/historico?id=${zolpidem.medication.id}`,
     evidencias: [
       `${zolpidemDoses.length} tomada(s) de zolpidem registrada(s) nas últimas 24 horas`,
@@ -353,6 +358,7 @@ function buildOpioidDepressantCombination(context: HealthInsightContext, now: Da
     periodoDias: 1,
     entidadeTipo: "medicamento",
     entidadeId: opioid.medication.id,
+    entidadeIds: ids,
     link: `/saude/medicamentos/historico?id=${opioid.medication.id}`,
     evidencias: [
       `Opioide reconhecido: ${opioid.medication.nome}`,
@@ -392,6 +398,7 @@ function buildSerotonergicCombination(context: HealthInsightContext, now: Date):
     periodoDias: 1,
     entidadeTipo: "medicamento",
     entidadeId: stimulant.medication.id,
+    entidadeIds: ids,
     link: `/saude/medicamentos/historico?id=${stimulant.medication.id}`,
     evidencias: [
       `${stimulant.logs.length} tomada(s) de ${stimulant.medication.nome} nas últimas 24 horas`,

@@ -1148,7 +1148,7 @@ export default function MedicamentosListPage() {
 
                 {regulatoryProfile && (
                   <span
-                    className="absolute bottom-1 flex h-3 w-3 items-center justify-center rounded-full border border-black/35 text-[7px] font-black leading-none"
+                    className="absolute bottom-2 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-black/40 bg-black/10 text-[7px] font-black leading-none"
                     aria-hidden="true"
                   >
                     i

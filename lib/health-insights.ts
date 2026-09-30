@@ -7601,6 +7601,8 @@ export interface HealthTimelineEvent {
   entidadeId?:
     string;
 
+  /** Entidades adicionais envolvidas no mesmo sinal, sem duplicar o insight. */
+
   medicamentoId?:
     string;
 
@@ -8014,6 +8016,9 @@ export interface HealthInsight {
 
   entidadeTipo?:
     string;
+
+  entidadeIds?:
+    string[];
 
   entidadeId?:
     string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -57,6 +57,7 @@ export function ContextualHealthIntelligence({
   const { getInsightsForEntity } = useHealthIntelligence();
   const [selected, setSelected] = useState<HealthInsight | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const insights = useMemo(() => {
     // VAULT_CONTEXTUAL_COMPACT_V70
@@ -78,12 +79,18 @@ export function ContextualHealthIntelligence({
 
   const primary = insights[Math.min(activeIndex, insights.length - 1)] || insights[0];
   const entityLabel = ENTITY_LABEL[entityType];
+  const showInsight = (index: number) => {
+    setActiveIndex(index);
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+    carousel.scrollTo({ left: carousel.clientWidth * index, behavior: "smooth" });
+  };
 
   return (
     <>
-      <section className={`mx-auto w-full max-w-2xl px-5 ${className}`} aria-label="Vault Insight">
+      <section className={`mx-auto w-full max-w-2xl ${className}`} aria-label="Vault Insight">
         <div className="overflow-hidden rounded-[22px] border border-violet-400/15 bg-gradient-to-br from-violet-400/[0.07] via-surface to-ice/[0.04]">
-          <div className="flex items-center justify-between gap-3 border-b border-surface-border/40 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-b border-surface-border/40 px-3.5 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-400/10 text-violet-300">
                 <BrainCircuit size={15} />
@@ -105,6 +112,7 @@ export function ContextualHealthIntelligence({
           </div>
 
           <div
+            ref={carouselRef}
             className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
             onScroll={(event) => {
               const width = event.currentTarget.clientWidth;
@@ -112,15 +120,15 @@ export function ContextualHealthIntelligence({
             }}
           >
             {insights.map((insight, index) => (
-          <button key={insight.id} type="button" onFocus={() => setActiveIndex(index)} onClick={() => { setActiveIndex(index); setSelected(insight); }} className="flex min-w-full snap-center items-start gap-3 p-4 text-left active:scale-[0.99]">
-            <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${insightTone(insight)}`}>
+          <button key={insight.id} type="button" onFocus={() => setActiveIndex(index)} onClick={() => { setActiveIndex(index); setSelected(insight); }} className="flex min-w-full snap-center items-start gap-2.5 px-3.5 py-3 text-left active:scale-[0.99]">
+            <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${insightTone(insight)}`}>
               {insight.urgencia === "alta" ? <AlertTriangle size={17} /> : <BrainCircuit size={17} />}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-ink-primary">{insight.titulo}</p>
-              <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-muted">{insight.mensagem}</p>
-              <p className="mt-2 font-mono text-[8px] uppercase text-ink-faint">
+              <p className="text-[13px] font-bold leading-snug text-ink-primary">{insight.titulo}</p>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-ink-muted">{insight.mensagem}</p>
+              <p className="mt-1.5 font-mono text-[8px] uppercase text-ink-faint">
                 Confiança {insight.confianca} · amostra {insight.amostra}
               </p>
             </div>
@@ -130,26 +138,23 @@ export function ContextualHealthIntelligence({
             ))}
           </div>
 
-          {insights.length > 1 && (
-            <div className="border-t border-surface-border/40 px-4 py-2.5">
-              <div className="flex items-center justify-center gap-1.5" aria-label={`${insights.length} insights disponíveis`}>
+          <div className="flex items-center justify-between gap-3 border-t border-surface-border/40 px-3.5 py-2">
+            {insights.length > 1 ? (
+              <div className="flex items-center gap-2" aria-label={`${insights.length} insights disponíveis`}>
+                <span className="font-mono text-[8px] text-ink-faint">{activeIndex + 1}/{insights.length}</span>
+                <div className="flex items-center gap-1.5">
                 {insights.map((insight, index) => (
                   <button
                     key={insight.id}
                     type="button"
-                    onClick={() => setActiveIndex(index)}
+                    onClick={() => showInsight(index)}
                     aria-label={`Mostrar insight ${index + 1}: ${insight.titulo}`}
                     className={`h-1.5 rounded-full transition-all ${index === activeIndex ? "w-5 bg-violet-300" : "w-1.5 bg-surface-border"}`}
                   />
                 ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between border-t border-surface-border/40 px-4 py-2.5">
-            <p className="text-[9px] text-ink-faint">
-              Fontes, contexto, confiança e limitações ficam na explicação.
-            </p>
+            ) : <span className="text-[8px] text-ink-faint">Toque para ver evidências</span>}
             <button
               type="button"
               onClick={() => router.push(`/inteligencia?healthInsight=${encodeURIComponent(primary.id)}`)}
