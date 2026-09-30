@@ -776,6 +776,7 @@ export default function MaisPage() {
 
   useEffect(() => {
     if (!isDiagnosticOwner) {
+      disableEruda();
       setErudaEnabled(false);
       return;
     }
@@ -785,8 +786,11 @@ export default function MaisPage() {
 
     if (enabled) {
       void enableEruda().catch(() => {
+        disableEruda();
         setErudaEnabled(false);
       });
+    } else {
+      disableEruda();
     }
   }, [isDiagnosticOwner]);
 

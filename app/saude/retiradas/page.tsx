@@ -348,7 +348,7 @@ export default function RetiradasPage() {
           </div>
 
           {/* VAULT_COMPACT_SEARCH_FILTER_V79 */}
-          <div className="mt-3 flex items-center justify-end gap-2">
+          <div className="mt-2 flex h-10 items-center justify-end gap-2">
             <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." />
             <ListFilters title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
               {[["todos", "Todos"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (

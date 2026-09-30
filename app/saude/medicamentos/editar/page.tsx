@@ -179,6 +179,8 @@ import {
   TextArea,
 } from "@/components/ui/TextArea";
 
+import { AvatarMedicamento } from "@/components/ui/AvatarMedicamento";
+
 import {
   PageTransition,
 } from "@/components/PageTransition";
@@ -6317,6 +6319,21 @@ function EditarMedicamentoContent() {
                     <h3 className="text-sm font-semibold text-ink-primary">
                       Aparência do Remédio
                     </h3>
+                  </div>
+
+                  {/* VAULT_MEDICATION_EDIT_LIVE_PREVIEW_V80 */}
+                  <div className="mb-5 flex items-center gap-3 rounded-2xl border border-surface-border/45 bg-void/35 p-3">
+                    <AvatarMedicamento
+                      nome={nome || "Medicamento"}
+                      formato={formato}
+                      cores={cores}
+                      tamanho={14}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ice/80">Prévia ao vivo</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-ink-primary">{nome || "Medicamento"}</p>
+                      <p className="mt-0.5 text-[10px] text-ink-muted">Formato e cores exatamente como aparecerão no Vault.</p>
+                    </div>
                   </div>
 
                   <div className="mb-5 grid grid-cols-3 gap-2">

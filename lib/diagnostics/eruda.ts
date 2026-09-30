@@ -26,6 +26,9 @@ export async function enableEruda(): Promise<void> {
   const target = browserWindow();
   if (!target) throw new Error("Console indisponível fora do navegador.");
 
+  // A preferência é a autoridade. Isso também cancela inicializações atrasadas.
+  target.localStorage.setItem(ERUDA_STORAGE_KEY, "true");
+
   if (target.eruda) {
     if (!target.__vaultErudaInitialized) {
       target.eruda.init();
@@ -40,6 +43,12 @@ export async function enableEruda(): Promise<void> {
     const script = existing || document.createElement("script");
 
     const finish = () => {
+      if (target.localStorage.getItem(ERUDA_STORAGE_KEY) !== "true") {
+        target.eruda?.destroy();
+        reject(new Error("Inicialização do console cancelada."));
+        return;
+      }
+
       if (!target.eruda) {
         reject(new Error("O console foi baixado, mas não ficou disponível."));
         return;
@@ -70,17 +79,19 @@ export async function enableEruda(): Promise<void> {
     }
   });
 
-  target.localStorage.setItem(ERUDA_STORAGE_KEY, "true");
 }
 
 export function disableEruda(): void {
   const target = browserWindow();
   if (!target) return;
 
-  if (target.__vaultErudaInitialized) {
+  // Destrói mesmo quando o sinalizador ficou dessincronizado após navegação/PWA.
+  try {
     target.eruda?.destroy();
-  }
+  } catch {}
 
+  document.getElementById(ERUDA_SCRIPT_ID)?.remove();
+  document.querySelectorAll(".eruda-container, .eruda-entry-btn").forEach((node) => node.remove());
   target.__vaultErudaInitialized = false;
   target.localStorage.removeItem(ERUDA_STORAGE_KEY);
 }

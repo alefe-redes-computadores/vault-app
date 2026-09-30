@@ -1169,81 +1169,20 @@ export default function DocumentsPage() {
                 ================================================== */}
 
             {/* VAULT_DOCUMENT_TOOLBAR_V79 */}
-            <div className="mt-4 flex items-center gap-2">
+            {/* VAULT_DOCUMENT_TOOLBAR_V80 */}
+            <div className="mt-3 flex items-center gap-2">
               <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nome, número ou nota..." />
               <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
                 <SlidersHorizontal size={16} />
                 {activeFilterCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1 text-[9px] font-bold text-void">{activeFilterCount}</span>}
               </button>
-            </div>
-
-            {/* ==================================================
-                FERRAMENTAS
-                ================================================== */}
-
-            <div className="mt-3 flex items-center gap-2">
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={
-                    openGallery
-                  }
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/45 bg-surface-raised text-ink-muted transition-all active:scale-95"
-                  aria-label="Abrir galeria"
-                >
-                  <Images
-                    size={
-                      16
-                    }
-                  />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={
-                    toggleViewMode
-                  }
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/45 bg-surface-raised text-ink-muted transition-all active:scale-95"
-                  aria-label={
-                    viewMode ===
-                    "list"
-                      ? "Usar visualização em grade"
-                      : "Usar visualização em lista"
-                  }
-                  aria-pressed={
-                    viewMode ===
-                    "grid"
-                  }
-                >
-                  {viewMode ===
-                  "list" ? (
-                    <Grid3X3
-                      size={
-                        16
-                      }
-                    />
-                  ) : (
-                    <LayoutList
-                      size={
-                        16
-                      }
-                    />
-                  )}
-                </button>
-
-                {filteredDocs.length >
-                  0 && (
-                  <ExportCardButton
-                    cards={
-                      getExportCards()
-                    }
-                    title="Meus Documentos"
-                    variant="secondary"
-                    size="sm"
-                    label="Exportar"
-                  />
-                )}
-              </div>
+              <button type="button" onClick={openGallery} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label="Abrir galeria"><Images size={16} /></button>
+              <button type="button" onClick={toggleViewMode} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label={viewMode === "list" ? "Usar visualização em grade" : "Usar visualização em lista"} aria-pressed={viewMode === "grid"}>
+                {viewMode === "list" ? <Grid3X3 size={16} /> : <LayoutList size={16} />}
+              </button>
+              {filteredDocs.length > 0 && (
+                <ExportCardButton cards={getExportCards()} title="Meus Documentos" variant="secondary" size="sm" label="" className="h-10 w-10 shrink-0 rounded-full p-0" />
+              )}
             </div>
 
             {/* ==================================================
