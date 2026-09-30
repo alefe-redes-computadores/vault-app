@@ -21,10 +21,13 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
+  Bell,
+  BookHeart,
   Building2,
   Calendar,
   CheckCircle2,
   Clock,
+  Droplets,
   FileHeart,
   FlaskConical,
   FolderHeart,
@@ -33,6 +36,7 @@ import {
   Pill,
   RefreshCw,
   Search,
+  ShieldCheck,
   Stethoscope,
   Syringe,
   Users,
@@ -451,18 +455,22 @@ export default function RedeSaudePage() {
       ""
     );
 
-  const tabParam =
-    searchParams.get(
-      "tab"
-    );
+  const tabParam = searchParams.get("tab");
 
-  const tabFromUrl:
-    TabType =
-    isTabType(
-      tabParam
-    )
-      ? tabParam
-      : "visao-geral";
+  // V81: a Rede virou hub; listas possuem páginas próprias.
+  const tabFromUrl: TabType = "visao-geral";
+
+  useEffect(() => {
+    if (!isTabType(tabParam) || tabParam === "visao-geral") return;
+    const routes: Record<Exclude<TabType, "visao-geral">, string> = {
+      medicos: "/saude/medicos",
+      farmacias: "/saude/farmacias",
+      hospitais: "/saude/hospitais",
+      locais: "/saude/locais",
+      tratamentos: "/saude/tratamentos",
+    };
+    router.replace(routes[tabParam]);
+  }, [tabParam, router]);
 
   const [
     activeTab,
@@ -493,55 +501,18 @@ export default function RedeSaudePage() {
     ]
   );
 
-  const handleTabChange =
-    (
-      tab:
-        TabType
-    ) => {
-      trigger(
-        "vibrate"
-      );
-
-      setActiveTab(
-        tab
-      );
-
-      setSearch(
-        ""
-      );
-
-      const params =
-        new URLSearchParams(
-          searchParams.toString()
-        );
-
-      if (
-        tab ===
-        "visao-geral"
-      ) {
-        params.delete(
-          "tab"
-        );
-      } else {
-        params.set(
-          "tab",
-          tab
-        );
-      }
-
-      const query =
-        params.toString();
-
-      router.replace(
-        query
-          ? `/saude/rede?${query}`
-          : "/saude/rede",
-        {
-          scroll:
-            false,
-        }
-      );
+  const handleTabChange = (tab: TabType) => {
+    trigger("vibrate");
+    const routes: Record<TabType, string> = {
+      "visao-geral": "/saude/rede",
+      medicos: "/saude/medicos",
+      farmacias: "/saude/farmacias",
+      hospitais: "/saude/hospitais",
+      locais: "/saude/locais",
+      tratamentos: "/saude/tratamentos",
     };
+    router.push(routes[tab]);
+  };
 
   // ==========================================================
   // PERSON SCOPE
@@ -1757,72 +1728,9 @@ export default function RedeSaudePage() {
             </div>
           </div>
 
-          {/* VAULT_HEALTH_NETWORK_DISCOVERY_V79 */}
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {tabs.map(
-              (
-                tab
-              ) => {
-                const Icon =
-                  tab.icon;
-
-                const active =
-                  activeTab ===
-                  tab.id;
-
-                return (
-                  <button
-                    key={
-                      tab.id
-                    }
-                    type="button"
-                    onClick={
-                      () =>
-                        handleTabChange(
-                          tab.id
-                        )
-                    }
-                    className={`flex min-w-0 items-center justify-center gap-1.5 rounded-2xl border px-2 py-2 text-[11px] font-medium transition-all active:scale-95 ${
-                      active
-                        ? "border-ice bg-ice/12 text-ice"
-                        : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    <Icon
-                      size={
-                        14
-                      }
-                    />
-
-                    {
-                      tab.label
-                    }
-                  </button>
-                );
-              }
-            )}
-          </div>
-
-          {activeTab !==
-            "visao-geral" && (
-            <div className="mt-3 flex justify-end">
-              <ListSearch
-                value={search}
-                onChange={setSearch}
-                placeholder={`Buscar ${
-                  activeTab === "medicos"
-                    ? "médico"
-                    : activeTab === "farmacias"
-                      ? "farmácia"
-                      : activeTab === "hospitais"
-                        ? "hospital"
-                        : activeTab === "locais"
-                          ? "local"
-                          : "tratamento"
-                }...`}
-              />
-            </div>
-          )}
+          {/* VAULT_HEALTH_NETWORK_DISCOVERY_V79: preservado pelo hub visível, sem carrossel */}
+          {/* VAULT_HEALTH_HUB_V81 */}
+          <p className="mt-2 pl-14 text-[10px] leading-relaxed text-ink-muted">Rede, acompanhamento e histórico clínico em um só lugar.</p>
         </header>
 
         <section className="space-y-3.5 px-5 pt-4">
@@ -1882,6 +1790,40 @@ export default function RedeSaudePage() {
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><Activity size={19} /></div>
                   <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">Inteligência de saúde</p><p className="text-[10px] text-ink-muted">Brain V4 · contexto, padrões e preparação para consulta</p></div><ArrowLeft size={16} className="rotate-180 text-violet-300" />
                 </button>
+
+                {/* VAULT_HEALTH_SUPPORT_DISCOVERY_V81 */}
+                <section>
+                  <div className="mb-2 flex items-end justify-between gap-3">
+                    <div><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-emerald-300/80">Rede de apoio</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Quem cuida de você</h2></div>
+                    <span className="text-[9px] text-ink-muted">Acessos diretos</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {tabs.filter((tab) => tab.id !== "visao-geral" && tab.id !== "tratamentos").map((tab) => {
+                      const Icon = tab.icon;
+                      const meta = {
+                        medicos: { count: stats.medicos, tone: "border-cyan-400/20 bg-cyan-400/[0.055] text-cyan-300" },
+                        farmacias: { count: stats.farmacias, tone: "border-amber-400/20 bg-amber-400/[0.055] text-amber-300" },
+                        hospitais: { count: stats.hospitais, tone: "border-rose-400/20 bg-rose-400/[0.055] text-rose-300" },
+                        locais: { count: stats.locais, tone: "border-emerald-400/20 bg-emerald-400/[0.055] text-emerald-300" },
+                      }[tab.id as "medicos" | "farmacias" | "hospitais" | "locais"];
+                      return <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)} className={`flex min-h-[74px] items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${meta.tone}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17}/></span><span className="min-w-0"><strong className="block text-xs text-ink-primary">{tab.label}</strong><span className="mt-0.5 block text-[9px] text-ink-muted">{meta.count} cadastrado(s)</span></span></button>;
+                    })}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="mb-2"><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-violet-300/80">Acompanhamento</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Seu cuidado contínuo</h2></div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {[
+                      { label: "Linha de cuidado", sub: "Registros, doses e evolução", path: "/saude/registros", icon: FileHeart, tone: "border-sky-400/20 bg-sky-400/[0.055] text-sky-300" },
+                      { label: "Hidratação", sub: "Consumo e metas em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-cyan-400/20 bg-cyan-400/[0.055] text-cyan-300" },
+                      { label: "Lembretes", sub: "Regras da sua rotina", path: "/saude/lembretes", icon: Bell, tone: "border-amber-400/20 bg-amber-400/[0.055] text-amber-300" },
+                      { label: "Timeline clínica", sub: "Histórico longitudinal", path: "/saude/timeline", icon: Activity, tone: "border-violet-400/20 bg-violet-400/[0.055] text-violet-300" },
+                      { label: "Plano de segurança", sub: "Apoio, sinais e contatos", path: "/saude/plano-seguranca", icon: ShieldCheck, tone: "border-rose-400/20 bg-rose-400/[0.055] text-rose-300" },
+                      { label: "Documentos de saúde", sub: "Receitas, exames e laudos", path: "/saude/documentos", icon: BookHeart, tone: "border-emerald-400/20 bg-emerald-400/[0.055] text-emerald-300" },
+                    ].map((item) => { const Icon=item.icon; return <button key={item.path} type="button" onClick={() => { trigger("vibrate"); router.push(item.path); }} className={`flex min-h-[82px] items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${item.tone}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17}/></span><span className="min-w-0"><strong className="block text-xs text-ink-primary">{item.label}</strong><span className="mt-0.5 block text-[9px] leading-snug text-ink-muted">{item.sub}</span></span></button>; })}
+                  </div>
+                </section>
 
                 {alertas.length >
                   0 && (
@@ -2136,12 +2078,7 @@ export default function RedeSaudePage() {
                     }
                     sub={`${stats.medicos} méd., ${stats.farmacias} farm., ${stats.hospitais} hosp., ${stats.locais} locais`}
                     color="#38BDF8"
-                    onClick={
-                      () =>
-                        handleTabChange(
-                          "medicos"
-                        )
-                    }
+                    onClick={() => router.push("/saude/medicos")}
                   />
                 </div>
               </motion.div>
