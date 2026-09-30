@@ -14,6 +14,8 @@ export interface ListCardProps {
   onClick: () => void;
   /** Ícone renderizado */
   icon: ReactNode;
+  /** Conteúdo opcional dentro da barra lateral */
+  rail?: ReactNode;
   /** Conteúdo principal do card */
   children: ReactNode;
   /** Ações internas – renderizadas fora do botão principal */
@@ -39,6 +41,7 @@ export function ListCard({
   color,
   onClick,
   icon,
+  rail,
   children,
   actions,
   className = "",
@@ -83,17 +86,29 @@ export function ListCard({
         className={`
           absolute
           bottom-0 left-0 top-0
-          w-1.5
-          ${isDisabled ? "bg-coral" : ""}
+          ${rail ? "w-6" : "w-1.5"}
+          ${isDisabled && !rail ? "bg-coral" : ""}
         `}
         style={
-          !isDisabled
+          !isDisabled || rail
             ? { backgroundColor: color }
             : undefined
         }
-      />
+      >
+        {rail}
+      </div>
 
-      <div className={isCompact ? "p-3 pl-4" : "p-4 pl-5"}>
+      <div
+        className={
+          rail
+            ? isCompact
+              ? "p-3 pl-8"
+              : "p-4 pl-10"
+            : isCompact
+              ? "p-3 pl-4"
+              : "p-4 pl-5"
+        }
+      >
         <button
           type="button"
           onClick={onClick}

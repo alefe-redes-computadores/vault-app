@@ -39,7 +39,8 @@ ok(
 );
 
 ok(
-  page.includes("regulatoryProfile.badgeClass"),
+  page.includes("VAULT_REGULATORY_RAIL_LABEL_V76_2") &&
+    page.includes("setSelectedRegulatory(regulatoryProfile)"),
   "identidade visual regulatória preservada"
 );
 

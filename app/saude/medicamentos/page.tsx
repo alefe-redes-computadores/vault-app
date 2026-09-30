@@ -1107,6 +1107,56 @@ export default function MedicamentosListPage() {
             isSuspenso
           }
           density="compact"
+          rail={
+            (regulatoryProfile || receita) ? (
+              <button
+                type="button"
+                aria-label={`Ver classificação da receita: ${
+                  regulatoryProfile?.label ||
+                  receita?.sigla ||
+                  "Receita"
+                }`}
+                aria-haspopup={regulatoryProfile ? "dialog" : undefined}
+                title={regulatoryMeaning}
+                className="relative flex h-full w-full items-center justify-center overflow-hidden text-black/80 transition-colors hover:bg-white/10 active:bg-black/10"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  if (!regulatoryProfile) return;
+
+                  trigger("vibrate");
+                  setSelectedRegulatory(regulatoryProfile);
+                }}
+              >
+                {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2 */}
+                <span
+                  className="max-h-[92px] overflow-hidden text-[7px] font-black uppercase leading-none tracking-[0.09em]"
+                  style={{
+                    writingMode: "vertical-rl",
+                    transform: "rotate(180deg)",
+                  }}
+                >
+                  {(
+                    regulatoryProfile?.label ||
+                    receita?.sigla ||
+                    "Receita"
+                  )
+                    .replace(/^Receita\s+/i, "")
+                    .replace(/^Notificação\s+/i, "Notif. ")}
+                </span>
+
+                {regulatoryProfile && (
+                  <span
+                    className="absolute bottom-1 flex h-3 w-3 items-center justify-center rounded-full border border-black/35 text-[7px] font-black leading-none"
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                )}
+              </button>
+            ) : undefined
+          }
           icon={
             <span
               className={`flex h-10 w-10 items-center justify-center rounded-[13px] border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
@@ -1120,85 +1170,7 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="relative flex min-w-0 flex-col gap-1 pl-2.5">
-            {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 */}
-            {(regulatoryProfile || receita) && (
-              <button
-                type="button"
-                aria-label={`Ver classificação da receita: ${
-                  regulatoryProfile?.label ||
-                  receita?.sigla ||
-                  "Receita"
-                }`}
-                aria-haspopup={
-                  regulatoryProfile
-                    ? "dialog"
-                    : undefined
-                }
-                title={regulatoryMeaning}
-                className={`absolute -left-2.5 top-1/2 z-[3] flex -translate-y-1/2 flex-col items-center gap-1 rounded-full border bg-surface/95 px-1 py-1.5 shadow-md backdrop-blur-sm transition-transform active:scale-95 ${
-                  regulatoryProfile
-                    ? regulatoryProfile.badgeClass
-                    : ""
-                }`}
-                style={{
-                  borderColor:
-                    `${regulatoryBorderColor}70`,
-                  boxShadow:
-                    `0 3px 12px rgba(0,0,0,.28), 0 0 0 1px ${regulatoryBorderColor}18`,
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-
-                  if (!regulatoryProfile) {
-                    return;
-                  }
-
-                  trigger("vibrate");
-                  setSelectedRegulatory(
-                    regulatoryProfile
-                  );
-                }}
-              >
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{
-                    backgroundColor:
-                      regulatoryBorderColor,
-                  }}
-                  aria-hidden="true"
-                />
-
-                <span
-                  className="max-h-[58px] overflow-hidden text-[8px] font-black uppercase leading-none tracking-[0.06em]"
-                  style={{
-                    writingMode:
-                      "vertical-rl",
-                    transform:
-                      "rotate(180deg)",
-                  }}
-                >
-                  {(
-                    regulatoryProfile?.label ||
-                    receita?.sigla ||
-                    "Receita"
-                  ).replace(
-                    "Notificação ",
-                    "Notif. "
-                  )}
-                </span>
-
-                {regulatoryProfile && (
-                  <span
-                    className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-current/30 text-[8px] font-black leading-none opacity-80"
-                    aria-hidden="true"
-                  >
-                    i
-                  </span>
-                )}
-              </button>
-            )}
+          <div className="relative flex min-w-0 flex-col gap-1">
 
             {/* IDENTIDADE */}
 
