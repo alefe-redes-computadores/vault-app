@@ -25,7 +25,12 @@ e(r("app/saude/locais/detalhes/page.tsx").includes("VAULT_LOCATION_MEDICATION_IC
 e(r("app/saude/locais/page.tsx").includes("VAULT_NO_DUPLICATE_CREATE_CTA_V70"),"sem CTA duplicado");
 e(r("app/saude/tratamentos/page.tsx").includes("VAULT_TREATMENT_DENSITY_V70"),"tratamentos compactos");
 e(r("app/inteligencia/page.tsx").includes("VAULT_INTELLIGENCE_COMPACT_V70"),"Brain compacto");
-e(r("app/mais/page.tsx").includes("VAULT_MORE_COMPACT_V70"),"Mais compacto");
+e(
+  r("app/mais/page.tsx").includes("VAULT_MORE_INFORMATION_ARCHITECTURE_V79") &&
+    r("app/mais/page.tsx").includes("Preferências do aplicativo") &&
+    r("app/mais/page.tsx").includes("Acesso rápido"),
+  "Mais compacto na arquitetura atual"
+);
 e(r("app/saude/plano-seguranca/page.tsx").includes("VAULT_SAFETY_PLAN_PROGRESSIVE_V70"),"plano progressivo");
 e(r("components/BottomNav.tsx").includes("VAULT_BOTTOM_NAV_POLISH_V70"),"BottomNav");
 e(JSON.parse(r("package.json")).version==="1.2.0","versão 1.2.0");

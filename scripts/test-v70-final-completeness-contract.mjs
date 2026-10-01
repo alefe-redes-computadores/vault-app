@@ -74,8 +74,9 @@ ok(
 
 ok(
   med.includes(
-    'router.push(`/saude/medicamentos/editar?id=${id}`)'
-  ),
+    '`/saude/medicamentos/editar?id=${id}`'
+  ) &&
+    med.includes('aria-label="Editar medicamento"'),
   "Editar medicamento navegável"
 );
 
@@ -95,7 +96,7 @@ ok(
 
 ok(
   med.includes(
-    'router.push(`/saude/medicamentos/historico?id=${id}`)'
+    '`/saude/medicamentos/historico?id=${id}`'
   ),
   "Histórico de doses navegável"
 );

@@ -43,8 +43,11 @@ ok(
 );
 
 ok(
-  network.includes("<ListSearch"),
-  "Rede usa busca compartilhada compacta"
+  network.includes("Minha Rede de Saúde") &&
+    network.includes("Quem cuida de você") &&
+    network.includes("Linha de cuidado") &&
+    network.includes("Documentos de saúde"),
+  "Rede preserva Central de Saúde navegável"
 );
 
 ok(

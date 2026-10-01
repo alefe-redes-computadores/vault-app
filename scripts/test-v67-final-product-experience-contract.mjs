@@ -26,7 +26,12 @@ ok(hydration.includes("VAULT_HYDRATION_EXPERIENCE_V67"), "hidratação V67 insta
 ok(hydration.includes("Ausência não conta como zero"), "hidratação não converte ausência em zero");
 ok(reminders.includes("VAULT_REMINDER_INTENT_UX_V67"), "lembretes guiados por intenção");
 ok(profile.includes("Protege senhas, cartões e ações sensíveis"), "perfil explica biometria seletiva");
-ok(more.includes("Proteção de ações sensíveis"), "Mais explica biometria seletiva");
+ok(
+  more.includes("Preferências do aplicativo") &&
+    more.includes("Biometria") &&
+    more.includes("Biometria ativada para ações sensíveis"),
+  "Mais preserva biometria seletiva na experiência compacta"
+);
 ok(biometric.includes("VAULT_BIOMETRIC_POLICY_V66"), "política biométrica V66 preservada");
 
 console.log("VAULT V67 FINAL PRODUCT EXPERIENCE: CONTRATOS OK");
