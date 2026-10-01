@@ -68,6 +68,10 @@ import {
 } from "@/lib/sync/pull";
 
 import {
+  runVaultPullSingleFlight,
+} from "@/lib/sync/coordinator";
+
+import {
   setVaultSyncRuntime,
 } from "@/lib/sync/runtime-status";
 
@@ -267,7 +271,7 @@ export function Providers({
    * Mantém o canal Realtime ativo enquanto a árvore principal
    * do Vault estiver montada.
    */
-  useSupabaseRealtime();
+  useSupabaseRealtime(user?.id);
 
   useEffect(() => {
     const nextUserId = user?.id || null;
@@ -382,6 +386,7 @@ export function Providers({
       if (
         !user ||
         loading ||
+        ownedPersonCount === undefined ||
         !isOnline ||
         isPullDone ||
         hasPulledRef.current
@@ -415,7 +420,11 @@ export function Providers({
           8_000
         );
 
-      pullAllData(user.id)
+      runVaultPullSingleFlight(
+        user.id,
+        () => pullAllData(user.id),
+        ownedPersonCount === 0
+      )
         .then(
           () => {
             console.log(
@@ -459,6 +468,7 @@ export function Providers({
       isOnline,
       isPullDone,
       pullAttempt,
+      ownedPersonCount,
     ]
   );
 

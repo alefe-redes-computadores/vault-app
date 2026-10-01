@@ -54,81 +54,69 @@ function normalize(table: string, row: Row): Row {
   return { ...row, synced: true };
 }
 
-export function useSupabaseRealtime() {
+// VAULT_REALTIME_AUTH_REUSE_V85
+// A identidade já restaurada pelo AuthProvider é a fonte do canal. Não fazemos
+// outro getUser remoto nem instalamos um segundo listener global de autenticação.
+export function useSupabaseRealtime(userId?: string) {
   useEffect(() => {
+    if (!userId) return;
+
     let disposed = false;
-    let activeUserId: string | null = null;
-    let channel: ReturnType<typeof supabase.channel> | undefined;
+    const channel = supabase
+      .channel(`vault-user-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public" },
+        async (payload) => {
+          if (disposed) return;
+          const config = TABLES[payload.table];
+          if (!config) return;
 
-    const detach = () => {
-      const current = channel;
-      channel = undefined;
-      activeUserId = null;
-      if (current) void supabase.removeChannel(current);
-    };
+          const incoming = (payload.new || {}) as Row;
+          const previous = (payload.old || {}) as Row;
+          const id = incoming.id || previous.id;
+          if (!id) return;
 
-    const attach = (userId?: string) => {
-      if (disposed) return;
-      if (!userId) {
-        detach();
-        return;
-      }
-      if (activeUserId === userId && channel) return;
-      detach();
-      activeUserId = userId;
-      channel = supabase
-        .channel(`vault-user-${userId}`)
-        .on(
-          "postgres_changes",
-          // DELETE pode chegar apenas com a chave primária. Mantemos a assinatura
-          // ampla e fazemos o isolamento pelo dono local/remoto antes de escrever.
-          { event: "*", schema: "public" },
-          async (payload) => {
-            const config = TABLES[payload.table];
-            if (!config) return;
-            const incoming = (payload.new || {}) as Row;
-            const previous = (payload.old || {}) as Row;
-            const id = incoming.id || previous.id;
-            if (!id || activeUserId !== userId) return;
-            const localTable = (db as unknown as Record<string, LocalTable>)[config.local];
-            if (!localTable) return;
-            const local = await localTable.get(id);
-            const owner = incoming.user_id || previous.user_id || local?.user_id;
-            if (owner !== userId) return;
-            const pending = await db.syncQueue
-              .filter((item) =>
+          const localTable = (db as unknown as Record<string, LocalTable>)[config.local];
+          if (!localTable) return;
+
+          const local = await localTable.get(id);
+          if (disposed) return;
+
+          const owner = incoming.user_id || previous.user_id || local?.user_id;
+          if (owner !== userId) return;
+
+          const pending = await db.syncQueue
+            .filter(
+              (item) =>
                 item.table === config.queue &&
                 (item.payload as { id?: unknown })?.id === id
-              )
-              .first();
-            if (pending || local?.synced === false) return;
-            if (payload.eventType === "DELETE") {
-              await localTable.delete(id);
-              return;
-            }
-            if (
-              local?.updated_at &&
-              incoming.updated_at &&
-              Date.parse(local.updated_at) > Date.parse(incoming.updated_at)
-            ) return;
-            await localTable.put(normalize(payload.table, incoming));
+            )
+            .first();
+
+          if (disposed || pending || local?.synced === false) return;
+
+          if (payload.eventType === "DELETE") {
+            await localTable.delete(id);
+            return;
           }
-        )
-        .subscribe();
-    };
 
-    void supabase.auth.getUser()
-      .then(({ data }) => attach(data.user?.id))
-      .catch((error) => console.error("[Realtime] Falha ao iniciar canal seguro:", error));
+          if (
+            local?.updated_at &&
+            incoming.updated_at &&
+            Date.parse(local.updated_at) > Date.parse(incoming.updated_at)
+          ) {
+            return;
+          }
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      attach(session?.user?.id);
-    });
+          await localTable.put(normalize(payload.table, incoming));
+        }
+      )
+      .subscribe();
 
     return () => {
       disposed = true;
-      authListener.subscription.unsubscribe();
-      detach();
+      void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 }
