@@ -108,6 +108,9 @@ export const viewport:
 
   userScalable:
     false,
+
+  viewportFit:
+    "cover",
 };
 
 export default function RootLayout({
@@ -176,7 +179,7 @@ export default function RootLayout({
         />
       </head>
 
-      <body className="min-h-[100dvh] bg-void pb-safe font-body antialiased transition-colors duration-300">
+      <body className="min-h-[100dvh] bg-void pb-safe pt-safe font-body antialiased transition-colors duration-300">
         <Suspense
           fallback={
             null
