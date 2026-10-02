@@ -117,11 +117,125 @@ jobs:
           mkdir -p android/app/src/main/res/drawable
           cp assets/android/ic_stat_vault.xml android/app/src/main/res/drawable/ic_stat_vault.xml
 
+      - name: Restaurar assinatura Android estável e versionar APK
+        shell: bash
+        env:
+          VAULT_DEBUG_KEYSTORE_BASE64: ${{ secrets.VAULT_DEBUG_KEYSTORE_BASE64 }}
+          VAULT_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          test -n "$VAULT_DEBUG_KEYSTORE_BASE64" || { echo "ERRO: secret VAULT_DEBUG_KEYSTORE_BASE64 ausente." >&2; exit 1; }
+          test "$VAULT_VERSION_CODE" -ge 1
+
+          KEYSTORE="$RUNNER_TEMP/vault-debug.keystore"
+          printf '%s' "$VAULT_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+
+          keytool -list \
+            -keystore "$KEYSTORE" \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android >/dev/null
+
+          python3 <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("android/app/build.gradle")
+          text = path.read_text(encoding="utf-8")
+          version_code = os.environ["VAULT_VERSION_CODE"]
+
+          text, count = re.subn(
+              r"(?m)^(\s*)versionCode\s+\d+\s*$",
+              rf"\g<1>versionCode {version_code}",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("V86: versionCode não encontrado no Gradle.")
+
+          if "vaultStableDebug" in text:
+              raise SystemExit("V86: contrato de assinatura duplicado.")
+
+          block = r"""
+
+          // Vault V86: assinatura debug permanente para atualizações sobre o APK instalado.
+          android {
+              signingConfigs {
+                  vaultStableDebug {
+                      storeFile file(System.getenv("RUNNER_TEMP") + "/vault-debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.vaultStableDebug
+                  }
+              }
+          }
+          """
+          path.write_text(text.rstrip() + block + "\n", encoding="utf-8")
+          PY
+
+          grep -F "versionCode $VAULT_VERSION_CODE" android/app/build.gradle
+          grep -F 'vaultStableDebug' android/app/build.gradle
+          grep -F 'vault-debug.keystore' android/app/build.gradle
+
+          echo "===== CERTIFICADO PERMANENTE DO VAULT ====="
+          keytool -list -v \
+            -keystore "$KEYSTORE" \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android | grep -E 'Alias name:|SHA1:|SHA256:'
+          echo "============================================"
+
       - name: Compilar APK de teste
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew clean assembleDebug --no-daemon
+
+      - name: Validar identidade e versão do APK
+        shell: bash
+        env:
+          VAULT_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          KEYSTORE="$RUNNER_TEMP/vault-debug.keystore"
+          test -s "$APK"
+          test -s "$KEYSTORE"
+
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          APKSIGNER="$(find "$SDK/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+          AAPT="$(find "$SDK/build-tools" -type f -name aapt 2>/dev/null | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          test -n "$AAPT"
+
+          EXPECTED_SHA256="$(keytool -exportcert -rfc \
+            -keystore "$KEYSTORE" \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android | openssl x509 -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+
+          CERTS="$("$APKSIGNER" verify --print-certs "$APK" 2>&1)"
+          printf '%s\n' "$CERTS"
+          ACTUAL_SHA256="$(printf '%s\n' "$CERTS" | sed -nE '/[Ss][Hh][Aa]-256[[:space:]]+[Dd][Ii][Gg][Ee][Ss][Tt]:/ { s/^.*:[[:space:]]*//; p; q; }' | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+
+          test -n "$EXPECTED_SHA256"
+          test -n "$ACTUAL_SHA256"
+          test "$EXPECTED_SHA256" = "$ACTUAL_SHA256" || { echo "ERRO: APK assinado com certificado inesperado." >&2; exit 1; }
+
+          BADGING="$("$AAPT" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | head -n 1
+          ACTUAL_VERSION_CODE="$(printf '%s\n' "$BADGING" | sed -nE "s/^package:.*versionCode='([0-9]+)'.*/\1/p" | head -n 1)"
+          test "$ACTUAL_VERSION_CODE" = "$VAULT_VERSION_CODE" || { echo "ERRO: versionCode real diverge do github.run_number." >&2; exit 1; }
+
+          echo "ASSINATURA E VERSIONCODE DO VAULT VALIDADOS."
+
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
