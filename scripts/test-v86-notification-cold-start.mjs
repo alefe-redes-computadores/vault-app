@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const source = fs.readFileSync("components/Providers.tsx", "utf8");
+const ok = (value, message) => { if (!value) throw new Error(`V86: ${message}`); };
+ok(source.includes("VAULT_NOTIFICATION_COLD_START_V86"), "contrato ausente");
+ok(source.includes('data.type === "dose_reminder_group"'), "dose agrupada não tratada");
+ok(source.includes('destination = "/hoje"'), "dose agrupada não abre Hoje");
+ok(source.includes('data.type === "health_reminder"'), "lembrete de saúde não tratado");
+ok(source.includes('data.type === "health_event"'), "evento clínico não tratado");
+ok(source.includes('data.vaultHealthInsight === true'), "insight não tratado");
+ok(source.includes("Preparando seus dados com segurança"), "boot visual ausente");
+ok(source.indexOf("VAULT_NOTIFICATION_COLD_START_V86") < source.indexOf('data.type ===\n                "document_expiry"'), "tratamento tardio");
+console.log("V86 NOTIFICATION COLD START — CONTRATO OK");

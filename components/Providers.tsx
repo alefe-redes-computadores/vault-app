@@ -103,6 +103,24 @@ interface NotificationActionData {
 
   actionId?:
     string;
+
+  personId?:
+    string;
+
+  targetRoute?:
+    string;
+
+  reminderId?:
+    string;
+
+  insightId?:
+    string;
+
+  vaultHealthEvent?:
+    boolean;
+
+  vaultHealthInsight?:
+    boolean;
 }
 
 function getNotificationActionData(
@@ -147,6 +165,32 @@ function getNotificationActionData(
       "string"
         ? record.actionId
         : undefined,
+
+    personId:
+      typeof record.personId === "string"
+        ? record.personId
+        : undefined,
+
+    targetRoute:
+      typeof record.targetRoute === "string"
+        ? record.targetRoute
+        : undefined,
+
+    reminderId:
+      typeof record.reminderId === "string"
+        ? record.reminderId
+        : undefined,
+
+    insightId:
+      typeof record.insightId === "string"
+        ? record.insightId
+        : undefined,
+
+    vaultHealthEvent:
+      record.vaultHealthEvent === true,
+
+    vaultHealthInsight:
+      record.vaultHealthInsight === true,
   };
 }
 
@@ -686,6 +730,55 @@ export function Providers({
               data
             );
 
+            // VAULT_NOTIFICATION_COLD_START_V86
+            // O listener principal existe desde a primeira renderização do
+            // shell. Ele também precisa conhecer os destinos que antes
+            // dependiam de reconciliadores montados somente após o boot.
+            if (
+              data.type === "dose_reminder_group" ||
+              data.type === "health_reminder" ||
+              data.type === "health_event" ||
+              data.type === "health_insight" ||
+              data.vaultHealthEvent === true ||
+              data.vaultHealthInsight === true
+            ) {
+              void (async () => {
+                try {
+                  if (
+                    data.personId &&
+                    data.personId !== activePersonId
+                  ) {
+                    await changePerson(data.personId);
+                  }
+
+                  let destination = data.targetRoute;
+
+                  if (data.type === "dose_reminder_group") {
+                    destination = "/hoje";
+                  } else if (data.vaultHealthInsight === true) {
+                    destination = data.insightId
+                      ? `/inteligencia?healthInsight=${encodeURIComponent(data.insightId)}`
+                      : "/inteligencia";
+                  }
+
+                  if (!destination?.startsWith("/")) {
+                    return;
+                  }
+
+                  runAfterVaultBiometricUnlock(() => {
+                    router.push(destination!);
+                  });
+                } catch (error) {
+                  console.error(
+                    "[Providers V86] Erro ao abrir notificação:",
+                    error
+                  );
+                }
+              })();
+
+              return;
+            }
+
             if (
               data.type ===
                 "document_expiry" &&
@@ -968,10 +1061,26 @@ export function Providers({
      * abertura do Vault.
      */
     return (
-      <div
-        className="min-h-screen bg-void"
-        aria-hidden="true"
-      />
+      <main
+        className="flex min-h-[100dvh] items-center justify-center bg-void px-6 text-ink-primary"
+        role="status"
+        aria-label="Abrindo o Vault"
+      >
+        <section className="flex flex-col items-center text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-ice/20 bg-ice/10 shadow-vault">
+            <span className="font-display text-xl font-bold text-ice">V</span>
+          </div>
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-ice/80">
+            Vault
+          </p>
+          <p className="mt-2 text-sm text-ink-muted">
+            Preparando seus dados com segurança…
+          </p>
+          <div className="mt-4 h-1 w-28 overflow-hidden rounded-full bg-surface-raised">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-ice" />
+          </div>
+        </section>
+      </main>
     );
   }
 
