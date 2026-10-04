@@ -1,0 +1,17 @@
+import fs from "node:fs";
+const read=(file)=>fs.readFileSync(file,"utf8");
+const ok=(value,message)=>{if(!value)throw new Error(`V87: ${message}`)};
+const overdue=read("lib/overdue-dose-notifications.ts");
+const providers=read("components/Providers.tsx");
+const health=read("components/HealthReminderReconciler.tsx");
+ok(overdue.includes("VAULT_GROUPED_OVERDUE_NOTIFICATIONS_V87"),"contrato ausente");
+ok(overdue.includes('type:"dose_overdue_group"'),"tipo agrupado ausente");
+ok(overdue.includes('targetRoute:"/hoje"'),"destino não é Hoje");
+ok(overdue.includes("medicamentoIds:item.medicamentoIds"),"IDs agrupados ausentes");
+ok(overdue.includes("configuredOffsets[0]??30"),"mais de uma cobrança permanece ativa");
+ok(!overdue.includes("actionTypeId:ACTION_TYPE_ID,schedule"),"grupo oferece ação individual insegura");
+ok(providers.includes('data.type === "dose_overdue_group"'),"listener inicial ignora atraso agrupado");
+ok((providers.match(/destination = "\/hoje"/g)||[]).length>=1,"listener não abre Hoje");
+ok(health.includes("VAULT_NOTIFICATION_SINGLE_ENTRY_V87"),"listener duplicado não foi neutralizado");
+ok(health.includes('extra?.type === "dose_overdue_group"'),"compatibilidade de atraso agrupado ausente");
+console.log("V87 GROUPED OVERDUE NOTIFICATIONS — CONTRATO OK");

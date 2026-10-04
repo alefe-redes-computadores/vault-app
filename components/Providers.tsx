@@ -736,6 +736,7 @@ export function Providers({
             // dependiam de reconciliadores montados somente após o boot.
             if (
               data.type === "dose_reminder_group" ||
+              data.type === "dose_overdue_group" ||
               data.type === "health_reminder" ||
               data.type === "health_event" ||
               data.type === "health_insight" ||
@@ -753,7 +754,10 @@ export function Providers({
 
                   let destination = data.targetRoute;
 
-                  if (data.type === "dose_reminder_group") {
+                  if (
+                    data.type === "dose_reminder_group" ||
+                    data.type === "dose_overdue_group"
+                  ) {
                     destination = "/hoje";
                   } else if (data.vaultHealthInsight === true) {
                     destination = data.insightId

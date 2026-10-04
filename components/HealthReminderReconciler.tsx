@@ -179,6 +179,22 @@ export function HealthReminderReconciler() {
       ({ notification }) => {
         const extra = notification.extra as NotificationExtra | undefined;
 
+        // VAULT_NOTIFICATION_SINGLE_ENTRY_V87
+        // Providers captura estes tipos desde o cold start. O listener
+        // histórico permanece somente para compatibilidade com payloads
+        // antigos que não carregavam type explícito.
+        if (
+          extra?.type === "dose_reminder_group" ||
+          extra?.type === "dose_overdue_group" ||
+          extra?.type === "health_reminder" ||
+          extra?.type === "health_event" ||
+          extra?.type === "health_insight" ||
+          extra?.vaultHealthEvent === true ||
+          extra?.vaultHealthInsight === true
+        ) {
+          return;
+        }
+
         void (async () => {
           if (extra?.reminderId) {
             const rule = await db.health_reminders.get(extra.reminderId);

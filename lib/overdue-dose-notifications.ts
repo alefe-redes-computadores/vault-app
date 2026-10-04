@@ -29,23 +29,29 @@ export async function cancelOverdueDoseNotification(input:{personId:string;medic
   if(!isVaultNative())return;
   try{
     const pending=await LocalNotifications.getPending();
-    const ids=pending.notifications.filter((n)=>{const e=n.extra as Record<string,unknown>|undefined;return e?.type==="dose_overdue"&&e?.personId===input.personId&&e?.medicamentoId===input.medicamentoId&&e?.data===input.data&&e?.horario===input.horario;}).map(n=>n.id);
+    const ids=pending.notifications.filter((n)=>{const e=n.extra as Record<string,unknown>|undefined;return (e?.type==="dose_overdue"&&e?.personId===input.personId&&e?.medicamentoId===input.medicamentoId&&e?.data===input.data&&e?.horario===input.horario)||(e?.type==="dose_overdue_group"&&e?.personId===input.personId&&e?.data===input.data&&e?.horario===input.horario&&Array.isArray(e?.medicamentoIds)&&e.medicamentoIds.includes(input.medicamentoId));}).map(n=>n.id);
     await cancelIds(ids);
   }catch(error){console.error("[overdue-dose] cancel slot:",error);}
 }
-export async function cancelAllOverdueDoseNotifications(){if(!isVaultNative())return;try{const pending=await LocalNotifications.getPending();await cancelIds(pending.notifications.filter(n=>(n.extra as Record<string,unknown>|undefined)?.type==="dose_overdue").map(n=>n.id));}catch(error){console.error("[overdue-dose] cancel all:",error);}}
+export async function cancelAllOverdueDoseNotifications(){if(!isVaultNative())return;try{const pending=await LocalNotifications.getPending();await cancelIds(pending.notifications.filter(n=>{const type=(n.extra as Record<string,unknown>|undefined)?.type;return type==="dose_overdue"||type==="dose_overdue_group";}).map(n=>n.id));}catch(error){console.error("[overdue-dose] cancel all:",error);}}
 
+// VAULT_GROUPED_OVERDUE_NOTIFICATIONS_V87
 export async function reconcileOverdueDoseNotifications(input:{personId:string;medicamentos:Medicamento[];logs:DoseLog[];now?:Date;}){
   if(!isVaultNative())return;
   const personId=input.personId.trim();if(!personId)return;
   const pending=await LocalNotifications.getPending();
-  const existing=pending.notifications.filter(n=>(n.extra as Record<string,unknown>|undefined)?.type==="dose_overdue");
+  const existing=pending.notifications.filter(n=>{const type=(n.extra as Record<string,unknown>|undefined)?.type;return type==="dose_overdue"||type==="dose_overdue_group";});
   if(!isNotificationPreferenceEnabled()||!isVaultNotificationCategoryEnabled("doses")){await cancelIds(existing.map(n=>n.id));return;}
   const permission=await LocalNotifications.checkPermissions();if(permission.display!=="granted")return;
   await ensureVaultNotificationChannel();
+
   const now=input.now??new Date();
-  const offsets=getVaultNotificationBrainSettings().doseOverdueOffsets.slice().sort((a,b)=>a-b);
-  const desired=new Map<number,{id:number;title:string;body:string;at:Date;personId:string;medicamentoId:string;data:string;horario:string;offsetMinutes:number}>();
+  const configuredOffsets=getVaultNotificationBrainSettings().doseOverdueOffsets.filter(value=>Number.isFinite(value)&&value>0).sort((a,b)=>a-b);
+  const offsetMinutes=configuredOffsets[0]??30;
+
+  type PendingSlot={medicamentoId:string;nome:string;data:string;horario:string;base:Date};
+  const grouped=new Map<string,PendingSlot[]>();
+
   for(let day=0;day<HORIZON_DAYS;day+=1){
     const data=localDateKey(addLocalDays(now,day));
     for(const med of input.medicamentos.filter(m=>eligible(m,personId))){
@@ -54,22 +60,48 @@ export async function reconcileOverdueDoseNotifications(input:{personId:string;m
       for(const horario of horarios){
         if(isResolved(input.logs,personId,medicamentoId,data,horario))continue;
         const base=dateAt(data,horario);if(!base)continue;
-        for(const offsetMinutes of offsets){
-          const at=new Date(base.getTime()+offsetMinutes*60000);
-          if(at<=now)continue;
-          const id=getOverdueDoseNotificationId(personId,medicamentoId,data,horario,offsetMinutes);
-          desired.set(id,{id,title:`Dose pendente: ${med.nome}`,body:`A dose de ${horario} continua pendente. Marque como tomada ou ignorada.`,at,personId,medicamentoId,data,horario,offsetMinutes});
-          if(desired.size>=MAX_PENDING_OVERDUE)break;
-        }
-        if(desired.size>=MAX_PENDING_OVERDUE)break;
+        const at=new Date(base.getTime()+offsetMinutes*60000);
+        if(at<=now)continue;
+        const key=`${data}|${horario}`;
+        const slots=grouped.get(key)??[];
+        slots.push({medicamentoId,nome:med.nome?.trim()||"Medicamento",data,horario,base});
+        grouped.set(key,slots);
       }
-      if(desired.size>=MAX_PENDING_OVERDUE)break;
     }
-    if(desired.size>=MAX_PENDING_OVERDUE)break;
   }
+
+  const desired=new Map<number,{id:number;title:string;body:string;at:Date;personId:string;medicamentoIds:string[];data:string;horario:string;offsetMinutes:number}>();
+  for(const slots of grouped.values()){
+    if(desired.size>=MAX_PENDING_OVERDUE)break;
+    const first=slots[0];
+    const medicamentoIds=slots.map(slot=>slot.medicamentoId).sort();
+    const at=new Date(first.base.getTime()+offsetMinutes*60000);
+    const signature=medicamentoIds.join(",");
+    const id=hashToId(`dose-overdue-group:v87:${personId}:${first.data}:${first.horario}:${signature}`);
+    const title=slots.length===1?`Dose pendente: ${slots[0].nome}`:`${slots.length} doses continuam pendentes`;
+    const names=slots.map(slot=>slot.nome).join(" · ");
+    const body=slots.length===1?`A dose de ${first.horario} ainda não foi resolvida. Toque para registrar.`:`${names} — toque para revisar as doses de ${first.horario}.`;
+    desired.set(id,{id,title,body,at,personId,medicamentoIds,data:first.data,horario:first.horario,offsetMinutes});
+  }
+
   await cancelIds(existing.filter(n=>!desired.has(n.id)).map(n=>n.id));
   const existingIds=new Set(existing.map(n=>n.id));
-  const fresh=Array.from(desired.values()).filter(x=>!existingIds.has(x.id));
+  const fresh=Array.from(desired.values()).filter(item=>!existingIds.has(item.id));
   if(!fresh.length)return;
-  await LocalNotifications.schedule({notifications:fresh.map(x=>({id:x.id,title:x.title,body:x.body,channelId:VAULT_NOTIFICATION_CHANNEL_ID,actionTypeId:ACTION_TYPE_ID,schedule:{at:x.at,allowWhileIdle:true},extra:{type:"dose_overdue",medicamentoId:x.medicamentoId,personId:x.personId,horario:x.horario,data:x.data,offsetMinutes:x.offsetMinutes,targetRoute:`/saude/medicamentos/detalhes?id=${encodeURIComponent(x.medicamentoId)}`}}))});
+  await LocalNotifications.schedule({notifications:fresh.map(item=>({
+    id:item.id,
+    title:item.title,
+    body:item.body,
+    channelId:VAULT_NOTIFICATION_CHANNEL_ID,
+    schedule:{at:item.at,allowWhileIdle:true},
+    extra:{
+      type:"dose_overdue_group",
+      personId:item.personId,
+      medicamentoIds:item.medicamentoIds,
+      horario:item.horario,
+      data:item.data,
+      offsetMinutes:item.offsetMinutes,
+      targetRoute:"/hoje",
+    },
+  }))});
 }
