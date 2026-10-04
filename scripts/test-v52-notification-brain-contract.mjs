@@ -12,6 +12,11 @@ ok(events.includes("offsetMinutes"),"identidade do lembrete inclui antecedência
 ok(overdue.includes("VAULT_SMART_OVERDUE_ESCALATION_V52"),"escalonamento de dose V52 presente");
 ok(overdue.includes("isResolved")&&overdue.includes("tomado_em||log.ignorado_em"),"dose resolvida silencia escalonamento");
 ok(overdue.includes("cancelOverdueDoseNotification")&&overdue.includes('e?.data===input.data'),"ação cancela todos os avisos do slot exato");
-ok(overdue.includes('actionTypeId:ACTION_TYPE_ID'),"ações nativas permanecem nas doses pendentes");
+const groupedOverdue=overdue.includes("VAULT_GROUPED_OVERDUE_V87")||overdue.includes('type:"dose_overdue_group"');
+ok(groupedOverdue||overdue.includes('actionTypeId:ACTION_TYPE_ID'),"doses pendentes preservam interação segura");
+if(groupedOverdue){
+  ok(!overdue.includes('actionTypeId:ACTION_TYPE_ID'),"grupo de atraso não oferece ação nativa em massa");
+  ok(overdue.includes("/hoje"),"grupo de atraso abre Hoje");
+}
 ok(page.includes("NotificationBrainPanel"),"configuração do cérebro exposta na tela de lembretes");
 console.log("V52 NOTIFICATION BRAIN CONTRACT: OK");
