@@ -1,4 +1,4 @@
-import type { BankCard, Credential, Document, Renovacao, Vault, VaultMember } from "@/lib/types";
+import type { BankCard, Credential, Document, Medicamento, Renovacao, Vault, VaultMember } from "@/lib/types";
 
 export type VaultInsightKind = "security" | "attention" | "organization" | "data_quality" | "financial";
 export type VaultInsightConfidence = "baixa" | "media" | "alta";
@@ -26,6 +26,7 @@ export interface VaultIntelligenceSnapshot {
   vaults: Vault[];
   members: VaultMember[];
   renovacoes: Renovacao[];
+  medicamentos: Medicamento[];
 }
 
 export interface VaultIntelligenceResult {

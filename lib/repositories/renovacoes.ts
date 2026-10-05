@@ -97,6 +97,12 @@ export type RenovacaoCreateOptions = {
    * - não cria/reconcilia Retirada.
    */
   somenteReceita?: boolean;
+
+  /**
+   * Registra somente compra/retirada e seus efeitos logísticos.
+   * Preserva prescrição, validade e planejamento do medicamento.
+   */
+  somenteAquisicao?: boolean;
 };
 
 // ============================================================
@@ -782,15 +788,22 @@ export const renovacoesRepository = {
      * Enquanto a tela antiga ainda não enviar data_aquisicao,
      * usamos hoje como padrão para novas aquisições.
      */
-    const dataPrescricao =
-      requireDate(
-        data.data,
-        "Data da prescrição"
-      );
-
     const somenteReceita =
       options.somenteReceita ===
       true;
+
+    const somenteAquisicao =
+      options.somenteAquisicao ===
+      true;
+
+    if (
+      somenteReceita &&
+      somenteAquisicao
+    ) {
+      throw new Error(
+        "O evento não pode ser somente receita e somente aquisição ao mesmo tempo."
+      );
+    }
 
     const dataAquisicao =
       somenteReceita
@@ -801,6 +814,20 @@ export const renovacoesRepository = {
               "Data da aquisição"
             )
           : getLocalTodayISO();
+
+    /*
+     * Renovacao mantém `data` por compatibilidade histórica.
+     * Em aquisição isolada ela recebe a data logística, mas não
+     * se torna a nova data de receita do medicamento.
+     */
+    const dataPrescricao =
+      somenteAquisicao
+        ? dataAquisicao ||
+          getLocalTodayISO()
+        : requireDate(
+            data.data,
+            "Data da prescrição"
+          );
 
     // ========================================================
     // RELAÇÕES
@@ -1024,29 +1051,33 @@ export const renovacoesRepository = {
       ...medicamento,
 
       /*
-       * A receita nova sempre atualiza a referência clínica
-       * atual do medicamento.
+       * Aquisição isolada nunca altera o estado clínico.
+       * Receita e planejamento permanecem exatamente como estavam.
        */
-      data_receita:
-        dataPrescricao,
-
-      ...(data.document_id !==
-      undefined
+      ...(!somenteAquisicao
         ? {
-            document_id:
-              documentId ||
+            data_receita:
+              dataPrescricao,
+
+            ...(data.document_id !==
+            undefined
+              ? {
+                  document_id:
+                    documentId ||
+                    undefined,
+                }
+              : {}),
+
+            medico_id:
+              medicoId ||
               undefined,
+
+            medico:
+              medico?.nome ||
+              medicamento.medico ||
+              "",
           }
         : {}),
-
-      medico_id:
-        medicoId ||
-        undefined,
-
-      medico:
-        medico?.nome ||
-        medicamento.medico ||
-        "",
 
       /*
        * Somente uma aquisição pode alterar origem logística.
@@ -1085,7 +1116,8 @@ export const renovacoesRepository = {
           }
         : {}),
 
-      ...(options.proximaRenovacao !==
+      ...(!somenteAquisicao &&
+      options.proximaRenovacao !==
       undefined
         ? {
             proxima_renovacao:

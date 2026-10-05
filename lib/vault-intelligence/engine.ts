@@ -144,6 +144,49 @@ function documentInsights(documents: Document[], now: Date): VaultGeneralInsight
   return result;
 }
 
+// VAULT_MEDICATION_ACQUISITION_CONTEXT_V93
+function medicationAcquisitionContext(snapshot: VaultIntelligenceSnapshot): VaultGeneralInsight[] {
+  const medications = snapshot.medicamentos.filter(
+    (item) => item.user_id === snapshot.userId && item.person_id === snapshot.personId
+  );
+  const byId = new Map(medications.map((item) => [item.id, item]));
+  const events = snapshot.renovacoes.filter((item) => {
+    const medication = byId.get(item.medicamento_id);
+    const regulated = Boolean(
+      medication?.tipo_receita && medication.tipo_receita !== "comum"
+    );
+    const isAcquisition = Boolean(item.data_aquisicao || item.tipo_aquisicao);
+    const hasClinicalLink = Boolean(item.document_id || item.medico_id || item.anexo_url);
+    return regulated && isAcquisition && !hasClinicalLink;
+  });
+
+  if (!events.length) return [];
+
+  const medicationNames = [...new Set(events.map((item) =>
+    byId.get(item.medicamento_id)?.nome || item.medicamento_nome || "Medicamento"
+  ))];
+  const repeated = events.length >= 2;
+
+  return [{
+    id: "regulated-acquisition-without-clinical-link-v93",
+    kind: repeated ? "attention" : "data_quality",
+    title: repeated
+      ? "Aquisições controladas merecem revisão"
+      : "Aquisição sem vínculo clínico no registro",
+    message: `${events.length} aquisição(ões) de medicamento sujeito a receita foram registradas sem receita/documento ou médico vinculados ao evento. Isso descreve somente os dados informados; não prova ausência de prescrição nem substitui avaliação profissional.`,
+    confidence: "alta",
+    sample: events.length,
+    sources: ["Aquisições", "Tipo de receita do medicamento", "Vínculos de receita e médico"],
+    evidence: [
+      `${events.length} aquisição(ões) sem vínculo clínico no evento`,
+      `${medicationNames.length} medicamento(s): ${medicationNames.slice(0, 3).join(", ")}`,
+    ],
+    actionLabel: "Revisar histórico",
+    href: "/saude/renovacao",
+    priority: repeated ? 7 : 24,
+  }];
+}
+
 export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now = new Date()): VaultIntelligenceResult {
   const credentials = snapshot.credentials.filter((item) => item.user_id === snapshot.userId && item.person_id === snapshot.personId);
   const cards = snapshot.cards.filter((item) => item.user_id === snapshot.userId && item.person_id === snapshot.personId);
@@ -180,7 +223,7 @@ export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now 
     evidence: [`${vaults.length} cofre(s)`, "0 membros ou convites"], actionLabel: "Ver cofres", href: "/vaults", priority: 40,
   });
   const financial = buildVaultFinancialIntelligence(snapshot.renovacoes, snapshot.personId, snapshot.userId, now);
-  const insights = [...credentialInsights(credentials, now), ...cardInsights(cards, now), ...documentInsights(documents, now), ...financial.insights, ...operationalInsights]
+  const insights = [...credentialInsights(credentials, now), ...cardInsights(cards, now), ...documentInsights(documents, now), ...medicationAcquisitionContext(snapshot), ...financial.insights, ...operationalInsights]
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
   const accounts = cards.filter((item) => accountTypes.has(item.type)).length;
   return {

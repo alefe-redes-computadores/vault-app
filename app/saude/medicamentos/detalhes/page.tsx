@@ -1488,30 +1488,12 @@ function MedicamentoDetalhesContent() {
     ]
   );
 
-  // VAULT_CAPACITOR_STATIC_ROUTE_V92_1
-  // O build Android usa output: export + trailingSlash: true.
-  // No WebView nativo, rotas de formulário precisam apontar para o diretório
-  // estático canônico (/.../nova/) para que o Capacitor encontre index.html.
-  // No PWA preservamos a transição client-side do App Router.
+  // VAULT_CANONICAL_ACQUISITION_NAVIGATION_V92_2
+  // A Home já comprova que o App Router abre esta mesma rota no APK.
+  // Detalhes usa exatamente a mesma navegação client-side: sem reload,
+  // barra final artificial, cronômetro ou retry concorrente.
   const navigateReliably = (path: string) => {
     setIsMenuFlutuanteOpen(false);
-
-    if (typeof window === "undefined") {
-      router.push(path);
-      return;
-    }
-
-    if (isVaultNative()) {
-      const target = new URL(path, window.location.origin);
-      const canonicalPath = target.pathname.endsWith("/")
-        ? target.pathname
-        : `${target.pathname}/`;
-      const nativePath = `${canonicalPath}${target.search}${target.hash}`;
-
-      window.location.assign(nativePath);
-      return;
-    }
-
     router.push(path);
   };
 
@@ -1535,6 +1517,20 @@ function MedicamentoDetalhesContent() {
       path:
         `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`,
     },
+
+    ...(
+      med?.tipo_uso === "continuo" ||
+      (med?.tipo_receita && med.tipo_receita !== "comum")
+        ? [
+            {
+              id: "nova-receita",
+              label: "Adicionar nova receita",
+              icon: FileText,
+              path: `/saude/renovacao/nova-receita?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`,
+            },
+          ]
+        : []
+    ),
 
     {
       id:

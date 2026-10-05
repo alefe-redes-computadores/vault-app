@@ -102,6 +102,17 @@ function NovaReceitaContent() {
     ) ||
     "";
 
+  const rawReturnTo =
+    searchParams.get(
+      "return_to"
+    );
+
+  const returnTo =
+    rawReturnTo?.startsWith("/") &&
+    !rawReturnTo.startsWith("//")
+      ? rawReturnTo
+      : "/saude/renovacao";
+
   const medicamentosAtivos =
     useMemo(
       () =>
@@ -323,7 +334,7 @@ function NovaReceitaContent() {
         );
 
         router.replace(
-          "/saude/renovacao"
+          returnTo
         );
       } catch (
         error
@@ -356,7 +367,7 @@ function NovaReceitaContent() {
                 );
 
                 router.replace(
-                  "/saude/renovacao"
+                  returnTo
                 );
               }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95"

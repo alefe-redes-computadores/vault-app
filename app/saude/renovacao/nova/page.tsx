@@ -944,38 +944,15 @@ function NovaRenovacaoContent() {
         false
       );
 
-      if (
-        item.medico_id
-      ) {
-        setMedicoId(
-          item.medico_id
-        );
+      // Vínculo clínico do evento deve ser declarado.
+      // Não herdamos silenciosamente o médico do cadastro.
+      setMedicoId(
+        ""
+      );
 
-        const medicoEncontrado =
-          medicos.find(
-            (
-              medico
-            ) =>
-              medico.id ===
-              item.medico_id
-          );
-
-        setMedicoNome(
-          medicoEncontrado
-            ?.nome ||
-            item.medico ||
-            ""
-        );
-      } else {
-        setMedicoId(
-          ""
-        );
-
-        setMedicoNome(
-          item.medico ||
-            ""
-        );
-      }
+      setMedicoNome(
+        ""
+      );
 
       if (
         item.farmacia_id
@@ -1256,28 +1233,6 @@ function NovaRenovacaoContent() {
           "Selecione o medicamento";
       }
 
-      const dataISO =
-        parseDateToISO(
-          dataDisplay
-        );
-
-      if (
-        !dataISO
-      ) {
-        newErrors.data =
-          "Data inválida";
-      }
-
-      if (
-        proximaDisplay &&
-        !parseDateToISO(
-          proximaDisplay
-        )
-      ) {
-        newErrors.proxima =
-          "Data inválida";
-      }
-
       const dataAquisicaoISO =
         parseDateToISO(
           dataAquisicaoDisplay
@@ -1406,19 +1361,6 @@ function NovaRenovacaoContent() {
             );
           }
 
-          const dataISO =
-            parseDateToISO(
-              dataDisplay
-            );
-
-          if (
-            !dataISO
-          ) {
-            throw new Error(
-              "Data da renovação inválida."
-            );
-          }
-
           const dataAquisicaoISO =
             parseDateToISO(
               dataAquisicaoDisplay
@@ -1435,27 +1377,7 @@ function NovaRenovacaoContent() {
             );
           }
 
-          /*
-           * A validade nasce automaticamente da regra canônica
-           * atual do Vault.
-           *
-           * Quando o usuário altera o campo manualmente,
-           * preservamos a data explicitamente escolhida.
-           */
-          const proximaISO =
-            proximaDisplay
-              ? parseDateToISO(
-                  proximaDisplay
-                ) ||
-                undefined
-              : calcularDataValidadeReceita(
-                  dataISO,
-                  selectedMedicamento
-                    ?.tipo_receita ||
-                    "comum"
-                ) ||
-                undefined;
-
+          // Aquisição não calcula validade nem próxima renovação.
           const dataProximaRetiradaISO =
             tipoAquisicao ===
               "sus" &&
@@ -1555,9 +1477,8 @@ function NovaRenovacaoContent() {
                 medicamento_id:
                   medicamentoId,
 
+                // Aquisição não herda silenciosamente a receita atual.
                 document_id:
-                  selectedMedicamento
-                    ?.document_id ||
                   undefined,
 
                 medico_id:
@@ -1607,8 +1528,10 @@ function NovaRenovacaoContent() {
                 validade_produto:
                   validadeProdutoISO,
 
+                // Campo histórico obrigatório recebe a data do evento.
+                // O repository não a aplica como receita em somenteAquisicao.
                 data:
-                  dataISO,
+                  dataAquisicaoISO,
 
                 data_aquisicao:
                   dataAquisicaoISO,
@@ -1621,8 +1544,8 @@ function NovaRenovacaoContent() {
                   undefined,
               },
               {
-                proximaRenovacao:
-                  proximaISO,
+                somenteAquisicao:
+                  true,
               }
             );
           } catch (
@@ -2157,215 +2080,8 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* ==================================================
-              DATAS
-              ================================================== */}
-
-          <motion.div
-            variants={
-              fadeUp
-            }
-            initial="initial"
-            animate="animate"
-            transition={{
-              delay:
-                0.05,
-            }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                  Data da Prescrição *
-                </label>
-
-                <div className="relative">
-                  <Calendar
-                    size={
-                      16
-                    }
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="DD/MM/AAAA"
-                    value={
-                      dataDisplay
-                    }
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        handleDataChange(
-                          event.target.value
-                        )
-                    }
-                    maxLength={
-                      10
-                    }
-                    inputMode="numeric"
-                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50 ${
-                      errors.data
-                        ? "border-coral/50"
-                        : "border-surface-border/50"
-                    }`}
-                  />
-                </div>
-
-                {errors.data && (
-                  <p className="mt-1 text-xs text-coral">
-                    {
-                      errors.data
-                    }
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                  Validade / próxima renovação
-                </label>
-
-                <div className="relative">
-                  <Calendar
-                    size={
-                      16
-                    }
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="DD/MM/AAAA"
-                    value={
-                      proximaDisplay
-                    }
-                    onChange={
-                      (
-                        event
-                      ) => {
-                        setProximaEditadaManualmente(
-                          true
-                        );
-
-                        setProximaDisplay(
-                          handleDateMask(
-                            event.target.value
-                          )
-                        );
-                      }
-                    }
-                    maxLength={
-                      10
-                    }
-                    inputMode="numeric"
-                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50 ${
-                      errors.proxima
-                        ? "border-coral/50"
-                        : "border-surface-border/50"
-                    }`}
-                  />
-                </div>
-
-                {errors.proxima && (
-                  <p className="mt-1 text-xs text-coral">
-                    {
-                      errors.proxima
-                    }
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-3 rounded-2xl border border-ice/15 bg-ice/5 px-3.5 py-3">
-              <div className="flex items-start gap-2">
-                <Calendar
-                  size={
-                    14
-                  }
-                  className="mt-0.5 shrink-0 text-ice"
-                />
-
-                <div>
-                  <p className="text-[11px] font-semibold text-ink-primary">
-                    Validade calculada pelo Vault
-                  </p>
-
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
-                    O Vault preenche automaticamente esta data em{" "}
-                    {VALIDADE_RECEITA_DIAS[
-                      selectedMedicamento
-                        ?.tipo_receita ||
-                        "comum"
-                    ]
-                      ? `${VALIDADE_RECEITA_DIAS[
-                          selectedMedicamento
-                            ?.tipo_receita ||
-                            "comum"
-                        ]} dias após a prescrição, conforme o tipo de receita cadastrado`
-                      : "somente quando existir uma validade de referência para o tipo de receita cadastrado"}. Você pode alterar a data manualmente quando necessário.
-                  </p>
-
-                  {proximaEditadaManualmente && (
-                    <button
-                      type="button"
-                      onClick={
-                        () => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          setProximaEditadaManualmente(
-                            false
-                          );
-
-                          recalcularProximaData(
-                            dataDisplay,
-                            true
-                          );
-                        }
-                      }
-                      className="mt-2 text-[11px] font-semibold text-ice"
-                    >
-                      Restaurar cálculo automático
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {calcDiasVencimento !==
-              null && (
-              <div
-                className={`mt-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${
-                  calcDiasVencimento <
-                  0
-                    ? "border-coral/20 bg-coral/10 text-coral"
-                    : calcDiasVencimento <=
-                        7
-                      ? "border-amber-400/20 bg-amber-400/10 text-amber-400"
-                      : "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
-                }`}
-              >
-                <Calendar
-                  size={
-                    14
-                  }
-                />
-
-                {calcDiasVencimento <
-                0
-                  ? `A data informada passou há ${Math.abs(
-                      calcDiasVencimento
-                    )} dia(s).`
-                  : calcDiasVencimento ===
-                      0
-                    ? "A data informada é hoje."
-                    : `Faltam ${calcDiasVencimento} dia(s) para a data informada.`}
-              </div>
-            )}
-          </motion.div>
+          {/* VAULT_ACQUISITION_ONLY_V93
+              Receita, validade e planejamento vivem em nova-receita. */}
 
           {/* ==================================================
               AQUISIÇÃO
