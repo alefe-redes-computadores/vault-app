@@ -1,6 +1,6 @@
 import fs from "node:fs";
 const r=f=>fs.readFileSync(f,"utf8"),ok=(v,m)=>{if(!v)throw Error("V43: "+m)};
-const e=r("lib/overdue-dose-notifications.ts"),c=r("components/OverdueDoseNotificationReconciler.tsx"),
+const e=r("lib/overdue-dose-notifications.ts"),c=r("components/DoseNotificationReconciler.tsx"),
 a=r("hooks/useDoseNotificationActions.ts"),p=r("components/Providers.tsx");
 ok(e.includes("VAULT_SMART_OVERDUE_ESCALATION_V52")&&e.includes("getVaultNotificationBrainSettings")&&e.includes("doseOverdueOffsets"),"atraso/escalonamento");
 ok(e.includes("HORIZON_DAYS = 7")&&e.includes("MAX_PENDING_OVERDUE = 80"),"anti-spam V52");
@@ -13,5 +13,5 @@ ok((e.includes('type:"dose_overdue"')||e.includes('type:"dose_overdue_group"'))&
 ok(c.includes("db.doseLogs")&&c.includes("db.medicamentos"),"reconciliador");
 ok(a.includes('extra.type !== "dose_overdue"'),"ações overdue");
 ok((a.match(/cancelOverdueDoseNotification\(\{/g)||[]).length>=2,"cancelamento TOMEI/IGNORAR");
-ok(p.includes("<OverdueDoseNotificationReconciler />"),"mount");
+ok(p.includes("<DoseNotificationReconciler />")&&p.includes("notificationReconcilersReady"),"mount V91");
 console.log("V43 OVERDUE DOSE NOTIFICATIONS CONTRACT: OK");

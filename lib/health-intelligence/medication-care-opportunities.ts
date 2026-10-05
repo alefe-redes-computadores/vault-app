@@ -32,6 +32,10 @@ export interface MedicationCareOpportunity {
   medicamentoNome:
     string;
 
+  formato?: string;
+
+  cores?: string[];
+
   title:
     string;
 
@@ -610,6 +614,12 @@ export function buildMedicationCareOpportunities({
         treatment?.nome ??
         null,
 
+      formato:
+        medicamento.formato,
+
+      cores:
+        medicamento.cores,
+
       latestRenewalDate,
 
       renewalCount:
@@ -627,7 +637,7 @@ export function buildMedicationCareOpportunities({
       renewalHref:
         `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(
           medicamento.id
-        )}`,
+        )}&return_to=${encodeURIComponent("/")}`,
 
       treatmentHref:
         treatmentId

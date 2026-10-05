@@ -427,15 +427,18 @@ function NovaRenovacaoContent() {
   const searchParams =
     useSearchParams();
 
-  const rawReturnTo = searchParams.get("return_to");
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
-    ? rawReturnTo
-    : "/saude/renovacao";
-
   const autoSelectMedId =
     searchParams.get(
       "medicamento_id"
     );
+
+  const rawReturnTo = searchParams.get("return_to");
+  const medicationReturnTo = autoSelectMedId
+    ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(autoSelectMedId)}`
+    : "/saude/renovacao";
+  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
+    ? rawReturnTo
+    : medicationReturnTo;
 
   const {
     run,
@@ -836,7 +839,7 @@ function NovaRenovacaoContent() {
     getClinicalTheme(
       selectedMedicamento
         ?.nome ||
-        "Nova Renovação"
+        "Nova aquisição"
     );
 
   const dataPrescricaoISO =
@@ -1673,10 +1676,10 @@ function NovaRenovacaoContent() {
             "Aquisição registrada com sucesso",
 
           errorMessage:
-            "Erro ao salvar renovação",
+            "Erro ao registrar aquisição",
 
-          goBackOnSuccess:
-            true,
+          successUrl:
+            returnTo,
         }
       ).finally(
         () => {

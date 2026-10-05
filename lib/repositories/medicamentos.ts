@@ -54,6 +54,43 @@ function normalizeCreateText(
   return value?.trim() || "";
 }
 
+/**
+ * Compatibilidade somente de leitura para cadastros anteriores
+ * à identidade visual canônica. Não reescreve o banco e não
+ * inventa valores quando o usuário nunca escolheu uma aparência.
+ */
+function withCanonicalVisualIdentity(
+  medicamento: Medicamento
+): Medicamento {
+  const formato =
+    medicamento.formato?.trim() ||
+    medicamento.forma_farmaceutica?.trim();
+
+  const modernColors =
+    medicamento.cores
+      ?.filter((color): color is string =>
+        typeof color === "string" && color.trim().length > 0
+      )
+      .map((color) => color.trim()) || [];
+
+  const legacyColors = [
+    medicamento.cor_principal,
+    medicamento.cor_secundaria,
+  ].filter((color): color is string =>
+    typeof color === "string" && color.trim().length > 0
+  );
+
+  const cores = Array.from(
+    new Set(modernColors.length > 0 ? modernColors : legacyColors)
+  ).slice(0, 2);
+
+  return {
+    ...medicamento,
+    ...(formato ? { formato } : {}),
+    ...(cores.length > 0 ? { cores } : {}),
+  };
+}
+
 async function reconcileMedicationNotifications(
   previous:
     Medicamento |
@@ -196,14 +233,24 @@ export const medicamentosRepository = {
       return [];
     }
 
-    return db.medicamentos
-      .where(
-        "person_id"
-      )
-      .equals(
-        personId
-      )
-      .toArray();
+    const medicamentos =
+      await db.medicamentos
+        .where(
+          "person_id"
+        )
+        .equals(
+          personId
+        )
+        .filter(
+          (medicamento) =>
+            medicamento.status !==
+            "descontinuado"
+        )
+        .toArray();
+
+    return medicamentos.map(
+      withCanonicalVisualIdentity
+    );
   },
 
   // ==========================================================
@@ -234,7 +281,9 @@ export const medicamentosRepository = {
       return undefined;
     }
 
-    return medicamento;
+    return withCanonicalVisualIdentity(
+      medicamento
+    );
   },
 
   // ==========================================================
@@ -580,326 +629,56 @@ export const medicamentosRepository = {
       );
     }
 
+    /*
+     * Um medicamento participa do prontuário longitudinal.
+     * Removê-lo fisicamente apagava DoseLogs e quebrava a
+     * identidade de eventos históricos. A operação pública de
+     * remoção agora é uma descontinuação segura e reversível.
+     */
     const now =
       new Date().toISOString();
 
-    await db.transaction(
-      "rw",
-      [
-        db.medicamentos,
-        db.renovacoes,
-        db.doseLogs,
-        db.medicamento_tratamentos,
-        db.registros_saude,
-        db.anexos_clinicos,
-        db.syncQueue,
-      ],
-      async () => {
-        // ------------------------------------------------------
-        // RENOVAÇÕES
-        // ------------------------------------------------------
-        //
-        // Renovação é histórico clínico/financeiro e NÃO deve ser
-        // apagada junto com o cadastro atual do medicamento.
-        //
-        // Antes de remover o medicamento, enriquecemos somente
-        // renovações legadas que ainda não possuem snapshot de
-        // nome/dosagem. Snapshots já existentes são preservados,
-        // pois representam a identidade histórica da aquisição.
-        // ------------------------------------------------------
+    const descontinuado: Medicamento = {
+      ...medicamento,
+      status:
+        "descontinuado",
+      data_descontinuacao:
+        medicamento.data_descontinuacao ||
+        now.slice(0, 10),
+      motivo_descontinuacao:
+        medicamento.motivo_descontinuacao ||
+        "Removido da rotina pelo usuário",
+      updated_at:
+        now,
+      synced:
+        false,
+    };
 
-        const renovacoes =
-          await db.renovacoes
-            .where(
-              "medicamento_id"
-            )
-            .equals(
-              id
-            )
-            .toArray();
+    await safeUpdateMedicamento(
+      id,
+      descontinuado
+    );
 
-        for (
-          const renovacao of
-          renovacoes
-        ) {
-          if (!renovacao.id) {
-            continue;
-          }
+    const registroCompleto =
+      await db.medicamentos.get(
+        id
+      );
 
-          const medicamentoNomeSnapshot =
-            renovacao.medicamento_nome?.trim() ||
-            medicamento.nome.trim() ||
-            null;
+    if (!registroCompleto) {
+      throw new Error(
+        "Não foi possível preservar o medicamento no histórico."
+      );
+    }
 
-          const medicamentoDosagemSnapshot =
-            renovacao.medicamento_dosagem?.trim() ||
-            medicamento.dosagem.trim() ||
-            null;
-
-          const needsSnapshotUpdate =
-            renovacao.medicamento_nome !==
-              medicamentoNomeSnapshot ||
-            renovacao.medicamento_dosagem !==
-              medicamentoDosagemSnapshot;
-
-          if (!needsSnapshotUpdate) {
-            continue;
-          }
-
-          const updatedRenovacao = {
-            ...renovacao,
-
-            medicamento_nome:
-              medicamentoNomeSnapshot,
-
-            medicamento_dosagem:
-              medicamentoDosagemSnapshot,
-
-            updated_at:
-              now,
-
-            synced:
-              false,
-          };
-
-          await db.renovacoes.put(
-            updatedRenovacao
-          );
-
-          await enfileirarOperacao(
-            "renovacoes",
-            "update",
-            updatedRenovacao
-          );
-        }
-
-        // ------------------------------------------------------
-        // DOSE LOGS
-        // ------------------------------------------------------
-
-        const doseLogs =
-          await db.doseLogs
-            .where(
-              "medicamento_id"
-            )
-            .equals(
-              id
-            )
-            .toArray();
-
-        for (
-          const doseLog of
-          doseLogs
-        ) {
-          if (!doseLog.id) {
-            continue;
-          }
-
-          await db.doseLogs.delete(
-            doseLog.id
-          );
-
-          await enfileirarOperacao(
-            "doseLogs",
-            "delete",
-            {
-              id:
-                doseLog.id,
-            }
-          );
-        }
-
-        // ------------------------------------------------------
-        // MEDICAMENTO ↔ TRATAMENTOS
-        // ------------------------------------------------------
-
-        await db.medicamento_tratamentos
-          .filter(
-            (
-              vinculo
-            ) =>
-              vinculo.medicamento_id ===
-              id
-          )
-          .delete();
-
-        // ------------------------------------------------------
-        // REGISTROS DE SAÚDE
-        // ------------------------------------------------------
-
-        const registrosSaude =
-          await db.registros_saude
-            .where(
-              "person_id"
-            )
-            .equals(
-              personId
-            )
-            .filter(
-              (
-                registro
-              ) =>
-                registro.medicamento_id ===
-                id
-            )
-            .toArray();
-
-        for (
-          const registro of
-          registrosSaude
-        ) {
-          if (!registro.id) {
-            continue;
-          }
-
-          const updatedRegistro = {
-            ...registro,
-
-            medicamento_id:
-              undefined,
-
-            updated_at:
-              now,
-
-            synced:
-              false,
-          };
-
-          await db.registros_saude.put(
-            updatedRegistro
-          );
-
-          await enfileirarOperacao(
-            "registros_saude",
-            "update",
-            updatedRegistro
-          );
-        }
-
-        // ------------------------------------------------------
-        // ANEXOS CLÍNICOS
-        // ------------------------------------------------------
-
-        const anexosClinicos =
-          await db.anexos_clinicos
-            .filter(
-              (
-                anexo
-              ) =>
-                anexo.medicamento_id ===
-                id
-            )
-            .toArray();
-
-        for (
-          const anexo of
-          anexosClinicos
-        ) {
-          if (!anexo.id) {
-            continue;
-          }
-
-          const updatedAnexo = {
-            ...anexo,
-
-            medicamento_id:
-              undefined,
-
-            updated_at:
-              now,
-
-            synced:
-              false,
-          };
-
-          await db.anexos_clinicos.put(
-            updatedAnexo
-          );
-
-          await enfileirarOperacao(
-            "anexos_clinicos",
-            "update",
-            updatedAnexo
-          );
-        }
-
-        // ------------------------------------------------------
-        // OUTROS MEDICAMENTOS QUE APONTAM PARA ESTE
-        // ------------------------------------------------------
-
-        const medicamentosRelacionados =
-          await db.medicamentos
-            .where(
-              "person_id"
-            )
-            .equals(
-              personId
-            )
-            .filter(
-              (
-                outroMedicamento
-              ) =>
-                outroMedicamento.id !==
-                  id &&
-                outroMedicamento.substituido_por_id ===
-                  id
-            )
-            .toArray();
-
-        for (
-          const relacionado of
-          medicamentosRelacionados
-        ) {
-          if (!relacionado.id) {
-            continue;
-          }
-
-          const updatedMedicamento:
-            Medicamento = {
-            ...relacionado,
-
-            substituido_por_id:
-              undefined,
-
-            updated_at:
-              now,
-
-            synced:
-              false,
-          };
-
-          await db.medicamentos.put(
-            updatedMedicamento
-          );
-
-          await enfileirarOperacao(
-            "medicamentos",
-            "update",
-            updatedMedicamento
-          );
-        }
-
-        // ------------------------------------------------------
-        // MEDICAMENTO
-        // ------------------------------------------------------
-
-        await safeDeleteMedicamento(
-          id
-        );
-
-        await enfileirarOperacao(
-          "medicamentos",
-          "delete",
-          {
-            id,
-          }
-        );
-      }
+    await enfileirarOperacao(
+      "medicamentos",
+      "update",
+      registroCompleto
     );
 
     await reconcileMedicationNotifications(
       medicamento,
-      undefined
+      registroCompleto
     );
 
     return id;

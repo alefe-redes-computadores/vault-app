@@ -703,13 +703,13 @@ function DetalhesRenovacaoContent() {
         "nova-renovacao",
 
       label:
-        "Nova Renovação",
+        "Registrar aquisição",
 
       icon:
         FileWarning,
 
       path:
-        `/saude/renovacao/nova?medicamento_id=${renovacao.medicamento_id}`,
+        `/saude/renovacao/nova?medicamento_id=${renovacao.medicamento_id}&return_to=${encodeURIComponent(`/saude/renovacao/detalhes?id=${renovacao.id}`)}`,
     },
 
     {

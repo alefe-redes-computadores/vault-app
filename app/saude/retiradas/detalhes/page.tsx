@@ -948,7 +948,7 @@ function DetalhesRetiradaContent() {
               type="button"
               onClick={() =>
                 router.push(
-                  `/saude/renovacao/nova?medicamento_id=${retirada.medicamento_id}`
+                  `/saude/renovacao/nova?medicamento_id=${retirada.medicamento_id}&return_to=${encodeURIComponent(`/saude/retiradas/detalhes?id=${retirada.id}`)}`
                 )
               }
               className="w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3.5 text-sm font-bold text-emerald-400"

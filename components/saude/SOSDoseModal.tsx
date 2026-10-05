@@ -6,11 +6,6 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
-  Pill,
-  Droplet,
-  Syringe,
-  StickyNote,
-  Circle,
   AlertTriangle,
   Clock,
   Plus,
@@ -27,25 +22,11 @@ import { safeSetDoseLog, safeUpdateMedicamento } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import type { Medicamento } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
 interface SOSDoseModalProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-function getMedicamentoIcon(formato?: string) {
-  switch (formato) {
-    case "gota":
-      return Droplet;
-    case "injecao":
-      return Syringe;
-    case "adesivo":
-      return StickyNote;
-    case "capsula":
-      return Pill;
-    default:
-      return Circle;
-  }
 }
 
 export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
@@ -230,11 +211,12 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
                 >
                   {selectedMed ? (
                     <span className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                        {(() => {
-                          const Icon = getMedicamentoIcon(selectedMed.formato);
-                          return <Icon size={18} />;
-                        })()}
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
+                        <MedicationFormatIcon
+                          formato={selectedMed.formato}
+                          cores={selectedMed.cores}
+                          size={22}
+                        />
                       </span>
                       <span>
                         <span className="block font-medium text-ink-primary">
@@ -401,7 +383,6 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
                       </div>
                     ) : (
                       sosMedicamentos.map((med) => {
-                        const Icon = getMedicamentoIcon(med.formato);
                         const isSelected = med.id === selectedMedId;
                         return (
                           <button
@@ -413,15 +394,12 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
                                 : "border-surface-border/50 bg-surface-raised hover:bg-surface-raised"
                             }`}
                           >
-                            <span
-                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice"
-                              style={{
-                                backgroundColor: med.cores?.[0]
-                                  ? `${med.cores[0]}20`
-                                  : undefined,
-                              }}
-                            >
-                              <Icon size={20} />
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
+                              <MedicationFormatIcon
+                                formato={med.formato}
+                                cores={med.cores}
+                                size={24}
+                              />
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="block truncate font-medium text-ink-primary">

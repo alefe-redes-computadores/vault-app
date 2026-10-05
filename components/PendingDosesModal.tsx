@@ -17,7 +17,6 @@ import {
   ChevronRight,
   Clock3,
   Loader2,
-  Pill,
   Timer,
   X,
 } from "lucide-react";
@@ -26,10 +25,16 @@ import {
   useHapticFeedback,
 } from "@/lib/haptics";
 
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+
 export type PendingDose = {
   medicamentoId: string;
 
   nome: string;
+
+  formato?: string;
+
+  cores?: string[];
 
   /**
    * Dia original do slot.
@@ -599,11 +604,11 @@ export function PendingDosesModal({
           <div className="space-y-4">
             <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                  <Pill
-                    size={
-                      17
-                    }
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
+                  <MedicationFormatIcon
+                    formato={selectedDose.formato}
+                    cores={selectedDose.cores}
+                    size={24}
                   />
                 </div>
 
@@ -929,18 +934,11 @@ export function PendingDosesModal({
                         className={`flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3.5 text-left active:scale-[0.99] disabled:opacity-55`}
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <div
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                              dose.diaLabel ===
-                              "Ontem"
-                                ? "bg-coral/10 text-coral"
-                                : "bg-amber-400/10 text-amber-400"
-                            }`}
-                          >
-                            <Pill
-                              size={
-                                16
-                              }
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
+                            <MedicationFormatIcon
+                              formato={dose.formato}
+                              cores={dose.cores}
+                              size={22}
                             />
                           </div>
 

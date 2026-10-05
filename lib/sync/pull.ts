@@ -113,6 +113,33 @@ function normalizeEmail(
     .toLowerCase();
 }
 
+// VAULT_SYNC_PIPELINE_V91
+type PullTask = () => Promise<void>;
+
+async function runPullTasks(
+  tasks: PullTask[],
+  concurrency = 4
+): Promise<void> {
+  if (tasks.length === 0) return;
+
+  let cursor = 0;
+  const workerCount = Math.min(concurrency, tasks.length);
+
+  const worker = async (): Promise<void> => {
+    while (cursor < tasks.length) {
+      const taskIndex = cursor;
+      cursor += 1;
+      const task = tasks[taskIndex];
+      if (!task) return;
+      await task();
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: workerCount }, () => worker())
+  );
+}
+
 // ============================================================
 // PULL
 // ============================================================
@@ -287,124 +314,76 @@ export async function pullAllData(
           const rows =
             uniqueById(data);
 
+          const rowIds = rows.map(
+            (row) => row.id as string
+          );
+          const localItems =
+            await localTable.bulkGet(rowIds);
+          const pendingWrites: T[] = [];
+
           let ignoredPending = 0;
           let ignoredUnsynced = 0;
           let ignoredNewerLocal = 0;
           let imported = 0;
 
-          for (
-            const remoteItem of rows
-          ) {
-            if (
-              !remoteItem.id
-            ) {
+          for (let index = 0; index < rows.length; index += 1) {
+            const remoteItem = rows[index];
+            const remoteId = remoteItem.id as string;
+
+            if (hasPendingOperation(queueTable, remoteId)) {
+              ignoredPending += 1;
               continue;
             }
 
-            if (
-              hasPendingOperation(
-                queueTable,
-                remoteItem.id
-              )
-            ) {
-              ignoredPending++;
-
-              console.log(
-                `🛡️ [Pull] ${queueTable}:${remoteItem.id} possui alteração local pendente. Versão remota ignorada.`
-              );
-
-              continue;
-            }
-
-            const localItem =
-              await localTable.get(
-                remoteItem.id
-              );
+            const localItem = localItems[index];
 
             if (localItem) {
-              const localRecord =
-                localItem as Record<
-                  string,
-                  unknown
-                >;
+              const localRecord = localItem as Record<string, unknown>;
 
-              if (
-                localRecord.synced ===
-                false
-              ) {
-                ignoredUnsynced++;
-
-                console.log(
-                  `🛡️ [Pull] ${queueTable}:${remoteItem.id} está marcado como não sincronizado localmente. Versão remota ignorada.`
-                );
-
+              if (localRecord.synced === false) {
+                ignoredUnsynced += 1;
                 continue;
               }
 
               const localUpdatedAt =
-                typeof localRecord.updated_at ===
-                "string"
-                  ? Date.parse(
-                      localRecord.updated_at
-                    )
+                typeof localRecord.updated_at === "string"
+                  ? Date.parse(localRecord.updated_at)
                   : Number.NaN;
-
               const remoteUpdatedAt =
-                typeof remoteItem.updated_at ===
-                "string"
-                  ? Date.parse(
-                      remoteItem.updated_at
-                    )
+                typeof remoteItem.updated_at === "string"
+                  ? Date.parse(remoteItem.updated_at)
                   : Number.NaN;
 
               if (
-                Number.isFinite(
-                  localUpdatedAt
-                ) &&
-                Number.isFinite(
-                  remoteUpdatedAt
-                ) &&
-                localUpdatedAt >
-                  remoteUpdatedAt
+                Number.isFinite(localUpdatedAt) &&
+                Number.isFinite(remoteUpdatedAt) &&
+                localUpdatedAt > remoteUpdatedAt
               ) {
-                ignoredNewerLocal++;
-
-                console.log(
-                  `🛡️ [Pull] ${queueTable}:${remoteItem.id} possui versão local mais recente que a remota. Versão remota ignorada.`
-                );
-
+                ignoredNewerLocal += 1;
                 continue;
               }
             }
 
-            const mapped =
-              mapRemote
-                ? mapRemote(
-                    remoteItem
-                  )
-                : {
-                    ...remoteItem,
-                  };
+            const mapped = mapRemote
+              ? mapRemote(remoteItem)
+              : { ...remoteItem };
 
-            const localValue = {
+            pendingWrites.push({
               ...mapped,
               synced: true,
-            } as unknown as T;
+            } as unknown as T);
+            imported += 1;
+          }
 
-            await localTable.put(
-              localValue
-            );
-
-            imported++;
+          if (pendingWrites.length > 0) {
+            await localTable.bulkPut(pendingWrites);
           }
 
           const ignored =
-            ignoredPending +
-            ignoredUnsynced +
-            ignoredNewerLocal;
+            ignoredPending + ignoredUnsynced + ignoredNewerLocal;
 
           console.log(
-            `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados, ${ignored} preservados (${ignoredPending} com fila pendente, ${ignoredUnsynced} não sincronizados, ${ignoredNewerLocal} locais mais recentes)`
+            `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados em lote, ${ignored} preservados (${ignoredPending} com fila pendente, ${ignoredUnsynced} não sincronizados, ${ignoredNewerLocal} locais mais recentes)`
           );
         } catch (
           error: unknown
@@ -430,25 +409,26 @@ export async function pullAllData(
     // HEALTH GOALS (person-scoped, sincronizados)
     // ==========================================================
 
-    await processTable({ remoteTable: "health_goals", queueTable: "health_goals", localTable: db.health_goals, query: async () => await supabase.from("health_goals").select("*").eq("user_id", userId) });
+    await runPullTasks([
+      () => processTable({ remoteTable: "health_goals", queueTable: "health_goals", localTable: db.health_goals, query: async () => await supabase.from("health_goals").select("*").eq("user_id", userId)  }),
 
     // ==========================================================
     // HEALTH REMINDERS (person-scoped, sincronizados)
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable: "health_reminders",
       queueTable: "health_reminders",
       localTable: db.health_reminders,
       query: async () => await supabase.from("health_reminders").select("*").eq("user_id", userId),
       mapRemote: (row) => ({ ...row, time: typeof row.time === "string" ? row.time.slice(0, 5) : row.time, weekdays: Array.isArray(row.weekdays) ? row.weekdays : [] }),
-    });
+      }),
 
     // ==========================================================
     // PERSONS
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "persons",
 
@@ -486,13 +466,13 @@ export async function pullAllData(
               true,
           };
         },
-    });
+      }),
 
     // ==========================================================
     // SETTINGS
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "settings",
 
@@ -514,13 +494,13 @@ export async function pullAllData(
               userId
             );
         },
-    });
+      }),
 
     // ==========================================================
     // ENTIDADES GLOBAIS
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "medicos",
       queueTable:
@@ -536,9 +516,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "farmacias",
       queueTable:
@@ -554,9 +534,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "hospitais",
       queueTable:
@@ -572,9 +552,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "locais",
       queueTable:
@@ -590,9 +570,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "instituicoes",
       queueTable:
@@ -608,13 +588,13 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
     // ==========================================================
     // CIDS
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "cids",
 
@@ -633,7 +613,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
+
+    ]);
 
     // ==========================================================
     // VAULT MEMBERS VISÍVEIS
@@ -1008,7 +990,8 @@ export async function pullAllData(
     // SAÚDE
     // ==========================================================
 
-    await processTable({
+    await runPullTasks([
+      () => processTable({
       remoteTable:
         "tratamentos",
       queueTable:
@@ -1024,9 +1007,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "medicamentos",
       queueTable:
@@ -1042,9 +1025,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "exames",
       queueTable:
@@ -1060,9 +1043,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "consultas",
       queueTable:
@@ -1078,9 +1061,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "cirurgias",
       queueTable:
@@ -1096,9 +1079,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "renovacoes",
       queueTable:
@@ -1114,9 +1097,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "retiradas",
       queueTable:
@@ -1132,9 +1115,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "dose_logs",
       queueTable:
@@ -1150,9 +1133,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "registros_saude",
       queueTable:
@@ -1170,9 +1153,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "anexos_clinicos",
 
@@ -1218,13 +1201,13 @@ export async function pullAllData(
                 : undefined,
           };
         },
-    });
+      }),
 
     // ==========================================================
     // CREDENTIALS
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "credentials",
 
@@ -1262,13 +1245,13 @@ export async function pullAllData(
                 : [],
           };
         },
-    });
+      }),
 
     // ==========================================================
     // CARDS
     // ==========================================================
 
-    await processTable({
+      () => processTable({
       remoteTable:
         "cards",
       queueTable:
@@ -1284,7 +1267,9 @@ export async function pullAllData(
               "user_id",
               userId
             ),
-    });
+      }),
+
+    ]);
 
     // ==========================================================
     // RELAÇÕES N:N

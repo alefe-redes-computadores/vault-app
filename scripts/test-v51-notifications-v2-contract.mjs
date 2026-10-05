@@ -4,7 +4,7 @@ const dose=read("lib/dose-notifications.ts");
 const actions=read("hooks/useDoseNotificationActions.ts");
 const providers=read("components/Providers.tsx");
 const health=read("components/HealthReminderReconciler.tsx");
-const component=read("components/ScheduledDoseNotificationReconciler.tsx");
+const component=read("components/DoseNotificationReconciler.tsx");
 const ok=(c,m)=>{if(!c){console.error(`FAIL: ${m}`);process.exit(1)}console.log(`OK: ${m}`)};
 ok(dose.includes("VAULT_SCHEDULED_DOSE_RECONCILER_V51"),"motor V51 presente");
 ok(
@@ -22,6 +22,6 @@ ok(dose.includes('extra?.type==="dose_reminder"'),"agenda legada/antiga é recon
 ok(component.includes("db.doseLogs") && component.includes("reconcileScheduledDoseNotifications"),"DoseLog dispara reconciliação");
 ok(actions.includes("VAULT_NOTIFICATION_EXACT_SLOT_V51") && actions.includes('extra.type === "dose_reminder"'),"ações usam data exata");
 ok(providers.includes('data.type ===\n                "dose_overdue"'),"toque em atraso abre medicamento");
-ok(providers.includes("<ScheduledDoseNotificationReconciler />"),"reconciliador montado globalmente");
+ok(providers.includes("<DoseNotificationReconciler />")&&providers.includes("notificationReconcilersReady"),"reconciliador consolidado montado globalmente");
 ok(health.includes("VAULT_NOTIFICATION_INSIGHT_DEEPLINK_V51"),"insight ganhou deep-link");
 console.log("V51 NOTIFICATIONS V2 CONTRACT: OK");

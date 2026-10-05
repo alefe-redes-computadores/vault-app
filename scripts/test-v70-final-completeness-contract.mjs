@@ -89,9 +89,9 @@ ok(
 
 ok(
   med.includes(
-    '`/saude/renovacao/nova?medicamento_id=${id}`'
+    "/saude/renovacao/nova?medicamento_id=${id}&return_to="
   ),
-  "Nova renovação navegável"
+  "Aquisição navegável com retorno explícito"
 );
 
 ok(

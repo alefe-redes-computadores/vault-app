@@ -20,17 +20,13 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
-  Circle,
   Clock,
-  Droplet,
   Loader2,
   Minus,
   Pill,
   Plus,
   Search,
   Sparkles,
-  StickyNote,
-  Syringe,
   Timer,
   X,
   Zap,
@@ -72,6 +68,8 @@ import type {
   DoseLog,
   Medicamento,
 } from "@/lib/types";
+
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
 // ============================================================
 // TIPOS
@@ -526,106 +524,6 @@ function formatQuantity(
       ".",
       ","
     );
-}
-
-// ============================================================
-// ÍCONES
-// ============================================================
-
-interface SplitPillIconProps {
-  size?: number;
-  fill?: string;
-}
-
-const SplitPillIcon = ({
-  size = 20,
-  fill = "currentColor",
-}: SplitPillIconProps) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <circle
-      cx="12"
-      cy="12"
-      r="10"
-      fill={fill}
-    />
-
-    <line
-      x1="12"
-      y1="2"
-      x2="12"
-      y2="22"
-      stroke="rgba(0,0,0,0.3)"
-      strokeWidth="2"
-    />
-  </svg>
-);
-
-function getMedicineIcon(
-  formato?: string
-) {
-  const normalized =
-    formato
-      ?.toLowerCase()
-      .trim() ||
-    "";
-
-  if (
-    normalized.includes(
-      "partido"
-    )
-  ) {
-    return SplitPillIcon;
-  }
-
-  if (
-    normalized.includes(
-      "gota"
-    )
-  ) {
-    return Droplet;
-  }
-
-  if (
-    normalized.includes(
-      "injecao"
-    ) ||
-    normalized.includes(
-      "injeção"
-    )
-  ) {
-    return Syringe;
-  }
-
-  if (
-    normalized.includes(
-      "adesivo"
-    )
-  ) {
-    return StickyNote;
-  }
-
-  if (
-    normalized.includes(
-      "comprimido"
-    ) ||
-    normalized.includes(
-      "inteiro"
-    )
-  ) {
-    return Circle;
-  }
-
-  return Pill;
 }
 
 // ============================================================
@@ -1594,16 +1492,6 @@ export function QuickDoseModal({
   // VISUAL
   // ==========================================================
 
-  const IconComp =
-    getMedicineIcon(
-      selectedMed?.formato
-    );
-
-  const color =
-    selectedMed
-      ?.cores?.[0] ||
-    "#8B5CF6";
-
   const stockQuantity =
     selectedMed
       ?.estoque_quantidade;
@@ -2409,16 +2297,6 @@ export function QuickDoseModal({
                         doseMedId ===
                         medicamento.id;
 
-                      const MedIcon =
-                        getMedicineIcon(
-                          medicamento.formato
-                        );
-
-                      const medicineColor =
-                        medicamento
-                          .cores?.[0] ||
-                        "#8B5CF6";
-
                       return (
                         <button
                           type="button"
@@ -2440,23 +2318,11 @@ export function QuickDoseModal({
                               : "border-surface-border/50 bg-surface-raised"
                           }`}
                         >
-                          <div
-                            className="flex h-11 w-11 items-center justify-center rounded-full border"
-                            style={{
-                              backgroundColor:
-                                `${medicineColor}15`,
-
-                              borderColor:
-                                `${medicineColor}40`,
-
-                              color:
-                                medicineColor,
-                            }}
-                          >
-                            <MedIcon
-                              size={
-                                21
-                              }
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/60 bg-void/55">
+                            <MedicationFormatIcon
+                              formato={medicamento.formato}
+                              cores={medicamento.cores}
+                              size={25}
                             />
                           </div>
 
@@ -2501,22 +2367,11 @@ export function QuickDoseModal({
 
           {selectedMed && (
             <div className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface-raised p-3.5">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
-                style={{
-                  backgroundColor:
-                    `${color}15`,
-
-                  borderColor:
-                    `${color}40`,
-
-                  color,
-                }}
-              >
-                <IconComp
-                  size={
-                    23
-                  }
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-surface-border/60 bg-void/55">
+                <MedicationFormatIcon
+                  formato={selectedMed.formato}
+                  cores={selectedMed.cores}
+                  size={27}
                 />
               </div>
 

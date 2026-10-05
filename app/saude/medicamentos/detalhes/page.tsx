@@ -837,8 +837,8 @@ function MedicamentoDetalhesContent() {
     authenticate: authenticateDeletion,
     isAvailable: deletionBiometricAvailable,
   } = useBiometric({
-    title: "Excluir medicamento",
-    subtitle: "Ação sensível do Vault",
+    title: "Remover da rotina",
+    subtitle: "Preservação do prontuário",
     description: "Confirme sua identidade para continuar.",
     fallbackTitle: "Usar credencial do aparelho",
   });
@@ -1522,7 +1522,7 @@ function MedicamentoDetalhesContent() {
         "nova-renovacao",
 
       label:
-        "Nova Renovação",
+        "Registrar aquisição",
 
       icon:
         FileWarning,
@@ -2562,7 +2562,7 @@ function MedicamentoDetalhesContent() {
 
       setToastMessage({
         text:
-          "Excluindo medicamento...",
+          "Removendo medicamento da rotina...",
 
         type:
           "loading",
@@ -2579,7 +2579,7 @@ function MedicamentoDetalhesContent() {
 
         setToastMessage({
           text:
-            "Excluído com sucesso!",
+            "Medicamento removido da rotina; histórico preservado.",
 
           type:
             "success",
@@ -2602,7 +2602,7 @@ function MedicamentoDetalhesContent() {
 
         setToastMessage({
           text:
-            "Erro ao excluir medicamento.",
+            "Erro ao remover medicamento da rotina.",
 
           type:
             "error",
@@ -3200,7 +3200,7 @@ function MedicamentoDetalhesContent() {
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral/10 text-coral">
                       <Trash2 size={16} />
                     </div>
-                    <span className="text-sm font-medium">Excluir medicamento</span>
+                    <span className="text-sm font-medium">Remover da rotina</span>
                   </button>
                 </motion.div>
               </>
@@ -3679,7 +3679,7 @@ function MedicamentoDetalhesContent() {
                               alertaInteligente.motivo ===
                                 "receita"
                                 ? `/saude/documentos/novo?medicamento_id=${id}`
-                                : `/saude/renovacao/nova?medicamento_id=${id}`
+                                : `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`
                             )
                         }
                         className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold transition-transform active:scale-95 ${
@@ -5395,7 +5395,7 @@ function MedicamentoDetalhesContent() {
                   );
 
                   navigateReliably(
-                    `/saude/renovacao/nova?medicamento_id=${id}`
+                    `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`
                   );
                 }
               }
@@ -5407,7 +5407,7 @@ function MedicamentoDetalhesContent() {
                 }
               />
 
-              Registrar Nova Renovação
+              Registrar aquisição
             </button>
           </div>
         </BottomSheet>
@@ -5428,20 +5428,20 @@ function MedicamentoDetalhesContent() {
           onConfirm={
             handleDelete
           }
-          title="Excluir medicamento"
+          title="Remover da rotina"
           message={isVaultNative() && deleteAuthorized ? (
-            `Identidade confirmada. Excluir permanentemente "${med.nome}"? As doses e renovações vinculadas serão removidas.`
+            `Identidade confirmada. Remover "${med.nome}" da rotina? Doses, aquisições e renovações serão preservadas no histórico.`
           ) : (
             <div className="space-y-3">
-              <p>Excluir permanentemente <strong className="text-ink-primary">{med.nome}</strong>? As doses e renovações vinculadas serão removidas.</p>
+              <p>Remover <strong className="text-ink-primary">{med.nome}</strong> da rotina? Doses, aquisições e renovações serão preservadas no histórico.</p>
               <label className="block">
                 <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-coral">Digite EXCLUIR para confirmar</span>
                 <input value={deletePhrase} onChange={(event) => setDeletePhrase(event.target.value.toUpperCase())} placeholder="EXCLUIR" className="w-full rounded-2xl border border-coral/25 bg-surface-raised px-4 py-3 text-center font-mono text-sm uppercase tracking-widest text-ink-primary outline-none focus:border-coral" />
               </label>
-              <button type="button" disabled={deletePhrase !== "EXCLUIR" || isDeleting} onClick={() => void handleDelete()} className="min-h-12 w-full rounded-2xl bg-coral px-4 text-sm font-bold text-white disabled:opacity-35">Excluir medicamento</button>
+              <button type="button" disabled={deletePhrase !== "EXCLUIR" || isDeleting} onClick={() => void handleDelete()} className="min-h-12 w-full rounded-2xl bg-coral px-4 text-sm font-bold text-white disabled:opacity-35">Remover da rotina</button>
             </div>
           )}
-          confirmLabel="Excluir"
+          confirmLabel="Remover"
           cancelLabel="Cancelar"
           isLoading={
             isDeleting

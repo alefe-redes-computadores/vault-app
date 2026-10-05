@@ -81,8 +81,7 @@ import {
 
 import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
 import { InsightNotificationReconciler } from "@/components/InsightNotificationReconciler";
-import { OverdueDoseNotificationReconciler } from "@/components/OverdueDoseNotificationReconciler";
-import { ScheduledDoseNotificationReconciler } from "@/components/ScheduledDoseNotificationReconciler";
+import { DoseNotificationReconciler } from "@/components/DoseNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
 import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
@@ -269,6 +268,22 @@ export function Providers({
   const [profileGateReady, setProfileGateReady] = useState(false);
   const [profileGateOpen, setProfileGateOpen] = useState(false);
   const [profileGateBusy, setProfileGateBusy] = useState<string | null>(null);
+
+  // VAULT_NOTIFICATION_IDLE_MOUNT_V91
+  const [notificationReconcilersReady, setNotificationReconcilersReady] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id || !activePersonId || !isVaultNative()) {
+      setNotificationReconcilersReady(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setNotificationReconcilersReady(true);
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [user?.id, activePersonId]);
 
   useEffect(() => {
     if (!user?.id || activePersonLoading || ownedPersonCount === undefined) {
@@ -1205,10 +1220,13 @@ export function Providers({
 
   return (
       <ErrorBoundary>
+      {notificationReconcilersReady && (
+        <>
           <HealthReminderReconciler />
-      <InsightNotificationReconciler />
-      <OverdueDoseNotificationReconciler />
-      <ScheduledDoseNotificationReconciler />
+          <InsightNotificationReconciler />
+          <DoseNotificationReconciler />
+        </>
+      )}
       <GlobalSyncIssueAlert />
         <div className="min-h-screen pb-24">
           <Suspense

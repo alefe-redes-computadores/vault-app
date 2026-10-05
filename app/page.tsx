@@ -73,6 +73,7 @@ import { normalizedMedicationSchedules } from "@/lib/medication-dose-history";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {
   PendingDosesModal,
   type PendingDose,
@@ -973,6 +974,12 @@ export default function HomePage() {
 
                   nome:
                     med.nome,
+
+                  formato:
+                    med.formato,
+
+                  cores:
+                    med.cores,
 
                   data,
 
@@ -2906,7 +2913,11 @@ export default function HomePage() {
                           : "bg-ice/10 text-ice"
                     }`}
                   >
-                    <Pill size={18} />
+                    <MedicationFormatIcon
+                      formato={primaryMedicationCareOpportunity.formato}
+                      cores={primaryMedicationCareOpportunity.cores}
+                      size={23}
+                    />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -2964,7 +2975,7 @@ export default function HomePage() {
                         : "bg-ice text-void"
                     }`}
                   >
-                    Já renovei · registrar
+                    Registrar aquisição
                   </button>
 
                   <button

@@ -66,6 +66,7 @@ import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 import { useHealthReminders } from "@/hooks/useHealthReminders";
 import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
@@ -158,6 +159,8 @@ interface DoseItemExt {
   medicamentoId?: string;
   medicamentoNome?: string;
   dosagem?: string;
+  formato?: string;
+  cores?: string[];
   horario: string;
   tomada: boolean;
   ignorada: boolean;
@@ -1454,6 +1457,8 @@ export default function HojePage() {
           medicamentoId: med.id,
           medicamentoNome: med.nome,
           dosagem: med.dosagem,
+          formato: med.formato,
+          cores: med.cores,
           horario,
           tomada,
           ignorada,
@@ -1555,6 +1560,8 @@ export default function HojePage() {
             medicamentoId: med.id!,
             medicamentoNome: med.nome,
             dosagem: med.dosagem,
+            formato: med.formato,
+            cores: med.cores,
             horario:
               log.horario || "00:00",
             tomada: true,
@@ -4310,6 +4317,16 @@ export default function HojePage() {
                                       />
                                     )}
                                   </div>
+
+                                  {!item.isSintoma && item.medicamentoId && (
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
+                                      <MedicationFormatIcon
+                                        formato={item.formato}
+                                        cores={item.cores}
+                                        size={20}
+                                      />
+                                    </div>
+                                  )}
 
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

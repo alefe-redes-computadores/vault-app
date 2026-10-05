@@ -322,8 +322,12 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       changed = true;
     }
     if (!medicamentoIds.has(log.medicamento_id)) {
-      await db.doseLogs.delete(log.id!);
-      await enfileirarOperacao('doseLogs', 'delete', { id: log.id! });
+      // Dose é prontuário: uma referência ausente deve ser
+      // diagnosticada, nunca transformada em exclusão automática.
+      console.warn(
+        "[IntegridadeReferencial] Dose histórica preservada com medicamento ausente:",
+        log.id
+      );
       continue;
     }
 

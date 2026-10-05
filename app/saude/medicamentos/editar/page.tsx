@@ -4831,10 +4831,10 @@ function EditarMedicamentoContent() {
         },
         {
           successMessage:
-            "Medicamento excluído com sucesso",
+            "Medicamento removido da rotina; histórico preservado",
 
           errorMessage:
-            "Erro ao excluir medicamento",
+            "Erro ao remover medicamento da rotina",
         }
       );
     };
@@ -5415,7 +5415,7 @@ function EditarMedicamentoContent() {
                           true
                         )
                     }
-                    aria-label="Excluir medicamento"
+                    aria-label="Remover medicamento da rotina"
                     className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-coral/10 text-coral active:scale-95"
                     type="button"
                   >
@@ -7151,7 +7151,7 @@ function EditarMedicamentoContent() {
                     onRenovarClick={
                       () =>
                         router.push(
-                          `/saude/renovacao/nova?medicamento_id=${id}`
+                          `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`
                         )
                     }
                   />
@@ -8913,9 +8913,9 @@ function EditarMedicamentoContent() {
           onConfirm={
             handleDelete
           }
-          title="Excluir medicamento"
-          message={`Excluir permanentemente o registro de "${nome}"? As doses e renovações vinculadas ao medicamento serão removidas; outros registros históricos relacionados serão preservados quando aplicável.`}
-          confirmLabel="Excluir"
+          title="Remover da rotina"
+          message={`Remover "${nome}" da rotina? O medicamento deixará de aparecer entre os ativos, mas doses, aquisições, renovações e demais registros históricos serão preservados no prontuário.`}
+          confirmLabel="Remover"
           cancelLabel="Cancelar"
           isLoading={
             isDeleting
