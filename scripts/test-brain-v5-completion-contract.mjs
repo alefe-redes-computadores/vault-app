@@ -1,0 +1,17 @@
+import fs from "node:fs";
+const r=p=>fs.readFileSync(p,"utf8"),ok=(v,m)=>{if(!v)throw Error("BRAIN V5 COMPLETION: "+m);console.log("OK:",m)};
+const brain=r("lib/health-intelligence/brain-v5.ts"),hook=r("hooks/useBrainV5Alerts.ts"),pulse=r("hooks/useBrainV5Pulse.ts"),ui=r("app/inteligencia/alertas/page.tsx"),home=r("app/page.tsx"),notify=r("lib/health-intelligence/notification-policy.ts"),knowledge=r("lib/health-intelligence/interaction-knowledge.ts"),safety=r("lib/health-intelligence/medication-safety.ts"),sync=r("hooks/useSyncQueue.ts");
+ok(brain.includes("material_fingerprint")&&brain.includes("resurfaced"),"recorrência material + reabertura por novo episódio");
+ok(hook.includes("x.material_fingerprint")&&hook.includes("x.episode"),"persistência reage a mudança material sem render-loop");
+ok(pulse.includes("db.settings")&&!pulse.includes("useHealthIntelligence"),"pulso da Home lê Ledger sem executar segundo cérebro");
+ok(home.includes("VAULT_BRAIN_V5_HOME_PULSE")&&home.includes("brainV5Pulse.counters.attention"),"Home mostra pulso real do Brain V5");
+ok(notify.includes('/inteligencia/alertas?insight='),"notificação abre Central V5 no insight exato");
+ok(ui.includes('new URLSearchParams(window.location.search).get("insight")'),"Central resolve deep-link exato");
+ok(ui.includes('setSeverity')&&ui.includes('setPeriod')&&ui.includes('setState'),"Central filtra gravidade, período e estado");
+ok(ui.includes("Por que o Vault mostrou isso?")&&ui.includes("fontes_externas"),"explicabilidade e fontes preservadas");
+ok(knowledge.includes('closed-audited-rules-only')&&knowledge.includes('lisdexamfetamine-serotonergic'),"Interaction Knowledge é fechado e auditado");
+ok(safety.includes("OFFICIAL_LISDEXAMFETAMINE_LABEL")&&safety.includes("OFFICIAL_METHADONE_LABEL")&&safety.includes("OFFICIAL_ZOLPIDEM_LABEL"),"regras de interação mantêm fontes regulatórias explícitas");
+ok(sync.includes("VAULT_BRAIN_V5_SETTINGS_SYNC_R2")&&sync.includes('"brain_v5_alert_ledger"'),"sync R2 do Ledger preservado");
+const v92=r("scripts/test-v92-2-canonical-acquisition-navigation-contract.mjs"),v93=r("scripts/test-v93-recipe-acquisition-separation-contract.mjs");
+ok(v92.includes("router.push(path)"),"V92.2 preservada");ok(v93.includes("VAULT_CANONICAL_ACQUISITION_NAVIGATION_V92_2"),"V93 preservada");
+console.log("\nBRAIN V5 COMPLETION: CONTRATOS OK");

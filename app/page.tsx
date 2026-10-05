@@ -47,6 +47,7 @@ import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useRetiradas } from "@/hooks/useRetiradas";
 
 import { useHapticFeedback } from "@/lib/haptics";
@@ -498,6 +499,9 @@ export default function HomePage() {
 
   const healthIntelligence =
     useHealthIntelligence();
+
+  // Ledger-only: não executa uma segunda análise clínica na Home.
+  const brainV5Pulse = useBrainV5Pulse();
 
   const hoje =
     getLocalTodayISO();
@@ -2437,6 +2441,24 @@ export default function HomePage() {
             </motion.section>
           )}
 
+          {/* VAULT_BRAIN_V5_HOME_PULSE */}
+          {!brainV5Pulse.isLoading && (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0) && (
+            <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><Activity size={17}/></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-ink-primary">Cérebro do Vault</p>
+                <p className="mt-1 text-[10px] text-ink-muted">
+                  {brainV5Pulse.counters.attention > 0
+                    ? brainV5Pulse.counters.attention + " precisa(m) de atenção"
+                    : brainV5Pulse.counters.active + " em acompanhamento"}
+                  {brainV5Pulse.counters.new > 0 ? " · " + brainV5Pulse.counters.new + " novo(s)" : ""}
+                </p>
+                {brainV5Pulse.top && <p className="mt-1 truncate text-[10px] text-violet-200/80">{brainV5Pulse.top.snapshot.titulo}</p>}
+              </div>
+              <ChevronRight size={15} className="text-violet-300"/>
+            </button>
+          )}
+
           {/* ===================================================
               PADRÕES PERCEBIDOS
           =================================================== */}
@@ -2466,9 +2488,10 @@ export default function HomePage() {
                       className="text-violet-400"
                     />
 
-                    <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      Inteligência de saúde
-                    </h2>
+                    <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central do Cérebro">
+                      <h2 className="font-display text-sm font-semibold text-ink-primary">Inteligência de saúde</h2>
+                      <ChevronRight size={13} className="text-violet-300" />
+                    </button>
                   </div>
 
                   <p className="mt-0.5 text-[10px] text-ink-muted">

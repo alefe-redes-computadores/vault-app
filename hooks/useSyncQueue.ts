@@ -4492,23 +4492,28 @@ export function useSyncQueue() {
 
           const remoteId = remoteSetting?.id || settings.id;
 
+          /* VAULT_BRAIN_V5_SETTINGS_SYNC_R2: campo ausente preserva remoto. */
+          const settingsPayload: Record<string, unknown> = { updated_at: updatedAt };
+
+          if (Object.prototype.hasOwnProperty.call(settings, "default_person_id")) {
+            settingsPayload.default_person_id = settings.default_person_id || null;
+          }
+
+          if (Object.prototype.hasOwnProperty.call(settings, "brain_v5_alert_ledger")) {
+            settingsPayload.brain_v5_alert_ledger = Array.isArray(settings.brain_v5_alert_ledger)
+              ? settings.brain_v5_alert_ledger
+              : [];
+          }
+
           const { error } = remoteSetting?.id
             ? await client
                 .from("settings")
-                .update({
-                  default_person_id: settings.default_person_id || null,
-                  updated_at: updatedAt,
-                })
+                .update(settingsPayload)
                 .eq("id", remoteSetting.id)
                 .eq("user_id", settings.user_id)
             : await client
                 .from("settings")
-                .insert({
-                  id: settings.id,
-                  user_id: settings.user_id,
-                  default_person_id: settings.default_person_id || null,
-                  updated_at: updatedAt,
-                });
+                .insert({ id: settings.id, user_id: settings.user_id, ...settingsPayload });
 
           if (error) {
             throw new Error(`Settings sync error: ${error.message}`);

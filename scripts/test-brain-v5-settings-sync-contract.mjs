@@ -1,0 +1,18 @@
+import fs from "node:fs";
+const s=fs.readFileSync("hooks/useSyncQueue.ts","utf8");
+const p=fs.readFileSync("lib/sync/pull.ts","utf8");
+const t=fs.readFileSync("lib/types.ts","utf8");
+const l=fs.readFileSync("lib/repositories/brainV5AlertLedger.ts","utf8");
+const ok=(v,m)=>{if(!v)throw new Error(m);console.log("OK:",m)};
+ok(s.includes("VAULT_BRAIN_V5_SETTINGS_SYNC_R2"),"R2 instalada");
+ok(s.includes('"brain_v5_alert_ledger"'),"push reconhece Ledger V5");
+ok(s.includes("hasOwnProperty.call"),"payload parcial preserva campo ausente");
+ok(s.includes(".update(settingsPayload)"),"update seletivo");
+ok(s.includes("...settingsPayload"),"insert seletivo");
+ok(!/settingsPayload\.health_intelligence_decisions\s*=/.test(s),"V4 não é enviado para coluna remota ausente");
+ok(p.includes("hasPendingOperation(queueTable, remoteId)"),"pull preserva fila pendente");
+ok(p.includes("localRecord.synced === false"),"pull preserva local não sincronizado");
+ok(p.includes("localUpdatedAt > remoteUpdatedAt"),"pull preserva local mais novo");
+ok(t.includes("brain_v5_alert_ledger?:"),"AppSettings contém Ledger V5");
+ok(l.includes('enfileirarOperacao("settings","update",next)'),"Ledger enfileira update completo");
+console.log("\nBRAIN V5 SETTINGS SYNC R2: CONTRATO OK");

@@ -72,6 +72,6 @@ export function selectHealthInsightNotificationCandidate(
 export function getHealthInsightNotificationRoute(insight: HealthInsight): string {
   const insightId = insight.id?.trim();
   return insightId
-    ? `/inteligencia?healthInsight=${encodeURIComponent(insightId)}`
-    : "/inteligencia";
+    ? `/inteligencia/alertas?insight=${encodeURIComponent(insightId)}`
+    : "/inteligencia/alertas";
 }

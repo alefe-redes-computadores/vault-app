@@ -1534,6 +1534,9 @@ export interface AppSettings {
   health_intelligence_decisions?:
     HealthIntelligenceDecision[];
 
+  /** Brain V5: JSON não indexado; não exige bump do Dexie. */
+  brain_v5_alert_ledger?: import("@/lib/health-intelligence/brain-v5").BrainV5Alert[];
+
   created_at?: string;
   updated_at?: string;
   synced?: boolean;

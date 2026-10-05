@@ -76,9 +76,9 @@ export default function VaultIntelligencePage() {
 
     {/* VAULT_BRAIN_V4_EXPERIENCE_ENTRY */}
     <section className="mx-auto mt-6 max-w-2xl">
-      <button type="button" onClick={() => router.push("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
+      <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
-        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Brain V4</p><p className="mt-1 text-xs text-ink-muted">Inteligência de saúde: briefing, padrões, timeline e preparação para consulta.</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Cérebro V5</p><p className="mt-1 text-xs text-ink-muted">Atenção agora, segurança, padrões, qualidade dos dados e histórico persistente.</p></div>
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
     </section>
