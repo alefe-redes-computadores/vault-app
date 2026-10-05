@@ -8,10 +8,10 @@ const ok = (value, message) => {
 
 const detail = read("app/saude/medicamentos/detalhes/page.tsx");
 
-ok(detail.includes("VAULT_NAVIGATION_FAILSAFE_V92"), "failsafe V92 instalado");
-ok(detail.includes("current === initial"), "retry ocorre somente se a rota não iniciou");
-ok(detail.includes("router.push(path)"), "retry preserva navegação client-side");
-ok(!detail.includes("window.location.assign(expected)"), "aquisição não recarrega o shell raiz do APK");
+ok(detail.includes("VAULT_CAPACITOR_STATIC_ROUTE_V92_1"), "rota nativa V92.1 instalada");
+ok(detail.includes("canonicalPath"), "APK normaliza a barra final do export estático");
+ok(detail.includes("router.push(path)"), "PWA preserva navegação client-side");
+ok(!detail.includes("window.location.assign(expected)"), "fallback nativo antigo permanece removido");
 ok(detail.includes('"Registrar aquisição"'), "atalho de aquisição preservado");
 ok(detail.includes("/saude/renovacao/nova?medicamento_id=${id}"), "destino da aquisição preservado");
 

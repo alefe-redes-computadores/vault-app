@@ -1488,11 +1488,11 @@ function MedicamentoDetalhesContent() {
     ]
   );
 
-  // VAULT_NAVIGATION_FAILSAFE_V92
-  // No APK, uma rota pesada pode levar mais de 700 ms para concluir.
-  // Um reload por window.location.assign derruba o Capacitor no shell raiz.
-  // Mantemos a navegação client-side e, se ela realmente não iniciou,
-  // repetimos o push sem abandonar o estado do aplicativo.
+  // VAULT_CAPACITOR_STATIC_ROUTE_V92_1
+  // O build Android usa output: export + trailingSlash: true.
+  // No WebView nativo, rotas de formulário precisam apontar para o diretório
+  // estático canônico (/.../nova/) para que o Capacitor encontre index.html.
+  // No PWA preservamos a transição client-side do App Router.
   const navigateReliably = (path: string) => {
     setIsMenuFlutuanteOpen(false);
 
@@ -1501,16 +1501,18 @@ function MedicamentoDetalhesContent() {
       return;
     }
 
-    const initial = `${window.location.pathname}${window.location.search}`;
+    if (isVaultNative()) {
+      const target = new URL(path, window.location.origin);
+      const canonicalPath = target.pathname.endsWith("/")
+        ? target.pathname
+        : `${target.pathname}/`;
+      const nativePath = `${canonicalPath}${target.search}${target.hash}`;
+
+      window.location.assign(nativePath);
+      return;
+    }
+
     router.push(path);
-
-    window.setTimeout(() => {
-      const current = `${window.location.pathname}${window.location.search}`;
-
-      if (current === initial) {
-        router.push(path);
-      }
-    }, 1400);
   };
 
   const menuOptions = [
