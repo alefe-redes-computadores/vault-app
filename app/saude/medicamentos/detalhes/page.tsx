@@ -1488,7 +1488,11 @@ function MedicamentoDetalhesContent() {
     ]
   );
 
-  // VAULT_NAVIGATION_FAILSAFE_V78
+  // VAULT_NAVIGATION_FAILSAFE_V92
+  // No APK, uma rota pesada pode levar mais de 700 ms para concluir.
+  // Um reload por window.location.assign derruba o Capacitor no shell raiz.
+  // Mantemos a navegação client-side e, se ela realmente não iniciou,
+  // repetimos o push sem abandonar o estado do aplicativo.
   const navigateReliably = (path: string) => {
     setIsMenuFlutuanteOpen(false);
 
@@ -1497,17 +1501,16 @@ function MedicamentoDetalhesContent() {
       return;
     }
 
-    const target = new URL(path, window.location.origin);
+    const initial = `${window.location.pathname}${window.location.search}`;
     router.push(path);
 
     window.setTimeout(() => {
       const current = `${window.location.pathname}${window.location.search}`;
-      const expected = `${target.pathname}${target.search}`;
 
-      if (current !== expected) {
-        window.location.assign(expected);
+      if (current === initial) {
+        router.push(path);
       }
-    }, 700);
+    }, 1400);
   };
 
   const menuOptions = [

@@ -10,8 +10,8 @@ const health = read('lib/health-insights.ts');
 
 ok(detail.includes('MedicationFormatIcon formato={med.formato} cores={med.cores}'), 'detalhes usam o ícone canônico do medicamento');
 ok(!detail.includes('<SelectedFormatIcon'), 'renderização divergente foi removida dos detalhes');
-ok(detail.includes('VAULT_NAVIGATION_FAILSAFE_V78'), 'detalhes possuem fallback de navegação PWA');
-ok(detail.includes('window.location.assign(expected)'), 'navegação travada possui recuperação real');
+ok(detail.includes('VAULT_NAVIGATION_FAILSAFE_V92'), 'detalhes possuem retry client-side seguro');
+ok(detail.includes('current === initial') && detail.includes('router.push(path)'), 'navegação travada repete o push sem reload nativo');
 ok(today.includes('item.insight?.deveRenovar === true'), 'Hoje respeita a decisão inteligente de renovação');
 ok(today.includes('Renovar agora') && today.includes('Renovar em'), 'prazo de renovação tem contexto explícito');
 ok(!/\{\s*item\.diasRestantes\s*\}\s*\{" "\}\s*dias/.test(today), 'Hoje não mostra dias soltos');
