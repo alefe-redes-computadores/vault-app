@@ -2618,9 +2618,6 @@ export default function HomePage() {
                 </button>
               )}
 
-              <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex w-full items-center justify-center gap-1.5 rounded-xl py-1.5 text-[10px] font-semibold text-violet-300 active:scale-[0.98]">
-                Ver Central de Inteligência <ChevronRight size={12}/>
-              </button>
             </motion.section>
           )}
 
