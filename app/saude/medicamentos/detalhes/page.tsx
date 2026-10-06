@@ -1488,15 +1488,10 @@ function MedicamentoDetalhesContent() {
     ]
   );
 
-  // VAULT_CANONICAL_ACQUISITION_NAVIGATION_V92_2
-  // A Home já comprova que o App Router abre esta mesma rota no APK.
-  // Detalhes usa exatamente a mesma navegação client-side: sem reload,
-  // barra final artificial, cronômetro ou retry concorrente.
-  const navigateReliably = (path: string) => {
-    setIsMenuFlutuanteOpen(false);
-    router.push(path);
-  };
-
+  // VAULT_MEDICATION_DETAIL_DIRECT_NAVIGATION_V92_3
+  // Detalhes segue o mesmo contrato das demais telas de detalhe:
+  // cada ação navega diretamente pelo App Router.
+  // Não existe helper nativo, reload, retry ou normalização de rota.
   const menuOptions = [
     {
       id: "editar-medicamento",
@@ -1560,7 +1555,7 @@ function MedicamentoDetalhesContent() {
         false
       );
 
-      navigateReliably(path);
+      router.push(path);
     };
 
 
@@ -3061,7 +3056,7 @@ function MedicamentoDetalhesContent() {
                       "vibrate"
                     );
 
-                    navigateReliably(`/saude/medicamentos/editar?id=${id}`);
+                    router.push(`/saude/medicamentos/editar?id=${id}`);
                   }
                 }
                 aria-label="Editar medicamento"
@@ -3676,7 +3671,7 @@ function MedicamentoDetalhesContent() {
                         type="button"
                         onClick={
                           () =>
-                            navigateReliably(
+                            router.push(
                               alertaInteligente.motivo ===
                                 "receita"
                                 ? `/saude/documentos/novo?medicamento_id=${id}`
@@ -4079,7 +4074,7 @@ function MedicamentoDetalhesContent() {
             type="button"
             onClick={() => {
               trigger("vibrate");
-              navigateReliably(`/saude/medicamentos/historico?id=${id}`);
+              router.push(`/saude/medicamentos/historico?id=${id}`);
             }}
             className="flex w-full items-center justify-between gap-4 rounded-[24px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
           >
@@ -4365,7 +4360,7 @@ function MedicamentoDetalhesContent() {
                     type="button"
                     onClick={
                       () =>
-                        navigateReliably(
+                        router.push(
                           `/saude/medicamentos/detalhes?id=${medicamentoSubstituto.id}`
                         )
                     }
@@ -4641,7 +4636,7 @@ function MedicamentoDetalhesContent() {
                 iconClassName="bg-ice/10 text-ice"
                 label="Médico Prescritor"
                 action={medico?.id ? (
-                  <button type="button" onClick={() => navigateReliably(`/saude/medicos/detalhes?id=${medico.id}`)} aria-label="Abrir detalhes do médico" className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice active:scale-95">
+                  <button type="button" onClick={() => router.push(`/saude/medicos/detalhes?id=${medico.id}`)} aria-label="Abrir detalhes do médico" className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice active:scale-95">
                     <ChevronRight size={17} />
                   </button>
                 ) : undefined}
@@ -4687,7 +4682,7 @@ function MedicamentoDetalhesContent() {
                   label="Hospital"
                   action={
                     <>
-                    <button type="button" onClick={() => navigateReliably(`/saude/hospitais/detalhes?id=${hospital.id}`)} aria-label="Abrir detalhes do hospital" className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400 active:scale-95">
+                    <button type="button" onClick={() => router.push(`/saude/hospitais/detalhes?id=${hospital.id}`)} aria-label="Abrir detalhes do hospital" className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400 active:scale-95">
                       <ChevronRight size={17} />
                     </button>
                     {hospital.endereco ? (
@@ -4741,7 +4736,7 @@ function MedicamentoDetalhesContent() {
                   label="Local de Saúde"
                   action={
                     <>
-                    <button type="button" onClick={() => navigateReliably(`/saude/locais/detalhes?id=${local.id}`)} aria-label="Abrir detalhes do local" className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400 active:scale-95">
+                    <button type="button" onClick={() => router.push(`/saude/locais/detalhes?id=${local.id}`)} aria-label="Abrir detalhes do local" className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400 active:scale-95">
                       <ChevronRight size={17} />
                     </button>
                     {local.endereco ? (
@@ -4794,7 +4789,7 @@ function MedicamentoDetalhesContent() {
                   action={
                     <>
                       {farmacia?.id && (
-                        <button type="button" onClick={() => navigateReliably(`/saude/farmacias/detalhes?id=${farmacia.id}`)} aria-label="Abrir detalhes da farmácia" className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 active:scale-95">
+                        <button type="button" onClick={() => router.push(`/saude/farmacias/detalhes?id=${farmacia.id}`)} aria-label="Abrir detalhes da farmácia" className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 active:scale-95">
                           <ChevronRight size={17} />
                         </button>
                       )}
@@ -5038,7 +5033,7 @@ function MedicamentoDetalhesContent() {
                     type="button"
                     onClick={
                       () =>
-                        navigateReliably(
+                        router.push(
                           `/saude/medicamentos/editar?id=${id}&intent=rede`
                         )
                     }
@@ -5142,7 +5137,7 @@ function MedicamentoDetalhesContent() {
                       return (
                         <motion.button
                           type="button"
-                          onClick={() => renovacao.id && navigateReliably(`/saude/renovacao/detalhes?id=${renovacao.id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`)}
+                          onClick={() => renovacao.id && router.push(`/saude/renovacao/detalhes?id=${renovacao.id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`)}
                           aria-label={`Abrir aquisição de ${formatDate(renovacao.data || renovacao.created_at)}`}
                           key={
                             renovacao.id ||
@@ -5395,7 +5390,7 @@ function MedicamentoDetalhesContent() {
                     false
                   );
 
-                  navigateReliably(
+                  router.push(
                     `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`
                   );
                 }

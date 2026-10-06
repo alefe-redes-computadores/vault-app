@@ -9,9 +9,9 @@ const ok = (value, message) => {
 const detail = read("app/saude/medicamentos/detalhes/page.tsx");
 const intelligence = read("components/vault-intelligence/ContextualHealthIntelligence.tsx");
 
-ok(detail.includes("VAULT_CANONICAL_ACQUISITION_NAVIGATION_V92_2"), "V92.2 instalada");
+ok(detail.includes("VAULT_MEDICATION_DETAIL_DIRECT_NAVIGATION_V92_3"), "V92.2 evoluída para V92.3");
 ok(intelligence.includes("router.push(href)"), "referência funcional da Home permanece client-side");
-ok(detail.includes("router.push(path)"), "detalhes replica a navegação funcional");
+ok(detail.includes("router.push(") && !detail.includes("navigateReliably"), "detalhes usa App Router diretamente como as demais telas");
 ok(!detail.includes("window.location.assign(nativePath)"), "reload nativo removido");
 ok(!detail.includes("current === initial"), "retry V92 removido");
 ok(!detail.includes("canonicalPath"), "barra final V92.1 removida");
