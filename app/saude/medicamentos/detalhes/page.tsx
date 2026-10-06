@@ -1640,7 +1640,29 @@ function MedicamentoDetalhesContent() {
         false
       );
 
+      // VAULT_NAV_HANDLER_DIAGNOSTIC_V92_4_2
+      writeVaultNavTrace(
+        "HANDLER_ENTER",
+        "handleMenuOptionClick"
+      );
+      writeVaultNavTrace(
+        "PATH_RECEIVED",
+        path
+      );
+      writeVaultNavTrace(
+        "BEFORE_ROUTER_PUSH",
+        path
+      );
+
       router.push(path);
+
+      writeVaultNavTrace(
+        "AFTER_ROUTER_PUSH",
+        path
+      );
+      setNavTraceRevision(
+        (value) => value + 1
+      );
     };
 
 
@@ -2952,7 +2974,7 @@ function MedicamentoDetalhesContent() {
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
         {/* VAULT_NAV_RUNTIME_DIAGNOSTIC_V92_4 */}
-        <div className="fixed right-3 top-4 z-[120]">
+        <div className="fixed right-3 top-20 z-[120]">
           <button type="button" onClick={()=>setNavTraceOpen((value)=>!value)}
             className="rounded-full border border-coral/40 bg-void/95 px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-wider text-coral shadow-xl backdrop-blur">
             NAV TRACE {navTrace.length}
