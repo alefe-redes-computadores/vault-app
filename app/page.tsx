@@ -2376,7 +2376,11 @@ export default function HomePage() {
               </div>
 
               <div
-                className="space-y-2"
+                className={
+                  mostrarTodosAlertas
+                    ? "space-y-2"
+                    : "-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                }
               >
                 {(
                   mostrarTodosAlertas
@@ -2393,7 +2397,11 @@ export default function HomePage() {
                       key={
                         alert.id
                       }
-                      className="w-full"
+                      className={
+                        mostrarTodosAlertas
+                          ? "w-full"
+                          : "w-[88%] shrink-0 snap-start sm:w-[72%]"
+                      }
                     >
                       <AlertRow
                         alert={
@@ -2473,7 +2481,7 @@ export default function HomePage() {
                     />
 
                     <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central do Cérebro">
-                      <h2 className="font-display text-sm font-semibold text-ink-primary">Inteligência de saúde</h2>
+                      <h2 className="font-display text-sm font-semibold text-ink-primary">Vault Intelligence</h2>
                       <ChevronRight size={13} className="text-violet-300" />
                     </button>
                   </div>

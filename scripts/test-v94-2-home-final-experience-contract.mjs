@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const home=fs.readFileSync("app/page.tsx","utf8");
+const ok=(c,m)=>{if(!c)throw new Error(`V94.2 R3: ${m}`);console.log(`OK: ${m}`)};
+ok(home.includes(">Vault Intelligence</h2>"),"Vault Intelligence aplicado");
+ok(!home.includes(">Inteligência de saúde</h2>"),"título antigo removido");
+ok(home.includes('"-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto'),"Atenção compacta usa rail horizontal");
+ok(home.includes('"w-[88%] shrink-0 snap-start sm:w-[72%]"'),"próximo alerta fica parcialmente visível");
+ok(home.includes('? "space-y-2"'),"Mostrar todos permanece vertical");
+ok(home.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL"),"rail Intelligence V5.4 preservado");
+ok(home.includes("longitudinalHighlights.map"),"múltiplos insights preservados");
+ok(home.includes("healthIntelligence.maturity.totalRecords")&&home.includes("sourcesWithData")&&home.includes("brainV5Pulse.counters.attention"),"maturidade, cobertura e contadores preservados");
+console.log("\nVAULT V94.2 R3 HOME FINAL EXPERIENCE — CONTRATO OK");

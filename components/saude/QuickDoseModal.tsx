@@ -587,8 +587,12 @@ export function QuickDoseModal({
             medicamento:
               Medicamento
           ) =>
-            medicamento.status !==
-              "descontinuado" &&
+            (medicamento.status !==
+              "descontinuado" ||
+              medicamento.tipo_uso ===
+                "sos" ||
+              medicamento.tipo_uso ===
+                "esporadico") &&
             medicamento.person_id ===
               activePersonId
         );

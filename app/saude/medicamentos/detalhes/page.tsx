@@ -3260,7 +3260,9 @@ function MedicamentoDetalhesContent() {
                     {med.status ===
                       "descontinuado" && (
                       <span className="rounded-full border border-coral/20 bg-coral/10 px-2 py-0.5 text-[9px] font-bold uppercase text-coral">
-                        Suspenso
+                        {isSOS
+                          ? "Tratamento suspenso · SOS atual"
+                          : "Suspenso"}
                       </span>
                     )}
 
@@ -3797,8 +3799,9 @@ function MedicamentoDetalhesContent() {
               ROTINA E DOSES
               ================================================== */}
 
-          {med.status !==
-            "descontinuado" && (
+          {(med.status !==
+            "descontinuado" ||
+            isSOS) && (
             <section className="space-y-3">
               <SectionTitle
                 icon={
@@ -4101,8 +4104,9 @@ function MedicamentoDetalhesContent() {
               ESTOQUE
               ================================================== */}
 
-          {med.status !==
-              "descontinuado" &&
+          {(med.status !==
+              "descontinuado" ||
+              isSOS) &&
             temEstoque && (
               <section
                 className={`overflow-hidden rounded-[28px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
