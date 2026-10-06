@@ -107,17 +107,19 @@ ok(
 
 ok(
   central.includes(
-    'router.push("/inteligencia/saude")'
+    'router.push("/inteligencia/alertas")'
   ),
-  "Central abre Saúde longitudinal"
+  "Central abre Cérebro V5"
 );
 
 ok(
   health.includes(
     'router.replace("/inteligencia")'
   ),
-  "Saúde longitudinal retorna para Central"
+  "Saúde longitudinal continua integrada à Central"
 );
+
+
 
 ok(
   bottom.includes(

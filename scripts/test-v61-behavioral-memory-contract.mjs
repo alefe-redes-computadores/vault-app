@@ -143,9 +143,9 @@ ok(
 
 ok(
   policy.includes("getHealthInsightNotificationRoute") &&
-    policy.includes("healthInsight=") &&
-    policy.includes('"/inteligencia"'),
-  "Insight abre card exato e mantém fallback para Central de Inteligência"
+    policy.includes("?insight=") &&
+    policy.includes("/inteligencia/alertas"),
+  "Insight abre alerta persistente exato no Cérebro V5"
 );
 
 console.log(

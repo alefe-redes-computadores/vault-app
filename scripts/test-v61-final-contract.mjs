@@ -28,10 +28,11 @@ ok(/gravidadeSeguranca/.test(policy) && /urgencia/.test(policy) && /confianca/.t
 ok(/export function selectHealthInsightNotificationCandidate\s*\(/.test(policy), "compatibilidade antiga preservada");
 ok(/export function getHealthInsightNotificationRoute\s*\(/.test(policy), "helper de rota contextual existe");
 ok(
-  /healthInsight=/.test(policy) &&
+  /\?insight=/.test(policy) &&
   /encodeURIComponent\(insightId\)/.test(policy) &&
-  /["']\/inteligencia["']/.test(policy),
-  "helper abre Central no Insight exato e preserva fallback"
+  /\/inteligencia\/alertas\?insight=/.test(policy) &&
+  /["']\/inteligencia\/alertas["']/.test(policy),
+  "helper abre alerta persistente exato e preserva fallback do Cérebro V5"
 );
 
 ok(/rankHealthInsightNotificationCandidates\(insights\)/.test(reconciler), "reconciliador usa ranking múltiplo");

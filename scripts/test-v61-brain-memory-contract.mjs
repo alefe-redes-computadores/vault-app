@@ -212,20 +212,20 @@ for (const file of sourceFiles) {
 
 const hasCentralFallback =
   reconciler.includes(
-    '"/inteligencia"'
+    '"/inteligencia/alertas"'
   ) ||
   (
     reconciler.includes(
       helperName
     ) &&
     helperSource.includes(
-      '"/inteligencia"'
+      '"/inteligencia/alertas"'
     )
   );
 
 ok(
   hasCentralFallback,
-  "fallback contextual aponta para Central de Inteligência"
+  "fallback contextual aponta para Central persistente do Cérebro V5"
 );
 
 console.log(
