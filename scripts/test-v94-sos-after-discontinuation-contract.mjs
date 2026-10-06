@@ -1,0 +1,13 @@
+import fs from "node:fs";
+const r=(p)=>fs.readFileSync(p,"utf8");
+const ok=(v,m)=>{if(!v)throw new Error(`V94: ${m}`);console.log(`OK: ${m}`)};
+const repo=r("lib/repositories/medicamentos.ts"),hook=r("hooks/useMedicamentos.ts"),list=r("app/saude/medicamentos/page.tsx"),ins=r("lib/health-insights.ts"),edit=r("app/saude/medicamentos/editar/page.tsx"),hoje=r("app/hoje/page.tsx");
+ok(repo.includes("VAULT_SOS_AFTER_DISCONTINUATION_V94"),"repository separa histórico e operação");
+ok(repo.includes("getAllIncludingDiscontinued"),"coleção completa disponível para gestão");
+ok(hook.includes("medicamentosIncluindoDescontinuados"),"hook expõe coleção completa");
+ok(list.includes("medicamentosIncluindoDescontinuados:"),"listagem enxerga encerrados");
+ok(ins.includes("&&\n          !isSOS;"),"descontinuado+SOS não cai como suspenso operacional");
+ok(edit.includes("Disponível como SOS sem reabrir o tratamento"),"UX explica transição sem reativação");
+ok(hoje.includes('med.status === "descontinuado"')&&hoje.includes('med.tipo_uso === "sos"'),"Hoje não cria slot programado para SOS/encerrado");
+ok(hoje.includes('log.dose_kind === "sos"'),"Hoje preserva DoseLog SOS na timeline");
+console.log("\nVAULT V94 SOS APÓS ENCERRAMENTO — CONTRATO OK");

@@ -220,7 +220,7 @@ export default function MedicamentosListPage() {
     useHapticFeedback();
 
   const {
-    medicamentos:
+    medicamentosIncluindoDescontinuados:
       medicamentosTodas,
   } =
     useMedicamentos();
@@ -1857,7 +1857,7 @@ export default function MedicamentosListPage() {
                     icon={
                       Zap
                     }
-                    title={`Uso esporádico (SOS) · ${medsSOS.length}`}
+                    title={`SOS / conforme necessidade · ${medsSOS.length}`}
                   />
 
                   {medsSOS.map(

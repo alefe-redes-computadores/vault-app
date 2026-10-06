@@ -6645,9 +6645,21 @@ function EditarMedicamentoContent() {
                           : "border-surface-border/50 bg-surface-raised text-ink-muted"
                       }`}
                     >
-                      SOS / Esporádico
+                      SOS / Conforme necessidade
                     </button>
                   </div>
+
+                  {!statusAtivo &&
+                    tipoUso !== "continuo" && (
+                    <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] px-3.5 py-3">
+                      <p className="text-xs font-semibold text-amber-300">
+                        Disponível como SOS sem reabrir o tratamento
+                      </p>
+                      <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                        O encerramento anterior permanece no histórico. Novos usos são doses avulsas/SOS, sem criar rotina ou próxima dose.
+                      </p>
+                    </div>
+                  )}
 
                   {tipoUso ===
                     "continuo" && (

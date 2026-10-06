@@ -226,6 +226,8 @@ export const medicamentosRepository = {
   // LIST
   // ==========================================================
 
+  // VAULT_SOS_AFTER_DISCONTINUATION_V94
+  // Lista operacional: ativos + SOS mantidos após encerramento clínico.
   async getAll(
     personId: string
   ) {
@@ -235,22 +237,34 @@ export const medicamentosRepository = {
 
     const medicamentos =
       await db.medicamentos
-        .where(
-          "person_id"
-        )
-        .equals(
-          personId
-        )
+        .where("person_id")
+        .equals(personId)
         .filter(
           (medicamento) =>
-            medicamento.status !==
-            "descontinuado"
+            medicamento.status !== "descontinuado" ||
+            medicamento.tipo_uso === "sos" ||
+            medicamento.tipo_uso === "esporadico"
         )
         .toArray();
 
-    return medicamentos.map(
-      withCanonicalVisualIdentity
-    );
+    return medicamentos.map(withCanonicalVisualIdentity);
+  },
+
+  // Coleção completa para gestão e histórico visual.
+  async getAllIncludingDiscontinued(
+    personId: string
+  ) {
+    if (!personId) {
+      return [];
+    }
+
+    const medicamentos =
+      await db.medicamentos
+        .where("person_id")
+        .equals(personId)
+        .toArray();
+
+    return medicamentos.map(withCanonicalVisualIdentity);
   },
 
   // ==========================================================

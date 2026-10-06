@@ -68,6 +68,21 @@ export function useMedicamentos() {
       []
     ) || [];
 
+  // VAULT_SOS_AFTER_DISCONTINUATION_V94
+  const medicamentosIncluindoDescontinuados =
+    useLiveQuery(
+      () => {
+        if (!activePersonId) {
+          return [];
+        }
+        return medicamentosRepository.getAllIncludingDiscontinued(
+          activePersonId
+        );
+      },
+      [activePersonId],
+      []
+    ) || [];
+
   // ==========================================================
   // GET
   // ==========================================================
@@ -182,6 +197,7 @@ export function useMedicamentos() {
 
   return {
     medicamentos,
+    medicamentosIncluindoDescontinuados,
     getMedicamento,
     addMedicamento,
     updateMedicamento,

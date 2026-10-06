@@ -5101,9 +5101,12 @@ export function processarListaMedicamentos(
           medicamento.tipo_uso ===
             "sos";
 
+        // VAULT_SOS_AFTER_DISCONTINUATION_V94
+        // O encerramento permanece histórico, mas SOS pode continuar operacional.
         const isSuspenso =
           medicamento.status ===
-          "descontinuado";
+            "descontinuado" &&
+          !isSOS;
 
         const insight =
           isSuspenso
