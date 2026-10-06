@@ -694,13 +694,13 @@ function readVaultNavTrace():VaultNavTraceEntry[]{
   if(typeof window==="undefined") return [];
   try {
     const parsed=JSON.parse(window.sessionStorage.getItem(VAULT_NAV_TRACE_KEY)||"[]");
-    return Array.isArray(parsed)?parsed.slice(-50):[];
+    return Array.isArray(parsed)?parsed.slice(-120):[];
   } catch { return []; }
 }
 function writeVaultNavTrace(event:string,detail?:string){
   if(typeof window==="undefined") return;
   try {
-    const next=[...readVaultNavTrace(),{at:new Date().toISOString(),event,detail}].slice(-50);
+    const next=[...readVaultNavTrace(),{at:new Date().toISOString(),event,detail}].slice(-120);
     window.sessionStorage.setItem(VAULT_NAV_TRACE_KEY,JSON.stringify(next));
   } catch {}
 }
@@ -750,6 +750,57 @@ function MedicamentoDetalhesContent() {
     const pop = () => writeVaultNavTrace("POPSTATE", `${window.location.pathname}${window.location.search}`);
     const hide = () => writeVaultNavTrace("PAGEHIDE", `${window.location.pathname}${window.location.search}`);
     const visibility = () => writeVaultNavTrace("VISIBILITY", document.visibilityState);
+
+    // VAULT_NAV_ROOT_CAUSE_DIAGNOSTIC_V92_4_3
+    const runtimeError = (event: ErrorEvent) => {
+      writeVaultNavTrace(
+        "WINDOW_ERROR",
+        `${event.message || "unknown"} @ ${event.filename || "unknown"}:${event.lineno || 0}:${event.colno || 0}`,
+      );
+      window.setTimeout(() => setNavTraceRevision((value) => value + 1), 0);
+    };
+
+    const unhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason =
+        event.reason instanceof Error
+          ? `${event.reason.name}: ${event.reason.message}`
+          : String(event.reason ?? "unknown");
+      writeVaultNavTrace("UNHANDLED_REJECTION", reason.slice(0, 500));
+      window.setTimeout(() => setNavTraceRevision((value) => value + 1), 0);
+    };
+
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (async (...args: Parameters<typeof window.fetch>) => {
+      const input = args[0];
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      const interesting =
+        url.includes("/saude/") ||
+        url.includes("_rsc") ||
+        url.includes("__next") ||
+        url.includes("_next");
+      if (interesting) writeVaultNavTrace("FETCH_START", url.slice(0, 500));
+      try {
+        const response = await originalFetch(...args);
+        if (interesting) {
+          writeVaultNavTrace("FETCH_END", `${response.status} ${response.type} ${url}`.slice(0, 500));
+        }
+        return response;
+      } catch (error) {
+        if (interesting) {
+          writeVaultNavTrace(
+            "FETCH_THROW",
+            `${error instanceof Error ? `${error.name}: ${error.message}` : String(error)} | ${url}`.slice(0, 500),
+          );
+        }
+        throw error;
+      }
+    }) as typeof window.fetch;
+
     const click = (event:MouseEvent) => {
       const element=event.target instanceof Element?event.target.closest("button,a"):null;
       if(!element) return;
@@ -760,6 +811,8 @@ function MedicamentoDetalhesContent() {
 
     window.addEventListener("popstate",pop);
     window.addEventListener("pagehide",hide);
+    window.addEventListener("error",runtimeError);
+    window.addEventListener("unhandledrejection",unhandledRejection);
     document.addEventListener("visibilitychange",visibility);
     document.addEventListener("click",click,true);
 
@@ -767,8 +820,11 @@ function MedicamentoDetalhesContent() {
       writeVaultNavTrace("DETAIL_UNMOUNT", `${window.location.pathname}${window.location.search}`);
       window.history.pushState=originalPushState;
       window.history.replaceState=originalReplaceState;
+      window.fetch=originalFetch;
       window.removeEventListener("popstate",pop);
       window.removeEventListener("pagehide",hide);
+      window.removeEventListener("error",runtimeError);
+      window.removeEventListener("unhandledrejection",unhandledRejection);
       document.removeEventListener("visibilitychange",visibility);
       document.removeEventListener("click",click,true);
     };
@@ -1632,37 +1688,36 @@ function MedicamentoDetalhesContent() {
       path:
         string
     ) => {
-      trigger(
-        "vibrate"
-      );
+      // VAULT_NAV_ROOT_CAUSE_HANDLER_V92_4_3
+      writeVaultNavTrace("HANDLER_ENTER", path);
+      try {
+        writeVaultNavTrace("BEFORE_HAPTIC", path);
+        trigger("vibrate");
+        writeVaultNavTrace("AFTER_HAPTIC", path);
 
-      setIsMenuFlutuanteOpen(
-        false
-      );
+        setIsMenuFlutuanteOpen(false);
+        writeVaultNavTrace("AFTER_MENU_CLOSE", path);
 
-      // VAULT_NAV_HANDLER_DIAGNOSTIC_V92_4_2
-      writeVaultNavTrace(
-        "HANDLER_ENTER",
-        "handleMenuOptionClick"
-      );
-      writeVaultNavTrace(
-        "PATH_RECEIVED",
-        path
-      );
-      writeVaultNavTrace(
-        "BEFORE_ROUTER_PUSH",
-        path
-      );
+        writeVaultNavTrace("BEFORE_ROUTER_PUSH", path);
+        router.push(path);
+        writeVaultNavTrace("AFTER_ROUTER_PUSH", path);
 
-      router.push(path);
+        window.setTimeout(() => {
+          writeVaultNavTrace("POST_PUSH_100MS", `${window.location.pathname}${window.location.search}`);
+          setNavTraceRevision((value) => value + 1);
+        }, 100);
 
-      writeVaultNavTrace(
-        "AFTER_ROUTER_PUSH",
-        path
-      );
-      setNavTraceRevision(
-        (value) => value + 1
-      );
+        window.setTimeout(() => {
+          writeVaultNavTrace("POST_PUSH_750MS", `${window.location.pathname}${window.location.search}`);
+          setNavTraceRevision((value) => value + 1);
+        }, 750);
+      } catch (error) {
+        writeVaultNavTrace(
+          "HANDLER_THROW",
+          error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        );
+        setNavTraceRevision((value) => value + 1);
+      }
     };
 
 

@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const file=fs.readFileSync("app/saude/medicamentos/detalhes/page.tsx","utf8");
+const ok=(label,condition)=>{if(!condition)throw new Error(`V92.4.3: ${label}`);console.log(`OK: ${label}`);};
+ok("diagnóstico captura erro global",file.includes('"WINDOW_ERROR"'));
+ok("diagnóstico captura rejection",file.includes('"UNHANDLED_REJECTION"'));
+ok("diagnóstico observa fetch do App Router",file.includes('"FETCH_START"')&&file.includes('"FETCH_END"')&&file.includes('"FETCH_THROW"'));
+ok("handler registra entrada antes do haptic",file.indexOf('"HANDLER_ENTER"')<file.indexOf('"BEFORE_HAPTIC"'));
+ok("handler separa haptic, fechamento e push",file.includes('"AFTER_HAPTIC"')&&file.includes('"AFTER_MENU_CLOSE"')&&file.includes('"BEFORE_ROUTER_PUSH"')&&file.includes('"AFTER_ROUTER_PUSH"'));
+ok("handler captura exceção síncrona",file.includes('"HANDLER_THROW"'));
+ok("diagnóstico observa 100ms e 750ms depois",file.includes('"POST_PUSH_100MS"')&&file.includes('"POST_PUSH_750MS"'));
+ok("instrumentação não ressuscita location.assign",!file.includes("window.location.assign("));
+console.log("V92.4.3 ROOT CAUSE DIAGNOSTIC: CONTRATOS OK");
