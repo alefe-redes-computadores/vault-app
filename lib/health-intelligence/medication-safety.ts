@@ -1,5 +1,6 @@
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 import { assessDoseQuantitySafety } from "@/lib/health-intelligence/dose-quantity-safety";
+import { buildMedicationLongitudinalRiskInsights } from "@/lib/health-intelligence/medication-longitudinal-risk";
 
 type Medication = HealthInsightContext["medicamentos"][number];
 type Dose = HealthInsightContext["doseLogs"][number];
@@ -422,5 +423,7 @@ export function buildMedicationSafetyInsights(context: HealthInsightContext): He
   const combination = buildZolpidemCombination(scoped, now);
   const opioidCombination = buildOpioidDepressantCombination(scoped, now);
   const serotonergicCombination = buildSerotonergicCombination(scoped, now);
-  return [...quantityAlerts, ...scheduleAlerts, ...(opioidCombination ? [opioidCombination] : []), ...(!opioidCombination && combination ? [combination] : []), ...(serotonergicCombination ? [serotonergicCombination] : []), ...patterns];
+  // VAULT_BRAIN_V5_3_LONGITUDINAL_MEDICATION_RISK
+  const longitudinalMedicationRisk = buildMedicationLongitudinalRiskInsights(scoped, now);
+  return [...quantityAlerts, ...scheduleAlerts, ...(opioidCombination ? [opioidCombination] : []), ...(!opioidCombination && combination ? [combination] : []), ...(serotonergicCombination ? [serotonergicCombination] : []), ...longitudinalMedicationRisk, ...patterns];
 }

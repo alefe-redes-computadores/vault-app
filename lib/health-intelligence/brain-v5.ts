@@ -24,7 +24,7 @@ export function brainV5Family(i:HealthInsight):BrainV5Family{
   const t=norm([i.categoria,i.titulo,i.mensagem,i.gravidadeSeguranca].join(" "));
   if(i.kind==="data_quality"||i.categoria==="dados") return "data_quality";
   if(/interacao|seroton|sobreposi|combinacao|depressores/.test(t)) return "interaction";
-  if(i.kind==="pattern"||/padrao|recorr|tendencia|mudanca/.test(t)) return "pattern";
+  if(i.kind==="pattern"||/padrao|recorr|tendencia|mudanca|interrupcao|descontinuacao|abstinencia|tolerancia|dependencia/.test(t)) return "pattern";
   if(/medic|dose|sos|estoque|receita|renov|aquis|retirada/.test(t)) return "medication";
   if(i.urgencia==="alta"||i.gravidadeSeguranca==="critica"||i.gravidadeSeguranca==="importante") return "now";
   return "other";

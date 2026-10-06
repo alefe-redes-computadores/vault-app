@@ -9,5 +9,8 @@ export const AUDITED_INTERACTION_KNOWLEDGE = [
  {id:"zolpidem-depressor",authority:"FDA / DailyMed",requiresObservedDose:true},
  {id:"opioid-cns-depressor",authority:"FDA / DailyMed",requiresObservedDose:true},
  {id:"lisdexamfetamine-serotonergic",authority:"FDA / DailyMed",requiresObservedDose:true},
+ {id:"benzodiazepine-withdrawal",authority:"FDA",requiresObservedDose:true},
+ {id:"zolpidem-dependence-withdrawal",authority:"FDA / DailyMed",requiresObservedDose:true},
+ {id:"desvenlafaxine-discontinuation",authority:"FDA",requiresObservedDose:true},
 ] as const;
 export const INTERACTION_KNOWLEDGE_POLICY = "closed-audited-rules-only" as const;

@@ -10,12 +10,12 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {
   Suspense,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
 import {
-  usePathname,
   useRouter,
   useSearchParams,
 } from "next/navigation";
@@ -685,27 +685,6 @@ function getReceitaBadgeProps(
 }
 
 // ============================================================
-// VAULT_NAV_RUNTIME_DIAGNOSTIC_V92_4
-// Instrumentação temporária: observa, não corrige a navegação.
-// ============================================================
-type VaultNavTraceEntry = { at:string; event:string; detail?:string };
-const VAULT_NAV_TRACE_KEY="vault:v92.4:medication-nav-trace";
-function readVaultNavTrace():VaultNavTraceEntry[]{
-  if(typeof window==="undefined") return [];
-  try {
-    const parsed=JSON.parse(window.sessionStorage.getItem(VAULT_NAV_TRACE_KEY)||"[]");
-    return Array.isArray(parsed)?parsed.slice(-120):[];
-  } catch { return []; }
-}
-function writeVaultNavTrace(event:string,detail?:string){
-  if(typeof window==="undefined") return;
-  try {
-    const next=[...readVaultNavTrace(),{at:new Date().toISOString(),event,detail}].slice(-120);
-    window.sessionStorage.setItem(VAULT_NAV_TRACE_KEY,JSON.stringify(next));
-  } catch {}
-}
-
-// ============================================================
 // CONTENT
 // ============================================================
 
@@ -715,125 +694,6 @@ function MedicamentoDetalhesContent() {
 
   const searchParams =
     useSearchParams();
-
-  const pathname =
-    usePathname();
-
-  const [navTraceOpen, setNavTraceOpen] =
-    useState(false);
-
-  const [navTraceRevision, setNavTraceRevision] =
-    useState(0);
-
-  const navTrace =
-    readVaultNavTrace();
-
-  void navTraceRevision;
-
-  useEffect(() => {
-    writeVaultNavTrace("DETAIL_MOUNT", `${window.location.pathname}${window.location.search}`);
-    setNavTraceRevision((value) => value + 1);
-
-    const originalPushState = window.history.pushState.bind(window.history);
-    const originalReplaceState = window.history.replaceState.bind(window.history);
-
-    window.history.pushState = ((...args: Parameters<History["pushState"]>) => {
-      writeVaultNavTrace("HISTORY_PUSHSTATE", String(args[2] ?? ""));
-      return originalPushState(...args);
-    }) as History["pushState"];
-
-    window.history.replaceState = ((...args: Parameters<History["replaceState"]>) => {
-      writeVaultNavTrace("HISTORY_REPLACESTATE", String(args[2] ?? ""));
-      return originalReplaceState(...args);
-    }) as History["replaceState"];
-
-    const pop = () => writeVaultNavTrace("POPSTATE", `${window.location.pathname}${window.location.search}`);
-    const hide = () => writeVaultNavTrace("PAGEHIDE", `${window.location.pathname}${window.location.search}`);
-    const visibility = () => writeVaultNavTrace("VISIBILITY", document.visibilityState);
-
-    // VAULT_NAV_ROOT_CAUSE_DIAGNOSTIC_V92_4_3
-    const runtimeError = (event: ErrorEvent) => {
-      writeVaultNavTrace(
-        "WINDOW_ERROR",
-        `${event.message || "unknown"} @ ${event.filename || "unknown"}:${event.lineno || 0}:${event.colno || 0}`,
-      );
-      window.setTimeout(() => setNavTraceRevision((value) => value + 1), 0);
-    };
-
-    const unhandledRejection = (event: PromiseRejectionEvent) => {
-      const reason =
-        event.reason instanceof Error
-          ? `${event.reason.name}: ${event.reason.message}`
-          : String(event.reason ?? "unknown");
-      writeVaultNavTrace("UNHANDLED_REJECTION", reason.slice(0, 500));
-      window.setTimeout(() => setNavTraceRevision((value) => value + 1), 0);
-    };
-
-    const originalFetch = window.fetch.bind(window);
-    window.fetch = (async (...args: Parameters<typeof window.fetch>) => {
-      const input = args[0];
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
-      const interesting =
-        url.includes("/saude/") ||
-        url.includes("_rsc") ||
-        url.includes("__next") ||
-        url.includes("_next");
-      if (interesting) writeVaultNavTrace("FETCH_START", url.slice(0, 500));
-      try {
-        const response = await originalFetch(...args);
-        if (interesting) {
-          writeVaultNavTrace("FETCH_END", `${response.status} ${response.type} ${url}`.slice(0, 500));
-        }
-        return response;
-      } catch (error) {
-        if (interesting) {
-          writeVaultNavTrace(
-            "FETCH_THROW",
-            `${error instanceof Error ? `${error.name}: ${error.message}` : String(error)} | ${url}`.slice(0, 500),
-          );
-        }
-        throw error;
-      }
-    }) as typeof window.fetch;
-
-    const click = (event:MouseEvent) => {
-      const element=event.target instanceof Element?event.target.closest("button,a"):null;
-      if(!element) return;
-      const label=(element.getAttribute("aria-label")||element.textContent||element.tagName).replace(/\s+/g," ").trim().slice(0,120);
-      writeVaultNavTrace("CLICK",label);
-      window.setTimeout(()=>setNavTraceRevision((value)=>value+1),80);
-    };
-
-    window.addEventListener("popstate",pop);
-    window.addEventListener("pagehide",hide);
-    window.addEventListener("error",runtimeError);
-    window.addEventListener("unhandledrejection",unhandledRejection);
-    document.addEventListener("visibilitychange",visibility);
-    document.addEventListener("click",click,true);
-
-    return () => {
-      writeVaultNavTrace("DETAIL_UNMOUNT", `${window.location.pathname}${window.location.search}`);
-      window.history.pushState=originalPushState;
-      window.history.replaceState=originalReplaceState;
-      window.fetch=originalFetch;
-      window.removeEventListener("popstate",pop);
-      window.removeEventListener("pagehide",hide);
-      window.removeEventListener("error",runtimeError);
-      window.removeEventListener("unhandledrejection",unhandledRejection);
-      document.removeEventListener("visibilitychange",visibility);
-      document.removeEventListener("click",click,true);
-    };
-  }, []);
-
-  useEffect(() => {
-    writeVaultNavTrace("PATHNAME_EFFECT", `${pathname}?${searchParams.toString()}`);
-    setNavTraceRevision((value)=>value+1);
-  }, [pathname,searchParams]);
 
   const id =
     searchParams.get(
@@ -1054,9 +914,21 @@ function MedicamentoDetalhesContent() {
       ]
     );
 
+  // VAULT_MEDICATION_REGULATORY_STABILITY_V92_5
+  // Nunca entregar [med] inline ao hook: a nova identidade a cada render
+  // reativa seu efeito/setProfiles e forma um ciclo React #185.
+  const regulatoryMedicationInput =
+    useMemo(
+      () =>
+        med
+          ? [med]
+          : [],
+      [med]
+    );
+
   const regulatoryProfiles =
     useMedicationRegulatoryProfiles(
-      med ? [med] : []
+      regulatoryMedicationInput
     );
 
   const regulatoryProfile =
@@ -1683,42 +1555,11 @@ function MedicamentoDetalhesContent() {
     },
   ];
 
-  const handleMenuOptionClick =
-    (
-      path:
-        string
-    ) => {
-      // VAULT_NAV_ROOT_CAUSE_HANDLER_V92_4_3
-      writeVaultNavTrace("HANDLER_ENTER", path);
-      try {
-        writeVaultNavTrace("BEFORE_HAPTIC", path);
-        trigger("vibrate");
-        writeVaultNavTrace("AFTER_HAPTIC", path);
-
-        setIsMenuFlutuanteOpen(false);
-        writeVaultNavTrace("AFTER_MENU_CLOSE", path);
-
-        writeVaultNavTrace("BEFORE_ROUTER_PUSH", path);
-        router.push(path);
-        writeVaultNavTrace("AFTER_ROUTER_PUSH", path);
-
-        window.setTimeout(() => {
-          writeVaultNavTrace("POST_PUSH_100MS", `${window.location.pathname}${window.location.search}`);
-          setNavTraceRevision((value) => value + 1);
-        }, 100);
-
-        window.setTimeout(() => {
-          writeVaultNavTrace("POST_PUSH_750MS", `${window.location.pathname}${window.location.search}`);
-          setNavTraceRevision((value) => value + 1);
-        }, 750);
-      } catch (error) {
-        writeVaultNavTrace(
-          "HANDLER_THROW",
-          error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-        );
-        setNavTraceRevision((value) => value + 1);
-      }
-    };
+  const handleMenuOptionClick = (path: string) => {
+    trigger("vibrate");
+    setIsMenuFlutuanteOpen(false);
+    router.push(path);
+  };
 
 
   if (
@@ -3028,36 +2869,6 @@ function MedicamentoDetalhesContent() {
   return (
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
-        {/* VAULT_NAV_RUNTIME_DIAGNOSTIC_V92_4 */}
-        <div className="fixed right-3 top-20 z-[120]">
-          <button type="button" onClick={()=>setNavTraceOpen((value)=>!value)}
-            className="rounded-full border border-coral/40 bg-void/95 px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-wider text-coral shadow-xl backdrop-blur">
-            NAV TRACE {navTrace.length}
-          </button>
-          {navTraceOpen && (
-            <div className="mt-2 max-h-[58dvh] w-[min(92vw,390px)] overflow-y-auto rounded-2xl border border-coral/30 bg-void/95 p-3 shadow-2xl backdrop-blur">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-coral">V92.4 runtime trace</p>
-                  <p className="mt-1 break-all font-mono text-[8px] text-ink-faint">{typeof window!=="undefined"?`${window.location.pathname}${window.location.search}`:""}</p>
-                </div>
-                <button type="button" onClick={()=>{window.sessionStorage.removeItem(VAULT_NAV_TRACE_KEY);setNavTraceRevision((value)=>value+1);}}
-                  className="rounded-xl border border-surface-border px-2 py-1.5 font-mono text-[8px] text-ink-muted">LIMPAR</button>
-              </div>
-              <div className="space-y-1">
-                {navTrace.length===0?<p className="font-mono text-[9px] text-ink-faint">Sem eventos.</p>:
-                  navTrace.slice().reverse().map((entry,index)=>(
-                    <div key={`${entry.at}-${index}`} className="rounded-xl border border-surface-border bg-surface/80 px-2 py-1.5">
-                      <p className="font-mono text-[8px] font-bold text-ink-primary">{entry.event}</p>
-                      {entry.detail&&<p className="mt-0.5 break-all font-mono text-[8px] leading-relaxed text-ink-muted">{entry.detail}</p>}
-                      <p className="mt-0.5 font-mono text-[7px] text-ink-faint">{entry.at.slice(11,23)}</p>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* ====================================================
             TOAST
             ==================================================== */}

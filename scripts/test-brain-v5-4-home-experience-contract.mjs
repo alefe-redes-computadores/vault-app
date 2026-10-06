@@ -1,0 +1,14 @@
+import fs from "node:fs";
+const r=p=>fs.readFileSync(p,"utf8"),ok=(v,m)=>{if(!v)throw Error("BRAIN V5.4 HOME: "+m);console.log("OK:",m)};
+const h=r("app/page.tsx"),m=r("app/saude/medicamentos/detalhes/page.tsx"),s=r("lib/health-intelligence/medication-safety.ts");
+ok(h.includes("VAULT_BRAIN_V5_4_HOME_INTELLIGENCE"),"superfície única de inteligência");
+ok(!h.includes("Cérebro do Vault"),"card standalone removido");
+ok(h.includes("longitudinalHighlights.slice(0, 1).map"),"somente um insight campeão");
+ok(h.includes("brainV5Pulse.counters.attention")&&h.includes("brainV5Pulse.counters.new"),"pulso mostra atenção e novos");
+ok(h.includes('{" cobertura"}'),"cobertura/fontes acessível");
+ok(h.includes("Ver Central de Inteligência"),"Central completa a um toque");
+ok(h.includes("/inteligencia/alertas?insight="),"campeão persistente abre insight exato");
+ok(h.includes("O que merece prioridade agora"),"Atenção operacional preservada");
+ok(s.includes("buildMedicationLongitudinalRiskInsights"),"Brain longitudinal preservado");
+ok(m.includes("VAULT_MEDICATION_REGULATORY_STABILITY_V92_5")&&!m.includes("NAV TRACE"),"V92.5 preservada");
+console.log("\nBRAIN V5.4 HOME EXPERIENCE: CONTRATOS OK");

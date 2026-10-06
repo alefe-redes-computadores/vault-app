@@ -4,7 +4,7 @@ const brain=r("lib/health-intelligence/brain-v5.ts"),hook=r("hooks/useBrainV5Ale
 ok(brain.includes("material_fingerprint")&&brain.includes("resurfaced"),"recorrência material + reabertura por novo episódio");
 ok(hook.includes("x.material_fingerprint")&&hook.includes("x.episode"),"persistência reage a mudança material sem render-loop");
 ok(pulse.includes("db.settings")&&!pulse.includes("useHealthIntelligence"),"pulso da Home lê Ledger sem executar segundo cérebro");
-ok(home.includes("VAULT_BRAIN_V5_HOME_PULSE")&&home.includes("brainV5Pulse.counters.attention"),"Home mostra pulso real do Brain V5");
+ok(home.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL")&&home.includes("brainV5Pulse.counters.attention"),"Home mostra pulso real do Brain V5");
 ok(notify.includes('/inteligencia/alertas?insight='),"notificação abre Central V5 no insight exato");
 ok(ui.includes('new URLSearchParams(window.location.search).get("insight")'),"Central resolve deep-link exato");
 ok(ui.includes('setSeverity')&&ui.includes('setPeriod')&&ui.includes('setState'),"Central filtra gravidade, período e estado");
@@ -12,6 +12,6 @@ ok(ui.includes("Por que o Vault mostrou isso?")&&ui.includes("fontes_externas"),
 ok(knowledge.includes('closed-audited-rules-only')&&knowledge.includes('lisdexamfetamine-serotonergic'),"Interaction Knowledge é fechado e auditado");
 ok(safety.includes("OFFICIAL_LISDEXAMFETAMINE_LABEL")&&safety.includes("OFFICIAL_METHADONE_LABEL")&&safety.includes("OFFICIAL_ZOLPIDEM_LABEL"),"regras de interação mantêm fontes regulatórias explícitas");
 ok(sync.includes("VAULT_BRAIN_V5_SETTINGS_SYNC_R2")&&sync.includes('"brain_v5_alert_ledger"'),"sync R2 do Ledger preservado");
-const v92=r("scripts/test-v92-2-canonical-acquisition-navigation-contract.mjs"),v93=r("scripts/test-v93-recipe-acquisition-separation-contract.mjs");
-ok(v92.includes("router.push(path)"),"V92.2 preservada");ok(v93.includes("VAULT_CANONICAL_ACQUISITION_NAVIGATION_V92_2"),"V93 preservada");
+const v925=r("scripts/test-v92-5-medication-navigation-root-cause-contract.mjs"),v93=r("scripts/test-v93-recipe-acquisition-separation-contract.mjs");
+ok(v925.includes("VAULT_MEDICATION_REGULATORY_STABILITY_V92_5"),"V92.5 preservada como autoridade atual");ok(v93.includes("VAULT_ACQUISITION_ONLY_V93")&&v93.includes("somenteReceita")&&v93.includes("somenteAquisicao"),"V93 Receita ≠ Aquisição preservada");
 console.log("\nBRAIN V5 COMPLETION: CONTRATOS OK");

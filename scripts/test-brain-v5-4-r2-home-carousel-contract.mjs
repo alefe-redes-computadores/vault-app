@@ -1,0 +1,16 @@
+import fs from "node:fs";
+const r=p=>fs.readFileSync(p,"utf8"),ok=(v,m)=>{if(!v)throw Error("BRAIN V5.4 R2: "+m);console.log("OK:",m)};
+const h=r("app/page.tsx"),m=r("app/saude/medicamentos/detalhes/page.tsx"),s=r("lib/health-intelligence/medication-safety.ts");
+ok(h.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL"),"arquitetura R2");
+ok(!h.includes("Cérebro do Vault"),"card standalone removido");
+ok(h.includes("longitudinalHighlights.map(")&&!h.includes("longitudinalHighlights.slice(0, 1).map("),"campeão não é o único insight");
+ok(h.includes("overflow-x-auto")&&h.includes("snap-x")&&h.includes("snap-start"),"rail lateral com snap");
+ok(h.includes("w-[86%]")&&h.includes("min-w-[86%]"),"próximo card fica sugerido");
+ok(h.includes("Deslize para ver outros sinais"),"affordance lateral");
+ok(h.includes("brainV5Pulse.counters.attention")&&h.includes("brainV5Pulse.counters.new"),"pulso compacto");
+ok(h.includes('{" cobertura"}'),"cobertura/fontes");
+ok(h.includes("Ver Central de Inteligência"),"Central completa");
+ok(h.includes("O que merece prioridade agora"),"Atenção operacional");
+ok(s.includes("buildMedicationLongitudinalRiskInsights"),"V5.3 preservada");
+ok(m.includes("VAULT_MEDICATION_REGULATORY_STABILITY_V92_5")&&!m.includes("NAV TRACE"),"V92.5 preservada");
+console.log("\nBRAIN V5.4 R2 HOME CAROUSEL: CONTRATOS OK");

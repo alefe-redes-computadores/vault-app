@@ -1,0 +1,15 @@
+import fs from "node:fs";
+const r=p=>fs.readFileSync(p,"utf8"),ok=(v,m)=>{if(!v)throw Error("BRAIN V5.3: "+m);console.log("OK:",m)};
+const l=r("lib/health-intelligence/medication-longitudinal-risk.ts"),s=r("lib/health-intelligence/medication-safety.ts"),k=r("lib/health-intelligence/interaction-knowledge.ts"),b=r("lib/health-intelligence/brain-v5.ts"),h=r("app/page.tsx"),m=r("app/saude/medicamentos/detalhes/page.tsx");
+ok(l.includes("clonazepam")&&l.includes("zolpidem")&&l.includes("desvenlafaxina"),"vocabulário longitudinal fechado");
+ok(l.includes("otherAfter.length<2"),"lacuna exige continuidade do diário");
+ok(l.includes("não confirma abstinência")&&l.includes("não demonstra tolerância"),"linguagem não diagnóstica");
+ok(l.includes("windowLogs(logs,now,7)")&&l.includes("windowLogs(logs,now,28,7)"),"7 dias comparados ao baseline anterior");
+ok(l.includes("frequencyRatio")&&l.includes("quantityRatio"),"frequência e quantidade entram na tendência");
+ok(l.includes("fontesExternas:[p.source]"),"fonte regulatória por sinal");
+ok(s.includes("buildMedicationLongitudinalRiskInsights(scoped, now)"),"integrado ao motor canônico");
+ok(k.includes("benzodiazepine-withdrawal")&&k.includes("desvenlafaxine-discontinuation"),"knowledge boundary ampliada");
+ok(b.includes("interrupcao|descontinuacao|abstinencia|tolerancia|dependencia"),"Ledger reconhece padrões longitudinais");
+ok(h.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL")&&h.includes("brainV5Pulse.top.snapshot.titulo"),"Home mantém campeão sem remover navegação lateral");
+ok(m.includes("VAULT_MEDICATION_REGULATORY_STABILITY_V92_5")&&!m.includes("NAV TRACE"),"V92.5 preservada");
+console.log("\nBRAIN V5.3 LONGITUDINAL: CONTRATOS OK");

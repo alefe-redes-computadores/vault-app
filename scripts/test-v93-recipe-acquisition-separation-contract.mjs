@@ -28,7 +28,7 @@ ok(repository.includes("...(!somenteAquisicao"), "estado clínico protegido da a
 ok(repository.includes("!somenteAquisicao &&\n      options.proximaRenovacao"), "planejamento protegido da aquisição");
 ok(prescription.includes("somenteReceita:\n              true"), "receita continua sem alterar estoque");
 ok(prescription.includes("router.replace(\n          returnTo"), "receita retorna ao medicamento de origem");
-ok(detail.includes("VAULT_CANONICAL_ACQUISITION_NAVIGATION_V92_2"), "navegação V92.2 preservada");
+ok(detail.includes("VAULT_MEDICATION_REGULATORY_STABILITY_V92_5"), "estabilidade de detalhes V92.5 preservada");
 ok(intelligence.includes("VAULT_MEDICATION_ACQUISITION_CONTEXT_V93"), "cérebro interpreta aquisição controlada sem vínculo");
 ok(intelligence.includes('kind: repeated ? "attention" : "data_quality"'), "recorrência aumenta prioridade sem diagnosticar");
 ok(intelligence.includes("não prova ausência de prescrição"), "linguagem clínica não punitiva preservada");

@@ -2441,30 +2441,14 @@ export default function HomePage() {
             </motion.section>
           )}
 
-          {/* VAULT_BRAIN_V5_HOME_PULSE */}
-          {!brainV5Pulse.isLoading && (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0) && (
-            <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><Activity size={17}/></div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-ink-primary">Cérebro do Vault</p>
-                <p className="mt-1 text-[10px] text-ink-muted">
-                  {brainV5Pulse.counters.attention > 0
-                    ? brainV5Pulse.counters.attention + " precisa(m) de atenção"
-                    : brainV5Pulse.counters.active + " em acompanhamento"}
-                  {brainV5Pulse.counters.new > 0 ? " · " + brainV5Pulse.counters.new + " novo(s)" : ""}
-                </p>
-                {brainV5Pulse.top && <p className="mt-1 truncate text-[10px] text-violet-200/80">{brainV5Pulse.top.snapshot.titulo}</p>}
-              </div>
-              <ChevronRight size={15} className="text-violet-300"/>
-            </button>
-          )}
-
-          {/* ===================================================
-              PADRÕES PERCEBIDOS
+          {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
+                    {/* ===================================================
+              INTELIGÊNCIA DE SAÚDE — PULSO + RAIL PRIORIZADO
           =================================================== */}
 
-          {longitudinalHighlights.length >
-            0 && (
+          {(longitudinalHighlights.length > 0 ||
+            (!brainV5Pulse.isLoading &&
+              (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))) && (
             <motion.section
               initial={{
                 opacity: 0,
@@ -2495,21 +2479,9 @@ export default function HomePage() {
                   </div>
 
                   <p className="mt-0.5 text-[10px] text-ink-muted">
-                    {
-                      healthIntelligence
-                        .maturity
-                        .label
-                    }
-
-                    {" · "}
-
-                    {
-                      healthIntelligence
-                        .maturity
-                        .totalRecords
-                    }
-
-                    {" registros analisados"}
+                    {healthIntelligence.maturity.totalRecords} registros analisados
+                    {brainV5Pulse.counters.attention > 0 ? ` · ${brainV5Pulse.counters.attention} em atenção` : brainV5Pulse.counters.active > 0 ? ` · ${brainV5Pulse.counters.active} acompanhando` : ""}
+                    {brainV5Pulse.counters.new > 0 ? ` · ${brainV5Pulse.counters.new} novo${brainV5Pulse.counters.new === 1 ? "" : "s"}` : ""}
                   </p>
                 </div>
 
@@ -2529,7 +2501,7 @@ export default function HomePage() {
                     );
                   }}
                   className="flex shrink-0 items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-violet-300 transition-all active:scale-95"
-                  aria-label="Ver fontes usadas pela inteligência do Vault"
+                  aria-label="Ver cobertura e fontes usadas pela inteligência do Vault"
                 >
                   <Info
                     size={11}
@@ -2549,11 +2521,11 @@ export default function HomePage() {
                       .totalSources
                   }
 
-                  {" fontes"}
+                  {" cobertura"}
                 </button>
               </div>
 
-              <div className="space-y-2">
+              <div className="-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {longitudinalHighlights.map(
                   (
                     insight
@@ -2576,7 +2548,7 @@ export default function HomePage() {
                           insight
                         );
                       }}
-                      className={`flex w-full items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
+                      className={`flex w-[86%] min-w-[86%] snap-start items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] sm:w-[72%] sm:min-w-[72%] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
                     >
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-violet-400/10 text-violet-300"}`}>
                         {(insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ? <AlertCircle size={17}/> : <Activity
@@ -2633,6 +2605,22 @@ export default function HomePage() {
                   )
                 )}
               </div>
+
+              {longitudinalHighlights.length > 1 && (
+                <div className="flex items-center justify-between px-1"><span className="text-[9px] text-ink-faint">Deslize para ver outros sinais</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
+              )}
+
+              {longitudinalHighlights.length === 0 && brainV5Pulse.top && (
+                <button type="button" onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainV5Pulse.top!.insight_id)}`)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left active:scale-[0.985]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={16}/></div>
+                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-[10px] text-ink-muted">Insight priorizado pelo histórico persistente</p></div>
+                  <ChevronRight size={14} className="shrink-0 text-violet-300"/>
+                </button>
+              )}
+
+              <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex w-full items-center justify-center gap-1.5 rounded-xl py-1.5 text-[10px] font-semibold text-violet-300 active:scale-[0.98]">
+                Ver Central de Inteligência <ChevronRight size={12}/>
+              </button>
             </motion.section>
           )}
 
