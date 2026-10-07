@@ -144,7 +144,7 @@ function visualForLegacy(
 ): MedicationRegulatoryVisual {
   // VAULT_REGULATORY_FALLBACK_V70
   if (!type) return UNKNOWN;
-  if (type === "comum") return {tone:"neutral",label:"Receita comum",detail:"Classificação informada no cadastro do medicamento.",verified:false,sourceLabel:"Cadastro do Vault",accent:"#cbd5e1",badgeClass:"border-slate-300/25 bg-slate-300/10 text-slate-200"};
+  if (type === "comum") return {tone:"neutral",label:"Receita informada",detail:"Classificação registrada no cadastro; o catálogo não confirmou este regime.",verified:false,sourceLabel:"Cadastro do Vault",accent:"#94a3b8",badgeClass:"border-slate-400/25 bg-slate-400/[0.07] text-slate-300"};
 
   const values: Record<
     Exclude<TipoReceita, "comum">,
@@ -152,9 +152,9 @@ function visualForLegacy(
   > = {
     amarela: {
       tone: "yellow",
-      label: "Receita amarela",
+      label: "Receita amarela informada",
       detail:
-        "Informação registrada manualmente; confira o documento.",
+        "Classificação registrada no cadastro; o catálogo não confirmou este regime.",
       verified: false,
       accent: "#facc15",
       badgeClass:
@@ -162,9 +162,9 @@ function visualForLegacy(
     },
     azul: {
       tone: "black",
-      label: "Receita azul",
+      label: "Receita azul informada",
       detail:
-        "Informação registrada manualmente; não confirma sozinha a tarja da embalagem.",
+        "Classificação registrada no cadastro; o catálogo não confirmou este regime nem a tarja da embalagem.",
       verified: false,
       accent: "#94a3b8",
       badgeClass:
@@ -172,9 +172,9 @@ function visualForLegacy(
     },
     branca: {
       tone: "red",
-      label: "Controle especial",
+      label: "Controle informado",
       detail:
-        "Informação registrada manualmente; confira o documento.",
+        "Classificação registrada no cadastro; o catálogo não confirmou controle especial para esta referência.",
       verified: false,
       accent: "#f87171",
       badgeClass:
@@ -259,6 +259,19 @@ export function getMedicationRegulatorySurface(
 ): MedicationRegulatorySurface {
   const tone =
     profile?.tone || "unknown";
+
+  // VAULT_REGULATORY_CONFIDENCE_V95_2
+  if (profile && !profile.verified) {
+    const accent = profile.accent || fallbackAccent || "#64748b";
+    return {
+      accent,
+      rail: "#64748b",
+      badgeClass: profile.badgeClass,
+      iconClass: "border-slate-500/25 bg-slate-500/[0.08] text-slate-300",
+      dotClass: "border-slate-400/25",
+      glowClass: "",
+    };
+  }
 
   if (tone === "black") {
     return {

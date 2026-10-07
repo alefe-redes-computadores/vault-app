@@ -87,7 +87,7 @@ import {
 import {
   useMedicamentos,
 } from "@/hooks/useMedicamentos";
-import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import { useMedicationCatalogIdentities, useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 
 import {
@@ -931,9 +931,19 @@ function MedicamentoDetalhesContent() {
       regulatoryMedicationInput
     );
 
+  const catalogIdentities =
+    useMedicationCatalogIdentities(
+      regulatoryMedicationInput
+    );
+
   const regulatoryProfile =
     med?.id
       ? regulatoryProfiles[med.id]
+      : undefined;
+
+  const catalogIdentity =
+    med?.id
+      ? catalogIdentities[med.id]
       : undefined;
 
   const regulatorySurface =
@@ -3290,18 +3300,43 @@ function MedicamentoDetalhesContent() {
                   </div>
 
                   <p className="mt-1 text-sm font-medium text-ink-muted">
-                    {
-                      med.dosagem
-                    }
-
+                    {med.dosagem}
                     <span>
-                      {" "}
-                      •{" "}
-                      {isSOS
-                        ? "Uso Esporádico / SOS"
-                        : "Uso Contínuo"}
+                      {" "}•{" "}
+                      {isSOS ? "Uso Esporádico / SOS" : "Uso Contínuo"}
                     </span>
                   </p>
+
+                  {catalogIdentity && catalogIdentity.authorityState !== "unvalidated" && (
+                    <div className="mt-3 rounded-2xl border border-surface-border/70 bg-void/25 px-3.5 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[9px] font-black uppercase tracking-[0.14em] text-ice">
+                          Identidade farmacêutica
+                        </span>
+                        <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${
+                          catalogIdentity.authorityState === "possible_divergence"
+                            ? "border-amber-400/25 bg-amber-400/10 text-amber-300"
+                            : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-300"
+                        }`}>
+                          {catalogIdentity.authorityLabel}
+                        </span>
+                      </div>
+
+                      {catalogIdentity.activeIngredients.length > 0 && (
+                        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+                          <span className="text-ink-muted/60">Princípio ativo · </span>
+                          {catalogIdentity.activeIngredients.join(" + ")}
+                        </p>
+                      )}
+
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-ink-muted/70">
+                        <span>{catalogIdentity.referenceType === "product" ? "Produto regulatório" : "Substância de referência"}</span>
+                        {catalogIdentity.registrationNumber && <span>Registro {catalogIdentity.registrationNumber}</span>}
+                        {catalogIdentity.presentationCount > 0 && <span>{catalogIdentity.presentationCount} apresentação{catalogIdentity.presentationCount === 1 ? "" : "ões"}</span>}
+                        {catalogIdentity.sourceLabel && <span>Fonte · {catalogIdentity.sourceLabel}</span>}
+                      </div>
+                    </div>
+                  )}
 
                   {tratamentos.length >
                     0 && (

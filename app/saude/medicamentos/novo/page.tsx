@@ -8,6 +8,7 @@ import {
 
 import { validateMedication } from "@/lib/medication-intelligence/validate";
 import { assessMedicationCatalogQuality } from "@/lib/medication-catalog/data-quality";
+import { getMedicationCatalogAuthority } from "@/lib/medication-catalog/authority";
 import { Info as InfoIcon } from "lucide-react";
 import {
   useEffect,
@@ -4012,6 +4013,12 @@ export default function NovoMedicamentoPage() {
       ?.reference ??
     null;
 
+  const catalogAuthority =
+    getMedicationCatalogAuthority(
+      nome,
+      catalogReference
+    );
+
   const regulatoryContext =
     catalogReference
       ? buildMedicationRegulatoryContext(
@@ -4747,19 +4754,8 @@ export default function NovoMedicamentoPage() {
                                               result.referenceType ===
                                               "substance"
                                                 ? "Princípio ativo"
-                                                : "Medicamento"
+                                                : "Referência do catálogo"
                                             }
-                                          </span>
-
-                                          <span className="mt-1 block text-[10px] text-ink-faint">
-                                            Compatibilidade{" "}
-                                            {
-                                              Math.round(
-                                                result.score *
-                                                  100
-                                              )
-                                            }
-                                            %
                                           </span>
                                         </span>
 
@@ -4806,9 +4802,18 @@ export default function NovoMedicamentoPage() {
                             />
 
                             <div className="min-w-0 flex-1">
-                              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
-                                Referência selecionada
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                                  Referência selecionada
+                                </p>
+                                <span className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wide ${
+                                  catalogAuthority.state === "possible_divergence"
+                                    ? "border-amber-400/25 bg-amber-400/10 text-amber-300"
+                                    : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-300"
+                                }`}>
+                                  {catalogAuthority.label}
+                                </span>
+                              </div>
 
                               <p className="mt-1 text-sm font-semibold text-ink-primary">
                                 {
@@ -4824,6 +4829,7 @@ export default function NovoMedicamentoPage() {
                                 catalogReference.activeIngredient
                               ) && (
                                 <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
+                                  <span className="text-ink-muted/55">Princípio ativo · </span>
                                   {
                                     catalogReference.activeIngredients
                                       ?.join(

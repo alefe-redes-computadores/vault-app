@@ -9,7 +9,7 @@ ok(h.includes("w-[86%]")&&h.includes("min-w-[86%]"),"próximo card fica sugerido
 ok(h.includes("Deslize para ver outros sinais"),"affordance lateral");
 ok(h.includes("brainV5Pulse.counters.attention")&&h.includes("brainV5Pulse.counters.new"),"pulso compacto");
 ok(h.includes('{" cobertura"}'),"cobertura/fontes");
-ok(h.includes("Ver Central de Inteligência"),"Central completa");
+ok(h.includes('router.push("/inteligencia/alertas")')&&h.includes("Vault Intelligence"),"Central completa");
 ok(h.includes("O que merece prioridade agora"),"Atenção operacional");
 ok(s.includes("buildMedicationLongitudinalRiskInsights"),"V5.3 preservada");
 ok(m.includes("VAULT_MEDICATION_REGULATORY_STABILITY_V92_5")&&!m.includes("NAV TRACE"),"V92.5 preservada");

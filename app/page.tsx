@@ -70,6 +70,9 @@ import {
 import {
   buildMedicationCareOpportunities,
 } from "@/lib/health-intelligence/medication-care-opportunities";
+import {
+  suppressOperationalOverlap,
+} from "@/lib/health-intelligence/home-signal-orchestration";
 import { normalizedMedicationSchedules } from "@/lib/medication-dose-history";
 
 import { PageTransition } from "@/components/PageTransition";
@@ -1363,7 +1366,7 @@ export default function HomePage() {
    * - sem repetir estoque e renovação;
    * - limitados para não sobrecarregar a Home.
    */
-  const longitudinalHighlights =
+  const rawLongitudinalHighlights =
     healthIntelligence.highlights;
 
   const medicationCareOpportunities =
@@ -1393,6 +1396,21 @@ export default function HomePage() {
   const primaryMedicationCareOpportunity =
     medicationCareOpportunities[0] ??
     null;
+
+  // VAULT_HOME_INTELLIGENCE_ORCHESTRATION_V96
+  // Atenção é operacional; Intelligence é analítico.
+  const longitudinalHighlights =
+    useMemo(
+      () =>
+        suppressOperationalOverlap(
+          rawLongitudinalHighlights,
+          medicationCareOpportunities
+        ),
+      [
+        rawLongitudinalHighlights,
+        medicationCareOpportunities,
+      ]
+    );
 
   const resumoContextual =
     useMemo(

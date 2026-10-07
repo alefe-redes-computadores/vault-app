@@ -4,6 +4,10 @@ import type {
   HealthInsight,
 } from "@/lib/health-insights";
 
+import {
+  healthSignalSemanticKey,
+} from "@/lib/health-intelligence/home-signal-orchestration";
+
 export type HealthHighlightOptions = {
   limit?: number;
   minimumSample?: number;
@@ -361,38 +365,21 @@ export function selectHealthHighlights(
   const semanticKeys =
     new Set<string>();
 
-  const entityKeys =
-    new Set<string>();
-
   const unique:
     HealthInsight[] =
     [];
 
   for (const insight of eligible) {
+    // VAULT_INTELLIGENCE_DIVERSITY_V96
+    // Entidade + fenômeno: dois problemas diferentes da mesma medicação podem coexistir.
     const semanticKey =
-      insight.categoria +
-      ":" +
-      normalizeText(
-        insight.titulo
+      healthSignalSemanticKey(
+        insight
       );
-
-    const entityKey =
-      insight.entidadeTipo &&
-      insight.entidadeId
-        ? insight.entidadeTipo +
-          ":" +
-          insight.entidadeId
-        : "";
 
     if (
       semanticKeys.has(
         semanticKey
-      ) ||
-      (
-        entityKey &&
-        entityKeys.has(
-          entityKey
-        )
       )
     ) {
       continue;
@@ -401,12 +388,6 @@ export function selectHealthHighlights(
     semanticKeys.add(
       semanticKey
     );
-
-    if (entityKey) {
-      entityKeys.add(
-        entityKey
-      );
-    }
 
     unique.push(
       insight

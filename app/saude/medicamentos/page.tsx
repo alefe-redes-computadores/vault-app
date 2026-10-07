@@ -89,7 +89,11 @@ import {
   ListSearch,
 } from "@/components/list";
 
-import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
+import {
+  useMedicationCatalogIdentities,
+  useMedicationRegulatoryProfiles,
+} from "@/hooks/useMedicationRegulatoryProfiles";
+import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 
@@ -411,6 +415,11 @@ export default function MedicamentosListPage() {
 
   const regulatoryProfiles =
     useMedicationRegulatoryProfiles(
+      medicamentosDaPessoa
+    );
+
+  const catalogIdentities =
+    useMedicationCatalogIdentities(
       medicamentosDaPessoa
     );
 
@@ -936,6 +945,22 @@ export default function MedicamentosListPage() {
       const regulatoryProfile =
         regulatoryProfiles[med.id];
 
+      const catalogIdentity =
+        catalogIdentities[med.id];
+
+      const activeIngredients =
+        catalogIdentity?.activeIngredients ?? [];
+
+      const activeIngredient =
+        activeIngredients.join(" + ");
+
+      const showActiveIngredient =
+        activeIngredients.some(
+          (item) =>
+            normalizeMedicationText(item) !==
+            normalizeMedicationText(med.nome)
+        );
+
       const regulatorySurface =
         getMedicationRegulatorySurface(
           regulatoryProfile,
@@ -1137,13 +1162,15 @@ export default function MedicamentosListPage() {
                     transform: "rotate(180deg)",
                   }}
                 >
-                  {(
-                    regulatoryProfile?.label ||
-                    receita?.sigla ||
-                    "Receita"
-                  )
-                    .replace(/^Receita\s+/i, "")
-                    .replace(/^Notificação\s+/i, "Notif. ")}
+                  {regulatoryProfile && !regulatoryProfile.verified
+                    ? "Informado"
+                    : (
+                        regulatoryProfile?.label ||
+                        receita?.sigla ||
+                        "Receita"
+                      )
+                        .replace(/^Receita\s+/i, "")
+                        .replace(/^Notificação\s+/i, "Notif. ")}
                 </span>
 
                 {regulatoryProfile && (
@@ -1194,7 +1221,30 @@ export default function MedicamentosListPage() {
                   </div>
                 </div>
 
-                <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+                {showActiveIngredient && (
+                  <p
+                    className="mt-0.5 truncate text-[10px] font-medium text-ink-muted/80"
+                    title={`Princípio ativo: ${activeIngredient}`}
+                  >
+                    <span className="text-ink-muted/55">Princípio ativo · </span>
+                    {activeIngredient}
+                  </p>
+                )}
+
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+                  {catalogIdentity?.authorityState &&
+                    catalogIdentity.authorityState !== "unvalidated" && (
+                    <span
+                      title={catalogIdentity.authorityDetail}
+                      className={`inline-flex h-6 shrink-0 items-center rounded-lg border px-2 text-[9px] font-bold uppercase tracking-wide ${
+                        catalogIdentity.authorityState === "possible_divergence"
+                          ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-300"
+                          : "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300/80"
+                      }`}
+                    >
+                      {catalogIdentity.authorityLabel}
+                    </span>
+                  )}
                   {isSOS && (
                     <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.07] px-2 text-[9px] font-bold uppercase tracking-wide text-amber-400">
                       SOS

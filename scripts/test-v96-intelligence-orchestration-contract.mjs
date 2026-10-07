@@ -1,0 +1,16 @@
+import fs from "node:fs";
+const read=p=>fs.readFileSync(p,"utf8");
+const orchestration=read("lib/health-intelligence/home-signal-orchestration.ts");
+const selector=read("lib/health-intelligence/select-highlights.ts");
+const home=read("app/page.tsx");
+const brain=read("lib/health-intelligence/brain-v5.ts");
+const ok=(v,m)=>{if(!v)throw new Error(`V96: ${m}`);console.log(`OK: ${m}`)};
+ok(orchestration.includes("suppressOperationalOverlap"),"Home possui dedupe Atenção × Intelligence");
+ok(orchestration.includes("healthSignalPhenomenon"),"dedupe considera fenômeno");
+ok(orchestration.includes('"interaction"')&&orchestration.includes('"sos"')&&orchestration.includes('"continuity"'),"fenômenos distintos são classificados");
+ok(home.includes("rawLongitudinalHighlights")&&home.includes("suppressOperationalOverlap"),"Home orquestra antes do rail");
+ok(selector.includes("healthSignalSemanticKey"),"seletor usa entidade + fenômeno");
+ok(!selector.includes("entityKeys.has"),"mesma medicação não é deduplicada cegamente");
+ok(brain.includes("occurrences")&&brain.includes("feedback")&&brain.includes("episode"),"ledger Brain V5 preservado");
+ok(home.includes("Vault Intelligence")&&home.includes("Deslize para ver outros sinais"),"nomenclatura e rail preservados");
+console.log("VAULT V96 INTELLIGENCE ORCHESTRATION: CONTRATOS OK");
