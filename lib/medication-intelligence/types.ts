@@ -133,6 +133,9 @@ export type MedicationPresentation = {
   unit?: string;
 
   pharmaceuticalForm?: string;
+
+  /** Descrição oficial da embalagem quando disponível. */
+  packageDescription?: string;
 };
 
 

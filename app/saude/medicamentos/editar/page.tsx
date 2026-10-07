@@ -616,6 +616,7 @@ type CatalogPresentationSuggestion = {
   format: string | null;
   formatLabel: string | null;
   officialLabel: string;
+  packageDescription: string | null;
 };
 
 function extractCatalogPresentationDosage(
@@ -5162,6 +5163,9 @@ function EditarMedicamentoContent() {
                 formatLabel,
                 officialLabel:
                   presentation.label,
+                packageDescription:
+                  presentation.packageDescription ??
+                  null,
               };
             }
           )
@@ -8345,6 +8349,12 @@ function EditarMedicamentoContent() {
                                                 suggestion.officialLabel
                                               }
                                             </p>
+
+                                            {suggestion.packageDescription && (
+                                              <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-ink-muted">
+                                                Embalagem: {suggestion.packageDescription}
+                                              </p>
+                                            )}
                                           </button>
                                         );
                                       }
@@ -8358,7 +8368,7 @@ function EditarMedicamentoContent() {
                               )}
 
                               {catalogNameIsDifferent && (
-                                <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+                                <div className="mt-3 rounded-xl border border-ice/15 bg-ice/[0.04] p-3">
                                   <div className="flex items-start gap-2">
                                     <AlertTriangle
                                       size={
@@ -8369,14 +8379,14 @@ function EditarMedicamentoContent() {
 
                                     <div className="min-w-0 flex-1">
                                       <p className="text-xs font-semibold text-ink-primary">
-                                        Talvez você queira dizer{" "}
+                                        Referência do catálogo{" "}
                                         {
                                           catalogReference.canonicalName
                                         }
                                       </p>
 
                                       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-                                        Nada será alterado sem sua confirmação.
+                                        O catálogo pode usar nome comercial, substância ou denominação canônica diferente. Seu nome atual continua válido até você decidir alterá-lo.
                                       </p>
 
                                       <div className="mt-2 flex flex-wrap gap-2">
@@ -8397,7 +8407,7 @@ function EditarMedicamentoContent() {
                                           }
                                           className="rounded-xl bg-ice px-3 py-1.5 text-[11px] font-semibold text-void"
                                         >
-                                          Usar sugestão
+                                          Usar nome da referência
                                         </button>
 
                                         <button
@@ -8419,7 +8429,7 @@ function EditarMedicamentoContent() {
                                           }
                                           className="rounded-xl border border-surface-border px-3 py-1.5 text-[11px] font-medium text-ink-muted"
                                         >
-                                          Manter como está
+                                          Manter meu nome
                                         </button>
                                       </div>
                                     </div>

@@ -1,0 +1,16 @@
+import fs from "node:fs";
+const read=(p)=>fs.readFileSync(p,"utf8");
+const ok=(m,v)=>{if(!v)throw new Error(`V95.1: ${m}`);console.log(`OK: ${m}`)};
+const types=read("lib/medication-intelligence/types.ts");
+const provider=read("lib/medication-catalog/supabase-provider.ts");
+const details=read("app/saude/medicamentos/detalhes/page.tsx");
+const novo=read("app/saude/medicamentos/novo/page.tsx");
+const editar=read("app/saude/medicamentos/editar/page.tsx");
+ok("package_description atravessa provider",provider.includes("package_description")&&provider.includes("packageDescription:"));
+ok("domínio preserva embalagem",types.includes("packageDescription?: string"));
+ok("Novo mostra embalagem oficial",novo.includes("Embalagem: {suggestion.packageDescription}"));
+ok("Editar mostra embalagem oficial",editar.includes("Embalagem: {suggestion.packageDescription}"));
+ok("Detalhes aceita matchedText exato",details.includes("result.matchedText")&&details.includes("normalizedCurrentName"));
+ok("alias válido não vira erro automático",details.includes("O Vault não considera automaticamente o cadastro incorreto"));
+ok("ação residual é padronização",details.includes("Usar nome da referência")&&!details.includes("Corrigir cadastro"));
+console.log("\\nVAULT V95.1 CATALOG UTILIZATION: CONTRATOS OK");

@@ -1,0 +1,17 @@
+import fs from "node:fs";
+const read=(p)=>fs.readFileSync(p,"utf8");
+const ok=(m,v)=>{if(!v)throw new Error(`V95: ${m}`);console.log(`OK: ${m}`)};
+const match=read("lib/medication-intelligence/presentation-match.ts");
+const quality=read("lib/medication-catalog/data-quality.ts");
+const validate=read("lib/medication-intelligence/validate.ts");
+const novo=read("app/saude/medicamentos/novo/page.tsx");
+const editar=read("app/saude/medicamentos/editar/page.tsx");
+const hook=read("hooks/useMedicationRegulatoryProfiles.ts");
+ok("apresentação comparável explícita",match.includes("isMedicationPresentationComparable")&&match.includes("parseMedicationStrength"));
+ok("catálogo incompleto não vira mismatch",quality.includes("comparablePresentations.length === 0")&&quality.includes("não são estruturados o bastante"));
+ok("validador exige evidência comparável",validate.includes("comparablePresentations")&&validate.includes("isMedicationPresentationComparable"));
+ok("diferença nominal não é chamada de erro",validate.includes("Nome diferente da referência")&&validate.includes("não é tratado automaticamente como erro"));
+ok("Novo separa identidade e referência",novo.includes('Referência do catálogo{" "}')&&novo.includes("Usar nome da referência")&&novo.includes("Manter meu nome"));
+ok("Editar separa identidade e referência",editar.includes('Referência do catálogo{" "}')&&editar.includes("Usar nome da referência")&&editar.includes("Manter meu nome"));
+ok("proteção regulatória nominal exata preservada",hook.includes("normalizeMedicationText(item.matchedText) === key"));
+console.log("\nVAULT V95 MEDICATION CATALOG AUTHORITY: CONTRATOS OK");

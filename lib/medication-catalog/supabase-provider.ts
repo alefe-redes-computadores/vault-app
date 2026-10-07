@@ -116,6 +116,10 @@ type PresentationRow = {
   pharmaceutical_form:
     | string
     | null;
+
+  package_description:
+    | string
+    | null;
 };
 
 
@@ -845,6 +849,10 @@ function presentationRowToReference(
     pharmaceuticalForm:
       row.pharmaceutical_form ??
       undefined,
+
+    packageDescription:
+      row.package_description ??
+      undefined,
   };
 }
 
@@ -1560,7 +1568,7 @@ export class SupabaseMedicationCatalogProvider
             "medication_presentations"
           )
           .select(
-            "presentation_label, concentration_value, concentration_unit, pharmaceutical_form"
+            "presentation_label, concentration_value, concentration_unit, pharmaceutical_form, package_description"
           )
           .eq(
             "product_id",
@@ -2113,7 +2121,7 @@ export class SupabaseMedicationCatalogProvider
           "medication_presentations"
         )
         .select(
-          "product_id, presentation_label, concentration_value, concentration_unit, pharmaceutical_form, source_version_id, active"
+          "product_id, presentation_label, concentration_value, concentration_unit, pharmaceutical_form, package_description, source_version_id, active"
         )
         .in(
           "product_id",

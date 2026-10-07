@@ -1000,17 +1000,25 @@ function MedicamentoDetalhesContent() {
                * Se o catálogo contém correspondência exata,
                * não existe motivo para gerar alerta de nome.
                */
+              const normalizedCurrentName =
+                normalizeMedicationQualityText(
+                  nomeAtual
+                );
+
+              // V95.1: matchedText exato pode ser marca, alias ou princípio ativo válido.
               const exact =
                 results.find(
                   (
                     result
                   ) =>
                     normalizeMedicationQualityText(
+                      result.matchedText
+                    ) ===
+                      normalizedCurrentName ||
+                    normalizeMedicationQualityText(
                       result.canonicalName
                     ) ===
-                    normalizeMedicationQualityText(
-                      nomeAtual
-                    )
+                      normalizedCurrentName
                 );
 
               if (
@@ -3426,11 +3434,11 @@ function MedicamentoDetalhesContent() {
                         </div>
 
                         <h2 className="mt-1 text-sm font-semibold text-ink-primary">
-                          Possível divergência no nome
+                          Referência semelhante encontrada
                         </h2>
 
                         <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                          O nome cadastrado é parecido com uma referência encontrada no catálogo oficial. O Vault não altera seus dados sem sua confirmação.
+                          O catálogo encontrou uma referência semelhante, mas isso pode representar marca, princípio ativo, alias ou outra identificação válida. Revise apenas se quiser padronizar o nome.
                         </p>
 
                         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -3532,7 +3540,7 @@ function MedicamentoDetalhesContent() {
                               />
                             )}
 
-                            Corrigir cadastro
+                            Usar nome da referência
                           </button>
 
                           <button
@@ -3556,7 +3564,7 @@ function MedicamentoDetalhesContent() {
                         </div>
 
                         <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
-                          Se você optar por manter o nome, o Vault considera esta divergência revisada e não volta a mostrar o mesmo alerta enquanto os valores permanecerem iguais.
+                          Manter o nome atual registra apenas que você revisou esta sugestão. O Vault não considera automaticamente o cadastro incorreto.
                         </p>
                       </div>
                     </div>

@@ -54,6 +54,26 @@ function sameStrength(a: ParsedMedicationStrength, b: ParsedMedicationStrength):
   );
 }
 
+// VAULT_MEDICATION_CATALOG_AUTHORITY_V95
+// Uma apresentação só pode sustentar divergência conclusiva
+// quando contém força/concentração realmente comparável.
+export function isMedicationPresentationComparable(
+  presentation: MedicationPresentation
+): boolean {
+  if (
+    presentation.value !== undefined &&
+    presentation.unit
+  ) {
+    return true;
+  }
+
+  return Boolean(
+    parseMedicationStrength(
+      presentation.label
+    )
+  );
+}
+
 export function presentationMatchesDosage(
   presentation: MedicationPresentation,
   dosage: string

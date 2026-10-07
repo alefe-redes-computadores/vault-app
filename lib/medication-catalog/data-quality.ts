@@ -1,4 +1,7 @@
-import { dosageMatchesPresentations } from "@/lib/medication-intelligence/presentation-match";
+import {
+  dosageMatchesPresentations,
+  isMedicationPresentationComparable,
+} from "@/lib/medication-intelligence/presentation-match";
 import type { MedicationPresentation } from "@/lib/medication-intelligence/types";
 
 export type MedicationCatalogQuality =
@@ -18,7 +21,22 @@ export function assessMedicationCatalogQuality(
   if (presentations.length === 0) {
     return { status: "catalog_unavailable", matches: true, message: "A referência foi encontrada, mas não há apresentações suficientes para confirmar a dosagem." };
   }
-  if (dosageMatchesPresentations(dosage, presentations)) {
+
+  const comparablePresentations =
+    presentations.filter(
+      isMedicationPresentationComparable
+    );
+
+  if (comparablePresentations.length === 0) {
+    return {
+      status: "catalog_unavailable",
+      matches: true,
+      message:
+        "A referência possui apresentações, mas os dados disponíveis não são estruturados o bastante para confirmar ou rejeitar esta dosagem.",
+    };
+  }
+
+  if (dosageMatchesPresentations(dosage, comparablePresentations)) {
     return { status: "verified", matches: true, message: "Dosagem encontrada entre as apresentações consultadas." };
   }
   return { status: "mismatch", matches: false, message: "Dosagem não encontrada nas apresentações consultadas. Confira a receita ou a embalagem." };

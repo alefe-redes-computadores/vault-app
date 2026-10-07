@@ -18,7 +18,10 @@ import type {
   MedicationValidationResult,
 } from "./types";
 
-import { presentationMatchesDosage } from "./presentation-match";
+import {
+  isMedicationPresentationComparable,
+  presentationMatchesDosage,
+} from "./presentation-match";
 
 import type {
   MedicationCatalogProvider,
@@ -83,10 +86,10 @@ function validateName(
           : "medium",
 
       title:
-        "Nome merece revisão",
+        "Nome diferente da referência",
 
       message:
-        `O nome informado é parecido com "${match.matchedText}", encontrado na referência disponível.`,
+        `O nome informado difere de "${match.matchedText}", encontrado na referência disponível. Isso pode representar nome comercial, substância ou outra forma válida de identificação; não é tratado automaticamente como erro.`,
 
       evidence: [
         `Nome informado: "${match.reference.canonicalName === match.matchedText ? match.matchedText : match.matchedText}"`,
@@ -133,8 +136,24 @@ function validatePresentation(
     return [];
   }
 
+  const comparablePresentations =
+    presentations.filter(
+      isMedicationPresentationComparable
+    );
+
+  /*
+   * V95: texto de apresentação incompleto não autoriza o Vault
+   * a concluir que a concentração do usuário está errada.
+   */
+  if (
+    comparablePresentations.length ===
+    0
+  ) {
+    return [];
+  }
+
   const found =
-    presentations.some(
+    comparablePresentations.some(
       (
         presentation
       ) =>
