@@ -97,6 +97,14 @@ import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 
+type MedicationListFilter =
+  | "todos"
+  | "atencao"
+  | "continuos"
+  | "sos"
+  | "controlados"
+  | "encerrados";
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -331,13 +339,12 @@ export default function MedicamentosListPage() {
     ]
   );
 
-  const [
-    showDescontinuados,
-    setShowDescontinuados,
-  ] =
-    useState(
-      false
-    );
+  // VAULT_MEDICATION_EXPERIENCE_V97
+  const [medicationFilter, setMedicationFilter] =
+    useState<MedicationListFilter>("todos");
+
+  const showDescontinuados =
+    medicationFilter === "encerrados";
 
   const [
     quickDoseMedId,
@@ -353,35 +360,23 @@ export default function MedicamentosListPage() {
     useState<MedicationRegulatoryVisual | null>(null);
 
   // ==========================================================
-  // PREFERÊNCIA DE SUSPENSOS
+  // PREFERÊNCIA DE FILTRO
   // ==========================================================
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("@vault:meds_filter_v97") as MedicationListFilter | null;
+    if (saved && ["todos","atencao","continuos","sos","controlados","encerrados"].includes(saved)) {
+      setMedicationFilter(saved);
+    }
+  }, []);
 
-  useEffect(
-    () => {
-      if (
-        typeof window ===
-        "undefined"
-      ) {
-        return;
-      }
-
-      const savedSuspended =
-        localStorage.getItem(
-          "@vault:meds_showSuspended"
-        );
-
-      if (
-        savedSuspended !==
-        null
-      ) {
-        setShowDescontinuados(
-          savedSuspended ===
-            "true"
-        );
-      }
-    },
-    []
-  );
+  const selectMedicationFilter = (next: MedicationListFilter) => {
+    trigger("vibrate");
+    setMedicationFilter(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("@vault:meds_filter_v97", next);
+    }
+  };
 
   // ==========================================================
   // PERSON SCOPE
@@ -449,63 +444,66 @@ export default function MedicamentosListPage() {
   // ==========================================================
 
   const listaProcessada =
-    useMemo(
-      () => {
-        let processados =
-          [
-            ...listaBase,
-          ];
+    useMemo(() => {
+      let processados = [...listaBase];
 
-        if (
-          !showDescontinuados
-        ) {
-          processados =
-            processados.filter(
-              (
-                item
-              ) =>
-                !item.isSuspenso
-            );
+      processados = processados.filter((item) => {
+        const medId = item.med.id || "";
+        const regulatoryProfile = regulatoryProfiles[medId];
+
+        if (medicationFilter === "encerrados") return item.isSuspenso;
+        if (item.isSuspenso) return false;
+
+        if (medicationFilter === "atencao") {
+          return item.isEstoqueZerado ||
+            item.isEstoqueCritico ||
+            item.insight.deveRenovar ||
+            item.dosesPendentesHoje > 0;
         }
 
-        const query =
-          searchQuery
-            .toLowerCase()
-            .trim();
-
-        if (
-          query
-        ) {
-          processados =
-            processados.filter(
-              (
-                item
-              ) =>
-                (
-                  item.med.nome
-                    ?.toLowerCase() ||
-                  ""
-                ).includes(
-                  query
-                ) ||
-                (
-                  item.med.medico
-                    ?.toLowerCase() ||
-                  ""
-                ).includes(
-                  query
-                )
-            );
+        if (medicationFilter === "continuos") {
+          return !item.isSOS && item.med.tipo_uso === "continuo";
         }
 
-        return processados;
-      },
-      [
-        listaBase,
-        showDescontinuados,
-        searchQuery,
-      ]
-    );
+        if (medicationFilter === "sos") return item.isSOS;
+
+        if (medicationFilter === "controlados") {
+          return Boolean(
+            regulatoryProfile?.verified
+          );
+        }
+
+        return true;
+      });
+
+      const query = normalizeMedicationText(searchQuery);
+
+      if (query) {
+        processados = processados.filter((item) => {
+          const identity = catalogIdentities[item.med.id || ""];
+          const searchable = [
+            item.med.nome,
+            item.med.medico,
+            item.med.dosagem,
+            identity?.canonicalName,
+            identity?.activeIngredient,
+            ...(identity?.activeIngredients || []),
+          ]
+            .filter(Boolean)
+            .map((value) => normalizeMedicationText(String(value)));
+
+          return searchable.some((value) => value.includes(query));
+        });
+      }
+
+      return processados;
+    }, [
+      listaBase,
+      medicationFilter,
+      searchQuery,
+      regulatoryProfiles,
+      catalogIdentities,
+    ]);
 
   // ==========================================================
   // PROGRESSO DIÁRIO REAL POR DOSES
@@ -716,36 +714,6 @@ export default function MedicamentosListPage() {
   // ==========================================================
   // HANDLERS
   // ==========================================================
-
-  const handleToggleSuspensos =
-    () => {
-      trigger(
-        "vibrate"
-      );
-
-      setShowDescontinuados(
-        (
-          previous
-        ) => {
-          const next =
-            !previous;
-
-          if (
-            typeof window !==
-            "undefined"
-          ) {
-            localStorage.setItem(
-              "@vault:meds_showSuspended",
-              String(
-                next
-              )
-            );
-          }
-
-          return next;
-        }
-      );
-    };
 
   // ==========================================================
   // CARD
@@ -1671,26 +1639,6 @@ export default function MedicamentosListPage() {
                 <History size={18} />
               </button>
 
-              <button
-                type="button"
-                onClick={handleToggleSuspensos}
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
-                  showDescontinuados
-                    ? "border-amber-400/50 bg-amber-400/10 text-amber-400"
-                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                }`}
-                aria-label={
-                  showDescontinuados
-                    ? "Ocultar medicamentos suspensos"
-                    : "Mostrar medicamentos suspensos"
-                }
-              >
-                {showDescontinuados ? (
-                  <Eye size={18} />
-                ) : (
-                  <EyeOff size={18} />
-                )}
-              </button>
             </div>
           }
         >
@@ -1718,7 +1666,7 @@ export default function MedicamentosListPage() {
                         event.target.value
                       )
                   }
-                  placeholder="Remédio ou médico..."
+                  placeholder="Nome, princípio ativo, dose ou médico..."
                   aria-label="Buscar medicamento"
                   className="h-11 w-full rounded-2xl border border-ice/20 bg-surface-raised pl-10 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/45"
                 />
@@ -1748,9 +1696,43 @@ export default function MedicamentosListPage() {
           )}
         </ListPageHeader>
 
-        {/* CONTEÚDO */}
+        {/* VAULT_MEDICATION_FILTERS_V97 */}
+        <div className="border-b border-surface-border/20 px-5 py-2.5">
+          <div className="-mx-1 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max items-center gap-1.5">
+              {([
+                ["todos", "Todos"],
+                ["atencao", "Atenção"],
+                ["continuos", "Contínuos"],
+                ["sos", "SOS"],
+                ["controlados", "Controlados"],
+                ["encerrados", "Encerrados"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => selectMedicationFilter(value)}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition-all active:scale-[0.97] ${
+                    medicationFilter === value
+                      ? value === "atencao"
+                        ? "border-amber-400/35 bg-amber-400/10 text-amber-300"
+                        : value === "sos"
+                          ? "border-violet-400/35 bg-violet-400/10 text-violet-300"
+                          : value === "encerrados"
+                            ? "border-ink-muted/30 bg-surface-raised text-ink-muted"
+                            : "border-ice/35 bg-ice/10 text-ice"
+                      : "border-surface-border/40 bg-surface text-ink-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-        <section className="px-5 pt-4">
+        {/* CONTEÚDO */}
+        <section className="px-5 pt-3">
           <div className="mb-3 rounded-[18px] border border-surface-border/45 bg-surface px-3 py-2.5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">

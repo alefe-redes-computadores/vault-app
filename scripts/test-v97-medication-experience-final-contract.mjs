@@ -1,0 +1,17 @@
+import fs from "node:fs";
+const read=(p)=>fs.readFileSync(p,"utf8");
+const ok=(v,m)=>{if(!v)throw Error("V97: "+m);console.log("OK: "+m)};
+const meds=read("app/saude/medicamentos/page.tsx");
+const today=read("app/hoje/page.tsx");
+ok(meds.includes("VAULT_MEDICATION_EXPERIENCE_V97")&&meds.includes("MedicationListFilter"),"lente operacional de medicamentos");
+for(const f of ["atencao","continuos","sos","controlados","encerrados"]) ok(meds.includes(`"${f}"`),"filtro "+f);
+ok(meds.includes("@vault:meds_filter_v97"),"filtro de medicamentos persistente");
+ok(meds.includes("identity?.activeIngredient")&&meds.includes("identity?.activeIngredients"),"busca por princípio ativo");
+ok(meds.includes("regulatoryProfile?.verified"),"controlados usam autoridade confirmada");
+ok(today.includes("VAULT_TODAY_EXPERIENCE_V97")&&today.includes("@vault:today_filter_status_v97"),"Hoje persiste lente operacional");
+ok(today.includes("VAULT_TODAY_COMMAND_SUMMARY_V97"),"resumo compacto");
+ok(today.includes("VAULT_TODAY_FILTERS_V97"),"filtros compactos");
+ok(today.includes("dosesElegiveisLote")&&today.includes("SOS e doses futuras ficam de fora."),"lote seguro");
+ok(today.includes("mostrarConcluidas")&&today.includes("concluidasOcultas"),"concluídos recolhíveis");
+ok(today.includes("isExpectedUnconfirmed")&&today.includes("não contam como tomada, falta ou adesão"),"histórico não inventa adesão");
+console.log("VAULT V97 MEDICATION EXPERIENCE FINAL: CONTRACT OK");

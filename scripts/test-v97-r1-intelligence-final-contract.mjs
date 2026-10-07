@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const read=p=>fs.readFileSync(p,"utf8");const ok=(v,m)=>{if(!v)throw Error("V97 R1: "+m);console.log("OK: "+m)};
+const meds=read("app/saude/medicamentos/page.tsx"),intel=read("app/inteligencia/alertas/page.tsx");
+ok(!meds.includes("regulatoryProfile?.prescriptionModelCode"),"campo TS invalido removido");
+ok(meds.includes("regulatoryProfile?.verified"),"Controlados mantem autoridade confirmada");
+ok(intel.includes("VAULT_INTELLIGENCE_EXPERIENCE_V97_R1"),"Central final aplicada");
+ok(intel.includes("setFiltersOpen(true)")&&intel.includes("Refinar Central"),"botao dedicado de filtros");
+ok(intel.includes("TrendingUp")&&intel.includes("Sparkles"),"iconografia diversificada");
+ok(intel.includes("severity_rank>=700"),"vermelho reservado a prioridade alta");
+ok(intel.includes("Central de Inteligência")&&!intel.includes(">BRAIN V5<"),"branding correto");
+console.log("VAULT V97 R1 INTELLIGENCE FINAL: CONTRACT OK");

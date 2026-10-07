@@ -768,6 +768,27 @@ export default function HojePage() {
   const [filtroCompromisso, setFiltroCompromisso] =
     useState<FiltroCompromisso>("todos");
 
+  // VAULT_TODAY_EXPERIENCE_V97
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedStatus = window.localStorage.getItem("@vault:today_filter_status_v97") as FiltroStatus | null;
+    const savedPeriod = window.localStorage.getItem("@vault:today_filter_period_v97") as FiltroPeriodo | null;
+
+    if (savedStatus && ["todos","tomados","pendentes","ignorados"].includes(savedStatus)) {
+      setFiltroStatus(savedStatus);
+    }
+
+    if (savedPeriod && ["todos","manha","tarde","noite"].includes(savedPeriod)) {
+      setFiltroPeriodo(savedPeriod);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("@vault:today_filter_status_v97", filtroStatus);
+    window.localStorage.setItem("@vault:today_filter_period_v97", filtroPeriodo);
+  }, [filtroStatus, filtroPeriodo]);
+
   const [modalAberto, setModalAberto] =
     useState(false);
 
@@ -2846,225 +2867,127 @@ export default function HojePage() {
             </div>
           )}
 
-          {/* RESUMO */}
-          <div className="mt-3 grid grid-cols-3 gap-1.5">
-            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle2
-                  size={13}
-                  className="text-emerald-400"
-                />
-                <span className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-                  Concluídos
-                </span>
+          {/* VAULT_TODAY_COMMAND_SUMMARY_V97 */}
+          <div className="mt-3 rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2.5">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-semibold">
+                  <span className="inline-flex items-center gap-1 text-coral">
+                    <AlertTriangle size={11} />
+                    {isHoje
+                      ? `${totalPendentes} pendente${totalPendentes === 1 ? "" : "s"}`
+                      : `${totalEsperadasSemConfirmacao} ${isPassado ? "sem confirmação" : "previstas"}`}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                    <CheckCircle2 size={11} />
+                    {totalTomadas} concluída{totalTomadas === 1 ? "" : "s"}
+                  </span>
+                  {totalIgnoradas > 0 && (
+                    <span className="inline-flex items-center gap-1 text-ink-muted">
+                      <XCircle size={11} />
+                      {totalIgnoradas} ignorada{totalIgnoradas === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+                {!isFuturo && totalRegistros > 0 && (
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-void/60">
+                    <div
+                      className="h-full rounded-full bg-emerald-400 transition-[width]"
+                      style={{ width: `${Math.min(100, percentualConclusao)}%` }}
+                    />
+                  </div>
+                )}
               </div>
-
-              <p className="mt-1 font-mono text-sm font-bold text-emerald-400">
-                {totalTomadas}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
-              <div className="flex items-center gap-1.5">
-                <AlertTriangle
-                  size={13}
-                  className="text-coral"
-                />
-                <span className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-                  {isHoje
-                    ? "Pendentes"
-                    : isPassado
-                      ? "Sem confirmação"
-                      : "Previstas"}
-                </span>
+              <div className="shrink-0 text-right">
+                <p className="font-mono text-base font-black text-ice">
+                  {isFuturo ? totalItensPlanejados : `${percentualConclusao}%`}
+                </p>
+                <p className="text-[8px] font-semibold uppercase tracking-wider text-ink-faint">
+                  {isFuturo ? "previstos" : "rotina"}
+                </p>
               </div>
-
-              <p className="mt-1 font-mono text-sm font-bold text-coral">
-                {isHoje
-                  ? totalPendentes
-                  : totalEsperadasSemConfirmacao}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2">
-              <div className="flex items-center gap-1.5">
-                <Activity
-                  size={13}
-                  className="text-ice"
-                />
-                <span className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-                  {isFuturo
-                    ? "Eventos"
-                    : "Progresso"}
-                </span>
-              </div>
-
-              <p className="mt-1 font-mono text-sm font-bold text-ice">
-                {isFuturo
-                  ? totalCompromissosDoDia +
-                    totalEventosMedicamento
-                  : `${percentualConclusao}%`}
-              </p>
             </div>
           </div>
 
-          {/* FILTROS */}
-          <div className="mt-2 -mx-1 overflow-x-auto pb-1 scrollbar-none">
-            <div className="flex min-w-max items-center gap-2 px-1">
-              <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-surface-border/40 bg-surface-raised px-3 py-1.5">
-                <Filter
-                  size={13}
-                  className="text-ink-muted"
-                />
-
-                <span className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-                  Filtros
-                </span>
-              </div>
-
+          {/* VAULT_TODAY_FILTERS_V97 */}
+          <div className="mt-2 -mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max items-center gap-1.5">
               <button
+                type="button"
                 onClick={() => {
                   trigger("vibrate");
-
-                  setFiltroStatus(
-                    filtroStatus ===
-                      "pendentes"
-                      ? "todos"
-                      : "pendentes"
-                  );
+                  setFiltroStatus(filtroStatus === "pendentes" ? "todos" : "pendentes");
                 }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  filtroStatus ===
-                  "pendentes"
-                    ? "border-coral bg-coral/20 text-coral"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
+                  filtroStatus === "pendentes"
+                    ? "border-coral/40 bg-coral/12 text-coral"
+                    : "border-surface-border/40 bg-surface-raised text-ink-muted"
                 }`}
               >
-                {isFuturo ? (
-                  <Clock size={12} />
-                ) : (
-                  <AlertTriangle size={12} />
-                )}
-
                 {isHoje
-                  ? `Pendentes (${totalPendentes})`
+                  ? `Pendentes · ${totalPendentes}`
                   : isPassado
-                    ? `Sem confirmação (${totalEsperadasSemConfirmacao})`
-                    : `Previstas (${totalEsperadasSemConfirmacao})`}
+                    ? `Sem confirmação · ${totalEsperadasSemConfirmacao}`
+                    : `Previstas · ${totalEsperadasSemConfirmacao}`}
               </button>
-
               <button
+                type="button"
                 onClick={() => {
                   trigger("vibrate");
-
-                  setFiltroStatus(
-                    filtroStatus ===
-                      "tomados"
-                      ? "todos"
-                      : "tomados"
-                  );
+                  setFiltroStatus(filtroStatus === "tomados" ? "todos" : "tomados");
                 }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  filtroStatus ===
-                  "tomados"
-                    ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
+                className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
+                  filtroStatus === "tomados"
+                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+                    : "border-surface-border/40 bg-surface-raised text-ink-muted"
                 }`}
               >
-                <CheckCircle2 size={12} />
-                Concluídos
+                Concluídas · {totalTomadas}
               </button>
-
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-
-                  setFiltroStatus(
-                    filtroStatus ===
-                      "ignorados"
-                      ? "todos"
-                      : "ignorados"
-                  );
-                }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  filtroStatus ===
-                  "ignorados"
-                    ? "border-ink-muted bg-surface-raised text-ink-muted"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                }`}
-              >
-                <XCircle size={12} />
-                Ignorados ({totalIgnoradas})
-              </button>
-
-              <div className="h-5 w-px shrink-0 bg-surface-border/40" />
-
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-
-                  setFiltroPeriodo(
-                    filtroPeriodo === "manha"
-                      ? "todos"
-                      : "manha"
-                  );
-                }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  filtroPeriodo === "manha"
-                    ? "border-ice bg-ice/20 text-ice"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                }`}
-              >
-                <Sunrise size={12} />
-                Manhã
-              </button>
-
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-
-                  setFiltroPeriodo(
-                    filtroPeriodo === "tarde"
-                      ? "todos"
-                      : "tarde"
-                  );
-                }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  filtroPeriodo === "tarde"
-                    ? "border-ice bg-ice/20 text-ice"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                }`}
-              >
-                <Sun size={12} />
-                Tarde
-              </button>
-
-              <button
-                onClick={() => {
-                  trigger("vibrate");
-
-                  setFiltroPeriodo(
-                    filtroPeriodo === "noite"
-                      ? "todos"
-                      : "noite"
-                  );
-                }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  filtroPeriodo === "noite"
-                    ? "border-ice bg-ice/20 text-ice"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
-                }`}
-              >
-                <Moon size={12} />
-                Noite
-              </button>
-
+              {totalIgnoradas > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setFiltroStatus(filtroStatus === "ignorados" ? "todos" : "ignorados");
+                  }}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
+                    filtroStatus === "ignorados"
+                      ? "border-ink-muted/40 bg-surface text-ink-secondary"
+                      : "border-surface-border/40 bg-surface-raised text-ink-muted"
+                  }`}
+                >
+                  Ignoradas · {totalIgnoradas}
+                </button>
+              )}
+              <span className="mx-0.5 h-5 w-px shrink-0 bg-surface-border/40" />
+              {([
+                ["manha", "Manhã"],
+                ["tarde", "Tarde"],
+                ["noite", "Noite"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    trigger("vibrate");
+                    setFiltroPeriodo(filtroPeriodo === value ? "todos" : value);
+                  }}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
+                    filtroPeriodo === value
+                      ? "border-ice/40 bg-ice/10 text-ice"
+                      : "border-surface-border/40 bg-surface-raised text-ink-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
               {hasFiltrosAtivos && (
                 <button
+                  type="button"
                   onClick={limparFiltros}
-                  className="flex shrink-0 items-center gap-1 rounded-full bg-coral/10 px-3 py-1.5 text-[10px] font-medium text-coral"
+                  className="rounded-full border border-coral/20 bg-coral/5 px-3 py-1.5 text-[10px] font-bold text-coral"
                 >
-                  <X size={12} />
                   Limpar
                 </button>
               )}
@@ -3078,42 +3001,28 @@ export default function HojePage() {
         <section className="space-y-5 px-4 pt-4">
           {isHoje && dosesElegiveisLote.length > 1 && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-[26px] border border-emerald-400/20 bg-gradient-to-br from-emerald-400/10 to-ice/5 p-4 shadow-sm"
+              className="flex items-center gap-3 rounded-[20px] border border-emerald-400/20 bg-emerald-400/[0.055] p-3"
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-400">
-                  <ListChecks size={19} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">
-                    Agora
-                  </p>
-                  <h2 className="mt-1 text-sm font-bold text-ink-primary">
-                    {dosesElegiveisLote.length} doses aguardando
-                  </h2>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                    Doses programadas já vencidas. Antes de registrar, o Vault pergunta quando elas foram realmente tomadas. SOS e doses futuras ficam de fora.
-                  </p>
-                </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
+                <ListChecks size={17} />
               </div>
-
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-ink-primary">
+                  {dosesElegiveisLote.length} doses vencidas ou para agora
+                </p>
+                <p className="mt-0.5 text-[9px] leading-snug text-ink-muted">
+                  SOS e doses futuras ficam de fora.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => void handleTomarTodos()}
                 disabled={processandoTodos || Boolean(processandoDoseId)}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void transition-all active:scale-[0.98] disabled:opacity-50"
+                className="shrink-0 rounded-xl bg-emerald-400 px-3 py-2 text-[10px] font-black text-void active:scale-[0.97] disabled:opacity-50"
               >
-                {processandoTodos ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={15} />
-                )}
-                {processandoTodos
-                  ? "Registrando com segurança..."
-                  : `Tomar todas (${dosesElegiveisLote.length})`}
+                {processandoTodos ? "Registrando..." : "Tomar todas"}
               </button>
             </motion.div>
           )}
