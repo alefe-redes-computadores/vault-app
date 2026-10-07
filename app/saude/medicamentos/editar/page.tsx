@@ -1359,17 +1359,14 @@ const FORMATOS = [
   ...FORMATOS_ADICIONAIS,
 ];
 
+// VAULT_MEDICATION_IDENTITY_V94_3
 const CORES_DISPONIVEIS = [
-  "#FFFFFF",
-  "#FCA5A5",
-  "#F87171",
-  "#FBBF24",
-  "#34D399",
-  "#60A5FA",
-  "#818CF8",
-  "#A78BFA",
-  "#F472B6",
-  "#9CA3AF",
+  "#FFFFFF", "#FCA5A5", "#F87171", "#EF4444",
+  "#FB923C", "#F97316", "#FBBF24", "#FACC15",
+  "#A3E635", "#34D399", "#22C55E", "#2DD4BF",
+  "#22D3EE", "#60A5FA", "#3B82F6", "#818CF8",
+  "#A78BFA", "#8B5CF6", "#F472B6", "#EC4899",
+  "#9CA3AF", "#64748B",
 ];
 
 // ============================================================
@@ -6511,7 +6508,12 @@ function EditarMedicamentoContent() {
                         />
                       )
                     )}
+                    <label className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-surface-border/60 active:scale-95" style={{ background: "conic-gradient(#ef4444,#f97316,#facc15,#22c55e,#22d3ee,#3b82f6,#8b5cf6,#ec4899,#ef4444)" }} aria-label="Escolher cor personalizada" title="Cor personalizada">
+                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-void/80 text-[10px] font-bold text-white">+</span>
+                      <input type="color" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Cor personalizada do medicamento" onChange={(event) => toggleCor(event.target.value.toUpperCase())} />
+                    </label>
                   </div>
+                  <p className="mt-2 text-[10px] text-ink-faint">Até 2 cores. Use o círculo multicolorido para qualquer tom.</p>
                 </div>
 
                 {isGotas && (

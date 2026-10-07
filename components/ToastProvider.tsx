@@ -353,7 +353,7 @@ export function ToastProvider({
       {children}
 
       <div
-        className="pointer-events-none fixed inset-x-0 top-4 z-[70] flex justify-center px-4 sm:top-5"
+        className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4" style={{ top: "calc(max(env(safe-area-inset-top, 0px), var(--vault-native-statusbar-fallback, 0px)) + 12px)" }}
         aria-live="polite"
         aria-atomic="false"
       >
