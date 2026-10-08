@@ -15,7 +15,7 @@ ok(hook.includes("preservesAuthority")&&hook.includes("resolved.quality >= previ
 ok(hook.includes("referenceIsFresh")&&hook.includes("retryAfter")&&hook.includes("inflight"),"SWR evita pesquisa por render e tempestade de retries");
 ok(hook.includes("collectionSignature")&&hook.includes("useSyncExternalStore"),"coleções instáveis não reintroduzem loop React 185");
 ok(list.includes("useMedicationCatalogProfiles")&&!list.includes("useMedicationCatalogIdentities("),"listagem consome identidade e regulatório por uma única assinatura");
-ok(list.includes('? "Não conf."')&&list.includes('regulatoryProfile?.label'),"rail comunica somente regime regulatório");
+ok(list.includes('? "Receita n/c"')&&list.includes('regulatoryProfile?.label')&&list.includes("Medicamento identificado no catálogo"),"rail e explicação distinguem identidade farmacêutica de receita não confirmada");
 ok(list.includes('authorityState === "possible_divergence"')&&!list.includes("catalogIdentity.authorityLabel}"),"identidade normal não compete com o regime; divergência continua visível");
 ok(list.includes("min-h-8")&&list.includes("setQuickDoseMedId"),"Tomar e SOS possuem alvo tátil sem faixa inferior");
 ok(list.includes("VAULT_MEDICATION_LIST_HIERARCHY_V98")&&!list.includes("{/* CONTEXTO CLÍNICO */}"),"lista delega informação secundária aos detalhes");

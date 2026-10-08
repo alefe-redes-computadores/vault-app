@@ -1058,7 +1058,7 @@ export default function MedicamentosListPage() {
                   }}
                 >
                   {regulatoryProfile && !regulatoryProfile.verified
-                    ? "Não conf."
+                    ? "Receita n/c"
                     : (
                         regulatoryProfile?.label ||
                         receita?.sigla ||
@@ -1862,14 +1862,14 @@ export default function MedicamentosListPage() {
                   {
                     selectedRegulatory.verified
                       ? "Confirmada"
-                      : "Informada no cadastro"
+                      : "Receita não confirmada"
                   }
                 </span>
               </div>
 
               {!selectedRegulatory.verified && (
                 <p className="mt-2.5 text-[10px] leading-relaxed text-amber-200">
-                  Classificação ainda não confirmada pelo catálogo regulatório.
+                  Medicamento identificado no catálogo. O tipo de receita ainda não possui confirmação regulatória na fonte atual.
                 </p>
               )}
 

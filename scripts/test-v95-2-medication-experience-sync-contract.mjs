@@ -12,7 +12,7 @@ ok(!sync.includes("Sincronizando</span>"), "cápsula global de sincronização r
 ok(sync.includes('runtime.phase !== "error"'), "erro terminal continua global");
 ok(hook.includes("useMedicationCatalogIdentities"), "identidade farmacêutica reutiliza catálogo");
 ok(list.includes("showActiveIngredient"), "lista mostra princípio ativo sem redundância");
-ok(list.includes('? "Não conf."'), "rail distingue informação manual");
+ok(list.includes('? "Receita n/c"'), "rail explicita que somente a receita não foi confirmada");
 ok(visual.includes("Controle informado"), "controle manual não finge confirmação oficial");
 ok(visual.includes("VAULT_REGULATORY_CONFIDENCE_V95_2"), "confiança regulatória muda peso visual");
 ok(!novo.includes('Compatibilidade{" "}'), "score técnico saiu da busca");
