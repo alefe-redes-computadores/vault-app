@@ -28,7 +28,7 @@ ok(page.includes("Revisão dos últimos 7 dias"), "UI mostra revisão semanal");
 ok(page.includes("Timeline de inteligência"), "UI mostra timeline");
 ok(page.includes("Sinais longitudinais"), "UI mostra sinais longitudinais");
 ok(page.includes("Preparar consulta"), "UI mostra preparação clínica");
-ok(page.includes("Saúde do cérebro"), "UI mostra observabilidade");
+ok(page.includes("Saúde da inteligência"), "UI mostra observabilidade");
 ok(page.includes("Ensinar relevância ao Vault"), "UI oferece feedback");
 ok(page.includes("não provam causa") && page.includes("não certeza médica"), "UI mantém limites clínicos explícitos");
 

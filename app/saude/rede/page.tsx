@@ -1788,7 +1788,7 @@ export default function RedeSaudePage() {
               >
                 <button type="button" onClick={() => router.push("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.055] p-3.5 text-left active:scale-[0.985]">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><Activity size={19} /></div>
-                  <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">Inteligência de saúde</p><p className="text-[10px] text-ink-muted">Brain V4 · contexto, padrões e preparação para consulta</p></div><ArrowLeft size={16} className="rotate-180 text-violet-300" />
+                  <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">Inteligência de saúde</p><p className="text-[10px] text-ink-muted">Contexto, padrões e preparação para consulta</p></div><ArrowLeft size={16} className="rotate-180 text-violet-300" />
                 </button>
 
                 {/* VAULT_HEALTH_SUPPORT_DISCOVERY_V81 */}

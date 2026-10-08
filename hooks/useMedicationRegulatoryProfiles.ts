@@ -1,648 +1,412 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import type {
-  Medicamento,
-} from "@/lib/types";
-
-import type {
-  MedicationReference,
-} from "@/lib/medication-intelligence/types";
-
-import {
-  normalizeMedicationText,
-} from "@/lib/medication-intelligence/normalize";
-
-import {
-  supabaseMedicationCatalogProvider,
-} from "@/lib/medication-catalog";
-
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import type { Medicamento } from "@/lib/types";
+import type { MedicationReference } from "@/lib/medication-intelligence/types";
+import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
+import { supabaseMedicationCatalogProvider } from "@/lib/medication-catalog";
 import {
   getMedicationCatalogAuthority,
   type MedicationCatalogAuthorityState,
 } from "@/lib/medication-catalog/authority";
-
-import {
-  isPharmaceuticallyEquivalentName,
-} from "@/lib/medication-catalog/pharmaceutical-equivalence";
-
+import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
 import {
   resolveMedicationRegulatoryVisual,
   type MedicationRegulatoryVisual,
 } from "@/lib/medication-regulatory-visual";
 
-const referenceCache =
-  new Map<
-    string,
-    MedicationReference
-  >();
+// VAULT_CATALOG_SWR_V98
+// Persiste a referência farmacêutica que sustenta a UI, nunca apenas o selo visual.
+const CATALOG_CACHE_KEY = "@vault:medication_catalog_resolution:v98";
+const CATALOG_CACHE_SCHEMA = 98;
+const REFERENCE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const MANIFEST_TTL_MS = 24 * 60 * 60 * 1000;
+const RETRY_TTL_MS = 15 * 60 * 1000;
 
-const referenceInflight =
-  new Map<
-    string,
-    Promise<MedicationReference | null>
-  >();
+type PersistedReference = {
+  lookupKey: string;
+  reference: MedicationReference;
+  catalogSignature: string | null;
+  resolvedAt: number;
+  quality: number;
+  matchKind: "exact" | "pharmaceutical_equivalence";
+};
 
-const REGULATORY_SNAPSHOT_KEY =
-  "@vault:medication_regulatory_profiles:v97_2";
+type ResolvedReference = {
+  reference: MedicationReference;
+  quality: number;
+  matchKind: PersistedReference["matchKind"];
+};
 
-type RegulatorySnapshot =
-  Record<
-    string,
-    MedicationRegulatoryVisual
-  >;
+type CatalogResolutionCache = {
+  schema: number;
+  catalogSignature: string | null;
+  manifestCheckedAt: number;
+  manifestRetryAfter: number;
+  entries: Record<string, PersistedReference>;
+  retryAfter: Record<string, number>;
+};
 
-function readRegulatorySnapshot():
-  RegulatorySnapshot {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return {};
-  }
+type StoreSnapshot = { revision: number };
 
+const emptyCache = (): CatalogResolutionCache => ({
+  schema: CATALOG_CACHE_SCHEMA,
+  catalogSignature: null,
+  manifestCheckedAt: 0,
+  manifestRetryAfter: 0,
+  entries: {},
+  retryAfter: {},
+});
+
+let cache: CatalogResolutionCache | null = null;
+let storeSnapshot: StoreSnapshot = { revision: 0 };
+const serverSnapshot: StoreSnapshot = { revision: 0 };
+const listeners = new Set<() => void>();
+const inflight = new Map<string, Promise<MedicationReference | null>>();
+let manifestInflight: Promise<string | null> | null = null;
+
+function loadCache(): CatalogResolutionCache {
+  if (cache) return cache;
+  cache = emptyCache();
+  if (typeof window === "undefined") return cache;
   try {
-    const raw =
-      window.localStorage.getItem(
-        REGULATORY_SNAPSHOT_KEY
+    const parsed = JSON.parse(window.localStorage.getItem(CATALOG_CACHE_KEY) || "null");
+    if (
+      parsed &&
+      parsed.schema === CATALOG_CACHE_SCHEMA &&
+      parsed.entries &&
+      typeof parsed.entries === "object"
+    ) {
+      cache = {
+        ...emptyCache(),
+        ...parsed,
+        entries: parsed.entries,
+        retryAfter: parsed.retryAfter || {},
+      };
+    }
+  } catch {
+    cache = emptyCache();
+  }
+  return cache ?? (cache = emptyCache());
+}
+
+function persistCache(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify(loadCache()));
+  } catch {
+    // Cache é aceleração; storage indisponível nunca bloqueia o Vault.
+  }
+}
+
+function emit(): void {
+  storeSnapshot = { revision: storeSnapshot.revision + 1 };
+  for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot(): StoreSnapshot {
+  loadCache();
+  return storeSnapshot;
+}
+
+function getServerSnapshot(): StoreSnapshot {
+  return serverSnapshot;
+}
+
+function lookupKeyFor(medication: Medicamento): string {
+  return normalizeMedicationText(medication.nome);
+}
+
+function medicationFingerprint(medication: Medicamento): string {
+  return [
+    medication.id || "",
+    lookupKeyFor(medication),
+    medication.dosagem || "",
+    medication.formato || "",
+    medication.forma_farmaceutica || "",
+    medication.tipo_receita || "",
+  ].join("|");
+}
+
+function catalogSignatureFromStatus(status: Awaited<ReturnType<typeof supabaseMedicationCatalogProvider.getStatus>>): string {
+  return status.sources
+    .map((source) => `${source.id}:${source.version || ""}:${source.verifiedAt || ""}`)
+    .sort()
+    .join("|");
+}
+
+async function refreshCatalogManifest(): Promise<string | null> {
+  const current = loadCache();
+  const now = Date.now();
+  if (current.manifestCheckedAt && now - current.manifestCheckedAt < MANIFEST_TTL_MS) {
+    return current.catalogSignature;
+  }
+  if (current.manifestRetryAfter > now) return current.catalogSignature;
+  if (manifestInflight) return manifestInflight;
+
+  manifestInflight = (async () => {
+    try {
+      const status = await supabaseMedicationCatalogProvider.getStatus();
+      const signature = catalogSignatureFromStatus(status);
+      const target = loadCache();
+      target.catalogSignature = signature || null;
+      target.manifestCheckedAt = Date.now();
+      target.manifestRetryAfter = 0;
+      persistCache();
+      return target.catalogSignature;
+    } catch {
+      const target = loadCache();
+      target.manifestRetryAfter = Date.now() + RETRY_TTL_MS;
+      persistCache();
+      return target.catalogSignature;
+    } finally {
+      manifestInflight = null;
+    }
+  })();
+
+  return manifestInflight;
+}
+
+function isDeterministicCandidate(
+  medication: Medicamento,
+  candidate: { matchedText: string; canonicalName: string }
+): boolean {
+  const key = lookupKeyFor(medication);
+  return (
+    normalizeMedicationText(candidate.matchedText) === key ||
+    normalizeMedicationText(candidate.canonicalName) === key ||
+    isPharmaceuticallyEquivalentName(candidate.matchedText, medication.nome) ||
+    isPharmaceuticallyEquivalentName(candidate.canonicalName, medication.nome)
+  );
+}
+
+function referenceQuality(
+  medication: Medicamento,
+  reference: MedicationReference,
+  matchedText: string,
+  searchScore: number
+): { quality: number; matchKind: PersistedReference["matchKind"] } {
+  const key = lookupKeyFor(medication);
+  const exact =
+    normalizeMedicationText(matchedText) === key ||
+    normalizeMedicationText(reference.canonicalName) === key;
+  const regulatory = resolveMedicationRegulatoryVisual(medication, reference);
+  const officialSource = reference.sources.some(
+    (source) => source.authority === "anvisa" || source.authority === "ministerio_saude"
+  );
+  const product = reference.regulatoryIdentity?.referenceType === "product";
+  const ingredients = reference.activeIngredients?.length || (reference.activeIngredient ? 1 : 0);
+
+  return {
+    quality:
+      (exact ? 1000 : 600) +
+      (regulatory.verified ? 400 : 0) +
+      (officialSource ? 100 : 0) +
+      (product ? 40 : 0) +
+      (ingredients ? 20 : 0) +
+      Math.round(searchScore * 10),
+    matchKind: exact ? "exact" : "pharmaceutical_equivalence",
+  };
+}
+
+async function resolveBestReference(
+  medication: Medicamento
+): Promise<ResolvedReference | null> {
+  const quick = await supabaseMedicationCatalogProvider.searchLight(medication.nome, {
+    limit: 8,
+    minimumScore: 0.5,
+  });
+
+  // Fuzzy descobre; somente candidatos determinísticos podem ser hidratados como autoridade.
+  const deterministic = quick.filter((candidate) =>
+    isDeterministicCandidate(medication, candidate)
+  );
+  if (!deterministic.length) return null;
+
+  const settled = await Promise.allSettled(
+    deterministic.map(async (candidate) => {
+      const hydrated = await supabaseMedicationCatalogProvider.hydrateQuickResult(candidate);
+      if (!hydrated?.reference) return null;
+      const rank = referenceQuality(
+        medication,
+        hydrated.reference,
+        hydrated.matchedText,
+        hydrated.score
       );
-
-    if (
-      !raw
-    ) {
-      return {};
-    }
-
-    const parsed =
-      JSON.parse(raw);
-
-    if (
-      !parsed ||
-      typeof parsed !==
-        "object" ||
-      Array.isArray(parsed)
-    ) {
-      return {};
-    }
-
-    return parsed as RegulatorySnapshot;
-  } catch {
-    return {};
-  }
-}
-
-function writeRegulatorySnapshot(
-  snapshot:
-    RegulatorySnapshot
-) {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      REGULATORY_SNAPSHOT_KEY,
-      JSON.stringify(
-        snapshot
-      )
-    );
-  } catch {
-    // Snapshot é aceleração de UX.
-    // Falha de storage nunca bloqueia o catálogo.
-  }
-}
-
-function snapshotKeyFor(
-  medication:
-    Medicamento
-): string {
-  return normalizeMedicationText(
-    medication.nome
+      return { reference: hydrated.reference, ...rank };
+    })
   );
+
+  return settled
+    .filter(
+      (result): result is PromiseFulfilledResult<ResolvedReference> =>
+        result.status === "fulfilled" && Boolean(result.value)
+    )
+    .map((result) => result.value)
+    .sort((left, right) => right.quality - left.quality)[0] || null;
 }
 
-async function resolveReference(
-  medication:
-    Medicamento
-): Promise<
-  MedicationReference | null
-> {
-  const key =
-    normalizeMedicationText(
-      medication.nome
-    );
+function referenceIsFresh(entry: PersistedReference, signature: string | null): boolean {
+  // Quando o manifesto está disponível, snapshots sem assinatura também precisam revalidar.
+  const sameCatalog = !signature || entry.catalogSignature === signature;
+  return sameCatalog && Date.now() - entry.resolvedAt < REFERENCE_TTL_MS;
+}
 
-  if (
-    !key
-  ) {
-    return null;
+async function ensureReference(
+  medication: Medicamento,
+  signature: string | null
+): Promise<MedicationReference | null> {
+  const key = lookupKeyFor(medication);
+  if (!key) return null;
+  const current = loadCache();
+  const known = current.entries[key];
+  if (known && referenceIsFresh(known, signature)) return known.reference;
+  if (current.retryAfter[key] && current.retryAfter[key] > Date.now()) {
+    return known?.reference || null;
   }
+  const running = inflight.get(key);
+  if (running) return running;
 
-  const cached =
-    referenceCache.get(
-      key
-    );
-
-  if (
-    cached
-  ) {
-    return cached;
-  }
-
-  const running =
-    referenceInflight.get(
-      key
-    );
-
-  if (
-    running
-  ) {
-    return running;
-  }
-
-  const request =
-    (async () => {
-      try {
-        /*
-         * VAULT_REGULATORY_STABILITY_V97_2_R1
-         *
-         * Busca mais ampla serve apenas para DESCOBERTA.
-         * Autoridade continua exigindo:
-         * - correspondência nominal exata; OU
-         * - equivalência farmacêutica determinística.
-         */
-        const quick =
-          await supabaseMedicationCatalogProvider.searchLight(
-            medication.nome,
-            {
-              limit: 8,
-              minimumScore: 0.5,
-            }
-          );
-
-        const accepted =
-          quick.find(
-            (
-              item
-            ) =>
-              normalizeMedicationText(
-                item.matchedText
-              ) === key ||
-              normalizeMedicationText(
-                item.canonicalName
-              ) === key ||
-              isPharmaceuticallyEquivalentName(
-                item.matchedText,
-                medication.nome
-              ) ||
-              isPharmaceuticallyEquivalentName(
-                item.canonicalName,
-                medication.nome
-              )
-          );
-
-        if (
-          !accepted
-        ) {
-          /*
-           * Importante:
-           * resultado negativo NÃO entra no cache.
-           *
-           * Uma consulta transitória ou catálogo ainda
-           * carregando não pode condenar o medicamento
-           * a "Informado" até recarregar o app.
-           */
-          return null;
-        }
-
-        const hydrated =
-          await supabaseMedicationCatalogProvider.hydrateQuickResult(
-            accepted
-          );
-
-        const reference =
-          hydrated?.reference ||
-          null;
-
-        if (
-          reference
-        ) {
-          referenceCache.set(
-            key,
-            reference
-          );
-        }
-
-        return reference;
-      } catch {
-        return null;
-      } finally {
-        referenceInflight.delete(
-          key
-        );
+  const request = (async () => {
+    try {
+      const resolved = await resolveBestReference(medication);
+      if (!resolved) {
+        loadCache().retryAfter[key] = Date.now() + RETRY_TTL_MS;
+        persistCache();
+        return known?.reference || null;
       }
-    })();
 
-  referenceInflight.set(
-    key,
-    request
-  );
+      // Atualização atômica e monotônica: nem uma nova versão do catálogo pode
+      // rebaixar uma verdade regulatória confirmada para um candidato sem regra.
+      const previous = loadCache().entries[key];
+      const previousVerified = previous
+        ? resolveMedicationRegulatoryVisual(medication, previous.reference).verified
+        : false;
+      const resolvedVerified = resolveMedicationRegulatoryVisual(
+        medication,
+        resolved.reference
+      ).verified;
+      const catalogChanged = previous?.catalogSignature !== signature;
+      const preservesAuthority = !previousVerified || resolvedVerified;
+      const mayReplace =
+        !previous ||
+        (preservesAuthority && (catalogChanged || resolved.quality >= previous.quality));
 
+      if (mayReplace) {
+        loadCache().entries[key] = {
+          lookupKey: key,
+          reference: resolved.reference,
+          catalogSignature: signature,
+          resolvedAt: Date.now(),
+          quality: resolved.quality,
+          matchKind: resolved.matchKind,
+        };
+        delete loadCache().retryAfter[key];
+        persistCache();
+        emit();
+        return resolved.reference;
+      }
+      return previous.reference;
+    } catch {
+      loadCache().retryAfter[key] = Date.now() + RETRY_TTL_MS;
+      persistCache();
+      return known?.reference || null;
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+
+  inflight.set(key, request);
   return request;
 }
 
-function initialProfilesFor(
-  medications:
-    Medicamento[]
-): Record<
-  string,
-  MedicationRegulatoryVisual
-> {
-  const snapshot =
-    readRegulatorySnapshot();
-
-  return Object.fromEntries(
-    medications
-      .filter(
-        (
-          item
-        ) =>
-          Boolean(
-            item.id
-          )
-      )
-      .map(
-        (
-          item
-        ) => {
-          const snapshotProfile =
-            snapshot[
-              snapshotKeyFor(
-                item
-              )
-            ];
-
-          return [
-            item.id!,
-            snapshotProfile ||
-              resolveMedicationRegulatoryVisual(
-                item
-              ),
-          ];
-        }
-      )
+async function ensureMedicationBatch(medications: Medicamento[]): Promise<void> {
+  const signature = await refreshCatalogManifest();
+  const unique = new Map<string, Medicamento>();
+  for (const medication of medications) {
+    const key = lookupKeyFor(medication);
+    if (key && medication.id) unique.set(key, medication);
+  }
+  await Promise.allSettled(
+    [...unique.values()].map((medication) => ensureReference(medication, signature))
   );
-}
-
-export function useMedicationRegulatoryProfiles(
-  medications:
-    Medicamento[]
-): Record<
-  string,
-  MedicationRegulatoryVisual
-> {
-  const [
-    profiles,
-    setProfiles,
-  ] =
-    useState<
-      Record<
-        string,
-        MedicationRegulatoryVisual
-      >
-    >(
-      () =>
-        initialProfilesFor(
-          medications
-        )
-    );
-
-  useEffect(
-    () => {
-      let cancelled =
-        false;
-
-      /*
-       * Não zeramos a tela com fallback manual enquanto
-       * o catálogo revalida.
-       *
-       * Apenas adicionamos fallback para medicamentos
-       * ainda desconhecidos nesta montagem.
-       */
-      setProfiles(
-        (
-          previous
-        ) => {
-          const next = {
-            ...previous,
-          };
-
-          for (
-            const item of medications
-          ) {
-            if (
-              !item.id ||
-              next[item.id]
-            ) {
-              continue;
-            }
-
-            const snapshot =
-              readRegulatorySnapshot();
-
-            next[item.id] =
-              snapshot[
-                snapshotKeyFor(
-                  item
-                )
-              ] ||
-              resolveMedicationRegulatoryVisual(
-                item
-              );
-          }
-
-          return next;
-        }
-      );
-
-      void (async () => {
-        const resolved =
-          await Promise.all(
-            medications
-              .filter(
-                (
-                  item
-                ) =>
-                  Boolean(
-                    item.id
-                  )
-              )
-              .map(
-                async (
-                  item
-                ) => {
-                  const reference =
-                    await resolveReference(
-                      item
-                    );
-
-                  if (
-                    !reference
-                  ) {
-                    return null;
-                  }
-
-                  return [
-                    item,
-                    resolveMedicationRegulatoryVisual(
-                      item,
-                      reference
-                    ),
-                  ] as const;
-                }
-              )
-          );
-
-        if (
-          cancelled
-        ) {
-          return;
-        }
-
-        const authoritative =
-          resolved.filter(
-            (
-              entry
-            ): entry is readonly [
-              Medicamento,
-              MedicationRegulatoryVisual
-            ] =>
-              Boolean(
-                entry
-              )
-          );
-
-        if (
-          authoritative.length ===
-          0
-        ) {
-          return;
-        }
-
-        setProfiles(
-          (
-            previous
-          ) => {
-            const next = {
-              ...previous,
-            };
-
-            const snapshot =
-              readRegulatorySnapshot();
-
-            for (
-              const [
-                medication,
-                profile,
-              ] of authoritative
-            ) {
-              if (
-                !medication.id
-              ) {
-                continue;
-              }
-
-              next[
-                medication.id
-              ] =
-                profile;
-
-              snapshot[
-                snapshotKeyFor(
-                  medication
-                )
-              ] =
-                profile;
-            }
-
-            writeRegulatorySnapshot(
-              snapshot
-            );
-
-            return next;
-          }
-        );
-      })();
-
-      return () => {
-        cancelled =
-          true;
-      };
-    },
-    [
-      medications,
-    ]
-  );
-
-  return profiles;
 }
 
 export type MedicationCatalogIdentity = {
-  activeIngredient:
-    string | null;
-
-  activeIngredients:
-    string[];
-
-  canonicalName:
-    string | null;
-
-  sourceLabel:
-    string | null;
-
-  authorityState:
-    MedicationCatalogAuthorityState;
-
-  authorityLabel:
-    string;
-
-  authorityDetail:
-    string;
-
-  referenceType:
-    "product" |
-    "substance" |
-    null;
-
-  registrationNumber:
-    string | null;
-
-  manufacturer:
-    string | null;
-
-  presentationCount:
-    number;
+  activeIngredient: string | null;
+  activeIngredients: string[];
+  canonicalName: string | null;
+  sourceLabel: string | null;
+  authorityState: MedicationCatalogAuthorityState;
+  authorityLabel: string;
+  authorityDetail: string;
+  referenceType: "product" | "substance" | null;
+  registrationNumber: string | null;
+  manufacturer: string | null;
+  presentationCount: number;
 };
 
-// VAULT_MEDICATION_IDENTITY_V95_2
-// A identidade usa o MESMO resolvedor/inflight do perfil.
-// Isso elimina duas consultas concorrentes para o mesmo medicamento.
+function identityFor(medication: Medicamento, reference: MedicationReference | null): MedicationCatalogIdentity {
+  const authority = getMedicationCatalogAuthority(medication.nome, reference);
+  return {
+    activeIngredient: authority.activeIngredients[0] || null,
+    activeIngredients: authority.activeIngredients,
+    canonicalName: reference?.canonicalName || null,
+    sourceLabel: authority.sourceLabel,
+    authorityState: authority.state,
+    authorityLabel: authority.label,
+    authorityDetail: authority.detail,
+    referenceType: authority.referenceType,
+    registrationNumber: authority.registrationNumber,
+    manufacturer: authority.manufacturer,
+    presentationCount: authority.presentationCount,
+  };
+}
+
+export function useMedicationCatalogProfiles(medications: Medicamento[]): {
+  regulatoryProfiles: Record<string, MedicationRegulatoryVisual>;
+  catalogIdentities: Record<string, MedicationCatalogIdentity>;
+} {
+  const latestMedications = useRef(medications);
+  latestMedications.current = medications;
+  const collectionSignature = medications.map(medicationFingerprint).sort().join("::");
+  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  useEffect(() => {
+    void ensureMedicationBatch(latestMedications.current);
+  }, [collectionSignature]);
+
+  return useMemo(() => {
+    const regulatoryProfiles: Record<string, MedicationRegulatoryVisual> = {};
+    const catalogIdentities: Record<string, MedicationCatalogIdentity> = {};
+    // Evita mismatch de hidratação: o snapshot persistente entra assim que
+    // useSyncExternalStore conclui a ponte cliente, antes da revalidação remota.
+    const current = state === serverSnapshot ? emptyCache() : loadCache();
+
+    for (const medication of medications) {
+      if (!medication.id) continue;
+      const reference = current.entries[lookupKeyFor(medication)]?.reference || null;
+      regulatoryProfiles[medication.id] = resolveMedicationRegulatoryVisual(medication, reference);
+      catalogIdentities[medication.id] = identityFor(medication, reference);
+    }
+
+    return { regulatoryProfiles, catalogIdentities };
+  }, [collectionSignature, state.revision]);
+}
+
+export function useMedicationRegulatoryProfiles(
+  medications: Medicamento[]
+): Record<string, MedicationRegulatoryVisual> {
+  return useMedicationCatalogProfiles(medications).regulatoryProfiles;
+}
+
 export function useMedicationCatalogIdentities(
-  medications:
-    Medicamento[]
-): Record<
-  string,
-  MedicationCatalogIdentity
-> {
-  const [
-    identities,
-    setIdentities,
-  ] =
-    useState<
-      Record<
-        string,
-        MedicationCatalogIdentity
-      >
-    >({});
-
-  useEffect(
-    () => {
-      let cancelled =
-        false;
-
-      void (async () => {
-        const resolved =
-          await Promise.all(
-            medications
-              .filter(
-                (
-                  item
-                ) =>
-                  Boolean(
-                    item.id
-                  )
-              )
-              .map(
-                async (
-                  item
-                ) => {
-                  const reference =
-                    await resolveReference(
-                      item
-                    );
-
-                  const authority =
-                    getMedicationCatalogAuthority(
-                      item.nome,
-                      reference
-                    );
-
-                  const activeIngredient =
-                    authority
-                      .activeIngredients[
-                        0
-                      ] ||
-                    null;
-
-                  return [
-                    item.id!,
-                    {
-                      activeIngredient,
-                      activeIngredients:
-                        authority.activeIngredients,
-                      canonicalName:
-                        reference
-                          ?.canonicalName ||
-                        null,
-                      sourceLabel:
-                        authority.sourceLabel,
-                      authorityState:
-                        authority.state,
-                      authorityLabel:
-                        authority.label,
-                      authorityDetail:
-                        authority.detail,
-                      referenceType:
-                        authority.referenceType,
-                      registrationNumber:
-                        authority.registrationNumber,
-                      manufacturer:
-                        authority.manufacturer,
-                      presentationCount:
-                        authority.presentationCount,
-                    },
-                  ] as const;
-                }
-              )
-          );
-
-        if (
-          !cancelled
-        ) {
-          setIdentities(
-            Object.fromEntries(
-              resolved
-            )
-          );
-        }
-      })();
-
-      return () => {
-        cancelled =
-          true;
-      };
-    },
-    [
-      medications,
-    ]
-  );
-
-  return identities;
+  medications: Medicamento[]
+): Record<string, MedicationCatalogIdentity> {
+  return useMedicationCatalogProfiles(medications).catalogIdentities;
 }

@@ -23,7 +23,6 @@ import {
   History,
   Pill,
   Search,
-  Stethoscope,
   StickyNote,
   Syringe,
   X,
@@ -46,14 +45,6 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
-
-import {
-  useTratamentos,
-} from "@/hooks/useTratamentos";
-
-import {
-  getClinicalTheme,
-} from "@/lib/health-utils";
 
 import {
   useHapticFeedback,
@@ -90,8 +81,7 @@ import {
 } from "@/components/list";
 
 import {
-  useMedicationCatalogIdentities,
-  useMedicationRegulatoryProfiles,
+  useMedicationCatalogProfiles,
 } from "@/hooks/useMedicationRegulatoryProfiles";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
@@ -242,34 +232,6 @@ export default function MedicamentosListPage() {
   } =
     useActivePersonId();
 
-  const {
-    tratamentos,
-  } =
-    useTratamentos();
-
-  const tratamentosPorId =
-    useMemo(
-      () =>
-        new Map(
-          (tratamentos || [])
-            .filter(
-              (tratamento) =>
-                Boolean(
-                  tratamento.id
-                )
-            )
-            .map(
-              (tratamento) => [
-                tratamento.id!,
-                tratamento,
-              ]
-            )
-        ),
-      [
-        tratamentos,
-      ]
-    );
-
   const hojeString =
     useMemo(
       () =>
@@ -408,15 +370,12 @@ export default function MedicamentosListPage() {
       ]
     );
 
-  const regulatoryProfiles =
-    useMedicationRegulatoryProfiles(
-      medicamentosDaPessoa
-    );
-
-  const catalogIdentities =
-    useMedicationCatalogIdentities(
-      medicamentosDaPessoa
-    );
+  const {
+    regulatoryProfiles,
+    catalogIdentities,
+  } = useMedicationCatalogProfiles(
+    medicamentosDaPessoa
+  );
 
   // ==========================================================
   // PROCESSAMENTO BASE
@@ -878,38 +837,6 @@ export default function MedicamentosListPage() {
        * SOS, estoque, rotina e renovação continuam estados operacionais
        * independentes e nunca substituem a identidade regulatória.
        */
-      const tratamentosVinculados =
-        (
-          med.tratamento_ids ||
-          []
-        )
-          .map(
-            (tratamentoId) =>
-              tratamentosPorId.get(
-                tratamentoId
-              )
-          )
-          .filter(
-            (
-              tratamento
-            ): tratamento is NonNullable<typeof tratamento> =>
-              Boolean(
-                tratamento
-              )
-          );
-
-      const tratamentoThemes =
-        tratamentosVinculados.map(
-          (tratamento) => ({
-            tratamento,
-            theme:
-              getClinicalTheme(
-                tratamento.nome ||
-                  ""
-              ),
-          })
-        );
-
       const regulatoryProfile =
         regulatoryProfiles[med.id];
 
@@ -1131,7 +1058,7 @@ export default function MedicamentosListPage() {
                   }}
                 >
                   {regulatoryProfile && !regulatoryProfile.verified
-                    ? "Informado"
+                    ? "Não conf."
                     : (
                         regulatoryProfile?.label ||
                         receita?.sigla ||
@@ -1200,39 +1127,17 @@ export default function MedicamentosListPage() {
                 )}
 
                 <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
-                  {catalogIdentity?.authorityState &&
-                    catalogIdentity.authorityState !== "unvalidated" && (
+                  {catalogIdentity?.authorityState === "possible_divergence" && (
                     <span
                       title={catalogIdentity.authorityDetail}
-                      className={`inline-flex h-6 shrink-0 items-center rounded-lg border px-2 text-[9px] font-bold uppercase tracking-wide ${
-                        catalogIdentity.authorityState === "possible_divergence"
-                          ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-300"
-                          : "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300/80"
-                      }`}
+                      className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-2 text-[9px] font-bold text-amber-300"
                     >
-                      {catalogIdentity.authorityLabel}
+                      Revisar identidade
                     </span>
                   )}
                   {isSOS && (
                     <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.07] px-2 text-[9px] font-bold uppercase tracking-wide text-amber-400">
                       SOS
-                    </span>
-                  )}
-
-                  {med.medico && (
-                    <span className="hidden h-5.5 max-w-[132px] items-center gap-1 rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted min-[390px]:inline-flex">
-                      <Stethoscope
-                        size={
-                          10
-                        }
-                        className="shrink-0 opacity-60"
-                      />
-
-                      <span className="truncate">
-                        {
-                          med.medico
-                        }
-                      </span>
                     </span>
                   )}
 
@@ -1285,53 +1190,9 @@ export default function MedicamentosListPage() {
               )}
             </div>
 
-            {/* CONTEXTO CLÍNICO */}
-            {tratamentoThemes.length >
-              0 && (
-              <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-                {tratamentoThemes
-                  .slice(
-                    0,
-                    2
-                  )
-                  .map(
-                    (
-                      item
-                    ) => (
-                      <span
-                        key={
-                          item.tratamento.id
-                        }
-                        className="inline-flex h-5 min-w-0 max-w-[150px] items-center rounded-lg border px-2 text-[9px] font-semibold"
-                        style={{
-                          color:
-                            item.theme.hex,
-                          borderColor:
-                            `${item.theme.hex}30`,
-                          backgroundColor:
-                            `${item.theme.hex}0D`,
-                        }}
-                      >
-                        <span className="truncate">
-                          {
-                            item.tratamento.nome
-                          }
-                        </span>
-                      </span>
-                    )
-                  )}
-
-                {tratamentoThemes.length >
-                  2 && (
-                  <span className="shrink-0 text-[9px] font-semibold text-ink-faint">
-                    +{
-                      tratamentoThemes.length -
-                      2
-                    }
-                  </span>
-                )}
-              </div>
-            )}
+            {/* VAULT_MEDICATION_LIST_HIERARCHY_V98
+                Indicações, médico e tratamentos ficam nos Detalhes.
+                A lista preserva apenas identidade, rotina, estoque e exceções. */}
 
             {/* PAINEL OPERACIONAL COMPACTO */}
 
@@ -1396,7 +1257,7 @@ export default function MedicamentosListPage() {
                           med.id!
                         );
                       }}
-                      className={`mt-1 inline-flex h-5.5 items-center gap-1 rounded-lg border px-2 text-[8px] font-black transition-all active:scale-[0.97] ${
+                      className={`mt-1 inline-flex min-h-8 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-black transition-all active:scale-[0.97] ${
                         isSOS
                           ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
                           : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"

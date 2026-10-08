@@ -55,20 +55,20 @@ ok(
 
 ok(
   hook.includes(
-    "referenceInflight"
+    "inflight"
   ),
   "consultas concorrentes são deduplicadas"
 );
 
 ok(
   hook.includes(
-    "REGULATORY_SNAPSHOT_KEY"
+    "CATALOG_CACHE_KEY"
   ) &&
   hook.includes(
-    "readRegulatorySnapshot"
+    "loadCache"
   ) &&
   hook.includes(
-    "writeRegulatorySnapshot"
+    "persistCache"
   ),
   "perfil regulatório possui snapshot persistente"
 );

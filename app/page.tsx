@@ -2498,7 +2498,7 @@ export default function HomePage() {
                       className="text-violet-400"
                     />
 
-                    <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central do Cérebro">
+                    <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central de Inteligência">
                       <h2 className="font-display text-sm font-semibold text-ink-primary">Vault Intelligence</h2>
                       <ChevronRight size={13} className="text-violet-300" />
                     </button>

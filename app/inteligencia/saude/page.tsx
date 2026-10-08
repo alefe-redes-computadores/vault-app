@@ -169,7 +169,7 @@ export default function HealthIntelligenceLabPage() {
           </button>
           <div className="min-w-0">
             <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-violet-300">
-              BRAIN V4
+              VAULT INTELLIGENCE
             </p>
             <h1 className="text-2xl font-bold">Inteligência de saúde</h1>
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">
@@ -248,7 +248,7 @@ export default function HealthIntelligenceLabPage() {
             <BrainCircuit size={18} className="shrink-0 text-violet-300" />
             <span className="min-w-0 flex-1">
               <strong className="block text-sm">Histórico e ferramentas</strong>
-              <span className="block truncate text-[10px] text-ink-muted">Timeline, sinais, consulta e funcionamento do Brain</span>
+              <span className="block truncate text-[10px] text-ink-muted">Timeline, sinais, consulta e como a inteligência funciona</span>
             </span>
             <ChevronRight size={17} className={`text-violet-300 transition-transform ${detailsExpanded ? "rotate-90" : ""}`} />
           </button>
@@ -367,7 +367,7 @@ export default function HealthIntelligenceLabPage() {
         <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
             <Activity size={17} className="text-sky-300" />
-            <h2 className="font-bold">Saúde do cérebro</h2>
+            <h2 className="font-bold">Saúde da inteligência</h2>
           </div>
           <button type="button" onClick={() => setBrainHealthExpanded((value) => !value)} className="mt-3 flex w-full items-center justify-between rounded-[22px] border border-sky-400/15 bg-sky-400/[0.03] p-4 text-left">
             <div><p className="text-sm font-semibold">{statusLabel}</p><p className="mt-0.5 text-[10px] text-ink-muted">{brainHealth.timelineEvents} eventos · {brainHealth.shadowSignals} sinais · {brainHealth.replayPoints} replays</p></div>
@@ -429,7 +429,7 @@ export default function HealthIntelligenceLabPage() {
           <div className="flex gap-3">
             <Database size={17} className="mt-0.5 shrink-0 text-ink-faint" />
             <p className="text-[10px] leading-relaxed text-ink-muted">
-              O Brain V4 usa somente dados registrados no Vault. Relações temporais não provam causa. Confiança mede força do conjunto de dados e das evidências disponíveis, não certeza médica.
+              O Vault Intelligence usa somente dados registrados no Vault. Relações temporais não provam causa. Confiança mede força do conjunto de dados e das evidências disponíveis, não certeza médica.
             </p>
           </div>
         </section>

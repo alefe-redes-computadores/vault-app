@@ -14,10 +14,10 @@ ok(
   h.includes("matchedText") &&
   h.includes("canonicalName") &&
   h.includes("isPharmaceuticallyEquivalentName") &&
-  h.includes("minimumScore: 0.5"),
+  h.includes("minimumScore: 0.5") && h.includes("resolveBestReference"),
   "regulatório exige identidade exata ou equivalência farmacêutica determinística"
 );
-ok(l.includes("Princípio ativo ·")&&l.includes("authorityLabel"),"lista mostra hierarquia farmacêutica");
+ok(l.includes("Princípio ativo ·")&&l.includes('authorityState === "possible_divergence"'),"lista mostra hierarquia farmacêutica");
 ok(d.includes("Identidade farmacêutica")&&d.includes("Registro")&&d.includes("presentationCount"),"detalhes explicam produto, registro e apresentações");
 ok(n.includes("catalogAuthority.label")&&e.includes("catalogAuthority.label"),"novo/editar comunicam autoridade da referência");
 ok(!n.includes("Compatibilidade ${")&&!e.includes("Compatibilidade ${"),"porcentagem técnica não volta à UI");
