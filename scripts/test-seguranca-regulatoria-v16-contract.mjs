@@ -13,7 +13,14 @@ const checks = [
   ["controle especial possui identidade própria", visual.includes('case "receita_controle_especial"')],
   ["incerteza não vira medicamento livre", visual.includes("Classificação não confirmada")],
   ["informação manual é identificada como não verificada", visual.includes("catálogo não confirmou") && visual.includes("verified: false")],
-  ["catálogo exige correspondência nominal exata", hook.includes("normalizeMedicationText(item.matchedText) === key")],
+  [
+    "catálogo exige correspondência exata ou equivalência farmacêutica determinística",
+    hook.includes("normalizeMedicationText") &&
+      hook.includes("item.matchedText") &&
+      hook.includes("item.canonicalName") &&
+      hook.includes("=== key") &&
+      hook.includes("isPharmaceuticallyEquivalentName")
+  ],
   ["falha de rede mantém fallback local", hook.includes("catch") && hook.includes("return null")],
   ["cards consomem perfil regulatório", page.includes("useMedicationRegulatoryProfiles") && page.includes("getMedicationRegulatorySurface") && page.includes("regulatorySurface.iconClass") && page.includes("regulatoryProfile?.label")],
   ["quantidade confirmada entra no cérebro", safety.includes("buildConfirmedQuantityInsight")],

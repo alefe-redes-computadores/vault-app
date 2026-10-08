@@ -10,7 +10,13 @@ const e=r("app/saude/medicamentos/editar/page.tsx");
 ok(a.includes('"confirmed"')&&a.includes('"compatible"')&&a.includes('"possible_divergence"')&&a.includes('"unvalidated"'),"estados de autoridade explícitos");
 ok(a.includes("aliases")&&a.includes("activeIngredients")&&a.includes("canonicalName"),"alias, princípio ativo e nome canônico participam da identidade");
 ok(a.includes('state === "compatible"')&&a.includes("princípio ativo, alias ou identidade equivalente"),"nome válido não vira falsa correção");
-ok(h.includes("minimumScore: 0.86")&&h.includes("matchedText")&&h.includes("canonicalName"),"regulatório continua exigindo identidade exata");
+ok(
+  h.includes("matchedText") &&
+  h.includes("canonicalName") &&
+  h.includes("isPharmaceuticallyEquivalentName") &&
+  h.includes("minimumScore: 0.5"),
+  "regulatório exige identidade exata ou equivalência farmacêutica determinística"
+);
 ok(l.includes("Princípio ativo ·")&&l.includes("authorityLabel"),"lista mostra hierarquia farmacêutica");
 ok(d.includes("Identidade farmacêutica")&&d.includes("Registro")&&d.includes("presentationCount"),"detalhes explicam produto, registro e apresentações");
 ok(n.includes("catalogAuthority.label")&&e.includes("catalogAuthority.label"),"novo/editar comunicam autoridade da referência");

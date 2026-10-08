@@ -1,5 +1,6 @@
 import type { MedicationReference } from "@/lib/medication-intelligence/types";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
+import { isPharmaceuticallyEquivalentName } from "./pharmaceutical-equivalence";
 
 export type MedicationCatalogAuthorityState =
   | "confirmed"
@@ -49,10 +50,37 @@ export function getMedicationCatalogAuthority(
   const aliases = unique(reference.aliases ?? []);
   const compatibleNames = [...ingredients, ...aliases].map(normalizeMedicationText);
 
+  const pharmaceuticalEquivalent =
+    isPharmaceuticallyEquivalentName(
+      userName,
+      reference.canonicalName
+    ) ||
+    ingredients.some(
+      (item) =>
+        isPharmaceuticallyEquivalentName(
+          userName,
+          item
+        )
+    ) ||
+    aliases.some(
+      (item) =>
+        isPharmaceuticallyEquivalentName(
+          userName,
+          item
+        )
+    );
+
   const state: MedicationCatalogAuthorityState =
-    current && current === canonical
+    current &&
+    current === canonical
       ? "confirmed"
-      : current && compatibleNames.includes(current)
+      : current &&
+          (
+            compatibleNames.includes(
+              current
+            ) ||
+            pharmaceuticalEquivalent
+          )
         ? "compatible"
         : "possible_divergence";
 

@@ -1251,25 +1251,37 @@ export default function MedicamentosListPage() {
               </div>
 
               {insight?.deveRenovar && (
-                <div
-                  className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-bold ${
+                <button
+                  type="button"
+                  className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-bold transition-all active:scale-[0.97] ${
                     insight.urgencia ===
                     "alta"
                       ? "border-coral/25 bg-coral/[0.08] text-coral"
                       : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
                   }`}
-                  title={
-                    insight.mensagem
-                  }
+                  title={`${insight.mensagem} · Adicionar nova receita`}
+                  aria-label={`Adicionar nova receita para ${med.nome}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    trigger(
+                      "vibrate"
+                    );
+
+                    router.push(
+                      `/saude/renovacao/nova-receita?medicamento_id=${med.id}&return_to=${encodeURIComponent(
+                        "/saude/medicamentos"
+                      )}`
+                    );
+                  }}
                 >
                   <AlertTriangle
-                    size={
-                      11
-                    }
+                    size={11}
                   />
 
                   Receita
-                </div>
+                </button>
               )}
             </div>
 
@@ -1366,6 +1378,41 @@ export default function MedicamentosListPage() {
                       }
                     </p>
                   )}
+
+                  {!isSuspenso &&
+                    canQuickDose &&
+                    quickDoseLabel && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        setQuickDoseMedId(
+                          med.id!
+                        );
+                      }}
+                      className={`mt-1 inline-flex h-5.5 items-center gap-1 rounded-lg border px-2 text-[8px] font-black transition-all active:scale-[0.97] ${
+                        isSOS
+                          ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
+                          : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
+                      }`}
+                      aria-label={`${quickDoseLabel} ${med.nome}`}
+                    >
+                      <Zap
+                        size={9}
+                        fill="currentColor"
+                      />
+
+                      {
+                        quickDoseLabel
+                      }
+                    </button>
+                  )}
                 </div>
 
                 <div className="h-9 w-px shrink-0 bg-surface-border/35" />
@@ -1416,91 +1463,9 @@ export default function MedicamentosListPage() {
               </div>
             </div>
 
-            {/* AÇÕES */}
-
-            {!isSuspenso &&
-              (
-                (
-                  canQuickDose &&
-                  quickDoseLabel
-                ) ||
-                insight.deveRenovar
-              ) && (
-              <div className="flex flex-wrap items-center gap-1.5 border-t border-surface-border/20 pt-1.5">
-                {canQuickDose &&
-                  quickDoseLabel && (
-                  <button
-                    type="button"
-                    onClick={
-                      (
-                        event
-                      ) => {
-                        event.stopPropagation();
-
-                        trigger(
-                          "vibrate"
-                        );
-
-                        setQuickDoseMedId(
-                          med.id!
-                        );
-                      }
-                    }
-                    className={`inline-flex h-7.5 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
-                      isSOS
-                        ? "border-amber-400/20 bg-amber-400/[0.08] text-amber-400"
-                        : "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-400"
-                    }`}
-                  >
-                    <Zap
-                      size={
-                        11
-                      }
-                      fill="currentColor"
-                    />
-
-                    {
-                      quickDoseLabel
-                    }
-                  </button>
-                )}
-
-                {insight.deveRenovar && (
-                  <button
-                    type="button"
-                    onClick={
-                      (
-                        event
-                      ) => {
-                        event.stopPropagation();
-
-                        trigger(
-                          "vibrate"
-                        );
-
-                        router.push(
-                          `/saude/documentos/novo?medicamento_id=${med.id}`
-                        );
-                      }
-                    }
-                    className={`inline-flex h-7.5 items-center gap-1.5 rounded-xl border px-3 text-[10px] font-bold transition-all active:scale-[0.97] ${
-                      insight.urgencia ===
-                      "alta"
-                        ? "border-coral/25 bg-coral/[0.08] text-coral"
-                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
-                    }`}
-                  >
-                    <Calendar
-                      size={
-                        11
-                      }
-                    />
-
-                    Nova receita
-                  </button>
-                )}
-              </div>
-            )}
+            {/* VAULT_CARD_RHYTHM_V97_2_R1
+                Ações rápidas vivem no painel operacional.
+                Nenhuma faixa inferior altera a altura do card. */}
           </div>
         </ListCard>
       );
