@@ -1,5 +1,6 @@
 // app/saude/documentos/detalhes/page.tsx
 "use client";
+import {SupplyDocumentRelations} from "@/components/saude/SupplyDocumentRelations";
 
 import {
   Suspense,
@@ -197,6 +198,8 @@ const DOCUMENT_TYPE_LABELS: Record<
   prontuario:
     "Prontuário Médico",
 
+  documento_sus: "Documento de fornecimento SUS",
+  lme: "LME",
   laudo:
     "Laudo ou Parecer",
 
@@ -226,6 +229,8 @@ const DOCUMENT_TYPE_ICONS: Record<
   prontuario:
     Heart,
 
+  documento_sus: FileText,
+  lme: FileText,
   laudo:
     FileText,
 
@@ -2101,6 +2106,7 @@ function DocumentoSaudeDetalhesContent() {
         </header>
 
         <section className="mx-auto max-w-3xl space-y-4 px-5 pt-5">
+          <SupplyDocumentRelations documentId={document.id!}/>
           <motion.div
             initial={{
               opacity:

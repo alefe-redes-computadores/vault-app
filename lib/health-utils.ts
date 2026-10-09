@@ -342,6 +342,37 @@ export function parseLocalDate(
   return parsed;
 }
 
+/**
+ * Interpreta um instante registrado sem aplicar a semântica de "data civil".
+ *
+ * `parseLocalDate` existe para calendários e, por contrato, normaliza qualquer
+ * valor YYYY-MM-DD(T...) para o início do dia. Eventos como tomadas precisam
+ * preservar hora, minuto e fuso presentes em `tomado_em`/`ignorado_em`.
+ */
+export function parseRecordedDateTime(
+  value?:
+    string | null
+): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime()
+    )
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
 function localDateToUtcDay(
   date: Date
 ): number {

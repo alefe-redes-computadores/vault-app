@@ -1,3 +1,4 @@
+import {loadSupplyWithdrawal} from "@/lib/health-supply/resolve-withdrawal";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/retiradas.ts
 import { db } from "@/lib/db";
@@ -5,8 +6,8 @@ import { supabase } from "@/lib/supabase/client";
 import { enfileirarOperacao, solicitarProcessamentoSync } from "@/lib/sync/enfileirarOperacao";
 import type { Medicamento, Renovacao, Retirada } from "@/lib/types";
 
-export type RetiradaCreateInput=Omit<Retirada,"id"|"user_id"|"person_id"|"created_at"|"updated_at"|"synced">&{person_id:string};
-export type RetiradaUpdateInput=Partial<Omit<Retirada,"id"|"user_id"|"person_id"|"renovacao_origem_id"|"renovacao_realizada_id"|"created_at"|"updated_at"|"synced">>;
+export type RetiradaCreateInput=Omit<Retirada,"id"|"user_id"|"person_id"|"fornecimento_id"|"fornecimento_ciclo_id"|"created_at"|"updated_at"|"synced">&{person_id:string};
+export type RetiradaUpdateInput=Partial<Omit<Retirada,"id"|"user_id"|"person_id"|"renovacao_origem_id"|"renovacao_realizada_id"|"fornecimento_id"|"fornecimento_ciclo_id"|"created_at"|"updated_at"|"synced">>;
 
 const now=()=>new Date().toISOString();
 const genId=()=>typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
@@ -82,7 +83,9 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
 
   date(target,"Data da próxima retirada");
 
+  const supply=ex?.fornecimento_ciclo_id?{fornecimento_id:ex.fornecimento_id,fornecimento_ciclo_id:ex.fornecimento_ciclo_id}:await loadSupplyWithdrawal(m.id!,r.person_id,r.user_id,target);
   const rr:Retirada={
+    ...supply,
     id:ex?.id||genId(),
     user_id:r.user_id,
     person_id:r.person_id,
@@ -230,8 +233,10 @@ export const retiradasRepository={
 
     const t=now();
 
+    const supply=await loadSupplyWithdrawal(medicamentoId,personId,userId,data.data);
     const retirada:Retirada={
       ...data,
+      ...supply,
       id:genId(),
       user_id:userId,
       person_id:personId,

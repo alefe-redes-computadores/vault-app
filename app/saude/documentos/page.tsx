@@ -529,6 +529,10 @@ function getDocumentTypeLabel(
     case "prontuario":
       return "Prontuário";
 
+    case "documento_sus":
+      return "Fornecimento SUS";
+    case "lme":
+      return "LME";
     case "laudo":
       return "Laudo";
 

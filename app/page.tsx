@@ -1,5 +1,7 @@
 // app/page.tsx
 "use client";
+import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
+import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
 import {
   useEffect,
@@ -480,6 +482,7 @@ function AlertRow({
 // ============================================================
 
 export default function HomePage() {
+ const supplyOverview=useSupplyOverview();
   const router = useRouter();
 
   const {
@@ -2889,6 +2892,7 @@ export default function HomePage() {
                             ? "Retirada programada no SUS"
                             : "Retirada programada"}
                         </p>
+                        <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview}/>
                       </div>
 
                       <span className="shrink-0 font-mono text-[11px] font-semibold text-ice">

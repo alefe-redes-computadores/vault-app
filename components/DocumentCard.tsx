@@ -121,6 +121,8 @@ const TYPE_ICONS: Record<
 
   receita: Pill,
   prontuario: Heart,
+  documento_sus: ClipboardList,
+  lme: ClipboardList,
   laudo: ClipboardList,
   encaminhamento: Building2,
   consulta: Stethoscope,
@@ -164,6 +166,8 @@ const TYPE_LABELS: Record<
 
   receita: "Receita",
   prontuario: "Prontuário",
+  documento_sus: "Fornecimento SUS",
+  lme: "LME",
   laudo: "Laudo",
   encaminhamento:
     "Encaminhamento",

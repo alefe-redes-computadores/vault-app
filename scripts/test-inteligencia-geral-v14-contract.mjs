@@ -42,6 +42,6 @@ expect(more.includes('label: "Contas bancárias"') && more.includes('router.push
 expect(engine.includes("não deve ser descrita como cofre zero-knowledge") && page.includes("não promete segurança absoluta"), "postura de segurança permanece honesta");
 
 const db = read("lib/db/index.ts");
-expect(!db.includes("version(40)"), "sem migration ou Dexie v40");
+expect(db.includes("this.version(39).stores({})") && db.includes("this.version(40).stores({"), "V102 expande schema sem substituir versões anteriores");
 
 console.log(`CONTRATOS INTELIGÊNCIA GERAL V14: OK (${checks.length})`);

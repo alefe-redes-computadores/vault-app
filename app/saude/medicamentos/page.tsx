@@ -1027,6 +1027,8 @@ export default function MedicamentosListPage() {
             isSuspenso
           }
           density="compact"
+          interactiveContent
+          navigationLabel={`Ver detalhes de ${med.nome}`}
           rail={
             (regulatoryProfile || receita) ? (
               <button
@@ -1099,15 +1101,15 @@ export default function MedicamentosListPage() {
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <h3 className="min-w-0 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
+                  <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                  <h3 title={med.nome} className="min-w-0 flex-1 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
                     {
                       med.nome
                     }
                   </h3>
 
                     {med.dosagem && (
-                      <span className="shrink-0 text-[11px] font-semibold text-ink-muted">
+                      <span title={med.dosagem} className="max-w-[45%] shrink-0 whitespace-normal break-words text-[11px] font-semibold text-ink-muted">
                         {
                           med.dosagem
                         }
@@ -1116,9 +1118,11 @@ export default function MedicamentosListPage() {
                   </div>
                 </div>
 
-                {showActiveIngredient && (
+                {(
                   <p
-                    className="mt-0.5 truncate text-[10px] font-medium text-ink-muted/80"
+                    aria-hidden={!showActiveIngredient}
+                    style={{ visibility: showActiveIngredient ? "visible" : "hidden" }}
+                    className="mt-0.5 min-h-[15px] truncate text-[10px] font-medium text-ink-muted/80"
                     title={`Princípio ativo: ${activeIngredient}`}
                   >
                     <span className="text-ink-muted/55">Princípio ativo · </span>
@@ -1126,7 +1130,7 @@ export default function MedicamentosListPage() {
                   </p>
                 )}
 
-                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+                <div className="mt-1 flex min-h-6 min-w-0 flex-wrap items-center gap-1">
                   {catalogIdentity?.authorityState === "possible_divergence" && (
                     <span
                       title={catalogIdentity.authorityDetail}
@@ -1142,7 +1146,7 @@ export default function MedicamentosListPage() {
                   )}
 
                   {textoDose && (
-                    <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 text-[9px] font-semibold text-ink-muted">
+                    <span className="inline-flex min-h-6 max-w-full items-center whitespace-normal break-words rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 py-1 text-[9px] font-semibold text-ink-muted">
                       Dose&nbsp;
                       <strong className="font-bold text-ink-primary">
                         {
@@ -1196,7 +1200,7 @@ export default function MedicamentosListPage() {
 
             {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="rounded-xl border border-surface-border/30 bg-black/[0.04] px-2.5 py-0.5">
+            <div className="rounded-xl border border-surface-border/30 bg-black/[0.04] px-2.5 py-2">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -1223,17 +1227,15 @@ export default function MedicamentosListPage() {
                   </div>
 
                   <p
-                    className={`mt-1 whitespace-normal break-words text-[10px] font-bold leading-snug ${todayStatus.tone}`}
+                    className={`mt-1 min-h-[26px] whitespace-normal break-words text-[10px] font-bold leading-snug ${todayStatus.tone}`}
                   >
                     {
                       todayStatus.label
                     }
                   </p>
 
-                  {todayStatus.detail &&
-                    todayStatus.detail !==
-                      "Tudo certo hoje" && (
-                    <p className="mt-0.5 line-clamp-1 text-[8px] font-medium leading-snug text-ink-faint">
+                  {(
+                    <p className="mt-0.5 min-h-[11px] line-clamp-1 text-[8px] font-medium leading-snug text-ink-faint">
                       {
                         todayStatus.detail
                       }
@@ -1242,7 +1244,7 @@ export default function MedicamentosListPage() {
 
                   {!isSuspenso &&
                     canQuickDose &&
-                    quickDoseLabel && (
+                    quickDoseLabel ? (
                     <button
                       type="button"
                       onClick={(event) => {
@@ -1257,7 +1259,7 @@ export default function MedicamentosListPage() {
                           med.id!
                         );
                       }}
-                      className={`mt-1 inline-flex min-h-8 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-black transition-all active:scale-[0.97] ${
+                      className={`mt-1 inline-flex h-11 min-h-8 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-black transition-all active:scale-[0.97] ${
                         isSOS
                           ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
                           : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
@@ -1273,7 +1275,7 @@ export default function MedicamentosListPage() {
                         quickDoseLabel
                       }
                     </button>
-                  )}
+                  ) : <div aria-hidden="true" className="mt-1 h-11"/>}
                 </div>
 
                 <div className="h-9 w-px shrink-0 bg-surface-border/35" />
@@ -1299,7 +1301,7 @@ export default function MedicamentosListPage() {
                   </div>
 
                   <p
-                    className={`mt-1 whitespace-normal break-words text-[10px] font-black leading-snug ${
+                    className={`mt-1 min-h-[26px] whitespace-normal break-words text-[10px] font-black leading-snug ${
                       isEstoqueZerado
                         ? "text-coral"
                         : isEstoqueCritico
@@ -1314,7 +1316,7 @@ export default function MedicamentosListPage() {
                     }
                   </p>
 
-                  <p className="mt-0.5 line-clamp-1 text-[8px] font-semibold leading-snug text-ink-faint">
+                  <p className="mt-0.5 min-h-[11px] line-clamp-1 text-[8px] font-semibold leading-snug text-ink-faint">
                     {
                       textoEstoqueSecundario ||
                       estoqueStatus

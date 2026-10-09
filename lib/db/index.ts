@@ -1,3 +1,4 @@
+import type {SupplyProcess,SupplyCycle,SupplyItem,SupplyDocumentLink} from "@/lib/health-supply/types";
 // lib/db/index.ts
 
 import Dexie, {
@@ -139,6 +140,10 @@ class VaultDB extends Dexie {
   medicamentos!: Table<Medicamento, string>;
   renovacoes!: Table<Renovacao, string>;
   retiradas!: Table<Retirada, string>;
+  fornecimentos!: Table<SupplyProcess,string>;
+  fornecimento_ciclos!: Table<SupplyCycle,string>;
+  fornecimento_itens!: Table<SupplyItem,string>;
+  fornecimento_documentos!: Table<SupplyDocumentLink,string>;
 
   vaults!: Table<Vault, string>;
   vaultMembers!: Table<VaultMember, string>;
@@ -1354,6 +1359,13 @@ class VaultDB extends Dexie {
 
     // V39 — metadados aditivos de origem da dose; sem novo índice.
     this.version(39).stores({});
+    this.version(40).stores({
+      fornecimentos: "id, user_id, person_id, status, synced, updated_at",
+      fornecimento_ciclos: "id, user_id, person_id, processo_id, status, synced, updated_at",
+      fornecimento_itens: "id, user_id, person_id, processo_id, ciclo_id, medicamento_id, [ciclo_id+medicamento_id], synced, updated_at",
+      fornecimento_documentos: "id, user_id, person_id, processo_id, ciclo_id, document_id, retirada_id, synced, updated_at",
+      retiradas: "id, user_id, person_id, medicamento_id, renovacao_origem_id, renovacao_realizada_id, data, status, fornecimento_id, fornecimento_ciclo_id, synced, updated_at",
+    });
   }
 }
 

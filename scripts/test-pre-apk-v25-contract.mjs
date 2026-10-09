@@ -30,6 +30,6 @@ ok("contrato legado aceita redação honesta atual", legacyContract.includes("n�
 ok("sem promessa de zero-knowledge", read("app/inteligencia/page.tsx").includes("não promete segurança absoluta"));
 ok("gate de versões existe", fs.existsSync("scripts/check-runtime-versions.mjs"));
 ok("Sentry não tenta sourcemap no pacote local", nextConfig.includes("disable: isCapacitorExport"));
-ok("sem migration ou Dexie v40", !read("lib/db/index.ts").includes(".version(40)"));
+ok("V102 mantém V39 e adiciona fornecimento no schema V40", read("lib/db/index.ts").includes("this.version(39).stores({})") && read("lib/db/index.ts").includes("this.version(40).stores({") && read("lib/db/index.ts").includes("fornecimento_documentos:"));
 
 console.log(`CONTRATOS PRÉ-APK V25: OK (${checks.length})`);

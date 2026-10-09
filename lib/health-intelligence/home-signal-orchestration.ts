@@ -1,10 +1,11 @@
 import type { HealthInsight } from "@/lib/health-insights";
 import type { MedicationCareOpportunity } from "@/lib/health-intelligence/medication-care-opportunities";
 
-export type HealthSignalPhenomenon = "continuity"|"stock"|"renewal"|"adherence"|"timing"|"sos"|"interaction"|"regulatory"|"identity"|"other";
+export type HealthSignalPhenomenon = "continuity"|"stock"|"renewal"|"adherence"|"timing"|"sos"|"interaction"|"regulatory"|"identity"|"supply"|"other";
 const norm=(value:unknown)=>String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 
 export function healthSignalPhenomenon(insight:HealthInsight):HealthSignalPhenomenon{
+  if(insight.id.startsWith("fornecimento-"))return "supply";
   const text=norm([insight.id,insight.categoria,insight.titulo,insight.mensagem,...(insight.evidencias||[])].join(" "));
   if(/interacao|seroton|sobreposi|combinacao|depressores/.test(text))return "interaction";
   if(/sos|resgate|extra/.test(text))return "sos";

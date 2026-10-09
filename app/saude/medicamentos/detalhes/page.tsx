@@ -1,5 +1,6 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
+import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -3233,6 +3234,7 @@ function MedicamentoDetalhesContent() {
               HERO
               ================================================== */}
 
+          <HealthSupplyEntry medicamentoId={med.id!}/>
           <section className="relative overflow-hidden rounded-[24px] border border-surface-border/70 bg-surface shadow-lg">
             <div
               className="absolute bottom-0 left-0 top-0 w-1.5"

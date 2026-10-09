@@ -1,5 +1,8 @@
 // app/saude/retiradas/page.tsx
 "use client";
+import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
+import {withdrawalSourceNote} from "@/lib/health-supply/overview";
+import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 // VAULT_MEDICATION_ICON_INHERITANCE_V70
 
 import { useMemo, useState } from "react";
@@ -117,6 +120,7 @@ function statusMeta(status: RetiradaStatus) {
 }
 
 export default function RetiradasPage() {
+ const supplyOverview=useSupplyOverview();
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const { retiradas } = useRetiradas();
@@ -193,6 +197,7 @@ export default function RetiradasPage() {
           med?.dosagem,
           pharmacy?.nome,
           retirada.observacoes,
+          withdrawalSourceNote(retirada,supplyOverview?.renewals||[]),
           retirada.data,
         ]
           .filter(Boolean)
@@ -205,6 +210,7 @@ export default function RetiradasPage() {
     search,
     medicationMap,
     pharmacyMap,
+    supplyOverview,
     hoje,
   ]);
 
@@ -359,6 +365,7 @@ export default function RetiradasPage() {
         </header>
 
         <section className="space-y-4 px-5 pt-4">
+          <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/fornecimento"); }} className="flex min-h-[64px] w-full items-center justify-between rounded-[24px] border border-ice/20 bg-ice/5 p-4 text-left"><span><span className="block text-xs font-bold text-ice">Fornecimento SUS e documentos</span><span className="mt-1 block text-[10px] text-ink-muted">Autorizações, anexos e preparo das próximas renovações</span></span><ChevronRight size={17} className="text-ice"/></button>
           {grouped.length === 0 ? (
             <EmptyState
               icon={Pill}
@@ -564,6 +571,7 @@ export default function RetiradasPage() {
                                             </div>
 
                                             <div className="min-w-0 flex-1">
+                                              <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview}/>
                                               <div className="flex flex-wrap items-center gap-1.5">
                                                 <p className="text-[11px] font-semibold text-ink-primary">
                                                   Retirada

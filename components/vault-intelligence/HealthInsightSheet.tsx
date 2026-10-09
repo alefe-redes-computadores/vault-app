@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, BrainCircuit, ChevronRight, Database, ShieldCheck, X } from "lucide-react";
+import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
 
 type Props = {
@@ -10,9 +11,7 @@ type Props = {
 };
 
 function tone(insight: HealthInsight) {
-  if (insight.gravidadeSeguranca === "critica" || insight.urgencia === "alta") return "border-coral/30 bg-coral/10 text-coral";
-  if (insight.kind === "pattern") return "border-violet-400/25 bg-violet-400/10 text-violet-300";
-  return "border-ice/25 bg-ice/10 text-ice";
+  return healthPriorityPresentation(insight).tone;
 }
 
 // VAULT_HEALTH_EXPLAINABILITY_V55
@@ -32,12 +31,15 @@ export function HealthInsightSheet({ insight, onClose, onNavigate }: Props) {
             <div className="min-w-0 flex-1"><p className="font-mono text-[9px] uppercase text-ink-faint">{insight.kind === "pattern" ? "Padrão longitudinal" : "Sinal de saúde"}</p><h2 className="mt-1 text-lg font-bold">{insight.titulo}</h2></div>
             <button type="button" onClick={onClose} className="rounded-xl p-2 text-ink-muted" aria-label="Fechar"><X size={19} /></button>
           </div>
+          <span className={`mt-3 inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold ${tone(insight)}`}>{healthPriorityPresentation(insight).label}</span>
           <p className="mt-4 text-sm leading-relaxed text-ink-muted">{insight.mensagem}</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <div className="rounded-2xl border border-surface-border bg-void/30 p-3"><p className="font-mono text-[8px] uppercase text-ink-faint">Confiança</p><p className="mt-1 text-xs font-bold capitalize">{insight.confianca}</p></div>
             <div className="rounded-2xl border border-surface-border bg-void/30 p-3"><p className="font-mono text-[8px] uppercase text-ink-faint">Amostra</p><p className="mt-1 text-xs font-bold">{insight.amostra}</p></div>
             <div className="rounded-2xl border border-surface-border bg-void/30 p-3"><p className="font-mono text-[8px] uppercase text-ink-faint">Período</p><p className="mt-1 text-xs font-bold">{insight.periodoDias ? `${insight.periodoDias} dias` : "Atual"}</p></div>
           </div>
+          {insight.comparacao && <div className="mt-3 rounded-2xl border border-surface-border p-3 text-xs text-ink-muted"><p>{insight.comparacao.janelaAnterior}: <strong>{insight.comparacao.valorAnterior}</strong></p><p className="mt-1">{insight.comparacao.janelaAtual}: <strong>{insight.comparacao.valorAtual}</strong></p><p className="mt-2 text-[10px]">{insight.comparacao.tendencia === "aumento" ? "Aumento nos registros" : insight.comparacao.tendencia === "queda" ? "Queda nos registros" : "Sem variação"}</p></div>}
+          {insight.limitacaoSeguranca && <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">{insight.limitacaoSeguranca}</p>}
           {coverage && <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/[0.05] p-3"><div className="flex items-center gap-2 text-sky-300"><Database size={14} /><b className="text-[10px]">Cobertura observada</b></div><p className="mt-1 text-[10px] text-ink-muted">{coverage.observados} de {coverage.total} dias com evidência considerada.</p></div>}
           {evidence.length > 0 && <div className="mt-5"><p className="font-mono text-[9px] font-bold uppercase text-ink-faint">Por que o Vault mostrou isso?</p><div className="mt-2 space-y-2">{evidence.slice(0, 6).map((item, index) => <div key={`${item}-${index}`} className="rounded-2xl bg-void/30 px-3 py-2.5 text-[10px] leading-relaxed text-ink-muted">{item}</div>)}</div></div>}
           {sources.length > 0 && <div className="mt-4 rounded-2xl border border-surface-border bg-void/20 p-3"><div className="flex items-center gap-2"><ShieldCheck size={14} className="text-ice" /><b className="text-[10px]">Fontes internas</b></div><p className="mt-1 text-[10px] text-ink-muted">{sources.join(" · ")}</p></div>}

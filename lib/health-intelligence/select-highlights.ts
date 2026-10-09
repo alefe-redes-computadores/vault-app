@@ -1,4 +1,5 @@
 // lib/health-intelligence/select-highlights.ts
+import { compareHealthPriority } from "./priority";
 
 import type {
   HealthInsight,
@@ -132,14 +133,15 @@ function strongestUrgency(
     ?.urgencia ?? "baixa";
 }
 
+// Um resumo com evidências sobrepostas conserva a confiança mais baixa.
 function strongestConfidence(
   insights: HealthInsight[]
 ): HealthInsight["confianca"] {
   return [...insights]
     .sort(
       (a, b) =>
-        confidenceScore(b) -
-        confidenceScore(a)
+        confidenceScore(a) -
+        confidenceScore(b)
     )[0]?.confianca ?? "baixa";
 }
 
@@ -196,13 +198,7 @@ function aggregateMedicationRoutinePatterns(
       )
     );
 
-  const sample =
-    routinePatterns.reduce(
-      (total, insight) =>
-        total +
-        insight.amostra,
-      0
-    );
+  const sample = Math.max(...routinePatterns.map((item) => item.amostra));
 
   const evidence =
     routinePatterns.flatMap(
@@ -294,6 +290,8 @@ function aggregateMedicationRoutinePatterns(
         )
       ),
 
+    gravidadeSeguranca: routinePatterns.some((item) => item.gravidadeSeguranca === "atencao") ? "atencao" : "informativa",
+    limitacaoSeguranca: "Os sinais podem usar as mesmas doses. A amostra do resumo não soma evidências sobrepostas.",
     fontesInternas: Array.from(new Set(routinePatterns.flatMap((item) => item.fontesInternas || ["Medicamentos", "Registros de doses"]))),
 
     acaoSegura: "Revise os horários registrados e converse com o profissional responsável antes de qualquer mudança.",
@@ -322,7 +320,7 @@ function safetyRank(insight: HealthInsight): number {
 
 function v55Compare(a: HealthInsight, b: HealthInsight): number {
   const safety = safetyRank(b) - safetyRank(a);
-  return safety !== 0 ? safety : compareInsights(a, b);
+  return safety !== 0 ? safety : compareHealthPriority(a, b);
 }
 
 export function selectHealthHighlights(
@@ -341,17 +339,15 @@ export function selectHealthHighlights(
     insights
       .filter(
         (insight) =>
-          (insight.kind === "pattern" ||
+          (insight.id.startsWith("fornecimento-") || insight.kind === "pattern" ||
             (insight.kind === "alert" &&
               (insight.gravidadeSeguranca === "importante" ||
                 insight.gravidadeSeguranca === "critica"))) &&
           Boolean(
             insight.link
           ) &&
-          insight.confianca !==
-            "baixa" &&
-          insight.amostra >=
-            minimumSample
+          ((insight.id.startsWith("fornecimento-") && insight.confianca==="alta") || (insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ||
+            (insight.confianca !== "baixa" && insight.amostra >= minimumSample))
       )
       .sort(
         compareInsights

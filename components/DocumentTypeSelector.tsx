@@ -31,6 +31,8 @@ const DOCUMENT_TYPES: DocumentTypeOption[] = [
   { id: "certificado", label: "Certificado", icon: File, description: "Certificados e diplomas" },
   { id: "receita", label: "Receita", icon: Pill, description: "Receitas médicas" },
   { id: "prontuario", label: "Prontuário", icon: Heart, description: "Prontuários médicos" },
+  { id: "documento_sus", label: "Fornecimento SUS", icon: ClipboardList, description: "Formulários e comprovantes" },
+  { id: "lme", label: "LME", icon: ClipboardList, description: "Solicitação de medicamentos SUS" },
   { id: "laudo", label: "Laudo", icon: ClipboardList, description: "Laudos e exames" },
   { id: "encaminhamento", label: "Encaminhamento", icon: Building2, description: "Encaminhamentos médicos" },
   { id: "consulta", label: "Consulta", icon: Stethoscope, description: "Consultas médicas" },

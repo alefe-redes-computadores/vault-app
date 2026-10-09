@@ -57,6 +57,7 @@ export async function loadHealthInsightContext(
     cids,
     documentos,
     retiradas,
+    processos,ciclos,itens,vinculos,
   ] =
     await Promise.all([
       db.medicamentos
@@ -113,6 +114,10 @@ export async function loadHealthInsightContext(
         .where("person_id")
         .equals(safePersonId)
         .toArray(),
+      db.fornecimentos.where("person_id").equals(safePersonId).toArray(),
+      db.fornecimento_ciclos.where("person_id").equals(safePersonId).toArray(),
+      db.fornecimento_itens.where("person_id").equals(safePersonId).toArray(),
+      db.fornecimento_documentos.where("person_id").equals(safePersonId).toArray(),
     ]);
 
   return {
@@ -120,6 +125,7 @@ export async function loadHealthInsightContext(
       safePersonId,
 
     hoje,
+    fornecimento:{processos:scopeToPerson(processos,safePersonId),ciclos:scopeToPerson(ciclos,safePersonId),itens:scopeToPerson(itens,safePersonId),documentos:scopeToPerson(vinculos,safePersonId)},
 
     medicamentos:
       scopeToPerson(

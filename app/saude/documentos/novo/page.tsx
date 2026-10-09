@@ -1,5 +1,7 @@
 // app/saude/documentos/novo/page.tsx
 "use client";
+import {healthSupplyRepository} from "@/lib/repositories/healthSupply";
+import type {SupplyDocumentKind} from "@/lib/health-supply/types";
 
 import {
   useEffect,
@@ -171,6 +173,8 @@ import {
 const HEALTH_TYPES = [
   "receita",
   "prontuario",
+  "documento_sus",
+  "lme",
   "laudo",
   "encaminhamento",
   "consulta",
@@ -249,6 +253,8 @@ const HEALTH_TYPE_LABELS: Record<
   prontuario:
     "Prontuário Médico",
 
+  documento_sus: "Documento de fornecimento SUS",
+  lme: "LME — solicitação de medicamentos",
   laudo:
     "Laudo ou Parecer",
 
@@ -278,6 +284,8 @@ const HEALTH_TYPE_DESCRIPTIONS: Record<
   prontuario:
     "Registro clínico que pode ser relacionado a uma consulta, tratamento, exame, cirurgia ou CID.",
 
+  documento_sus: "Formulário, comprovante ou decisão da farmácia responsável pelo fornecimento.",
+  lme: "Formulário de solicitação ou renovação do fornecimento especializado, preenchido pelo prescritor.",
   laudo:
     "Laudo ou parecer que pode ser associado ao evento ou condição clínica correspondente.",
 
@@ -307,6 +315,8 @@ const TYPE_TITLE_PLACEHOLDERS: Record<
   prontuario:
     "Ex: Evolução clínica — Agosto 2026",
 
+  documento_sus: "Ex: Comprovante de retirada — Outubro 2026",
+  lme: "Ex: LME — Metadona — Outubro 2026",
   laudo:
     "Ex: Laudo Neurológico",
 
@@ -336,6 +346,8 @@ const TYPE_ICONS: Record<
   prontuario:
     Heart,
 
+  documento_sus: FileText,
+  lme: FileText,
   laudo:
     FileText,
 
@@ -1210,6 +1222,20 @@ export default function NovoDocumentoSaudePage() {
       entidade_id:
         undefined,
     });
+
+  const supplyContextRef=useRef<{cycleId:string;personId:string;retiradaId:string|null;tipo:SupplyDocumentKind;returnTo:string}|null>(null);
+  const supplyInitRef=useRef(false);
+  useEffect(()=>{
+    if(!activePersonId||supplyInitRef.current)return;
+    supplyInitRef.current=true;
+    const query=new URLSearchParams(window.location.search),cycleId=query.get("fornecimento_ciclo_id"),pid=query.get("fornecimento_person_id");
+    if(!cycleId||pid!==activePersonId)return;
+    const type=query.get("type"),kind=query.get("fornecimento_tipo"),returnTo=query.get("return_to")||"";
+    if(!["lme","receita","formulario","comprovante","decisao"].includes(kind||""))return;
+    supplyContextRef.current={cycleId,personId:activePersonId,retiradaId:query.get("retirada_id"),tipo:kind as SupplyDocumentKind,returnTo:returnTo.startsWith("/saude/fornecimento?")?returnTo:"/saude/fornecimento"};
+    const chosen=type==="lme"?"lme":type==="receita"?"receita":"documento_sus";
+    setFormData(v=>({...v,type:chosen,metadata:buildMetadataForType(chosen),entidade_tipo:query.get("medicamento_id")?"medicamento":undefined,entidade_id:query.get("medicamento_id")||undefined}));
+  },[activePersonId]);
 
   // ==========================================================
   // ACTIVE PERSON CHANGE
@@ -3810,9 +3836,16 @@ export default function NovoDocumentoSaudePage() {
               100
             );
 
-            router.push(
-              "/saude/documentos"
-            );
+            const supply=supplyContextRef.current;
+            if(supply && supply.personId===activePersonId){
+              try {
+                await healthSupplyRepository.linkDocument(activePersonId,supply.cycleId,documentId,supply.tipo,supply.tipo==="receita"?supply.retiradaId:null);
+                router.push(supply.returnTo);
+              } catch(error) {
+                showToast("Documento salvo. Abra o fornecimento e vincule o documento existente.","info");
+                router.push(supply.returnTo);
+              }
+            } else router.push("/saude/documentos");
           } catch (
             error
           ) {

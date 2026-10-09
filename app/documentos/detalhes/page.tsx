@@ -154,6 +154,8 @@ const DOCUMENT_TYPE_LABELS: Record<
   prontuario:
     "Prontuário",
 
+  documento_sus: "Fornecimento SUS",
+  lme: "LME",
   laudo:
     "Laudo",
 

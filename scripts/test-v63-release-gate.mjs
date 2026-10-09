@@ -2,6 +2,7 @@
 import { spawnSync, execFileSync } from "node:child_process";
 
 const contracts = [
+ "scripts/test-v104-withdrawal-experience-contract.mjs",
   "scripts/test-v69-final-release-contract.mjs",
   "scripts/test-v66-selective-biometric-contract.mjs",
   "scripts/test-v67-final-product-experience-contract.mjs",
@@ -66,6 +67,10 @@ const contracts = [
   "scripts/test-vault-offline-session-v62-contract.mjs",
   "scripts/test-v71-1-empirical-repair-contract.mjs",
   "scripts/test-v72-product-closure-contract.mjs",
+  "scripts/test-v100-dose-time-regulatory-gap-contract.mjs",
+  "scripts/test-v101-behavior-priority.mjs",
+  "scripts/test-v102-health-supply-contract.mjs",
+  "scripts/test-v103-sus-knowledge-contract.mjs",
 ];
 
 for (const contract of contracts) {

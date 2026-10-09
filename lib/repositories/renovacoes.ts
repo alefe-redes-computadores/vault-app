@@ -1165,6 +1165,7 @@ export const renovacoesRepository = {
       [
         db.renovacoes,
         db.retiradas,
+        db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
         db.medicamentos,
         db.syncQueue,
       ],
@@ -1447,6 +1448,7 @@ export const renovacoesRepository = {
       [
         db.renovacoes,
         db.retiradas,
+        db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
         db.medicamentos,
         db.syncQueue,
       ],
@@ -1542,6 +1544,7 @@ export const renovacoesRepository = {
       [
         db.renovacoes,
         db.retiradas,
+        db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
         db.syncQueue,
       ],
       async () => {

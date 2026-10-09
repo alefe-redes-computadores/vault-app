@@ -31,6 +31,8 @@ export type DocumentType =
   | "dispensa_militar"
   | "receita"
   | "prontuario"
+  | "documento_sus"
+  | "lme"
   | "laudo"
   | "encaminhamento"
   | "consulta"
@@ -195,6 +197,8 @@ export const TYPE_CATEGORY_MAP: Record<DocumentType, CategoryId[]> = {
   titulo_eleitor: ["pessoal"],
   receita: ["saude"],
   prontuario: ["saude"],
+  documento_sus: ["saude"],
+  lme: ["saude"],
   laudo: ["saude"],
   encaminhamento: ["saude"],
   consulta: ["saude"],
@@ -518,6 +522,18 @@ export const DOCUMENT_FIELDS: Record<DocumentType, DocumentField[]> = {
     },
   ],
 
+  documento_sus: [
+    {key:"date",label:"Data do documento",type:"date",required:true},
+    {key:"medico_id",label:"Profissional responsável",type:"select",required:false},
+    {key:"hospital_id",label:"Unidade",type:"select",required:false},
+    {key:"protocol",label:"Protocolo",type:"text",required:false},
+  ],
+  lme: [
+    {key:"medico_id",label:"Prescritor",type:"select",required:false},
+    {key:"hospital_id",label:"Unidade de atendimento",type:"select",required:false},
+    {key:"date",label:"Data do preenchimento",type:"date",required:true},
+    {key:"protocol",label:"Protocolo",type:"text",required:false},
+  ],
   laudo: [
     {
       key: "medico_id",
@@ -707,6 +723,10 @@ export interface SyncQueueItem {
     | "medicamentos"
     | "renovacoes"
     | "retiradas"
+    | "fornecimentos"
+    | "fornecimento_ciclos"
+    | "fornecimento_itens"
+    | "fornecimento_documentos"
     | "vaults"
     | "vaultMembers"
     | "medicos"
@@ -1018,6 +1038,8 @@ export interface RetiradaReagendamento {
 }
 
 export interface Retirada {
+  fornecimento_id?: string | null;
+  fornecimento_ciclo_id?: string | null;
   id?: string;
   user_id: string;
   person_id: string;

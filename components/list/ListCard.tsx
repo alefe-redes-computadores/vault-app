@@ -34,6 +34,9 @@ export interface ListCardProps {
   showChevron?: boolean;
   /** Densidade visual opt-in. O padrão preserva todos os demais cards. */
   density?: "default" | "compact";
+  /** Conteúdo com ações próprias; navegação vira um botão irmão. */
+  interactiveContent?: boolean;
+  navigationLabel?: string;
 }
 
 export function ListCard({
@@ -51,6 +54,8 @@ export function ListCard({
   contentClassName = "",
   showChevron = true,
   density = "default",
+  interactiveContent = false,
+  navigationLabel = "Ver detalhes",
 }: ListCardProps) {
   const isCompact = density === "compact";
 
@@ -89,11 +94,7 @@ export function ListCard({
           ${rail ? "w-6" : "w-1.5"}
           ${isDisabled && !rail ? "bg-coral" : ""}
         `}
-        style={
-          !isDisabled || rail
-            ? { backgroundColor: color }
-            : undefined
-        }
+        style={!isDisabled || rail ? { backgroundColor: color } : undefined}
       >
         {rail}
       </div>
@@ -105,24 +106,25 @@ export function ListCard({
               ? "p-3 pl-8"
               : "p-4 pl-10"
             : isCompact
-              ? "p-3 pl-4"
-              : "p-4 pl-5"
+            ? "p-3 pl-4"
+            : "p-4 pl-5"
         }
       >
-        <button
-          type="button"
-          onClick={onClick}
-          className={`
-            flex w-full
-            items-start
-            ${isCompact ? "gap-2.5" : "gap-3.5"}
-            text-left
-            outline-none
-            ${contentClassName}
-          `}
-        >
-          <div
-            className={`
+        {interactiveContent ? (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={onClick}
+              aria-label={navigationLabel}
+              className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            />
+            <div
+              className={`pointer-events-none relative z-10 flex w-full items-start text-left [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-20 ${
+                isCompact ? "gap-2.5" : "gap-3.5"
+              } ${contentClassName}`}
+            >
+              <div
+                className={`
               flex
               ${isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
               shrink-0
@@ -131,28 +133,75 @@ export function ListCard({
               border
               shadow-inner
             `}
-            style={{
-              backgroundColor: `${color}15`,
-              borderColor: `${color}30`,
-              color,
-            }}
-          >
-            {icon}
+                style={{
+                  backgroundColor: `${color}15`,
+                  borderColor: `${color}30`,
+                  color,
+                }}
+              >
+                {icon}
+              </div>
+
+              <div className="min-w-0 flex-1">{children}</div>
+
+              {showChevron && (
+                <ChevronRight
+                  size={isCompact ? 14 : 16}
+                  className={
+                    isCompact
+                      ? "mt-1.5 shrink-0 text-ink-faint"
+                      : "mt-2 shrink-0 text-ink-faint"
+                  }
+                />
+              )}
+            </div>
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onClick}
+            className={`
+            flex w-full
+            items-start
+            ${isCompact ? "gap-2.5" : "gap-3.5"}
+            text-left
+            outline-none
+            ${contentClassName}
+          `}
+          >
+            <div
+              className={`
+              flex
+              ${isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
+              shrink-0
+              items-center
+              justify-center
+              border
+              shadow-inner
+            `}
+              style={{
+                backgroundColor: `${color}15`,
+                borderColor: `${color}30`,
+                color,
+              }}
+            >
+              {icon}
+            </div>
 
-          <div className="min-w-0 flex-1">{children}</div>
+            <div className="min-w-0 flex-1">{children}</div>
 
-          {showChevron && (
-            <ChevronRight
-              size={isCompact ? 14 : 16}
-              className={
-                isCompact
-                  ? "mt-1.5 shrink-0 text-ink-faint"
-                  : "mt-2 shrink-0 text-ink-faint"
-              }
-            />
-          )}
-        </button>
+            {showChevron && (
+              <ChevronRight
+                size={isCompact ? 14 : 16}
+                className={
+                  isCompact
+                    ? "mt-1.5 shrink-0 text-ink-faint"
+                    : "mt-2 shrink-0 text-ink-faint"
+                }
+              />
+            )}
+          </button>
+        )}
 
         {actions && (
           <div

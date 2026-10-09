@@ -12,6 +12,10 @@ type LocalTable = {
 };
 
 const TABLES: Record<string, { local: string; queue: string }> = {
+  fornecimentos: {local:"fornecimentos",queue:"fornecimentos"},
+  fornecimento_ciclos: {local:"fornecimento_ciclos",queue:"fornecimento_ciclos"},
+  fornecimento_itens: {local:"fornecimento_itens",queue:"fornecimento_itens"},
+  fornecimento_documentos: {local:"fornecimento_documentos",queue:"fornecimento_documentos"},
   persons: { local: "persons", queue: "persons" },
   documents: { local: "documents", queue: "documents" },
   medicamentos: { local: "medicamentos", queue: "medicamentos" },

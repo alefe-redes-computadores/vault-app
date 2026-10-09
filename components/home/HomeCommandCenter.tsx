@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 
 type Props = {
@@ -37,6 +37,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
           <button type="button" onClick={() => go("/saude/retiradas")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-amber-400/20 bg-amber-400/[0.055] px-4 py-3 text-left">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/12 text-amber-400"><Store size={17} /></div><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-ink-primary">Retiradas de medicamentos</p><p className="mt-0.5 text-[9px] text-ink-muted">Programações, locais e histórico de retirada</p></div><ChevronRight size={15} className="text-amber-400" />
           </button>
+
+          <button type="button" onClick={() => go("/saude/fornecimento")} className="col-span-2 flex min-h-[64px] items-center gap-3 rounded-[20px] border border-ice/20 bg-ice/5 px-4 py-3 text-left"><FolderHeart size={20} className="shrink-0 text-ice"/><span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">Fornecimento SUS e documentos</span><span className="mt-0.5 block text-[9px] text-ink-muted">Processos, autorizações e renovação</span></span><ChevronRight size={15} className="text-ice"/></button>
 
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <button type="button" key={path} onClick={() => go(path)} className={`flex min-h-[88px] items-center gap-3 rounded-[20px] border p-3 text-left ${tone}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17} /></div><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">{label}</p><p className="mt-0.5 line-clamp-2 text-[9px] text-ink-muted">{sub}</p></div></button>)}
 

@@ -3305,6 +3305,8 @@ export function useSyncQueue() {
             user_id:userId,
             person_id:personId,
             medicamento_id:r.medicamento_id,
+            fornecimento_id:r.fornecimento_id??null,
+            fornecimento_ciclo_id:r.fornecimento_ciclo_id??null,
             renovacao_origem_id:r.renovacao_origem_id??null,
             renovacao_realizada_id:r.renovacao_realizada_id??null,
             medico_id:r.medico_id??null,
@@ -3910,6 +3912,28 @@ export function useSyncQueue() {
       created_at: rule.created_at, updated_at: rule.updated_at,
     }, { onConflict: "id" });
     if (error) throw new Error(`Health reminders upsert error: ${error.message}`);
+  };
+
+  const syncHealthSupply = async(item:SyncQueueItem) => {
+    const client=requireSupabase(),p=item.payload;
+    const id=requirePayloadId(item);
+    const uid=requireUserId(typeof p.user_id==="string"?p.user_id:undefined,"Fornecimento",id);
+    requirePersonId(typeof p.person_id==="string"?p.person_id:undefined,"Fornecimento",id);
+    if(item.operation==="delete") {
+      const {error}=await client.from(item.table).delete().eq("id",id).eq("user_id",uid);
+      if(error)throw new Error(error.message);return;
+    }
+    const fields:Record<string,string[]>={
+      fornecimentos:["uf","indicacao","catalogo_versao","titulo","origem","status","farmacia_id","medico_id","local_id","protocolo","renovacao_meses","antecedencia_dias","receita_cada_retirada","observacoes"],
+      fornecimento_ciclos:["uf_snapshot","indicacao_snapshot","origem_snapshot","motivo","preparar_ate","consulta_id","documentos_pessoais_conferidos","exigencia_local","regra_versao","processo_id","status","inicio","fim","protocolado_em","autorizado_em","observacoes"],
+      fornecimento_itens:["catalogo_id","processo_id","ciclo_id","medicamento_id","dosagem","quantidade_mensal"],
+      fornecimento_documentos:["processo_id","ciclo_id","document_id","retirada_id","tipo","estado","entregue_em"],
+    };
+    const payload:Record<string,unknown>={id,user_id:uid,person_id:p.person_id,created_at:p.created_at,updated_at:p.updated_at};
+    for(const field of fields[item.table]||[])payload[field]=p[field]??(field==="documentos_pessoais_conferidos"?false:null);
+    const {data,error}=await client.from(item.table).upsert(payload,{onConflict:"id"}).select("id,updated_at");
+    if(error)throw new Error(error.message);
+    if(!data?.some(x=>x.id===id&&Date.parse(x.updated_at)===Date.parse(String(p.updated_at))))throw new Error("Fornecimento não confirmado na versão enviada.");
   };
 
   const syncHealthGoal = async (item: SyncQueueItem) => {
@@ -4909,6 +4933,14 @@ export function useSyncQueue() {
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
 
+        case "fornecimentos":
+          await markRecordSyncedIfCurrent(db.fornecimentos, payload.id, expectedUpdatedAt); return;
+        case "fornecimento_ciclos":
+          await markRecordSyncedIfCurrent(db.fornecimento_ciclos, payload.id, expectedUpdatedAt); return;
+        case "fornecimento_itens":
+          await markRecordSyncedIfCurrent(db.fornecimento_itens, payload.id, expectedUpdatedAt); return;
+        case "fornecimento_documentos":
+          await markRecordSyncedIfCurrent(db.fornecimento_documentos, payload.id, expectedUpdatedAt); return;
         case "health_goals":
           await markRecordSyncedIfCurrent(db.health_goals, payload.id, expectedUpdatedAt);
           break;
@@ -5165,6 +5197,11 @@ export function useSyncQueue() {
           await syncHealthReminder(item);
           return;
 
+        case "fornecimentos":
+        case "fornecimento_ciclos":
+        case "fornecimento_itens":
+        case "fornecimento_documentos":
+          await syncHealthSupply(item); return;
         case "health_goals":
           await syncHealthGoal(item);
           return;
@@ -5365,7 +5402,11 @@ export function useSyncQueue() {
                   "cirurgias",
 
                   "renovacoes",
+                  "fornecimentos",
+                  "fornecimento_ciclos",
+                  "fornecimento_itens",
                   "retiradas",
+                  "fornecimento_documentos",
                   "doseLogs",
 
                   "anexos_clinicos",

@@ -176,6 +176,8 @@ import {
 const HEALTH_TYPES = [
   "receita",
   "prontuario",
+  "documento_sus",
+  "lme",
   "laudo",
   "encaminhamento",
   "consulta",
@@ -262,6 +264,8 @@ const HEALTH_TYPE_LABELS: Record<
   prontuario:
     "Prontuário Médico",
 
+  documento_sus: "Documento de fornecimento SUS",
+  lme: "LME — solicitação de medicamentos",
   laudo:
     "Laudo ou Parecer",
 
@@ -291,6 +295,8 @@ const HEALTH_TYPE_DESCRIPTIONS: Record<
   prontuario:
     "Registro clínico que pode ser relacionado ao histórico da pessoa.",
 
+  documento_sus: "Formulário, comprovante ou decisão da farmácia responsável pelo fornecimento.",
+  lme: "Solicitação ou renovação do fornecimento de medicamentos especializado.",
   laudo:
     "Laudo ou parecer associado a uma entidade clínica.",
 
@@ -320,6 +326,8 @@ const TYPE_TITLE_PLACEHOLDERS: Record<
   prontuario:
     "Ex: Evolução clínica — Agosto 2026",
 
+  documento_sus: "Ex: Comprovante de retirada — Outubro 2026",
+  lme: "Ex: LME — Metadona — Outubro 2026",
   laudo:
     "Ex: Laudo Neurológico",
 
@@ -349,6 +357,8 @@ const TYPE_ICONS: Record<
   prontuario:
     Heart,
 
+  documento_sus: FileText,
+  lme: FileText,
   laudo:
     FileText,
 

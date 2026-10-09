@@ -1,5 +1,7 @@
 // app/hoje/page.tsx
 "use client";
+import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
+import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -208,6 +210,7 @@ interface DoseItemExt {
 }
 
 export default function HojePage() {
+ const supplyOverview=useSupplyOverview();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -3710,6 +3713,7 @@ export default function HojePage() {
                             <p className="mt-1 truncate text-xs text-ink-muted">
                               {descricao}
                             </p>
+                            {isRetirada ? <WithdrawalPreparationView withdrawalId={item.id!} compact overview={supplyOverview}/> : null}
                           </div>
 
                           <div className="flex shrink-0 flex-col items-end gap-1.5">

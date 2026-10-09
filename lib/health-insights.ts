@@ -1,10 +1,15 @@
+import type {SupplyData} from "./health-supply/types";
+import {buildSupplyInsights} from "./health-intelligence/supply-insights";
 // lib/health-insights.ts
+import { buildBehaviorInsights } from "./health-intelligence/behavior-insights";
+import { compareHealthPriority } from "./health-intelligence/priority";
 
 import {
   computeEstoqueInfo,
   getDaysUntil,
   getLocalTodayISO,
   parseLocalDate,
+  parseRecordedDateTime,
   VALIDADE_RECEITA_DIAS,
 } from "./health-utils";
 
@@ -124,6 +129,7 @@ export type PersonScoped<
  */
 export interface HealthInsightContext {
   personId: string;
+  fornecimento?: SupplyData;
 
   /**
    * YYYY-MM-DD.
@@ -499,7 +505,7 @@ function getDoseEventDate(
 ): Date | null {
   if (dose.tomado_em) {
     const parsed =
-      parseLocalDate(
+      parseRecordedDateTime(
         dose.tomado_em
       );
 
@@ -510,7 +516,7 @@ function getDoseEventDate(
 
   if (dose.timestamp) {
     const parsed =
-      parseLocalDate(
+      parseRecordedDateTime(
         dose.timestamp
       );
 
@@ -530,7 +536,7 @@ function getDoseResolvedDate(
 ): Date | null {
   if (dose.tomado_em) {
     const parsed =
-      parseLocalDate(
+      parseRecordedDateTime(
         dose.tomado_em
       );
 
@@ -541,7 +547,7 @@ function getDoseResolvedDate(
 
   if (dose.ignorado_em) {
     const parsed =
-      parseLocalDate(
+      parseRecordedDateTime(
         dose.ignorado_em
       );
 
@@ -562,7 +568,7 @@ function getRegistroEventDate(
     registro.timestamp
   ) {
     const parsed =
-      parseLocalDate(
+      parseRecordedDateTime(
         registro.timestamp
       );
 
@@ -5274,7 +5280,7 @@ export function processarListaMedicamentos(
         const horarioTomado =
           ultimaTomada
             ?.tomado_em
-            ? parseLocalDate(
+            ? parseRecordedDateTime(
                 ultimaTomada
                   .tomado_em
               )?.toLocaleTimeString(
@@ -7994,6 +8000,7 @@ export type HealthInsightKind =
   | "recommendation";
 
 export interface HealthInsight {
+  relacoesContextuais?: Array<{tipo:string;id:string}>;
   id: string;
 
   kind:
@@ -9496,6 +9503,9 @@ export function gerarInsightsSaude(
   // Comparações longitudinais auditáveis; associação temporal não implica causalidade.
   insights.push(...buildLongitudinalHealthInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude }));
 
+  // VAULT_BRAIN_V101: módulos independentes preservam a API canônica.
+  insights.push(...buildBehaviorInsights(contexto));
+
   // ----------------------------------------------------------
   // DEDUPLICAÇÃO + ORDENAÇÃO
   // ----------------------------------------------------------
@@ -9527,102 +9537,13 @@ export function gerarInsightsSaude(
       HealthInsight
     >();
 
-  insights.forEach(
-    (insight) => {
-      const existing =
-        unique.get(
-          insight.id
-        );
-
-      if (
-        !existing
-      ) {
-        unique.set(
-          insight.id,
-          insight
-        );
-
-        return;
-      }
-
-      const novaUrgencia =
-        ordemUrgencia[
-          insight.urgencia
-        ];
-
-      const antigaUrgencia =
-        ordemUrgencia[
-          existing.urgencia
-        ];
-
-      if (
-        novaUrgencia <
-        antigaUrgencia
-      ) {
-        unique.set(
-          insight.id,
-          insight
-        );
-
-        return;
-      }
-
-      if (
-        novaUrgencia ===
-          antigaUrgencia &&
-        ordemConfianca[
-          insight.confianca
-        ] <
-          ordemConfianca[
-            existing.confianca
-          ]
-      ) {
-        unique.set(
-          insight.id,
-          insight
-        );
-      }
+  insights.push(...buildSupplyInsights(contexto));
+  insights.forEach((insight) => {
+    const existing = unique.get(insight.id);
+    if (!existing || compareHealthPriority(insight, existing) < 0) {
+      unique.set(insight.id, insight);
     }
-  );
+  });
 
-  return Array.from(
-    unique.values()
-  ).sort(
-    (a, b) => {
-      const urgency =
-        ordemUrgencia[
-          a.urgencia
-        ] -
-        ordemUrgencia[
-          b.urgencia
-        ];
-
-      if (
-        urgency !==
-        0
-      ) {
-        return urgency;
-      }
-
-      const confidence =
-        ordemConfianca[
-          a.confianca
-        ] -
-        ordemConfianca[
-          b.confianca
-        ];
-
-      if (
-        confidence !==
-        0
-      ) {
-        return confidence;
-      }
-
-      return (
-        b.amostra -
-        a.amostra
-      );
-    }
-  );
+  return Array.from(unique.values()).sort(compareHealthPriority);
 } 

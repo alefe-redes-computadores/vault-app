@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
 import type { HealthInsightEntityType } from "@/lib/health-intelligence/contextual";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
@@ -24,6 +25,7 @@ type Props = {
 };
 
 const ENTITY_LABEL: Record<HealthInsightEntityType, string> = {
+  fornecimento: "Fornecimento",
   medicamento: "Medicamento",
   tratamento: "Tratamento",
   consulta: "Consulta",
@@ -34,13 +36,7 @@ const ENTITY_LABEL: Record<HealthInsightEntityType, string> = {
 };
 
 function insightTone(insight: HealthInsight) {
-  if (insight.gravidadeSeguranca === "critica" || insight.urgencia === "alta") {
-    return "border-coral/25 bg-coral/[0.07] text-coral";
-  }
-  if (insight.kind === "pattern") {
-    return "border-violet-400/20 bg-violet-400/[0.06] text-violet-300";
-  }
-  return "border-ice/20 bg-ice/[0.05] text-ice";
+  return healthPriorityPresentation(insight).tone;
 }
 
 // VAULT_CONTEXTUAL_SURFACE_V60

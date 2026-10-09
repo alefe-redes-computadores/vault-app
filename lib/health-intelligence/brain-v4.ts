@@ -97,6 +97,8 @@ function scopeContextForReplay(
   return {
     ...context,
     hoje: date,
+    // O estado atual do fornecimento não reconstrói uma autorização histórica.
+    fornecimento: undefined,
     doseLogs: context.doseLogs.filter((item) => onOrBefore(item.tomado_em || item.data, date)),
     registrosSaude: context.registrosSaude.filter((item) => onOrBefore(item.data, date)),
     consultas: context.consultas.filter((item) => onOrBefore(item.data, date)),

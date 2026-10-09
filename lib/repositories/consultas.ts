@@ -302,9 +302,16 @@ export const consultasRepository = {
       "rw",
       [
         db.consultas,
+        db.fornecimento_ciclos,
         db.syncQueue,
       ],
       async () => {
+        const related = await db.fornecimento_ciclos.where("person_id").equals(safePersonId).filter(c=>c.consulta_id===id&&c.user_id===current.user_id).toArray();
+        for(const c of related){
+          const row={...c,consulta_id:null,updated_at:new Date().toISOString(),synced:false};
+          await db.fornecimento_ciclos.put(row);
+          await enfileirarOperacao("fornecimento_ciclos","update",row,{dispatchSync:false});
+        }
         await db.consultas.delete(
           id
         );

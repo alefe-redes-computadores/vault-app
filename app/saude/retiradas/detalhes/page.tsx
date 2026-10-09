@@ -1,5 +1,6 @@
 // app/saude/retiradas/detalhes/page.tsx
 "use client";
+import {WithdrawalPreparationSummary} from "@/components/saude/WithdrawalPreparationSummary";
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 
@@ -631,6 +632,7 @@ function DetalhesRetiradaContent() {
 
 
         <section className="space-y-4 px-5 pt-5">
+          <WithdrawalPreparationSummary withdrawalId={retirada.id!}/>
           <div className="rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface p-5">
             <div className="flex items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
