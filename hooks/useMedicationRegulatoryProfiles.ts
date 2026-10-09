@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import type { Medicamento } from "@/lib/types";
+import type { Medicamento, MedicationCatalogSnapshot } from "@/lib/types";
 import type { MedicationReference } from "@/lib/medication-intelligence/types";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { supabaseMedicationCatalogProvider } from "@/lib/medication-catalog";
@@ -10,6 +10,7 @@ import {
   type MedicationCatalogAuthorityState,
 } from "@/lib/medication-catalog/authority";
 import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
+import { persistMedicationCatalogSnapshot } from "@/lib/medication-catalog/persisted-snapshot";
 import {
   resolveMedicationRegulatoryVisual,
   type MedicationRegulatoryVisual,
@@ -122,6 +123,36 @@ function lookupKeyFor(medication: Medicamento): string {
   return normalizeMedicationText(medication.nome);
 }
 
+function snapshotReference(medication: Medicamento): PersistedReference | null {
+  const snapshot = medication.catalog_snapshot;
+  if (
+    !snapshot ||
+    snapshot.schema !== 1 ||
+    !snapshot.reference ||
+    typeof snapshot.reference !== "object"
+  ) return null;
+
+  const reference = snapshot.reference as MedicationReference;
+  if (!reference.canonicalName || !Array.isArray(reference.sources)) return null;
+  const resolvedAt = Date.parse(snapshot.resolved_at);
+  return {
+    lookupKey: snapshot.lookup_key || lookupKeyFor(medication),
+    reference,
+    catalogSignature: snapshot.catalog_signature,
+    resolvedAt: Number.isFinite(resolvedAt) ? resolvedAt : 0,
+    quality: snapshot.quality,
+    matchKind: snapshot.match_kind,
+  };
+}
+
+function knownReference(medication: Medicamento): PersistedReference | null {
+  const local = loadCache().entries[lookupKeyFor(medication)] || null;
+  const persisted = snapshotReference(medication);
+  if (!local) return persisted;
+  if (!persisted) return local;
+  return local.quality >= persisted.quality ? local : persisted;
+}
+
 function medicationFingerprint(medication: Medicamento): string {
   return [
     medication.id || "",
@@ -176,13 +207,24 @@ function isDeterministicCandidate(
   medication: Medicamento,
   candidate: { matchedText: string; canonicalName: string }
 ): boolean {
-  const key = lookupKeyFor(medication);
-  return (
-    normalizeMedicationText(candidate.matchedText) === key ||
-    normalizeMedicationText(candidate.canonicalName) === key ||
-    isPharmaceuticallyEquivalentName(candidate.matchedText, medication.nome) ||
-    isPharmaceuticallyEquivalentName(candidate.canonicalName, medication.nome)
-  );
+  const persisted = snapshotReference(medication)?.reference;
+  const authoritativeTerms = [
+    medication.nome,
+    persisted?.canonicalName,
+    persisted?.activeIngredient,
+    ...(persisted?.activeIngredients || []),
+    ...(persisted?.aliases || []),
+  ].map((value) => String(value || "").trim()).filter(Boolean);
+
+  return authoritativeTerms.some((term) => {
+    const key = normalizeMedicationText(term);
+    return (
+      normalizeMedicationText(candidate.matchedText) === key ||
+      normalizeMedicationText(candidate.canonicalName) === key ||
+      isPharmaceuticallyEquivalentName(candidate.matchedText, term) ||
+      isPharmaceuticallyEquivalentName(candidate.canonicalName, term)
+    );
+  });
 }
 
 function referenceQuality(
@@ -217,10 +259,23 @@ function referenceQuality(
 async function resolveBestReference(
   medication: Medicamento
 ): Promise<ResolvedReference | null> {
-  const quick = await supabaseMedicationCatalogProvider.searchLight(medication.nome, {
-    limit: 8,
-    minimumScore: 0.5,
-  });
+  const persisted = snapshotReference(medication)?.reference;
+  const queries = Array.from(new Set([
+    medication.nome,
+    persisted?.canonicalName,
+    persisted?.activeIngredient,
+    ...(persisted?.activeIngredients || []),
+  ].map((value) => String(value || "").trim()).filter(Boolean)));
+
+  const searches = await Promise.allSettled(
+    queries.map((query) => supabaseMedicationCatalogProvider.searchLight(query, {
+      limit: 8,
+      minimumScore: 0.5,
+    }))
+  );
+  const quick = searches.flatMap((result) =>
+    result.status === "fulfilled" ? result.value : []
+  );
 
   // Fuzzy descobre; somente candidatos determinísticos podem ser hidratados como autoridade.
   const deterministic = quick.filter((candidate) =>
@@ -257,6 +312,27 @@ function referenceIsFresh(entry: PersistedReference, signature: string | null): 
   return sameCatalog && Date.now() - entry.resolvedAt < REFERENCE_TTL_MS;
 }
 
+function persistKnownReference(
+  medication: Medicamento,
+  entry: PersistedReference
+): void {
+  const current = snapshotReference(medication);
+  if (current && current.quality >= entry.quality) return;
+  void persistMedicationCatalogSnapshot(
+    medication.id || "",
+    medication.person_id,
+    {
+      schema: 1,
+      lookup_key: entry.lookupKey,
+      catalog_signature: entry.catalogSignature,
+      resolved_at: new Date(entry.resolvedAt || Date.now()).toISOString(),
+      quality: entry.quality,
+      match_kind: entry.matchKind,
+      reference: entry.reference,
+    }
+  );
+}
+
 async function ensureReference(
   medication: Medicamento,
   signature: string | null
@@ -264,8 +340,12 @@ async function ensureReference(
   const key = lookupKeyFor(medication);
   if (!key) return null;
   const current = loadCache();
-  const known = current.entries[key];
-  if (known && referenceIsFresh(known, signature)) return known.reference;
+  const known = knownReference(medication);
+  if (known && !current.entries[key]) current.entries[key] = known;
+  if (known && referenceIsFresh(known, signature)) {
+    persistKnownReference(medication, known);
+    return known.reference;
+  }
   if (current.retryAfter[key] && current.retryAfter[key] > Date.now()) {
     return known?.reference || null;
   }
@@ -298,7 +378,7 @@ async function ensureReference(
         (preservesAuthority && (catalogChanged || resolved.quality >= previous.quality));
 
       if (mayReplace) {
-        loadCache().entries[key] = {
+        const next: PersistedReference = {
           lookupKey: key,
           reference: resolved.reference,
           catalogSignature: signature,
@@ -306,9 +386,24 @@ async function ensureReference(
           quality: resolved.quality,
           matchKind: resolved.matchKind,
         };
+        loadCache().entries[key] = next;
         delete loadCache().retryAfter[key];
         persistCache();
         emit();
+        const snapshot: MedicationCatalogSnapshot = {
+          schema: 1,
+          lookup_key: key,
+          catalog_signature: signature,
+          resolved_at: new Date(next.resolvedAt).toISOString(),
+          quality: next.quality,
+          match_kind: next.matchKind,
+          reference: next.reference,
+        };
+        void persistMedicationCatalogSnapshot(
+          medication.id || "",
+          medication.person_id,
+          snapshot
+        );
         return resolved.reference;
       }
       return previous.reference;
@@ -390,7 +485,7 @@ export function useMedicationCatalogProfiles(medications: Medicamento[]): {
 
     for (const medication of medications) {
       if (!medication.id) continue;
-      const reference = current.entries[lookupKeyFor(medication)]?.reference || null;
+      const reference = knownReference(medication)?.reference || null;
       regulatoryProfiles[medication.id] = resolveMedicationRegulatoryVisual(medication, reference);
       catalogIdentities[medication.id] = identityFor(medication, reference);
     }

@@ -50,6 +50,16 @@ export type ModoLembreteReceita =
   | "15_dias"
   | "data_personalizada";
 
+export interface MedicationCatalogSnapshot {
+  schema: 1;
+  lookup_key: string;
+  catalog_signature: string | null;
+  resolved_at: string;
+  quality: number;
+  match_kind: "exact" | "pharmaceutical_equivalence";
+  reference: unknown;
+}
+
 export type VaultPermission = "view" | "edit" | "admin";
 
 export type VaultMemberStatus =
@@ -741,6 +751,9 @@ export interface Medicamento {
 
   nome: string;
   dosagem: string;
+
+  /** Verdade farmacêutica canônica sincronizada entre instalações. */
+  catalog_snapshot?: MedicationCatalogSnapshot | null;
 
   medico_id?: string;
   farmacia_id?: string;
