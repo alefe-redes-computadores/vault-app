@@ -9,7 +9,6 @@ import {
   DEVICE_KINDS,
   METRICS,
   SKIN_TONES,
-  DEVICE_COLORS,
 } from "@/lib/health-profile/types";
 import { validDate } from "@/lib/health-profile/metrics";
 import { getLocalTodayISO } from "@/lib/health-utils";
@@ -91,7 +90,7 @@ export const healthProfileRepository = {
       !DEVICE_KINDS[input.kind] ||
       !input.name.trim() ||
       input.name.trim().length > 100 ||
-      !DEVICE_COLORS.includes(input.color) ||
+      !/^#[0-9a-f]{6}$/i.test(input.color) ||
       !["left", "right", "none"].includes(input.side) ||
       input.capabilities.some((k) => !METRICS[k])
     )
@@ -104,6 +103,7 @@ export const healthProfileRepository = {
       const now = new Date().toISOString(),
         row: HealthDevice = {
           ...input,
+          color: input.color.toLowerCase(),
           name: input.name.trim(),
           capabilities: [...new Set(input.capabilities)],
           id,

@@ -71,6 +71,8 @@ export const DEVICE_COLORS = [
   "#fb7185",
   "#22d3ee",
   "#e2e8f0",
+  "#111111",
+  "#f97316",
 ];
 export const SKIN_TONES = [
   "#f1c9a5",

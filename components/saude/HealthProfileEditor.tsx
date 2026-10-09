@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { Check, Save, X } from "lucide-react";
+import { Check, Save, X, Palette } from "lucide-react";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthRelationPicker } from "./HealthRelationPicker";
 import { HealthDeviceIcon, HealthMetricIcon } from "./HealthDeviceIcon";
@@ -23,12 +23,17 @@ function ColorChoices({
   value,
   onChange,
   label,
+  custom = false,
 }: {
   colors: string[];
   value: string;
   onChange: (c: string) => void;
   label: string;
+  custom?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const { trigger } = useHapticFeedback();
+  const choose = (color: string) => { trigger("vibrate"); onChange(color); };
   return (
     <fieldset>
       <legend className="mb-2 text-xs text-ink-muted">{label}</legend>
@@ -39,16 +44,28 @@ function ColorChoices({
             type="button"
             aria-label={`${label} ${i + 1}`}
             aria-pressed={value === c}
-            onClick={() => onChange(c)}
+            onClick={() => choose(c)}
             className={`flex h-11 w-11 items-center justify-center rounded-full border-2 ${
-              value === c ? "border-white" : "border-transparent"
+              value === c ? "border-white" : "border-slate-500/50"
             }`}
             style={{ backgroundColor: c }}
           >
-            {value === c && <Check size={18} className="text-void" />}
+            {value === c && <Check size={18} className="text-white" style={{ filter: "drop-shadow(0 1px 2px #000)" }} />}
           </button>
         ))}
+        {custom && <button type="button" aria-label="Cor personalizada" aria-expanded={expanded} onClick={() => setExpanded(v => !v)} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-primary"><Palette size={20} /></button>}
       </div>
+      {custom && expanded && <div className="mt-3 space-y-3 rounded-2xl border border-surface-border bg-surface-raised p-3">
+        <p className="text-xs text-ink-muted">Cor personalizada · escolha uma tonalidade</p>
+        <div className="grid grid-cols-8 gap-2">{Array.from({length: 48}, (_, i) => {
+          const hue = (i % 12) * 30, light = [25,40,55,75][Math.floor(i/12)];
+          const a = 75 * Math.min(light,100-light)/100;
+          const f = (n: number) => { const k = (n + hue/30)%12; return Math.round(255*(light-a*Math.max(-1,Math.min(k-3,9-k,1)))/100).toString(16).padStart(2,"0"); };
+          const hex = `#${f(0)}${f(8)}${f(4)}`;
+          return <button key={hex} type="button" aria-label={`Escolher ${hex}`} aria-pressed={value===hex} onClick={() => choose(hex)} className="h-9 rounded-lg border border-slate-500/40" style={{backgroundColor:hex}}>{value===hex && <Check size={16} className="mx-auto text-white" style={{filter:"drop-shadow(0 1px 2px #000)"}}/>}</button>;
+        })}</div>
+        <label className="flex items-center gap-3 text-xs"><span className="h-8 w-8 rounded-full border border-slate-400" style={{backgroundColor:value}}/><span>HEX</span><input aria-label="Código hexadecimal da cor" defaultValue={value} key={value} maxLength={7} onBlur={e => { if(/^#[0-9a-f]{6}$/i.test(e.target.value)) onChange(e.target.value.toLowerCase()); }} className="min-w-0 flex-1 rounded-xl border border-surface-border bg-surface p-2 text-ink-primary" /></label>
+      </div>}
     </fieldset>
   );
 }
@@ -237,6 +254,7 @@ export function HealthDeviceEditor({
         />
       </label>
       <ColorChoices
+        custom
         colors={DEVICE_COLORS}
         label="Cor do aparelho"
         value={color}

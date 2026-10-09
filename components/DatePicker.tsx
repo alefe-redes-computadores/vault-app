@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import "./vault-calendar.css";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { ptBR } from "date-fns/locale";
 import { format, parse, isValid } from "date-fns";
@@ -85,7 +86,7 @@ export function CustomDatePicker({
         customInput={<CustomInput />}
         popperClassName="!z-50"
         calendarClassName={`
-          !rounded-2xl !border !border-surface-border/50 !bg-surface !shadow-vault
+          vault-calendar !rounded-2xl !border !border-surface-border/50 !bg-surface !shadow-vault
           [&_.react-datepicker__triangle]:!hidden
           [&_.react-datepicker__header]:!border-surface-border/50
           [&_.react-datepicker__header]:!bg-surface-raised

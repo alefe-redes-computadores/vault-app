@@ -1,0 +1,13 @@
+/* Scoped overrides remain authoritative after the vendor stylesheet. */
+.vault-calendar.react-datepicker { background: rgb(var(--bg-surface)) !important; color: rgb(var(--text-ink-primary)) !important; border: 1px solid rgb(var(--border-surface)) !important; font-family: inherit; box-shadow: 0 16px 48px #0005; }
+.vault-calendar .react-datepicker__header { background: rgb(var(--bg-surface-raised)) !important; border-color: rgb(var(--border-surface)) !important; }
+.vault-calendar .react-datepicker__current-month, .vault-calendar .react-datepicker__day, .vault-calendar .react-datepicker__day-name, .vault-calendar .react-datepicker__year-read-view, .vault-calendar .react-datepicker__month-read-view { color: rgb(var(--text-ink-primary)) !important; }
+.vault-calendar .react-datepicker__day { border-radius: 10px; min-width: 2rem; line-height: 2rem; }
+.vault-calendar .react-datepicker__day:hover, .vault-calendar .react-datepicker__year-option:hover { background: #34d39922 !important; }
+.vault-calendar .react-datepicker__day--keyboard-selected { background: #34d39922 !important; }
+.vault-calendar .react-datepicker__day--selected, .vault-calendar .react-datepicker__day--selected:hover { background: #34d399 !important; color: #07120e !important; font-weight: 700; }
+.vault-calendar .react-datepicker__day--disabled, .vault-calendar .react-datepicker__day--outside-month { color: rgb(var(--text-ink-muted)) !important; opacity: .5; }
+.vault-calendar .react-datepicker__year-dropdown, .vault-calendar .react-datepicker__month-dropdown { background: rgb(var(--bg-surface-raised)) !important; color: rgb(var(--text-ink-primary)) !important; border-color: rgb(var(--border-surface)) !important; }
+.vault-calendar .react-datepicker__navigation-icon::before, .vault-calendar .react-datepicker__year-read-view--down-arrow { border-color: rgb(var(--text-ink-muted)) !important; }
+.react-datepicker-popper:has(.vault-calendar) { z-index: 100 !important; }
+.react-datepicker-popper:has(.vault-calendar) .react-datepicker__triangle { display: none; }

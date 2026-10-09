@@ -19,6 +19,8 @@ import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
 import { HealthBody } from "@/components/saude/HealthBody";
 import {
@@ -69,6 +71,8 @@ function HealthDashboard({
     >(null),
     [editDevice, setEditDevice] = useState<string | null>(null),
     [filter, setFilter] = useState<HealthMetric | null>(null),
+    [metric, setMetric] = useState<HealthMetric | null>(null),
+    [historyDate, setHistoryDate] = useState(getLocalTodayISO()),
     [archive, setArchive] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   const lock = useRef(false),
@@ -81,7 +85,7 @@ function HealthDashboard({
           r.user_id === person?.user_id &&
           r.data <= today &&
           Object.prototype.hasOwnProperty.call(METRICS, r.tipo)
-      ),
+      ).sort((a,b) => `${b.data}T${b.horario || "00:00"}`.localeCompare(`${a.data}T${a.horario || "00:00"}`)),
     [registros, today, personId, person?.user_id]
   );
   const latest = (type: HealthMetric) => records.find((r) => r.tipo === type);
@@ -91,7 +95,7 @@ function HealthDashboard({
     index = bmi(weight?.valor_numerico, profile?.height_cm),
     age = ageOn(profile?.birth_date, today);
   const active = devices.filter((d) => d.active),
-    visible = records.filter((r) => !filter || r.tipo === filter).slice(0, 10);
+    visible = records.filter((r) => r.data === historyDate && (!filter || r.tipo === filter));
   const go = (path: string) => {
     trigger("vibrate");
     router.push(path);
@@ -287,7 +291,7 @@ function HealthDashboard({
                   }}
                   className="flex items-center gap-1 p-2 text-xs text-emerald-400"
                 >
-                  <Plus size={15} />
+                  <ChevronRight size={15} />
                   Aparelho
                 </button>
               </div>
@@ -374,14 +378,14 @@ function HealthDashboard({
                   <button
                     key={type}
                     type="button"
-                    onClick={() => open(type)}
+                    onClick={() => { trigger("vibrate"); setMetric(type); }}
                     className="rounded-[22px] border border-surface-border bg-surface p-4 text-left active:scale-[.98]"
                   >
                     <span
                       className={`flex items-center justify-between ${METRIC_TONES[type]}`}
                     >
                       <HealthMetricIcon type={type} />
-                      <Plus size={15} />
+                      <ChevronRight size={15} />
                     </span>
                     <p className="mt-3 text-xs font-semibold">
                       {METRICS[type].label}
@@ -399,6 +403,7 @@ function HealthDashboard({
                 ))}
               </div>
             </section>
+            {metric && <HealthMetricDetails key={metric} type={metric} records={records} devices={devices} today={today} onClose={() => setMetric(null)} onAdd={() => { setMetric(null); open(metric); }} onRecord={id => go(`/saude/registros/detalhes?id=${id}`)} />}
             {panel && Object.prototype.hasOwnProperty.call(METRICS, panel) && (
               <HealthMeasurementForm
                 key={panel}
@@ -444,7 +449,7 @@ function HealthDashboard({
             </div>
             <section className="rounded-[24px] border border-surface-border bg-surface p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-semibold">Últimos registros</h2>
+                <h2 className="font-semibold">Registros do dia</h2>
                 <button
                   type="button"
                   onClick={() => go("/saude/registros")}
@@ -453,6 +458,7 @@ function HealthDashboard({
                   Ver todos
                 </button>
               </div>
+              <div className="mb-3"><CustomDatePicker label="Dia do histórico" value={historyDate} maxDate={today} onChange={v => setHistoryDate(v || today)} /></div>
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   type="button"

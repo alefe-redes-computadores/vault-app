@@ -20,6 +20,7 @@ export function HealthDeviceIcon({
   color: string;
   size?: number;
 }) {
+  const dark = /^#[0-9a-f]{6}$/i.test(color) && (parseInt(color.slice(1,3),16)*299 + parseInt(color.slice(3,5),16)*587 + parseInt(color.slice(5,7),16)*114)/1000 < 70;
   const Icon = {
     watch: Watch,
     ring: Circle,
@@ -28,7 +29,7 @@ export function HealthDeviceIcon({
     oximeter: HeartPulse,
     other: Activity,
   }[kind];
-  return <Icon size={size} style={{ color }} aria-hidden="true" />;
+  return <Icon size={size} style={{ color, filter: dark ? "drop-shadow(0 0 1px #cbd5e1) drop-shadow(0 0 1px #cbd5e1)" : undefined }} aria-hidden="true" />;
 }
 export function HealthMetricIcon({
   type,
