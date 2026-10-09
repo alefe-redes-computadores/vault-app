@@ -1,5 +1,6 @@
 // app/saude/documentos/novo/page.tsx
 "use client";
+import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {healthSupplyRepository} from "@/lib/repositories/healthSupply";
 import type {SupplyDocumentKind} from "@/lib/health-supply/types";
 
@@ -199,6 +200,7 @@ type HealthEntityType =
   | "cirurgia";
 
 interface ClinicalEntityItem {
+  medicamento?: Medicamento;
   id: string;
   entityType: HealthEntityType;
   label: string;
@@ -1654,6 +1656,7 @@ export default function NovoDocumentoSaudePage() {
                       ) ||
                     undefined,
 
+                  medicamento,
                   icon:
                     Pill,
 
@@ -5327,6 +5330,7 @@ export default function NovoDocumentoSaudePage() {
               return (
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised">
+                    {item.medicamento ? <MedicationFormatIcon formato={item.medicamento.formato} cores={item.medicamento.cores} size={22}/> : (
                     <Icon
                       size={
                         16
@@ -5334,7 +5338,7 @@ export default function NovoDocumentoSaudePage() {
                       className={
                         item.colorClass
                       }
-                    />
+                    />                    )}
                   </div>
 
                   <div className="min-w-0">

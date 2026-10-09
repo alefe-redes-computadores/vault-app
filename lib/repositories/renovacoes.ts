@@ -86,6 +86,7 @@ type RenovacaoUpdateInput = Omit<
 
 export type RenovacaoCreateOptions = {
   proximaRenovacao?: string | null;
+  retiradaId?: string;
 
   /**
    * Registra apenas a nova prescrição/receita.
@@ -895,6 +896,7 @@ export const renovacoesRepository = {
 
     const id =
       generateId();
+    let resultId=id;
 
     // ========================================================
     // SNAPSHOT HISTÓRICO
@@ -1170,13 +1172,29 @@ export const renovacoesRepository = {
         db.syncQueue,
       ],
       async () => {
+        const receiptWithdrawal=options.retiradaId ? await db.retiradas.get(options.retiradaId) : null;
+        if(options.retiradaId){
+          if(!receiptWithdrawal || receiptWithdrawal.person_id!==personId || receiptWithdrawal.user_id!==userId || receiptWithdrawal.medicamento_id!==medicamentoId) throw new Error("Retirada não pertence a este medicamento e à pessoa ativa.");
+          if(somenteReceita) throw new Error("Uma nova receita não confirma recebimento.");
+          if(receiptWithdrawal.renovacao_realizada_id){
+            const existing=await db.renovacoes.get(receiptWithdrawal.renovacao_realizada_id);
+            if(!existing || existing.person_id!==personId || existing.user_id!==userId || existing.medicamento_id!==medicamentoId) throw new Error("Vínculo de recebimento inconsistente. Confira o histórico.");
+            if(existing.quantidade!==quantidade || existing.data_aquisicao!==dataAquisicao || existing.tipo_aquisicao!==data.tipo_aquisicao) throw new Error("Esta retirada já tem uma aquisição registrada com outros dados. Abra o recebimento vinculado.");
+            resultId=existing.id!; return;
+          }
+          if(!["agendada","realizada"].includes(receiptWithdrawal.status)) throw new Error("Esta retirada não pode receber uma aquisição.");
+          if(!dataAquisicao || typeof quantidade!=="number" || quantidade<=0) throw new Error("Informe a data e uma quantidade recebida maior que zero.");
+          if(receiptWithdrawal.tipo==="sus" && data.tipo_aquisicao!=="sus") throw new Error("Esta retirada corresponde a uma aquisição SUS.");
+        }
+        const currentMedication=await db.medicamentos.get(medicamentoId);
+        if(!currentMedication || currentMedication.person_id!==personId || currentMedication.user_id!==userId) throw new Error("Medicamento não pertence à pessoa ativa.");
+        if(!somenteReceita && typeof quantidade==="number" && dataAquisicao) medicamentoAtualizado.estoque_quantidade=(Number.isFinite(currentMedication.estoque_quantidade) ? currentMedication.estoque_quantidade! : 0)+quantidade;
         await db.renovacoes.add(
           cleanRenovacao
         );
 
-        await db.medicamentos.put(
-          medicamentoAtualizado
-        );
+        const medicationChanges=Object.fromEntries(Object.entries(medicamentoAtualizado).filter(([key,value])=>value!==(medicamento as unknown as Record<string,unknown>)[key]));
+        await db.medicamentos.put({...currentMedication,...medicationChanges});
 
         const medicamentoPersistido =
           await db.medicamentos.get(
@@ -1213,6 +1231,11 @@ export const renovacoesRepository = {
           }
         );
 
+        if(receiptWithdrawal){
+          const completed={...receiptWithdrawal,status:"realizada" as const,renovacao_realizada_id:id,quantidade_retirada:quantidade,realizada_em:receiptWithdrawal.realizada_em || timestamp,updated_at:timestamp,synced:false};
+          await db.retiradas.put(completed);
+          await enfileirarOperacao("retiradas","update",completed,{dispatchSync:false});
+        }
         if (
           !somenteReceita
         ) {
@@ -1226,7 +1249,7 @@ export const renovacoesRepository = {
 
     solicitarProcessamentoSync();
 
-    return id;
+    return resultId;
   },
 
   // ==========================================================
@@ -1453,6 +1476,12 @@ export const renovacoesRepository = {
         db.syncQueue,
       ],
       async () => {
+        const linked=await db.retiradas.where("renovacao_realizada_id").equals(safeId).toArray();
+        if(linked.some(r=>r.person_id===safePersonId&&r.user_id===userId)){
+          for(const key of ["medicamento_id","quantidade","data_aquisicao","tipo_aquisicao"] as const){
+            if(key in payload && payload[key]!==atual[key])throw new Error("Este recebimento está vinculado a uma retirada. Quantidade, data e medicamento precisam de estorno para serem alterados.");
+          }
+        }
         const updated =
           await db.renovacoes.update(
             safeId,
@@ -1548,6 +1577,8 @@ export const renovacoesRepository = {
         db.syncQueue,
       ],
       async () => {
+        const linked=await db.retiradas.where("renovacao_realizada_id").equals(safeId).toArray();
+        if(linked.some(r=>r.person_id===safePersonId&&r.user_id===userId))throw new Error("Este recebimento está vinculado a uma retirada e ao estoque. A exclusão precisa de estorno.");
         await detachOrDeleteRetiradaFromRenovacao(renovacao);
         await db.renovacoes.delete(
           safeId

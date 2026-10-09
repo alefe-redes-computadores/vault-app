@@ -1118,11 +1118,9 @@ export default function MedicamentosListPage() {
                   </div>
                 </div>
 
-                {(
+                {showActiveIngredient && (
                   <p
-                    aria-hidden={!showActiveIngredient}
-                    style={{ visibility: showActiveIngredient ? "visible" : "hidden" }}
-                    className="mt-0.5 min-h-[15px] truncate text-[10px] font-medium text-ink-muted/80"
+                    className="mt-0.5 truncate text-[10px] font-medium text-ink-muted/80"
                     title={`Princípio ativo: ${activeIngredient}`}
                   >
                     <span className="text-ink-muted/55">Princípio ativo · </span>
@@ -1130,7 +1128,7 @@ export default function MedicamentosListPage() {
                   </p>
                 )}
 
-                <div className="mt-1 flex min-h-6 min-w-0 flex-wrap items-center gap-1">
+                <div className="mt-1 flex min-h-8 min-w-0 flex-wrap items-center gap-1">
                   {catalogIdentity?.authorityState === "possible_divergence" && (
                     <span
                       title={catalogIdentity.authorityDetail}
@@ -1155,6 +1153,40 @@ export default function MedicamentosListPage() {
                       </strong>
                     </span>
                   )}
+                  {!isSuspenso &&
+                    canQuickDose &&
+                    quickDoseLabel ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        trigger(
+                          "vibrate"
+                        );
+
+                        setQuickDoseMedId(
+                          med.id!
+                        );
+                      }}
+                      className={`ml-auto inline-flex min-h-8 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-black transition-all active:scale-[0.97] ${
+                        isSOS
+                          ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
+                          : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
+                      }`}
+                      aria-label={`${quickDoseLabel} ${med.nome}`}
+                    >
+                      <Zap
+                        size={9}
+                        fill="currentColor"
+                      />
+
+                      {
+                        quickDoseLabel
+                      }
+                    </button>
+                  ) : null}
                 </div>
 
               </div>
@@ -1227,55 +1259,22 @@ export default function MedicamentosListPage() {
                   </div>
 
                   <p
-                    className={`mt-1 min-h-[26px] whitespace-normal break-words text-[10px] font-bold leading-snug ${todayStatus.tone}`}
+                    className={`mt-1 whitespace-normal break-words text-[10px] font-bold leading-snug ${todayStatus.tone}`}
                   >
                     {
                       todayStatus.label
                     }
                   </p>
 
-                  {(
-                    <p className="mt-0.5 min-h-[11px] line-clamp-1 text-[8px] font-medium leading-snug text-ink-faint">
+                  {todayStatus.detail && todayStatus.detail !== "Tudo certo hoje" && (
+                    <p className="mt-0.5 line-clamp-1 text-[8px] font-medium leading-snug text-ink-faint">
                       {
                         todayStatus.detail
                       }
                     </p>
                   )}
 
-                  {!isSuspenso &&
-                    canQuickDose &&
-                    quickDoseLabel ? (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
 
-                        trigger(
-                          "vibrate"
-                        );
-
-                        setQuickDoseMedId(
-                          med.id!
-                        );
-                      }}
-                      className={`mt-1 inline-flex h-11 min-h-8 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-black transition-all active:scale-[0.97] ${
-                        isSOS
-                          ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
-                          : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
-                      }`}
-                      aria-label={`${quickDoseLabel} ${med.nome}`}
-                    >
-                      <Zap
-                        size={9}
-                        fill="currentColor"
-                      />
-
-                      {
-                        quickDoseLabel
-                      }
-                    </button>
-                  ) : <div aria-hidden="true" className="mt-1 h-11"/>}
                 </div>
 
                 <div className="h-9 w-px shrink-0 bg-surface-border/35" />
@@ -1301,7 +1300,7 @@ export default function MedicamentosListPage() {
                   </div>
 
                   <p
-                    className={`mt-1 min-h-[26px] whitespace-normal break-words text-[10px] font-black leading-snug ${
+                    className={`mt-1 whitespace-normal break-words text-[10px] font-black leading-snug ${
                       isEstoqueZerado
                         ? "text-coral"
                         : isEstoqueCritico
@@ -1316,7 +1315,7 @@ export default function MedicamentosListPage() {
                     }
                   </p>
 
-                  <p className="mt-0.5 min-h-[11px] line-clamp-1 text-[8px] font-semibold leading-snug text-ink-faint">
+                  <p className="mt-0.5 line-clamp-1 text-[8px] font-semibold leading-snug text-ink-faint">
                     {
                       textoEstoqueSecundario ||
                       estoqueStatus
@@ -1327,7 +1326,7 @@ export default function MedicamentosListPage() {
             </div>
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1
-                Ações rápidas vivem no painel operacional.
+                Ações rápidas ficam junto da dose, antes do painel operacional.
                 Nenhuma faixa inferior altera a altura do card. */}
           </div>
         </ListCard>

@@ -269,6 +269,21 @@ export const retiradasRepository={
     return retirada.id!;
   },
 
+  async linkReceipt(personId:string,withdrawalId:string,receiptId:string){
+    const userId=await uid();
+    await db.transaction("rw",[db.retiradas,db.renovacoes,db.syncQueue],async()=>{
+      const r=await db.retiradas.get(withdrawalId),receipt=await db.renovacoes.get(receiptId);
+      if(!r || !receipt || r.person_id!==personId || receipt.person_id!==personId || r.user_id!==userId || receipt.user_id!==userId || r.medicamento_id!==receipt.medicamento_id) throw new Error("Recebimento e retirada devem pertencer ao mesmo medicamento e pessoa.");
+      if(r.renovacao_realizada_id){if(r.renovacao_realizada_id===receiptId)return;throw new Error("Esta retirada já tem um recebimento vinculado.");}
+      if(!["agendada","realizada"].includes(r.status) || !receipt.data_aquisicao || !receipt.quantidade || receipt.quantidade<=0) throw new Error("Selecione uma aquisição real com quantidade recebida.");
+      if(r.tipo==="sus" && receipt.tipo_aquisicao!=="sus") throw new Error("Selecione uma aquisição SUS.");
+      const used=await db.retiradas.where("renovacao_realizada_id").equals(receiptId).toArray();
+      if(used.some(x=>x.id!==r.id&&x.person_id===personId&&x.user_id===userId))throw new Error("Esta aquisição já está vinculada a outra retirada.");
+      const next={...r,status:"realizada" as const,renovacao_realizada_id:receiptId,quantidade_retirada:receipt.quantidade,realizada_em:r.realizada_em||now(),updated_at:now(),synced:false};
+      await db.retiradas.put(next);await enfileirarOperacao("retiradas","update",next,{dispatchSync:false});
+    });solicitarProcessamentoSync();
+  },
+
   async update(id:string,personId:string,changes:RetiradaUpdateInput){
     const userId=await uid();
     const current=await this.getById(id,personId);
@@ -278,6 +293,7 @@ export const retiradasRepository={
     }
 
     const nextMedicationId=changes.medicamento_id??current.medicamento_id;
+    if(current.renovacao_realizada_id && ((changes.status && changes.status!=="realizada") || nextMedicationId!==current.medicamento_id))throw new Error("Esta retirada já tem recebimento registrado; confira a aquisição vinculada.");
 
     if(current.renovacao_origem_id&&nextMedicationId!==current.medicamento_id){
       throw new Error("A retirada criada por uma renovação deve manter o medicamento de origem.");

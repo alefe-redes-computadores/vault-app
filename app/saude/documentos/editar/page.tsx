@@ -1,5 +1,6 @@
 // app/saude/documentos/editar/page.tsx
 "use client";
+import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 
 import {
   Suspense,
@@ -202,6 +203,7 @@ type HealthEntityType =
   | "cirurgia";
 
 interface ClinicalEntityItem {
+  medicamento?: Medicamento;
   id: string;
   entityType: HealthEntityType;
   label: string;
@@ -1786,6 +1788,7 @@ function EditarDocumentoSaudeContent() {
                       ) ||
                     undefined,
 
+                  medicamento,
                   icon:
                     Pill,
 
@@ -5613,6 +5616,7 @@ function EditarDocumentoSaudeContent() {
               return (
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised">
+                    {item.medicamento ? <MedicationFormatIcon formato={item.medicamento.formato} cores={item.medicamento.cores} size={22}/> : (
                     <Icon
                       size={
                         16
@@ -5620,7 +5624,7 @@ function EditarDocumentoSaudeContent() {
                       className={
                         item.colorClass
                       }
-                    />
+                    />                    )}
                   </div>
 
                   <div className="min-w-0">

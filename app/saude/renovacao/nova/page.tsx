@@ -1,5 +1,7 @@
 // app/saude/renovacao/nova/page.tsx
 "use client";
+import {useRetiradas} from "@/hooks/useRetiradas";
+import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 
 import {
   Suspense,
@@ -432,6 +434,9 @@ function NovaRenovacaoContent() {
       "medicamento_id"
     );
 
+  const withdrawalParam=searchParams.get("retirada_id");
+  const [selectedWithdrawalId,setSelectedWithdrawalId]=useState(withdrawalParam||"");
+  const {retiradas}=useRetiradas();
   const rawReturnTo = searchParams.get("return_to");
   const medicationReturnTo = autoSelectMedId
     ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(autoSelectMedId)}`
@@ -927,6 +932,18 @@ function NovaRenovacaoContent() {
   // SELEÇÃO DO MEDICAMENTO
   // ==========================================================
 
+  const receiptPrefill=useRef("");
+  useEffect(()=>{
+    if(!withdrawalParam || receiptPrefill.current===withdrawalParam)return;
+    const r=retiradas.find(x=>x.id===withdrawalParam&&x.medicamento_id===medicamentoId);
+    if(!r)return;
+    receiptPrefill.current=withdrawalParam;
+    setSelectedWithdrawalId(withdrawalParam);
+    if(r.tipo==="sus")setTipoAquisicao("sus");
+    if(r.farmacia_id)setFarmaciaId(r.farmacia_id);
+    if(r.quantidade_prevista && r.quantidade_prevista>0)setQuantidadeAdicionar(String(r.quantidade_prevista));
+  },[withdrawalParam,medicamentoId,retiradas]);
+
   const handleSelectMedicamento =
     (
       item:
@@ -939,6 +956,7 @@ function NovaRenovacaoContent() {
       setMedicamentoId(
         item.id!
       );
+      setSelectedWithdrawalId(withdrawalParam && item.id===autoSelectMedId ? withdrawalParam : "");
 
       setIsMedModalOpen(
         false
@@ -1447,7 +1465,7 @@ function NovaRenovacaoContent() {
                 !url
               ) {
                 throw new Error(
-                  "Não foi possível enviar o anexo da renovação."
+                  "Não foi possível enviar o anexo da aquisição."
                 );
               }
 
@@ -1546,6 +1564,7 @@ function NovaRenovacaoContent() {
               {
                 somenteAquisicao:
                   true,
+                retiradaId:selectedWithdrawalId || undefined,
               }
             );
           } catch (
@@ -2577,6 +2596,9 @@ function NovaRenovacaoContent() {
                 </h3>
               </div>
 
+              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><select id="receipt-withdrawal" value={selectedWithdrawalId} onChange={e=>setSelectedWithdrawalId(e.target.value)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</select><p className="text-[10px] leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
+              <p className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-[11px] leading-relaxed text-ink-muted">LME, autorização e documentos ficam no fornecimento deste medicamento. Depois de salvar, abra “Fornecimento e documentos” no detalhe desta aquisição, inclusive para uma retirada já realizada.</p>
+
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label className="block text-sm font-medium text-ink-primary">
@@ -2783,7 +2805,7 @@ function NovaRenovacaoContent() {
                     event.target.value
                   )
               }
-              placeholder="Notas sobre esta renovação..."
+              placeholder="Notas sobre esta aquisição..."
             />
           </motion.div>
 
@@ -2821,7 +2843,7 @@ function NovaRenovacaoContent() {
                 </p>
 
                 <p className="mb-4 mt-1 text-center text-xs text-ink-muted">
-                  Você pode guardar foto ou PDF relacionado a esta renovação.
+                  Você pode guardar foto ou PDF relacionado a esta aquisição.
                 </p>
 
                 <div className="flex gap-3">
@@ -2944,7 +2966,7 @@ function NovaRenovacaoContent() {
 
             {isSubmitting
               ? "Salvando..."
-              : "Salvar Renovação"}
+              : "Salvar Aquisição"}
           </Button>
         </div>
 
@@ -2973,7 +2995,9 @@ function NovaRenovacaoContent() {
             (
               item
             ) => (
-              <div>
+              <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised"><MedicationFormatIcon formato={item.formato} cores={item.cores} size={22}/></span>
+              <div className="min-w-0">
                 <p className="font-medium text-ink-primary">
                   {
                     item.nome
@@ -2987,7 +3011,7 @@ function NovaRenovacaoContent() {
                     }
                   </p>
                 )}
-              </div>
+              </div></div>
             )
           }
           getItemId={

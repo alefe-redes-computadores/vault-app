@@ -1,5 +1,7 @@
 // app/saude/renovacao/detalhes/page.tsx
 "use client";
+import {useRetiradas} from "@/hooks/useRetiradas";
+import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 
 import {
   Suspense,
@@ -197,6 +199,7 @@ function getPriceLabel(
 // ============================================================
 
 function DetalhesRenovacaoContent() {
+ const {retiradas}=useRetiradas();
   const router =
     useRouter();
 
@@ -1709,6 +1712,9 @@ function DetalhesRenovacaoContent() {
             </div>
           </motion.div>
         </section>
+
+        {retiradas.filter(r=>r.renovacao_realizada_id===renovacao.id).map(r=><div key={r.id} className="px-5 pt-4"><button type="button" onClick={()=>router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id!)}`)} className="min-h-[44px] w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-xs font-bold text-emerald-400">Recebimento vinculado à retirada de {formatDateDisplay(r.data)} · ver retirada</button></div>)}
+        <div className="px-5 pt-4"><HealthSupplyEntry medicamentoId={renovacao.medicamento_id}/></div>
 
         <ContextualHealthIntelligence
           entityType="renovacao"

@@ -116,6 +116,25 @@ export function WithdrawalPreparationView({
           Retirada encerrada · documentos e anotações permanecem no histórico.
         </p>
       )}
+      {r.status !== "agendada" ? (
+        <Link
+          href={`/saude/fornecimento?medicamento_id=${encodeURIComponent(
+            r.medicamento_id
+          )}&retirada_id=${encodeURIComponent(r.id!)}${
+            r.fornecimento_id
+              ? `&id=${encodeURIComponent(r.fornecimento_id)}`
+              : ""
+          }${
+            r.fornecimento_ciclo_id
+              ? `&ciclo_id=${encodeURIComponent(r.fornecimento_ciclo_id)}`
+              : ""
+          }`}
+          className="flex min-h-[44px] items-center justify-between rounded-xl bg-ice/10 p-3 text-xs font-bold text-ice"
+        >
+          Ver fornecimento e documentos deste histórico
+          <ArrowUpRight size={15} />
+        </Link>
+      ) : null}
       {source && source !== own ? (
         <div className="rounded-2xl bg-surface-raised p-3">
           <p className="flex items-center gap-2 text-[10px] font-bold text-ice">

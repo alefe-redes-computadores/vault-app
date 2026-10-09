@@ -1,5 +1,6 @@
 // app/saude/retiradas/detalhes/page.tsx
 "use client";
+import {useRenovacoes} from "@/hooks/useRenovacoes";
 import {WithdrawalPreparationSummary} from "@/components/saude/WithdrawalPreparationSummary";
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
@@ -109,8 +110,10 @@ function DetalhesRetiradaContent() {
     retiradas,
     updateRetirada,
     deleteRetirada,
+    linkReceipt,
   } =
     useRetiradas();
+  const {renovacoes}=useRenovacoes();
 
   const {
     medicamentos = [],
@@ -839,17 +842,13 @@ function DetalhesRetiradaContent() {
                 disabled={
                   processing
                 }
-                onClick={() =>
-                  updateStatus(
-                    "realizada"
-                  )
-                }
+                onClick={() => router.push(`/saude/renovacao/nova?medicamento_id=${encodeURIComponent(retirada.medicamento_id)}&retirada_id=${encodeURIComponent(retirada.id!)}&return_to=${encodeURIComponent(`/saude/retiradas/detalhes?id=${retirada.id}`)}`)}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3.5 text-sm font-bold text-void disabled:opacity-50"
               >
                 <CheckCircle2
                   size={17}
                 />
-                Marcar como realizada
+                Registrar recebimento e estoque
               </button>
 
               <div className="grid grid-cols-2 gap-2">
@@ -944,13 +943,12 @@ function DetalhesRetiradaContent() {
             </div>
           )}
 
-          {retirada.status ===
-            "realizada" && (
+          {retirada.renovacao_realizada_id ? <button type="button" onClick={()=>router.push(`/saude/renovacao/detalhes?id=${encodeURIComponent(retirada.renovacao_realizada_id!)}`)} className="min-h-[44px] w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-xs font-bold text-emerald-400">Recebimento registrado · ver aquisição</button> : retirada.status === "realizada" && (
             <button
               type="button"
               onClick={() =>
                 router.push(
-                  `/saude/renovacao/nova?medicamento_id=${retirada.medicamento_id}&return_to=${encodeURIComponent(`/saude/retiradas/detalhes?id=${retirada.id}`)}`
+                  `/saude/renovacao/nova?medicamento_id=${retirada.medicamento_id}&retirada_id=${retirada.id}&return_to=${encodeURIComponent(`/saude/retiradas/detalhes?id=${retirada.id}`)}`
                 )
               }
               className="w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3.5 text-sm font-bold text-emerald-400"
@@ -958,6 +956,8 @@ function DetalhesRetiradaContent() {
               Registrar aquisição / estoque
             </button>
           )}
+          {!retirada.renovacao_realizada_id && ["agendada","realizada"].includes(retirada.status) ? <div className="rounded-2xl border border-surface-border bg-surface p-4"><label htmlFor="existing-receipt" className="block text-xs font-bold text-ink-primary">Já registrou o estoque? Vincule a aquisição</label><p className="mt-1 text-[10px] text-ink-muted">Este vínculo conclui a retirada sem adicionar estoque novamente.</p><select id="existing-receipt" disabled={processing} defaultValue="" className="mt-3 min-h-[44px] w-full rounded-xl bg-surface-raised p-3 text-xs" onChange={async e=>{const select=e.currentTarget;const id=select.value;if(!id)return;setProcessing(true);try{await linkReceipt(retirada.id!,id);showToast("Aquisição vinculada sem alterar estoque","success");}catch(error){showToast(error instanceof Error?error.message:"Não foi possível vincular","error");}finally{setProcessing(false);select.value="";}}}><option value="">Selecionar aquisição já registrada</option>{renovacoes.filter(a=>a.medicamento_id===retirada.medicamento_id&&a.data_aquisicao&&a.quantidade&&a.quantidade>0&&(retirada.tipo!=="sus"||a.tipo_aquisicao==="sus")).map(a=><option key={a.id} value={a.id}>{a.data_aquisicao} · {a.quantidade} unidades · {a.observacoes||"Aquisição"}</option>)}</select></div> : null}
+
         </section>
 
         {showReschedule && (
