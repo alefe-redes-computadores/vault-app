@@ -10,7 +10,7 @@ export function SupplyDocumentRelations({
     links = data.documentos.filter((x) => x.document_id === documentId);
   if (!links.length) return null;
   return (
-    <section className="rounded-[24px] border border-ice/20 bg-surface p-4">
+    <section className="rounded-[24px] border border-surface-border bg-surface p-4">
       <h2 className="text-sm font-bold text-ink-primary">
         Fornecimento vinculado
       </h2>
@@ -19,7 +19,7 @@ export function SupplyDocumentRelations({
           <Link
             key={l.id}
             href={`/saude/fornecimento?id=${encodeURIComponent(l.processo_id)}${l.retirada_id ? `&retirada_id=${encodeURIComponent(l.retirada_id)}` : ""}`}
-            className="block rounded-xl bg-ice/10 p-3 text-xs text-ice"
+            className="block rounded-xl bg-surface-raised p-3 text-xs text-ink-primary"
           >
             {data.processos.find((p) => p.id === l.processo_id)?.titulo ||
               "Processo"}{" "}

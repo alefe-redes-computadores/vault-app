@@ -41,6 +41,8 @@ export async function exportAllData(userId: string): Promise<string> {
       registrosSaude,
       healthReminders,
       healthGoals,
+      healthProfiles,
+      healthDevices,
       versiculos,
     ] = await Promise.all([
       db.persons.where("user_id").equals(userId).toArray(),
@@ -72,6 +74,8 @@ export async function exportAllData(userId: string): Promise<string> {
       db.registros_saude.where("user_id").equals(userId).toArray(),
       db.health_reminders.where("user_id").equals(userId).toArray(),
       db.health_goals.where("user_id").equals(userId).toArray(),
+      db.health_profiles.where("user_id").equals(userId).toArray(),
+      db.health_devices.where("user_id").equals(userId).toArray(),
       db.versiculos.where("user_id").equals(userId).toArray(),
     ]);
 
@@ -135,6 +139,7 @@ export async function exportAllData(userId: string): Promise<string> {
       registros_saude: registrosSaude,
       health_reminders: healthReminders,
       health_goals: healthGoals,
+      health_profiles:healthProfiles,health_devices:healthDevices,
       credentials,
       bank_cards: bankCards,
       vaults,

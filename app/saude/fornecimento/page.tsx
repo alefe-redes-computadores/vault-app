@@ -1,6 +1,9 @@
 "use client";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { Suspense, useState, useRef } from "react";
 import Link from "next/link";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { triggerHaptic } from "@/lib/haptics";
 import { SusCatalogBrowser } from "@/components/saude/SusCatalogBrowser";
 import { SupplyPreparation } from "@/components/saude/SupplyPreparation";
@@ -49,9 +52,9 @@ import type {
 import { estimatedCycleEnd, supplyChecklist } from "@/lib/health-supply/rules";
 import { getLocalTodayISO } from "@/lib/health-utils";
 const input =
-  "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-ice/60";
+  "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const button =
-  "rounded-xl bg-ice/10 px-3 py-3 text-xs font-bold text-ice disabled:opacity-40";
+  "rounded-xl bg-surface-raised px-3 py-3 text-xs font-bold text-ink-primary disabled:opacity-40";
 const panel = "rounded-[24px] border border-surface-border/60 bg-surface p-4";
 const fmt = (v: string | null) =>
   v ? v.split("-").reverse().join("/") : "Não confirmado";
@@ -121,11 +124,11 @@ function ProcessForm({
       </label>
       <label className="block text-xs text-ink-muted">
         Origem do fornecimento
-        <select
+        <HealthRelationPicker title="Origem do fornecimento"
           className={input}
           value={values.origem}
-          onChange={(e) => {
-            const origem = e.target.value;
+          onValueChange={(e) => {
+            const origem = e;
             set((v) => ({
               ...v,
               origem: origem as SupplyProcess["origem"],
@@ -144,7 +147,7 @@ function ProcessForm({
               {l}
             </option>
           ))}
-        </select>
+        </HealthRelationPicker>
       </label>
       <p className="text-[11px] leading-relaxed text-ink-muted">
         A origem é independente do endereço de retirada. O CEAF também pode ser
@@ -166,16 +169,16 @@ function ProcessForm({
           </label>
           <label className="block text-xs text-ink-muted">
             Indicação registrada no processo
-            <select
+            <HealthRelationPicker title="Indicação do tratamento"
               className={input}
               value={values.indicacao || ""}
-              onChange={(e) => field("indicacao", e.target.value || null)}
+              onValueChange={(e) => field("indicacao", e || null)}
             >
               <option value="">Conferir com o médico / unidade</option>
               {catalogIndications(values.origem).map((x) => (
                 <option key={x}>{x}</option>
               ))}
-            </select>
+            </HealthRelationPicker>
           </label>
           <p className="text-[11px] leading-relaxed text-ink-muted">
             Selecione a indicação documentada pelo médico. O catálogo estadual
@@ -198,6 +201,7 @@ function ProcessForm({
                 >
                   <input
                     type="checkbox"
+                    className="h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-ink-faint bg-surface checked:border-emerald-400 checked:bg-emerald-400 checked:shadow-[inset_0_0_0_4px_#10151c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
                     checked={selected.includes(m.id!)}
                     onChange={(e) =>
                       select((a) =>
@@ -207,7 +211,7 @@ function ProcessForm({
                       )
                     }
                   />
-                  {m.nome} · {m.dosagem}
+                  <MedicationFormatIcon formato={m.formato} cores={m.cores} size={24} /><span>{m.nome} · {m.dosagem}</span>
                 </label>
               ))}
           </div>
@@ -220,11 +224,11 @@ function ProcessForm({
       ].map(({ key, label, rows }) => (
         <label key={key} className="block text-xs text-ink-muted">
           {label}
-          <select
+          <HealthRelationPicker title={label} kind={key === "medico_id" ? "doctor" : key === "farmacia_id" ? "pharmacy" : "place"}
             className={input}
             value={String(values[key as keyof typeof values] || "")}
-            onChange={(e) =>
-              field(key as keyof typeof values, e.target.value || null)
+            onValueChange={(e) =>
+              field(key as keyof typeof values, e || null)
             }
           >
             <option value="">Não informado</option>
@@ -233,7 +237,7 @@ function ProcessForm({
                 {x.nome}
               </option>
             ))}
-          </select>
+          </HealthRelationPicker>
         </label>
       ))}
       <label className="block text-xs text-ink-muted">
@@ -280,6 +284,7 @@ function ProcessForm({
       <label className="flex items-center gap-2 text-xs text-ink-primary">
         <input
           type="checkbox"
+                    className="h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-ink-faint bg-surface checked:border-emerald-400 checked:bg-emerald-400 checked:shadow-[inset_0_0_0_4px_#10151c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
           checked={values.receita_cada_retirada}
           onChange={(e) => field("receita_cada_retirada", e.target.checked)}
         />
@@ -297,16 +302,16 @@ function ProcessForm({
       {initial && (
         <label className="block text-xs text-ink-muted">
           Situação do processo
-          <select
+          <HealthRelationPicker title="Situação do processo"
             className={input}
             value={values.status}
-            onChange={(e) =>
-              field("status", e.target.value as SupplyProcess["status"])
+            onValueChange={(e) =>
+              field("status", e as SupplyProcess["status"])
             }
           >
             <option value="ativo">Ativo</option>
             <option value="encerrado">Encerrado</option>
-          </select>
+          </HealthRelationPicker>
         </label>
       )}
       <button type="submit" className={button}>
@@ -360,7 +365,8 @@ function ItemEditor({
         );
       }}
     >
-      <p className="text-sm font-bold text-ink-primary">
+      <p className="flex items-center gap-2 text-sm font-bold text-ink-primary">
+        {med ? <MedicationFormatIcon formato={med.formato} cores={med.cores} size={24} /> : null}
         {med?.nome || "Medicamento"}
       </p>
       <div className="mt-2 grid grid-cols-2 gap-2">
@@ -399,10 +405,10 @@ function ItemEditor({
           </label>
           <label className="block text-[11px] text-ink-muted">
             Apresentação SUS confirmada
-            <select
+            <HealthRelationPicker title="Apresentação SUS confirmada" medication={med}
               className={input}
               value={catalogId}
-              onChange={(e) => setCatalogId(e.target.value)}
+              onValueChange={(e) => setCatalogId(e)}
             >
               <option value="">Sem apresentação confirmada</option>
               {chosen && !options.some((o) => o.id === chosen.id) ? (
@@ -415,7 +421,7 @@ function ItemEditor({
                   {o.medicamento} · {o.apresentacao}
                 </option>
               ))}
-            </select>
+            </HealthRelationPicker>
           </label>
           <p className="text-[10px] leading-relaxed text-ink-muted">
             Confirme a apresentação da prescrição e a indicação do processo. A
@@ -511,7 +517,7 @@ function CyclePanel({
                 key={i.id}
                 className="mt-3 rounded-xl bg-surface-raised p-3 text-xs leading-relaxed text-ink-muted"
               >
-                <p className="font-bold text-ink-primary">{m.nome}</p>
+                <p className="flex items-center gap-2 font-bold text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={22} />{m.nome}</p>
                 {c.needsLme && (
                   <p className="mt-1">
                     LME:{" "}
@@ -557,7 +563,7 @@ function CyclePanel({
                 className="rounded-xl border border-surface-border p-3"
               >
                 <Link
-                  className="flex items-center gap-2 text-xs font-semibold text-ice"
+                  className="flex items-center gap-2 text-xs font-semibold text-ink-primary"
                   href={`/saude/documentos/detalhes?id=${encodeURIComponent(
                     l.document_id
                   )}`}
@@ -617,10 +623,10 @@ function CyclePanel({
         >
           <label className="block text-xs text-ink-muted">
             Finalidade
-            <select
+            <HealthRelationPicker title="Finalidade do documento"
               className={input}
               value={kind}
-              onChange={(e) => setKind(e.target.value as SupplyDocumentKind)}
+              onValueChange={(e) => setKind(e as SupplyDocumentKind)}
             >
               {["lme", "receita", "formulario", "comprovante", "decisao"].map(
                 (k) => (
@@ -629,15 +635,15 @@ function CyclePanel({
                   </option>
                 )
               )}
-            </select>
+            </HealthRelationPicker>
           </label>
           <label className="block text-xs text-ink-muted">
             Documento de Saúde existente
-            <select
+            <HealthRelationPicker title="Selecionar documento"
               required
               className={input}
               value={docId}
-              onChange={(e) => setDocId(e.target.value)}
+              onValueChange={(e) => setDocId(e)}
             >
               <option value="">Selecione um documento</option>
               {documents
@@ -647,7 +653,7 @@ function CyclePanel({
                     {d.title}
                   </option>
                 ))}
-            </select>
+            </HealthRelationPicker>
           </label>
           <button className={button}>Vincular documento</button>
         </form>
@@ -671,7 +677,7 @@ function CyclePanel({
         </p>
       </div>
       <div className={panel}>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-ice">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-primary">
           Ciclo de fornecimento
         </p>
         <p className="mt-2 text-sm text-ink-primary">
@@ -693,11 +699,11 @@ function CyclePanel({
         >
           <label className="block text-xs text-ink-muted">
             Etapa
-            <select
+            <HealthRelationPicker title="Etapa do ciclo"
               className={input}
               value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as SupplyCycle["status"])
+              onValueChange={(e) =>
+                setStatus(e as SupplyCycle["status"])
               }
             >
               <option value="preparando">Preparando documentos</option>
@@ -708,25 +714,25 @@ function CyclePanel({
                 Autorização confirmada pela farmácia
               </option>
               <option value="encerrado">Ciclo encerrado</option>
-            </select>
+            </HealthRelationPicker>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-ink-muted">
               Início confirmado
-              <input
-                type="date"
+              <CustomDatePicker
+
                 className={input}
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
+                onChange={(e) => setStart(e)}
               />
             </label>
             <label className="text-xs text-ink-muted">
               Fim confirmado
-              <input
-                type="date"
+              <CustomDatePicker
+
                 className={input}
                 value={end}
-                onChange={(e) => setEnd(e.target.value)}
+                onChange={(e) => setEnd(e)}
               />
             </label>
           </div>
@@ -758,7 +764,7 @@ function CyclePanel({
         </h2>
         {cycle.status === "preparando" ? (
           <details className="mt-3 rounded-xl border border-surface-border p-3">
-            <summary className="cursor-pointer text-xs font-bold text-ice">
+            <summary className="cursor-pointer text-xs font-bold text-ink-primary">
               Incluir ou retirar medicamento deste ciclo
             </summary>
             <p className="mt-2 text-[11px] text-ink-muted">
@@ -780,6 +786,7 @@ function CyclePanel({
                   >
                     <input
                       type="checkbox"
+                    className="h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-ink-faint bg-surface checked:border-emerald-400 checked:bg-emerald-400 checked:shadow-[inset_0_0_0_4px_#10151c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
                       checked={items.some((i) => i.medicamento_id === m.id)}
                       onChange={(e) => {
                         const include = e.target.checked;
@@ -797,7 +804,7 @@ function CyclePanel({
                         );
                       }}
                     />
-                    {m.nome} · {m.dosagem}
+                    <MedicationFormatIcon formato={m.formato} cores={m.cores} size={24} /><span>{m.nome} · {m.dosagem}</span>
                   </label>
                 ))}
             </div>
@@ -934,7 +941,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-ice">
+          <p className="text-[10px] uppercase tracking-wider text-ink-primary">
             Saúde · fornecimento
           </p>
           <h1 className="font-display text-xl font-bold text-ink-primary">
@@ -943,7 +950,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         </div>
       </header>
       <div className={panel + " mb-4"}>
-        <FolderHeart className="text-ice" size={22} />
+        <FolderHeart className="text-ink-primary" size={22} />
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           Organize onde recebe cada medicamento, prepare os documentos com
           antecedência e acompanhe a autorização e as próximas retiradas.
@@ -953,7 +960,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <SusCatalogBrowser />
       </div>
       {busy ? (
-        <p role="status" className="mb-3 text-xs text-ice">
+        <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…
         </p>
       ) : null}
@@ -966,7 +973,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <button
                 key={p.id}
                 className={
-                  button + (process?.id === p.id ? " border border-ice/50" : "")
+                  button + (process?.id === p.id ? " border border-emerald-400/40" : "")
                 }
                 onClick={() => {
                   setSelected(p.id);
@@ -1005,7 +1012,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           {process && (
             <fieldset disabled={busy} className="space-y-4">
               <div className={panel}>
-                <p className="text-[10px] uppercase tracking-wider text-ice">
+                <p className="text-[10px] uppercase tracking-wider text-ink-primary">
                   {SUPPLY_ORIGIN_LABELS[process.origem]}
                 </p>
                 <h2 className="mt-1 text-lg font-bold text-ink-primary">
@@ -1044,10 +1051,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <div className={panel}>
                 <label className="block text-xs text-ink-muted">
                   Histórico de ciclos
-                  <select
+                  <HealthRelationPicker title="Histórico de ciclos"
                     className={input}
                     value={cycle?.id || ""}
-                    onChange={(e) => setCycleId(e.target.value)}
+                    onValueChange={(e) => setCycleId(e)}
                   >
                     {cycles.map((c, i) => (
                       <option key={c.id} value={c.id}>
@@ -1055,15 +1062,15 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                         a {fmt(c.fim)}
                       </option>
                     ))}
-                  </select>
+                  </HealthRelationPicker>
                 </label>
                 <label className="mt-3 block text-xs text-ink-muted">
                   Motivo do próximo ciclo
-                  <select
+                  <HealthRelationPicker title="Motivo do ciclo"
                     className={input}
                     value={nextReason}
-                    onChange={(e) =>
-                      setNextReason(e.target.value as SupplyCycleReason)
+                    onValueChange={(e) =>
+                      setNextReason(e as SupplyCycleReason)
                     }
                   >
                     {Object.entries(SUPPLY_REASON_LABELS).map(([k, v]) => (
@@ -1071,7 +1078,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                         {v}
                       </option>
                     ))}
-                  </select>
+                  </HealthRelationPicker>
                 </label>
                 <button
                   className={button + " mt-3"}

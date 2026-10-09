@@ -371,6 +371,7 @@ export default function MaisPage() {
         db.registros_saude.clear(),
         db.health_reminders.clear(),
         db.health_goals.clear(),
+        db.health_profiles.clear(),db.health_devices.clear(),
         db.settings.clear(),
         db.versiculos.clear(),
         db.syncQueue.clear(),
@@ -943,6 +944,7 @@ export default function MaisPage() {
 
             <div>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Perfis do Vault</h2>
+              <button type="button" onClick={()=>router.push("/saude/minha-saude")} className="mb-2 flex w-full items-center justify-between rounded-[20px] border border-emerald-400/15 bg-surface p-3 text-left"><span className="text-sm font-semibold text-emerald-400">Minha saúde</span><span className="text-[10px] text-ink-muted">Perfil, aparelhos e registros →</span></button>
               <div className="flex items-center justify-between gap-3 rounded-[20px] border border-orange-400/15 bg-orange-400/[0.035] p-3">
                 <div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">Pessoa ativa</p><p className="truncate text-[10px] text-ink-muted">Os registros de saúde seguem este perfil</p></div>
                 <PersonSelector mode="identity" className="shrink-0" />

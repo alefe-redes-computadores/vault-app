@@ -1,4 +1,5 @@
 "use client";
+import { HealthRelationPicker } from "./HealthRelationPicker";
 import { useDeferredValue, useState } from "react";
 import {
   Search,
@@ -34,7 +35,7 @@ export function SusCatalogBrowser() {
         }}
         className="flex min-h-[64px] w-full items-center gap-3 p-4 text-left"
       >
-        <span className="rounded-2xl bg-ice/10 p-3 text-ice">
+        <span className="rounded-2xl bg-surface-raised p-3 text-ink-primary">
           <Library size={20} />
         </span>
         <span className="flex-1">
@@ -55,7 +56,7 @@ export function SusCatalogBrowser() {
       {open ? (
         <div className="space-y-3 border-t border-surface-border/50 p-4">
           <label className="flex items-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3">
-            <Search size={17} className="shrink-0 text-ice" />
+            <Search size={17} className="shrink-0 text-ink-primary" />
             <input
               aria-label="Buscar medicamento, indicação ou CID"
               className="min-w-0 flex-1 bg-transparent py-3 text-sm text-ink-primary outline-none"
@@ -65,12 +66,12 @@ export function SusCatalogBrowser() {
             />
           </label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <select
+            <HealthRelationPicker title="Programa SUS"
               aria-label="Programa"
               className="w-full rounded-xl bg-surface-raised p-3 text-xs text-ink-primary"
               value={origin}
-              onChange={(e) => {
-                setOrigin(e.target.value);
+              onValueChange={(e) => {
+                setOrigin(e);
                 setIndication("");
               }}
             >
@@ -78,18 +79,18 @@ export function SusCatalogBrowser() {
               <option value="farmacia_popular">
                 Farmácia Popular · Brasil
               </option>
-            </select>
-            <select
+            </HealthRelationPicker>
+            <HealthRelationPicker title="Indicação do tratamento"
               aria-label="Indicação"
               className="w-full rounded-xl bg-surface-raised p-3 text-xs text-ink-primary"
               value={indication}
-              onChange={(e) => setIndication(e.target.value)}
+              onValueChange={(e) => setIndication(e)}
             >
               <option value="">Todas as indicações</option>
               {catalogIndications(origin).map((x) => (
                 <option key={x}>{x}</option>
               ))}
-            </select>
+            </HealthRelationPicker>
           </div>
           <p className="text-[11px] leading-relaxed text-ink-muted">
             Consulte as apresentações e condições oficiais. A presença no elenco
@@ -112,7 +113,7 @@ export function SusCatalogBrowser() {
                   <p className="mt-1 text-[11px] text-ink-muted">
                     {row.apresentacao}
                   </p>
-                  <p className="mt-2 text-[10px] font-semibold text-ice">
+                  <p className="mt-2 text-[10px] font-semibold text-ink-primary">
                     {row.indicacao}
                     {row.cids.length ? ` · ${row.cids.join(", ")}` : ""}
                   </p>
@@ -152,7 +153,7 @@ export function SusCatalogBrowser() {
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-[11px] font-semibold text-ice"
+              className="flex items-center gap-2 text-[11px] font-semibold text-ink-primary"
             >
               <ExternalLink size={14} />
               {s.titulo} · {s.publicado_em.split("-").reverse().join("/")}

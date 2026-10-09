@@ -71,7 +71,7 @@ export function WithdrawalPreparationView({
   return (
     <section className="space-y-3 rounded-[24px] border border-surface-border/60 bg-surface p-4">
       <h2 className="flex items-center gap-2 text-sm font-bold text-ink-primary">
-        <ClipboardCheck size={17} className="text-ice" />O que levar nesta
+        <ClipboardCheck size={17} className="text-ink-primary" />O que levar nesta
         retirada
       </h2>
       {r.status === "agendada" ? (
@@ -103,7 +103,7 @@ export function WithdrawalPreparationView({
             )}&retirada_id=${encodeURIComponent(r.id!)}${
               prep.process ? `&id=${encodeURIComponent(prep.process.id)}` : ""
             }`}
-            className="flex min-h-[44px] items-center justify-between rounded-xl bg-ice/10 p-3 text-xs font-bold text-ice"
+            className="flex min-h-[44px] items-center justify-between rounded-xl bg-surface-raised p-3 text-xs font-bold text-ink-primary"
           >
             {prep.process
               ? "Conferir documentos e autorização"
@@ -129,7 +129,7 @@ export function WithdrawalPreparationView({
               ? `&ciclo_id=${encodeURIComponent(r.fornecimento_ciclo_id)}`
               : ""
           }`}
-          className="flex min-h-[44px] items-center justify-between rounded-xl bg-ice/10 p-3 text-xs font-bold text-ice"
+          className="flex min-h-[44px] items-center justify-between rounded-xl bg-surface-raised p-3 text-xs font-bold text-ink-primary"
         >
           Ver fornecimento e documentos deste histórico
           <ArrowUpRight size={15} />
@@ -137,7 +137,7 @@ export function WithdrawalPreparationView({
       ) : null}
       {source && source !== own ? (
         <div className="rounded-2xl bg-surface-raised p-3">
-          <p className="flex items-center gap-2 text-[10px] font-bold text-ice">
+          <p className="flex items-center gap-2 text-[10px] font-bold text-ink-primary">
             <FileText size={13} />
             Observação da aquisição de origem
           </p>
@@ -148,7 +148,7 @@ export function WithdrawalPreparationView({
             href={`/saude/renovacao/detalhes?id=${encodeURIComponent(
               r.renovacao_origem_id!
             )}`}
-            className="mt-2 inline-block text-[11px] font-semibold text-ice"
+            className="mt-2 inline-block text-[11px] font-semibold text-ink-primary"
           >
             Ver aquisição de origem
           </Link>

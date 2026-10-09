@@ -294,6 +294,12 @@ async function validateCids(
   }
 }
 
+async function validateProvenance(row: Pick<RegistroSaude,"device_id"|"source"|"source_record_id"|"tipo"|"inicio_em"|"fim_em"|"duracao_minutos">,pid:string,uid:string,imported=false){
+ if(row.source && !["manual","samsung_manual","health_connect"].includes(row.source))throw new Error("Fonte inválida.");
+ if(!imported && (row.source==="health_connect"||row.source_record_id))throw new Error("Use a conexão Samsung Health para importar os dados automaticamente.");
+ if(row.device_id){const device=await db.health_devices.get(row.device_id);if(!device||device.person_id!==pid||device.user_id!==uid||!device.capabilities.includes(row.tipo as any))throw new Error("O aparelho não corresponde à pessoa ou à medida.");}
+ if(row.inicio_em||row.fim_em){const a=Date.parse(row.inicio_em||""),b=Date.parse(row.fim_em||"");if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a||b>Date.now()||(b-a)>86400000)throw new Error("Confira o intervalo registrado.");if(row.tipo==="sono"&&row.duracao_minutos!==Math.round((b-a)/60000))throw new Error("A duração precisa corresponder ao período registrado de sono.");}
+}
 async function validateRelations(params: {
   personId: string;
 
@@ -466,6 +472,8 @@ export const registrosSaudeRepository = {
     const userId =
       await getAuthenticatedUserId();
 
+    const person=await db.persons.get(personId);if(!person||person.user_id!==userId)throw new Error("Pessoa não pertence à conta atual.");
+    await validateProvenance(data,personId,userId);
     const medicamentoId =
       data.medicamento_id?.trim() ||
       null;
@@ -649,6 +657,13 @@ export const registrosSaudeRepository = {
         finalCidIds,
     });
 
+    if (atual.source === "health_connect") {
+      const editable = new Set(["observacoes", "device_id", "medicamento_id", "tratamento_ids", "cid_ids"]);
+      for (const [key, value] of Object.entries(changes)) {
+        if (!editable.has(key) && JSON.stringify(value ?? null) !== JSON.stringify((atual as any)[key] ?? null)) throw new Error("Corrija as medidas importadas no Samsung Health. Você pode editar notas e vínculos no Vault.");
+      }
+    }
+    await validateProvenance({...atual,...changes},safePersonId,userId,atual.source === "health_connect");
     const now =
       nowIso();
 

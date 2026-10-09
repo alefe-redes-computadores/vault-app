@@ -410,6 +410,8 @@ export async function pullAllData(
     // ==========================================================
 
     await runPullTasks([
+      () => processTable({remoteTable:"health_profiles",queueTable:"health_profiles",localTable:db.health_profiles,query:async()=>await supabase.from("health_profiles").select("*").eq("user_id",userId)}),
+      () => processTable({remoteTable:"health_devices",queueTable:"health_devices",localTable:db.health_devices,query:async()=>await supabase.from("health_devices").select("*").eq("user_id",userId)}),
       () => processTable({remoteTable:"fornecimentos",queueTable:"fornecimentos",localTable:db.fornecimentos,query:async()=>await supabase.from("fornecimentos").select("*").eq("user_id",userId)}),
       () => processTable({remoteTable:"fornecimento_ciclos",queueTable:"fornecimento_ciclos",localTable:db.fornecimento_ciclos,query:async()=>await supabase.from("fornecimento_ciclos").select("*").eq("user_id",userId)}),
       () => processTable({remoteTable:"fornecimento_itens",queueTable:"fornecimento_itens",localTable:db.fornecimento_itens,query:async()=>await supabase.from("fornecimento_itens").select("*").eq("user_id",userId)}),

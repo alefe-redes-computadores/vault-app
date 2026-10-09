@@ -8,7 +8,7 @@ const ok = (condition, label) => {
   console.log(`OK: ${label}`);
 };
 
-const hydration = read("app/saude/hidratacao/page.tsx") ? read("app/saude/hidratacao/page.tsx") : "";
+const hydration = read("components/saude/HydrationPanel.tsx") ? read("components/saude/HydrationPanel.tsx") : "";
 const reminders = read("app/saude/lembretes/page.tsx");
 const domain = read("lib/health-reminders/domain.ts");
 const scheduler = read("lib/health-reminders/scheduler.ts");

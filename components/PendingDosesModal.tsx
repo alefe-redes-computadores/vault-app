@@ -1,5 +1,6 @@
 // components/PendingDosesModal.tsx
 "use client";
+import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 
 import {
   useEffect,
@@ -773,21 +774,7 @@ export function PendingDosesModal({
                     Data e hora reais
                   </label>
 
-                  <input
-                    type="datetime-local"
-                    value={
-                      customTakenAt
-                    }
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setCustomTakenAt(
-                          event.target.value
-                        )
-                    }
-                    className="mt-2 w-full rounded-xl border border-surface-border bg-void px-3 py-2.5 text-sm text-ink-primary outline-none focus:border-ice/40"
-                  />
+                  <HealthDateTimePicker value={customTakenAt} onChange={setCustomTakenAt} disabled={existeProcessamento} max={new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0")+"-"+String(new Date().getDate()).padStart(2,"0")+"T23:59"} className="mt-2" />
 
                   <button
                     type="button"

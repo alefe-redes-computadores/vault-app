@@ -1,5 +1,7 @@
 // app/saude/renovacao/nova-receita/page.tsx
 "use client";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
+import { CustomDatePicker } from "@/components/DatePicker";
 
 import {
   Suspense,
@@ -437,16 +439,16 @@ function NovaReceitaContent() {
                 Medicamento
               </label>
 
-              <select
+              <HealthRelationPicker title="Selecionar medicamento" medications={medicamentos}
                 value={
                   medicamentoId
                 }
-                onChange={
+                onValueChange={
                   (
                     event
                   ) =>
                     setMedicamentoId(
-                      event.target.value
+                      event
                     )
                 }
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
@@ -474,7 +476,7 @@ function NovaReceitaContent() {
                     </option>
                   )
                 )}
-              </select>
+              </HealthRelationPicker>
             </div>
 
             <div>
@@ -489,8 +491,8 @@ function NovaReceitaContent() {
                 Data da nova receita
               </label>
 
-              <input
-                type="date"
+              <CustomDatePicker
+
                 value={
                   dataReceita
                 }
@@ -499,7 +501,7 @@ function NovaReceitaContent() {
                     event
                   ) =>
                     setDataReceita(
-                      event.target.value
+                      event
                     )
                 }
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
@@ -518,16 +520,16 @@ function NovaReceitaContent() {
                 Médico
               </label>
 
-              <select
+              <HealthRelationPicker title="Selecionar prescritor" kind="doctor"
                 value={
                   medicoId
                 }
-                onChange={
+                onValueChange={
                   (
                     event
                   ) =>
                     setMedicoId(
-                      event.target.value
+                      event
                     )
                 }
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
@@ -555,7 +557,7 @@ function NovaReceitaContent() {
                     </option>
                   )
                 )}
-              </select>
+              </HealthRelationPicker>
             </div>
           </div>
 

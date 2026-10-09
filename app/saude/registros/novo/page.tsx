@@ -1,5 +1,8 @@
 // app/saude/registros/novo/page.tsx
 "use client";
+import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
+import {CustomDatePicker} from "@/components/DatePicker";
+import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
 
 import {
   useEffect,
@@ -1314,10 +1317,10 @@ export default function NovoRegistroSaudePage() {
                   size={
                     16
                   }
-                  className="text-ice"
+                  className="text-emerald-400"
                 />
 
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ink-muted">
                   Prontuário
                 </p>
               </div>
@@ -1396,7 +1399,7 @@ export default function NovoRegistroSaudePage() {
                       }
                       className={`flex items-center gap-2.5 rounded-2xl border p-3 text-left transition-all active:scale-95 ${
                         isSelected
-                          ? "border-ice bg-ice/10 shadow-sm"
+                          ? "border-ice bg-surface-raised shadow-sm"
                           : "border-surface-border/50 bg-surface-raised hover:border-surface-border"
                       }`}
                     >
@@ -1547,7 +1550,7 @@ export default function NovoRegistroSaudePage() {
                     Intensidade
                   </label>
 
-                  <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-0.5 font-mono text-sm font-bold text-ice">
+                  <span className="rounded-full border border-ice/20 bg-surface-raised px-2.5 py-0.5 font-mono text-sm font-bold text-emerald-400">
                     {intensidade ??
                       5}{" "}
                     / 10
@@ -1626,7 +1629,7 @@ export default function NovoRegistroSaudePage() {
                       ? "border-amber-400/30 bg-amber-400/10"
                       : insight.status ===
                           "atencao"
-                        ? "border-ice/30 bg-ice/10"
+                        ? "border-ice/30 bg-surface-raised"
                         : "border-emerald-400/30 bg-emerald-400/10"
                 }`}
               >
@@ -1641,7 +1644,7 @@ export default function NovoRegistroSaudePage() {
                           ? "border-amber-400/40 bg-amber-400/20 text-amber-400"
                           : insight.status ===
                               "atencao"
-                            ? "border-ice/40 bg-ice/20 text-ice"
+                            ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-400"
                             : "border-emerald-400/40 bg-emerald-400/20 text-emerald-400"
                     }`}
                   >
@@ -1674,7 +1677,7 @@ export default function NovoRegistroSaudePage() {
                             ? "text-amber-400"
                             : insight.status ===
                                 "atencao"
-                              ? "text-ice"
+                              ? "text-emerald-400"
                               : "text-emerald-400"
                       }`}
                     >
@@ -1731,41 +1734,7 @@ export default function NovoRegistroSaudePage() {
                   </span>
                 </label>
 
-                <div className="relative">
-                  <Calendar
-                    size={
-                      16
-                    }
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-                  />
-
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="DD/MM/AAAA"
-                    maxLength={
-                      10
-                    }
-                    value={
-                      dataDisplay
-                    }
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setDataDisplay(
-                          handleDateMask(
-                            event.target.value
-                          )
-                        )
-                    }
-                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50 ${
-                      errors.data
-                        ? "border-coral/50"
-                        : "border-surface-border/50"
-                    }`}
-                  />
-                </div>
+                <CustomDatePicker value={parseDateToISO(dataDisplay)||""} onChange={v=>setDataDisplay(v?v.split("-").reverse().join("/"):"")}/>
 
                 {errors.data && (
                   <p className="ml-1 text-xs text-coral">
@@ -1792,41 +1761,7 @@ export default function NovoRegistroSaudePage() {
                   </span>
                 </label>
 
-                <div className="relative">
-                  <Clock
-                    size={
-                      16
-                    }
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-                  />
-
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="00:00"
-                    maxLength={
-                      5
-                    }
-                    value={
-                      horario
-                    }
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setHorario(
-                          handleTimeMask(
-                            event.target.value
-                          )
-                        )
-                    }
-                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm outline-none focus:border-ice/50 ${
-                      errors.horario
-                        ? "border-coral/50 text-coral"
-                        : "border-surface-border/50 text-ink-primary"
-                    }`}
-                  />
-                </div>
+                <HealthTimePicker value={horario} onChange={setHorario}/>
 
                 {errors.horario && (
                   <p className="ml-1 text-xs text-coral">
@@ -2164,11 +2099,7 @@ export default function NovoRegistroSaudePage() {
               className="flex w-full items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left transition-all active:scale-[0.99]"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400">
-                <Pill
-                  size={
-                    16
-                  }
-                />
+                <MedicationFormatIcon formato={selectedMedicamento?.formato} cores={selectedMedicamento?.cores} size={28}/>
               </div>
 
               <div className="min-w-0">
@@ -2290,27 +2221,7 @@ export default function NovoRegistroSaudePage() {
           }
           title="Selecionar Medicamento"
           placeholder="Buscar medicamento..."
-          renderItem={
-            (
-              item
-            ) => (
-              <div>
-                <p className="font-medium text-ink-primary">
-                  {
-                    item.nome
-                  }
-                </p>
-
-                {item.dosagem && (
-                  <p className="text-xs text-ink-muted">
-                    {
-                      item.dosagem
-                    }
-                  </p>
-                )}
-              </div>
-            )
-          }
+          renderItem={item=><div className="flex items-center gap-3"><MedicationFormatIcon formato={item.formato} cores={item.cores} size={28}/><div className="min-w-0"><p className="truncate font-medium text-ink-primary">{item.nome}</p><p className="text-xs text-ink-muted">{item.dosagem}</p></div></div>}
           getItemId={
             (
               item

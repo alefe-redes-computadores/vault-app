@@ -76,7 +76,7 @@ export function Toast({
   // Se um ícone customizado foi enviado, use-o. Senão, pegue o padrão do tipo.
   const Icon = CustomIcon || ICONS[type];
   const accent = ACCENTS[type];
-  
+
   // Só aplica a animação de giro se for o ícone de loading oficial (sem customização)
   const isSpin = type === "loading" && !CustomIcon;
 
@@ -97,7 +97,7 @@ export function Toast({
         >
           <div
             className={[
-              "flex items-start gap-3 rounded-2xl border bg-surface/92 p-3.5 backdrop-blur-xl",
+              "flex items-center gap-2 rounded-xl border bg-surface/92 px-3 py-2 backdrop-blur-xl",
               "shadow-lg",
               accent.ring,
               accent.glow,
@@ -105,7 +105,7 @@ export function Toast({
           >
             <div
               className={[
-                "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/5",
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/5",
                 accent.iconWrap,
               ].join(" ")}
             >
@@ -113,7 +113,7 @@ export function Toast({
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm leading-5 text-ink-primary">{message}</p>
+              <p className="text-xs leading-4 text-ink-primary">{message}</p>
 
               {action && (
                 <button

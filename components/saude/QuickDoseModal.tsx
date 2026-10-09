@@ -1,5 +1,6 @@
 // components/saude/QuickDoseModal.tsx
 "use client";
+import { CustomDatePicker } from "@/components/DatePicker";
 
 import {
   useEffect,
@@ -2779,7 +2780,7 @@ export function QuickDoseModal({
                 />
               </div>
 
-              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data da tomada</span><input type="date" value={doseDate} max={today} disabled={isSaving} onChange={e=>setDoseDate(e.target.value||today)} className="h-10 w-full rounded-xl border border-surface-border/50 bg-surface px-3 text-xs font-semibold text-ink-primary outline-none"/><span className="mt-1 block text-[9px] text-ink-faint">Hoje vem selecionado; altere apenas para uma tomada que já aconteceu.</span></label>
+              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data da tomada</span><CustomDatePicker value={doseDate} maxDate={today} disabled={isSaving} onChange={next=>setDoseDate(next||today)} /><span className="mt-1 block text-[9px] text-ink-faint">Hoje vem selecionado; altere apenas para uma tomada que já aconteceu.</span></label>
             </div>
           </div>
 

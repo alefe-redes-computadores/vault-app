@@ -1,5 +1,6 @@
 // app/saude/renovacao/detalhes/page.tsx
 "use client";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 
@@ -1024,11 +1025,7 @@ function DetalhesRenovacaoContent() {
               <div
                 className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
               >
-                <Receipt
-                  size={
-                    24
-                  }
-                />
+                <MedicationFormatIcon formato={medicamento?.formato} cores={medicamento?.cores} size={28} />
               </div>
 
               <div className="min-w-0 flex-1 pt-1">

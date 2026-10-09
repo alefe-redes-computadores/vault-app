@@ -1,5 +1,8 @@
 // app/hoje/page.tsx
 "use client";
+import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
+import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
@@ -833,6 +836,7 @@ export default function HojePage() {
   // Mutex síncrono: dois toques antes do próximo render não podem
   // iniciar dois lotes e disputar o mesmo estoque.
   const batchOperationLock = useRef(false);
+  const [batchTargetKeys,setBatchTargetKeys]=useState<string[] | null>(null);
 
   const [loteConfirmado, setLoteConfirmado] =
     useState<DoseItemExt[]>([]);
@@ -1958,6 +1962,8 @@ export default function HojePage() {
   // VAULT_HOJE_DOSES_V45
   // Somente slots programados vencidos/agora e ainda não resolvidos.
   // A chave medicamento+horário impede baixa dupla por dado legado.
+  useEffect(() => { if(!isBatchTimeModalOpen)setBatchTargetKeys(null); }, [isBatchTimeModalOpen]);
+
   const dosesElegiveisLote =
     isHoje
       ? Array.from(
@@ -1967,7 +1973,7 @@ export default function HojePage() {
                 Boolean(dose.medicamentoId) &&
                 !dose.tomada &&
                 !dose.ignorada &&
-                dose.horario <= horaAtual
+                (batchTargetKeys ? batchTargetKeys.includes(`${dose.medicamentoId}-${dose.horario}`) : dose.horario <= horaAtual)
             )
             .reduce((map, dose) => {
               const key = `${dose.medicamentoId}-${dose.horario}`;
@@ -2367,6 +2373,7 @@ export default function HojePage() {
   };
 
   const handleTomarTodos = () => {
+    setBatchTargetKeys(null);
     if (
       processandoTodos ||
       processandoDoseId ||
@@ -2400,6 +2407,11 @@ export default function HojePage() {
       processandoDoseId ||
       dosesElegiveisLote.length < 2
     ) {
+      return;
+    }
+
+    if (mode === "scheduled" && dosesElegiveisLote.some(dose => new Date(`${dataSelecionada}T${dose.horario}:00`).getTime() > Date.now())) {
+      showToast("Esse horário ainda não chegou. Use Tomei agora ou informe a hora real.", "error");
       return;
     }
 
@@ -3408,12 +3420,7 @@ export default function HojePage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2">
-                  <Pill
-                    size={
-                      16
-                    }
-                    className="text-ice"
-                  />
+                  <Pill size={16} className="text-emerald-400" />
 
                   <div>
                     <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
@@ -3589,12 +3596,8 @@ export default function HojePage() {
                       }
 
                       if (isRetirada) {
-                        return (
-                          <Pill
-                            size={18}
-                            className="text-ice"
-                          />
-                        );
+                        const med = medicamentos.find(m => m.id === item.medicamento_id);
+                        return <MedicationFormatIcon formato={med?.formato} cores={med?.cores} size={26} />;
                       }
 
                       return (
@@ -3623,7 +3626,7 @@ export default function HojePage() {
                         }
 
                         if (isRetirada) {
-                          return "border-ice/30 bg-ice/5";
+                          return "border-amber-400/25 bg-amber-400/5";
                         }
 
                         return "border-emerald-400/30 bg-emerald-400/5";
@@ -3850,8 +3853,7 @@ export default function HojePage() {
                     </div>
 
                     <div className="space-y-2">
-                      {grupo.items.map(
-                        (item) => {
+                      <DoseScheduleGroups items={grupo.items} renderItem={(item) => {
                           if (
                             item.isSintoma
                           ) {
@@ -4605,8 +4607,7 @@ export default function HojePage() {
                               </div>
                             </motion.div>
                           );
-                        }
-                      )}
+                        }} disabled={Boolean(processandoTodos || processandoDoseId)} onTakeGroup={isHoje ? slots => { if(processandoTodos || processandoDoseId)return;setBatchTargetKeys(slots.map(d=>`${d.medicamentoId}-${d.horario}`));setBatchCustomTime(horaAtual);setIsBatchTimeModalOpen(true); } : undefined} />
                     </div>
                   </div>
                 );
@@ -4707,14 +4708,7 @@ export default function HojePage() {
                       Tomei todas em outro horário
                     </label>
                     <div className="mt-2 flex gap-2">
-                      <input
-                        id="vault-batch-real-time"
-                        type="time"
-                        value={batchCustomTime}
-                        onChange={(event) => setBatchCustomTime(event.target.value)}
-                        disabled={processandoTodos}
-                        className="min-w-0 flex-1 rounded-xl border border-surface-border bg-void px-3 py-2.5 text-sm font-semibold text-ink-primary outline-none focus:border-ice/50 disabled:opacity-50"
-                      />
+                      <fieldset disabled={processandoTodos} className="min-w-0 flex-1"><HealthTimePicker value={batchCustomTime} onChange={setBatchCustomTime} /></fieldset>
                       <button
                         type="button"
                         disabled={processandoTodos || !batchCustomTime}
@@ -5026,27 +5020,7 @@ export default function HojePage() {
                         Quando tomou?
                       </span>
 
-                      <input
-                        type="datetime-local"
-                        value={
-                          historicalCustomTakenAt
-                        }
-                        min={
-                          `${dataSelecionada}T00:00`
-                        }
-                        max={
-                          `${dataSelecionada}T23:59`
-                        }
-                        onChange={
-                          (
-                            event
-                          ) =>
-                            setHistoricalCustomTakenAt(
-                              event.target.value
-                            )
-                        }
-                        className="mt-2 w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 font-mono text-sm text-ink-primary outline-none transition-colors focus:border-ice/50"
-                      />
+                      <HealthDateTimePicker value={historicalCustomTakenAt} onChange={setHistoricalCustomTakenAt} min={`${dataSelecionada}T00:00`} max={`${dataSelecionada}T23:59`} disabled={isHistoricalProcessing} className="mt-2" />
                     </label>
 
                     <div className="mt-3 grid grid-cols-2 gap-2">

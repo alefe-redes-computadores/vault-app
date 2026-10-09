@@ -111,6 +111,9 @@ jobs:
 
       - name: Aplicar edge-to-edge nativo
         run: node scripts/patch-android-edge-to-edge-v28.mjs
+      - name: Configurar Health Connect e validar ferramentas Android
+        run: node scripts/patch-android-health-connect-v113.mjs
+
       - name: Instalar ícone de notificações Android
         run: |
           test -f assets/android/ic_stat_vault.xml

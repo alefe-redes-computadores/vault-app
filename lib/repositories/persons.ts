@@ -282,6 +282,7 @@ export const personsRepository = {
       "rw",
       [
         db.persons,
+        db.health_profiles,db.health_devices,db.registros_saude,db.health_connect_connections,db.health_connect_imports,
         db.documents,
         db.medicamentos,
         db.consultas,
@@ -339,6 +340,12 @@ export const personsRepository = {
           .equals(id)
           .delete();
 
+        await db.registros_saude.where("person_id").equals(id).delete();
+        await db.health_profiles.where("person_id").equals(id).delete();
+        await db.health_devices.where("person_id").equals(id).delete();
+        await db.health_connect_connections.where("person_id").equals(id).delete();
+        await db.health_connect_imports.where("person_id").equals(id).delete();
+        await db.syncQueue.filter(q=>["health_profiles","health_devices","registros_saude"].includes(q.table)&&q.payload.person_id===id).delete();
         await db.persons.delete(
           id
         );

@@ -1,3 +1,4 @@
+import { buildLifestyleInsights } from "./health-intelligence/lifestyle-insights";
 import type {SupplyData} from "./health-supply/types";
 import {buildSupplyInsights} from "./health-intelligence/supply-insights";
 // lib/health-insights.ts
@@ -9505,6 +9506,7 @@ export function gerarInsightsSaude(
 
   // VAULT_BRAIN_V101: módulos independentes preservam a API canônica.
   insights.push(...buildBehaviorInsights(contexto));
+  insights.push(...buildLifestyleInsights({ ...contexto, medicamentos, doseLogs, registrosSaude, hoje: contexto.hoje || getLocalTodayISO() }));
 
   // ----------------------------------------------------------
   // DEDUPLICAÇÃO + ORDENAÇÃO

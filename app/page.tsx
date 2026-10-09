@@ -1453,10 +1453,10 @@ export default function HomePage() {
                 : "Planejamento",
 
             title:
-              primaryMedicationCareOpportunity.title,
+              "Há cuidados para revisar",
 
             description:
-              primaryMedicationCareOpportunity.message,
+              "Confira abaixo o medicamento, o motivo e as ações disponíveis.",
 
             color:
               primaryMedicationCareOpportunity.level ===
@@ -2398,7 +2398,7 @@ export default function HomePage() {
 
               <div
                 className={
-                  mostrarTodosAlertas
+                  (mostrarTodosAlertas || unifiedAlerts.length === 1)
                     ? "space-y-2"
                     : "-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 }
@@ -2419,7 +2419,7 @@ export default function HomePage() {
                         alert.id
                       }
                       className={
-                        mostrarTodosAlertas
+                        (mostrarTodosAlertas || unifiedAlerts.length === 1)
                           ? "w-full"
                           : "w-[88%] shrink-0 snap-start sm:w-[72%]"
                       }
@@ -2577,7 +2577,7 @@ export default function HomePage() {
                           insight
                         );
                       }}
-                      className={`flex w-[86%] min-w-[86%] snap-start items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] sm:w-[72%] sm:min-w-[72%] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
+                      className={`flex ${longitudinalHighlights.length === 1 ? "w-full min-w-full" : "w-[86%] min-w-[86%] sm:w-[72%] sm:min-w-[72%]"} snap-start items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
                     >
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-violet-400/10 text-violet-300"}`}>
                         {(insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ? <AlertCircle size={17}/> : <Activity
@@ -2873,11 +2873,7 @@ export default function HomePage() {
                       className="flex w-full items-center gap-3 rounded-[20px] border border-ice/25 bg-ice/[0.04] p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                        <Pill
-                          size={
-                            17
-                          }
-                        />
+                        <MedicationFormatIcon formato={medicamentos.find(m => m.id === retirada.medicamento_id)?.formato} cores={medicamentos.find(m => m.id === retirada.medicamento_id)?.cores} size={22} />
                       </div>
 
                       <div className="min-w-0 flex-1">

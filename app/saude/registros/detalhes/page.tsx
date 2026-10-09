@@ -1,5 +1,7 @@
 // app/saude/registros/detalhes/page.tsx
 "use client";
+import {HealthRecordSource} from "@/components/saude/HealthRecordSource";
+import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 
 import {
   Suspense,
@@ -833,6 +835,7 @@ function DetalhesRegistroSaudeContent() {
             </div>
           </div>
         </header>
+      <HealthRecordSource record={registro}/>
 
         {/* ====================================================
             CONTEÚDO
@@ -1230,11 +1233,7 @@ function DetalhesRegistroSaudeContent() {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
-                      <Pill
-                        size={
-                          18
-                        }
-                      />
+                      <MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={28}/>
                     </div>
 
                     <div className="min-w-0">

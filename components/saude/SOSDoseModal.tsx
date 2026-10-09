@@ -1,5 +1,6 @@
 // components/saude/SOSDoseModal.tsx
 "use client";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -240,16 +241,7 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
                   Hora
                 </label>
                 <div className="relative">
-                  <Clock
-                    size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
-                  />
-                  <input
-                    type="time"
-                    value={hora}
-                    onChange={(e) => setHora(e.target.value)}
-                    className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised pl-10 pr-4 py-3 text-ink-primary font-mono text-sm outline-none focus:border-ice"
-                  />
+                  <HealthTimePicker value={hora} onChange={setHora} />
                 </div>
               </div>
 

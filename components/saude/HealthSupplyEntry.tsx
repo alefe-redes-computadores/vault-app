@@ -19,8 +19,8 @@ export function HealthSupplyEntry({
       ),
   );
   return (
-    <div className="rounded-[24px] border border-ice/20 bg-surface p-4">
-      <div className="flex items-center gap-2 text-ice">
+    <div className="rounded-[24px] border border-surface-border bg-surface p-4">
+      <div className="flex items-center gap-2 text-ink-primary">
         <FolderHeart size={17} />
         <h2 className="text-sm font-bold">Fornecimento e documentos</h2>
       </div>
@@ -31,7 +31,7 @@ export function HealthSupplyEntry({
       </p>
       <Link
         href={`/saude/fornecimento?medicamento_id=${encodeURIComponent(medicamentoId)}${retiradaId ? `&retirada_id=${encodeURIComponent(retiradaId)}` : ""}`}
-        className="mt-3 flex items-center justify-between rounded-2xl bg-ice/10 p-3 text-xs font-bold text-ice"
+        className="mt-3 flex items-center justify-between rounded-2xl bg-surface-raised p-3 text-xs font-bold text-ink-primary"
       >
         {retiradaId
           ? "Preparar documentos da retirada"

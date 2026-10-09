@@ -1,3 +1,5 @@
+import type { ConnectConnection, ConnectImport } from "@/lib/health-connect/types";
+import type {HealthProfile,HealthDevice} from "@/lib/health-profile/types";
 import type {SupplyProcess,SupplyCycle,SupplyItem,SupplyDocumentLink} from "@/lib/health-supply/types";
 // lib/db/index.ts
 
@@ -175,6 +177,10 @@ class VaultDB extends Dexie {
 
   versiculos!: Table<Versiculo, string>;
 
+  health_profiles!: Table<HealthProfile,string>;
+  health_devices!: Table<HealthDevice,string>;
+  health_connect_connections!: Table<ConnectConnection,string>;
+  health_connect_imports!: Table<ConnectImport,string>;
   registros_saude!: Table<RegistroSaude, string>;
 
   health_reminders!: Table<HealthReminderRule, string>;
@@ -1366,6 +1372,9 @@ class VaultDB extends Dexie {
       fornecimento_documentos: "id, user_id, person_id, processo_id, ciclo_id, document_id, retirada_id, synced, updated_at",
       retiradas: "id, user_id, person_id, medicamento_id, renovacao_origem_id, renovacao_realizada_id, data, status, fornecimento_id, fornecimento_ciclo_id, synced, updated_at",
     });
+    this.version(41).stores({health_profiles:"id, user_id, &person_id, synced, updated_at",health_devices:"id, user_id, person_id, active, synced, updated_at"});
+    // V113: phone-local permissions and import ledger; clinical records keep the canonical sync queue.
+    this.version(42).stores({health_connect_connections:"id, user_id, person_id",health_connect_imports:"id, user_id, person_id, record_id"});
   }
 }
 

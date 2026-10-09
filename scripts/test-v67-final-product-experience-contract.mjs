@@ -8,7 +8,7 @@ const ok = (value, message) => {
 
 const timeline = read("app/saude/timeline/page.tsx");
 const intelligence = read("app/inteligencia/saude/page.tsx");
-const hydration = read("app/saude/hidratacao/page.tsx");
+const hydration = read("components/saude/HydrationPanel.tsx");
 const reminders = read("app/saude/lembretes/page.tsx");
 const profile = read("app/perfil/page.tsx");
 const more = read("app/mais/page.tsx");

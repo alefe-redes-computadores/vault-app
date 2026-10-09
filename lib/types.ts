@@ -747,6 +747,8 @@ export interface SyncQueueItem {
     | "versiculos"
     | "registros_saude"
     | "health_reminders"
+    | "health_profiles"
+    | "health_devices"
     | "health_goals";
   operation: "add" | "update" | "delete";
   payload: Record<string, unknown>;
@@ -1162,6 +1164,11 @@ export interface Consulta {
 // ============================================================
 
 export interface RegistroSaude {
+  device_id?: string | null;
+  source?: "manual" | "samsung_manual" | "health_connect" | null;
+  source_record_id?: string | null;
+  inicio_em?: string | null;
+  fim_em?: string | null;
   id?: string;
   user_id: string;
   person_id?: string;

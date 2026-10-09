@@ -1,5 +1,9 @@
 // app/saude/retiradas/detalhes/page.tsx
 "use client";
+import Link from "next/link";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRenovacoes} from "@/hooks/useRenovacoes";
 import {WithdrawalPreparationSummary} from "@/components/saude/WithdrawalPreparationSummary";
 
@@ -224,7 +228,7 @@ function DetalhesRetiradaContent() {
               "/saude/retiradas"
             )
           }
-          className="mt-4 text-sm font-semibold text-ice"
+          className="mt-4 text-sm font-semibold text-ink-primary"
         >
           Voltar às retiradas
         </button>
@@ -534,6 +538,7 @@ function DetalhesRetiradaContent() {
             "Médico",
           value:
             medico.nome,
+          href: `/saude/medicos/detalhes?id=${medico.id}`,
         }
       : null,
 
@@ -545,6 +550,7 @@ function DetalhesRetiradaContent() {
             "Farmácia",
           value:
             farmacia.nome,
+          href: `/saude/farmacias/detalhes?id=${farmacia.id}`,
         }
       : null,
 
@@ -556,6 +562,7 @@ function DetalhesRetiradaContent() {
             "Hospital",
           value:
             hospital.nome,
+          href: `/saude/hospitais/detalhes?id=${hospital.id}`,
         }
       : null,
 
@@ -567,6 +574,7 @@ function DetalhesRetiradaContent() {
             "Local",
           value:
             local.nome,
+          href: `/saude/locais/detalhes?id=${local.id}`,
         }
       : null,
   ].filter(
@@ -575,6 +583,7 @@ function DetalhesRetiradaContent() {
     icon: typeof Store;
     label: string;
     value: string;
+    href: string;
   }>;
 
   return (
@@ -604,7 +613,7 @@ function DetalhesRetiradaContent() {
                     `/saude/retiradas/editar?id=${retirada.id}`
                   )
                 }
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-ice/25 bg-ice/10 text-ice"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-raised text-ink-primary"
               >
                 <Edit3
                   size={16}
@@ -636,9 +645,9 @@ function DetalhesRetiradaContent() {
 
         <section className="space-y-4 px-5 pt-5">
           <WithdrawalPreparationSummary withdrawalId={retirada.id!}/>
-          <div className="rounded-[28px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface p-5">
+          <div className="rounded-[28px] border border-surface-border bg-gradient-to-br from-surface-raised via-surface to-surface p-5">
             <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-surface-raised text-ink-primary">
                 <MedicationFormatIcon
                   formato={medicamento?.formato}
                   cores={medicamento?.cores}
@@ -647,7 +656,7 @@ function DetalhesRetiradaContent() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ice">
+                <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-primary">
                   Retirada de medicamento
                 </p>
 
@@ -673,7 +682,7 @@ function DetalhesRetiradaContent() {
                 <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-ink-muted">
                   <Calendar
                     size={12}
-                    className="text-ice"
+                    className="text-ink-primary"
                   />
                   Data
                 </div>
@@ -691,7 +700,7 @@ function DetalhesRetiradaContent() {
                 <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-ink-muted">
                   <Clock
                     size={12}
-                    className="text-ice"
+                    className="text-ink-primary"
                   />
                   Horário
                 </div>
@@ -712,7 +721,7 @@ function DetalhesRetiradaContent() {
             </p>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full border border-ice/20 bg-ice/10 px-3 py-1.5 text-[10px] font-bold uppercase text-ice">
+              <span className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${retirada.status === "realizada" ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400" : retirada.status === "cancelada" ? "border-coral/20 bg-coral/10 text-coral" : "border-amber-300/20 bg-amber-300/10 text-amber-300"}`}>
                 {
                   retirada.status.replace(
                     "_",
@@ -732,7 +741,7 @@ function DetalhesRetiradaContent() {
           {info.length >
             0 && (
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-ice">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-ink-primary">
                 Vínculos
               </p>
 
@@ -745,7 +754,8 @@ function DetalhesRetiradaContent() {
                       item.icon;
 
                     return (
-                      <div
+                      <Link
+                        href={item.href}
                         key={
                           item.label
                         }
@@ -753,7 +763,7 @@ function DetalhesRetiradaContent() {
                       >
                         <Icon
                           size={15}
-                          className="text-ice"
+                          className={item.label === "Médico" ? "text-lavender" : item.label === "Local" || item.label === "Hospital" ? "text-amber-300" : "text-emerald-400"}
                         />
 
                         <div>
@@ -769,7 +779,7 @@ function DetalhesRetiradaContent() {
                             }
                           </p>
                         </div>
-                      </div>
+                      </Link>
                     );
                   }
                 )}
@@ -784,7 +794,7 @@ function DetalhesRetiradaContent() {
           retirada.exige_nova_receita ||
           retirada.observacoes ? (
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ice">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-primary">
                 Planejamento
               </p>
 
@@ -829,7 +839,7 @@ function DetalhesRetiradaContent() {
                 onClick={
                   openReschedule
                 }
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-ice/25 bg-ice/10 px-4 py-3.5 text-sm font-bold text-ice disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-surface-border bg-surface-raised px-4 py-3.5 text-sm font-bold text-ink-primary disabled:opacity-50"
               >
                 <Clock
                   size={17}
@@ -892,7 +902,7 @@ function DetalhesRetiradaContent() {
             retirada.reagendamentos.length >
               0 && (
             <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ice">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-primary">
                 Histórico de reagendamentos
               </p>
 
@@ -956,7 +966,7 @@ function DetalhesRetiradaContent() {
               Registrar aquisição / estoque
             </button>
           )}
-          {!retirada.renovacao_realizada_id && ["agendada","realizada"].includes(retirada.status) ? <div className="rounded-2xl border border-surface-border bg-surface p-4"><label htmlFor="existing-receipt" className="block text-xs font-bold text-ink-primary">Já registrou o estoque? Vincule a aquisição</label><p className="mt-1 text-[10px] text-ink-muted">Este vínculo conclui a retirada sem adicionar estoque novamente.</p><select id="existing-receipt" disabled={processing} defaultValue="" className="mt-3 min-h-[44px] w-full rounded-xl bg-surface-raised p-3 text-xs" onChange={async e=>{const select=e.currentTarget;const id=select.value;if(!id)return;setProcessing(true);try{await linkReceipt(retirada.id!,id);showToast("Aquisição vinculada sem alterar estoque","success");}catch(error){showToast(error instanceof Error?error.message:"Não foi possível vincular","error");}finally{setProcessing(false);select.value="";}}}><option value="">Selecionar aquisição já registrada</option>{renovacoes.filter(a=>a.medicamento_id===retirada.medicamento_id&&a.data_aquisicao&&a.quantidade&&a.quantidade>0&&(retirada.tipo!=="sus"||a.tipo_aquisicao==="sus")).map(a=><option key={a.id} value={a.id}>{a.data_aquisicao} · {a.quantidade} unidades · {a.observacoes||"Aquisição"}</option>)}</select></div> : null}
+          {!retirada.renovacao_realizada_id && ["agendada","realizada"].includes(retirada.status) ? <div className="rounded-2xl border border-surface-border bg-surface p-4"><label htmlFor="existing-receipt" className="block text-xs font-bold text-ink-primary">Já registrou o estoque? Vincule a aquisição</label><p className="mt-1 text-[10px] text-ink-muted">Este vínculo conclui a retirada sem adicionar estoque novamente.</p><HealthRelationPicker title="Vincular aquisição já registrada" medication={medicamento} id="existing-receipt" disabled={processing} defaultValue="" className="mt-3 min-h-[44px] w-full rounded-xl bg-surface-raised p-3 text-xs" onValueChange={async id=>{if(!id)return;setProcessing(true);try{await linkReceipt(retirada.id!,id);showToast("Aquisição vinculada sem alterar estoque","success");}catch(error){showToast(error instanceof Error?error.message:"Não foi possível vincular","error");}finally{setProcessing(false);}}}><option value="">Selecionar aquisição já registrada</option>{renovacoes.filter(a=>a.medicamento_id===retirada.medicamento_id&&a.data_aquisicao&&a.quantidade&&a.quantidade>0&&(retirada.tipo!=="sus"||a.tipo_aquisicao==="sus")).map(a=><option key={a.id} value={a.id}>{formatDate(a.data_aquisicao!)} · {a.quantidade} unidades · {a.observacoes||"Aquisição"}</option>)}</HealthRelationPicker></div> : null}
 
         </section>
 
@@ -983,7 +993,7 @@ function DetalhesRetiradaContent() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-ice">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-ink-primary">
                     Reagendar retirada
                   </p>
 
@@ -1025,8 +1035,8 @@ function DetalhesRetiradaContent() {
                     Nova data
                   </span>
 
-                  <input
-                    type="date"
+                  <CustomDatePicker
+
                     value={
                       rescheduleDate
                     }
@@ -1034,7 +1044,7 @@ function DetalhesRetiradaContent() {
                       event
                     ) =>
                       setRescheduleDate(
-                        event.target.value
+                        event
                       )
                     }
                     className="mt-1.5 w-full rounded-2xl border border-surface-border bg-surface-raised px-3.5 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
@@ -1046,8 +1056,8 @@ function DetalhesRetiradaContent() {
                     Horário
                   </span>
 
-                  <input
-                    type="time"
+                  <HealthTimePicker
+
                     value={
                       rescheduleTime
                     }
@@ -1055,7 +1065,7 @@ function DetalhesRetiradaContent() {
                       event
                     ) =>
                       setRescheduleTime(
-                        event.target.value
+                        event
                       )
                     }
                     className="mt-1.5 w-full rounded-2xl border border-surface-border bg-surface-raised px-3.5 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
@@ -1110,7 +1120,7 @@ function DetalhesRetiradaContent() {
                   onClick={
                     handleReschedule
                   }
-                  className="rounded-2xl bg-ice px-4 py-3 text-xs font-bold text-void disabled:opacity-40"
+                  className="rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void disabled:opacity-40"
                 >
                   {processing
                     ? "Salvando..."

@@ -1,5 +1,6 @@
 // app/saude/tratamentos/novo/page.tsx
 "use client";
+import {CustomDatePicker} from "@/components/DatePicker";
 
 import {
   useRef,
@@ -963,16 +964,7 @@ export default function NovoTratamentoPage() {
               autoFocus
             />
 
-            <Input
-              label="Data de início"
-              type="date"
-              value={dataInicio}
-              onChange={(event) =>
-                setDataInicio(
-                  event.target.value
-                )
-              }
-            />
+            <CustomDatePicker label="Data de início" value={dataInicio} onChange={setDataInicio}/>
 
             {/* =================================================
                 CIDS

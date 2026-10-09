@@ -1,5 +1,6 @@
 // app/saude/lembretes/page.tsx
 "use client";
+import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
@@ -186,12 +187,12 @@ export default function HealthRemindersPage() {
           <h1 className="font-display text-2xl font-bold">Lembretes de saúde</h1>
           <p className="text-sm text-ink-muted">{isLoading ? "Carregando sua rotina…" : `${activeCount} ativo(s) · ${reminders.length} no total`}</p>
         </div>
-        <button type="button" onClick={() => { reset(); setFormOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice text-void" aria-label="Criar lembrete"><Plus size={20} /></button>
+        <button type="button" onClick={() => { reset(); setFormOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-void" aria-label="Criar lembrete"><Plus size={20} /></button>
       </header>
 
       {/* VAULT_REMINDER_INTENT_UX_V67 */}
-      <section className="mx-auto mt-5 max-w-xl rounded-3xl border border-ice/15 bg-gradient-to-br from-ice/[0.06] to-surface p-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ice">Rotina guiada</p>
+      <section className="mx-auto mt-5 max-w-xl rounded-3xl border border-amber-400/15 bg-gradient-to-br from-ice/[0.06] to-surface p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">Rotina guiada</p>
         <h2 className="mt-1 text-base font-bold">Lembre do que importa, do seu jeito</h2>
         <p className="mt-1 text-xs leading-relaxed text-ink-muted">
           Escolha primeiro a finalidade do lembrete. Horário e frequência vêm depois — sem precisar configurar opções técnicas para começar.
@@ -208,13 +209,13 @@ export default function HealthRemindersPage() {
           <div className="flex items-center gap-3 text-xs text-emerald-400"><CheckCircle2 size={18} />Notificações autorizadas neste aparelho.</div>
         ) : (
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 shrink-0 text-ice" size={18} /><p className="text-xs text-ink-muted">Autorize quando quiser receber os lembretes neste aparelho.</p></div>
-            <button disabled={busyId !== null} onClick={() => void enableNotifications()} className="shrink-0 rounded-xl bg-ice px-3 py-2 text-xs font-bold text-void">Permitir</button>
+            <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 shrink-0 text-amber-300" size={18} /><p className="text-xs text-ink-muted">Autorize quando quiser receber os lembretes neste aparelho.</p></div>
+            <button disabled={busyId !== null} onClick={() => void enableNotifications()} className="shrink-0 rounded-xl bg-amber-400 px-3 py-2 text-xs font-bold text-void">Permitir</button>
           </div>
         )}
       </section>
 
-      {formOpen && <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-ice/20 bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+      {formOpen && <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-amber-400/20 bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="mb-3 flex items-center justify-between">
           <strong>{editing ? "Editar lembrete" : "Novo lembrete"}</strong>
           <button type="button" onClick={reset} aria-label="Fechar formulário"><X size={18} /></button>
@@ -225,7 +226,7 @@ export default function HealthRemindersPage() {
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               {HEALTH_REMINDER_TARGETS.map((target) => {
                 const selected = target.type === targetType;
-                return <button type="button" key={target.type} onClick={() => changeTarget(target.type)} className={`rounded-2xl border p-3 text-left transition-all ${selected ? "border-ice bg-ice/10 text-ice" : "border-surface-border bg-void text-ink-muted"}`}>
+                return <button type="button" key={target.type} onClick={() => changeTarget(target.type)} className={`rounded-2xl border p-3 text-left transition-all ${selected ? "border-amber-400 bg-amber-400/10 text-amber-300" : "border-surface-border bg-void text-ink-muted"}`}>
                   <span className="block text-xs font-bold">{target.label.replace("Registrar ", "")}</span>
                   <span className="mt-1 block text-[10px] leading-snug opacity-75">{target.description}</span>
                 </button>;
@@ -236,24 +237,24 @@ export default function HealthRemindersPage() {
             <input value={title} onChange={(event) => setTitle(event.target.value)} className="rounded-xl border border-surface-border bg-void p-3 text-sm text-ink-primary" />
           </label>
           <label className="grid gap-1 text-xs text-ink-muted">Horário
-            <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className="rounded-xl border border-surface-border bg-void p-3 text-sm text-ink-primary" />
+            <HealthTimePicker value={time} onChange={setTime} />
           </label>
           <fieldset>
             <legend className="text-xs font-medium text-ink-muted">Frequência</legend>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {([['daily','Todos os dias'],['weekly','Uma vez por semana'],['custom','Dias personalizados']] as const).map(([value,label]) => (
-                <button type="button" key={value} onClick={() => { setFrequency(value); setWeekdays([]); }} className={`rounded-xl border px-2 py-3 text-[11px] font-semibold ${frequency === value ? "border-ice bg-ice/10 text-ice" : "border-surface-border bg-void text-ink-muted"}`}>{label}</button>
+                <button type="button" key={value} onClick={() => { setFrequency(value); setWeekdays([]); }} className={`rounded-xl border px-2 py-3 text-[11px] font-semibold ${frequency === value ? "border-amber-400 bg-amber-400/10 text-amber-300" : "border-surface-border bg-void text-ink-muted"}`}>{label}</button>
               ))}
             </div>
           </fieldset>
           {frequency !== "daily" && (
             <div className="grid grid-cols-7 gap-1">
               {WEEKDAYS.map((label, day) => (
-                <button type="button" key={label} onClick={() => toggleDay(day)} className={`rounded-lg py-2 text-[10px] ${weekdays.includes(day) ? "bg-ice text-void" : "bg-void text-ink-muted"}`}>{label}</button>
+                <button type="button" key={label} onClick={() => toggleDay(day)} className={`rounded-lg py-2 text-[10px] ${weekdays.includes(day) ? "bg-amber-400 text-void" : "bg-void text-ink-muted"}`}>{label}</button>
               ))}
             </div>
           )}
-          <button type="button" disabled={busyId !== null || !title.trim() || !time || invalidDays} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-xl bg-ice p-3 font-semibold text-void disabled:opacity-40">
+          <button type="button" disabled={busyId !== null || !title.trim() || !time || invalidDays} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-xl bg-amber-400 p-3 font-semibold text-void disabled:opacity-40">
             {busyId === "form" && <Loader2 size={17} className="animate-spin" />}
             {editing ? "Salvar alterações" : "Criar lembrete"}
           </button>
@@ -261,13 +262,13 @@ export default function HealthRemindersPage() {
       </section>}
 
       <section className="mx-auto mt-4 grid max-w-xl gap-3">
-        {isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-ice" /></div>}
+        {isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-amber-300" /></div>}
         {!isLoading && reminders.length === 0 && (
           <button type="button" onClick={() => setFormOpen(true)} className="rounded-3xl border border-dashed border-surface-border p-8 text-center"><Bell className="mx-auto text-ink-faint" /><p className="mt-3 text-sm font-semibold">Nenhum lembrete criado</p><p className="mt-1 text-xs text-ink-muted">Toque para criar apenas o que for útil para sua rotina.</p></button>
         )}
         {reminders.map((reminder) => (
-          <article key={reminder.id} className={`flex items-center gap-3 rounded-2xl border bg-surface p-4 ${reminder.status === "paused" ? "border-surface-border opacity-70" : "border-ice/20"}`}>
-            <div className={`rounded-xl p-2 ${reminder.status === "paused" ? "bg-void text-ink-faint" : "bg-ice/10 text-ice"}`}><Bell size={17} /></div>
+          <article key={reminder.id} className={`flex items-center gap-3 rounded-2xl border bg-surface p-4 ${reminder.status === "paused" ? "border-surface-border opacity-70" : "border-amber-400/20"}`}>
+            <div className={`rounded-xl p-2 ${reminder.status === "paused" ? "bg-void text-ink-faint" : "bg-amber-400/10 text-amber-300"}`}><Bell size={17} /></div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{reminder.title}</p>
               <p className="text-xs text-ink-muted">{reminder.time} · {reminder.frequency === "daily" ? "todos os dias" : reminder.weekdays.map((day) => WEEKDAYS[day]).join(", ")} · {reminder.status === "paused" ? "pausado" : "ativo"}</p>

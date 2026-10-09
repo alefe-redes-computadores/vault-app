@@ -84,6 +84,7 @@ import { InsightNotificationReconciler } from "@/components/InsightNotificationR
 import { DoseNotificationReconciler } from "@/components/DoseNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
 import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
+import { HealthConnectRuntime } from "@/components/saude/HealthConnectRuntime";
 import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
 
 // ============================================================
@@ -1227,6 +1228,7 @@ export function Providers({
           <DoseNotificationReconciler />
         </>
       )}
+      <HealthConnectRuntime />
       <GlobalSyncIssueAlert />
         <div className="min-h-screen pb-24">
           <Suspense

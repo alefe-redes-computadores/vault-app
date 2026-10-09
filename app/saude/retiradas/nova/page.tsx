@@ -1,5 +1,8 @@
 // app/saude/retiradas/nova/page.tsx
 "use client";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 
 import {
   Suspense,
@@ -423,7 +426,7 @@ function NovaRetiradaContent() {
             </button>
 
             <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ice">
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-primary">
                 Compromisso de saúde
               </p>
 
@@ -435,9 +438,9 @@ function NovaRetiradaContent() {
         </header>
 
         <section className="space-y-4 px-5 pt-5">
-          <div className="rounded-[26px] border border-ice/20 bg-gradient-to-br from-ice/10 to-surface p-4">
+          <div className="rounded-[26px] border border-surface-border bg-gradient-to-br from-ice/10 to-surface p-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice/10 text-ice">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-raised text-ink-primary">
                 <Pill
                   size={19}
                 />
@@ -458,15 +461,15 @@ function NovaRetiradaContent() {
           <div className="rounded-[26px] border border-surface-border/50 bg-surface p-4">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
               Medicamento *
-              <select
+              <HealthRelationPicker title="Selecionar medicamento" medications={medicamentos}
                 value={
                   medicamentoId
                 }
-                onChange={(
+                onValueChange={(
                   event
                 ) =>
                   setMedicamentoId(
-                    event.target.value
+                    event
                   )
                 }
                 className={
@@ -496,7 +499,7 @@ function NovaRetiradaContent() {
                     </option>
                   )
                 )}
-              </select>
+              </HealthRelationPicker>
             </label>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -508,8 +511,8 @@ function NovaRetiradaContent() {
                   Data *
                 </span>
 
-                <input
-                  type="date"
+                <CustomDatePicker
+
                   value={
                     data
                   }
@@ -517,7 +520,7 @@ function NovaRetiradaContent() {
                     event
                   ) =>
                     setData(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -534,8 +537,8 @@ function NovaRetiradaContent() {
                   Horário
                 </span>
 
-                <input
-                  type="time"
+                <HealthTimePicker
+
                   value={
                     horario
                   }
@@ -543,7 +546,7 @@ function NovaRetiradaContent() {
                     event
                   ) =>
                     setHorario(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -555,15 +558,15 @@ function NovaRetiradaContent() {
 
             <label className="mt-4 block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
               Tipo
-              <select
+              <HealthRelationPicker title="Tipo de retirada"
                 value={
                   tipo
                 }
-                onChange={(
+                onValueChange={(
                   event
                 ) =>
                   setTipo(
-                    event.target.value as
+                    event as
                       | "sus"
                       | "farmacia"
                       | "outro"
@@ -582,27 +585,27 @@ function NovaRetiradaContent() {
                 <option value="outro">
                   Outro
                 </option>
-              </select>
+              </HealthRelationPicker>
             </label>
           </div>
 
           <div className="rounded-[26px] border border-surface-border/50 bg-surface p-4">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-ice">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-ink-primary">
               Vínculos
             </p>
 
             <div className="space-y-3">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Médico
-                <select
+                <HealthRelationPicker title="Selecionar médico" kind="doctor"
                   value={
                     medicoId
                   }
-                  onChange={(
+                  onValueChange={(
                     event
                   ) =>
                     setMedicoId(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -630,20 +633,20 @@ function NovaRetiradaContent() {
                       </option>
                     )
                   )}
-                </select>
+                </HealthRelationPicker>
               </label>
 
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Farmácia
-                <select
+                <HealthRelationPicker title="Selecionar farmácia" kind="pharmacy"
                   value={
                     farmaciaId
                   }
-                  onChange={(
+                  onValueChange={(
                     event
                   ) =>
                     setFarmaciaId(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -671,20 +674,20 @@ function NovaRetiradaContent() {
                       </option>
                     )
                   )}
-                </select>
+                </HealthRelationPicker>
               </label>
 
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Hospital
-                <select
+                <HealthRelationPicker title="Selecionar hospital" kind="place"
                   value={
                     hospitalId
                   }
-                  onChange={(
+                  onValueChange={(
                     event
                   ) =>
                     setHospitalId(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -712,20 +715,20 @@ function NovaRetiradaContent() {
                       </option>
                     )
                   )}
-                </select>
+                </HealthRelationPicker>
               </label>
 
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Local
-                <select
+                <HealthRelationPicker title="Selecionar local" kind="place"
                   value={
                     localId
                   }
-                  onChange={(
+                  onValueChange={(
                     event
                   ) =>
                     setLocalId(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -753,7 +756,7 @@ function NovaRetiradaContent() {
                       </option>
                     )
                   )}
-                </select>
+                </HealthRelationPicker>
               </label>
             </div>
           </div>

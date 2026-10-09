@@ -1,6 +1,9 @@
 "use client";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { useState } from "react";
 import Link from "next/link";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {
   ClipboardCheck,
   CalendarClock,
@@ -24,9 +27,9 @@ import { supplyDossier, SUS_LINKS } from "@/lib/health-supply/knowledge";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { healthSupplyRepository as repo } from "@/lib/repositories/healthSupply";
 const input =
-  "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised p-3 text-sm text-ink-primary outline-none focus:border-ice/60";
+  "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised p-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const action =
-  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-ice/10 px-3 py-3 text-xs font-bold text-ice";
+  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-surface-raised px-3 py-3 text-xs font-bold text-ink-primary";
 type Props = {
   process: SupplyProcess;
   cycle: SupplyCycle;
@@ -88,12 +91,12 @@ export function SupplyPreparation({
   );
   return (
     <section className="overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface">
-      <div className="flex items-center gap-3 border-b border-surface-border/50 bg-gradient-to-br from-ice/10 to-transparent p-4">
-        <span className="rounded-2xl bg-ice/10 p-3 text-ice">
+      <div className="flex items-center gap-3 border-b border-surface-border/50 bg-gradient-to-br from-surface-raised to-transparent p-4">
+        <span className="rounded-2xl bg-surface-raised p-3 text-ink-primary">
           <ClipboardCheck size={21} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-ice">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ink-primary">
             Roteiro do fornecimento
           </p>
           <h2 className="mt-1 text-sm font-bold text-ink-primary">
@@ -165,7 +168,7 @@ export function SupplyPreparation({
               className="rounded-xl bg-amber-500/5 p-3 text-[11px] leading-relaxed text-ink-muted"
             >
               <FileText size={14} className="mr-1 inline text-amber-300" />
-              <strong className="text-ink-primary">{med.nome}</strong>:{" "}
+              <MedicationFormatIcon formato={med.formato} cores={med.cores} size={18} className="mr-1 inline-block align-middle" /><strong className="text-ink-primary">{med.nome}</strong>:{" "}
               {d.prescriptionModel} a cada retirada.
             </p>
           ) : null
@@ -190,34 +193,34 @@ export function SupplyPreparation({
           >
             <label className="block text-xs text-ink-muted">
               Motivo da documentação
-              <select
+              <HealthRelationPicker title="Motivo do ciclo"
                 className={input}
                 value={reason}
-                onChange={(e) => setReason(e.target.value as SupplyCycleReason)}
+                onValueChange={(e) => setReason(e as SupplyCycleReason)}
               >
                 {Object.entries(SUPPLY_REASON_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v}
                   </option>
                 ))}
-              </select>
+              </HealthRelationPicker>
             </label>
             <label className="block text-xs text-ink-muted">
               <CalendarClock size={14} className="mr-1 inline" />
               Preparar documentos até
-              <input
-                type="date"
+              <CustomDatePicker
+
                 className={input}
                 value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
+                onChange={(e) => setDeadline(e)}
               />
             </label>
             <label className="block text-xs text-ink-muted">
               Consulta para preencher os documentos
-              <select
+              <HealthRelationPicker title="Selecionar consulta"
                 className={input}
                 value={consultation}
-                onChange={(e) => setConsultation(e.target.value)}
+                onValueChange={(e) => setConsultation(e)}
               >
                 <option value="">Sem consulta vinculada</option>
                 {consultas
@@ -234,11 +237,12 @@ export function SupplyPreparation({
                       {c.medico || c.especialidade}
                     </option>
                   ))}
-              </select>
+              </HealthRelationPicker>
             </label>
             <label className="flex min-h-[44px] items-center gap-3 rounded-xl bg-surface-raised p-3 text-xs text-ink-primary">
               <input
                 type="checkbox"
+                    className="h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-ink-faint bg-surface checked:border-emerald-400 checked:bg-emerald-400 checked:shadow-[inset_0_0_0_4px_#10151c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
                 checked={personal}
                 onChange={(e) => setPersonal(e.target.checked)}
               />
@@ -291,7 +295,7 @@ export function SupplyPreparation({
           </p>
         ) : null}
         <details className="rounded-2xl border border-surface-border/60 p-3">
-          <summary className="cursor-pointer text-xs font-bold text-ice">
+          <summary className="cursor-pointer text-xs font-bold text-ink-primary">
             Formulários e dicas para a consulta
           </summary>
           <div className="mt-3 space-y-3 text-[11px] leading-relaxed text-ink-muted">

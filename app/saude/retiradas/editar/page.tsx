@@ -1,5 +1,8 @@
 // app/saude/retiradas/editar/page.tsx
 "use client";
+import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 
 import {
   Suspense,
@@ -409,7 +412,7 @@ function EditarRetiradaContent() {
             </button>
 
             <div>
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ice">
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-primary">
                 Compromisso
               </p>
 
@@ -424,15 +427,15 @@ function EditarRetiradaContent() {
           <div className="rounded-[26px] border border-surface-border/50 bg-surface p-4">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
               Medicamento
-              <select
+              <HealthRelationPicker title="Selecionar medicamento" medications={medicamentos}
                 value={
                   medicamentoId
                 }
-                onChange={(
+                onValueChange={(
                   event
                 ) =>
                   setMedicamentoId(
-                    event.target.value
+                    event
                   )
                 }
                 className={
@@ -457,14 +460,14 @@ function EditarRetiradaContent() {
                     </option>
                   )
                 )}
-              </select>
+              </HealthRelationPicker>
             </label>
 
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Data
-                <input
-                  type="date"
+                <CustomDatePicker
+
                   value={
                     data
                   }
@@ -472,7 +475,7 @@ function EditarRetiradaContent() {
                     event
                   ) =>
                     setData(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -483,8 +486,8 @@ function EditarRetiradaContent() {
 
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Horário
-                <input
-                  type="time"
+                <HealthTimePicker
+
                   value={
                     horario
                   }
@@ -492,7 +495,7 @@ function EditarRetiradaContent() {
                     event
                   ) =>
                     setHorario(
-                      event.target.value
+                      event
                     )
                   }
                   className={
@@ -505,15 +508,15 @@ function EditarRetiradaContent() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Tipo
-                <select
+                <HealthRelationPicker title="Selecionar opção"
                   value={
                     tipo
                   }
-                  onChange={(
+                  onValueChange={(
                     event
                   ) =>
                     setTipo(
-                      event.target.value as
+                      event as
                         | "sus"
                         | "farmacia"
                         | "outro"
@@ -532,20 +535,20 @@ function EditarRetiradaContent() {
                   <option value="outro">
                     Outro
                   </option>
-                </select>
+                </HealthRelationPicker>
               </label>
 
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Status
-                <select
+                <HealthRelationPicker title="Selecionar opção"
                   value={
                     status
                   }
-                  onChange={(
+                  onValueChange={(
                     event
                   ) =>
                     setStatus(
-                      event.target.value as typeof status
+                      event as typeof status
                     )
                   }
                   className={
@@ -564,7 +567,7 @@ function EditarRetiradaContent() {
                   <option value="cancelada">
                     Cancelada
                   </option>
-                </select>
+                </HealthRelationPicker>
               </label>
             </div>
           </div>
@@ -614,15 +617,15 @@ function EditarRetiradaContent() {
                   {
                     label
                   }
-                  <select
+                  <HealthRelationPicker title="Selecionar vínculo" kind={label === "Médico" ? "doctor" : label === "Farmácia" ? "pharmacy" : "place"}
                     value={
                       value
                     }
-                    onChange={(
+                    onValueChange={(
                       event
                     ) =>
                       setter(
-                        event.target.value
+                        event
                       )
                     }
                     className={
@@ -652,7 +655,7 @@ function EditarRetiradaContent() {
                         </option>
                       )
                     )}
-                  </select>
+                  </HealthRelationPicker>
                 </label>
               )
             )}
@@ -686,7 +689,7 @@ function EditarRetiradaContent() {
             disabled={
               saving
             }
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ice px-4 py-3.5 text-sm font-bold text-void disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3.5 text-sm font-bold text-void disabled:opacity-50"
           >
             <Save
               size={17}

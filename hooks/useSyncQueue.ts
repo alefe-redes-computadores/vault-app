@@ -3761,6 +3761,7 @@ export function useSyncQueue() {
                   person_id:
                     reg.person_id,
 
+                  device_id:reg.device_id??null,source:reg.source??"manual",source_record_id:reg.source_record_id??null,inicio_em:reg.inicio_em??null,fim_em:reg.fim_em??null,
                   categoria:
                     reg.categoria,
 
@@ -3924,6 +3925,8 @@ export function useSyncQueue() {
       if(error)throw new Error(error.message);return;
     }
     const fields:Record<string,string[]>={
+      health_profiles:["birth_date","height_cm","skin_tone"],
+      health_devices:["kind","name","color","side","capabilities","active"],
       fornecimentos:["uf","indicacao","catalogo_versao","titulo","origem","status","farmacia_id","medico_id","local_id","protocolo","renovacao_meses","antecedencia_dias","receita_cada_retirada","observacoes"],
       fornecimento_ciclos:["uf_snapshot","indicacao_snapshot","origem_snapshot","motivo","preparar_ate","consulta_id","documentos_pessoais_conferidos","exigencia_local","regra_versao","processo_id","status","inicio","fim","protocolado_em","autorizado_em","observacoes"],
       fornecimento_itens:["catalogo_id","processo_id","ciclo_id","medicamento_id","dosagem","quantidade_mensal"],
@@ -4933,6 +4936,10 @@ export function useSyncQueue() {
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
 
+        case "health_profiles":
+          await markRecordSyncedIfCurrent(db.health_profiles,payload.id,expectedUpdatedAt);return;
+        case "health_devices":
+          await markRecordSyncedIfCurrent(db.health_devices,payload.id,expectedUpdatedAt);return;
         case "fornecimentos":
           await markRecordSyncedIfCurrent(db.fornecimentos, payload.id, expectedUpdatedAt); return;
         case "fornecimento_ciclos":
@@ -5197,6 +5204,8 @@ export function useSyncQueue() {
           await syncHealthReminder(item);
           return;
 
+        case "health_profiles":
+        case "health_devices":
         case "fornecimentos":
         case "fornecimento_ciclos":
         case "fornecimento_itens":
@@ -5402,6 +5411,8 @@ export function useSyncQueue() {
                   "cirurgias",
 
                   "renovacoes",
+                  "health_profiles",
+                  "health_devices",
                   "fornecimentos",
                   "fornecimento_ciclos",
                   "fornecimento_itens",

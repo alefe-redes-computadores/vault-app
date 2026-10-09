@@ -7,7 +7,7 @@ const ok = (condition, message) => {
 };
 
 const today = read("app/hoje/page.tsx");
-const hydration = read("app/saude/hidratacao/page.tsx");
+const hydration = read("components/saude/HydrationPanel.tsx");
 const reminders = read("app/saude/lembretes/page.tsx");
 const reconciler = read("components/InsightNotificationReconciler.tsx");
 

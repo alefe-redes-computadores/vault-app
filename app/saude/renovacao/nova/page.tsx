@@ -1,5 +1,6 @@
 // app/saude/renovacao/nova/page.tsx
 "use client";
+import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 
@@ -2596,7 +2597,7 @@ function NovaRenovacaoContent() {
                 </h3>
               </div>
 
-              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><select id="receipt-withdrawal" value={selectedWithdrawalId} onChange={e=>setSelectedWithdrawalId(e.target.value)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</select><p className="text-[10px] leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
+              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><HealthRelationPicker title="Selecionar retirada" medication={medicamentos.find(m => m.id === medicamentoId)} id="receipt-withdrawal" value={selectedWithdrawalId} onValueChange={e=>setSelectedWithdrawalId(e)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</HealthRelationPicker><p className="text-[10px] leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
               <p className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-[11px] leading-relaxed text-ink-muted">LME, autorização e documentos ficam no fornecimento deste medicamento. Depois de salvar, abra “Fornecimento e documentos” no detalhe desta aquisição, inclusive para uma retirada já realizada.</p>
 
               <div>
