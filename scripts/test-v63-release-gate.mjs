@@ -72,6 +72,7 @@ const contracts = [
   "scripts/test-v112-lifestyle-insights.mjs",
   "scripts/test-v113-health-connect.mjs",
   "scripts/test-v114-health-experience.mjs",
+  "scripts/test-v115-device-brain-trends.mjs",
   "scripts/test-v101-behavior-priority.mjs",
   "scripts/test-v102-health-supply-contract.mjs",
   "scripts/test-v103-sus-knowledge-contract.mjs",
