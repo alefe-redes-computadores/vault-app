@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Droplets,
   History,
+  Network,
   Plus,
   Settings,
   Watch,
@@ -15,6 +16,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useHealthProfile } from "@/hooks/useHealthProfile";
+import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
@@ -65,6 +67,7 @@ function HealthDashboard({
     { trigger } = useHapticFeedback(),
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
+  const intelligence = useHealthIntelligence();
   const { personId, person, profile, devices, loading, error } = data;
   const [panel, setPanel] = useState<
       "profile" | "device" | "water" | HealthMetric | null
@@ -273,6 +276,38 @@ function HealthDashboard({
                 </button>
               )}
             </section>
+            <section className="rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[.07] to-surface p-4">
+              <div className="flex items-center gap-3">
+                <span className="rounded-xl bg-violet-400/10 p-3 text-violet-300"><Brain size={20} /></span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-semibold">O cérebro do Vault observou</h2>
+                  <p className="mt-1 text-[11px] text-ink-muted">
+                    {intelligence.isLoading
+                      ? "Analisando os registros disponíveis…"
+                      : `${intelligence.maturity.sourcesWithData} de ${intelligence.maturity.totalSources} áreas têm dados · ${intelligence.highlights.length} padrões com amostra mínima`}
+                  </p>
+                </div>
+              </div>
+              {intelligence.highlights.length > 0 ? (
+                <ul className="mt-3 space-y-2">
+                  {intelligence.highlights.slice(0, 2).map((item) => (
+                    <li key={item.id} className="rounded-xl bg-surface/70 p-3">
+                      <p className="text-xs font-medium">{item.titulo}</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.mensagem}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-xs leading-relaxed text-ink-muted">
+                  {intelligence.isLoading
+                    ? "Os padrões aparecem quando a análise terminar."
+                    : "Ainda não há padrões com amostra suficiente. O Vault mostra apenas o que os registros sustentam."}
+                </p>
+              )}
+              <button type="button" onClick={() => go("/inteligencia/saude")} className="mt-3 flex items-center gap-1 text-xs font-semibold text-violet-300">
+                Ver análise e histórico completos <ChevronRight size={15} />
+              </button>
+            </section>
             {panel === "profile" && (
               <HealthProfileEditor
                 personId={personId}
@@ -433,7 +468,7 @@ function HealthDashboard({
               <button
                 type="button"
                 onClick={() => go("/saude/registros/novo")}
-                className="flex items-center gap-2 rounded-2xl border border-coral/15 bg-surface p-4 text-left text-xs"
+                className="flex items-center gap-2 rounded-2xl border border-coral/20 bg-coral/[0.06] p-4 text-left text-xs"
               >
                 <Activity size={20} className="text-coral" />
                 Sintomas e humor
@@ -441,10 +476,24 @@ function HealthDashboard({
               <button
                 type="button"
                 onClick={() => go("/saude/registros")}
-                className="flex items-center gap-2 rounded-2xl border border-surface-border bg-surface p-4 text-left text-xs"
+                className="flex items-center gap-2 rounded-2xl border border-ice/20 bg-ice/[0.045] p-4 text-left text-xs"
               >
-                <History size={20} className="text-ink-muted" />
+                <History size={20} className="text-ice" />
                 Linha de cuidado
+              </button>
+              <button
+                type="button"
+                onClick={() => go("/saude/rede")}
+                className="col-span-2 flex items-center gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.055] p-4 text-left"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
+                  <Network size={19} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold">Minha rede de saúde</span>
+                  <span className="mt-0.5 block text-[10px] text-ink-muted">Profissionais, locais e cuidado contínuo</span>
+                </span>
+                <ChevronRight size={16} className="text-cyan-300" />
               </button>
             </div>
             <section className="rounded-[24px] border border-surface-border bg-surface p-4">

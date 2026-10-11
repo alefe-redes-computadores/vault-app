@@ -22,7 +22,21 @@ export interface ConnectConnection {
   device_ids: Partial<Record<HealthMetric, string>>;
   auto_sync: boolean;
   last_synced: string | null;
+  last_attempt_at?: string | null;
+  sync_history?: ConnectSyncRun[];
   last_error: string | null;
+}
+export interface ConnectSyncRun {
+  id: string;
+  started_at: string;
+  completed_at?: string | null;
+  status: "running" | "success" | "error";
+  added?: number;
+  updated?: number;
+  duplicate?: number;
+  deleted?: number;
+  invalid?: number;
+  error?: string;
 }
 export interface ConnectImport {
   id: string;

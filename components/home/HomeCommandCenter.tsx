@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, Network, UserRound, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Network, UserRound, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
 };
 
 const clinical = [
-  {label:"Minha saúde",sub:"Perfil, sono e medidas",path:"/saude/minha-saude",icon:UserRound,tone:"border-emerald-400/20 bg-emerald-400/8 text-emerald-400"},
+  {label:"Minha saúde",sub:"Perfil, sono e medidas",path:"/saude/minha-saude",icon:HeartPulse,tone:"border-emerald-400/20 bg-emerald-400/8 text-emerald-400"},
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-ice/20 bg-ice/8 text-ice" },
   { label: "Exames", sub: "Pedidos e resultados", path: "/saude/exames", icon: FlaskConical, tone: "border-emerald-400/20 bg-emerald-400/8 text-emerald-400" },
   { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-cyan-400/20 bg-cyan-400/8 text-cyan-400" },
