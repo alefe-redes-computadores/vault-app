@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
+  MinusCircle,
   Circle,
   Droplet,
   Eye,
@@ -83,6 +84,7 @@ import {
 import {
   useMedicationCatalogProfiles,
 } from "@/hooks/useMedicationRegulatoryProfiles";
+import { medicationIgnoredStatus } from "@/lib/medication-availability";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
@@ -417,7 +419,7 @@ export default function MedicamentosListPage() {
           return item.isEstoqueZerado ||
             item.isEstoqueCritico ||
             item.insight.deveRenovar ||
-            item.dosesPendentesHoje > 0;
+            item.dosesPendentesHoje > 0 || item.dosesIgnoradasHoje > 0;
         }
 
         if (medicationFilter === "continuos") {
@@ -505,14 +507,16 @@ export default function MedicamentosListPage() {
             0
           );
 
+        const ignoradas = continuos.reduce((sum, item) => sum + Math.min(item.dosesIgnoradasHoje, Math.max(0, item.dosesEsperadasHoje - item.dosesTomadasHoje)), 0);
         return {
           total,
           completados,
+          ignoradas,
           pendentes:
             Math.max(
               0,
               total -
-                completados
+                completados - ignoradas
             ),
         };
       },
@@ -581,7 +585,7 @@ export default function MedicamentosListPage() {
               item.isEstoqueCritico ||
               item.insight.deveRenovar ||
               item.dosesPendentesHoje >
-                0;
+                0 || item.dosesIgnoradasHoje > 0;
 
             if (precisaAcao) {
               prioridade.push(
@@ -754,6 +758,7 @@ export default function MedicamentosListPage() {
         horarioTomado,
         dosesEsperadasHoje,
         dosesTomadasHoje,
+        dosesIgnoradasHoje,
         dosesPendentesHoje,
         quantidadeTomadaHoje,
         insight,
@@ -881,13 +886,15 @@ export default function MedicamentosListPage() {
         dosesPendentesHoje >
           0;
 
-      const rotinaConcluida =
+      const rotinaResolvida =
         !isSOS &&
         !isSuspenso &&
         dosesEsperadasHoje >
           0 &&
         dosesPendentesHoje ===
           0;
+
+      const rotinaConcluida = rotinaResolvida && dosesIgnoradasHoje === 0 && dosesTomadasHoje === dosesEsperadasHoje;
 
       const sosTomadoHoje =
         isSOS &&
@@ -941,6 +948,8 @@ export default function MedicamentosListPage() {
                   tone:
                     "text-ink-muted",
                 }
+            : dosesIgnoradasHoje > 0
+              ? medicationIgnoredStatus({ taken: dosesTomadasHoje, ignored: dosesIgnoradasHoje, pending: dosesPendentesHoje, emptyStock: isEstoqueZerado })
             : rotinaConcluida
               ? {
                   label:
@@ -996,7 +1005,7 @@ export default function MedicamentosListPage() {
             : "Registrar uso"
           : rotinaParcial
             ? "Próxima dose"
-            : rotinaConcluida
+            : rotinaResolvida
               ? null
               : "Tomar";
 
@@ -1236,7 +1245,9 @@ export default function MedicamentosListPage() {
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    {rotinaConcluida ||
+                    {dosesIgnoradasHoje > 0 && !isSOS ? (
+                      <MinusCircle size={12} className="shrink-0 text-amber-400" />
+                    ) : rotinaConcluida ||
                     sosTomadoHoje ? (
                       <CheckCircle2
                         size={
@@ -1569,7 +1580,7 @@ export default function MedicamentosListPage() {
 
                 <p className="mt-0.5 text-sm font-bold text-ink-primary">
                   {statsProgresso.total > 0
-                    ? `${statsProgresso.completados} de ${statsProgresso.total} doses concluídas`
+                    ? `${statsProgresso.completados} de ${statsProgresso.total} doses tomadas`
                     : "Nenhuma dose programada"}
                 </p>
               </div>
@@ -1621,6 +1632,7 @@ export default function MedicamentosListPage() {
                 {medsEmDia.length} em dia
               </span>
 
+              {statsProgresso.ignoradas > 0 && <span className="text-amber-400">{statsProgresso.ignoradas} ignorada(s) · não contam como tomadas</span>}
               <span className="text-violet-400">
                 {medsSOS.length} SOS
               </span>

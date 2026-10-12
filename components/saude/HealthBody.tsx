@@ -1,13 +1,13 @@
-import { useId } from "react";
+import { memo, useId } from "react";
 import { Brain } from "lucide-react";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
-export function HealthBody({ skin, devices }: { skin: string; devices: HealthDevice[] }) {
+export const HealthBody = memo(function HealthBody({ skin, devices }: { skin: string; devices: HealthDevice[] }) {
   const uid = useId().replace(/:/g, "");
-  const ids = { skin: `skin-${uid}`, cloth: `cloth-${uid}`, halo: `halo-${uid}`, metal: `metal-${uid}`, title: `title-${uid}`, description: `description-${uid}` };
+  const ids = { skin: `skin-${uid}`, cloth: `cloth-${uid}`, halo: `halo-${uid}`, metal: `metal-${uid}`, glass: `glass-${uid}`, title: `title-${uid}`, description: `description-${uid}` };
   const color = avatarColor(skin);
   const faceDetail = [1, 3, 5].reduce((sum, offset) => sum + parseInt(color.slice(offset, offset + 2), 16), 0) / 3 < 70 ? "#b28e72" : "#30251f";
   const { slots, phoneSide, description } = avatarLayout(devices);
@@ -33,6 +33,9 @@ export function HealthBody({ skin, devices }: { skin: string; devices: HealthDev
           </radialGradient>
           <linearGradient id={ids.metal} x1="0" x2="1">
             <stop stopColor="#475569" /><stop offset=".45" stopColor="#e2e8f0" /><stop offset="1" stopColor="#64748b" />
+          </linearGradient>
+          <linearGradient id={ids.glass} x1="0" y1="0" x2="1" y2="1">
+            <stop stopColor="#f8fafc" stopOpacity=".5" /><stop offset=".5" stopColor="#f8fafc" stopOpacity=".02" /><stop offset="1" stopColor="#38bdf8" stopOpacity=".1" />
           </linearGradient>
         </defs>
         <ellipse cx="90" cy="128" rx="77" ry="114" fill={`url(#${ids.halo})`} />
@@ -65,6 +68,12 @@ export function HealthBody({ skin, devices }: { skin: string; devices: HealthDev
         <path d="M76 230 L88 231 L88 242 Q80 250 71 246 L72 239Z M92 231 L104 230 L108 239 L109 246 Q100 250 92 242Z" fill="#182634" stroke="#607083" strokeOpacity=".35" strokeWidth=".8" />
         <path d="M73 245 Q80 248 88 242 M92 242 Q100 248 107 245" fill="none" stroke="#a8b5c4" strokeOpacity=".6" strokeWidth="1.4" />
 
+        {/* V121: cloth folds, shoulder volume, shoe laces and fingers. */}
+        <path d="M65 77 L69 88 L68 137 M115 77 L111 88 L112 137" fill="none" stroke="#dbeafe" strokeOpacity=".2" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M73 83 Q90 90 107 83 M69 136 Q90 142 111 136" fill="none" stroke="#020617" strokeOpacity=".4" strokeWidth="2" strokeLinecap="round" />
+        <path d="M67 150 L76 178 M113 150 L104 178" fill="none" stroke="#dbeafe" strokeOpacity=".14" strokeWidth="1.1" />
+        <path d="M78 236 L84 237 M77 239 L83 240 M96 237 L102 236 M97 240 L103 239" stroke="#cbd5e1" strokeOpacity=".6" strokeWidth=".9" strokeLinecap="round" />
+        <path d="M34 158 L40 160 M33 161 L39 163 M140 160 L146 158 M141 163 L147 161" stroke={avatarShade(color, .62)} strokeOpacity=".5" strokeWidth=".8" strokeLinecap="round" />
         {/* Embroidered emblem, not an overlay across the body. */}
         <g aria-hidden="true">
           <rect x="69" y="91" width="42" height="42" rx="10" fill="#0b1520" fillOpacity=".75" stroke="#a78bfa" strokeOpacity=".4" strokeWidth=".7" />
@@ -82,9 +91,13 @@ export function HealthBody({ skin, devices }: { skin: string; devices: HealthDev
           <rect x="-2.5" y="-10" width="5" height="1.2" rx=".6" fill="#020617" />
           <Brain x="-5" y="-5" width="10" height="10" stroke="#c4b5fd" strokeWidth="1.3" aria-hidden="true" />
           <text x="0" y="9" textAnchor="middle" fontSize="3.7" fontFamily="Arial, sans-serif" letterSpacing=".4" fill="#e2e8f0">VAULT</text>
+          <path d="M-6 -9 H5 L-6 6Z" fill={`url(#${ids.glass})`} opacity=".2" />
           <path d="M-4 12 H4" stroke="#64748b" strokeWidth=".7" strokeLinecap="round" />
         </g>
 
+        <g aria-hidden="true" transform={`translate(${phoneX},174) rotate(${phoneSide === "right" ? -10 : 10})`}>
+          <path d={phoneSide === "right" ? "M8 -8 Q15 -13 16 -16 Q19 -8 12 -4 L8 0Z" : "M-8 -8 Q-15 -13 -16 -16 Q-19 -8 -12 -4 L-8 0Z"} fill={`url(#${ids.skin})`} stroke={avatarShade(color, .7)} strokeWidth=".6" />
+        </g>
         {slots.map(({ kind, side, device, count }) => {
           const x = side === "right" ? 38 : 142;
           const deviceColor = avatarColor(device.color, "#94a3b8");
@@ -99,6 +112,8 @@ export function HealthBody({ skin, devices }: { skin: string; devices: HealthDev
                   <rect x="7.8" y="-2" width="1.8" height="4" rx=".7" fill="#a8b5c4" />
                   <circle cx="0" cy=".5" r="5.8" fill="#09121d" stroke="#cbd5e1" strokeOpacity=".25" strokeWidth=".6" />
                   <path d="M0 -3 V.5 L3 2" fill="none" stroke="#e2e8f0" strokeWidth="1.1" strokeLinecap="round" />
+                  <path d="M0 -4.5 V-3.7 M4.5 .5 H3.7 M0 5.5 V4.7 M-4.5 .5 H-3.7" stroke="#cbd5e1" strokeOpacity=".55" strokeWidth=".6" strokeLinecap="round" />
+                  <circle cx="0" cy=".5" r="5.6" fill={`url(#${ids.glass})`} opacity=".32" />
                   <circle cx="0" cy=".5" r="1" fill="#c4b5fd" />
                   <path d="M-3.5 4 Q0 6 3.5 4" fill="none" stroke={deviceColor} strokeWidth=".9" />
                 </g>
@@ -122,4 +137,4 @@ export function HealthBody({ skin, devices }: { skin: string; devices: HealthDev
       <p aria-hidden="true" className="-mt-1 text-center font-mono text-[9px] tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
     </div>
   );
-}
+});

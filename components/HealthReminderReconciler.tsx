@@ -184,6 +184,7 @@ export function HealthReminderReconciler() {
         // histórico permanece somente para compatibilidade com payloads
         // antigos que não carregavam type explícito.
         if (
+          extra?.type === "dose_stock_review" ||
           extra?.type === "dose_reminder_group" ||
           extra?.type === "dose_overdue_group" ||
           extra?.type === "health_reminder" ||

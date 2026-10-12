@@ -5,7 +5,7 @@ const checks=[
  ["marcador V45",hoje.includes("VAULT_HOJE_DOSES_V45")],
  ["quantidade real individual",/marcarDose\(\s*item\.medicamentoId,\s*item\.horario,\s*item\.unidadePorDose\s*\)/s.test(hoje)],
  ["lote deduplicado",hoje.includes("new Map<string, DoseItemExt>()")],
- ["grupos operacionais",["Atrasadas","Agora","Depois","SOS e extras","Concluído"].every(x=>hoje.includes(`label: \"${x}\"`))],
+ ["grupos operacionais",["Atrasadas","Agora","Depois","SOS e extras","Tomadas","Ignoradas"].every(x=>hoje.includes(`label: \"${x}\"`))],
  ["lote serial",hoje.includes("for (const dose of dosesElegiveisLote)")||hoje.includes("for (const dose of snapshotLote)")],
  ["desfazer",hoje.includes("handleDesfazerLote")],
  ["extra/SOS",hook.includes("registrarTomadaAvulsa")&&hook.includes('"sos" | "extra"')],

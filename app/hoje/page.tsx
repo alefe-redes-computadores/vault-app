@@ -1860,7 +1860,8 @@ export default function HojePage() {
           atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle, items: [] },
           depois: { label: "Depois", sub: "Próximas doses de hoje", icon: ChevronRight, items: [] },
           avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap, items: [] },
-          concluidas: { label: "Concluído", sub: "Doses resolvidas hoje", icon: CheckCircle2, items: [] },
+          concluidas: { label: "Tomadas", sub: "Doses com tomada registrada hoje", icon: CheckCircle2, items: [] },
+          ignoradas: { label: "Ignoradas", sub: "Não contam como tomadas", icon: XCircle, items: [] },
         }
       : {
           manha: { label: "Manhã", sub: "Início do dia", icon: Sunrise, items: [] },
@@ -1875,7 +1876,8 @@ export default function HojePage() {
         return;
       }
       if (dose.isAvulsa) { grupos.avulsas.items.push(dose); return; }
-      if (dose.tomada || dose.ignorada) { grupos.concluidas.items.push(dose); return; }
+      if (dose.tomada) { grupos.concluidas.items.push(dose); return; }
+      if (dose.ignorada) { grupos.ignoradas.items.push(dose); return; }
       const temporalBucket = classifyClinicalSchedule({
         eventDate: dataSelecionada,
         scheduledTime: dose.horario,
@@ -3743,8 +3745,8 @@ export default function HojePage() {
               TIMELINE / DOSES
           ======================================================= */}
           {isHoje && filtroStatus === "todos" && dosesFiltradas.some((dose) => dose.tomada || dose.ignorada) && (
-            <button type="button" onClick={() => setMostrarConcluidas((value) => !value)} className="flex w-full items-center justify-between rounded-[20px] border border-emerald-400/15 bg-emerald-400/[0.045] px-4 py-3 text-left">
-              <div className="flex items-center gap-2.5"><CheckCircle2 size={17} className="text-emerald-400" /><div><p className="text-xs font-semibold text-ink-primary">{mostrarConcluidas ? "Ocultar rotina concluída" : "Rotina concluída"}</p><p className="mt-0.5 text-[9px] text-ink-muted">{mostrarConcluidas ? "Deixe a agenda focada no que ainda importa" : `${concluidasOcultas} registro(s) resumido(s) para reduzir ruído`}</p></div></div>
+            <button type="button" onClick={() => setMostrarConcluidas((value) => !value)} className="flex w-full items-center justify-between rounded-[20px] border border-ice/15 bg-ice/[0.045] px-4 py-3 text-left">
+              <div className="flex items-center gap-2.5"><Activity size={17} className="text-ice" /><div><p className="text-xs font-semibold text-ink-primary">{mostrarConcluidas ? "Ocultar doses registradas" : "Ver tomadas e ignoradas"}</p><p className="mt-0.5 text-[9px] text-ink-muted">{mostrarConcluidas ? "Deixe a agenda focada no que ainda importa" : `${concluidasOcultas} registro(s) resumido(s) para reduzir ruído`}</p></div></div>
               <ChevronRight size={16} className={`text-emerald-400 transition-transform ${mostrarConcluidas ? "rotate-90" : ""}`} />
             </button>
           )}

@@ -87,11 +87,14 @@ import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 import { HealthConnectRuntime } from "@/components/saude/HealthConnectRuntime";
 import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
 
+import { resolveMedicationStockReview } from "@/lib/medication-availability";
+
 // ============================================================
 // NOTIFICATION ACTION DATA
 // ============================================================
 
 interface NotificationActionData {
+  medicamentoIds?: string[];
   type?:
     string;
 
@@ -159,6 +162,8 @@ function getNotificationActionData(
       "string"
         ? record.medicamentoId
         : undefined,
+
+    medicamentoIds: Array.isArray(record.medicamentoIds) ? record.medicamentoIds.filter((id): id is string => typeof id === "string" && Boolean(id.trim())) : undefined,
 
     actionId:
       typeof record.actionId ===
@@ -746,6 +751,21 @@ export function Providers({
               data
             );
 
+            // V121: stock reviews use the same cold-start entry and biometric gate.
+            if (data.type === "dose_stock_review") {
+              if (!user?.id) return;
+              void (async () => {
+                try {
+                  const target = await resolveMedicationStockReview(data, user.id, {
+                    person: id => db.persons.get(id), medication: id => db.medicamentos.get(id),
+                  });
+                  if (!target) return;
+                  if (target.personId !== activePersonId) await changePerson(target.personId);
+                  runAfterVaultBiometricUnlock(() => router.push(target.destination));
+                } catch (error) { console.error("[Vault V121] Falha ao abrir revisão de estoque:", error); }
+              })();
+              return;
+            }
             // VAULT_NOTIFICATION_COLD_START_V86
             // O listener principal existe desde a primeira renderização do
             // shell. Ele também precisa conhecer os destinos que antes
@@ -1013,6 +1033,7 @@ export function Providers({
       changePerson,
       handleNotificationAction,
       router,
+      user?.id,
     ]
   );
 

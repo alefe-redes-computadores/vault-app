@@ -20,18 +20,16 @@ export function DoseNotificationReconciler() {
       activePersonId
         ? db.medicamentos.where("person_id").equals(activePersonId).toArray()
         : Promise.resolve([] as Medicamento[]),
-    [activePersonId],
-    [] as Medicamento[]
-  ) ?? [];
+    [activePersonId]
+  );
 
   const logs = useLiveQuery(
     () =>
       activePersonId
         ? db.doseLogs.where("person_id").equals(activePersonId).toArray()
         : Promise.resolve([] as DoseLog[]),
-    [activePersonId],
-    [] as DoseLog[]
-  ) ?? [];
+    [activePersonId]
+  );
 
   useEffect(() => {
     const refresh = () => setPreferenceRevision((value) => value + 1);
@@ -40,7 +38,7 @@ export function DoseNotificationReconciler() {
   }, []);
 
   useEffect(() => {
-    if (!activePersonId) return;
+    if (!activePersonId || medicamentos === undefined || logs === undefined) return;
 
     void Promise.allSettled([
       reconcileScheduledDoseNotifications({

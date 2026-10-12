@@ -1,5 +1,6 @@
 // lib/dose-notifications.ts
 
+import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import {
   isVaultNative,
@@ -254,155 +255,21 @@ export async function requestNotificationPermission(): Promise<boolean> {
 // AGENDAR
 // ============================================================
 
-export async function scheduleDoseNotifications(
-  medicamento:
-    DoseNotificationPayload
-): Promise<void> {
-  if (!isNativePlatform()) {
-    return;
-  }
-
-  const medicamentoId =
-    medicamento.id.trim();
-
-  const personId =
-    medicamento.person_id
-      ?.trim();
-
-  if (!medicamentoId) {
-    return;
-  }
-
-  /*
-   * Primeiro removemos qualquer agenda anterior do medicamento,
-   * inclusive horários que já não existem no cadastro atual.
-   */
-  await cancelDoseNotifications(
-    medicamento
-  );
-
-  if (
-    !isNotificationPreferenceEnabled()
-  ) {
-    return;
-  }
-
-  /*
-   * Uma notificação que oferece ações clínicas precisa conhecer
-   * exatamente a pessoa proprietária do medicamento.
-   *
-   * Nunca usamos "pessoa ativa" no momento do clique.
-   */
-  if (!personId) {
-    console.warn(
-      "[dose-notifications] Dose não agendada: person_id ausente.",
-      {
-        medicamentoId,
-      }
-    );
-
-    return;
-  }
-
-  const horarios =
-    getUniqueValidHorarios(
-      medicamento
-    );
-
-  if (
-    horarios.length ===
-    0
-  ) {
-    return;
-  }
-
-  await registerNotificationActions();
-
-  const notifications =
-    horarios.map(
-      (
-        horario
-      ) => {
-        const [
-          hourStr,
-          minuteStr,
-        ] =
-          horario.split(
-            ":"
-          );
-
-        const hour =
-          Number(
-            hourStr
-          );
-
-        const minute =
-          Number(
-            minuteStr
-          );
-
-        return {
-          id:
-            getDoseNotificationId(
-              medicamentoId,
-              horario
-            ),
-
-          title:
-            `Hora do ${medicamento.nome}`,
-
-          body:
-            medicamento.dosagem.trim()
-              ? `${medicamento.dosagem.trim()} — registre a dose no Vault`
-              : "Registre a dose no Vault",
-
-          actionTypeId:
-            ACTION_TYPE_ID,
-
-          channelId:
-            VAULT_NOTIFICATION_CHANNEL_ID,
-
-          schedule: {
-            on: {
-              hour,
-              minute,
-            },
-
-            repeats:
-              true,
-
-            allowWhileIdle:
-              true,
-          },
-
-          extra: {
-            type:
-              "dose_reminder",
-
-            medicamentoId,
-
-            personId,
-
-            horario,
-          },
-        };
-      }
-    );
-
-  try {
-    if (!isVaultNotificationCategoryEnabled("doses")) {
-      return;
-    }
-
-    await LocalNotifications.schedule({
-      notifications,
-    });
-  } catch (error) {
-    console.error(
-      "[dose-notifications] Erro ao agendar notificações:",
-      error
-    );
-  }
+export async function scheduleDoseNotifications(medicamento: DoseNotificationPayload): Promise<void> {
+  if (!isNativePlatform()) return;
+  const medicamentoId = medicamento.id.trim();
+  const personId = medicamento.person_id?.trim();
+  if (!medicamentoId || !personId) return;
+  // V121: every persisted medication uses the same exact-slot policy.
+  // This prevents legacy recurring alarms from restoring a "take" reminder at zero stock.
+  const { db } = await import("@/lib/db");
+  const stored = await db.medicamentos.get(medicamentoId);
+  if (!stored || stored.person_id !== personId) return;
+  const [medicamentos, logs] = await Promise.all([
+    db.medicamentos.where("person_id").equals(personId).toArray(),
+    db.doseLogs.where("person_id").equals(personId).toArray(),
+  ]);
+  await reconcileScheduledDoseNotifications({ personId, medicamentos, logs });
 }
 
 // ============================================================
@@ -494,6 +361,8 @@ export async function cancelDoseNotifications(
             notification.id
           );
         }
+        const stockExtra = extra as Record<string, unknown> | undefined;
+        if (stockExtra?.type === "dose_stock_review" && Array.isArray(stockExtra.medicamentoIds) && stockExtra.medicamentoIds.includes(medicamentoId)) ids.add(notification.id);
       }
     );
 
@@ -594,6 +463,7 @@ export async function cancelAllDoseNotifications(
             notification.id
           );
         }
+        if ((extra as Record<string, unknown> | undefined)?.type === "dose_stock_review") ids.add(notification.id);
       }
     );
 
@@ -663,12 +533,14 @@ function scheduledDoseResolvedV51(logs: DoseLog[], personId: string, medicamento
   );
 }
 
-export async function reconcileScheduledDoseNotifications(input: {
-  personId: string;
-  medicamentos: Medicamento[];
-  logs: DoseLog[];
-  now?: Date;
-}): Promise<number> {
+type ScheduledDoseInput = { personId: string; medicamentos: Medicamento[]; logs: DoseLog[]; now?: Date };
+let scheduledDoseTail: Promise<number> = Promise.resolve(0);
+export async function reconcileScheduledDoseNotifications(input: ScheduledDoseInput): Promise<number> {
+  const next = scheduledDoseTail.catch(() => 0).then(() => performScheduledDoseReconciliation(input));
+  scheduledDoseTail = next;
+  return next;
+}
+async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Promise<number> {
   if(!isNativePlatform()) return 0;
   const personId=input.personId.trim();
   if(!personId) return 0;
@@ -677,7 +549,7 @@ export async function reconcileScheduledDoseNotifications(input: {
   const oldDoseIds=pending.notifications
     .filter((notification) => {
       const extra=notification.extra as Record<string,unknown>|undefined;
-      return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group";
+      return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group" || extra?.type==="dose_stock_review";
     })
     .map((notification)=>({id:notification.id}));
 
@@ -712,16 +584,27 @@ export async function reconcileScheduledDoseNotifications(input: {
   };
 
   const slots: PendingDoseSlot[]=[];
+  const stockSlots: PendingDoseSlot[]=[];
+  const stockDays = new Set<string>();
 
   for(let offset=0; offset<SCHEDULED_DOSE_HORIZON_DAYS_V51; offset+=1){
     const data=localDateKeyV51(addLocalDaysV51(now,offset));
     for(const med of meds){
       const medicamentoId=med.id!;
-      const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v))));
+      const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v)))).sort();
       for(const horario of horarios){
+        if (hasKnownEmptyMedicationStock(med) && horario !== horarios[0]) continue;
         if(scheduledDoseResolvedV51(input.logs,personId,medicamentoId,data,horario)) continue;
         const at=scheduledDateAtV51(data,horario);
         if(!at || at.getTime()<=now.getTime()) continue;
+        if (hasKnownEmptyMedicationStock(med)) {
+          const key = `${medicamentoId}:${data}`;
+          if (!stockDays.has(key)) {
+            stockDays.add(key);
+            stockSlots.push({ medicamentoId, nome: med.nome?.trim() || "Medicamento", dosagem: "", data, horario, at });
+          }
+          continue;
+        }
         slots.push({
           medicamentoId,
           nome: med.nome?.trim() || "Medicamento",
@@ -791,6 +674,28 @@ export async function reconcileScheduledDoseNotifications(input: {
       },
     });
   }
+  // At most one stock review per medication/day, without clinical action buttons.
+  const stockGroups = new Map<string, PendingDoseSlot[]>();
+  for (const slot of stockSlots) {
+    const key = `${slot.data}:${slot.horario}`;
+    const group = stockGroups.get(key) || [];
+    group.push(slot); stockGroups.set(key, group);
+  }
+  for (const group of stockGroups.values()) {
+    const first = group[0];
+    const medicamentoIds = group.map(slot => slot.medicamentoId).sort();
+    notifications.push({
+      id: hashToId(`dose:stock:v121:${personId}:${first.data}:${first.horario}:${medicamentoIds.join(",")}`),
+      title: group.length === 1 ? `Confira o estoque de ${first.nome}` : `${group.length} medicamentos com estoque zerado`,
+      body: `${group.map(slot => slot.nome).join(" · ")} — confira o estoque cadastrado e revise a rotina no Vault.`,
+      channelId: VAULT_NOTIFICATION_CHANNEL_ID,
+      schedule: { at: first.at, allowWhileIdle: true },
+      extra: { type: "dose_stock_review", personId, medicamentoIds, data: first.data, horario: first.horario,
+        targetRoute: group.length === 1 ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(first.medicamentoId)}` : "/saude/medicamentos" },
+    });
+  }
+  notifications.sort((a, b) => (a.schedule as { at: Date }).at.getTime() - (b.schedule as { at: Date }).at.getTime());
+  notifications.splice(MAX_SCHEDULED_DOSE_PENDING_V51);
   if(notifications.length>0){
     await LocalNotifications.schedule({notifications: notifications as unknown as Parameters<typeof LocalNotifications.schedule>[0]["notifications"]});
   }

@@ -1,3 +1,4 @@
+import { buildMedicationAvailabilityInsights } from "./health-intelligence/medication-availability-insights";
 import { buildLifestyleInsights } from "./health-intelligence/lifestyle-insights";
 import { buildDeviceTrendInsights } from "./health-intelligence/device-trend-insights";
 import type {SupplyData} from "./health-supply/types";
@@ -5217,7 +5218,7 @@ export function processarListaMedicamentos(
             (horario) =>
               horariosIgnorados.has(
                 horario
-              )
+              ) && !horariosTomados.has(horario)
           ).length;
 
         const dosesTomadasHoje =
@@ -5256,8 +5257,7 @@ export function processarListaMedicamentos(
               0
             : dosesEsperadasHoje >
                 0
-              ? dosesPendentesHoje ===
-                0
+              ? dosesTomadasHoje === dosesEsperadasHoje && dosesIgnoradasHoje === 0
               : tomadasHoje.length >
                 0;
 
@@ -8392,6 +8392,7 @@ export function gerarInsightsSaude(
 
   // A camada V15 entra primeiro para que substitua, por identidade,
   // o padrão SOS legado quando ambos descrevem o mesmo medicamento.
+  insights.push(...buildMedicationAvailabilityInsights({ ...contexto, medicamentos, doseLogs, hoje: contexto.hoje || getLocalTodayISO() }));
   insights.push(...buildMedicationSafetyInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude }));
 
   medicamentosAtivos.forEach(

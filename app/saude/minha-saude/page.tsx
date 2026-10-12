@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -79,6 +79,26 @@ function HealthDashboard({
     [historyDate, setHistoryDate] = useState(getLocalTodayISO()),
     [archive, setArchive] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
+  const profileEditorId = useId();
+  const profileEditorRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profileWasOpen = useRef(false);
+  useEffect(() => {
+    const opened = panel === "profile";
+    const wasOpen = profileWasOpen.current;
+    profileWasOpen.current = opened;
+    if (!opened && (!wasOpen || panel !== null)) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (opened) {
+        profileEditorRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+        profileEditorRef.current?.focus({ preventScroll: true });
+      } else {
+        profileButtonRef.current?.scrollIntoView({ block: "nearest", behavior: "auto" });
+        profileButtonRef.current?.focus({ preventScroll: true });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [panel]);
   const lock = useRef(false),
     today = getLocalTodayISO();
   const records = useMemo(
@@ -192,6 +212,11 @@ function HealthDashboard({
           </p>
         ) : (
           <>
+            {panel === "profile" && (
+              <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
+                <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
+              </div>
+            )}
             <section className="overflow-hidden rounded-[28px] border border-surface-border bg-gradient-to-br from-emerald-400/[.035] to-surface p-4">
               <div className="flex items-center gap-3">
                 {person?.avatar_url ? (
@@ -213,9 +238,18 @@ function HealthDashboard({
                 </div>
                 <button
                   type="button"
-                  onClick={() => open("profile")}
+                  ref={profileButtonRef}
+                  onClick={() => {
+                    open("profile");
+                    if (panel === "profile") {
+                      profileEditorRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+                      profileEditorRef.current?.focus({ preventScroll: true });
+                    }
+                  }}
+                  aria-expanded={panel === "profile"}
+                  aria-controls={profileEditorId}
                   aria-label="Editar perfil de saúde"
-                  className="rounded-xl bg-surface-raised p-3 text-ink-muted"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
                 >
                   <Settings size={18} />
                 </button>
@@ -317,13 +351,6 @@ function HealthDashboard({
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
-            {panel === "profile" && (
-              <HealthProfileEditor
-                personId={personId}
-                profile={profile}
-                onClose={() => setPanel(null)}
-              />
-            )}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">Minha rede de dados</h2>

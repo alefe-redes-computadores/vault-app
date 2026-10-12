@@ -1,3 +1,4 @@
+import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { isVaultNative } from "@/lib/native-runtime";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
@@ -36,7 +37,14 @@ export async function cancelOverdueDoseNotification(input:{personId:string;medic
 export async function cancelAllOverdueDoseNotifications(){if(!isVaultNative())return;try{const pending=await LocalNotifications.getPending();await cancelIds(pending.notifications.filter(n=>{const type=(n.extra as Record<string,unknown>|undefined)?.type;return type==="dose_overdue"||type==="dose_overdue_group";}).map(n=>n.id));}catch(error){console.error("[overdue-dose] cancel all:",error);}}
 
 // VAULT_GROUPED_OVERDUE_NOTIFICATIONS_V87
-export async function reconcileOverdueDoseNotifications(input:{personId:string;medicamentos:Medicamento[];logs:DoseLog[];now?:Date;}){
+type OverdueDoseInput = { personId:string; medicamentos:Medicamento[]; logs:DoseLog[]; now?:Date };
+let overdueDoseTail: Promise<void> = Promise.resolve();
+export async function reconcileOverdueDoseNotifications(input: OverdueDoseInput){
+  const next = overdueDoseTail.catch(() => {}).then(() => performOverdueDoseReconciliation(input));
+  overdueDoseTail = next;
+  return next;
+}
+async function performOverdueDoseReconciliation(input: OverdueDoseInput){
   if(!isVaultNative())return;
   const personId=input.personId.trim();if(!personId)return;
   const pending=await LocalNotifications.getPending();
@@ -54,7 +62,7 @@ export async function reconcileOverdueDoseNotifications(input:{personId:string;m
 
   for(let day=0;day<HORIZON_DAYS;day+=1){
     const data=localDateKey(addLocalDays(now,day));
-    for(const med of input.medicamentos.filter(m=>eligible(m,personId))){
+    for(const med of input.medicamentos.filter(m=>eligible(m,personId) && !hasKnownEmptyMedicationStock(m))){
       const medicamentoId=med.id!;
       const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v))));
       for(const horario of horarios){
