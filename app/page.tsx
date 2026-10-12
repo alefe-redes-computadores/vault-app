@@ -2421,7 +2421,7 @@ export default function HomePage() {
                       className={
                         (mostrarTodosAlertas || unifiedAlerts.length === 1)
                           ? "w-full"
-                          : "w-[88%] shrink-0 snap-start sm:w-[72%]"
+                          : "flex w-[88%] shrink-0 snap-start [&>*]:h-full [&>*]:w-full sm:w-[72%]"
                       }
                     >
                       <AlertRow
@@ -2577,7 +2577,7 @@ export default function HomePage() {
                           insight
                         );
                       }}
-                      className={`flex ${longitudinalHighlights.length === 1 ? "w-full min-w-full" : "w-[86%] min-w-[86%] sm:w-[72%] sm:min-w-[72%]"} snap-start items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
+                      className={`flex shrink-0 ${longitudinalHighlights.length === 1 ? "w-full min-w-full" : "w-[86%] min-w-[86%] sm:w-[72%] sm:min-w-[72%]"} snap-start items-center gap-3 rounded-[22px] border p-3.5 text-left transition-all active:scale-[0.985] ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
                     >
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-violet-400/10 text-violet-300"}`}>
                         {(insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ? <AlertCircle size={17}/> : <Activity

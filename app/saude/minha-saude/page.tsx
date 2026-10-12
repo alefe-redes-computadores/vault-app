@@ -6,6 +6,7 @@ import {
   Activity,
   Brain,
   ChevronRight,
+  ChevronDown,
   Droplets,
   History,
   Network,
@@ -67,7 +68,7 @@ function HealthDashboard({
     { trigger } = useHapticFeedback(),
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
-  const intelligence = useHealthIntelligence();
+  const intelligence = useHealthIntelligence({ includeAudit: false });
   const { personId, person, profile, devices, loading, error } = data;
   const [panel, setPanel] = useState<
       "profile" | "device" | "water" | HealthMetric | null
@@ -99,6 +100,12 @@ function HealthDashboard({
     age = ageOn(profile?.birth_date, today);
   const active = devices.filter((d) => d.active),
     visible = records.filter((r) => r.data === historyDate && (!filter || r.tipo === filter));
+  const dayGroups = new Map<HealthMetric, typeof records>();
+  for (const record of visible) {
+    const type = record.tipo as HealthMetric;
+    const group = dayGroups.get(type);
+    if (group) group.push(record); else dayGroups.set(type, [record]);
+  }
   const go = (path: string) => {
     trigger("vibrate");
     router.push(path);
@@ -213,13 +220,15 @@ function HealthDashboard({
                   <Settings size={18} />
                 </button>
               </div>
-              <div className="mt-3 flex items-center gap-2">
-                <div className="w-[42%] shrink-0">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <details className="group w-[42%] shrink-0 open:w-full">
+                  <summary className="cursor-pointer list-none rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"><span className="block text-center text-[10px] text-emerald-300 group-open:hidden">Toque para ampliar</span><span className="hidden text-center text-[10px] text-emerald-300 group-open:block">Toque para reduzir</span>
                   <HealthBody
                     skin={profile?.skin_tone || SKIN_TONES[2]}
                     devices={devices}
                   />
-                </div>
+                  </summary>
+                </details>
                 <div className="min-w-0 flex-1 space-y-3">
                   <div>
                     <p className="text-[10px] text-ink-muted">Altura</p>
@@ -284,13 +293,13 @@ function HealthDashboard({
                   <p className="mt-1 text-[11px] text-ink-muted">
                     {intelligence.isLoading
                       ? "Analisando os registros disponíveis…"
-                      : `${intelligence.maturity.sourcesWithData} de ${intelligence.maturity.totalSources} áreas têm dados · ${intelligence.highlights.length} padrões com amostra mínima`}
+                      : `${intelligence.maturity.sourcesWithData} de ${intelligence.maturity.totalSources} áreas têm dados · ${intelligence.experienceHighlights.length} padrões com amostra mínima`}
                   </p>
                 </div>
               </div>
-              {intelligence.highlights.length > 0 ? (
+              {intelligence.experienceHighlights.length > 0 ? (
                 <ul className="mt-3 space-y-2">
-                  {intelligence.highlights.slice(0, 2).map((item) => (
+                  {intelligence.experienceHighlights.slice(0, 2).map((item) => (
                     <li key={item.id} className="rounded-xl bg-surface/70 p-3">
                       <p className="text-xs font-medium">{item.titulo}</p>
                       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.mensagem}</p>
@@ -539,7 +548,15 @@ function HealthDashboard({
                 ))}
               </div>
               {visible.length ? (
-                visible.map((r) => {
+                Array.from(dayGroups.entries()).map(([type, group]) => (
+                  <details key={`${historyDate}:${type}`} className="group border-t border-surface-border">
+                    <summary className="flex cursor-pointer items-center gap-3 py-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
+                      <span className={METRIC_TONES[type as HealthMetric]}><HealthMetricIcon type={type as HealthMetric} /></span>
+                      <span className="flex-1">{METRICS[type as HealthMetric]?.label || type}</span>
+                      <span className="text-ink-muted">{group.length} registro(s) · {group[0].horario || "—"}</span>
+                      <ChevronDown size={16} className="shrink-0 transition-transform group-open:rotate-180" />
+                    </summary>
+                    {group.map((r) => {
                   const d = devices.find((d) => d.id === r.device_id);
                   return (
                     <button
@@ -576,7 +593,9 @@ function HealthDashboard({
                       <ChevronRight size={16} className="text-ink-muted" />
                     </button>
                   );
-                })
+                })}
+                  </details>
+                ))
               ) : (
                 <p className="text-xs text-ink-muted">
                   {isLoading

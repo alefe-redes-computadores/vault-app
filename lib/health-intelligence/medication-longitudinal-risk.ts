@@ -4,10 +4,14 @@ type Dose=HealthInsightContext["doseLogs"][number];
 type Profile={substance:string;aliases:string[];minObservedDays:number;interruptionHours:number;source:NonNullable<HealthInsight["fontesExternas"]>[number];withdrawalLabel:string;escalationReview:boolean};
 
 const FDA_BENZO={titulo:"Boxed Warning — benzodiazepínicos: dependência física e reações de retirada",autoridade:"U.S. Food and Drug Administration",url:"https://www.fda.gov/drugs/drug-safety-and-availability/fda-requiring-boxed-warning-updated-improve-safe-use-benzodiazepine-drug-class",revisadoEm:"2026-10-06"};
-const DAILYMED_ZOLPIDEM={titulo:"Zolpidem — Dependence and withdrawal",autoridade:"FDA / National Library of Medicine — DailyMed",url:"https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=1584bad1-7bf4-4805-bdd9-7eb0fac92721",revisadoEm:"2026-10-06"};
+const DAILYMED_ZOLPIDEM={titulo:"Zolpidem — Dependence and withdrawal",autoridade:"FDA / National Library of Medicine — DailyMed",url:"https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=41124767-8ff7-da5d-e063-6394a90a5203",revisadoEm:"2026-10-12"};
 const FDA_DESVENLAFAXINE={titulo:"Desvenlafaxina — Discontinuation Syndrome",autoridade:"U.S. Food and Drug Administration",url:"https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/204150s020lbl.pdf",revisadoEm:"2026-10-06"};
 
+const DAILYMED_METHADONE={titulo:"Metadona — retirada após interrupção",autoridade:"FDA / National Library of Medicine — DailyMed",url:"https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=8f4cf84e-165c-489d-a668-0f715053f196",revisadoEm:"2026-10-12"};
+const DAILYMED_LISDEXAMFETAMINE={titulo:"Lisdexanfetamina — dependência física e retirada",autoridade:"FDA / National Library of Medicine — DailyMed",url:"https://dailymed.nlm.nih.gov/dailymed/fda/fdaDrugXsl.cfm?setid=704e4378-ca83-445c-8b45-3cfa51c1ecad",revisadoEm:"2026-10-12"};
 const PROFILES:Profile[]=[
+ {substance:"metadona",aliases:["metadona","metadon"],minObservedDays:7,interruptionHours:48,source:DAILYMED_METHADONE,withdrawalLabel:"opioide em pessoa fisicamente dependente",escalationReview:false},
+ {substance:"lisdexanfetamina",aliases:["lisdexanfetamina","venvanse"],minObservedDays:7,interruptionHours:48,source:DAILYMED_LISDEXAMFETAMINE,withdrawalLabel:"estimulante após uso prolongado",escalationReview:false},
  {substance:"clonazepam",aliases:["clonazepam","rivotril"],minObservedDays:7,interruptionHours:48,source:FDA_BENZO,withdrawalLabel:"benzodiazepínico",escalationReview:true},
  {substance:"zolpidem",aliases:["zolpidem"],minObservedDays:7,interruptionHours:48,source:DAILYMED_ZOLPIDEM,withdrawalLabel:"sedativo/hipnótico",escalationReview:true},
  {substance:"desvenlafaxina",aliases:["desvenlafaxina","pristiq"],minObservedDays:10,interruptionHours:48,source:FDA_DESVENLAFAXINE,withdrawalLabel:"SNRI",escalationReview:false},
@@ -24,17 +28,38 @@ const windowLogs=(logs:Dose[],now:Date,fromDays:number,toDays=0)=>{const from=ne
 
 function interruption(c:HealthInsightContext,m:Medication,p:Profile,now:Date):HealthInsight|null{
  if(!m.id||m.status==="descontinuado"||m.tipo_uso==="sos"||m.tipo_uso==="esporadico")return null;
- const logs=logsFor(c,m.id);if(!logs.length)return null;const last=at(logs.at(-1)!)!,gap=hours(last,now);if(gap<p.interruptionHours)return null;
- const days=observedDays(logs,new Date(last.getTime()-21*86400000),last);if(days<p.minObservedDays)return null;
- // Anti-falso-positivo: ausência só é interpretada se o diário continuou ativo.
- const otherAfter=c.doseLogs.filter(d=>d.person_id===c.personId&&d.medicamento_id!==m.id&&taken(d)&&at(d)&&at(d)!>last&&at(d)!<=now);
- if(otherAfter.length<2)return null;
+ const logs=logsFor(c,m.id).filter(d=>at(d)!<=now);if(!logs.length)return null;const last=at(logs.at(-1)!)!,gap=hours(last,now);if(gap<p.interruptionHours)return null;
+ const days=observedDays(logs.filter(d=>d.dose_kind!=="sos"&&d.dose_kind!=="extra"),new Date(last.getTime()-21*86400000),last);if(days<p.minObservedDays)return null;
+ // V120: missing logs and zero stock do not prove interrupted use.
+ const planned=Array.from(new Set((m.estoque_horarios||[]).filter(Boolean)));
+ if(!planned.length)return null;
+ const skipped=c.doseLogs.filter(d=>d.person_id===c.personId&&d.medicamento_id===m.id&&d.ignorado_em&&Number.isFinite(new Date(d.ignorado_em).getTime())&&new Date(d.ignorado_em)<=now&&!d.tomado_em&&d.dose_kind!=="sos"&&d.dose_kind!=="extra");
+ const dayKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+ let confirmedDays=0;
+ for(let offset=1;offset<=21;offset++){
+  const date=new Date(now);date.setDate(date.getDate()-offset);const day=dayKey(date);
+  if(logs.some(d=>d.data===day))break;
+  if(!planned.every(time=>skipped.some(d=>d.data===day&&d.horario===time)))break;
+  confirmedDays++;
+ }
+ if(confirmedDays<2){
+  const otherAfter=c.doseLogs.filter(d=>d.person_id===c.personId&&d.medicamento_id!==m.id&&taken(d)&&at(d)&&at(d)!>last&&at(d)!<=now);
+  if(otherAfter.length<2)return null;
+  return {id:`longitudinal-gap-${p.substance}-${m.id}`,kind:"pattern",categoria:"rotina",titulo:`${m.nome}: confira a lacuna no histórico`,
+   mensagem:`Há cerca de ${Math.floor(gap/24)} dia(s) sem tomada registrada, após uso recorrente documentado. Isso pode ser falta de registro ou uma mudança de rotina; o Vault não sabe se você deixou de tomar.`,
+   urgencia:"baixa",confianca:"baixa",amostra:logs.length,periodoDias:21,entidadeTipo:"medicamento",entidadeId:m.id,link:`/saude/medicamentos/historico?id=${m.id}`,
+   evidencias:[`${days} dia(s) com tomada registrada anteriormente`,`${otherAfter.length} registros de outros medicamentos depois da última tomada`,"Sem confirmação de interrupção completa"],
+   fontesInternas:["Histórico de doses","Horários cadastrados"],fontesExternas:[p.source],
+   acaoSegura:"Confira as tomadas e registre o que aconteceu. Se houve interrupção real, converse com o prescritor ou farmacêutico; não reinicie, compense ou ajuste doses por conta própria.",
+   limitacaoSeguranca:"Ausência de registro e estoque zerado não comprovam interrupção ou abstinência. A fonte regulatória é contexto educativo, não diagnóstico pessoal."};
+ }
+
  const gapDays=Math.max(2,Math.floor(gap/24));
  return {id:`longitudinal-interruption-${p.substance}-${m.id}`,kind:"alert",categoria:"rotina",titulo:`${m.nome}: interrupção do padrão merece revisão`,
- mensagem:`O Vault observou uso recorrente antes do último registro e agora há cerca de ${gapDays} dia(s) sem tomada registrada, enquanto outros registros continuaram. Para ${p.withdrawalLabel}, a fonte regulatória descreve risco após interrupção abrupta ou redução rápida. Isto não confirma abstinência nem prova que o medicamento foi interrompido.`,
+ mensagem:`O Vault encontrou ${confirmedDays} dia(s) completos consecutivos com todas as doses programadas marcadas como ignoradas, após uso recorrente registrado. A última tomada registrada foi há cerca de ${gapDays} dia(s). Para ${p.withdrawalLabel}, a fonte regulatória descreve risco após interrupção abrupta ou redução rápida. Isto não confirma abstinência nem prova que o medicamento foi interrompido.`,
  urgencia:p.substance==="clonazepam"?"alta":"media",gravidadeSeguranca:p.substance==="clonazepam"?"importante":"atencao",confianca:"media",amostra:logs.length,periodoDias:21,entidadeTipo:"medicamento",entidadeId:m.id,link:`/saude/medicamentos/historico?id=${m.id}`,
- evidencias:[`${days} dia(s) com tomada registrada antes da lacuna`,`Última tomada registrada há aproximadamente ${gapDays} dia(s)`,`${otherAfter.length} registro(s) de outros medicamentos após a última tomada`],
- fontesInternas:["Histórico de doses","Rotina do medicamento","Continuidade de registros no Vault"],fontesExternas:[p.source],
+ evidencias:[`${days} dia(s) com tomada registrada antes da lacuna`,`Última tomada registrada há aproximadamente ${gapDays} dia(s)`,`${confirmedDays} dia(s) completos com todas as doses programadas marcadas como ignoradas`],
+ fontesInternas:["Histórico de doses","Rotina do medicamento","Doses explicitamente ignoradas"],fontesExternas:[p.source],
  acaoSegura:"Não reinicie, interrompa, compense ou altere a dose por conta própria. Confira se faltou registrar alguma tomada e, se a interrupção foi real, procure orientação do prescritor ou farmacêutico. Sintomas graves, convulsão, confusão intensa ou piora rápida exigem avaliação urgente.",
  limitacaoSeguranca:"O Vault observa registros, não ingestão fora do aplicativo. Este sinal não diagnostica abstinência, dependência física, vício ou recaída e não define esquema de desmame."};
 }

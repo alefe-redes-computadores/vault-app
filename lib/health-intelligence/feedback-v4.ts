@@ -1,4 +1,5 @@
 import type { HealthInsight } from "@/lib/health-insights";
+import { healthSeverityRank } from "./priority";
 
 export type InsightFeedbackV4 =
   | "useful"
@@ -93,7 +94,7 @@ export function selectExperienceInsightsV4(
   };
 
   return [...insights]
-    .filter((insight) => feedback.get(insight.id) !== "hide")
+    .filter((insight) => feedback.get(insight.id) !== "hide" || healthSeverityRank(insight) >= 2)
     .sort((a, b) => {
       const scoreA =
         (urgency[a.urgencia] ?? 0) +
@@ -107,7 +108,7 @@ export function selectExperienceInsightsV4(
         Math.min(30, b.amostra ?? 0) +
         relevanceAdjustment(b);
 
-      return scoreB - scoreA;
+      return healthSeverityRank(b) - healthSeverityRank(a) || scoreB - scoreA || a.id.localeCompare(b.id);
     })
     .slice(0, Math.max(1, Math.floor(limit)));
 }

@@ -1,4 +1,5 @@
 "use client";
+import { BRAIN_NAME } from "@/lib/health-intelligence/version";
 // VAULT_INTELLIGENCE_COMPACT_V70
 // Mais -> Central de atenção -> Saúde longitudinal.
 
@@ -24,7 +25,7 @@ const kindMeta: Record<VaultInsightKind, { label: string; classes: string }> = {
 export default function VaultIntelligencePage() {
   const router = useRouter();
   const intelligence = useVaultIntelligence();
-  const health = useHealthIntelligence();
+  const health = useHealthIntelligence({ includeAudit: false });
   const [selected, setSelected] = useState<VaultGeneralInsight | null>(null);
   const [selectedHealth, setSelectedHealth] = useState<HealthInsight | null>(null);
   const openedNotificationInsightRef = useRef<string | null>(null);
@@ -78,14 +79,14 @@ export default function VaultIntelligencePage() {
     <section className="mx-auto mt-6 max-w-2xl">
       <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.05] p-4 text-left active:scale-[0.985]">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
-        <div className="min-w-0 flex-1"><p className="text-sm font-bold">Cérebro V5</p><p className="mt-1 text-xs text-ink-muted">Atenção agora, segurança, padrões, qualidade dos dados e histórico persistente.</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-bold">{BRAIN_NAME}</p><p className="mt-1 text-xs text-ink-muted">Atenção agora, segurança, padrões, qualidade dos dados e histórico persistente.</p></div>
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
     </section>
 
     <section className="mx-auto mt-6 max-w-2xl">
       <div className="flex items-end justify-between gap-3"><div><h2 className="font-bold">Saúde agora</h2><p className="text-xs text-ink-muted">Sinais priorizados pelo histórico da pessoa ativa.</p></div><div className="rounded-full border border-violet-400/20 bg-violet-400/[0.07] px-3 py-1.5 font-mono text-[9px] text-violet-300">{health.maturity.score}% contexto</div></div>
-      {health.isLoading ? <div className="mt-3 rounded-[20px] border border-surface-border bg-surface p-4 text-xs text-ink-muted">Analisando histórico de saúde…</div> : health.highlights.length ? <div className="mt-3 space-y-2.5">{health.highlights.map((insight) => <button key={insight.id} type="button" onClick={() => setSelectedHealth(insight)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/15 bg-violet-400/[0.04] p-4 text-left active:scale-[0.985]"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10 text-violet-300">{insight.urgencia === "alta" ? <AlertTriangle size={18}/> : <BrainCircuit size={18}/>}</div><div className="min-w-0 flex-1"><p className="text-sm font-bold">{insight.titulo}</p><p className="mt-1 line-clamp-2 text-xs text-ink-muted">{insight.mensagem}</p><p className="mt-2 font-mono text-[9px] uppercase text-ink-faint">Confiança {insight.confianca} · amostra {insight.amostra}</p></div><ChevronRight size={17} className="text-ink-faint"/></button>)}</div> : <div className="mt-3 rounded-[20px] border border-emerald-400/15 bg-emerald-400/[0.04] p-4"><p className="text-xs font-semibold text-emerald-300">Sem sinal prioritário agora</p><p className="mt-1 text-[10px] text-ink-muted">Os dados disponíveis não produziram destaque com confiança e amostra suficientes.</p></div>}
+      {health.isLoading ? <div className="mt-3 rounded-[20px] border border-surface-border bg-surface p-4 text-xs text-ink-muted">Analisando histórico de saúde…</div> : health.experienceHighlights.length ? <div className="mt-3 space-y-2.5">{health.experienceHighlights.map((insight) => <button key={insight.id} type="button" onClick={() => setSelectedHealth(insight)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/15 bg-violet-400/[0.04] p-4 text-left active:scale-[0.985]"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10 text-violet-300">{insight.urgencia === "alta" ? <AlertTriangle size={18}/> : <BrainCircuit size={18}/>}</div><div className="min-w-0 flex-1"><p className="text-sm font-bold">{insight.titulo}</p><p className="mt-1 line-clamp-2 text-xs text-ink-muted">{insight.mensagem}</p><p className="mt-2 font-mono text-[9px] uppercase text-ink-faint">Confiança {insight.confianca} · amostra {insight.amostra}</p></div><ChevronRight size={17} className="text-ink-faint"/></button>)}</div> : <div className="mt-3 rounded-[20px] border border-emerald-400/15 bg-emerald-400/[0.04] p-4"><p className="text-xs font-semibold text-emerald-300">Sem sinal prioritário agora</p><p className="mt-1 text-[10px] text-ink-muted">Os dados disponíveis não produziram destaque com confiança e amostra suficientes.</p></div>}
     </section>
 
     <section className="mx-auto mt-6 max-w-2xl">

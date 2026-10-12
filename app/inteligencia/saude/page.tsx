@@ -34,7 +34,6 @@ import {
 import {
   readInsightFeedbackV4,
   selectExperienceInsightsV4,
-  writeInsightFeedbackV4,
   type InsightFeedbackV4,
 } from "@/lib/health-intelligence/feedback-v4";
 
@@ -102,9 +101,9 @@ export default function HealthIntelligenceLabPage() {
 
   const experienceInsights = useMemo(() => {
     if (!health.context?.personId) return health.highlights;
-    const feedback = readInsightFeedbackV4(health.context.personId);
+    const feedback = health.experienceFeedback ?? readInsightFeedbackV4(health.context.personId);
     return selectExperienceInsightsV4(health.insights, feedback, 3);
-  }, [health.context?.personId, health.insights, health.highlights, feedbackRevision]);
+  }, [health.context?.personId, health.insights, health.highlights, health.experienceFeedback, feedbackRevision]);
 
   const experience = useMemo(() => {
     if (!health.context || !health.brainV4) return null;
@@ -121,16 +120,21 @@ export default function HealthIntelligenceLabPage() {
     };
   }, [health.context, health.insights, health.brainV4, replay, period]);
 
-  const sendFeedback = (insight: HealthInsight, feedback: InsightFeedbackV4) => {
+  const sendFeedback = async (insight: HealthInsight, feedback: InsightFeedbackV4) => {
     if (!health.context?.personId) return;
-    writeInsightFeedbackV4(health.context.personId, insight.id, feedback);
+    try {
+      await health.sendExperienceFeedback(insight, feedback);
+    } catch (error) {
+      setFeedbackMessage(error instanceof Error ? error.message : "Não foi possível salvar sua resposta.");
+      return;
+    }
     setFeedbackRevision((value) => value + 1);
     const labels: Record<InsightFeedbackV4, string> = {
       useful: "Marcado como útil",
       not_relevant: "Marcado como pouco relevante",
       already_knew: "Marcado como já conhecido",
       remind_later: "Marcado para rever depois",
-      hide: "Ocultado desta experiência",
+      hide: "Preferência registrada. Sinais que exigem atenção continuam visíveis.",
     };
     setFeedbackMessage(labels[feedback]);
     window.setTimeout(() => setFeedbackMessage(null), 1800);

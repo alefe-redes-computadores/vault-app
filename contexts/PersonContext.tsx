@@ -57,20 +57,19 @@ export function PersonProvider({
   // PESSOAS DO USUÁRIO ATUAL
   // ==========================================================
 
-  const persons = useLiveQuery(
+  const personResult = useLiveQuery(
     async () => {
       if (!user?.id) {
-        return [];
+        return { userId: null, persons: [] };
       }
 
-      return db.persons
-        .where("user_id")
-        .equals(user.id)
-        .toArray();
+      const persons = await db.persons.where("user_id").equals(user.id).toArray();
+      return { userId: user.id, persons };
     },
-    [user?.id],
-    []
+    [user?.id]
   );
+  const persons = useMemo(() => personResult?.userId === user?.id ? personResult?.persons || [] : [], [personResult, user?.id]);
+  const personsReady = Boolean(personResult && personResult.userId === (user?.id || null));
 
   // ==========================================================
   // IDS VÁLIDOS
@@ -173,6 +172,16 @@ export function PersonProvider({
           return;
         }
 
+        // V120: refreshes of a valid profile must not unmount the app.
+        if (!personsReady) {
+          setLoading(true);
+          return;
+        }
+        if (activePersonId && validPersonIds.has(activePersonId)) {
+          setLoading(false);
+          await applyPersonColor(activePersonId);
+          return;
+        }
         setLoading(true);
 
         try {
@@ -293,6 +302,7 @@ export function PersonProvider({
     user?.id,
     persons,
     validPersonIds,
+    personsReady,
     activePersonId,
     applyPersonColor,
   ]);
@@ -397,15 +407,10 @@ export function PersonProvider({
       () => ({
         activePersonId,
         changePerson,
-        loading,
+        loading: loading || !personsReady || Boolean(activePersonId && !validPersonIds.has(activePersonId)),
         persons,
       }),
-      [
-        activePersonId,
-        changePerson,
-        loading,
-        persons,
-      ]
+      [activePersonId, changePerson, loading, persons, personsReady, validPersonIds]
     );
 
   return (

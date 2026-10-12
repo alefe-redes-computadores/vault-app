@@ -56,7 +56,11 @@ export type HealthIntelligenceMaturity = {
   sources: HealthIntelligenceSource[];
 };
 
-export function useHealthIntelligence() {
+import { useHealthExperienceFeedback } from "@/hooks/useHealthExperienceFeedback";
+import { selectExperienceInsightsV4 } from "@/lib/health-intelligence/feedback-v4";
+
+export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) {
+  const includeAudit = options.includeAudit !== false;
   const {
     activePersonId,
   } =
@@ -103,25 +107,27 @@ export function useHealthIntelligence() {
       ]
     );
 
+  const feedbackState = useHealthExperienceFeedback(activePersonId, insights);
+
   // VAULT_BRAIN_V4_SHADOW_CORE
   // O V4 observa o mesmo contexto e os mesmos Insights do motor estável.
   // Não substitui ranking, UI ou notificações nesta fase.
   const brainV4 =
     useMemo(
       () =>
-        context
+        context && includeAudit
           ? buildBrainV4Snapshot(context, insights)
           : null,
-      [context, insights]
+      [context, insights, includeAudit]
     );
 
-  const highlights =
+  const highlightCandidates =
     useMemo(
       () =>
         selectHealthHighlights(
           insights,
           {
-            limit: 3,
+            limit: Math.max(1, insights.length),
             minimumSample: 3,
           }
         ),
@@ -129,6 +135,9 @@ export function useHealthIntelligence() {
         insights,
       ]
     );
+
+  const highlights = useMemo(() => highlightCandidates.slice(0, 3), [highlightCandidates]);
+  const experienceHighlights = useMemo(() => selectExperienceInsightsV4(highlightCandidates, feedbackState.feedback, 3), [highlightCandidates, feedbackState.feedback]);
 
   const validation =
     useMemo(
@@ -396,6 +405,9 @@ export function useHealthIntelligence() {
     insights,
 
     highlights,
+    experienceHighlights,
+    experienceFeedback: feedbackState.feedback,
+    sendExperienceFeedback: feedbackState.sendFeedback,
 
     brainV4,
 

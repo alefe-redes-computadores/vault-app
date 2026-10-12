@@ -50,7 +50,7 @@ export function ContextualHealthIntelligence({
   className = "",
 }: Props) {
   const router = useRouter();
-  const { getInsightsForEntity } = useHealthIntelligence();
+  const { getInsightsForEntity } = useHealthIntelligence({ includeAudit: false });
   const [selected, setSelected] = useState<HealthInsight | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -116,7 +116,7 @@ export function ContextualHealthIntelligence({
             }}
           >
             {insights.map((insight, index) => (
-          <button key={insight.id} type="button" onFocus={() => setActiveIndex(index)} onClick={() => { setActiveIndex(index); setSelected(insight); }} className="flex min-w-full snap-center items-start gap-2.5 px-3.5 py-3 text-left active:scale-[0.99]">
+          <button key={insight.id} type="button" onFocus={() => setActiveIndex(index)} onClick={() => { setActiveIndex(index); setSelected(insight); }} className="flex w-full min-w-full shrink-0 snap-center items-start gap-2.5 px-3.5 py-3 text-left active:scale-[0.99]">
             <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${insightTone(insight)}`}>
               {insight.urgencia === "alta" ? <AlertTriangle size={17} /> : <BrainCircuit size={17} />}
             </div>

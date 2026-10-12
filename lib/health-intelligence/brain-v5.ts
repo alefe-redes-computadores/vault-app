@@ -7,7 +7,7 @@ export type BrainV5Family = "now"|"medication"|"interaction"|"pattern"|"data_qua
 
 export type BrainV5Alert = {
   key:string; person_id:string; insight_id:string; family:BrainV5Family;
-  state:BrainV5State; feedback?:BrainV5Feedback;
+  state:BrainV5State; feedback?:BrainV5Feedback; feedback_updated_at?:string; feedback_reset_at?:string;
   first_detected_at:string; last_detected_at:string; last_seen_at?:string; resolved_at?:string;
   occurrences:number; episode:number; severity_rank:number; material_fingerprint:string;
   snapshot:{
@@ -39,7 +39,7 @@ export function reconcileBrainV5(personId:string,current:HealthInsight[],previou
   for(const i of current){
     const key=brainV5Key(personId,i), old=map.get(key), rank=brainV5Severity(i), fp=fingerprint(i); active.add(key);
     const material=!old||old.material_fingerprint!==fp, resurfaced=old?.state==="resolved", escalated=!!old&&((sev[i.gravidadeSeguranca||"informativa"]||0)>(sev[old.snapshot.gravidade_seguranca||"informativa"]||0)||(sev[i.urgencia]||0)>(sev[old.snapshot.urgencia]||0));
-    map.set(key,{key,person_id:personId,insight_id:i.id,family:brainV5Family(i),state:resurfaced||((old?.feedback==="dismissed")&&escalated)?"active":old?.state||"active",feedback:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback,first_detected_at:old?.first_detected_at||now,last_detected_at:material||resurfaced?now:old?.last_detected_at||now,last_seen_at:resurfaced?undefined:old?.last_seen_at,resolved_at:resurfaced||escalated?undefined:old?.resolved_at,occurrences:old?(material||resurfaced?(old.occurrences||1)+1:(old.occurrences||1)):1,episode:old?(resurfaced?(old.episode||1)+1:(old.episode||1)):1,severity_rank:rank,material_fingerprint:fp,snapshot:snap(i)});
+    map.set(key,{key,person_id:personId,insight_id:i.id,family:brainV5Family(i),state:resurfaced||((old?.feedback==="dismissed")&&escalated)?"active":old?.state||"active",feedback:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback,feedback_reset_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?now:old?.feedback_reset_at,feedback_updated_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback_updated_at,first_detected_at:old?.first_detected_at||now,last_detected_at:material||resurfaced?now:old?.last_detected_at||now,last_seen_at:resurfaced?undefined:old?.last_seen_at,resolved_at:resurfaced||escalated?undefined:old?.resolved_at,occurrences:old?(material||resurfaced?(old.occurrences||1)+1:(old.occurrences||1)):1,episode:old?(resurfaced?(old.episode||1)+1:(old.episode||1)):1,severity_rank:rank,material_fingerprint:fp,snapshot:snap(i)});
   }
   for(const [key,x] of map) if(!active.has(key)&&x.state!=="resolved") map.set(key,{...x,state:"resolved",resolved_at:now});
   return [...foreign,...map.values()].sort((a,b)=>b.last_detected_at.localeCompare(a.last_detected_at)).slice(0,1200);
