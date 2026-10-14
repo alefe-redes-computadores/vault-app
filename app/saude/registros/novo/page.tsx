@@ -1,5 +1,6 @@
 // app/saude/registros/novo/page.tsx
 "use client";
+import {MOOD_CHOICES,moodContext,type MoodChoice} from "@/lib/health-profile/avatar-body";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {CustomDatePicker} from "@/components/DatePicker";
 import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
@@ -128,6 +129,7 @@ const fadeUp = {
 // ============================================================
 
 const TIPOS_PREDEFINIDOS = [
+  {categoria:"humor" as CategoriaRegistro,tipo:"humor",nome:"Humor",placeholder:"Como me senti"},
   {
     categoria:
       "medicao" as CategoriaRegistro,
@@ -565,6 +567,7 @@ export default function NovoRegistroSaudePage() {
       ""
     );
 
+  const [mood,setMood]=useState<MoodChoice|"">("");
   const [
     intensidade,
     setIntensidade,
@@ -727,7 +730,7 @@ export default function NovoRegistroSaudePage() {
   useEffect(() => {
     if (notificationPresetApplied.current) return;
     const requested = new URLSearchParams(window.location.search).get("preset");
-    if (requested !== "medicao" && requested !== "sintoma") return;
+    if (requested !== "medicao" && requested !== "sintoma" && requested !== "humor") return;
     const preset = TIPOS_PREDEFINIDOS.find((item) => item.categoria === requested);
     if (!preset) return;
     notificationPresetApplied.current = true;
@@ -1222,12 +1225,13 @@ export default function NovoRegistroSaudePage() {
               categoria,
 
               tipo:
-                tipoSelecionado ||
+                categoria === "humor" ? "humor" : tipoSelecionado ||
                 "geral",
 
               nome:
                 nome.trim(),
 
+              contexto: categoria === "humor" && mood ? moodContext(mood) : undefined,
               intensidade:
                 categoria ===
                 "sintoma"
@@ -1542,6 +1546,7 @@ export default function NovoRegistroSaudePage() {
               </div>
             )}
 
+            {categoria==='humor'?<fieldset className="space-y-2 rounded-xl border border-violet-400/20 p-3"><legend className="px-1 text-xs font-semibold text-violet-300">Como você se sentiu?</legend><div className="flex flex-wrap gap-2">{Object.entries(MOOD_CHOICES).map(([value,label])=><button key={value} type="button" aria-pressed={mood===value} onClick={()=>setMood(value as MoodChoice)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs ${mood===value?'border-violet-400/50 bg-violet-400/10 text-violet-300':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div><p className="text-[10px] text-ink-muted">Escolha opcional, informada por você. O Avatar usa vários dias registrados; isso não é um diagnóstico.</p></fieldset>:null}
             {categoria ===
               "sintoma" && (
               <div className="space-y-2 pt-1">

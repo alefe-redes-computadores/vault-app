@@ -21,3 +21,9 @@ export function avatarRenderRatio(deviceRatio: number, dragging: boolean): numbe
 export function avatarZoom(value: number): number {
   return Number.isFinite(value) ? Math.max(80, Math.min(130, value)) : 100;
 }
+
+export type AvatarSize='compact'|'expanded'|'hidden';
+export function parseAvatarSize(value:string|null):AvatarSize {
+ try{const saved=JSON.parse(value||'null');if(saved?.version===1&&['compact','expanded','hidden'].includes(saved.size))return saved.size;}catch{}
+ return 'compact';
+}

@@ -3,10 +3,11 @@ import { createPortal } from "react-dom";
 import { Brain } from "lucide-react";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 import type { HealthDevice } from "@/lib/health-profile/types";
+import {avatarBraceSlots,type AvatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
-export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false, showControls = true, controlsContainer }: { skin: string; devices: HealthDevice[]; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null }) {
+export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false, showControls = true, controlsContainer, expression="neutral", onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart)=>void;onDeviceSelect?:(id:string)=>void }) {
   const [view,setView]=useState<"front"|"left"|"right">("front");
   const angle=view==="front"?0:view==="left"?-18:18;
   const uid = useId().replace(/:/g, "");
@@ -24,7 +25,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
   </>;
   return (
     <div className={"mx-auto w-full " + (expanded ? "max-w-[320px]" : "max-w-[180px]")}>
-      <svg viewBox="0 0 180 260" role="img" aria-labelledby={`${ids.title} ${ids.description}`} className={"w-full motion-safe:transition-transform motion-safe:duration-300 " + (expanded ? "h-auto" : "h-60")} style={{transform:`perspective(700px) rotateY(${angle}deg)`,transformOrigin:"50% 55%"}}>
+      <svg viewBox="0 0 180 260" role={onBodySelect?"group":"img"} aria-labelledby={`${ids.title} ${ids.description}`} className={"w-full motion-safe:transition-transform motion-safe:duration-300 " + (expanded ? "h-auto" : "h-60")} style={{transform:`perspective(700px) rotateY(${angle}deg)`,transformOrigin:"50% 55%"}}>
         <title id={ids.title}>{`Avatar Vault com emblema ${BRAIN_BRAND}`}</title>
         <desc id={ids.description}>Ilustração de perfil. {description} Celular ilustrativo com Vault aberto. Os acessórios representam o cadastro; o desenho não indica conexão nem estado de saúde.</desc>
         <defs>
@@ -64,7 +65,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
         <circle cx="81" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
         <circle cx="98" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
         <path d="M90 38 L88 44 L92 44" fill="none" stroke="#30251f" strokeOpacity=".3" strokeWidth="1" strokeLinecap="round" />
-        <path d="M84 49 Q90 53 97 49" fill="none" stroke={faceDetail} strokeOpacity=".6" strokeWidth="1.2" strokeLinecap="round" />
+        <path d={expression==='happy'?"M84 49 Q90 53 97 49":expression==='reflective'?"M84 49 Q90 45 97 49":"M84 49 L97 49"} fill="none" stroke={faceDetail} strokeOpacity=".6" strokeWidth="1.2" strokeLinecap="round" />
 
         {/* V122: cheek light, hair texture and a more defined jaw. */}
         <path d="M73 32 Q70 44 78 50 M107 32 Q110 44 102 50" fill="none" stroke={avatarShade(color, 1.35)} strokeOpacity=".28" strokeWidth="2" strokeLinecap="round" />
@@ -112,13 +113,14 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
           <path d={phoneSide === "right" ? "M8 -8 Q15 -13 16 -16 Q19 -8 12 -4 L8 0Z" : "M-8 -8 Q-15 -13 -16 -16 Q-19 -8 -12 -4 L-8 0Z"} fill={`url(#${ids.skin})`} stroke={avatarShade(color, .7)} strokeWidth=".6" />
         </g>
         {slots.map(({ kind, side, device, count }) => {
-          const x = side === "right" ? 38 : 142;
+          const supported=kind==="watch"&&avatarBraceSlots(devices).some(d=>d.side===side);
+          const x = side === "right" ? (supported?45:38) : (supported?135:142),watchY=supported?126:141;
           const deviceColor = avatarColor(device.color, "#94a3b8");
           return (
             <g key={`${side}-${kind}`}>
               <title>{`${device.name} · ${side === "right" ? "lado direito" : "lado esquerdo"}${count > 1 ? ` · ${count} aparelhos cadastrados nesta posição; mostrando o atualizado mais recentemente` : ""}`}</title>
               {kind === "watch" ? (
-                <g transform={`translate(${x},141) rotate(${side === "right" ? 17 : -17})`}>
+                <g transform={`translate(${x},${watchY}) rotate(${side === "right" ? 17 : -17})`}>
                   <rect x="-5" y="-12" width="10" height="25" rx="3" fill={deviceColor} stroke="#94a3b8" strokeOpacity=".55" strokeWidth=".6" />
                   <path d="M-2 -10 H2 M-2 10 H2" stroke="#020617" strokeOpacity=".35" strokeWidth=".7" />
                   <rect x="-8" y="-7.5" width="16" height="16" rx="5" fill={deviceColor} stroke={`url(#${ids.metal})`} strokeWidth="1.1" />
@@ -140,7 +142,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
                 </g>
               )}
               {count > 1 && (
-                <g transform={`translate(${side === "right" ? x - 13 : x + 13},${kind === "watch" ? 138 : 163})`}>
+                <g transform={`translate(${side === "right" ? x - 13 : x + 13},${kind === "watch" ? watchY-3 : 163})`}>
                   <rect x="-6" y="-4" width="12" height="8" rx="4" fill="#182332" stroke="#64748b" strokeWidth=".5" />
                   <text textAnchor="middle" y="1.7" fontSize="4.2" fontFamily="Arial, sans-serif" fill="#e2e8f0">+{count - 1}</text>
                 </g>
@@ -148,6 +150,8 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
             </g>
           );
         })}
+        {onBodySelect?<g role="button" tabIndex={0} aria-label="Ver humor informado" onClick={()=>onBodySelect('mood')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onBodySelect('mood');}}}><rect x="65" y="6" width="50" height="56" fill="transparent" className="cursor-pointer"/></g>:null}
+        {avatarBraceSlots(devices).map(d=>{const x=d.side==='right'?32:134;return <g key={d.id} role="button" tabIndex={0} aria-label={`Abrir equipamento ${d.name}`} onClick={()=>onDeviceSelect?.(d.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onDeviceSelect?.(d.id);}}}><rect x={x} y="147" width="14" height="18" rx="4" fill={avatarColor(d.color,'#7dd3fc')}/><path d={`M${x} 151 h14 M${x} 160 h14`} stroke="#17212b" strokeWidth="2"/></g>;})}
       </svg>
       <p aria-hidden="true" className="-mt-1 text-center font-mono text-[9px] tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
       {controlsContainer===undefined?(showControls?perspective:null):controlsContainer?createPortal(perspective,controlsContainer):null}

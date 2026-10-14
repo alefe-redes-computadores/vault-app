@@ -104,7 +104,7 @@ export function buildDeviceTrendInsights(context: HealthInsightContext): HealthI
       id: `device-trend-${metric}-14d`, kind: "pattern", categoria: "historico",
       titulo: `${metricLabel}: houve uma variação nos registros`, mensagem: `${message} O Vault compara somente dias com medidas; isso descreve o histórico salvo e não define se o valor é clinicamente normal.`,
       urgencia: "baixa", confianca: recent.length >= 5 && previous.length >= 5 ? "media" : "baixa", amostra: observed,
-      periodoDias: 14, entidadeTipo: "linha_cuidado", link: "/saude/minha-saude",
+      periodoDias: 14, entidadeTipo: "linha_cuidado", link: `/saude/minha-saude?metric=${encodeURIComponent(metric)}&person_id=${encodeURIComponent(context.personId)}&desde=${new Date(today-14*DAY).toISOString().slice(0,10)}&ate=${new Date(today-DAY).toISOString().slice(0,10)}`,
       evidencias: [
         `Semana recente: ${recent.length} dias com medição (${new Date(today-7*DAY).toISOString().slice(0,10)} a ${new Date(today-DAY).toISOString().slice(0,10)})`, `Semana anterior: ${previous.length} dias com medição (${new Date(today-14*DAY).toISOString().slice(0,10)} a ${new Date(today-8*DAY).toISOString().slice(0,10)})`,
         metric === "pressao_arterial" ? `Médias diárias, sistólica/diastólica: ${Math.round(before)}/${Math.round(beforeSecondary || 0)} → ${Math.round(after)}/${Math.round(afterSecondary || 0)} mmHg` : `Média das medianas diárias: ${display(before, metric)} → ${display(after, metric)}`,

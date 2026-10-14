@@ -1,5 +1,6 @@
 // app/saude/registros/detalhes/page.tsx
 "use client";
+import {MOOD_CHOICES,readMoodContext} from "@/lib/health-profile/avatar-body";
 import {HealthRecordSource} from "@/components/saude/HealthRecordSource";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 
@@ -933,6 +934,7 @@ function DetalhesRegistroSaudeContent() {
               </DetailInfoRow>
             </div>
 
+            {readMoodContext(registro.contexto)?<p className="mt-4 rounded-xl border border-violet-400/20 p-3 text-xs text-violet-300">Humor informado: {MOOD_CHOICES[readMoodContext(registro.contexto)!]}</p>:null}
             {/* INTENSIDADE */}
 
             {registro.intensidade !==

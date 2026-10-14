@@ -17,12 +17,16 @@ import {
   UserRound,
 } from "lucide-react";
 import { useHealthProfile } from "@/hooks/useHealthProfile";
+import {avatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
+import {AvatarBodyEvidence} from "@/components/saude/AvatarBodyEvidence";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
 import { CustomDatePicker } from "@/components/DatePicker";
+import { MetricHistoryLink } from "@/components/saude/MetricHistoryLink";
+import {clearMetricInsightQuery,type MetricInsightTarget} from "@/lib/health-profile/metric-link";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
 import { avatarWeightContext } from "@/lib/health-profile/avatar-readings";
@@ -74,6 +78,7 @@ function HealthDashboard({
     { trigger } = useHapticFeedback(),
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
+  const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
   const intelligence = useHealthIntelligence({ includeAudit: false });
   const { personId, person, profile, devices, loading, error } = data;
   const [panel, setPanel] = useState<
@@ -85,6 +90,8 @@ function HealthDashboard({
     [historyDate, setHistoryDate] = useState(getLocalTodayISO()),
     [archive, setArchive] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
+  const [insightTarget,setInsightTarget]=useState<MetricInsightTarget|null>(null);
+  const closeMetric=()=>{setMetric(null);setInsightTarget(null);if(insightTarget){const query=clearMetricInsightQuery(new URLSearchParams(window.location.search));router.replace(`/saude/minha-saude${query?`?${query}`:""}`);}};
   const deviceEditorRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{if(panel!=="device")return;const frame=requestAnimationFrame(()=>{deviceEditorRef.current?.scrollIntoView({block:"start",behavior:"auto"});deviceEditorRef.current?.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[panel,editDevice]);
   const profileEditorId = useId();
@@ -122,6 +129,7 @@ function HealthDashboard({
   );
   const latest = (type: HealthMetric) => records.find((r) => r.tipo === type);
   const weightContext=useMemo(()=>avatarWeightContext(records,personId||"",person?.user_id||"",today),[records,personId,person?.user_id,today]);
+  const bodyContext=useMemo(()=>avatarBodyContext(registros,intelligence.context?.cirurgias||[],devices,personId||"",person?.user_id||"",today),[registros,intelligence.context?.cirurgias,devices,personId,person?.user_id,today]);
   const avatarContext=useMemo(()=>avatarInsightContext(intelligence.insights),[intelligence.insights]);
   const weight = weightContext.latest,
     index = bmi(weight?.valor_numerico, profile?.height_cm),
@@ -261,8 +269,15 @@ function HealthDashboard({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
-                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
-                  <AvatarHealthContext insights={intelligence.insights} loading={intelligence.isLoading} error={intelligence.error} weightComparison={weightContext.comparison} onViewWeight={()=>{trigger("vibrate");setMetric("peso");}} />
+                  <AvatarHealthContext insights={intelligence.insights} loading={intelligence.isLoading} error={intelligence.error} />
+                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={setBodyPart} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
+
+                  <div className="my-2 flex flex-wrap gap-2" aria-label="Registros representados no corpo">
+                    <button type="button" onClick={()=>setBodyPart('mood')} className="min-h-11 rounded-xl border border-violet-400/25 px-3 py-2 text-xs text-violet-300">{bodyContext.expression==='happy'?'☺ Humor informado':bodyContext.expression==='reflective'?'☹ Humor informado':'Humor · registros'}</button>
+                    <button type="button" onClick={()=>setBodyPart('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">{bodyContext.weight?`Peso ${bodyContext.weight.delta>0?'+':''}${bodyContext.weight.delta.toLocaleString('pt-BR')} kg`:'Peso · registros'}</button>
+                    {bodyContext.surgery?<button type="button" onClick={()=>setBodyPart('surgery')} className="min-h-11 rounded-xl border border-sky-400/25 px-3 py-2 text-xs text-sky-300">Cirurgia agendada ›</button>:null}
+                    {bodyContext.supports.length?<button type="button" onClick={()=>setBodyPart('equipment')} className="min-h-11 rounded-xl border border-sky-400/25 px-3 py-2 text-xs text-sky-300">Equipamentos em uso ›</button>:null}
+                  </div>
                   <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
@@ -475,7 +490,9 @@ function HealthDashboard({
                 ))}
               </div>
             </section>
-            {metric && <HealthMetricDetails key={metric} type={metric} records={records} devices={devices} today={today} onClose={() => setMetric(null)} onAdd={() => { setMetric(null); open(metric); }} onRecord={id => go(`/saude/registros/detalhes?id=${id}`)} />}
+            {bodyPart?<AvatarBodyEvidence part={bodyPart} context={bodyContext} onClose={()=>setBodyPart(null)} onWeight={()=>{setBodyPart(null);setMetric('peso');}} onEquipment={()=>{setBodyPart(null);setEditDevice(null);open('device');}}/>:null}
+            <MetricHistoryLink personId={loading||isLoading||!person?.user_id?"":personId} today={today} onOpen={target=>{setInsightTarget(target);setMetric(target.type);}}/>
+            {metric && <HealthMetricDetails key={metric+(insightTarget?.since||"")+(insightTarget?.until||"")} initialRange={insightTarget?.type===metric?insightTarget:undefined} type={metric} records={records} devices={devices} today={today} onClose={closeMetric} onAdd={() => { closeMetric(); open(metric); }} onRecord={id => go(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`)} />}
             {panel && Object.prototype.hasOwnProperty.call(METRICS, panel) && (
               <HealthMeasurementForm
                 key={panel}

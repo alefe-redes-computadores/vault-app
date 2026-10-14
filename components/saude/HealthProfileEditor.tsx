@@ -269,6 +269,7 @@ export function HealthDeviceEditor({
         value={color}
         onChange={setColor}
       />
+      {kind==='other'?<div className="rounded-xl border border-sky-400/20 p-3"><p className="mb-2 text-xs text-ink-muted">Representar equipamento que você já utiliza:</p><div className="flex gap-2">{["Tala de punho","Munhequeira"].map(label=><button type="button" key={label} onClick={()=>{setName(label);setCaps([]);}} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-sky-300">{label}</button>)}</div><p className="mt-2 text-[10px] text-ink-muted">Informe o lado de uso. Não registre uma tala apenas porque há uma cirurgia agendada.</p></div>:null}
       <HealthRelationPicker
         title="Lado de uso"
         value={side}
