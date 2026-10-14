@@ -25,6 +25,8 @@ import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
+import { avatarWeightContext } from "@/lib/health-profile/avatar-readings";
+import { avatarPreferenceKey } from "@/lib/health-profile/avatar-preference";
 import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
 import { AvatarReadings } from "@/components/saude/AvatarReadings";
 import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
@@ -119,9 +121,9 @@ function HealthDashboard({
     [registros, today, personId, person?.user_id]
   );
   const latest = (type: HealthMetric) => records.find((r) => r.tipo === type);
-  const weights = records.filter(r => r.tipo === "peso" && typeof r.valor_numerico === "number" && Number.isFinite(r.valor_numerico)).slice(0,2);
-  const weightChange = weights.length === 2 ? Math.round((weights[0].valor_numerico! - weights[1].valor_numerico!) * 10) / 10 : null;
-  const weight = latest("peso"),
+  const weightContext=useMemo(()=>avatarWeightContext(records,personId||"",person?.user_id||"",today),[records,personId,person?.user_id,today]);
+  const avatarContext=useMemo(()=>avatarInsightContext(intelligence.insights),[intelligence.insights]);
+  const weight = weightContext.latest,
     index = bmi(weight?.valor_numerico, profile?.height_cm),
     age = ageOn(profile?.birth_date, today);
   const active = useMemo(()=>devices.filter((d)=>d.active),[devices]);
@@ -259,8 +261,8 @@ function HealthDashboard({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
-                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} onBrainSelect={()=>{const insight=avatarInsightContext(intelligence.insights).primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={avatarInsightContext(intelligence.insights).rank} expanded />
-                  <AvatarHealthContext insights={intelligence.insights} weightChange={weightChange} />
+                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
+                  <AvatarHealthContext insights={intelligence.insights} loading={intelligence.isLoading} error={intelligence.error} weightComparison={weightContext.comparison} onViewWeight={()=>{trigger("vibrate");setMetric("peso");}} />
                   <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">

@@ -28,3 +28,26 @@ export function latestAvatarReadings(records:RegistroSaude[],devices:HealthDevic
  }
  return latest;
 }
+
+export interface AvatarWeightComparison {
+ current: RegistroSaude;
+ previous: RegistroSaude;
+ delta: number;
+}
+
+/** Compare actual, owned kg measurements, never missing or incompatible values. */
+export function avatarWeightContext(records:RegistroSaude[],pid:string,uid:string,today:string) {
+ const empty={latest:null,comparison:null};
+ if(!pid||!uid||!validDate(today))return empty;
+ const ordered=records.filter(r=>r.person_id===pid&&r.user_id===uid&&r.tipo==='peso'&&validDate(r.data)&&r.data<=today)
+  .sort((a,b)=>`${b.data}T${b.horario||'00:00'}`.localeCompare(`${a.data}T${a.horario||'00:00'}`)||(b.id||'').localeCompare(a.id||''));
+ const seen=new Set<string>(),valid:RegistroSaude[]=[];
+ for(const r of ordered){
+  if(r.id&&seen.has(r.id))continue;
+  if(healthReadingValue(r)===null)continue;
+  if(r.id)seen.add(r.id);
+  valid.push(r);if(valid.length===2)break;
+ }
+ const current=valid[0],previous=valid[1];
+ return {latest:current||null,comparison:current&&previous?{current,previous,delta:Math.round((current.valor_numerico!-previous.valor_numerico!)*10)/10} satisfies AvatarWeightComparison:null};
+}

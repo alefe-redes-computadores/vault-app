@@ -4,12 +4,13 @@ import { createPortal } from "react-dom";
 import * as THREE from "three";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarColor, avatarLayout, avatarVisualSignature, avatarTapEligible } from "@/lib/health-profile/avatar";
+import { avatarRenderRatio, avatarZoom } from "@/lib/health-profile/avatar-preference";
 import { watchModelByName } from "@/lib/health-profile/device-catalog";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 
 import { avatarAttentionColor, shortestAvatarAngle } from "@/lib/health-profile/avatar-context";
 
-type Controller = { attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void };
+type Controller = { attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void; nudge:(delta:number)=>void };
 export default function HealthAvatar3D({ skin, devices, onUnavailable, attention=0, onDeviceSelect, onBrainSelect, controlsContainer }: { skin: string; devices: HealthDevice[]; attention?:number; onDeviceSelect?:(id:string)=>void; onBrainSelect?:()=>void; controlsContainer?:HTMLElement|null; onUnavailable: () => void }) {
   const host = useRef<HTMLDivElement>(null), controller = useRef<Controller | null>(null);
   const [zoom, setZoom] = useState(100), [direction, setDirection] = useState("front");
@@ -28,7 +29,8 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     let renderer: THREE.WebGLRenderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" }); }
     catch { onUnavailable(); return; }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    const displayRatio=window.devicePixelRatio||1;
+    renderer.setPixelRatio(avatarRenderRatio(displayRatio,false));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
     element.appendChild(renderer.domElement);
@@ -61,7 +63,8 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     oval(materials.hair,0,2.98,-.035,[.247,.17,.23]);
     oval(materials.skin,-.246,2.77,0,[.04,.075,.045]); oval(materials.skin,.246,2.77,0,[.04,.075,.045]);
     mesh(new THREE.CylinderGeometry(.095,.11,.22,16),materials.skin,0,2.45,0);
-    mesh(new THREE.CylinderGeometry(.34,.27,.77,24),materials.cloth,0,2.05,0,[1,1,.67]);
+    const shirtProfile=[[.265,0],[.27,.08],[.28,.35],[.31,.58],[.335,.70],[.32,.75],[.15,.80]].map(([radius,y])=>new THREE.Vector2(radius,y));
+    mesh(new THREE.LatheGeometry(shirtProfile,24),materials.cloth,0,1.665,0,[1,1,.67]);
     mesh(new THREE.CylinderGeometry(.27,.275,.28,24),materials.cloth,0,1.535,0,[1,1,.72]);
     mesh(new THREE.TorusGeometry(.108,.012,6,24),materials.dark,0,2.43,0).rotation.x=Math.PI/2;
     mesh(new THREE.BoxGeometry(.014,.31,.009),materials.dark,0,1.44,.19);
@@ -124,7 +127,11 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     const phoneX=layout.phoneSide==="right"?-.55:.55;
     const phone=mesh(new THREE.BoxGeometry(.17,.3,.035),materials.dark,phoneX,1.30,.09);phone.rotation.z=layout.phoneSide==="right"?-.12:.12;
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.30,.109);screen.rotation.z=phone.rotation.z;screen.userData.action="brain";
-    mesh(new THREE.CircleGeometry(.55,32),new THREE.MeshBasicMaterial({color:0x94a3b8,transparent:true,opacity:.08,side:THREE.DoubleSide}),0,.04,0).rotation.x=-Math.PI/2;
+    const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
+    const shadowContext=shadowCanvas.getContext("2d");
+    if(shadowContext){const gradient=shadowContext.createRadialGradient(64,64,8,64,64,64);gradient.addColorStop(0,"rgba(0,0,0,.4)");gradient.addColorStop(1,"rgba(0,0,0,0)");shadowContext.fillStyle=gradient;shadowContext.fillRect(0,0,128,128);}
+    const shadowTexture=new THREE.CanvasTexture(shadowCanvas);textures.push(shadowTexture);
+    mesh(new THREE.PlaneGeometry(1.25,.85),new THREE.MeshBasicMaterial({map:shadowTexture,transparent:true,depthWrite:false}),0,.035,.06).rotation.x=-Math.PI/2;
     let disposed=false, visible=true, frame=0;
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let transition:{from:number;to:number;start:number}|null=null;
@@ -133,19 +140,20 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
       if(transition){const progress=Math.min(1,(now-transition.start)/220),ease=1-Math.pow(1-progress,3);model.rotation.y=transition.from+(transition.to-transition.from)*ease;if(progress>=1)transition=null;}
       renderer.render(scene,camera);if(transition)draw();
     });};
+    const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,340);}};
     const resize=()=>{const width=element.clientWidth;if(!width)return;renderer.setSize(width,340);camera.aspect=width/340;camera.updateProjectionMatrix();draw();};
     controller.current={attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
-    },zoom:value=>{camera.zoom=value/100;camera.updateProjectionMatrix();draw();}};
+    },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};
     const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(element);
     const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??false;if(visible)draw();});visibilityObserver.observe(element);
     const visibility=()=>{if(!document.hidden)draw();};document.addEventListener("visibilitychange",visibility);
     let pointer:{id:number;x:number;y:number;angle:number;moved:boolean;rotating:boolean}|null=null;
     const raycaster=new THREE.Raycaster();
     const down=(e:PointerEvent)=>{if(!e.isPrimary || (e.pointerType==='mouse' && e.button!==0))return;transition=null;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,angle:model.rotation.y,moved:false,rotating:false};};
-    const move=(e:PointerEvent)=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x;pointer.moved ||= Math.hypot(dx,e.clientY-pointer.y)>6;if(Math.abs(dx)<=6||Math.abs(dx)<Math.abs(e.clientY-pointer.y))return;try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}model.rotation.y=pointer.angle+dx*.012;if(!pointer.rotating){pointer.rotating=true;setDirection("custom");}draw();};
-    const up=(e:PointerEvent)=>{if(pointer?.id!==e.pointerId)return;const tap=avatarTapEligible(e.type,pointer.moved,pointer,{x:e.clientX,y:e.clientY});pointer=null;if(tap){const rect=renderer.domElement.getBoundingClientRect();if(e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom){model.updateMatrixWorld(true);camera.updateMatrixWorld(true);raycaster.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const target=raycaster.intersectObject(model,true)[0]?.object.userData;if(target?.action==="device")actions.current.onDeviceSelect?.(target.deviceId);else if(target?.action==="brain")actions.current.onBrainSelect?.();}}try{if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}catch{}pointer=null;};
+    const move=(e:PointerEvent)=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x;pointer.moved ||= Math.hypot(dx,e.clientY-pointer.y)>6;if(Math.abs(dx)<=6||Math.abs(dx)<Math.abs(e.clientY-pointer.y))return;try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}model.rotation.y=pointer.angle+dx*.012;if(!pointer.rotating){pointer.rotating=true;setDragging(true);setDirection("custom");}draw();};
+    const up=(e:PointerEvent)=>{if(pointer?.id!==e.pointerId)return;const tap=avatarTapEligible(e.type,pointer.moved,pointer,{x:e.clientX,y:e.clientY});if(pointer.rotating){setDragging(false);draw();}pointer=null;if(tap){const rect=renderer.domElement.getBoundingClientRect();if(e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom){model.updateMatrixWorld(true);camera.updateMatrixWorld(true);raycaster.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const target=raycaster.intersectObject(model,true)[0]?.object.userData;if(target?.action==="device")actions.current.onDeviceSelect?.(target.deviceId);else if(target?.action==="brain")actions.current.onBrainSelect?.();}}try{if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}catch{}pointer=null;};
     const lost=(event:Event)=>{event.preventDefault();onUnavailable();};
     element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);element.addEventListener("lostpointercapture",up);renderer.domElement.addEventListener("webglcontextlost",lost);
     resize();
@@ -155,12 +163,18 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     };
     // Signature includes every appearance field used by this scene; metadata updates keep the canvas.
   },[visualSignature,onUnavailable]);
+  const keyboard=(event:React.KeyboardEvent<HTMLDivElement>)=>{
+    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();controller.current?.nudge(event.key==='ArrowLeft'?-Math.PI/12:Math.PI/12);}
+    else if(event.key==='Home'){event.preventDefault();controller.current?.rotate(0);controller.current?.zoom(100);setDirection('front');setZoom(100);}
+    else if(event.key==='+'||event.key==='-'||event.key==='='){event.preventDefault();const value=avatarZoom(zoom+(event.key==='-'?-5:5));setZoom(value);controller.current?.zoom(value);}
+  };
   const controls=<>    {attention>0&&<p className="mt-1 text-center text-[10px] text-slate-400">O contorno do Brain acompanha a prioridade dos insights; não representa diagnóstico.</p>}
+    <p className="mt-2 text-[10px] text-slate-400">Teclado: setas giram; + e − ajustam o zoom; Home restaura a frente.</p>
     <div aria-label="Vista do avatar 3D" className="mt-3 grid grid-cols-4 gap-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-xl border text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/50 bg-violet-400/15 text-violet-200':'border-slate-400/20 text-slate-300'}`}>{title}</button>)}</div>
-    <label htmlFor={zoomId} className="mt-3 flex items-center justify-between text-xs text-slate-300">Zoom <span>{zoom}%</span></label><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=Number(e.target.value);setZoom(value);controller.current?.zoom(value);}} className="mt-2 min-h-8 w-full accent-violet-400" />
+    <label htmlFor={zoomId} className="mt-3 flex items-center justify-between text-xs text-slate-300">Zoom <span>{zoom}%</span></label><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=avatarZoom(Number(e.target.value));setZoom(value);controller.current?.zoom(value);}} className="mt-2 min-h-8 w-full accent-violet-400" />
     {slots.length>0?<ul aria-label="Aparelhos representados" className="mt-3 space-y-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">{onDeviceSelect?<button type="button" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)} className="min-h-11 w-full text-left font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{device.name} <span aria-hidden="true">›</span></button>:<strong>{device.name}</strong>}<span className="mt-1 block text-[10px] text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></li>)}</ul>:null}</>;
   return <div className="mx-auto w-full max-w-[340px]">
-    <div ref={host} role="img" aria-label={`Avatar 3D estilizado. ${description}. Celular ilustrativo; acessórios não indicam conexão nem estado de saúde.`} className="h-[340px] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-violet-500/5 to-transparent" />
+    <div ref={host} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Celular ilustrativo; acessórios não indicam conexão nem estado de saúde.`} className="h-[340px] w-full cursor-grab overflow-hidden rounded-3xl bg-gradient-to-b from-violet-500/5 to-transparent active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
     <p className="text-center text-xs text-slate-400">Arraste para girar · toque nos aparelhos ou no símbolo do Brain</p>
     {controlsContainer===undefined?controls:controlsContainer?createPortal(controls,controlsContainer):null}
   </div>;
