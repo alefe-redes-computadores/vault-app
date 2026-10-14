@@ -10,16 +10,18 @@ import type {
 function scopeToPerson<
   T extends {
     person_id?: string;
+    user_id?: string;
   },
 >(
   items: T[],
-  personId: string
+  personId: string,
+  userId?: string
 ): Array<PersonScoped<T>> {
   return items
     .filter(
       (item) =>
         item.person_id ===
-        personId
+        personId && (!userId || item.user_id === userId)
     )
     .map(
       (item) => ({
@@ -32,7 +34,8 @@ function scopeToPerson<
 
 export async function loadHealthInsightContext(
   personId: string,
-  hoje?: string
+  hoje?: string,
+  userId?: string
 ): Promise<HealthInsightContext> {
   const safePersonId =
     personId.trim();
@@ -59,7 +62,13 @@ export async function loadHealthInsightContext(
     retiradas,
     processos,ciclos,itens,vinculos,
   ] =
-    await Promise.all([
+    await db.transaction("r", [db.persons, db.medicamentos, db.doseLogs, db.renovacoes, db.tratamentos, db.registros_saude, db.consultas, db.exames, db.cirurgias, db.cids, db.documents, db.retiradas, db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens, db.fornecimento_documentos], async () => {
+  if (userId) {
+    const person = await db.persons.get(safePersonId);
+    if (person?.user_id !== userId) throw new Error("Pessoa não pertence à conta atual.");
+  }
+
+    return Promise.all([
       db.medicamentos
         .where("person_id")
         .equals(safePersonId)
@@ -119,78 +128,90 @@ export async function loadHealthInsightContext(
       db.fornecimento_itens.where("person_id").equals(safePersonId).toArray(),
       db.fornecimento_documentos.where("person_id").equals(safePersonId).toArray(),
     ]);
+    });
 
   return {
     personId:
       safePersonId,
 
     hoje,
-    fornecimento:{processos:scopeToPerson(processos,safePersonId),ciclos:scopeToPerson(ciclos,safePersonId),itens:scopeToPerson(itens,safePersonId),documentos:scopeToPerson(vinculos,safePersonId)},
+    fornecimento:{processos:scopeToPerson(processos,safePersonId,userId),ciclos:scopeToPerson(ciclos,safePersonId,userId),itens:scopeToPerson(itens,safePersonId,userId),documentos:scopeToPerson(vinculos,safePersonId,userId)},
 
     medicamentos:
       scopeToPerson(
         medicamentos,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     doseLogs:
       scopeToPerson(
         doseLogs,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     renovacoes:
       scopeToPerson(
         renovacoes,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     tratamentos:
       scopeToPerson(
         tratamentos,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     registrosSaude:
       scopeToPerson(
         registrosSaude,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     consultas:
       scopeToPerson(
         consultas,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     exames:
       scopeToPerson(
         exames,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     cirurgias:
       scopeToPerson(
         cirurgias,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     cids:
       scopeToPerson(
         cids,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     documentos:
       scopeToPerson(
         documentos,
-        safePersonId
+        safePersonId,
+        userId
       ),
 
     retiradas:
       scopeToPerson(
         retiradas,
-        safePersonId
+        safePersonId,
+        userId
       ),
   };
 }

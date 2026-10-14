@@ -16,6 +16,8 @@ import {
   type HealthProfile,
   type HealthDevice,
 } from "@/lib/health-profile/types";
+import { WATCH_BRANDS, watchModelByName, watchModelsForBrand } from "@/lib/health-profile/device-catalog";
+import { WatchModelPreview } from "./WatchModelPreview";
 import { decimal } from "@/lib/health-profile/metrics";
 import { useHapticFeedback } from "@/lib/haptics";
 function ColorChoices({
@@ -185,6 +187,8 @@ export function HealthDeviceEditor({
     [caps, setCaps] = useState<HealthMetric[]>(device?.capabilities || []),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const [brand, setBrand] = useState(watchModelByName(device?.name || "")?.brand || "");
+  const selectedModel = kind === "watch" ? watchModelByName(name) : undefined;
   const lock = useRef(false),
     { trigger } = useHapticFeedback();
   async function save(e: React.FormEvent) {
@@ -242,6 +246,11 @@ export function HealthDeviceEditor({
           </option>
         ))}
       </HealthRelationPicker>
+      {kind === "watch" ? <div className="space-y-3">
+        <HealthRelationPicker title="Marca do relógio" renderIcon={()=> <HealthDeviceIcon kind="watch" color={color}/>} value={brand} onValueChange={setBrand} className={HEALTH_FIELD}><option value="">Escolha a marca · opcional</option>{WATCH_BRANDS.map(b=><option key={b} value={b}>{b}</option>)}</HealthRelationPicker>
+        {brand ? <HealthRelationPicker title="Modelo do relógio" renderIcon={()=> <HealthDeviceIcon kind="watch" color={color}/>} value={selectedModel?.brand===brand?selectedModel.id:""} onValueChange={id=>{const model=watchModelsForBrand(brand).find(m=>m.id===id);if(model)setName(model.name);}} className={HEALTH_FIELD}><option value="">Sem modelo selecionado / digite abaixo</option>{watchModelsForBrand(brand).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</HealthRelationPicker>:null}
+        {selectedModel ? <WatchModelPreview model={selectedModel} color={color}/>:<p className="text-[11px] text-ink-muted">Escolha um modelo de referência ou informe seu aparelho abaixo. Modelos fora do catálogo continuam disponíveis por cadastro manual.</p>}
+      </div>:null}
       <label className="block space-y-2 text-xs text-ink-muted">
         <span>Modelo ou nome</span>
         <input

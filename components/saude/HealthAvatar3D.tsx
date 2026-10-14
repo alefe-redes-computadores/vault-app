@@ -1,0 +1,125 @@
+"use client";
+import { useEffect, useId, useRef, useState } from "react";
+import * as THREE from "three";
+import type { HealthDevice } from "@/lib/health-profile/types";
+import { avatarColor, avatarLayout } from "@/lib/health-profile/avatar";
+import { watchModelByName } from "@/lib/health-profile/device-catalog";
+import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
+
+type Controller = { rotate: (angle: number) => void; zoom: (value: number) => void };
+export default function HealthAvatar3D({ skin, devices, onUnavailable }: { skin: string; devices: HealthDevice[]; onUnavailable: () => void }) {
+  const host = useRef<HTMLDivElement>(null), controller = useRef<Controller | null>(null);
+  const [zoom, setZoom] = useState(100), [direction, setDirection] = useState("front");
+  const zoomId = useId();
+  const { description, slots } = avatarLayout(devices);
+  useEffect(() => {
+    setZoom(100); setDirection("front");
+    const element = host.current;
+    if (!element) return;
+    let renderer: THREE.WebGLRenderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" }); }
+    catch { onUnavailable(); return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    element.appendChild(renderer.domElement);
+    renderer.domElement.style.touchAction = "pan-y";
+    const scene = new THREE.Scene(), model = new THREE.Group();
+    scene.add(model);
+    const camera = new THREE.PerspectiveCamera(35, 1, .1, 30);
+    camera.position.set(0, 1.55, 6); camera.lookAt(0, 1.55, 0);
+    scene.add(new THREE.HemisphereLight(0xdbeafe, 0x17212b, 2.3));
+    const key = new THREE.DirectionalLight(0xffffff, 3); key.position.set(-3,5,4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0xa78bfa, 1.8); rim.position.set(3,3,-3); scene.add(rim);
+    const materials = {
+      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .72 }),
+      cloth: new THREE.MeshStandardMaterial({ color: "#31465b", roughness: .8 }),
+      hair: new THREE.MeshStandardMaterial({ color: "#17212b", roughness: .9 }),
+      dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
+      white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
+    };
+    const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, scale?: [number,number,number]) => {
+      const object = new THREE.Mesh(geometry, material); object.position.set(x,y,z); if (scale) object.scale.set(...scale); model.add(object); return object;
+    };
+    const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(new THREE.SphereGeometry(1,24,16),m,x,y,z,s);
+    oval(materials.skin,0,2.79,0,[.24,.32,.23]);
+    oval(materials.hair,0,2.98,-.035,[.247,.17,.23]);
+    oval(materials.skin,-.246,2.77,0,[.04,.075,.045]); oval(materials.skin,.246,2.77,0,[.04,.075,.045]);
+    mesh(new THREE.CylinderGeometry(.095,.11,.22,16),materials.skin,0,2.45,0);
+    mesh(new THREE.CylinderGeometry(.34,.27,.77,24),materials.cloth,0,2.05,0,[1,1,.67]);
+    mesh(new THREE.CylinderGeometry(.27,.275,.28,24),materials.cloth,0,1.535,0,[1,1,.72]);
+    for (const sign of [-1,1]) {
+      oval(materials.cloth,sign*.32,2.34,0,[.16,.18,.16]);
+      const arm = mesh(new THREE.CapsuleGeometry(.105,.65,6,16),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
+      oval(materials.skin,sign*.51,1.48,.015,[.1,.14,.08]);
+      mesh(new THREE.CapsuleGeometry(.13,.8,6,16),materials.skin,sign*.15,.77,0);
+      mesh(new THREE.CylinderGeometry(.18,.15,.35,16),materials.cloth,sign*.15,1.28,0,[1,1,.85]);
+      oval(materials.dark,sign*.15,.17,.07,[.15,.09,.27]);
+      oval(materials.white,sign*.083,2.82,.214,[.036,.022,.017]);
+      oval(materials.dark,sign*.083,2.82,.23,[.013,.015,.008]);
+    }
+    oval(materials.skin,0,2.76,.23,[.035,.055,.04]);
+    const mouth=mesh(new THREE.TorusGeometry(.047,.007,6,18,Math.PI),materials.dark,0,2.68,.213);mouth.rotation.z=Math.PI;
+    // Badge and phone are local canvas textures, not downloads or personal data.
+    const textures: THREE.Texture[]=[];
+    const label=(title:string,subtitle:string)=>{
+      const canvas=document.createElement("canvas");canvas.width=256;canvas.height=256;
+      const c=canvas.getContext("2d");
+      if(c){c.fillStyle="#0b1520";c.fillRect(0,0,256,256);c.strokeStyle="#c4b5fd";c.lineWidth=5;c.strokeRect(12,12,232,232);c.fillStyle="#c4b5fd";c.font="bold 90px sans-serif";c.textAlign="center";c.lineCap="round";c.lineJoin="round";c.beginPath();c.moveTo(128,42);c.bezierCurveTo(96,26,78,47,83,63);c.bezierCurveTo(52,70,66,106,84,110);c.bezierCurveTo(94,137,118,119,128,109);c.moveTo(128,42);c.bezierCurveTo(160,26,178,47,173,63);c.bezierCurveTo(204,70,190,106,172,110);c.bezierCurveTo(162,137,138,119,128,109);c.moveTo(128,42);c.lineTo(128,109);c.moveTo(96,62);c.bezierCurveTo(107,70,106,87,90,92);c.moveTo(160,62);c.bezierCurveTo(149,70,150,87,166,92);c.stroke();c.fillStyle="#f1f5f9";c.font="bold 36px sans-serif";c.fillText(title,128,172);c.font="20px sans-serif";c.fillStyle="#c4b5fd";c.fillText(subtitle,128,212);}
+      const t=new THREE.CanvasTexture(canvas);t.colorSpace=THREE.SRGBColorSpace;textures.push(t);return new THREE.MeshBasicMaterial({map:t});
+    };
+    mesh(new THREE.PlaneGeometry(.32,.32),label("VAULT",BRAIN_BRAND),0,2.1,.237);
+    const layout=avatarLayout(devices);
+    for (const slot of layout.slots) {
+      const x=slot.side==="right"?-.50:.50;
+      const metal=new THREE.MeshStandardMaterial({color:avatarColor(slot.device.color,"#94a3b8"),metalness:.45,roughness:.32});
+      const ring=mesh(new THREE.TorusGeometry(slot.kind==="watch"?.108:.042,slot.kind==="watch"?.026:.012,8,24),metal,x,slot.kind==="watch"?1.61:1.43,.008);ring.rotation.x=Math.PI/2;
+      if(slot.kind==="watch"){
+        const reference=watchModelByName(slot.device.name), shape=reference?.shape || 'round';
+        const width=shape==='band'?.105:shape==='ultra'?.185:.16, height=shape==='band'?.21:.17;
+        const titanium=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#b9b8b3':avatarColor(slot.device.color,'#94a3b8'),metalness:.65,roughness:.3});
+        if(shape==='round'){
+          const caseMesh=mesh(new THREE.CylinderGeometry(.086,.086,.055,24),titanium,x,1.61,.098);caseMesh.rotation.x=Math.PI/2;
+        }else{
+          const outline=new THREE.Shape(),w=width/2,h=height/2,r=.026;
+          outline.moveTo(-w+r,-h);outline.lineTo(w-r,-h);outline.quadraticCurveTo(w,-h,w,-h+r);outline.lineTo(w,h-r);outline.quadraticCurveTo(w,h,w-r,h);outline.lineTo(-w+r,h);outline.quadraticCurveTo(-w,h,-w,h-r);outline.lineTo(-w,-h+r);outline.quadraticCurveTo(-w,-h,-w+r,-h);
+          mesh(new THREE.ExtrudeGeometry(outline,{depth:.035,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.004,bevelThickness:.004}),titanium,x,1.61,.075);
+        }
+        const roundFace=shape==='round'||shape==='ultra';
+        mesh(roundFace?new THREE.CircleGeometry(.068,24):new THREE.PlaneGeometry(width*.75,height*.75),materials.dark,x,1.61,.133);
+        mesh(new THREE.BoxGeometry(.009,.046,.006),materials.white,x,1.63,.139);
+        const hand=mesh(new THREE.BoxGeometry(.038,.009,.006),materials.white,x+.016,1.61,.139);hand.rotation.z=-.4;
+        const crown=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#fb923c':'#94a3b8',metalness:.45,roughness:.3});
+        mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,1.61,.103);
+      }
+    }
+    const phoneX=layout.phoneSide==="right"?-.55:.55;
+    const phone=mesh(new THREE.BoxGeometry(.17,.3,.035),materials.dark,phoneX,1.30,.09);phone.rotation.z=layout.phoneSide==="right"?-.12:.12;
+    const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.30,.109);screen.rotation.z=phone.rotation.z;
+    mesh(new THREE.CircleGeometry(.55,32),new THREE.MeshBasicMaterial({color:0x94a3b8,transparent:true,opacity:.08,side:THREE.DoubleSide}),0,.04,0).rotation.x=-Math.PI/2;
+    let disposed=false, visible=true, frame=0;
+    const draw=()=>{if(disposed||!visible||document.hidden||frame)return;frame=requestAnimationFrame(()=>{frame=0;if(!disposed&&visible&&!document.hidden)renderer.render(scene,camera);});};
+    const resize=()=>{const width=element.clientWidth;if(!width)return;renderer.setSize(width,340);camera.aspect=width/340;camera.updateProjectionMatrix();draw();};
+    controller.current={rotate:angle=>{model.rotation.y=angle;draw();},zoom:value=>{camera.zoom=value/100;camera.updateProjectionMatrix();draw();}};
+    const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(element);
+    const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??false;if(visible)draw();});visibilityObserver.observe(element);
+    const visibility=()=>{if(!document.hidden)draw();};document.addEventListener("visibilitychange",visibility);
+    let pointer:{id:number;x:number;y:number;angle:number}|null=null;
+    const down=(e:PointerEvent)=>{if(!e.isPrimary)return;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,angle:model.rotation.y};};
+    const move=(e:PointerEvent)=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x;if(Math.abs(dx)<5||Math.abs(dx)<Math.abs(e.clientY-pointer.y))return;model.rotation.y=pointer.angle+dx*.012;setDirection("custom");draw();};
+    const up=()=>{pointer=null;};
+    const lost=(event:Event)=>{event.preventDefault();onUnavailable();};
+    element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);element.addEventListener("pointercancel",up);renderer.domElement.addEventListener("webglcontextlost",lost);
+    resize();
+    return ()=>{
+      disposed=true;cancelAnimationFrame(frame);controller.current=null;resizeObserver.disconnect();visibilityObserver.disconnect();document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);element.removeEventListener("pointercancel",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
+      const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
+    };
+  },[skin,devices,onUnavailable]);
+  return <div className="mx-auto w-full max-w-[340px]">
+    <div ref={host} role="img" aria-label={`Avatar 3D estilizado. ${description}. Celular ilustrativo; acessórios não indicam conexão nem estado de saúde.`} className="h-[340px] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-violet-500/5 to-transparent" />
+    <p className="text-center text-xs text-slate-400">Arraste na horizontal para girar</p>
+    <div aria-label="Vista do avatar 3D" className="mt-3 grid grid-cols-4 gap-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-xl border text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/50 bg-violet-400/15 text-violet-200':'border-slate-400/20 text-slate-300'}`}>{title}</button>)}</div>
+    <label htmlFor={zoomId} className="mt-3 flex items-center justify-between text-xs text-slate-300">Zoom <span>{zoom}%</span></label><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=Number(e.target.value);setZoom(value);controller.current?.zoom(value);}} className="mt-2 min-h-8 w-full accent-violet-400" />
+    {slots.length>0?<ul aria-label="Aparelhos representados" className="mt-3 space-y-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-xs text-slate-200"><strong>{device.name}</strong><span className="mt-1 block text-[10px] text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></li>)}</ul>:null}
+  </div>;
+}

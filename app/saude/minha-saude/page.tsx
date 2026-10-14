@@ -25,7 +25,7 @@ import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
-import { HealthBody } from "@/components/saude/HealthBody";
+import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
 import {
   HealthDeviceIcon,
   HealthMetricIcon,
@@ -71,7 +71,6 @@ function HealthDashboard({
     { registros, isLoading } = useRegistrosSaude();
   const intelligence = useHealthIntelligence({ includeAudit: false });
   const { personId, person, profile, devices, loading, error } = data;
-  const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [panel, setPanel] = useState<
       "profile" | "device" | "water" | HealthMetric | null
     >(null),
@@ -254,9 +253,8 @@ function HealthDashboard({
                 </button>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <div className={avatarExpanded ? "w-full" : "w-[42%] shrink-0"}>
-                  <button type="button" aria-expanded={avatarExpanded} onClick={() => setAvatarExpanded(v => !v)} className="min-h-11 w-full rounded-xl text-center text-xs text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">{avatarExpanded ? "Reduzir avatar" : "Ampliar avatar"}</button>
-                  <HealthBody skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} expanded={avatarExpanded} />
+                <div className="w-full">
+                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} expanded />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
                   <div>
@@ -290,7 +288,7 @@ function HealthDashboard({
                 </div>
               </div>
               <p className="text-[10px] leading-relaxed text-ink-muted">
-                A ilustração representa seu perfil e aparelhos. O IMC não mede
+                O avatar representa seu perfil e aparelhos. O IMC não mede
                 composição corporal.{" "}
                 {age !== null && age < 20
                   ? "A avaliação de crianças e adolescentes utiliza idade e crescimento."

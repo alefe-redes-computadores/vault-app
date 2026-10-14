@@ -56,6 +56,7 @@ export type HealthIntelligenceMaturity = {
   sources: HealthIntelligenceSource[];
 };
 
+import { useAuth } from "@/hooks/useAuth";
 import { documentedDayCount } from "@/lib/health-intelligence/context-coverage";
 import { useHealthExperienceFeedback } from "@/hooks/useHealthExperienceFeedback";
 import { selectExperienceInsightsV4 } from "@/lib/health-intelligence/feedback-v4";
@@ -67,6 +68,8 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
   } =
     useActivePersonId();
 
+  const { user } = useAuth();
+
   const hoje =
     getLocalTodayISO();
 
@@ -75,25 +78,28 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
    * pelo loader. Qualquer alteração relevante recalcula o
    * contexto e os padrões automaticamente.
    */
-  const context =
+  const loadedContext =
     useLiveQuery(
       () => {
         if (
-          !activePersonId
+          !activePersonId || !user?.id
         ) {
           return null;
         }
 
-        return loadHealthInsightContext(
-          activePersonId,
-          hoje
-        );
+        return loadHealthInsightContext(activePersonId, hoje, user.id)
+          .then(context => ({ userId: user.id, personId: activePersonId, context, error: null as string | null }))
+          .catch((error: unknown) => ({ userId: user.id, personId: activePersonId, context: null, error: error instanceof Error ? error.message : "Não foi possível carregar o contexto." }));
       },
       [
         activePersonId,
+        user?.id,
         hoje,
       ]
     );
+
+  // Dexie can retain the previous value while a new subscription loads.
+  const context = loadedContext && loadedContext.userId === user?.id && loadedContext?.personId === activePersonId ? loadedContext.context : null;
 
   const insights =
     useMemo(
@@ -419,12 +425,14 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
 
     maturity,
 
+    error: loadedContext && loadedContext.userId === user?.id && loadedContext?.personId === activePersonId ? loadedContext.error : null,
+
     isLoading:
       Boolean(
         activePersonId
       ) &&
-      context ===
-        undefined,
+      Boolean(user?.id) &&
+      (loadedContext === undefined || loadedContext?.userId !== user?.id || loadedContext?.personId !== activePersonId),
 
     hasPerson:
       Boolean(
