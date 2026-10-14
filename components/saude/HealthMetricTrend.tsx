@@ -1,28 +1,12 @@
-import { memo, useMemo } from "react";
-import type { RegistroSaude } from "@/lib/types";
-import type { HealthMetric } from "@/lib/health-profile/types";
-
-/** Miniatura de valores observados, sem interpolar dias ausentes. */
-export const HealthMetricTrend = memo(function HealthMetricTrend({ records, type }: { records: RegistroSaude[]; type: HealthMetric }) {
-  const rows=useMemo(()=>{
-    const recent:RegistroSaude[]=[];
-    for(const record of records){
-      if(record.tipo!==type)continue;
-      const value=type==="sono"?record.duracao_minutos:record.valor_numerico;
-      if(typeof value!=="number"||!Number.isFinite(value))continue;
-      recent.push(record);if(recent.length===7)break;
-    }
-    return recent.reverse();
-  },[records,type]);
-  if(rows.length<2)return null;
-  const values=rows.map(r=>(type==="sono"?r.duracao_minutos:r.valor_numerico)!);
-  const min=Math.min(...values),max=Math.max(...values),range=max-min || 1;
-  const points=values.map((v,i)=>({x:6+i*108/(values.length-1),y:26-(v-min)/range*20}));
-  return <div className="mt-3 border-t border-surface-border/50 pt-2">
-    <svg viewBox="0 0 120 32" className="h-8 w-full" role="img" aria-label={`${rows.length} registros recentes; mínimo ${min}, máximo ${max}. Pontos em ordem de registro, sem estimar dias ausentes.`}>
-      <polyline points={points.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5" opacity=".55"/>
-      {points.map((p,i)=><circle key={rows[i].id || i} cx={p.x} cy={p.y} r="2.3" fill="currentColor"><title>{`${rows[i].data}: ${values[i]}`}</title></circle>)}
-    </svg>
-    <p className="text-[9px] text-ink-muted">Últimos {rows.length} registros</p>
-  </div>;
+import {memo,useMemo} from 'react';
+import type {RegistroSaude} from '@/lib/types';
+import {METRICS,type HealthMetric} from '@/lib/health-profile/types';
+import {metricTrendData} from '@/lib/health-profile/metric-trend';
+/** Discrete observations at their civil dates; gaps are not interpolated. */
+export const HealthMetricTrend=memo(function HealthMetricTrend({records,type}:{records:RegistroSaude[];type:HealthMetric}) {
+ const data=useMemo(()=>metricTrendData(records,type),[records,type]);
+ if(data.samples.length<2)return null;
+ return <div className="mt-3 border-t border-surface-border/50 pt-2"><svg viewBox="0 0 120 32" className="h-12 w-full" role="img" aria-label={`${data.samples.length} registros recentes em datas reais; mínimo ${data.min}, máximo ${data.max} ${METRICS[type].unit}. Dias sem registro não são estimados.`}>
+ {data.points.map((p,i)=><g key={p.record.id||i}><circle cx={p.x} cy={p.y} r="2.3" fill="currentColor"><title>{`${p.record.data} ${p.record.horario||'sem horário'}: ${p.primary} ${METRICS[type].unit}${type==='pressao_arterial'?' sistólica':''}`}</title></circle>{p.ySecondary!==undefined&&<circle cx={p.x} cy={p.ySecondary} r="2.3" fill="none" stroke="currentColor" strokeWidth="1.2"><title>{`${p.record.data}: ${p.secondary} mmHg diastólica`}</title></circle>}</g>)}
+ </svg><p className="text-[10px] text-ink-muted">Últimos {data.samples.length} registros · {data.min}–{data.max} {METRICS[type].unit}</p>{type==='pressao_arterial'&&<p className="mt-1 text-[10px] text-ink-muted">● Sistólica · ○ Diastólica</p>}<p className="mt-1 text-[9px] text-ink-muted">Pontos observados; a escala se ajusta aos valores, sem classificar o estado de saúde.</p></div>;
 });
