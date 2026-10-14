@@ -1559,6 +1559,8 @@ function MedicamentoDetalhesContent() {
         : []
     ),
 
+    // V136 MEDICATION SUPPLY: contextual access to existing supply records.
+    { id: "fornecimento-relacional", label: "Fornecimento, SUS e aquisições", icon: Package, path: `/saude/fornecimento?medicamento_id=${encodeURIComponent(id || "")}` },
     {
       id:
         "duplicar-medicamento",

@@ -1,11 +1,13 @@
-import { memo, useId } from "react";
+import { memo, useId, useState } from "react";
 import { Brain } from "lucide-react";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
-export const HealthBody = memo(function HealthBody({ skin, devices }: { skin: string; devices: HealthDevice[] }) {
+export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false }: { skin: string; devices: HealthDevice[]; expanded?: boolean }) {
+  const [view,setView]=useState<"front"|"left"|"right">("front");
+  const angle=view==="front"?0:view==="left"?-18:18;
   const uid = useId().replace(/:/g, "");
   const ids = { skin: `skin-${uid}`, cloth: `cloth-${uid}`, halo: `halo-${uid}`, metal: `metal-${uid}`, glass: `glass-${uid}`, title: `title-${uid}`, description: `description-${uid}` };
   const color = avatarColor(skin);
@@ -14,8 +16,8 @@ export const HealthBody = memo(function HealthBody({ skin, devices }: { skin: st
   const phoneX = phoneSide === "right" ? 24 : 156;
 
   return (
-    <div className="mx-auto w-full max-w-[180px] group-open:max-w-[320px]">
-      <svg viewBox="0 0 180 260" role="img" aria-labelledby={`${ids.title} ${ids.description}`} className="h-60 w-full group-open:h-auto">
+    <div className={"mx-auto w-full " + (expanded ? "max-w-[320px]" : "max-w-[180px]")}>
+      <svg viewBox="0 0 180 260" role="img" aria-labelledby={`${ids.title} ${ids.description}`} className={"w-full motion-safe:transition-transform motion-safe:duration-300 " + (expanded ? "h-auto" : "h-60")} style={{transform:`perspective(700px) rotateY(${angle}deg)`,transformOrigin:"50% 55%"}}>
         <title id={ids.title}>{`Avatar Vault com emblema ${BRAIN_BRAND}`}</title>
         <desc id={ids.description}>Ilustração de perfil. {description} Celular ilustrativo com Vault aberto. Os acessórios representam o cadastro; o desenho não indica conexão nem estado de saúde.</desc>
         <defs>
@@ -57,6 +59,10 @@ export const HealthBody = memo(function HealthBody({ skin, devices }: { skin: st
         <path d="M90 38 L88 44 L92 44" fill="none" stroke="#30251f" strokeOpacity=".3" strokeWidth="1" strokeLinecap="round" />
         <path d="M84 49 Q90 53 97 49" fill="none" stroke={faceDetail} strokeOpacity=".6" strokeWidth="1.2" strokeLinecap="round" />
 
+        {/* V122: cheek light, hair texture and a more defined jaw. */}
+        <path d="M73 32 Q70 44 78 50 M107 32 Q110 44 102 50" fill="none" stroke={avatarShade(color, 1.35)} strokeOpacity=".28" strokeWidth="2" strokeLinecap="round" />
+        <path d="M78 54 Q90 62 103 53" fill="none" stroke={avatarShade(color, .65)} strokeOpacity=".3" strokeWidth="1" />
+        <path d="M78 15 L83 13 M87 12 L93 12 M98 14 L103 17" stroke="#64748b" strokeOpacity=".35" strokeWidth="1" strokeLinecap="round" />
         {/* Same illustrative proportions, with layered clothing. */}
         <path d="M74 64 Q90 71 106 64 L120 113 L117 157 L104 237 Q100 247 92 239 L90 169 L88 239 Q80 247 76 237 L63 157 L60 113Z" fill={`url(#${ids.skin})`} />
         <path d="M67 70 Q53 69 47 95 L30 153 Q28 166 38 168 Q44 168 47 155 L67 102 M113 70 Q127 69 133 95 L150 153 Q152 166 142 168 Q136 168 133 155 L113 102" fill={`url(#${ids.skin})`} />
@@ -110,6 +116,8 @@ export const HealthBody = memo(function HealthBody({ skin, devices }: { skin: st
                   <path d="M-2 -10 H2 M-2 10 H2" stroke="#020617" strokeOpacity=".35" strokeWidth=".7" />
                   <rect x="-8" y="-7.5" width="16" height="16" rx="5" fill={deviceColor} stroke={`url(#${ids.metal})`} strokeWidth="1.1" />
                   <rect x="7.8" y="-2" width="1.8" height="4" rx=".7" fill="#a8b5c4" />
+                  <path d="M-3 -9 H3 M-3 11 H3" stroke="#e2e8f0" strokeOpacity=".45" strokeWidth=".7" />
+                  <path d="M-6 -5 Q-4 -7 -2 -7" fill="none" stroke="#f8fafc" strokeOpacity=".65" strokeWidth="1" strokeLinecap="round" />
                   <circle cx="0" cy=".5" r="5.8" fill="#09121d" stroke="#cbd5e1" strokeOpacity=".25" strokeWidth=".6" />
                   <path d="M0 -3 V.5 L3 2" fill="none" stroke="#e2e8f0" strokeWidth="1.1" strokeLinecap="round" />
                   <path d="M0 -4.5 V-3.7 M4.5 .5 H3.7 M0 5.5 V4.7 M-4.5 .5 H-3.7" stroke="#cbd5e1" strokeOpacity=".55" strokeWidth=".6" strokeLinecap="round" />
@@ -135,6 +143,15 @@ export const HealthBody = memo(function HealthBody({ skin, devices }: { skin: st
         })}
       </svg>
       <p aria-hidden="true" className="-mt-1 text-center font-mono text-[9px] tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
+      <div aria-label="Perspectiva da ilustração" className={expanded ? "mt-3 grid grid-cols-3 gap-1" : "hidden"}>
+        {([["left","Girar à esquerda"],["front","Frente"],["right","Girar à direita"]] as const).map(([key,label])=><button type="button" key={key} aria-pressed={view===key} onClick={event=>{event.preventDefault();event.stopPropagation();setView(key);}} className={"min-h-11 rounded-xl border text-[10px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 "+(view===key?"border-violet-300/50 bg-violet-400/15 text-violet-200":"border-slate-400/20 text-slate-300")}>{label}</button>)}
+      </div>
+      <p className={expanded ? "mt-2 text-center text-[10px] text-slate-400" : "hidden"}>Perspectiva ilustrativa · acessórios cadastrados</p>
+      {slots.length>0 && <ul aria-label="Aparelhos representados no avatar" className={expanded ? "mt-3 space-y-2" : "hidden"}>
+        {slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-left text-xs text-slate-200">
+          <span className="font-semibold">{device.name}</span><span className="mt-1 block text-[10px] text-slate-400">{kind==="watch"?"Relógio":"Anel"} · {side==="right"?"lado direito":"lado esquerdo"}{count>1?` · +${count-1} nesta posição`:""}</span>
+        </li>)}
+      </ul>}
     </div>
   );
 });

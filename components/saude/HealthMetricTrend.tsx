@@ -1,12 +1,19 @@
+import { memo, useMemo } from "react";
 import type { RegistroSaude } from "@/lib/types";
 import type { HealthMetric } from "@/lib/health-profile/types";
 
 /** Miniatura de valores observados, sem interpolar dias ausentes. */
-export function HealthMetricTrend({ records, type }: { records: RegistroSaude[]; type: HealthMetric }) {
-  const rows=records.filter(r=>r.tipo===type).filter(r=>{
-    const v=type==="sono"?r.duracao_minutos:r.valor_numerico;
-    return typeof v==="number" && Number.isFinite(v);
-  }).slice(0,7).reverse();
+export const HealthMetricTrend = memo(function HealthMetricTrend({ records, type }: { records: RegistroSaude[]; type: HealthMetric }) {
+  const rows=useMemo(()=>{
+    const recent:RegistroSaude[]=[];
+    for(const record of records){
+      if(record.tipo!==type)continue;
+      const value=type==="sono"?record.duracao_minutos:record.valor_numerico;
+      if(typeof value!=="number"||!Number.isFinite(value))continue;
+      recent.push(record);if(recent.length===7)break;
+    }
+    return recent.reverse();
+  },[records,type]);
   if(rows.length<2)return null;
   const values=rows.map(r=>(type==="sono"?r.duracao_minutos:r.valor_numerico)!);
   const min=Math.min(...values),max=Math.max(...values),range=max-min || 1;
@@ -18,4 +25,4 @@ export function HealthMetricTrend({ records, type }: { records: RegistroSaude[];
     </svg>
     <p className="text-[9px] text-ink-muted">Últimos {rows.length} registros</p>
   </div>;
-}
+});

@@ -1869,6 +1869,13 @@ function TratamentoContent() {
             }}
             className="space-y-3"
           >
+            {/* V130: fornecimento relacional — navigation is filtered by this treatment's medications. */}
+            <button type="button" onClick={() => {
+              trigger("vibrate");
+              router.push(`/saude/fornecimento${medicamentosAtivos.length === 1 && medicamentosAtivos[0].id ? `?medicamento_id=${encodeURIComponent(medicamentosAtivos[0].id)}` : ""}`);
+            }} className="flex w-full items-center justify-between gap-3 rounded-[22px] border border-emerald-400/25 bg-emerald-400/5 p-4 text-left">
+              <span className="flex items-center gap-3"><FolderHeart size={20} className="text-emerald-300"/><span><span className="block text-sm font-bold text-ink-primary">Fornecimento e documentos</span><span className="block text-[11px] text-ink-muted">SUS, compras e processos relacionados</span></span></span><ChevronRight size={17} className="text-emerald-300"/>
+            </button>
             <SectionTitle
               icon={<Pill size={15} />}
               title="Medicamentos em Uso"

@@ -1,0 +1,10 @@
+const fs=require('node:fs'), assert=require('node:assert/strict');
+const s=fs.readFileSync('app/saude/fornecimento/page.tsx','utf8');
+for(const marker of ['V130 RELATIONAL EXPERIENCE','V131 SUPPLY DOSSIER','V132 VERIFIED RELATIONS','V133 CONTEXTUAL LINKS','V134: canonical documents'])assert.equal(s.split(marker).length-1,1,marker);
+assert(s.includes('d.person_id === personId'));
+assert(s.includes('doc.id || ""'));
+assert(s.includes('purchaseHistory(renovacoes, personId, process.user_id, ids)'));
+assert(!s.includes('r.preco! / r.quantidade!'), 'sem comparação unitária com unidade desconhecida');
+assert(s.includes('Confirme se embalagens e unidades são equivalentes'));
+assert(fs.existsSync('app/saude/documentos/detalhes/page.tsx'));
+console.log('V134: contratos do dossiê aprovados');

@@ -78,11 +78,12 @@ export function SelectionModal<T>({
   }, [isOpen]);
 
   const filteredItems = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const query = normalize(searchQuery.trim());
     if (!query) return items;
 
     return items.filter((item) =>
-      getItemLabel(item).toLowerCase().includes(query)
+      normalize(getItemLabel(item)).includes(query)
     );
   }, [items, getItemLabel, searchQuery]);
 

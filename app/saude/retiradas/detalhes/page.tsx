@@ -589,6 +589,8 @@ function DetalhesRetiradaContent() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
+        {/* V135 WITHDRAWAL: reverse link only when the real process id exists. */}
+        {retirada.fornecimento_id && <div className="px-5 pt-3"><button type="button" onClick={() => router.push(`/saude/fornecimento?id=${encodeURIComponent(retirada.fornecimento_id!)}`)} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-left text-xs font-bold text-emerald-300"><span>Ver fornecimento vinculado</span><span aria-hidden="true">›</span></button></div>}
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <button

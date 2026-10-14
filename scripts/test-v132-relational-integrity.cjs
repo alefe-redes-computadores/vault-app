@@ -1,0 +1,10 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const s=fs.readFileSync('app/saude/fornecimento/page.tsx','utf8');
+for(const [pattern,n] of [[/const occupiedMedicationIds\s*=/g,1],[/V130 RELATIONAL EXPERIENCE/g,1],[/V131 SUPPLY DOSSIER/g,1],[/V132 VERIFIED RELATIONS/g,1]])assert.equal((s.match(pattern)||[]).length,n);
+assert(s.includes('resolveProcessSelection(processes,'));
+assert(s.includes('p.person_id === personId && ('));
+assert(s.includes('r.fornecimento_id === process.id'));
+assert(s.includes('/saude/retiradas/detalhes?id='));
+assert(s.includes('Não representam custo do SUS'));
+for(const r of ['retiradas/detalhes','documentos','renovacao','medicamentos/detalhes','tratamentos/detalhes'])assert(fs.existsSync(`app/saude/${r}/page.tsx`),r);
+console.log('V132: contratos relacionais e rotas OK');

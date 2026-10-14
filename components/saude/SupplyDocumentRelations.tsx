@@ -18,7 +18,7 @@ export function SupplyDocumentRelations({
         {links.map((l) => (
           <Link
             key={l.id}
-            href={`/saude/fornecimento?id=${encodeURIComponent(l.processo_id)}${l.retirada_id ? `&retirada_id=${encodeURIComponent(l.retirada_id)}` : ""}`}
+            href={`/saude/fornecimento?id=${encodeURIComponent(l.processo_id)}&ciclo_id=${encodeURIComponent(l.ciclo_id)}${l.retirada_id ? `&retirada_id=${encodeURIComponent(l.retirada_id)}` : ""}`}
             className="block rounded-xl bg-surface-raised p-3 text-xs text-ink-primary"
           >
             {data.processos.find((p) => p.id === l.processo_id)?.titulo ||

@@ -52,6 +52,7 @@ import {
   SKIN_TONES,
   type HealthMetric,
 } from "@/lib/health-profile/types";
+import { summarizeHealthDay, adjacentHealthDays } from "@/lib/health-profile/history-summary";
 import { ageOn, bmi } from "@/lib/health-profile/metrics";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
@@ -70,6 +71,7 @@ function HealthDashboard({
     { registros, isLoading } = useRegistrosSaude();
   const intelligence = useHealthIntelligence({ includeAudit: false });
   const { personId, person, profile, devices, loading, error } = data;
+  const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [panel, setPanel] = useState<
       "profile" | "device" | "water" | HealthMetric | null
     >(null),
@@ -118,14 +120,11 @@ function HealthDashboard({
   const weight = latest("peso"),
     index = bmi(weight?.valor_numerico, profile?.height_cm),
     age = ageOn(profile?.birth_date, today);
-  const active = devices.filter((d) => d.active),
-    visible = records.filter((r) => r.data === historyDate && (!filter || r.tipo === filter));
-  const dayGroups = new Map<HealthMetric, typeof records>();
-  for (const record of visible) {
-    const type = record.tipo as HealthMetric;
-    const group = dayGroups.get(type);
-    if (group) group.push(record); else dayGroups.set(type, [record]);
-  }
+  const active = useMemo(()=>devices.filter((d)=>d.active),[devices]);
+  const daySummary=useMemo(()=>summarizeHealthDay(records,historyDate),[records,historyDate]);
+  const adjacentDays=useMemo(()=>adjacentHealthDays(records,historyDate,today),[records,historyDate,today]);
+  const dayGroups=useMemo(()=>filter?new Map([[filter,daySummary.groups.get(filter)||[]]]):daySummary.groups,[daySummary,filter]);
+  const visible=useMemo(()=>Array.from(dayGroups.values()).flat(),[dayGroups]);
   const go = (path: string) => {
     trigger("vibrate");
     router.push(path);
@@ -255,14 +254,10 @@ function HealthDashboard({
                 </button>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <details className="group w-[42%] shrink-0 open:w-full">
-                  <summary className="cursor-pointer list-none rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"><span className="block text-center text-[10px] text-emerald-300 group-open:hidden">Toque para ampliar</span><span className="hidden text-center text-[10px] text-emerald-300 group-open:block">Toque para reduzir</span>
-                  <HealthBody
-                    skin={profile?.skin_tone || SKIN_TONES[2]}
-                    devices={devices}
-                  />
-                  </summary>
-                </details>
+                <div className={avatarExpanded ? "w-full" : "w-[42%] shrink-0"}>
+                  <button type="button" aria-expanded={avatarExpanded} onClick={() => setAvatarExpanded(v => !v)} className="min-h-11 w-full rounded-xl text-center text-xs text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">{avatarExpanded ? "Reduzir avatar" : "Ampliar avatar"}</button>
+                  <HealthBody skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} expanded={avatarExpanded} />
+                </div>
                 <div className="min-w-0 flex-1 space-y-3">
                   <div>
                     <p className="text-[10px] text-ink-muted">Altura</p>
@@ -335,7 +330,7 @@ function HealthDashboard({
                 <ul className="mt-3 space-y-2">
                   {intelligence.experienceHighlights.slice(0, 2).map((item) => (
                     <li key={item.id} className="rounded-xl bg-surface/70 p-3">
-                      <p className="text-xs font-medium">{item.titulo}</p>
+                      <button type="button" onClick={()=>go(`/inteligencia/alertas?insight=${encodeURIComponent(item.id)}`)} className="flex min-h-11 w-full items-center gap-2 text-left text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex-1">{item.titulo}</span><ChevronRight size={14} className="shrink-0 text-violet-300"/><span className="sr-only">Ver evidências</span></button>
                       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.mensagem}</p>
                     </li>
                   ))}
@@ -544,6 +539,12 @@ function HealthDashboard({
                 </button>
               </div>
               <div className="mb-3"><CustomDatePicker label="Dia do histórico" value={historyDate} maxDate={today} onChange={v => setHistoryDate(v || today)} /></div>
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                <button type="button" disabled={!adjacentDays.previous} onClick={()=>{if(adjacentDays.previous)setHistoryDate(adjacentDays.previous);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Anterior com dados</button>
+                <button type="button" disabled={historyDate===today} onClick={()=>setHistoryDate(today)} className="min-h-11 rounded-xl border border-emerald-400/25 px-2 text-xs text-emerald-300 disabled:opacity-40">Hoje</button>
+                <button type="button" disabled={!adjacentDays.next} onClick={()=>{if(adjacentDays.next)setHistoryDate(adjacentDays.next);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Próximo com dados</button>
+              </div>
+              <p className="mb-3 rounded-xl bg-black/15 px-3 py-2 text-[10px] leading-relaxed text-ink-muted">{daySummary.total} registros no dia · {daySummary.imported} importados · {daySummary.manual} manuais{daySummary.unknown>0?` · ${daySummary.unknown} sem origem informada`:""}</p>
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -575,7 +576,7 @@ function HealthDashboard({
                 ))}
               </div>
               {visible.length ? (
-                Array.from(dayGroups.entries()).map(([type, group]) => (
+                Array.from(dayGroups.entries()).filter(([,group])=>group.length>0).map(([type, group]) => (
                   <details key={`${historyDate}:${type}`} className="group border-t border-surface-border">
                     <summary className="flex cursor-pointer items-center gap-3 py-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                       <span className={METRIC_TONES[type as HealthMetric]}><HealthMetricIcon type={type as HealthMetric} /></span>

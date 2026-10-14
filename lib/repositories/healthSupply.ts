@@ -1,3 +1,4 @@
+import { findDuplicateSupplyProcess, findActiveMedicationConflict } from "@/lib/health-supply/process-integrity";
 import { preparationStart } from "@/lib/health-supply/overview";
 import { db } from "@/lib/db";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
@@ -160,6 +161,12 @@ export const healthSupplyRepository = {
         db.syncQueue,
       ],
       async () => {
+        const existingProcesses=await db.fornecimentos.where("person_id").equals(personId).toArray();
+        const existingItems=await db.fornecimento_itens.where("person_id").equals(personId).toArray();
+        const conflict=findActiveMedicationConflict(personId,uid,mids,existingProcesses,existingItems);
+        if(conflict)throw new Error(`Medicamento já pertence ao processo ativo "${conflict.titulo}". Abra o processo existente ou arquive-o antes de criar outro.`);
+        const duplicate=findDuplicateSupplyProcess(personId,uid,input,mids,existingProcesses,existingItems);
+        if(duplicate)throw new Error(`Este fornecimento já está organizado em "${duplicate.titulo}". Abra o processo existente para preparar outro ciclo.`);
         await db.fornecimentos.add(p);
         await enfileirarOperacao("fornecimentos", "add", p, {
           dispatchSync: false,
@@ -193,12 +200,18 @@ export const healthSupplyRepository = {
     if (input.uf && !/^[A-Z]{2}$/.test(input.uf))
       throw new Error("UF inválida.");
     await processRelations(input, pid, uid);
-    const row = { ...p, ...input, updated_at: stamp(), synced: false };
-    await db.transaction("rw", [db.fornecimentos, db.syncQueue], async () => {
+    await db.transaction("rw", [db.fornecimentos, db.fornecimento_itens, db.syncQueue], async () => {
+      const current = await owned(await db.fornecimentos.get(processId), pid, uid);
+      if (input.status === "ativo") {
+        const processes = await db.fornecimentos.where("person_id").equals(pid).toArray();
+        const items = await db.fornecimento_itens.where("person_id").equals(pid).toArray();
+        const ownIds = items.filter(i => i.processo_id === processId && i.user_id === uid).map(i => i.medicamento_id);
+        const conflict = findActiveMedicationConflict(pid, uid, ownIds, processes, items, processId);
+        if (conflict) throw new Error(`Medicamento vinculado ao processo ativo "${conflict.titulo}".`);
+      }
+      const row = { ...current, ...input, titulo: input.titulo.trim(), updated_at: stamp(), synced: false };
       await db.fornecimentos.put(row);
-      await enfileirarOperacao("fornecimentos", "update", row, {
-        dispatchSync: false,
-      });
+      await enfileirarOperacao("fornecimentos", "update", row, { dispatchSync: false });
     });
     solicitarProcessamentoSync();
   },
@@ -215,6 +228,7 @@ export const healthSupplyRepository = {
       pid,
       uid
     );
+    if (process.status !== "ativo") throw new Error("Reative o processo antes de preparar outro ciclo.");
     const cycles = (
       await db.fornecimento_ciclos
         .where("processo_id")
@@ -269,6 +283,7 @@ export const healthSupplyRepository = {
         pid,
         uid
       );
+      if (med.status === "descontinuado") continue;
       copied.push({
         ...item,
         id: id(),
@@ -281,8 +296,17 @@ export const healthSupplyRepository = {
     }
     await db.transaction(
       "rw",
-      [db.fornecimento_ciclos, db.fornecimento_itens, db.syncQueue],
+      [db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens, db.syncQueue],
       async () => {
+        const latestProcess = await owned(await db.fornecimentos.get(processId), pid, uid);
+        if (latestProcess.status !== "ativo") throw new Error("Processo arquivado. Reative para preparar um ciclo.");
+        const pendingNow = await db.fornecimento_ciclos.where("processo_id").equals(processId)
+          .filter(x => x.person_id === pid && x.user_id === uid && (x.status === "preparando" || x.status === "protocolado")).first();
+        if (pendingNow) throw new Error("Já existe um ciclo em preparação. Abra o ciclo existente.");
+        const allProcesses = await db.fornecimentos.where("person_id").equals(pid).toArray();
+        const allItems = await db.fornecimento_itens.where("person_id").equals(pid).toArray();
+        if (findActiveMedicationConflict(pid, uid, copied.map(i => i.medicamento_id), allProcesses, allItems, processId))
+          throw new Error("Há medicamento vinculado a outro processo ativo. Confira os vínculos.");
         await db.fornecimento_ciclos.add(c);
         await enfileirarOperacao("fornecimento_ciclos", "add", c, {
           dispatchSync: false,
@@ -434,8 +458,19 @@ export const healthSupplyRepository = {
     const med = await owned(await db.medicamentos.get(medicationId), pid, uid);
     await db.transaction(
       "rw",
-      [db.fornecimento_itens, db.retiradas, db.syncQueue],
+      [db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens, db.retiradas, db.syncQueue],
       async () => {
+        const currentCycle = await owned(await db.fornecimento_ciclos.get(c.id), pid, uid);
+        const currentProcess = await owned(await db.fornecimentos.get(c.processo_id), pid, uid);
+        if (currentProcess.status !== "ativo" || currentCycle.status !== "preparando")
+          throw new Error("Altere medicamentos apenas em um processo ativo e ciclo em preparação.");
+        if (include) {
+          if (med.status === "descontinuado") throw new Error("Medicamento descontinuado: consulte o histórico.");
+          const processes = await db.fornecimentos.where("person_id").equals(pid).toArray();
+          const items = await db.fornecimento_itens.where("person_id").equals(pid).toArray();
+          const conflict = findActiveMedicationConflict(pid, uid, [medicationId], processes, items, c.processo_id);
+          if (conflict) throw new Error(`Medicamento já pertence ao processo ativo "${conflict.titulo}".`);
+        }
         const existing = await db.fornecimento_itens
           .where("ciclo_id")
           .equals(c.id)
@@ -562,6 +597,9 @@ export const healthSupplyRepository = {
       throw new Error("Tipo de vínculo inválido.");
     if (withdrawalId) {
       const r = await owned(await db.retiradas.get(withdrawalId), pid, uid);
+      if ((r.fornecimento_id && r.fornecimento_id !== c.processo_id) ||
+          (r.fornecimento_ciclo_id && r.fornecimento_ciclo_id !== c.id))
+        throw new Error("Retirada vinculada a outro processo ou ciclo. Confira o vínculo antes de continuar.");
       const items = await db.fornecimento_itens
         .where("ciclo_id")
         .equals(c.id)
@@ -607,6 +645,9 @@ export const healthSupplyRepository = {
       "rw",
       [db.fornecimento_documentos, db.syncQueue],
       async () => {
+        const currentLink = await db.fornecimento_documentos.where("ciclo_id").equals(c.id)
+          .filter(x => x.document_id === documentId && x.tipo === tipo && x.retirada_id === withdrawalId && x.person_id === pid && x.user_id === uid).first();
+        if (currentLink) { row.id = currentLink.id; return; }
         await db.fornecimento_documentos.add(row);
         await enfileirarOperacao("fornecimento_documentos", "add", row, {
           dispatchSync: false,
@@ -668,6 +709,9 @@ export const healthSupplyRepository = {
       ? await owned(await db.fornecimento_ciclos.get(cycleId), pid, uid)
       : null;
     if (c) {
+      if ((r.fornecimento_id && r.fornecimento_id !== c.processo_id) ||
+          (r.fornecimento_ciclo_id && r.fornecimento_ciclo_id !== c.id))
+        throw new Error("Retirada vinculada a outro processo ou ciclo. Confira o vínculo antes de continuar.");
       const items = await db.fornecimento_itens
         .where("ciclo_id")
         .equals(c.id)

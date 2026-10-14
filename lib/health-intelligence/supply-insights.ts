@@ -4,6 +4,7 @@ import type {
 } from "@/lib/health-insights";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { supplyChecklist, validSupplyDate, resolveSupplyWithdrawal } from "@/lib/health-supply/rules";
+import { prescriptionConfigurationReview } from "@/lib/health-supply/process-integrity";
 import { supplyDossier } from "@/lib/health-supply/knowledge";
 export function buildSupplyInsights(
   context: HealthInsightContext
@@ -70,7 +71,19 @@ export function buildSupplyInsights(
               b.created_at.localeCompare(a.created_at) ||
               b.id.localeCompare(a.id)
           )[0];
-      if (!cycle) continue;
+      if (!cycle || !data.itens.some(i => i.ciclo_id === cycle.id && i.processo_id === p.id &&
+        i.medicamento_id === med.id && i.person_id === context.personId && i.user_id === med.user_id)) continue;
+      if(prescriptionConfigurationReview(med,p.receita_cada_retirada))result.push({
+        id:`supply-prescription-review-${p.id}-${med.id}`,kind:"data_quality",categoria:"dados",
+        titulo:`${med.nome}: confira a exigência de receita`,
+        mensagem:"O cadastro do medicamento indica receituário controlado, mas este fornecimento está marcado sem receita a cada retirada. Essa opção não comprova dispensa de receita. Confira o documento exigido pela unidade antes de retirar.",
+        urgencia:"media",confianca:"alta",amostra:1,gravidadeSeguranca:"informativa",
+        entidadeTipo:"fornecimento",entidadeId:p.id,entidadeIds:[med.id!],link:`/saude/fornecimento?id=${encodeURIComponent(p.id)}`,
+        evidencias:[`Tipo de receita cadastrado: ${med.tipo_receita}`,"Fornecimento marcado sem receita a cada retirada"],
+        fontesInternas:["Cadastro do medicamento","Configuração do fornecimento"],
+        acaoSegura:"Confira a prescrição vigente e a exigência da unidade. Corrija o cadastro se necessário.",
+        limitacaoSeguranca:"O aviso compara dados cadastrados; não valida documentos nem autoriza dispensação."
+      });
       const check = supplyChecklist(
         p,
         cycle,
@@ -174,7 +187,7 @@ export function buildSupplyInsights(
           { tipo: "fornecimento", id: p.id },
           ...(withdrawal?.id ? [{ tipo: "retirada", id: withdrawal.id }] : []),
         ],
-        link: `/saude/fornecimento?id=${encodeURIComponent(p.id)}${
+        link: `/saude/fornecimento?id=${encodeURIComponent(p.id)}&ciclo_id=${encodeURIComponent(cycle.id)}${
           withdrawal?.id
             ? `&retirada_id=${encodeURIComponent(withdrawal.id)}`
             : ""

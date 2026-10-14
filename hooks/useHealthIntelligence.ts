@@ -56,6 +56,7 @@ export type HealthIntelligenceMaturity = {
   sources: HealthIntelligenceSource[];
 };
 
+import { documentedDayCount } from "@/lib/health-intelligence/context-coverage";
 import { useHealthExperienceFeedback } from "@/hooks/useHealthExperienceFeedback";
 import { selectExperienceInsightsV4 } from "@/lib/health-intelligence/feedback-v4";
 
@@ -357,9 +358,7 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
 
         // VAULT_HEALTH_MATURITY_V55
         // Maturidade mede cobertura do histórico, não quantidade de alertas.
-        const doseDays = new Set((context?.doseLogs ?? []).map((item) => item.data).filter(Boolean)).size;
-        const recordDays = new Set((context?.registrosSaude ?? []).map((item) => item.data).filter(Boolean)).size;
-        const temporalCoverage = Math.min((doseDays + recordDays) / 30, 1);
+        const temporalCoverage = Math.min(documentedDayCount([...new Set((context?.doseLogs ?? []).map(item => item.data))], [...new Set((context?.registrosSaude ?? []).map(item => item.data))]) / 30, 1);
         const score = Math.min(100, Math.round(coverage * 55 + volume * 25 + temporalCoverage * 20));
 
         const label =

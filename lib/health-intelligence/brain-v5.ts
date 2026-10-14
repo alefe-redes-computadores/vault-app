@@ -33,18 +33,26 @@ export function brainV5Family(i:HealthInsight):BrainV5Family{
 }
 export function brainV5Severity(i:HealthInsight){return (sev[i.gravidadeSeguranca||""]||0)+(sev[i.urgencia]||0)+(i.confianca==="alta"?30:i.confianca==="media"?20:10)+Math.min(30,i.amostra||0);}
 const snap=(i:HealthInsight):BrainV5Alert["snapshot"]=>({kind:i.kind,categoria:i.categoria,titulo:i.titulo,mensagem:i.mensagem,urgencia:i.urgencia,confianca:i.confianca,amostra:i.amostra||0,periodo_dias:i.periodoDias,link:i.link,evidencias:i.evidencias||[],fontes_internas:i.fontesInternas||[],fontes_externas:i.fontesExternas||[],acao_segura:i.acaoSegura,limitacao_seguranca:i.limitacaoSeguranca,gravidade_seguranca:i.gravidadeSeguranca,comparacao:i.comparacao,cobertura_dias:i.coberturaDias});
-const fingerprint=(i:HealthInsight)=>norm(JSON.stringify([i.kind,i.categoria,i.titulo,i.mensagem,i.urgencia,i.confianca,i.amostra||0,i.gravidadeSeguranca,i.evidencias||[],i.entidadeIds||[],i.entidadeId||""]));
+// V122: evidence order and duplicate lines are not a new analysis.
+const canonicalStrings=(values:string[]=[])=>[...new Set(values.map(norm))].sort();
+const fingerprint=(i:HealthInsight)=>norm(JSON.stringify([i.kind,i.categoria,i.titulo,i.mensagem,i.urgencia,i.confianca,i.amostra||0,i.gravidadeSeguranca,canonicalStrings(i.evidencias),canonicalStrings(i.entidadeIds),i.entidadeId||""]));
+function previousFingerprint(x:BrainV5Alert){
+  try { const fields:unknown[]=JSON.parse(x.material_fingerprint); if(!Array.isArray(fields)||fields.length!==11)return x.material_fingerprint;
+    for(const index of [8,9]) { const values=fields[index]; if(!Array.isArray(values)||values.some(v=>typeof v!=="string"))return x.material_fingerprint; fields[index]=canonicalStrings(values); }
+    return norm(JSON.stringify(fields));
+  } catch { return x.material_fingerprint; }
+}
 export function reconcileBrainV5(personId:string,current:HealthInsight[],previous:BrainV5Alert[],now=new Date().toISOString()){
   const foreign=previous.filter(x=>x.person_id!==personId), map=new Map(previous.filter(x=>x.person_id===personId).map(x=>[x.key,x])), active=new Set<string>();
   for(const i of current){
     const key=brainV5Key(personId,i), old=map.get(key), rank=brainV5Severity(i), fp=fingerprint(i); active.add(key);
-    const material=!old||old.material_fingerprint!==fp, resurfaced=old?.state==="resolved", escalated=!!old&&((sev[i.gravidadeSeguranca||"informativa"]||0)>(sev[old.snapshot.gravidade_seguranca||"informativa"]||0)||(sev[i.urgencia]||0)>(sev[old.snapshot.urgencia]||0));
+    const material=!old||previousFingerprint(old)!==fp, resurfaced=old?.state==="resolved", escalated=!!old&&((sev[i.gravidadeSeguranca||"informativa"]||0)>(sev[old.snapshot.gravidade_seguranca||"informativa"]||0)||(sev[i.urgencia]||0)>(sev[old.snapshot.urgencia]||0));
     map.set(key,{key,person_id:personId,insight_id:i.id,family:brainV5Family(i),state:resurfaced||((old?.feedback==="dismissed")&&escalated)?"active":old?.state||"active",feedback:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback,feedback_reset_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?now:old?.feedback_reset_at,feedback_updated_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback_updated_at,first_detected_at:old?.first_detected_at||now,last_detected_at:material||resurfaced?now:old?.last_detected_at||now,last_seen_at:resurfaced?undefined:old?.last_seen_at,resolved_at:resurfaced||escalated?undefined:old?.resolved_at,occurrences:old?(material||resurfaced?(old.occurrences||1)+1:(old.occurrences||1)):1,episode:old?(resurfaced?(old.episode||1)+1:(old.episode||1)):1,severity_rank:rank,material_fingerprint:fp,snapshot:snap(i)});
   }
   for(const [key,x] of map) if(!active.has(key)&&x.state!=="resolved") map.set(key,{...x,state:"resolved",resolved_at:now});
-  return [...foreign,...map.values()].sort((a,b)=>b.last_detected_at.localeCompare(a.last_detected_at)).slice(0,1200);
+  return [...foreign, ...[...map.values()].sort((a,b)=>b.last_detected_at.localeCompare(a.last_detected_at)).slice(0,1200)];
 }
-export function rankBrainV5(items:BrainV5Alert[]){const fp:Record<string,number>={useful:20,already_knew:-10,not_relevant:-40,review_later:-15,dismissed:-1000};const sp:Record<BrainV5State,number>={active:0,acknowledged:-20,monitoring:-10,resolved:-500};const score=(x:BrainV5Alert)=>x.severity_rank+Math.min(40,(x.occurrences-1)*4)+(fp[x.feedback||""]||0)+sp[x.state];return [...items].sort((a,b)=>(sev[b.snapshot.gravidade_seguranca||"informativa"]||0)-(sev[a.snapshot.gravidade_seguranca||"informativa"]||0)||score(b)-score(a)||b.last_detected_at.localeCompare(a.last_detected_at));}
+export function rankBrainV5(items:BrainV5Alert[]){const fp:Record<string,number>={useful:20,already_knew:-10,not_relevant:-40,review_later:-15,dismissed:-1000};const sp:Record<BrainV5State,number>={active:0,acknowledged:-20,monitoring:-10,resolved:-500};const score=(x:BrainV5Alert)=>x.severity_rank+(fp[x.feedback||""]||0)+sp[x.state];return [...items].sort((a,b)=>(sev[b.snapshot.gravidade_seguranca||"informativa"]||0)-(sev[a.snapshot.gravidade_seguranca||"informativa"]||0)||score(b)-score(a)||b.last_detected_at.localeCompare(a.last_detected_at));}
 export function brainV5Counters(items:BrainV5Alert[]){const a=items.filter(x=>x.state!=="resolved");return {active:a.length,new:a.filter(x=>!x.last_seen_at).length,monitoring:a.filter(x=>x.state==="monitoring").length,resolved:items.filter(x=>x.state==="resolved").length,attention:a.filter(brainV5RequiresAttention).length};}
 
 // A cor usa gravidade explícita; confiança/amostra nunca pintam o cartão de vermelho.
