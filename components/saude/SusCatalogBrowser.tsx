@@ -15,7 +15,7 @@ import {
   catalogIndications,
 } from "@/lib/health-supply/catalog";
 import { triggerHaptic } from "@/lib/haptics";
-export function SusCatalogBrowser() {
+export function SusCatalogBrowser({compact=false}:{compact?:boolean}={}) {
   const [open, setOpen] = useState(false),
     [query, setQuery] = useState(""),
     [origin, setOrigin] = useState("estadual_ceaf"),
@@ -33,9 +33,9 @@ export function SusCatalogBrowser() {
             triggerHaptic("light");
           } catch {}
         }}
-        className="flex min-h-[64px] w-full items-center gap-3 p-4 text-left"
+        className={compact?"flex min-h-12 w-full items-center gap-2 px-3 py-2 text-left":"flex min-h-[64px] w-full items-center gap-3 p-4 text-left"}
       >
-        <span className="rounded-2xl bg-surface-raised p-3 text-ink-primary">
+        <span className={compact?"rounded-xl bg-surface-raised p-2 text-ink-primary":"rounded-2xl bg-surface-raised p-3 text-ink-primary"}>
           <Library size={20} />
         </span>
         <span className="flex-1">
@@ -43,7 +43,7 @@ export function SusCatalogBrowser() {
             Catálogo SUS
           </span>
           <span className="mt-1 block text-[11px] text-ink-muted">
-            {SUS_CATALOG.length} registros · CEAF/MG e Farmácia Popular
+            {SUS_CATALOG.length} registros{compact?"":" · CEAF/MG e Farmácia Popular"}
           </span>
         </span>
         <ChevronDown

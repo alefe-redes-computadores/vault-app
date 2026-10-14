@@ -1,5 +1,6 @@
 // app/page.tsx
 "use client";
+import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -170,42 +171,7 @@ function parseLocalDateTimeInput(
   return parsed.toISOString();
 }
 
-function getTratamentoIcon(
-  nome: string
-) {
-  const normalized = (
-    nome || ""
-  ).toLowerCase();
-
-  if (
-    normalized.includes(
-      "tdah"
-    )
-  ) {
-    return Activity;
-  }
-
-  if (
-    normalized.includes(
-      "dor"
-    ) ||
-    normalized.includes(
-      "neuropática"
-    )
-  ) {
-    return HeartPulse;
-  }
-
-  if (
-    normalized.includes(
-      "depress"
-    )
-  ) {
-    return HeartPulse;
-  }
-
-  return Activity;
-}
+function getTratamentoIcon(nome:string) { return getVaultTreatmentIcon(nome); }
 
 function mapUrgenciaToAlertLevel(
   urgencia:

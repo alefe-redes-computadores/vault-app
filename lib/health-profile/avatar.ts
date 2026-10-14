@@ -40,3 +40,8 @@ export function avatarLayout(devices: HealthDevice[]) {
     : "Nenhum relógio ou anel com lado de uso informado.";
   return { slots, phoneSide, description };
 }
+
+export function avatarVisualSignature(skin:string,devices:HealthDevice[]) {
+ const layout=avatarLayout(devices);
+ return JSON.stringify([avatarColor(skin),layout.phoneSide,layout.slots.map(slot=>[slot.kind,slot.side,slot.device.id,slot.device.name,avatarColor(slot.device.color,'#94a3b8')])]);
+}

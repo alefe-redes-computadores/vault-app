@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useMemo } from "react";
 import * as THREE from "three";
 import type { HealthDevice } from "@/lib/health-profile/types";
-import { avatarColor, avatarLayout } from "@/lib/health-profile/avatar";
+import { avatarColor, avatarLayout, avatarVisualSignature } from "@/lib/health-profile/avatar";
 import { watchModelByName } from "@/lib/health-profile/device-catalog";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 
@@ -15,7 +15,9 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
   const zoomId = useId();
   const attentionRef=useRef(attention);
   useEffect(()=>{attentionRef.current=attention;controller.current?.attention(attention);},[attention]);
-  const { description, slots } = avatarLayout(devices);
+  const layoutForView=useMemo(()=>avatarLayout(devices),[devices]);
+  const { description, slots } = layoutForView;
+  const visualSignature=useMemo(()=>avatarVisualSignature(skin,devices),[skin,devices]);
   useEffect(() => {
     setZoom(100); setDirection("front");
     const element = host.current;
@@ -88,6 +90,7 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     const signalRing=mesh(new THREE.TorusGeometry(.245,.008,8,48),signalMaterial,0,2.1,.248,[1,.86,1]);
     const setAttention=(rank:number)=>{const color=avatarAttentionColor(rank);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalRing.visible=rank>0;};
     setAttention(attentionRef.current);
+    const backBadge=mesh(new THREE.PlaneGeometry(.22,.22),label("VAULT",BRAIN_BRAND),0,2.16,-.237);backBadge.rotation.y=Math.PI;
     const layout=avatarLayout(devices);
     for (const slot of layout.slots) {
       const x=slot.side==="right"?-.50:.50;
@@ -143,7 +146,8 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
       disposed=true;cancelAnimationFrame(frame);controller.current=null;resizeObserver.disconnect();visibilityObserver.disconnect();document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
       const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});Object.values(materials).forEach(m=>mats.add(m));geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
     };
-  },[skin,devices,onUnavailable]);
+    // Signature includes every appearance field used by this scene; metadata updates keep the canvas.
+  },[visualSignature,onUnavailable]);
   return <div className="mx-auto w-full max-w-[340px]">
     <div ref={host} role="img" aria-label={`Avatar 3D estilizado. ${description}. Celular ilustrativo; acessórios não indicam conexão nem estado de saúde.`} className="h-[340px] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-violet-500/5 to-transparent" />
     <p className="text-center text-xs text-slate-400">Arraste na horizontal para girar</p>

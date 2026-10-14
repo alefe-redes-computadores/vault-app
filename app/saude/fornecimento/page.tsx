@@ -1,4 +1,5 @@
 "use client";
+import { indexSupplyMedicationIds } from "@/lib/health-supply/presentation";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { Suspense, useState, useRef, useEffect, useMemo } from "react";
@@ -67,8 +68,9 @@ import { getLocalTodayISO } from "@/lib/health-utils";
 const input =
   "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const button =
-  "rounded-xl bg-surface-raised px-3 py-3 text-xs font-bold text-ink-primary disabled:opacity-40";
+  "min-h-11 rounded-xl bg-surface-raised px-3 py-3 text-xs font-bold text-ink-primary disabled:opacity-40";
 const panel = "rounded-[24px] border border-surface-border/60 bg-surface p-4";
+const originTone:Record<SupplyProcess["origem"],string>={comprado:"border-sky-400/20 bg-sky-400/10 text-sky-300",municipal:"border-emerald-400/20 bg-emerald-400/10 text-emerald-300",estadual_ceaf:"border-violet-400/20 bg-violet-400/10 text-violet-300",farmacia_popular:"border-amber-400/20 bg-amber-400/10 text-amber-300",outro:"border-slate-400/20 bg-slate-400/10 text-slate-300"};
 const fmt = (v: string | null) =>
   v ? v.split("-").reverse().join("/") : "Não confirmado";
 type Run = (action: () => Promise<unknown>, message?: string) => Promise<void>;
@@ -958,6 +960,7 @@ function CyclePanel({
   );
 }
 function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
+  const {user}=useAuth();
   const params = useSearchParams(),
     { data, personId, loading } = supply,
     { medicamentos } = useMedicamentos(),
@@ -1054,21 +1057,24 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       setBusy(false);
     }
   };
+  const processMedicationIds=useMemo(()=>indexSupplyMedicationIds(personId||"",user?.id||"",data.processos,data.itens),[personId,user?.id,data.processos,data.itens]);
+  const treatmentProcessGroups=useMemo(()=>tratamentos.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id).map(t=>({t,linked:processes.filter(p=>p.user_id===user?.id&&matchesSupplyTreatment(t,medicamentos,processMedicationIds.get(p.id)||new Set<string>(),personId||"",p.user_id))})).filter(group=>group.linked.length>1),[tratamentos,medicamentos,processMedicationIds,personId,user?.id,medId]);
   const renderProcess = (p: SupplyProcess) => {
-    const ids = new Set(data.itens.filter(i => i.processo_id === p.id).map(i => i.medicamento_id));
+    const ids = processMedicationIds.get(p.id)||new Set<string>();
     const treatment = tratamentos.find(t => matchesSupplyTreatment(t, medicamentos, ids, personId || "", p.user_id));
     const theme = getClinicalTheme(treatment?.nome || p.titulo);
-    const Icon = treatment ? getVaultTreatmentIcon(treatment.nome) : theme.icon;
+    const Icon = getVaultTreatmentIcon(treatment?.nome || p.titulo);
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
     return (
               <button
                 type="button"
                 disabled={busy}
                 aria-pressed={process?.id === p.id}
+                aria-label={`${p.titulo} · ${SUPPLY_ORIGIN_LABELS[p.origem]} · ${p.status=== "ativo"?"Em andamento":"Histórico"}`}
                 style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}50`, backgroundColor: "#10151c"} : {})}}
                 key={p.id}
                 className={
-                  "min-h-12 rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
+                  "inline-flex min-h-11 max-w-full items-center rounded-xl border px-2 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
                 }
                 onClick={() => {
                   setSeed(null); setWithdrawalId("");
@@ -1078,7 +1084,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   setCreating(false);
                 }}
               >
-                <span className="flex items-center gap-2"><span className="rounded-xl p-2" style={{backgroundColor:`${color}18`}}><Icon size={17} style={{color}} /></span><span className="text-ink-primary">{p.titulo}</span></span><span className="mt-1 block text-[10px] font-normal text-ink-muted">{p.status === "ativo" ? "Em andamento" : "Histórico"}</span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="truncate text-ink-primary">{p.titulo}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
               </button>
     );
   };
@@ -1113,14 +1119,14 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           </h1>
         </div>
       </header>
-      <details className={panel + " mb-4"}>
+      <details className="mb-2 rounded-2xl border border-surface-border/60 bg-surface px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Como organizar o fornecimento</summary>
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
         </p>
       </details>
-      <div className="mb-4">
-        <SusCatalogBrowser />
+      <div className="mb-3">
+        <SusCatalogBrowser compact />
       </div>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
@@ -1131,30 +1137,28 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <p className="text-xs text-ink-muted">Carregando fornecimentos…</p>
       ) : (
         <>
-          {/* V141: one treatment can contain separate SUS and private purchase processes. */}
-          {tratamentos.filter(t=>t.id && t.person_id===personId && processes.some(p=>matchesSupplyTreatment(t,medicamentos,new Set(data.itens.filter(i=>i.processo_id===p.id).map(i=>i.medicamento_id)),personId,p.user_id))).map(t=>{
-            const linked=processes.filter(p=>matchesSupplyTreatment(t,medicamentos,new Set(data.itens.filter(i=>i.processo_id===p.id).map(i=>i.medicamento_id)),personId,p.user_id));
-            const Icon=getVaultTreatmentIcon(t.nome);
-            const color=/^#[0-9a-f]{6}$/i.test(t.cor||"") ? t.cor! : "#8b5cf6";
-            return <section key={t.id} className="mb-3 rounded-[22px] border bg-surface p-3" style={{borderLeftWidth:3,borderLeftColor:color,borderColor:`${color}30`}} aria-label={`Fornecimentos de ${t.nome}`}>
-              <div className="flex items-center gap-3"><span className="rounded-xl p-2" style={{color,backgroundColor:`${color}18`}}><Icon size={20}/></span><span className="min-w-0 flex-1 text-sm font-bold text-ink-primary">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimento(s)</span></div>
-              <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-10 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
-              {new Set(linked.map(p=>p.origem)).size>1 && <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta do tratamento; autorizações, compras e retiradas continuam separadas por origem.</p>}
+          {/* Mixed origins remain accessible without duplicating one-process navigation. */}
+          {treatmentProcessGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos com vários fornecimentos ({treatmentProcessGroups.length})</summary><div className="mt-2 space-y-2">{treatmentProcessGroups.map(({t,linked})=>{
+            const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:"#8b5cf6";
+            return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
+              <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos</span></div>
+              <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
+              <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta do tratamento; autorizações, compras e retiradas continuam separadas por origem.</p>
             </section>;
-          })}
-          <div className="mb-4 flex flex-wrap gap-2">
+          })}</div></details>}
+          <div className="mb-3 flex flex-wrap gap-2" aria-label="Selecionar fornecimento">
             {processes.filter(p => p.status === "ativo").map(renderProcess)}
             {processes.some(p => p.status !== "ativo") && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
               <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Arquivados · histórico ({processes.filter(p => p.status !== "ativo").length})</summary>
               <div className="flex flex-wrap gap-2">{processes.filter(p => p.status !== "ativo").map(renderProcess)}</div>
             </details>}
-            <button type="button" disabled={busy} aria-expanded={creating||!processes.length} aria-controls="supply-create-form" className={button} onClick={() => {
+            <button type="button" disabled={busy} aria-expanded={creating||!processes.length} aria-controls="supply-create-form" aria-label="Novo processo" className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-surface-raised px-2 py-2 text-xs font-bold text-ink-primary disabled:opacity-40" onClick={() => {
               try{triggerHaptic("vibrate");}catch{}
               if(!creating&&processes.length)setSeed(null);
               setEditing(false);setCreating(true);
               if(creating||!processes.length){createRef.current?.scrollIntoView({block:"start",behavior:"auto"});createRef.current?.querySelector<HTMLInputElement>('input:not([type="checkbox"])')?.focus({preventScroll:true});showToast("Preencha o formulário abaixo para organizar o fornecimento.","success");}
             }}>
-              <Plus size={14} className="inline" /> Novo processo
+              <Plus size={14} aria-hidden="true" /> Novo
             </button>
           </div>
           {missingProcess && <p role="status" className="mb-4 rounded-2xl border border-amber-400/25 p-4 text-sm text-amber-200">Este processo não está disponível para a pessoa ou medicamento selecionado. Escolha um processo acima.</p>}
@@ -1197,19 +1201,19 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <div className={panel}>
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
-                  const ids = new Set(data.itens.filter(i => i.processo_id === process.id).map(i => i.medicamento_id));
+                  const ids = processMedicationIds.get(process.id)||new Set<string>();
                   const related = tratamentos.filter(t => matchesSupplyTreatment(t, medicamentos, ids, personId, process.user_id));
-                  const linkedMeds = medicamentos.filter(m => m.person_id === personId && m.id && ids.has(m.id));
+                  const linkedMeds = medicamentos.filter(m => m.person_id === personId && m.user_id === process.user_id && m.id && ids.has(m.id));
                   const pharmacy = farmacias.find(f => f.id === process.farmacia_id && f.user_id === process.user_id);
                   const place = locais.find(l => l.id === process.local_id && l.user_id === process.user_id);
                   const purchases = acquisitionSummary(ids);
                   const processWithdrawals = retiradas.filter(r => r.person_id === personId &&
-                    r.fornecimento_id === process.id).sort((a,b) => b.data.localeCompare(a.data));
-                  const processDocs = data.documentos.filter(d => d.processo_id === process.id);
-                  const processCycles = data.ciclos.filter(c => c.processo_id === process.id);
+                    r.user_id === process.user_id && r.fornecimento_id === process.id).sort((a,b) => b.data.localeCompare(a.data));
+                  const processDocs = data.documentos.filter(d => d.processo_id === process.id && d.person_id === personId && d.user_id === process.user_id);
+                  const processCycles = data.ciclos.filter(c => c.processo_id === process.id && c.person_id === personId && c.user_id === process.user_id);
                   return <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold text-emerald-300">{SUPPLY_ORIGIN_LABELS[process.origem]}</span>
+                      <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{SUPPLY_ORIGIN_LABELS[process.origem]}</span>
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
@@ -1223,17 +1227,13 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     </div>}
                     <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Medicamentos vinculados</p>
-                      {linkedMeds.map(m => <Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id || "")}`} className="flex items-center gap-3 rounded-xl border border-surface-border/60 bg-surface-raised p-3">
+                      {linkedMeds.map(m => <Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id || "")}`} className="flex min-h-11 items-center gap-3 rounded-xl border border-surface-border/60 bg-surface-raised px-3 py-2">
                         <MedicationFormatIcon formato={m.formato} cores={m.cores} size={26}/>
                         <span className="min-w-0 flex-1 text-xs font-semibold text-ink-primary">{m.nome} · {m.dosagem}</span><span className="text-ink-muted">›</span>
                       </Link>)}
                     </div>
-                    {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
-                    <div className="grid grid-cols-3 gap-2" aria-label="Resumo relacional do fornecimento">
-                      <div className="rounded-xl bg-surface-raised p-3"><span className="block text-lg font-bold text-ink-primary">{processCycles.length}</span><span className="text-[10px] text-ink-muted">Ciclos</span></div>
-                      <div className="rounded-xl bg-surface-raised p-3"><span className="block text-lg font-bold text-ink-primary">{processWithdrawals.length}</span><span className="text-[10px] text-ink-muted">Retiradas relacionadas</span></div>
-                      <div className="rounded-xl bg-surface-raised p-3"><span className="block text-lg font-bold text-ink-primary">{processDocs.length}</span><span className="text-[10px] text-ink-muted">Vínculos documentais</span></div>
-                    </div>
+                    {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="inline-flex min-h-11 items-center rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="inline-flex min-h-11 items-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
+                    <p className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-surface-border/60 px-3 py-2 text-[11px] text-ink-muted" aria-label="Resumo relacional do fornecimento"><span><strong className="text-ink-primary">{processCycles.length}</strong> {processCycles.length===1?"ciclo":"ciclos"}</span><span><strong className="text-ink-primary">{processWithdrawals.length}</strong> {processWithdrawals.length===1?"retirada":"retiradas"}</span><span><strong className="text-ink-primary">{processDocs.length}</strong> {processDocs.length===1?"documento vinculado":"documentos vinculados"}</span></p>
                     {processWithdrawals.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Retiradas vinculadas a este processo</p>
                       {processWithdrawals.slice(0, 5).map(r => <Link key={r.id} href={`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-surface-raised p-3 text-xs text-ink-primary">
@@ -1245,7 +1245,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     {processDocs.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Documentos vinculados · LME e receitas</p>
                       {processDocs.slice(0, 8).map(link => {
-                        const doc = documents.find(d => d.id === link.document_id && d.person_id === personId);
+                        const doc = documents.find(d => d.id === link.document_id && d.person_id === personId && d.user_id === process.user_id);
                         return doc ? <Link key={link.id} href={`/saude/documentos/detalhes?id=${encodeURIComponent(doc.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-sky-400/15 bg-sky-400/5 p-3 text-xs">
                           <span className="min-w-0"><span className="block truncate font-semibold text-ink-primary">{doc.title}</span><span className="block text-[10px] text-ink-muted">{link.tipo.toUpperCase()} · {link.estado}</span></span><span className="shrink-0 text-sky-300">Ver ›</span>
                         </Link> : <p key={link.id} className="rounded-xl border border-amber-400/20 p-3 text-xs text-amber-200">{link.tipo.toUpperCase()} · documento vinculado indisponível</p>;

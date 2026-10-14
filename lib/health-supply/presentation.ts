@@ -33,3 +33,10 @@ export function supplyDocumentLabel(d:Document) {
  const emitted=typeof d.metadata?.data_emissao==='string'?d.metadata.data_emissao:typeof d.metadata?.data_receita==='string'?d.metadata.data_receita:null;
  return `${d.title} · ${d.type==='receita'?'Receita':d.type==='lme'?'LME':d.type} · ${emitted?`Data informada: ${emitted}`:`Adicionado: ${date}`} · ${d.attachments?.length||0} anexo(s)`;
 }
+
+export function indexSupplyMedicationIds(pid:string,uid:string,processes:Array<{id:string;person_id:string;user_id:string}>,items:Array<{processo_id:string;medicamento_id:string;person_id:string;user_id:string}>) {
+ const output=new Map<string,Set<string>>();if(!pid||!uid)return output;
+ for(const process of processes)if(process.person_id===pid&&process.user_id===uid)output.set(process.id,new Set());
+ for(const item of items)if(item.person_id===pid&&item.user_id===uid)output.get(item.processo_id)?.add(item.medicamento_id);
+ return output;
+}
