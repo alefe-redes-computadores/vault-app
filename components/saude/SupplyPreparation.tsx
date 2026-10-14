@@ -1,4 +1,5 @@
 "use client";
+import { SupplyChoiceIcon } from "./SupplyChoiceIcon";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { useState } from "react";
@@ -193,7 +194,7 @@ export function SupplyPreparation({
           >
             <label className="block text-xs text-ink-muted">
               Motivo da documentação
-              <HealthRelationPicker title="Motivo do ciclo"
+              <HealthRelationPicker title="Motivo do ciclo" renderIcon={value=><SupplyChoiceIcon group="reason" value={value}/>}
                 className={input}
                 value={reason}
                 onValueChange={(e) => setReason(e as SupplyCycleReason)}

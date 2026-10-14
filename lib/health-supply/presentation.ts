@@ -25,3 +25,11 @@ export function prioritizedSupplyDocuments(rows:Document[],pid:string,uid:string
   const related=(d:Document)=>d.entidade_tipo==='medicamento' && medicationIds.has(d.entidade_id||'') || typeof d.metadata?.medicamento_id==='string' && medicationIds.has(d.metadata.medicamento_id);
   return rows.filter(d=>d.id && d.category_id==='saude' && d.person_id===pid && d.user_id===uid).sort((a,b)=>Number(related(b))-Number(related(a)) || a.title.localeCompare(b.title,'pt-BR'));
 }
+
+export function monthlySupplyReference(amount:number, months:number) { return Number.isFinite(amount)&&amount>0&&Number.isInteger(months)&&months>0&&months<=24 ? amount/months : null; }
+export function supplyDocumentLabel(d:Document) {
+ const added=new Date(d.created_at);
+ const date=Number.isFinite(added.getTime())?added.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'data de cadastro indisponível';
+ const emitted=typeof d.metadata?.data_emissao==='string'?d.metadata.data_emissao:typeof d.metadata?.data_receita==='string'?d.metadata.data_receita:null;
+ return `${d.title} · ${d.type==='receita'?'Receita':d.type==='lme'?'LME':d.type} · ${emitted?`Data informada: ${emitted}`:`Adicionado: ${date}`} · ${d.attachments?.length||0} anexo(s)`;
+}

@@ -25,6 +25,7 @@ import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
+import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
 import {
   HealthDeviceIcon,
@@ -255,6 +256,7 @@ function HealthDashboard({
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
                   <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} expanded />
+                  <AvatarHealthContext insights={intelligence.insights} weightChange={weightChange} />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
                   <div>
@@ -280,7 +282,6 @@ function HealthDashboard({
                       </p>
                     )}
                   </button>
-                  {weightChange !== null && <p className="text-[10px] text-ink-muted">{weightChange > 0 ? "+" : ""}{weightChange.toLocaleString("pt-BR")} kg desde {weights[1].data.split("-").reverse().join("/")}</p>}
                   <div>
                     <p className="text-[10px] text-ink-muted">IMC calculado</p>
                     <p className="text-lg font-semibold">{index ?? "—"}</p>

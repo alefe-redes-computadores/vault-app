@@ -1,0 +1,8 @@
+import { Store, Building2, ShoppingBag, FolderHeart, RefreshCw, Plus, ArrowLeftRight, SlidersHorizontal, RotateCcw, ClipboardCheck, FileText, CalendarDays, CheckCircle2, Clock3, Archive, HeartPulse } from 'lucide-react';
+export function SupplyChoiceIcon({group,value}:{group:'origin'|'reason'|'document'|'stage'|'cycle'|'withdrawal'|'treatment';value:string}) {
+ const origin={comprado:[ShoppingBag,'text-sky-300'],municipal:[Building2,'text-emerald-300'],estadual_ceaf:[FolderHeart,'text-violet-300'],farmacia_popular:[Store,'text-amber-300'],outro:[FolderHeart,'text-slate-300']} as const;
+ const reason={inicial:[Plus,'text-emerald-300'],renovacao:[RefreshCw,'text-violet-300'],troca:[ArrowLeftRight,'text-sky-300'],inclusao:[Plus,'text-emerald-300'],ajuste_dose:[SlidersHorizontal,'text-amber-300'],retomada:[RotateCcw,'text-sky-300'],outro:[ClipboardCheck,'text-slate-300']} as const;
+ const stage={ativo:[CheckCircle2,'text-emerald-300'],preparando:[Clock3,'text-amber-300'],protocolado:[FileText,'text-sky-300'],autorizado:[CheckCircle2,'text-emerald-300'],encerrado:[Archive,'text-slate-400']} as const;
+ const [Icon,tone]=group==='origin'?origin[value as keyof typeof origin]||origin.outro:group==='reason'?reason[value as keyof typeof reason]||reason.outro:group==='stage'?stage[value as keyof typeof stage]||stage.preparando:group==='treatment'?[HeartPulse,'text-violet-300']:group==='withdrawal'?[Store,'text-amber-300']:group==='cycle'?[CalendarDays,'text-sky-300']:value==='lme'?[ClipboardCheck,'text-violet-300']:[FileText,'text-sky-300'];
+ return <Icon size={20} className={tone}/>;
+}

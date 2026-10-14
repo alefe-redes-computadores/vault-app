@@ -17,7 +17,9 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useCids } from "@/hooks/useCids";
 import { getClinicalTheme } from "@/lib/health-utils";
-import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments } from "@/lib/health-supply/presentation";
+import { SupplyChoiceIcon } from "@/components/saude/SupplyChoiceIcon";
+import { treatmentSupplyMedicationIds, cycleDocumentContext, matchesSupplyTreatment } from "@/lib/health-supply/cycle-context";
+import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -91,6 +93,8 @@ function ProcessForm({
   meds: Medicamento[];
 }) {
   const { user } = useAuth();
+  const { tratamentos: existingTreatments } = useTratamentos();
+  const [treatmentId, setTreatmentId] = useState("");
   const { medicos } = useMedicos(),
     { farmacias } = useFarmacias(),
     { locais } = useLocais();
@@ -132,6 +136,13 @@ function ProcessForm({
       className="space-y-3"
     >
       {seed&&!initial&&<p role="status" className="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-xs leading-relaxed text-cyan-200">Dados reaproveitados da retirada de {fmt(seed.data)}. Confira os vínculos e escolha a origem do fornecimento. Quantidade, periodicidade e autorização não são presumidas.</p>}
+      {!initial ? <div className="space-y-2">
+        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=><SupplyChoiceIcon group="treatment" value={value}/>} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
+          <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status==='ativo').map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+        </HealthRelationPicker>
+        {treatmentId && !selected.length ? <p className="text-xs text-amber-300">Nenhum medicamento disponível foi encontrado neste tratamento. Confira os vínculos em Medicamentos e os processos ativos antes de continuar.</p> : null}
+        <p className="text-[11px] leading-relaxed text-ink-muted">Reaproveita medicamentos disponíveis do tratamento. Revise a seleção e retire os que não pertencem a este fornecimento; não cria outro tratamento nem duplica medicamento.</p>
+      </div>:null}
       <label className="block text-xs text-ink-muted">
         Nome para identificar este fornecimento
         <input
@@ -144,7 +155,7 @@ function ProcessForm({
       </label>
       <label className="block text-xs text-ink-muted">
         Onde este medicamento é fornecido
-        <HealthRelationPicker title="Origem do fornecimento"
+        <HealthRelationPicker title="Origem do fornecimento" renderIcon={value=><SupplyChoiceIcon group="origin" value={value}/>}
           className={input}
           value={values.origem}
           onValueChange={(e) => {
@@ -322,7 +333,7 @@ function ProcessForm({
       {initial && (
         <label className="block text-xs text-ink-muted">
           Situação do processo
-          <HealthRelationPicker title="Situação do processo"
+          <HealthRelationPicker title="Situação do processo" renderIcon={value=><SupplyChoiceIcon group="stage" value={value}/>}
             className={input}
             value={values.status}
             onValueChange={(e) =>
@@ -357,6 +368,8 @@ function ItemEditor({
     [quantity, setQuantity] = useState(
       item.quantidade_mensal?.toString() || ""
     );
+  const [pickupAmount,setPickupAmount]=useState(""),[coverageMonths,setCoverageMonths]=useState("");
+  const monthlyReference=monthlySupplyReference(Number(pickupAmount),Number(coverageMonths));
   const [catalogId, setCatalogId] = useState(item.catalogo_id || ""),
     [query, setQuery] = useState(med ? medicationSusQuery(med) : "");
   const options = searchSusCatalog(
@@ -400,7 +413,7 @@ function ItemEditor({
           />
         </label>
         <label className="text-[11px] text-ink-muted">
-          Quantidade mensal
+          Referência mensal · opcional
           <input
             type="number"
             min="0.01"
@@ -411,6 +424,13 @@ function ItemEditor({
           />
         </label>
       </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Este campo não agenda nem antecipa retiradas. A quantidade total recebida e a próxima data ficam no registro de Retirada, separado da referência mensal.</p>
+      <details className="mt-3 rounded-xl border border-surface-border p-3">
+        <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Recebo para mais de um mês · calcular referência</summary>
+        <div className="mt-2 grid grid-cols-2 gap-2"><label className="text-xs text-ink-muted">Total por retirada<input className={input} type="number" min="0.01" step="any" value={pickupAmount} onChange={e=>setPickupAmount(e.target.value)}/></label><label className="text-xs text-ink-muted">Meses informados<input className={input} type="number" min="1" max="24" step="1" value={coverageMonths} onChange={e=>setCoverageMonths(e.target.value)}/></label></div>
+        <p className="mt-2 text-[11px] text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
+        <button type="button" className={button+" mt-2"} disabled={monthlyReference===null} onClick={()=>{if(monthlyReference!==null)setQuantity(String(monthlyReference));}}>Usar referência {monthlyReference!==null?monthlyReference.toLocaleString('pt-BR'):''}</button>
+      </details>
       {process.origem === "estadual_ceaf" ||
       process.origem === "farmacia_popular" ? (
         <div className="mt-3 space-y-2">
@@ -475,6 +495,8 @@ function CyclePanel({
   run: Run;
   pid: string;
 }) {
+  const [cycleView,setCycleView]=useState<'overview'|'documents'|'medications'|'withdrawals'>(withdrawal?'withdrawals':'overview');
+  useEffect(()=>{if(withdrawal?.id)setCycleView('withdrawals');},[withdrawal?.id]);
   const [status, setStatus] = useState(cycle.status),
     [start, setStart] = useState(cycle.inicio || ""),
     [end, setEnd] = useState(cycle.fim || ""),
@@ -483,6 +505,7 @@ function CyclePanel({
     [kind, setKind] = useState<SupplyDocumentKind>(process.origem === "estadual_ceaf" ? "lme" : "receita");
   const links = data.documentos.filter((x) => x.ciclo_id === cycle.id && x.person_id === pid && x.user_id === process.user_id),
     items = data.itens.filter((x) => x.ciclo_id === cycle.id && x.person_id === pid && x.user_id === process.user_id);
+  const documentContext = cycleDocumentContext(process, cycle, data, documents);
   const estimate =
     process.renovacao_meses && start
       ? estimatedCycleEnd(start, process.renovacao_meses)
@@ -502,11 +525,19 @@ function CyclePanel({
     }&return_to=${encodeURIComponent(returnRoute)}`;
   return (
     <div className="space-y-4">
+      <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-emerald-200">Ciclo registrado no aplicativo · etapa: {cycle.status}. Cadastro salvo não significa autorização confirmada.</p>
+      <div role="tablist" aria-label="Tarefa do ciclo" className="grid grid-cols-2 gap-2">{([['overview','Resumo'],['withdrawals','Retiradas'],['documents','Documentos'],['medications','Medicamentos']] as const).map(([key,label],index)=><button key={key} type="button" role="tab" tabIndex={cycleView===key?0:-1} onKeyDown={event=>{const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;if(next!==null){event.preventDefault();setCycleView((['overview','withdrawals','documents','medications'] as const)[next]);event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();}}} id={`tab-${cycle.id}-${key}`} aria-selected={cycleView===key} aria-controls={`pane-${cycle.id}-${key}`} onClick={()=>setCycleView(key)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${cycleView===key?'border-violet-400/40 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>
       <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
         <p className="text-sm font-semibold text-ink-primary">{items.length} medicamento{items.length === 1 ? "" : "s"} já vinculado{items.length === 1 ? "" : "s"} ao ciclo</p>
         <p className="mt-1 text-xs leading-relaxed text-ink-muted">O cadastro já existe. Abra somente a etapa que deseja atualizar; documentos e retiradas são vínculos separados.</p>
       </div>
-      <details className="rounded-2xl border border-surface-border bg-surface p-4">
+      {process.origem === 'estadual_ceaf' ? <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
+        <p className="text-sm font-semibold text-ink-primary">LME e período autorizado</p>
+        <p className="mt-2 text-xs text-ink-muted">{documentContext.lmeDelivered ? 'LME marcada como entregue neste ciclo.' : documentContext.lmeLinked ? 'LME vinculada; confirme a entrega quando ocorrer.' : 'Vincule a LME já existente abaixo, sem cadastrar o arquivo novamente.'}</p>
+        <p className="mt-2 text-xs text-ink-muted">{documentContext.confirmed ? `Período informado: ${fmt(cycle.inicio)} a ${fmt(cycle.fim)}. Preparar renovação a partir de ${fmt(documentContext.prepareRenewalFrom)}.` : 'A entrega do documento não confirma automaticamente o período. Informe início e fim autorizados pela unidade em Atualizar etapa, datas ou observações.'}</p>
+        <p className="mt-2 text-[11px] text-ink-muted">Um ciclo pode reunir várias retiradas em dias diferentes. A próxima LME acompanha o período do processo, não a data de cada retirada. Receita para dispensação continua separada.</p>
+      </div>:null}
+      <details hidden={cycleView!=='documents'} className="rounded-2xl border border-surface-border bg-surface p-4">
         <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-ink-primary">Planejamento de documentos · opcional</summary>
         <div className="mt-3">      <SupplyPreparation
         process={process}
@@ -519,7 +550,7 @@ function CyclePanel({
         pid={pid}
       /></div>
       </details>
-      <div className={panel}>
+      <div hidden={cycleView!=='documents'} role="tabpanel" id={`pane-${cycle.id}-documents`} aria-labelledby={`tab-${cycle.id}-documents`} className={panel}>
         <p className="mb-3 text-xs leading-relaxed text-ink-muted">Receitas, LME e papéis com datas ou orientações ficam em Documentos de Saúde. Vincule o arquivo existente ou anexe um novo; a retirada continua sendo o mesmo registro.</p>
         <h2 className="text-sm font-bold text-ink-primary">
           Documentos deste fornecimento
@@ -571,7 +602,7 @@ function CyclePanel({
                 )}
                 {c.changed && (
                   <p className="mt-1 text-amber-300">
-                    Dose ou quantidade diferente do ciclo. Confira a atualização
+                    Dosagem diferente da registrada no ciclo. Confira a atualização
                     com a farmácia.
                   </p>
                 )}
@@ -655,7 +686,7 @@ function CyclePanel({
         >
           <label className="block text-xs text-ink-muted">
             Finalidade
-            <HealthRelationPicker title="Finalidade do documento"
+            <HealthRelationPicker title="Finalidade do documento" renderIcon={value=><SupplyChoiceIcon group="document" value={value}/>}
               className={input}
               value={kind}
               onValueChange={(e) => setKind(e as SupplyDocumentKind)}
@@ -671,7 +702,7 @@ function CyclePanel({
           </label>
           <label className="block text-xs text-ink-muted">
             Documento de Saúde existente
-            <HealthRelationPicker title="Selecionar documento"
+            <HealthRelationPicker title="Selecionar documento" renderIcon={id=><SupplyChoiceIcon group="document" value={documents.find(d=>d.id===id)?.type || "documento"}/>}
               required
               className={input}
               value={docId}
@@ -681,7 +712,7 @@ function CyclePanel({
               {prioritizedSupplyDocuments(documents, pid, process.user_id, new Set(items.map(i=>i.medicamento_id)))
                 .map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.title}
+                    {supplyDocumentLabel(d)}
                   </option>
                 ))}
             </HealthRelationPicker>
@@ -708,7 +739,7 @@ function CyclePanel({
         </p>
         </details>
       </div>
-      <div className={panel}>
+      <div hidden={cycleView!=='overview'} role="tabpanel" id={`pane-${cycle.id}-overview`} aria-labelledby={`tab-${cycle.id}-overview`} className={panel}>
         <p className="text-[10px] font-bold uppercase tracking-wider text-ink-primary">
           Ciclo de fornecimento
         </p>
@@ -733,7 +764,7 @@ function CyclePanel({
         >
           <label className="block text-xs text-ink-muted">
             Etapa
-            <HealthRelationPicker title="Etapa do ciclo"
+            <HealthRelationPicker title="Etapa do ciclo" renderIcon={value=><SupplyChoiceIcon group="stage" value={value}/>}
               className={input}
               value={status}
               onValueChange={(e) =>
@@ -793,7 +824,7 @@ function CyclePanel({
         </form>
         </details>
       </div>
-      <div className={panel}>
+      <div hidden={cycleView!=='medications'} role="tabpanel" id={`pane-${cycle.id}-medications`} aria-labelledby={`tab-${cycle.id}-medications`} className={panel}>
         <h2 className="text-sm font-bold text-ink-primary">
           Medicamentos e quantidades
         </h2>
@@ -851,7 +882,7 @@ function CyclePanel({
             <details key={item.id} className="rounded-xl border border-surface-border bg-surface-raised p-3">
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-ink-primary">
                 {meds.find(m=>m.id===item.medicamento_id)?.nome || "Medicamento"}
-                <span className="mt-1 block text-[11px] font-normal text-ink-muted">{item.dosagem} · {item.quantidade_mensal != null ? `${item.quantidade_mensal} por mês` : "Quantidade mensal não informada"}</span>
+                <span className="mt-1 block text-[11px] font-normal text-ink-muted">{item.dosagem} · {item.quantidade_mensal != null ? `Referência mensal: ${item.quantidade_mensal}` : "Quantidade mensal não informada"}</span>
               </summary>
             <fieldset
               disabled={
@@ -872,8 +903,9 @@ function CyclePanel({
           ))}
         </div>
       </div>
+      {!withdrawal && cycleView==='withdrawals' ? <p id={`pane-${cycle.id}-withdrawals`} role="tabpanel" aria-labelledby={`tab-${cycle.id}-withdrawals`} className="rounded-xl border border-surface-border p-4 text-xs text-ink-muted">Selecione uma retirada existente em Vincular outra retirada, acima. Datas diferentes podem pertencer ao mesmo ciclo.</p>:null}
       {withdrawal && (
-        <div className={panel}>
+        <div hidden={cycleView!=='withdrawals'} role="tabpanel" id={`pane-${cycle.id}-withdrawals`} aria-labelledby={`tab-${cycle.id}-withdrawals`} className={panel}>
           <h2 className="text-sm font-bold text-ink-primary">
             Retirada de {fmt(withdrawal.data)}
           </h2>
@@ -998,7 +1030,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   };
   const renderProcess = (p: SupplyProcess) => {
     const ids = new Set(data.itens.filter(i => i.processo_id === p.id).map(i => i.medicamento_id));
-    const treatment = tratamentos.find(t => t.person_id === personId && t.user_id === p.user_id && t.medicamento_ids?.some(id => ids.has(id)));
+    const treatment = tratamentos.find(t => matchesSupplyTreatment(t, medicamentos, ids, personId || "", p.user_id));
     const theme = getClinicalTheme(treatment?.nome || p.titulo);
     const Icon = theme.icon;
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
@@ -1007,7 +1039,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 type="button"
                 disabled={busy}
                 aria-pressed={process?.id === p.id}
-                style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}80`, backgroundColor: `${color}14`, color} : {})}}
+                style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}50`, backgroundColor: "#10151c"} : {})}}
                 key={p.id}
                 className={
                   "min-h-12 rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
@@ -1020,7 +1052,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   setCreating(false);
                 }}
               >
-                <span className="flex items-center gap-2"><Icon size={17} style={{color}} /><span>{p.titulo}</span></span>{p.status !== "ativo" ? <span className="mt-1 block text-[10px] font-normal opacity-70">Histórico</span> : null}
+                <span className="flex items-center gap-2"><span className="rounded-xl p-2" style={{backgroundColor:`${color}18`}}><Icon size={17} style={{color}} /></span><span className="text-ink-primary">{p.titulo}</span></span><span className="mt-1 block text-[10px] font-normal text-ink-muted">{p.status === "ativo" ? "Em andamento" : "Histórico"}</span>
               </button>
     );
   };
@@ -1129,7 +1161,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
                   const ids = new Set(data.itens.filter(i => i.processo_id === process.id).map(i => i.medicamento_id));
-                  const related = tratamentos.filter(t => t.id && t.user_id === process.user_id && t.person_id === personId && (t.medicamento_ids || []).some(id => ids.has(id)));
+                  const related = tratamentos.filter(t => matchesSupplyTreatment(t, medicamentos, ids, personId, process.user_id));
                   const linkedMeds = medicamentos.filter(m => m.person_id === personId && m.id && ids.has(m.id));
                   const pharmacy = farmacias.find(f => f.id === process.farmacia_id && f.user_id === process.user_id);
                   const place = locais.find(l => l.id === process.local_id && l.user_id === process.user_id);
@@ -1237,7 +1269,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <div className={panel}>
                 <label className="block text-xs text-ink-muted">
                   Histórico de ciclos
-                  <HealthRelationPicker title="Histórico de ciclos"
+                  <HealthRelationPicker title="Histórico de ciclos" renderIcon={value=><SupplyChoiceIcon group="cycle" value={value}/>}
                     className={input}
                     value={cycle?.id || ""}
                     onValueChange={(e) => setCycleId(e)}
@@ -1253,7 +1285,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Preparar outro ciclo / renovação</summary>
                 <label className="mt-3 block text-xs text-ink-muted">
                   Motivo do próximo ciclo
-                  <HealthRelationPicker title="Motivo do ciclo"
+                  <HealthRelationPicker title="Motivo do ciclo" renderIcon={value=><SupplyChoiceIcon group="reason" value={value}/>}
                     className={input}
                     value={nextReason}
                     onValueChange={(e) =>
@@ -1287,14 +1319,15 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 </p>
                 </details>
               </div>
-              {cycle && <div className={panel}>
-                <HealthRelationPicker title="Retirada relacionada ao ciclo" value={withdrawal?.id || ""} className={input}
+              {cycle && <details className={panel}>
+                <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Vincular outra retirada / selecionar registro</summary>
+                <HealthRelationPicker title="Retirada relacionada ao ciclo" renderIcon={value=><SupplyChoiceIcon group="withdrawal" value={value}/>} value={withdrawal?.id || ""} className={input}
                   onValueChange={id => { setSeed(null); setWithdrawalId(id); setCycleId(cycle.id); }}>
                   <option value="">Sem retirada selecionada</option>
                   {compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id).map(i=>i.medicamento_id))).map(r => <option key={r.id} value={r.id}>{r.medicamento_nome} · {fmt(r.data)} · {r.status}</option>)}
                 </HealthRelationPicker>
                 <p className="mt-2 text-[11px] text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
-              </div>}
+              </details>}
               {cycle && (
                 <CyclePanel
                   key={personId + cycle.id + cycle.updated_at}

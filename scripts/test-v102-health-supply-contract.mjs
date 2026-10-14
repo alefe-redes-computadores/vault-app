@@ -264,8 +264,8 @@ assert.equal(
 assert.equal(
   check(authorized, data, [], { ...withdrawal, quantidade_prevista: 60 })
     .changed,
-  true,
-  "aumento da quantidade pede conferência",
+  false,
+  "retirada total sem cobertura informada não pode ser comparada à referência mensal",
 );
 assert.equal(
   check(authorized, data, [], withdrawal, supplyProcess, med, "2027-03-15")

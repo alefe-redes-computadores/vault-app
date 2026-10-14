@@ -99,11 +99,9 @@ export function supplyChecklist(
   const changed =
     cycle.status === "autorizado" &&
     !!item &&
-    (item.dosagem.toLowerCase().replace(/\s+/g, "") !==
-      med.dosagem.toLowerCase().replace(/\s+/g, "") ||
-      (withdrawal?.quantidade_prevista != null &&
-        item.quantidade_mensal != null &&
-        withdrawal.quantidade_prevista > item.quantidade_mensal));
+    item.dosagem.toLowerCase().replace(/\s+/g, "") !==
+      med.dosagem.toLowerCase().replace(/\s+/g, "");
+  // A multi-month withdrawal is not comparable to a monthly reference without coverage/unit snapshots.
   const days = validSupplyDate(cycle.fim) ? supplyDays(today, cycle.fim) : null;
   return {
     covered,
