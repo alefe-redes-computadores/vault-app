@@ -1896,6 +1896,8 @@ export async function safeSetDoseLog(
 
         ignorado_em:
           data.ignorado_em,
+        motivo:
+          data.motivo,
 
         updated_at:
           timestamp,

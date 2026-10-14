@@ -18,6 +18,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCids } from "@/hooks/useCids";
 import { getClinicalTheme } from "@/lib/health-utils";
 import { SupplyChoiceIcon } from "@/components/saude/SupplyChoiceIcon";
+import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
+import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
 import { treatmentSupplyMedicationIds, cycleDocumentContext, matchesSupplyTreatment } from "@/lib/health-supply/cycle-context";
 import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { useSearchParams } from "next/navigation";
@@ -117,6 +120,7 @@ function ProcessForm({
   const [selected, select] = useState<string[]>(
     medicationId ? [medicationId] : []
   );
+  const [antecedenciaText, setAntecedenciaText] = useState(String(values.antecedencia_dias));
   const field = <K extends keyof typeof values>(
     key: K,
     value: (typeof values)[K]
@@ -128,8 +132,9 @@ function ProcessForm({
         void run(async()=>{
           if(!values.titulo.trim())throw new Error("Informe um nome para o fornecimento.");
           if(!initial&&!selected.length)throw new Error("Selecione ao menos um medicamento.");
-          if(!initial && selected.some(id => !meds.some(m => m.id === id && m.person_id === personId && m.status !== "descontinuado"))) throw new Error("A seleção mudou. Confira os medicamentos disponíveis antes de salvar.");
-          return onSave(values, selected);
+          if(!initial && selected.some(id => !meds.some(m => m.id === id && m.person_id === personId && isSupplyMedicationEligible(m)))) throw new Error("A seleção mudou. Confira os medicamentos disponíveis antes de salvar.");
+          if (!/^\d{1,3}$/.test(antecedenciaText) || Number(antecedenciaText)>180) throw new Error("Informe a antecedência entre 0 e 180 dias.");
+           return onSave({...values, antecedencia_dias: Number(antecedenciaText)}, selected);
         },initial?"Processo atualizado":"Fornecimento organizado");
       }}
       onInvalid={()=>{try{triggerHaptic("error");}catch{}}}
@@ -137,8 +142,8 @@ function ProcessForm({
     >
       {seed&&!initial&&<p role="status" className="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-xs leading-relaxed text-cyan-200">Dados reaproveitados da retirada de {fmt(seed.data)}. Confira os vínculos e escolha a origem do fornecimento. Quantidade, periodicidade e autorização não são presumidas.</p>}
       {!initial ? <div className="space-y-2">
-        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=><SupplyChoiceIcon group="treatment" value={value}/>} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
-          <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status==='ativo').map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=>{const t=existingTreatments.find(x=>x.id===value);const Icon=getVaultTreatmentIcon(t?.nome||"");return <Icon size={20} style={{color:t?.cor || "#8b5cf6"}}/>;}} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
+          <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status!=='concluido').map(t=><option key={t.id} value={t.id}>{t.nome}{t.status === "suspenso" ? " · tratamento suspenso (SOS permitido)" : ""}</option>)}
         </HealthRelationPicker>
         {treatmentId && !selected.length ? <p className="text-xs text-amber-300">Nenhum medicamento disponível foi encontrado neste tratamento. Confira os vínculos em Medicamentos e os processos ativos antes de continuar.</p> : null}
         <p className="text-[11px] leading-relaxed text-ink-muted">Reaproveita medicamentos disponíveis do tratamento. Revise a seleção e retire os que não pertencem a este fornecimento; não cria outro tratamento nem duplica medicamento.</p>
@@ -220,10 +225,10 @@ function ProcessForm({
       {!initial && (
         <fieldset>
           <legend className="text-xs text-ink-muted">Medicamentos deste processo</legend>
-          {!meds.some(m => m.id && m.status !== "descontinuado") && <p className="mt-2 text-xs text-amber-200">Nenhum medicamento disponível. Confira os processos ativos ou cadastre um medicamento na área de Medicamentos.</p>}
+          {!meds.some(m => m.id && isSupplyMedicationEligible(m)) && <p className="mt-2 text-xs text-amber-200">Nenhum medicamento disponível. Confira os processos ativos ou cadastre um medicamento na área de Medicamentos.</p>}
           <div className="mt-2 space-y-2">
             {meds
-              .filter((m) => m.id && m.status !== "descontinuado")
+              .filter((m) => m.id && isSupplyMedicationEligible(m))
               .map((m) => (
                 <label
                   key={m.id}
@@ -307,8 +312,10 @@ function ProcessForm({
           min={0}
           max={180}
           className={input}
-          value={values.antecedencia_dias}
-          onChange={(e) => field("antecedencia_dias", Number(e.target.value))}
+          value={antecedenciaText}
+          onChange={(e) => setAntecedenciaText(e.target.value)}
+          onBlur={() => {if (antecedenciaText.trim()) setAntecedenciaText(String(Number(antecedenciaText)));}}
+          required
         />
       </label>
       <label className="flex items-center gap-2 text-xs text-ink-primary">
@@ -369,6 +376,9 @@ function ItemEditor({
       item.quantidade_mensal?.toString() || ""
     );
   const [pickupAmount,setPickupAmount]=useState(""),[coverageMonths,setCoverageMonths]=useState("");
+  const [bottleCount,setBottleCount]=useState("1"),[bottleMl,setBottleMl]=useState(""),[bottleDrops,setBottleDrops]=useState(med?.estoque_gotas_por_ml && med.estoque_gotas_por_ml>0 ? String(med.estoque_gotas_por_ml) : ""),[bottleMonths,setBottleMonths]=useState("2");
+  const bottleReference=calculateBottleReference(Number(bottleCount),Number(bottleMl),Number(bottleDrops),Number(bottleMonths));
+  const isDropMedication=med?.forma_farmaceutica === "gota" || (med?.formato || "").toLocaleLowerCase("pt-BR").includes("gota");
   const monthlyReference=monthlySupplyReference(Number(pickupAmount),Number(coverageMonths));
   const [catalogId, setCatalogId] = useState(item.catalogo_id || ""),
     [query, setQuery] = useState(med ? medicationSusQuery(med) : "");
@@ -431,6 +441,22 @@ function ItemEditor({
         <p className="mt-2 text-[11px] text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
         <button type="button" className={button+" mt-2"} disabled={monthlyReference===null} onClick={()=>{if(monthlyReference!==null)setQuantity(String(monthlyReference));}}>Usar referência {monthlyReference!==null?monthlyReference.toLocaleString('pt-BR'):''}</button>
       </details>
+      {med && <details className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-3">
+        <summary className="min-h-11 cursor-pointer py-2 text-xs font-bold text-sky-300">Frascos · volume e gotas por mês</summary>
+        <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Confirme no rótulo o volume de CADA frasco e o fator de gotas/ml. O Vault não presume 20 gotas/ml nem que o frasco tenha 20 ml.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[11px] text-ink-muted">Frascos recebidos<input className={input} type="number" min="1" step="1" value={bottleCount} onChange={e=>setBottleCount(e.target.value)}/></label>
+          <label className="text-[11px] text-ink-muted">Meses cobertos<input className={input} type="number" min="1" max="24" step="1" value={bottleMonths} onChange={e=>setBottleMonths(e.target.value)}/></label>
+          <label className="text-[11px] text-ink-muted">ml por frasco<input className={input} type="number" min="0.1" step="any" placeholder="Conferir no rótulo" value={bottleMl} onChange={e=>setBottleMl(e.target.value)}/></label>
+          <label className="text-[11px] text-ink-muted">Gotas por ml<input className={input} type="number" min="1" step="any" placeholder="Fator cadastrado/rótulo" value={bottleDrops} onChange={e=>setBottleDrops(e.target.value)}/></label>
+        </div>
+        {bottleReference ? <div className="mt-3 rounded-xl border border-sky-400/15 bg-surface-raised p-3 text-xs text-ink-primary">
+          <p>{bottleReference.totalMl.toLocaleString("pt-BR")} ml no total · {bottleReference.totalDrops.toLocaleString("pt-BR")} gotas estimadas</p>
+          <p className="mt-1 font-bold text-sky-300">Referência mensal: {bottleReference.monthlyMl.toLocaleString("pt-BR")} ml · {bottleReference.monthlyDrops.toLocaleString("pt-BR")} gotas</p>
+          {isDropMedication && <button type="button" className={button+" mt-2"} onClick={()=>setQuantity(String(bottleReference.monthlyDrops))}>Usar referência mensal em gotas</button>}
+          <p className="mt-2 text-[10px] text-ink-muted">Estimativa de quantidade, não prescrição, dose ou agendamento da retirada.</p>
+        </div> : <p className="mt-2 text-[11px] text-amber-300">Informe volume e fator de conversão confirmados para calcular.</p>}
+      </details>}
       {process.origem === "estadual_ceaf" ||
       process.origem === "farmacia_popular" ? (
         <div className="mt-3 space-y-2">
@@ -842,7 +868,7 @@ function CyclePanel({
                 .filter(
                   (m) =>
                     m.id &&
-                    (m.status !== "descontinuado" ||
+                    (isSupplyMedicationEligible(m) ||
                       items.some((i) => i.medicamento_id === m.id)) &&
                     !data.itens.some(i => i.medicamento_id === m.id && i.processo_id !== process.id && data.processos.some(p => p.id === i.processo_id && p.status === "ativo" && p.person_id === pid && p.user_id === process.user_id))
                 )
@@ -960,7 +986,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   const occupiedMedicationIds = new Set(data.itens.filter(i =>
     data.processos.some(p => p.id === i.processo_id && p.person_id === personId && p.status === "ativo")
   ).map(i => i.medicamento_id));
-  const availableMedications = medicamentos.filter(m => m.person_id === personId && m.id && !occupiedMedicationIds.has(m.id));
+  const availableMedications = medicamentos.filter(m => m.person_id === personId && m.id && isSupplyMedicationEligible(m) && !occupiedMedicationIds.has(m.id));
   // V131 SUPPLY DOSSIER: immutable acquisition snapshots, never a prescription or a SUS withdrawal.
   const acquisitionSummary = (medicationIds: Set<string>) => {
     const acquisitions = purchaseHistory(renovacoes, personId || "", process?.user_id || "", medicationIds);
@@ -1032,7 +1058,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     const ids = new Set(data.itens.filter(i => i.processo_id === p.id).map(i => i.medicamento_id));
     const treatment = tratamentos.find(t => matchesSupplyTreatment(t, medicamentos, ids, personId || "", p.user_id));
     const theme = getClinicalTheme(treatment?.nome || p.titulo);
-    const Icon = theme.icon;
+    const Icon = treatment ? getVaultTreatmentIcon(treatment.nome) : theme.icon;
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
     return (
               <button
@@ -1105,6 +1131,17 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <p className="text-xs text-ink-muted">Carregando fornecimentos…</p>
       ) : (
         <>
+          {/* V141: one treatment can contain separate SUS and private purchase processes. */}
+          {tratamentos.filter(t=>t.id && t.person_id===personId && processes.some(p=>matchesSupplyTreatment(t,medicamentos,new Set(data.itens.filter(i=>i.processo_id===p.id).map(i=>i.medicamento_id)),personId,p.user_id))).map(t=>{
+            const linked=processes.filter(p=>matchesSupplyTreatment(t,medicamentos,new Set(data.itens.filter(i=>i.processo_id===p.id).map(i=>i.medicamento_id)),personId,p.user_id));
+            const Icon=getVaultTreatmentIcon(t.nome);
+            const color=/^#[0-9a-f]{6}$/i.test(t.cor||"") ? t.cor! : "#8b5cf6";
+            return <section key={t.id} className="mb-3 rounded-[22px] border bg-surface p-3" style={{borderLeftWidth:3,borderLeftColor:color,borderColor:`${color}30`}} aria-label={`Fornecimentos de ${t.nome}`}>
+              <div className="flex items-center gap-3"><span className="rounded-xl p-2" style={{color,backgroundColor:`${color}18`}}><Icon size={20}/></span><span className="min-w-0 flex-1 text-sm font-bold text-ink-primary">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimento(s)</span></div>
+              <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-10 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
+              {new Set(linked.map(p=>p.origem)).size>1 && <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta do tratamento; autorizações, compras e retiradas continuam separadas por origem.</p>}
+            </section>;
+          })}
           <div className="mb-4 flex flex-wrap gap-2">
             {processes.filter(p => p.status === "ativo").map(renderProcess)}
             {processes.some(p => p.status !== "ativo") && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
@@ -1178,7 +1215,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
                     {related.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Tratamentos relacionados</p>
-                      {related.map(t => { const theme = getClinicalTheme(t.nome); const Icon = theme.icon; const color = /^#[0-9a-f]{6}$/i.test(t.cor || "") ? t.cor! : theme.hex; const codes = cids.filter(c => c.person_id === personId && c.user_id === process.user_id && t.cid_ids?.includes(c.id || "")).map(c => c.codigo); return <Link key={t.id} href={`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id || "")}`} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised p-3" style={{borderLeftColor:color,borderLeftWidth:3}}>
+                      {related.map(t => { const theme = getClinicalTheme(t.nome); const Icon = getVaultTreatmentIcon(t.nome); const color = /^#[0-9a-f]{6}$/i.test(t.cor || "") ? t.cor! : theme.hex; const codes = cids.filter(c => c.person_id === personId && c.user_id === process.user_id && t.cid_ids?.includes(c.id || "")).map(c => c.codigo); return <Link key={t.id} href={`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id || "")}`} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised p-3" style={{borderLeftColor:color,borderLeftWidth:3}}>
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{backgroundColor:`${color}22`,color}}><Icon size={22} /></span>
                         <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink-primary">{t.nome}</span><span className="block text-[11px] text-ink-muted">{codes.length ? codes.join(" · ") : "Abrir tratamento"}{t.status !== "ativo" ? " · Histórico" : ""}</span></span>
                         <span aria-hidden="true" className="text-ink-muted">›</span>

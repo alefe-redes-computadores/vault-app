@@ -1,0 +1,37 @@
+
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),Module=require("node:module"),ts=require("typescript");
+function load(file){const filename=path.resolve(file);const m=new Module(filename,module);m.filename=filename;m.paths=Module._nodeModulePaths(path.dirname(filename));m.require=name=>name.startsWith("@/")?load(name.slice(2)+".ts"):name.startsWith(".")?load(path.resolve(path.dirname(filename),name)+".ts"):require(name);m._compile(ts.transpileModule(fs.readFileSync(filename,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,filename);return m.exports;}
+const {isSupplyMedicationEligible:eligible}=load("lib/health-supply/medication-eligibility.ts");
+assert.equal(eligible({status:"descontinuado",tipo_uso:"sos"}),true);
+assert.equal(eligible({status:"descontinuado",tipo_uso:"continuo"}),false);
+assert.equal(eligible({status:"ativo",tipo_uso:"continuo"}),true);
+const {calculateBottleReference:calc}=load("lib/health-supply/bottle-reference.ts");
+assert.equal(calc(1,20,20,2).monthlyDrops,200);
+assert.equal(calc(1,20,20,2).monthlyMl,10);
+assert.equal(calc(1,20,0,2),null);
+assert.equal(calc(1,0,20,2),null);
+assert.equal(calc(1,20,20,0),null);
+assert.equal(calc(1,20,20,2.5),null);
+const supply=fs.readFileSync("app/saude/fornecimento/page.tsx","utf8");
+const today=fs.readFileSync("app/hoje/page.tsx","utf8");
+const repo=fs.readFileSync("lib/repositories/healthSupply.ts","utf8");
+const intelligence=fs.readFileSync("lib/health-intelligence/supply-insights.ts","utf8");
+const logs=fs.readFileSync("lib/repositories/doseLogs.ts","utf8");
+const db=fs.readFileSync("lib/db/index.ts","utf8");
+assert(supply.includes('getVaultTreatmentIcon(t.nome)'),"ícone unificado ausente");
+const home=fs.readFileSync('app/page.tsx','utf8');
+assert(home.includes('function getTratamentoIcon('), 'ícones originais da Home preservados');
+assert(supply.includes('Visão conjunta')||supply.includes('Visão conjunta do tratamento'),"fornecimento misto ausente");
+assert(supply.includes('antecedenciaText'),"campo antecedência não editável");
+assert(supply.includes("antecedenciaText.trim()"),"antecedência deve usar String.trim(), nunca .strip()");
+assert(supply.includes('calculateBottleReference('),"cálculo de frascos não integrado");
+assert(supply.includes('isSupplyMedicationEligible(m)'),"SOS não alcança seletor");
+assert(repo.includes('!isSupplyMedicationEligible(med)'),"SOS não alcança o repositório");
+assert(intelligence.includes('!isSupplyMedicationEligible(med)'),"SOS não alcança o Brain");
+assert(today.includes("dosesSemEstoqueNoLote")&&today.includes("dosesComEstoqueNoLote"),"lote sem separação de estoque");
+assert(today.includes('\"sem_estoque\"')&&today.includes("confirmarDosesNaoTomadasPorEstoque"),"motivo não confirmado");
+assert(logs.includes('motivo: status === \"ignored\"'),"motivo não gravado no registro");
+assert(db.includes("motivo:\n          data.motivo"),"motivo não atualizado no upsert");
+assert(supply.includes("process.origem"),"origem independente ausente");
+assert(!supply.includes("const occupiedMedicationIds = new Set(data.itens.filter(i => activeSupplyIds"),"regressão V129 duplicada");
+console.log("V141: contratos SOS, frascos, antecedentes, origens, ícones, estoque e motivos OK");

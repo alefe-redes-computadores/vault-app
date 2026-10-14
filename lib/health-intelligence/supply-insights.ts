@@ -1,3 +1,4 @@
+import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
 import type {
   HealthInsight,
   HealthInsightContext,
@@ -17,7 +18,7 @@ export function buildSupplyInsights(
     if (
       !med.id ||
       med.person_id !== context.personId ||
-      med.status === "descontinuado"
+      !isSupplyMedicationEligible(med)
     )
       continue;
     const processes = data.processos.filter(
@@ -223,7 +224,7 @@ export function buildSupplyInsights(
         (m) =>
           m.person_id === p.person_id &&
           m.user_id === p.user_id &&
-          m.status !== "descontinuado" &&
+          isSupplyMedicationEligible(m) &&
           data.itens.some(
             (i) =>
               i.ciclo_id === cycle.id &&

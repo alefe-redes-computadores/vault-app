@@ -235,7 +235,9 @@ export function useDoseLogs(
         horario:
           string,
         quantidade?:
-          number
+          number,
+        motivo?:
+          string
       ) => {
         if (
           !activePersonId
@@ -260,6 +262,7 @@ export function useDoseLogs(
             "ignored",
 
           quantidade,
+          motivo,
         });
       },
       [

@@ -73,6 +73,7 @@ import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
+import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -1986,6 +1987,14 @@ export default function HojePage() {
         )
       : [];
 
+  // V141: pending stockless doses are visible, but never silently marked taken or ignored.
+  const dosesSemEstoqueNoLote = dosesElegiveisLote.filter(d=>{
+    const med=medicamentos.find(m=>m.id===d.medicamentoId);
+    return med ? hasKnownEmptyMedicationStock(med) : false;
+  });
+  const chavesSemEstoqueNoLote = new Set(dosesSemEstoqueNoLote.map(d=>`${d.medicamentoId}-${d.horario}`));
+  const dosesComEstoqueNoLote = dosesElegiveisLote.filter(d=>!chavesSemEstoqueNoLote.has(`${d.medicamentoId}-${d.horario}`));
+
   const isLoading =
     rawMedicamentos === undefined ||
     doseLogs === undefined;
@@ -2342,6 +2351,12 @@ export default function HojePage() {
       // O repository registra o DoseLog e movimenta o estoque.
       // ======================================================
 
+      const medicamentoDaDose=medicamentos.find(m=>m.id===item.medicamentoId);
+      if (medicamentoDaDose && hasKnownEmptyMedicationStock(medicamentoDaDose)) {
+        showToast("Estoque registrado zerado. Confira o saldo ou registre que a dose não foi tomada.","info");
+        return;
+      }
+
       // VAULT_HOJE_DOSES_V45 — ação individual e lote usam
       // a quantidade real da dose; o repository continua dono do estoque.
       await marcarDose(
@@ -2407,12 +2422,12 @@ export default function HojePage() {
       batchOperationLock.current ||
       processandoTodos ||
       processandoDoseId ||
-      dosesElegiveisLote.length < 2
+      dosesComEstoqueNoLote.length < 1
     ) {
       return;
     }
 
-    if (mode === "scheduled" && dosesElegiveisLote.some(dose => new Date(`${dataSelecionada}T${dose.horario}:00`).getTime() > Date.now())) {
+    if (mode === "scheduled" && dosesComEstoqueNoLote.some(dose => new Date(`${dataSelecionada}T${dose.horario}:00`).getTime() > Date.now())) {
       showToast("Esse horário ainda não chegou. Use Tomei agora ou informe a hora real.", "error");
       return;
     }
@@ -2457,7 +2472,7 @@ export default function HojePage() {
 
     const confirmadas: DoseItemExt[] = [];
     let falhas = 0;
-    const snapshotLote = [...dosesElegiveisLote];
+    const snapshotLote = [...dosesComEstoqueNoLote];
 
     // Serial de propósito: protege duas doses do mesmo medicamento
     // contra disputa de leitura/gravação do saldo.
@@ -2523,6 +2538,24 @@ export default function HojePage() {
       trigger("error");
       showToast("Nenhuma dose pôde ser registrada", "error");
     }
+  };
+
+  const confirmarDosesNaoTomadasPorEstoque = async () => {
+    if (batchOperationLock.current || processandoTodos || !dosesSemEstoqueNoLote.length) return;
+    batchOperationLock.current=true;
+    setProcessandoTodos(true);
+    let registradas=0, falhas=0;
+    try {
+      for (const dose of [...dosesSemEstoqueNoLote]) {
+        if (!dose.medicamentoId) continue;
+        try {
+          await marcarComoIgnorada(dose.medicamentoId,dose.horario,dose.unidadePorDose,"sem_estoque");
+          registradas++;
+        } catch(error) { console.error("Falha ao registrar dose não tomada por falta de estoque",error);falhas++; }
+      }
+    } finally {batchOperationLock.current=false;setProcessandoTodos(false);}
+    if(registradas)showToast(`${registradas} dose(s) não tomadas registradas com motivo: sem estoque`,"info");
+    if(falhas)showToast(`${falhas} registro(s) não puderam ser salvos`,"error");
   };
 
   const handleDesfazerLote = async () => {
@@ -4662,7 +4695,7 @@ export default function HojePage() {
                       Confirmação temporal
                     </p>
                     <h3 className="mt-1 text-base font-bold text-ink-primary">
-                      Quando você tomou essas {dosesElegiveisLote.length} doses?
+                      Como registrar estas {dosesElegiveisLote.length} doses?
                     </h3>
                     <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
                       O horário programado continua como referência. O horário real é salvo separadamente para o histórico e para a inteligência do Vault.
@@ -4670,6 +4703,13 @@ export default function HojePage() {
                   </div>
                 </div>
 
+                {dosesSemEstoqueNoLote.length>0 && <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-400/[0.07] p-3">
+                  <p className="text-xs font-bold text-amber-300">{dosesSemEstoqueNoLote.length} dose(s) com estoque registrado zerado</p>
+                  <ul className="mt-2 space-y-1 text-[11px] text-ink-primary">{dosesSemEstoqueNoLote.map(d=><li key={`${d.medicamentoId}-${d.horario}`}>{d.medicamentoNome} · {d.horario} · não entra no lote de tomadas</li>)}</ul>
+                  <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Estoque zerado não comprova que a dose não foi tomada. Confirme apenas se realmente NÃO tomou essas doses.</p>
+                  <button type="button" disabled={processandoTodos} onClick={()=>void confirmarDosesNaoTomadasPorEstoque()} className="mt-2 min-h-11 w-full rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40">Não tomei · registrar motivo sem estoque</button>
+                </div>}
+                {dosesComEstoqueNoLote.length>0 ? <p className="mt-3 rounded-xl bg-emerald-400/[0.06] p-2 text-xs text-emerald-300">Confirmar somente {dosesComEstoqueNoLote.length} dose(s) disponíveis.</p> : <p className="mt-3 text-xs text-amber-300">Nenhuma dose com estoque confirmado para registrar como tomada neste lote.</p>}
                 <div className="mt-4 space-y-2">
                   <button
                     type="button"
@@ -4680,7 +4720,7 @@ export default function HojePage() {
                     <div>
                       <p className="text-xs font-bold">Tomei agora</p>
                       <p className="mt-0.5 text-[9px] opacity-70">
-                        Mesmo instante real para todo o lote
+                        Mesmo instante real para as doses disponíveis
                       </p>
                     </div>
                     {processandoTodos ? (
@@ -4707,13 +4747,13 @@ export default function HojePage() {
 
                   <div className="rounded-2xl border border-surface-border bg-surface-raised p-3">
                     <label htmlFor="vault-batch-real-time" className="text-[10px] font-semibold text-ink-muted">
-                      Tomei todas em outro horário
+                      Tomei as disponíveis em outro horário
                     </label>
                     <div className="mt-2 flex gap-2">
                       <fieldset disabled={processandoTodos} className="min-w-0 flex-1"><HealthTimePicker value={batchCustomTime} onChange={setBatchCustomTime} /></fieldset>
                       <button
                         type="button"
-                        disabled={processandoTodos || !batchCustomTime}
+                        disabled={processandoTodos || dosesComEstoqueNoLote.length===0 || !batchCustomTime}
                         onClick={() => void executarTomadaEmLote("custom")}
                         className="rounded-xl border border-ice/25 bg-ice/10 px-4 py-2.5 text-xs font-bold text-ice transition-all active:scale-[0.98] disabled:opacity-40"
                       >

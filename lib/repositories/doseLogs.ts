@@ -74,6 +74,7 @@ interface SetDoseStatusInput {
    * mas o estoque atual permanece intacto.
    */
   adjustStock?: boolean;
+  motivo?: string;
 }
 
 interface RegistrarTomadaAvulsaInput {
@@ -937,6 +938,7 @@ export const doseLogsRepository = {
     quantidade,
     tomadoEm,
     adjustStock = true,
+    motivo,
   }: SetDoseStatusInput): Promise<string> {
     const safePersonId =
       requirePersonId(
@@ -1204,6 +1206,8 @@ export const doseLogsRepository = {
                     )
                   )
                 : undefined,
+
+            motivo: status === "ignored" ? (motivo?.trim() || existing?.motivo) : undefined,
 
             ignorado_em:
               status ===

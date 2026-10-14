@@ -1,3 +1,4 @@
+import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
 import { findDuplicateSupplyProcess, findActiveMedicationConflict } from "@/lib/health-supply/process-integrity";
 import { preparationStart } from "@/lib/health-supply/overview";
 import { db } from "@/lib/db";
@@ -109,6 +110,7 @@ export const healthSupplyRepository = {
         owned(await db.medicamentos.get(mid), personId, uid)
       )
     );
+    if (meds.some(m => !isSupplyMedicationEligible(m))) throw new Error("Medicamento indisponível para novo fornecimento.");
     const t = stamp(),
       base = {
         user_id: uid,
@@ -283,7 +285,7 @@ export const healthSupplyRepository = {
         pid,
         uid
       );
-      if (med.status === "descontinuado") continue;
+      if (!isSupplyMedicationEligible(med)) continue;
       copied.push({
         ...item,
         id: id(),
@@ -465,7 +467,7 @@ export const healthSupplyRepository = {
         if (currentProcess.status !== "ativo" || currentCycle.status !== "preparando")
           throw new Error("Altere medicamentos apenas em um processo ativo e ciclo em preparação.");
         if (include) {
-          if (med.status === "descontinuado") throw new Error("Medicamento descontinuado: consulte o histórico.");
+          if (!isSupplyMedicationEligible(med)) throw new Error("Medicamento indisponível: consulte o histórico.");
           const processes = await db.fornecimentos.where("person_id").equals(pid).toArray();
           const items = await db.fornecimento_itens.where("person_id").equals(pid).toArray();
           const conflict = findActiveMedicationConflict(pid, uid, [medicationId], processes, items, c.processo_id);
