@@ -26,6 +26,7 @@ import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
 import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
+import { AvatarReadings } from "@/components/saude/AvatarReadings";
 import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
 import {
@@ -82,6 +83,8 @@ function HealthDashboard({
     [historyDate, setHistoryDate] = useState(getLocalTodayISO()),
     [archive, setArchive] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
+  const deviceEditorRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(panel!=="device")return;const frame=requestAnimationFrame(()=>{deviceEditorRef.current?.scrollIntoView({block:"start",behavior:"auto"});deviceEditorRef.current?.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[panel,editDevice]);
   const profileEditorId = useId();
   const profileEditorRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
@@ -256,8 +259,9 @@ function HealthDashboard({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
-                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} attention={avatarInsightContext(intelligence.insights).rank} expanded />
+                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={avatarInsightContext(intelligence.insights).rank} expanded />
                   <AvatarHealthContext insights={intelligence.insights} weightChange={weightChange} />
+                  <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
                   <div>
@@ -416,7 +420,7 @@ function HealthDashboard({
               )}
             </section>
             {panel === "device" && (
-              <div className="space-y-2">
+              <div ref={deviceEditorRef} tabIndex={-1} className="space-y-2 scroll-mt-24 focus:outline-none">
                 <HealthDeviceEditor
                   key={editDevice || "new"}
                   personId={personId}

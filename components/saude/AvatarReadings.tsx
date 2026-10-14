@@ -1,0 +1,10 @@
+"use client";
+import { useMemo } from 'react';
+import type { RegistroSaude } from '@/lib/types';
+import { METRICS,type HealthMetric,type HealthDevice } from '@/lib/health-profile/types';
+import { latestAvatarReadings } from '@/lib/health-profile/avatar-readings';
+import { HealthMetricIcon,METRIC_TONES } from './HealthDeviceIcon';
+export function AvatarReadings({records,devices,personId,userId,today,onView,onAdd}:{records:RegistroSaude[];devices:HealthDevice[];personId:string;userId:string;today:string;onView:(metric:HealthMetric)=>void;onAdd:(metric:HealthMetric)=>void}) {
+ const rows=useMemo(()=>latestAvatarReadings(records,devices,personId,userId,today),[records,devices,personId,userId,today]);
+ return <details className="mt-3 rounded-2xl border border-surface-border p-3"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Medições junto ao avatar · {rows.size} de 6 com registro válido</summary><div className="mt-2 grid grid-cols-2 gap-2">{(Object.keys(METRICS) as HealthMetric[]).map(type=>{const item=rows.get(type);return <button type="button" key={type} onClick={()=>item?onView(type):onAdd(type)} aria-label={`${item?'Ver histórico de':'Registrar'} ${METRICS[type].label}`} className="min-h-24 rounded-xl border border-surface-border bg-surface-raised p-3 text-left"><span className={`flex items-center gap-2 text-[11px] ${METRIC_TONES[type]}`}><HealthMetricIcon type={type} size={16}/>{METRICS[type].label}</span><strong className="mt-2 block text-sm text-ink-primary">{item?.value||'Registrar'}</strong>{item?<span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">{item.record.data.split('-').reverse().join('/')}{item.record.horario?` · ${item.record.horario}`:''}<br/>{item.source}{item.device?` · ${item.device.name}`:''}</span>:<span className="mt-1 block text-[10px] text-ink-muted">Sem medição válida cadastrada</span>}</button>;})}</div><p className="mt-3 text-[10px] leading-relaxed text-ink-muted">Últimos registros informados, sem leitura em tempo real. Ausência de dados não significa valor zero.</p></details>;
+}

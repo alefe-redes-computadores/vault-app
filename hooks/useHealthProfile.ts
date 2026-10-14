@@ -10,11 +10,13 @@ export function useHealthProfile() {
     if (!activePersonId || !user?.id) return null;
     try {
       return {
+        personId: activePersonId, userId:user.id,
         data: await healthProfileRepository.overview(activePersonId),
         error: null,
       };
     } catch (e) {
       return {
+        personId: activePersonId, userId:user.id,
         data: null,
         error:
           e instanceof Error
@@ -23,14 +25,14 @@ export function useHealthProfile() {
       };
     }
   }, [activePersonId, user?.id]);
-  const scoped =
-    result?.data?.person?.id === activePersonId ? result?.data : null;
+  const current = Boolean(user?.id && activePersonId && result?.personId === activePersonId && result?.userId === user.id);
+  const scoped = current && result?.data?.person?.id === activePersonId && result?.data?.person?.user_id === user?.id ? result.data : null;
   return {
-    personId: activePersonId,
+    personId: user?.id ? activePersonId : null,
     person: scoped?.person,
     profile: scoped?.profile,
     devices: scoped?.devices ?? [],
-    loading: result === undefined || Boolean(result?.data && !scoped),
-    error: result?.error,
+    loading: Boolean(user?.id && activePersonId) && (result === undefined || !current || Boolean(result?.data && !scoped)),
+    error: current ? result?.error : null,
   };
 }
