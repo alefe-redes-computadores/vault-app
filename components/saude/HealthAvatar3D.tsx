@@ -6,11 +6,15 @@ import { avatarColor, avatarLayout } from "@/lib/health-profile/avatar";
 import { watchModelByName } from "@/lib/health-profile/device-catalog";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 
-type Controller = { rotate: (angle: number) => void; zoom: (value: number) => void };
-export default function HealthAvatar3D({ skin, devices, onUnavailable }: { skin: string; devices: HealthDevice[]; onUnavailable: () => void }) {
+import { avatarAttentionColor, shortestAvatarAngle } from "@/lib/health-profile/avatar-context";
+
+type Controller = { attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void };
+export default function HealthAvatar3D({ skin, devices, onUnavailable, attention=0 }: { skin: string; devices: HealthDevice[]; attention?:number; onUnavailable: () => void }) {
   const host = useRef<HTMLDivElement>(null), controller = useRef<Controller | null>(null);
   const [zoom, setZoom] = useState(100), [direction, setDirection] = useState("front");
   const zoomId = useId();
+  const attentionRef=useRef(attention);
+  useEffect(()=>{attentionRef.current=attention;controller.current?.attention(attention);},[attention]);
   const { description, slots } = avatarLayout(devices);
   useEffect(() => {
     setZoom(100); setDirection("front");
@@ -21,6 +25,7 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable }: { skin:
     catch { onUnavailable(); return; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
     element.appendChild(renderer.domElement);
     renderer.domElement.style.touchAction = "pan-y";
     const scene = new THREE.Scene(), model = new THREE.Group();
@@ -42,11 +47,22 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable }: { skin:
     };
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(new THREE.SphereGeometry(1,24,16),m,x,y,z,s);
     oval(materials.skin,0,2.79,0,[.24,.32,.23]);
+    // Brows, eye highlights and clothing seams provide depth without remote assets.
+    for(const sign of [-1,1]) {
+      const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
+      oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
+    }
     oval(materials.hair,0,2.98,-.035,[.247,.17,.23]);
     oval(materials.skin,-.246,2.77,0,[.04,.075,.045]); oval(materials.skin,.246,2.77,0,[.04,.075,.045]);
     mesh(new THREE.CylinderGeometry(.095,.11,.22,16),materials.skin,0,2.45,0);
     mesh(new THREE.CylinderGeometry(.34,.27,.77,24),materials.cloth,0,2.05,0,[1,1,.67]);
     mesh(new THREE.CylinderGeometry(.27,.275,.28,24),materials.cloth,0,1.535,0,[1,1,.72]);
+    mesh(new THREE.TorusGeometry(.108,.012,6,24),materials.dark,0,2.43,0).rotation.x=Math.PI/2;
+    mesh(new THREE.BoxGeometry(.014,.31,.009),materials.dark,0,1.44,.19);
+    for(const sign of [-1,1]) {
+      mesh(new THREE.BoxGeometry(.11,.012,.014),materials.white,sign*.15,.20,.28);
+      mesh(new THREE.BoxGeometry(.10,.012,.014),materials.white,sign*.15,.235,.26);
+    }
     for (const sign of [-1,1]) {
       oval(materials.cloth,sign*.32,2.34,0,[.16,.18,.16]);
       const arm = mesh(new THREE.CapsuleGeometry(.105,.65,6,16),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
@@ -68,6 +84,10 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable }: { skin:
       const t=new THREE.CanvasTexture(canvas);t.colorSpace=THREE.SRGBColorSpace;textures.push(t);return new THREE.MeshBasicMaterial({map:t});
     };
     mesh(new THREE.PlaneGeometry(.32,.32),label("VAULT",BRAIN_BRAND),0,2.1,.237);
+    const signalMaterial=new THREE.MeshStandardMaterial({color:avatarAttentionColor(attentionRef.current),emissive:avatarAttentionColor(attentionRef.current),emissiveIntensity:.35,metalness:.3,roughness:.4});
+    const signalRing=mesh(new THREE.TorusGeometry(.245,.008,8,48),signalMaterial,0,2.1,.248,[1,.86,1]);
+    const setAttention=(rank:number)=>{const color=avatarAttentionColor(rank);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalRing.visible=rank>0;};
+    setAttention(attentionRef.current);
     const layout=avatarLayout(devices);
     for (const slot of layout.slots) {
       const x=slot.side==="right"?-.50:.50;
@@ -97,27 +117,37 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable }: { skin:
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.30,.109);screen.rotation.z=phone.rotation.z;
     mesh(new THREE.CircleGeometry(.55,32),new THREE.MeshBasicMaterial({color:0x94a3b8,transparent:true,opacity:.08,side:THREE.DoubleSide}),0,.04,0).rotation.x=-Math.PI/2;
     let disposed=false, visible=true, frame=0;
-    const draw=()=>{if(disposed||!visible||document.hidden||frame)return;frame=requestAnimationFrame(()=>{frame=0;if(!disposed&&visible&&!document.hidden)renderer.render(scene,camera);});};
+    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let transition:{from:number;to:number;start:number}|null=null;
+    const draw=()=>{if(disposed||!visible||document.hidden||frame)return;frame=requestAnimationFrame(now=>{
+      frame=0;if(disposed||!visible||document.hidden)return;
+      if(transition){const progress=Math.min(1,(now-transition.start)/220),ease=1-Math.pow(1-progress,3);model.rotation.y=transition.from+(transition.to-transition.from)*ease;if(progress>=1)transition=null;}
+      renderer.render(scene,camera);if(transition)draw();
+    });};
     const resize=()=>{const width=element.clientWidth;if(!width)return;renderer.setSize(width,340);camera.aspect=width/340;camera.updateProjectionMatrix();draw();};
-    controller.current={rotate:angle=>{model.rotation.y=angle;draw();},zoom:value=>{camera.zoom=value/100;camera.updateProjectionMatrix();draw();}};
+    controller.current={attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+      const target=shortestAvatarAngle(model.rotation.y,angle);
+      if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
+    },zoom:value=>{camera.zoom=value/100;camera.updateProjectionMatrix();draw();}};
     const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(element);
     const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??false;if(visible)draw();});visibilityObserver.observe(element);
     const visibility=()=>{if(!document.hidden)draw();};document.addEventListener("visibilitychange",visibility);
     let pointer:{id:number;x:number;y:number;angle:number}|null=null;
-    const down=(e:PointerEvent)=>{if(!e.isPrimary)return;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,angle:model.rotation.y};};
-    const move=(e:PointerEvent)=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x;if(Math.abs(dx)<5||Math.abs(dx)<Math.abs(e.clientY-pointer.y))return;model.rotation.y=pointer.angle+dx*.012;setDirection("custom");draw();};
-    const up=()=>{pointer=null;};
+    const down=(e:PointerEvent)=>{if(!e.isPrimary || (e.pointerType==='mouse' && e.button!==0))return;transition=null;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,angle:model.rotation.y};};
+    const move=(e:PointerEvent)=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x;if(Math.abs(dx)<5||Math.abs(dx)<Math.abs(e.clientY-pointer.y))return;try{element.setPointerCapture(e.pointerId);}catch{}model.rotation.y=pointer.angle+dx*.012;setDirection("custom");draw();};
+    const up=(e:PointerEvent)=>{if(pointer?.id!==e.pointerId)return;try{if(element.hasPointerCapture(e.pointerId))element.releasePointerCapture(e.pointerId);}catch{}pointer=null;};
     const lost=(event:Event)=>{event.preventDefault();onUnavailable();};
-    element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);element.addEventListener("pointercancel",up);renderer.domElement.addEventListener("webglcontextlost",lost);
+    element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);element.addEventListener("lostpointercapture",up);renderer.domElement.addEventListener("webglcontextlost",lost);
     resize();
     return ()=>{
-      disposed=true;cancelAnimationFrame(frame);controller.current=null;resizeObserver.disconnect();visibilityObserver.disconnect();document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);element.removeEventListener("pointercancel",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
-      const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
+      disposed=true;cancelAnimationFrame(frame);controller.current=null;resizeObserver.disconnect();visibilityObserver.disconnect();document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
+      const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});Object.values(materials).forEach(m=>mats.add(m));geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
     };
   },[skin,devices,onUnavailable]);
   return <div className="mx-auto w-full max-w-[340px]">
     <div ref={host} role="img" aria-label={`Avatar 3D estilizado. ${description}. Celular ilustrativo; acessórios não indicam conexão nem estado de saúde.`} className="h-[340px] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-violet-500/5 to-transparent" />
     <p className="text-center text-xs text-slate-400">Arraste na horizontal para girar</p>
+    {attention>0&&<p className="mt-1 text-center text-[10px] text-slate-400">O contorno do Brain acompanha a prioridade dos insights; não representa diagnóstico.</p>}
     <div aria-label="Vista do avatar 3D" className="mt-3 grid grid-cols-4 gap-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-xl border text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/50 bg-violet-400/15 text-violet-200':'border-slate-400/20 text-slate-300'}`}>{title}</button>)}</div>
     <label htmlFor={zoomId} className="mt-3 flex items-center justify-between text-xs text-slate-300">Zoom <span>{zoom}%</span></label><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=Number(e.target.value);setZoom(value);controller.current?.zoom(value);}} className="mt-2 min-h-8 w-full accent-violet-400" />
     {slots.length>0?<ul aria-label="Aparelhos representados" className="mt-3 space-y-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-xs text-slate-200"><strong>{device.name}</strong><span className="mt-1 block text-[10px] text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></li>)}</ul>:null}

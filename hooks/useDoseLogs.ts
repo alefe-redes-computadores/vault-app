@@ -133,7 +133,8 @@ export function useDoseLogs(
         tomadoEm:
           string,
         quantidade?:
-          number
+          number,
+        requireRegisteredStock = false
       ) => {
         if (
           !activePersonId
@@ -160,6 +161,7 @@ export function useDoseLogs(
           quantidade,
 
           tomadoEm,
+          requireRegisteredStock,
         });
       },
       [
@@ -237,7 +239,8 @@ export function useDoseLogs(
         quantidade?:
           number,
         motivo?:
-          string
+          string,
+        onlyIfPending = false
       ) => {
         if (
           !activePersonId
@@ -263,6 +266,7 @@ export function useDoseLogs(
 
           quantidade,
           motivo,
+          onlyIfPending,
         });
       },
       [

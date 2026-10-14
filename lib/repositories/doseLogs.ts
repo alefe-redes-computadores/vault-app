@@ -1,3 +1,4 @@
+import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/doseLogs.ts
 
@@ -34,6 +35,8 @@ type DoseStatus =
   | "clear";
 
 interface SetDoseStatusInput {
+  requireRegisteredStock?: boolean;
+  onlyIfPending?: boolean;
   personId: string;
 
   medicamentoId: string;
@@ -937,6 +940,8 @@ export const doseLogsRepository = {
     status,
     quantidade,
     tomadoEm,
+    requireRegisteredStock = false,
+    onlyIfPending = false,
     adjustStock = true,
     motivo,
   }: SetDoseStatusInput): Promise<string> {
@@ -1003,6 +1008,8 @@ export const doseLogsRepository = {
             "Registro de dose não pertence ao usuário autenticado."
           );
         }
+
+        if(onlyIfPending && existing?.tomado_em) throw new Error("Esta dose já foi tomada. Atualize as pendências antes de confirmar o motivo.");
 
         // ====================================================
         // CLEAR
@@ -1165,6 +1172,9 @@ export const doseLogsRepository = {
               ? null
               : -oldStockAmount;
         }
+
+        const registeredStock=medicamento.estoque_quantidade;
+        if(requireRegisteredStock && willBeTaken && !wasTaken && (hasKnownEmptyMedicationStock(medicamento) || (typeof registeredStock === "number" && Number.isFinite(registeredStock) && newStockAmount !== null && newStockAmount > registeredStock))) throw new Error("Estoque registrado insuficiente. Confira a dose individualmente e registre a aquisição se ela aconteceu.");
 
         const timestamp =
           new Date().toISOString();

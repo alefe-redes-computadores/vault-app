@@ -1,5 +1,6 @@
 // app/page.tsx
 "use client";
+import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
@@ -979,6 +980,7 @@ export default function HomePage() {
                 }
 
                 lista.push({
+                  stockUnavailable: hasKnownEmptyMedicationStock(med),
                   medicamentoId:
                     med.id,
 
@@ -1753,7 +1755,7 @@ export default function HomePage() {
               buildLocalDateTimeIso(
                 dose.data,
                 dose.horario
-              )
+              ), undefined, resolution.requireRegisteredStock
             );
 
             break;
@@ -1764,7 +1766,7 @@ export default function HomePage() {
               dose.medicamentoId,
               dose.horario,
               new Date()
-                .toISOString()
+                .toISOString(), undefined, resolution.requireRegisteredStock
             );
 
             break;
@@ -1776,7 +1778,7 @@ export default function HomePage() {
               dose.horario,
               parseLocalDateTimeInput(
                 resolution.takenAtLocal
-              )
+              ), undefined, resolution.requireRegisteredStock
             );
 
             break;
@@ -1785,7 +1787,7 @@ export default function HomePage() {
           case "ignored": {
             await ignorar(
               dose.medicamentoId,
-              dose.horario
+              dose.horario, undefined, resolution.motivo, resolution.motivo === "sem_estoque"
             );
 
             break;
@@ -1806,6 +1808,7 @@ export default function HomePage() {
         trigger(
           "error"
         );
+        throw error;
       } finally {
         setProcessandoDoseId(
           null

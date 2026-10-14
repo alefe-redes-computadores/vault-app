@@ -5,6 +5,7 @@ import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -29,6 +30,7 @@ import {
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
 export type PendingDose = {
+  stockUnavailable?: boolean;
   medicamentoId: string;
 
   nome: string;
@@ -52,7 +54,7 @@ export type PendingDose = {
     | "Ontem";
 };
 
-export type PendingDoseResolution =
+export type PendingDoseResolution = { requireRegisteredStock?: boolean } & (
   | {
       kind:
         "scheduled";
@@ -75,7 +77,8 @@ export type PendingDoseResolution =
   | {
       kind:
         "ignored";
-    };
+      motivo?: string;
+    });
 
 interface PendingDosesModalProps {
   isOpen:
@@ -137,7 +140,7 @@ function getDefaultCustomValue(
   dose:
     PendingDose
 ): string {
-  return `${dose.data}T${dose.horario}`;
+  return `${dose.data}T${dose.horario}{dose.stockUnavailable ? " · Estoque registrado em falta" : ""}`;
 }
 
 export function PendingDosesModal({
@@ -206,6 +209,12 @@ export function PendingDosesModal({
         selectedDoseKey,
       ]
     );
+
+  const availableDoses = doses.filter(d => !d.stockUnavailable);
+  const unavailableDoses = doses.filter(d => d.stockUnavailable);
+  const [batchError, setBatchError] = useState("");
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(()=>{if(batchError)errorRef.current?.scrollIntoView({block:"center",behavior:"auto"});},[batchError]);
 
   const dosesOntem =
     doses.filter(
@@ -377,7 +386,8 @@ export function PendingDosesModal({
       { kind: "scheduled" | "now" }
     >
   ) => {
-    if (existeProcessamento || doses.length < 2) return;
+    if (existeProcessamento || !availableDoses.length) return;
+    setBatchError("");
 
     trigger("vibrate");
     setIsProcessingAll(true);
@@ -385,19 +395,19 @@ export function PendingDosesModal({
     let successCount = 0;
 
     try {
-      for (const dose of doses) {
+      for (const dose of availableDoses) {
         try {
-          await onResolveDose(dose, resolution);
+          await onResolveDose(dose, {...resolution, requireRegisteredStock:true});
           successCount += 1;
         } catch (error) {
-          console.error("[PendingDosesModal] Falha no lote:", error);
+          setBatchError(error instanceof Error ? error.message : "Uma dose não pôde ser registrada. Revise as pendências.");
         }
       }
     } finally {
       setIsProcessingAll(false);
     }
 
-    if (successCount === doses.length) {
+    if (successCount === availableDoses.length) {
       setSelectedDoseKey(null);
       setCustomTimeOpen(false);
       setBulkResolutionOpen(false);
@@ -454,10 +464,9 @@ export function PendingDosesModal({
         "vibrate"
       );
 
-      await onResolveDose(
-        selectedDose,
-        resolution
-      );
+      setBatchError("");
+      try { await onResolveDose(selectedDose, resolution); }
+      catch(e) { setBatchError(e instanceof Error ? e.message : "Não foi possível salvar esta dose."); return; }
 
       setSelectedDoseKey(
         null
@@ -516,7 +525,7 @@ export function PendingDosesModal({
           ) =>
             event.stopPropagation()
         }
-        className="w-full max-w-md space-y-5 rounded-[32px] border border-surface-border bg-surface p-6 shadow-2xl"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md space-y-5 overflow-y-auto overscroll-contain rounded-[32px] border border-surface-border bg-surface p-6 shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -601,6 +610,7 @@ export function PendingDosesModal({
           </button>
         </div>
 
+        {batchError && <p ref={errorRef} role="alert" className="rounded-xl border border-coral/30 p-3 text-xs text-coral">{batchError}</p>}
         {selectedDose ? (
           <div className="space-y-4">
             <div className="rounded-[22px] border border-surface-border/50 bg-surface-raised p-4">
@@ -655,6 +665,7 @@ export function PendingDosesModal({
               </p>
             </div>
 
+            {selectedDose.stockUnavailable && <div className="rounded-xl border border-coral/30 bg-coral/5 p-3 text-xs"><p className="text-coral">Estoque registrado em falta. Confirme apenas o que aconteceu.</p><a className="mt-2 block min-h-11 py-3 text-sky-300" href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(selectedDose.medicamentoId)}`}>Conferir medicamento e aquisições ›</a></div>}
             <div className="space-y-2">
               <button
                 type="button"
@@ -918,7 +929,7 @@ export function PendingDosesModal({
                         disabled={
                           existeProcessamento
                         }
-                        className={`flex w-full items-center justify-between gap-3 rounded-2xl border border-surface-border/50 bg-surface-raised p-3.5 text-left active:scale-[0.99] disabled:opacity-55`}
+                        className={`flex w-full items-center justify-between gap-3 rounded-2xl border ${dose.stockUnavailable ? "border-coral/35 bg-coral/5" : "border-surface-border/50 bg-surface-raised"} p-3.5 text-left active:scale-[0.99] disabled:opacity-55`}
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
@@ -981,10 +992,11 @@ export function PendingDosesModal({
               )}
             </div>
 
-            {doses.length > 1 && (
+            {unavailableDoses.length > 0 && <div className="rounded-2xl border border-coral/30 bg-coral/5 p-3"><p className="text-xs text-coral">{unavailableDoses.length} pendência(s) com estoque registrado em falta. Ficam fora do lote; se tomou, revise individualmente.</p><button type="button" disabled={existeProcessamento} className="mt-2 min-h-11 text-xs font-semibold text-ink-primary" onClick={async()=>{setIsProcessingAll(true);setBatchError("");try{for(const dose of unavailableDoses)await onResolveDose(dose,{kind:"ignored",motivo:"sem_estoque"});}catch(e){setBatchError(e instanceof Error?e.message:"Não foi possível salvar o motivo.");}finally{setIsProcessingAll(false);}}}>Confirmar que não tomei por falta de estoque ({unavailableDoses.length})</button></div>}
+            {availableDoses.length > 0 && doses.length > 1 && (
               <div className="rounded-[22px] border border-emerald-400/20 bg-emerald-400/[0.06] p-3.5">
                 <p className="text-xs font-bold text-ink-primary">
-                  Confirmar todas no horário programado
+                  Confirmar as doses disponíveis
                 </p>
                 <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
                   Registra cada dose no dia e horário exibidos. Se alguma foi tomada em outro horário, revise essa dose individualmente.
@@ -999,10 +1011,10 @@ export function PendingDosesModal({
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void active:scale-[0.98] disabled:opacity-50"
                 >
                   {isProcessingAll ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                  {isProcessingAll ? "Registrando com segurança..." : `Tomar todas (${doses.length})`}
+                  {isProcessingAll ? "Registrando com segurança..." : `Registrar tomadas (${availableDoses.length})`}
                 </button>
 
-            {bulkResolutionOpen && doses.length > 1 && (
+            {bulkResolutionOpen && availableDoses.length > 0 && (
               <div className="rounded-[22px] border border-ice/20 bg-ice/5 p-3.5">
                 <p className="text-sm font-semibold text-ink-primary">
                   Quando você tomou essas doses?
@@ -1038,7 +1050,7 @@ export function PendingDosesModal({
                     <Timer size={18} className="shrink-0 text-ice" />
                     <span>
                       <span className="block text-sm font-semibold text-ink-primary">
-                        Tomei todas agora · {getCurrentTimeHHMM()}
+                        Tomei as disponíveis agora · {getCurrentTimeHHMM()}
                       </span>
                       <span className="mt-0.5 block text-[10px] text-ink-muted">
                         Registra o horário atual como horário real das doses.

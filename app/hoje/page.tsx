@@ -2500,7 +2500,7 @@ export default function HojePage() {
           dose.medicamentoId,
           dose.horario,
           takenAt.toISOString(),
-          dose.unidadePorDose
+          dose.unidadePorDose, true
         );
 
         confirmadas.push(dose);
@@ -2549,7 +2549,7 @@ export default function HojePage() {
       for (const dose of [...dosesSemEstoqueNoLote]) {
         if (!dose.medicamentoId) continue;
         try {
-          await marcarComoIgnorada(dose.medicamentoId,dose.horario,dose.unidadePorDose,"sem_estoque");
+          await marcarComoIgnorada(dose.medicamentoId,dose.horario,dose.unidadePorDose,"sem_estoque",true);
           registradas++;
         } catch(error) { console.error("Falha ao registrar dose não tomada por falta de estoque",error);falhas++; }
       }

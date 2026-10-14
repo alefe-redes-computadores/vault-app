@@ -25,6 +25,7 @@ import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
+import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
 import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
 import {
@@ -255,7 +256,7 @@ function HealthDashboard({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
-                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} expanded />
+                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} attention={avatarInsightContext(intelligence.insights).rank} expanded />
                   <AvatarHealthContext insights={intelligence.insights} weightChange={weightChange} />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3">
