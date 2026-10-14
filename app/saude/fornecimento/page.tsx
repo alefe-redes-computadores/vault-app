@@ -22,6 +22,7 @@ import { SupplyChoiceIcon } from "@/components/saude/SupplyChoiceIcon";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
 import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
+import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
 import { treatmentSupplyMedicationIds, cycleDocumentContext, matchesSupplyTreatment } from "@/lib/health-supply/cycle-context";
 import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { useSearchParams } from "next/navigation";
@@ -511,6 +512,7 @@ function CyclePanel({
   documents,
   meds,
   withdrawal,
+  withdrawals,
   run,
   pid,
 }: {
@@ -520,6 +522,7 @@ function CyclePanel({
   documents: HealthDocument[];
   meds: Medicamento[];
   withdrawal?: Retirada;
+  withdrawals: Retirada[];
   run: Run;
   pid: string;
 }) {
@@ -529,10 +532,19 @@ function CyclePanel({
     [start, setStart] = useState(cycle.inicio || ""),
     [end, setEnd] = useState(cycle.fim || ""),
     [notes, setNotes] = useState(cycle.observacoes || "");
+  const savedFields=useRef({status:cycle.status,start:cycle.inicio||"",end:cycle.fim||"",notes:cycle.observacoes||""});
+  useEffect(()=>{
+    const previous=savedFields.current;
+    setStatus(value=>value===previous.status?cycle.status:value);
+    setStart(value=>value===previous.start?cycle.inicio||"":value);
+    setEnd(value=>value===previous.end?cycle.fim||"":value);
+    setNotes(value=>value===previous.notes?cycle.observacoes||"":value);
+    savedFields.current={status:cycle.status,start:cycle.inicio||"",end:cycle.fim||"",notes:cycle.observacoes||""};
+  },[cycle.status,cycle.inicio,cycle.fim,cycle.observacoes]);
   const [docId, setDocId] = useState(""),
     [kind, setKind] = useState<SupplyDocumentKind>(process.origem === "estadual_ceaf" ? "lme" : "receita");
-  const links = data.documentos.filter((x) => x.ciclo_id === cycle.id && x.person_id === pid && x.user_id === process.user_id),
-    items = data.itens.filter((x) => x.ciclo_id === cycle.id && x.person_id === pid && x.user_id === process.user_id);
+  const links = data.documentos.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id),
+    items = data.itens.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id);
   const documentContext = cycleDocumentContext(process, cycle, data, documents);
   const estimate =
     process.renovacao_meses && start
@@ -555,11 +567,7 @@ function CyclePanel({
     <div className="space-y-4">
       <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-emerald-200">Ciclo registrado no aplicativo · etapa: {cycle.status}. Cadastro salvo não significa autorização confirmada.</p>
       <div role="tablist" aria-label="Tarefa do ciclo" className="grid grid-cols-2 gap-2">{([['overview','Resumo'],['withdrawals','Retiradas'],['documents','Documentos'],['medications','Medicamentos']] as const).map(([key,label],index)=><button key={key} type="button" role="tab" tabIndex={cycleView===key?0:-1} onKeyDown={event=>{const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;if(next!==null){event.preventDefault();setCycleView((['overview','withdrawals','documents','medications'] as const)[next]);event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();}}} id={`tab-${cycle.id}-${key}`} aria-selected={cycleView===key} aria-controls={`pane-${cycle.id}-${key}`} onClick={()=>setCycleView(key)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${cycleView===key?'border-violet-400/40 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>
-      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
-        <p className="text-sm font-semibold text-ink-primary">{items.length} medicamento{items.length === 1 ? "" : "s"} já vinculado{items.length === 1 ? "" : "s"} ao ciclo</p>
-        <p className="mt-1 text-xs leading-relaxed text-ink-muted">O cadastro já existe. Abra somente a etapa que deseja atualizar; documentos e retiradas são vínculos separados.</p>
-      </div>
-      {process.origem === 'estadual_ceaf' ? <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
+      {process.origem === 'estadual_ceaf' && cycleView==='overview' ? <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
         <p className="text-sm font-semibold text-ink-primary">LME e período autorizado</p>
         <p className="mt-2 text-xs text-ink-muted">{documentContext.lmeDelivered ? 'LME marcada como entregue neste ciclo.' : documentContext.lmeLinked ? 'LME vinculada; confirme a entrega quando ocorrer.' : 'Vincule a LME já existente abaixo, sem cadastrar o arquivo novamente.'}</p>
         <p className="mt-2 text-xs text-ink-muted">{documentContext.confirmed ? `Período informado: ${fmt(cycle.inicio)} a ${fmt(cycle.fim)}. Preparar renovação a partir de ${fmt(documentContext.prepareRenewalFrom)}.` : 'A entrega do documento não confirma automaticamente o período. Informe início e fim autorizados pela unidade em Atualizar etapa, datas ou observações.'}</p>
@@ -768,7 +776,8 @@ function CyclePanel({
         </details>
       </div>
       <div hidden={cycleView!=='overview'} role="tabpanel" id={`pane-${cycle.id}-overview`} aria-labelledby={`tab-${cycle.id}-overview`} className={panel}>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-primary">
+        <SupplyCycleSummary process={process} cycle={cycle} data={data} documents={documents} medications={meds} withdrawals={withdrawals} personId={pid} onOpen={view=>{setCycleView(view);requestAnimationFrame(()=>document.getElementById(`tab-${cycle.id}-${view}`)?.focus());}}/>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-wider text-ink-primary">
           Ciclo de fornecimento
         </p>
         <p className="mt-2 text-sm text-ink-primary">
@@ -1361,19 +1370,20 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 <HealthRelationPicker title="Retirada relacionada ao ciclo" renderIcon={value=><SupplyChoiceIcon group="withdrawal" value={value}/>} value={withdrawal?.id || ""} className={input}
                   onValueChange={id => { setSeed(null); setWithdrawalId(id); setCycleId(cycle.id); }}>
                   <option value="">Sem retirada selecionada</option>
-                  {compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id).map(i=>i.medicamento_id))).map(r => <option key={r.id} value={r.id}>{r.medicamento_nome} · {fmt(r.data)} · {r.status}</option>)}
+                  {compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).map(r => <option key={r.id} value={r.id}>{r.medicamento_nome} · {fmt(r.data)} · {r.status}</option>)}
                 </HealthRelationPicker>
-                <p className="mt-2 text-[11px] text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
+                <p className="mt-2 text-[11px] text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
               </details>}
               {cycle && (
                 <CyclePanel
-                  key={personId + cycle.id + cycle.updated_at}
+                  key={personId + cycle.id}
                   cycle={cycle}
                   process={process}
                   data={data}
                   documents={documents.filter(d => d.person_id === personId && d.user_id === process.user_id)}
                   meds={medicamentos.filter(m => m.person_id === personId && m.user_id === process.user_id)}
                   withdrawal={withdrawal}
+                  withdrawals={retiradas}
                   run={run}
                   pid={personId}
                 />
