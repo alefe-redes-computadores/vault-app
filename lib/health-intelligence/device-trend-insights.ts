@@ -51,12 +51,12 @@ function numeric(record: RegistroSaude, metric: MetricKey): Reading | null {
 
 function dailyMedian(readings: Reading[]): Daily[] {
   const grouped = new Map<string, Reading[]>();
-  for (const item of readings) grouped.set(item.date, [...(grouped.get(item.date) || []), item]);
+  for (const item of readings) {const group=grouped.get(item.date);if(group)group.push(item);else grouped.set(item.date,[item]);}
   return [...grouped].map(([date, items]) => ({
     date,
     primary: median(items.map((item) => item.primary)),
     ...(items.some((item) => item.secondary !== undefined) ? { secondary: median(items.flatMap((item) => item.secondary === undefined ? [] : [item.secondary])) } : {}),
-    sources: new Set(items.map((item) => item.record.source === "health_connect" ? "Health Connect" : "Vault/manual")),
+    sources: new Set(items.map((item) => item.record.source === "health_connect" ? "Health Connect" : item.record.source === "samsung_manual" ? "Samsung Health/manual" : item.record.source === "manual" ? "Registro manual" : "Origem não informada")),
   }));
 }
 
@@ -82,9 +82,10 @@ export function buildDeviceTrendInsights(context: HealthInsightContext): HealthI
     const readings = own.filter((record) => record.tipo === metric).flatMap((record) => {
       const identity = record.source_record_id || record.id || `${record.tipo}:${record.data}:${record.horario}:${record.valor_medicao}:${record.valor_numerico}`;
       if (seen.has(identity)) return [];
-      seen.add(identity);
       const parsed = numeric(record, metric);
-      return parsed ? [parsed] : [];
+      if(!parsed)return [];
+      seen.add(identity);
+      return [parsed];
     });
     const daily = dailyMedian(readings);
     const recent = daily.filter((item) => { const date = civilDay(item.date)!; return date >= today - 7 * DAY && date < today; });
@@ -105,7 +106,7 @@ export function buildDeviceTrendInsights(context: HealthInsightContext): HealthI
       urgencia: "baixa", confianca: recent.length >= 5 && previous.length >= 5 ? "media" : "baixa", amostra: observed,
       periodoDias: 14, entidadeTipo: "linha_cuidado", link: "/saude/minha-saude",
       evidencias: [
-        `Semana recente: ${recent.length} dias com medição`, `Semana anterior: ${previous.length} dias com medição`,
+        `Semana recente: ${recent.length} dias com medição (${new Date(today-7*DAY).toISOString().slice(0,10)} a ${new Date(today-DAY).toISOString().slice(0,10)})`, `Semana anterior: ${previous.length} dias com medição (${new Date(today-14*DAY).toISOString().slice(0,10)} a ${new Date(today-8*DAY).toISOString().slice(0,10)})`,
         metric === "pressao_arterial" ? `Médias diárias, sistólica/diastólica: ${Math.round(before)}/${Math.round(beforeSecondary || 0)} → ${Math.round(after)}/${Math.round(afterSecondary || 0)} mmHg` : `Média das medianas diárias: ${display(before, metric)} → ${display(after, metric)}`,
         `Fontes registradas: ${[...sources].sort().join(", ") || "não informadas"}`,
         "Amostras do mesmo dia são resumidas pela mediana para reduzir duplicidade entre aparelhos.",
