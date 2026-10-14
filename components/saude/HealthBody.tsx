@@ -5,7 +5,7 @@ import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
-export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false }: { skin: string; devices: HealthDevice[]; expanded?: boolean }) {
+export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false, showControls = true }: { skin: string; devices: HealthDevice[]; expanded?: boolean; showControls?: boolean }) {
   const [view,setView]=useState<"front"|"left"|"right">("front");
   const angle=view==="front"?0:view==="left"?-18:18;
   const uid = useId().replace(/:/g, "");
@@ -143,11 +143,11 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
         })}
       </svg>
       <p aria-hidden="true" className="-mt-1 text-center font-mono text-[9px] tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
-      <div aria-label="Perspectiva da ilustração" className={expanded ? "mt-3 grid grid-cols-3 gap-1" : "hidden"}>
+      <div aria-label="Perspectiva da ilustração" className={expanded && showControls ? "mt-3 grid grid-cols-3 gap-1" : "hidden"}>
         {([["left","Girar à esquerda"],["front","Frente"],["right","Girar à direita"]] as const).map(([key,label])=><button type="button" key={key} aria-pressed={view===key} onClick={event=>{event.preventDefault();event.stopPropagation();setView(key);}} className={"min-h-11 rounded-xl border text-[10px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 "+(view===key?"border-violet-300/50 bg-violet-400/15 text-violet-200":"border-slate-400/20 text-slate-300")}>{label}</button>)}
       </div>
-      <p className={expanded ? "mt-2 text-center text-[10px] text-slate-400" : "hidden"}>Perspectiva ilustrativa · acessórios cadastrados</p>
-      {slots.length>0 && <ul aria-label="Aparelhos representados no avatar" className={expanded ? "mt-3 space-y-2" : "hidden"}>
+      <p className={expanded && showControls ? "mt-2 text-center text-[10px] text-slate-400" : "hidden"}>Perspectiva ilustrativa · acessórios cadastrados</p>
+      {slots.length>0 && <ul aria-label="Aparelhos representados no avatar" className={expanded && showControls ? "mt-3 space-y-2" : "hidden"}>
         {slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-left text-xs text-slate-200">
           <span className="font-semibold">{device.name}</span><span className="mt-1 block text-[10px] text-slate-400">{kind==="watch"?"Relógio":"Anel"} · {side==="right"?"lado direito":"lado esquerdo"}{count>1?` · +${count-1} nesta posição`:""}</span>
         </li>)}

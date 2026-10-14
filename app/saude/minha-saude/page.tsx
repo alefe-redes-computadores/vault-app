@@ -259,7 +259,7 @@ function HealthDashboard({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
-                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={avatarInsightContext(intelligence.insights).rank} expanded />
+                  <HealthBody key={personId} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} onBrainSelect={()=>{const insight=avatarInsightContext(intelligence.insights).primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={avatarInsightContext(intelligence.insights).rank} expanded />
                   <AvatarHealthContext insights={intelligence.insights} weightChange={weightChange} />
                   <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 </div>

@@ -45,3 +45,7 @@ export function avatarVisualSignature(skin:string,devices:HealthDevice[]) {
  const layout=avatarLayout(devices);
  return JSON.stringify([avatarColor(skin),layout.phoneSide,layout.slots.map(slot=>[slot.kind,slot.side,slot.device.id,slot.device.name,avatarColor(slot.device.color,'#94a3b8')])]);
 }
+
+export function avatarTapEligible(type:string,moved:boolean,start:{x:number;y:number},end:{x:number;y:number}) {
+ return type==='pointerup'&&!moved&&Math.hypot(end.x-start.x,end.y-start.y)<=6;
+}
