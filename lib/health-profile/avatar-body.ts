@@ -3,6 +3,7 @@ import type {HealthDevice} from './types';
 import {avatarVisualSignature,avatarColor} from "./avatar";
 import {validDate} from './metrics';
 import {avatarWeightContext} from './avatar-readings';
+import {avatarSurgeryAgenda} from './avatar-surgeries';
 export const MOOD_CHOICES={muito_bem:'Muito bem',bem:'Bem',neutro:'Neutro',triste:'Triste',muito_triste:'Muito triste'} as const;
 export type MoodChoice=keyof typeof MOOD_CHOICES;
 export type AvatarBodyPart='mood'|'weight'|'surgery'|'equipment';
@@ -22,10 +23,11 @@ export function avatarBodyContext(records:RegistroSaude[],surgeries:Cirurgia[],d
  const positive=moods.filter(r=>['bem','muito_bem'].includes(readMoodContext(r.contexto)!)).length;
  const negative=moods.filter(r=>['triste','muito_triste'].includes(readMoodContext(r.contexto)!)).length;
  const expression=moods.length>=3&&positive/moods.length>=2/3?'happy':moods.length>=3&&negative/moods.length>=2/3?'reflective':'neutral';
- const scheduled=surgeries.filter(r=>own(r)&&r.status==='agendada'&&validDate(r.data));
- const upcoming=[...scheduled].filter(r=>r.data>=today).sort((a,b)=>a.data.localeCompare(b.data));
- const surgery=upcoming[0]||[...scheduled].sort((a,b)=>b.data.localeCompare(a.data))[0]||null;
- return {today,expression,moods,positive,negative,weight:avatarWeightContext(records,pid,uid,today).comparison,surgery,supports:avatarBraceSlots(devices.filter(own))} as const;
+ const surgeryAgenda=avatarSurgeryAgenda(surgeries,pid,uid,today);
+ const surgery=surgeryAgenda.upcoming[0]||surgeryAgenda.unconfirmed[0]||null;
+ const moodEvidence={from:start,to:today,days:moods.length,positive,negative,neutral:moods.length-positive-negative,
+  reason:expression==='happy'?'positive':expression==='reflective'?'negative':moods.length<3?'insufficient':'mixed'} as const;
+ return {today,expression,moods,positive,negative,moodEvidence,weight:avatarWeightContext(records,pid,uid,today).comparison,surgery,surgeryAgenda,supports:avatarBraceSlots(devices.filter(own))} as const;
 }
 export type AvatarBodyContext=ReturnType<typeof avatarBodyContext>;
 
