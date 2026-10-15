@@ -309,6 +309,14 @@ function HealthDashboard({
               <details className="mt-3 rounded-2xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
                 <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Evolução e medições · abrir histórico</summary>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
+                {/* V157 ANATOMICAL LINKS: available on demand, not permanent visual markers or diagnoses. */}
+                <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Explorar dados de saúde por região">
+                  <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-xl border border-violet-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Cabeça · sono</button>
+                  <button type="button" onClick={()=>go('/saude/exames')} className="min-h-11 rounded-xl border border-sky-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Olhos · exames</button>
+                  <button type="button" onClick={()=>setMetric('frequencia_cardiaca')} className="min-h-11 rounded-xl border border-rose-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Tórax · batimentos</button>
+                  <button type="button" onClick={()=>setMetric('peso')} className="min-h-11 rounded-xl border border-emerald-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Abdômen · peso</button>
+                  <button type="button" onClick={()=>setMetric('caminhada')} className="col-span-2 min-h-11 rounded-xl border border-amber-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Pernas · caminhada</button>
+                </div>
                 <div className="my-2 flex flex-wrap gap-2" aria-label="Outros registros representados no avatar">
                   <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/20 px-3 text-xs text-violet-300">Humor</button>
                   <button type="button" onClick={()=>selectBody('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Peso</button>

@@ -4,6 +4,7 @@ import type {
   HealthInsightContext,
 } from "@/lib/health-insights";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { supplyPreparationMessage } from "@/lib/health-supply/notification-copy";
 import { supplyChecklist, validSupplyDate, resolveSupplyWithdrawal } from "@/lib/health-supply/rules";
 import { prescriptionConfigurationReview } from "@/lib/health-supply/process-integrity";
 import { supplyDossier } from "@/lib/health-supply/knowledge";
@@ -274,11 +275,12 @@ export function buildSupplyInsights(
             : days === 0
             ? "Prepare os documentos hoje"
             : "Prepare a documentação do fornecimento",
-        mensagem: `${p.titulo}: prazo registrado para ${cycle.preparar_ate}.${
-          missing.length
-            ? " A preparar: " + missing.join("; ") + "."
-            : " Confira os documentos exigidos pela unidade."
-        }`,
+        mensagem: supplyPreparationMessage({
+          processTitle: p.titulo,
+          deadline: cycle.preparar_ate!,
+          missing,
+          daysRemaining: days,
+        }),
         urgencia: days <= 1 ? "alta" : "media",
         gravidadeSeguranca: days <= 1 ? "importante" : "atencao",
         confianca: "alta",
