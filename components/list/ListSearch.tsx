@@ -11,15 +11,17 @@ interface ListSearchProps {
   placeholder?: string;
   className?: string;
   showClear?: boolean;
+  initiallyExpanded?: boolean;
 }
 
-export function ListSearch({ value, onChange, placeholder = "Buscar...", className = "", showClear = true }: ListSearchProps) {
-  const [expanded, setExpanded] = useState(Boolean(value));
+export function ListSearch({ value, onChange, placeholder = "Buscar...", className = "", showClear = true, initiallyExpanded = false }: ListSearchProps) {
+  const [expanded, setExpanded] = useState(initiallyExpanded || Boolean(value));
+  const focusOnExpand=useRef(!initiallyExpanded);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => { if (value) setExpanded(true); }, [value]);
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || !focusOnExpand.current) return;
     const timer = window.setTimeout(() => inputRef.current?.focus(), 40);
     return () => window.clearTimeout(timer);
   }, [expanded]);
@@ -27,7 +29,7 @@ export function ListSearch({ value, onChange, placeholder = "Buscar...", classNa
   if (!expanded && !value) {
     return (
       <div className={`flex shrink-0 justify-end ${className}`}>
-        <button type="button" onClick={() => setExpanded(true)} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-all hover:border-ice/30 hover:text-ice active:scale-95" aria-label="Abrir busca">
+        <button type="button" onClick={() => { focusOnExpand.current=true; setExpanded(true); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-all hover:border-ice/30 hover:text-ice active:scale-95" aria-label="Abrir busca">
           <Search size={17} />
         </button>
       </div>

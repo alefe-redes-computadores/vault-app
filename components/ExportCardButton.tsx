@@ -14,6 +14,7 @@ interface ExportCardButtonProps {
   size?: "sm" | "md" | "lg";
   className?: string;
   label?: string;
+  compact?: boolean;
 }
 
 export function ExportCardButton({
@@ -24,6 +25,7 @@ export function ExportCardButton({
   size = "sm",
   className = "",
   label = "Exportar PDF",
+  compact = false,
 }: ExportCardButtonProps) {
   const { trigger } = useHapticFeedback();
   const [isLoading, setIsLoading] = useState(false);
@@ -71,21 +73,22 @@ export function ExportCardButton({
   return (
     <div className="space-y-1.5">
       <Button
+        aria-label={compact ? `${label} · ${title}` : undefined}
         variant={variant}
         size={size}
         onClick={handleExport}
         disabled={isLoading}
-        className={`flex items-center justify-center gap-2 ${className}`}
+        className={`flex items-center justify-center gap-2 ${compact ? "min-h-11 min-w-11" : ""} ${className}`}
       >
         {isLoading ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            {cards && cards.length > 0 ? `${progress}%` : "Gerando..."}
+            <span className={compact ? "sr-only sm:not-sr-only" : undefined}>{cards && cards.length > 0 ? `${progress}%` : "Gerando..."}</span>
           </>
         ) : (
           <>
             <FileDown size={16} />
-            {label}
+            <span className={compact ? "sr-only sm:not-sr-only" : undefined}>{label}</span>
           </>
         )}
       </Button>

@@ -32,3 +32,10 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - Armações retangulares devem ter lados retos; não simular o formato achatando uma circunferência.
 - Falta de medicamento é um motivo confirmado pela pessoa, não inferido automaticamente do estoque zerado. Revisão em lote exige confirmação explícita e mantém os slots e registros individuais.
 - Manter renderização 3D sob demanda, pausa fora da tela, descarte de recursos e fallback. Não adicionar animação permanente apenas para parecer vivo.
+
+## Continuidade V160 — experiência conjunta
+
+- O acervo inicia em todos os meses, com períodos explícitos. Busca local aceita termos em vários campos e preserva as relações reais e a contagem única dos documentos compartilhados.
+- Pesquisar não cria vínculos nem altera medicamentos, prescrições, estoque ou sincronização.
+- Grupos de Hoje preservam ordem e posição de origem. O botão de grupo abre a revisão existente; estoque zerado não implica automaticamente dose não tomada.
+- Continuar evoluindo também documentos, medicamentos e rotina, além do Avatar.

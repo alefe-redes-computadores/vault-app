@@ -134,6 +134,7 @@ import {
 import {
   MedicationFormatIcon,
 } from "@/components/saude/MedicationFormatIcon";
+import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import { buildDocumentMedicationIndex } from "@/lib/health-documents/relations";
 
 import type {
@@ -930,59 +931,10 @@ function getRegistroDescription(
   );
 }
 
-function matchesViewModelSearch(
-  item: DocumentViewModel,
-  normalizedQuery: string
-): boolean {
-  if (
-    !normalizedQuery
-  ) {
-    return true;
-  }
-
-  const document =
-    item.document;
-
-  const metadataValues =
-    Object.values(
-      document.metadata ||
-        {}
-    )
-      .filter(
-        (
-          value
-        ): value is string =>
-          typeof value ===
-          "string"
-      )
-      .slice(
-        0,
-        20
-      );
-
-  const searchable =
-    normalizeSearch(
-      [
-        document.title,
-        document.description ||
-          "",
-        getDocumentTypeLabel(
-          document.type
-        ),
-        item.parentName,
-        item.parentDescription ||
-          "",
-        item.entityLabel ||
-          "",
-        ...metadataValues,
-      ].join(
-        " "
-      )
-    );
-
-  return searchable.includes(
-    normalizedQuery
-  );
+function documentSearchFields(item: DocumentViewModel): unknown[] {
+  const document=item.document;
+  const date=item.date?.slice(0,10)||"";
+  return [document.title,document.description,getDocumentTypeLabel(document.type),item.parentName,item.parentDescription,item.entityLabel,date,date.split('-').reverse().join('/'),...Object.values(document.metadata||{}).filter(value=>typeof value==='string').slice(0,20)];
 }
 
 // ============================================================
@@ -1066,12 +1018,7 @@ export default function DocumentsPage() {
     selectedMonth,
     setSelectedMonth,
   ] =
-    useState(
-      format(
-        new Date(),
-        "yyyy-MM"
-      )
-    );
+    useState("all");
 
   const [
     showFilters,
@@ -3761,7 +3708,7 @@ export default function DocumentsPage() {
     return byOwner;
   }, [periodDocuments, scopedMedicamentos, scopedRenovacoes]);
 
-  const viewModels = useMemo(() => {
+  const projectedViewModels = useMemo(() => {
     const expanded = resolvedViewModels.flatMap(item => {
       const doc = item.document;
       const linked = medicationLinksByDocument.get(`${doc.user_id}:${doc.person_id}`)?.get(item.id) || [];
@@ -3782,9 +3729,10 @@ export default function DocumentsPage() {
       return item.domainId === 'medicamentos' || item.domainId === 'outros'
         ? medicationRows : [item, ...medicationRows];
     });
-    const normalizedQuery = normalizeSearch(searchQuery);
-    return normalizedQuery ? expanded.filter(item => matchesViewModelSearch(item, normalizedQuery)) : expanded;
-  }, [resolvedViewModels, searchQuery, medicationLinksByDocument, renewalsByMedication]);
+    return expanded;
+  }, [resolvedViewModels, medicationLinksByDocument, renewalsByMedication]);
+  const documentSearchIndex=useMemo(()=>createLocalSearchIndex(projectedViewModels,documentSearchFields),[projectedViewModels]);
+  const viewModels=useMemo(()=>filterLocalSearchIndex(documentSearchIndex,searchQuery),[documentSearchIndex,searchQuery]);
 
   // A document may have two *visual* parents, yet it still has one physical ID,
   // one export card, one set of attachments and one count in the acervo summary.
@@ -4007,12 +3955,7 @@ export default function DocumentsPage() {
         ""
       );
 
-      setSelectedMonth(
-        format(
-          new Date(),
-          "yyyy-MM"
-        )
-      );
+      setSelectedMonth("all");
 
       setShowFilters(
         false
@@ -4177,6 +4120,12 @@ export default function DocumentsPage() {
       domainGroups,
     ]
   );
+
+  useEffect(()=>{
+    if(!searchQuery.trim())return;
+    setExpandedDomains(new Set(domainGroups.map(group=>group.id)));
+    setExpandedParents(new Set(domainGroups.flatMap(group=>group.parents.map(parent=>parent.key)).slice(0,12)));
+  },[searchQuery,domainGroups]);
 
   // ==========================================================
   // ACTIONS
@@ -4435,13 +4384,13 @@ export default function DocumentsPage() {
                     className="text-emerald-400"
                   />
 
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-emerald-400">
+                  <p className="font-mono text-[10px] uppercase whitespace-nowrap tracking-[0.12em] text-emerald-400">
                     Acervo Clínico
                   </p>
                 </div>
 
                 <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
-                  Documentos de Saúde
+                  Documentos
                 </h1>
               </div>
             </div>
@@ -4450,6 +4399,7 @@ export default function DocumentsPage() {
               {uniqueDocumentViewModels.length >
                 0 && (
                 <ExportCardButton
+                  compact
                   cards={
                     exportCards
                   }
@@ -4490,11 +4440,16 @@ export default function DocumentsPage() {
           </div>
 
           <div className="mt-3 flex min-w-0 items-center gap-2">
-            <ListSearch
+            <ListSearch initiallyExpanded
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Buscar documento, medicamento, médico, exame..."
             />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Período do acervo">
+            <button type="button" aria-pressed={selectedMonth==='all'} onClick={()=>setSelectedMonth('all')} className={`min-h-11 rounded-xl border px-3 text-xs ${selectedMonth==='all'?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>Todo o acervo</button>
+            <button type="button" aria-pressed={selectedMonth===format(new Date(),'yyyy-MM')} onClick={()=>setSelectedMonth(format(new Date(),'yyyy-MM'))} className={`min-h-11 rounded-xl border px-3 text-xs ${selectedMonth===format(new Date(),'yyyy-MM')?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>Este mês</button>
+            <button type="button" onClick={()=>setShowFilters(true)} className="min-h-11 px-2 text-xs text-ink-muted">Escolher mês ›</button>
           </div>
         </header>
 

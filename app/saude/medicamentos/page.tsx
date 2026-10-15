@@ -1,6 +1,7 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 
+import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
   useMemo,
@@ -404,6 +405,12 @@ export default function MedicamentosListPage() {
   // LISTA VISÍVEL
   // ==========================================================
 
+  const medicationSearchIndex=useMemo(()=>createLocalSearchIndex(listaBase,item=>{
+    const identity=catalogIdentities[item.med.id||""];
+    return [item.med.nome,item.med.medico,item.med.dosagem,identity?.canonicalName,identity?.activeIngredient,...(identity?.activeIngredients||[])];
+  }),[listaBase,catalogIdentities]);
+  const medicationSearchMatches=useMemo(()=>new Set(filterLocalSearchIndex(medicationSearchIndex,searchQuery)),[medicationSearchIndex,searchQuery]);
+
   const listaProcessada =
     useMemo(() => {
       let processados = [...listaBase];
@@ -437,33 +444,14 @@ export default function MedicamentosListPage() {
         return true;
       });
 
-      const query = normalizeMedicationText(searchQuery);
-
-      if (query) {
-        processados = processados.filter((item) => {
-          const identity = catalogIdentities[item.med.id || ""];
-          const searchable = [
-            item.med.nome,
-            item.med.medico,
-            item.med.dosagem,
-            identity?.canonicalName,
-            identity?.activeIngredient,
-            ...(identity?.activeIngredients || []),
-          ]
-            .filter(Boolean)
-            .map((value) => normalizeMedicationText(String(value)));
-
-          return searchable.some((value) => value.includes(query));
-        });
-      }
+      processados=processados.filter(item=>medicationSearchMatches.has(item));
 
       return processados;
     }, [
       listaBase,
       medicationFilter,
-      searchQuery,
+      medicationSearchMatches,
       regulatoryProfiles,
-      catalogIdentities,
     ]);
 
   // ==========================================================
