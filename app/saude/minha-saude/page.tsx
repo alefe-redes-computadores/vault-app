@@ -81,6 +81,7 @@ function HealthDashboard({
     { registros, isLoading } = useRegistrosSaude();
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
   const [brainSummaryOpen,setBrainSummaryOpen]=useState(false);
+  // V158 keeps overview vs full metric-history semantically distinct.
   const [bodyMarkerKey,setBodyMarkerKey]=useState<string|null>(null);
   const selectBody=(part:AvatarBodyPart|null,markerKey?:string)=>{setBodyMarkerKey(markerKey||null);setBodyPart(part);};
   const intelligence = useHealthIntelligence({ includeAudit: false });
@@ -307,7 +308,7 @@ function HealthDashboard({
                 </div>
               </div>
               <details className="mt-3 rounded-2xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
-                <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Evolução e medições · abrir histórico</summary>
+                <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Corpo e sinais · explorar regiões</summary>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 {/* V157 ANATOMICAL LINKS: available on demand, not permanent visual markers or diagnoses. */}
                 <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Explorar dados de saúde por região">
@@ -351,7 +352,7 @@ function HealthDashboard({
             </section>
             <section className="rounded-[24px] border border-violet-400/15 bg-surface p-3">
               <div className="flex items-center gap-3">
-                <span className="rounded-xl bg-violet-400/10 p-3 text-violet-300"><Brain size={20} /></span>
+                <span className={`rounded-xl p-3 ${intelligence.insights.some(x=>x.urgencia==='alta'||x.gravidadeSeguranca==='critica')?'bg-rose-400/10 text-rose-300':intelligence.insights.some(x=>x.urgencia==='media')?'bg-amber-400/10 text-amber-300':'bg-violet-400/10 text-violet-300'}`}><Brain size={20}/></span>
                 <div className="min-w-0 flex-1">
                   <button type="button" aria-expanded={brainSummaryOpen} onClick={()=>setBrainSummaryOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between text-left text-sm font-semibold">Vault Intelligence <ChevronDown size={16} className={brainSummaryOpen?"rotate-180":""}/></button>
                   <p className="mt-1 text-[11px] text-ink-muted">
@@ -473,7 +474,7 @@ function HealthDashboard({
             )}
             <HealthConnectPanel key={personId} personId={personId} personName={person?.name || "esta pessoa"} devices={devices} />
             <section className="space-y-3">
-              <h2 className="font-semibold">Meus registros</h2>
+              <div><h2 className="font-semibold">Meus registros</h2><p className="mt-1 text-[11px] text-ink-muted">Histórico completo, tendências e datas de cada medição</p></div>
               <div className="grid grid-cols-2 gap-3">
                 {(Object.keys(METRICS) as HealthMetric[]).map((type) => (
                   <button

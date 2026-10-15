@@ -66,14 +66,16 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     };
     const sphereGeometry=new THREE.SphereGeometry(1,24,16);
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
-    oval(materials.skin,0,2.79,0,[.24,.32,.23]);
+    // V158: narrower face with a soft jaw/chin; stylized, not derived from clinical metrics.
+    oval(materials.skin,0,2.80,0,[.222,.307,.208]);
+    oval(materials.skin,0,2.627,.075,[.157,.103,.14]);
     // Brows, eye highlights and clothing seams provide depth without remote assets.
     for(const sign of [-1,1]) {
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
     }
     oval(materials.hair,0,2.98,-.035,[.247,.17,.23]);
-    oval(materials.skin,-.246,2.77,0,[.04,.075,.045]); oval(materials.skin,.246,2.77,0,[.04,.075,.045]);
+    oval(materials.skin,-.224,2.77,0,[.031,.064,.041]); oval(materials.skin,.224,2.77,0,[.031,.064,.041]);
     mesh(new THREE.CylinderGeometry(.095,.11,.22,16),materials.skin,0,2.45,0);
     const shirtProfile=[[.265,0],[.27,.08],[.28,.35],[.31,.58],[.335,.70],[.32,.75],[.15,.80]].map(([radius,y])=>new THREE.Vector2(radius,y));
     mesh(new THREE.LatheGeometry(shirtProfile,24),materials.cloth,0,1.665,0,[1,1,.67]);
@@ -98,11 +100,13 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     // V155: cosmetic accessories follow head/body geometry, not medical-device records.
     // They do not receive raycast actions and never alter clinical markers.
     if (appearance.hat !== "none") {
-      const crown=mesh(new THREE.SphereGeometry(.26,24,12,0,Math.PI*2,0,Math.PI/2),materials.cap,0,3.045,-.008,[1,.80,.96]);
+      const crown=mesh(new THREE.SphereGeometry(.246,28,16,0,Math.PI*2,0,Math.PI/2),materials.cap,0,3.038,-.01,[1,.75,.93]);
       crown.raycast=()=>{};
-      const brim=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.43:.38,.028,appearance.hat==="flat"?.20:.17),materials.cap,0,3.049,.204);
+      const brim=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.43:.375,.024,appearance.hat==="flat"?.22:.17),materials.cap,0,3.043,.207);
       if(appearance.hat==="baseball")brim.rotation.x=-.18;
       brim.raycast=()=>{};
+      const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,3.042,-.012);
+      seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {
         const badge=mesh(new THREE.BoxGeometry(appearance.hatBrand==="new-era"?.091:.065,.034,.008),materials.white,0,3.133,.202);
         badge.raycast=()=>{};
@@ -115,17 +119,19 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
       for(const side of [-1,1]) {
         const x=side*.082,y=2.825,z=.256;
         const ring=mesh(new THREE.TorusGeometry(appearance.glasses==="round"?.070:.071,.009,7,20),materials.glasses,x,y,z);
-        if(appearance.glasses==="rectangular")ring.scale.set(1.03,.67,1);
+        if(appearance.glasses==="rectangular")ring.scale.set(1.03,.75,1);
         ring.raycast=()=>{};
         const temple=mesh(new THREE.BoxGeometry(.11,.009,.009),materials.glasses,side*.166,y,.193);
         temple.raycast=()=>{};
       }
       const bridge=mesh(new THREE.BoxGeometry(.044,.01,.012),materials.glasses,0,2.831,.263);bridge.raycast=()=>{};
+      for(const side of [-1,1]){const lens=oval(new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false}),side*.082,2.825,.254,[.055,.038,.003]);lens.raycast=()=>{};}
     }
     for(const side of [-1,1]) {
       const x=side*.15;
       const sole=oval(materials.white,x,.125,.085,[.151,.026,.259]);sole.raycast=()=>{};
       const shoe=oval(materials.sneakers,x,.175,.095,[.150,.065,.248]);shoe.raycast=()=>{};
+      for(let j=0;j<3;j++){const lace=mesh(new THREE.BoxGeometry(.075,.005,.008),materials.white,x,.204-j*.014,.309);lace.raycast=()=>{};}
       if(appearance.sneakers==="high-top"){
         const high=mesh(new THREE.CylinderGeometry(.12,.137,.19,14),materials.sneakers,x,.26,.043);high.raycast=()=>{};
       }
@@ -172,7 +178,7 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
       if(c){c.fillStyle="#0b1520";c.fillRect(0,0,256,256);c.strokeStyle="#c4b5fd";c.lineWidth=5;c.strokeRect(12,12,232,232);c.fillStyle="#c4b5fd";c.font="bold 90px sans-serif";c.textAlign="center";c.lineCap="round";c.lineJoin="round";c.beginPath();c.moveTo(128,42);c.bezierCurveTo(96,26,78,47,83,63);c.bezierCurveTo(52,70,66,106,84,110);c.bezierCurveTo(94,137,118,119,128,109);c.moveTo(128,42);c.bezierCurveTo(160,26,178,47,173,63);c.bezierCurveTo(204,70,190,106,172,110);c.bezierCurveTo(162,137,138,119,128,109);c.moveTo(128,42);c.lineTo(128,109);c.moveTo(96,62);c.bezierCurveTo(107,70,106,87,90,92);c.moveTo(160,62);c.bezierCurveTo(149,70,150,87,166,92);c.stroke();c.fillStyle="#f1f5f9";c.font="bold 36px sans-serif";c.fillText(title,128,172);c.font="20px sans-serif";c.fillStyle="#c4b5fd";c.fillText(subtitle,128,212);}
       const t=new THREE.CanvasTexture(canvas);t.colorSpace=THREE.SRGBColorSpace;textures.push(t);return new THREE.MeshBasicMaterial({map:t});
     };
-    const brainBadge=mesh(new THREE.PlaneGeometry(.32,.32),label("VAULT",BRAIN_BRAND),0,2.1,.237);brainBadge.userData.action="brain";
+    const brainBadge=mesh(new THREE.PlaneGeometry(.255,.255),label("VAULT",BRAIN_BRAND),0,2.14,.239);brainBadge.userData.action="brain";
     const signalMaterial=new THREE.MeshStandardMaterial({color:avatarAttentionColor(attentionRef.current),emissive:avatarAttentionColor(attentionRef.current),emissiveIntensity:.35,metalness:.3,roughness:.4});
     const signalRing=mesh(new THREE.TorusGeometry(.245,.008,8,48),signalMaterial,0,2.1,.248,[1,.86,1]);
     const setAttention=(rank:number)=>{const color=avatarAttentionColor(rank);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalRing.visible=rank>0;};
