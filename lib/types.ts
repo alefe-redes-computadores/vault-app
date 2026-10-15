@@ -1,4 +1,5 @@
 // lib/types.ts
+import type { SurgeryRegion, SurgerySide } from './surgery-body';
 
 // ============================================================
 // 1. CONFIGURAÇÕES E ENUMS
@@ -1117,6 +1118,8 @@ export interface Exame {
 }
 
 export interface Cirurgia {
+  regiao_corporal?: SurgeryRegion | null;
+  lateralidade?: SurgerySide | null;
   id?: string;
   user_id: string;
   person_id?: string;

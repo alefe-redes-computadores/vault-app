@@ -3,8 +3,8 @@ import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 
 import { db } from "@/lib/db";
 import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
-import { supabase } from "@/lib/supabase/client";
 import type { Cirurgia } from "@/lib/types";
+import { normalizeSurgeryBody } from "@/lib/surgery-body";
 
 // ============================================================
 // TIPOS
@@ -57,18 +57,27 @@ async function getCirurgiaForPerson(
 ): Promise<Cirurgia | undefined> {
   const safePersonId =
     requirePersonId(personId);
+  const userId = await requireOwnedPerson(safePersonId);
 
   const cirurgia =
     await db.cirurgias.get(id);
 
   if (
     !cirurgia ||
-    cirurgia.person_id !== safePersonId
+    cirurgia.person_id !== safePersonId || cirurgia.user_id !== userId
   ) {
     return undefined;
   }
 
   return cirurgia;
+}
+
+async function requireOwnedPerson(personId: string): Promise<string> {
+  const { data: { user } } = await getLocalFirstAuthUser();
+  if (!user) throw new Error("Usuário não autenticado.");
+  const person = await db.persons.get(personId);
+  if (!person || person.user_id !== user.id) throw new Error("Pessoa não pertence à conta ativa.");
+  return user.id;
 }
 
 // ============================================================
@@ -85,10 +94,12 @@ export const cirurgiasRepository = {
   ) {
     const safePersonId =
       requirePersonId(personId);
+    const userId = await requireOwnedPerson(safePersonId);
 
     return db.cirurgias
       .where("person_id")
       .equals(safePersonId)
+      .and(row => row.user_id === userId)
       .toArray();
   },
 
@@ -118,18 +129,7 @@ export const cirurgiasRepository = {
         data.person_id
       );
 
-    const {
-      data: {
-        user,
-      },
-    } =
-      await getLocalFirstAuthUser();
-
-    if (!user) {
-      throw new Error(
-        "Usuário não autenticado."
-      );
-    }
+    const userId = await requireOwnedPerson(personId);
 
     const now =
       new Date().toISOString();
@@ -141,12 +141,13 @@ export const cirurgiasRepository = {
     const cirurgiaCompleta:
       Cirurgia = {
       ...data,
+      ...normalizeSurgeryBody(data),
 
       id:
         cirurgiaId,
 
       user_id:
-        user.id,
+        userId,
 
       person_id:
         personId,
@@ -220,6 +221,7 @@ export const cirurgiasRepository = {
           | "synced"
         > = {
       ...data,
+      ...(data.regiao_corporal !== undefined || data.lateralidade !== undefined ? normalizeSurgeryBody(data, current) : {}),
 
       updated_at:
         now,
@@ -250,10 +252,7 @@ export const cirurgiasRepository = {
         await enfileirarOperacao(
           "cirurgias",
           "update",
-          {
-            id,
-            ...payload,
-          }
+          await db.cirurgias.get(id)
         );
       }
     );

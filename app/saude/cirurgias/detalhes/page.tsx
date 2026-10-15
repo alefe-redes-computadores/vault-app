@@ -1,5 +1,6 @@
 // app/saude/cirurgias/detalhes/page.tsx
 "use client";
+import { surgeryBodyLabel } from "@/lib/surgery-body";
 
 import {
   Suspense,
@@ -1505,6 +1506,8 @@ function DetalhesCirurgiaContent() {
                 </p>
               </DetailInfoRow>
             </div>
+
+            {surgeryBodyLabel(cirurgia) ? <div className="rounded-[24px] border border-sky-400/20 bg-surface p-4"><p className="mb-1 text-xs text-ink-muted">Localização informada</p><p className="text-sm font-medium text-sky-200">{surgeryBodyLabel(cirurgia)}</p></div> : null}
 
             {cirurgia.observacoes && (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">

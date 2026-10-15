@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { surgeryBodyLabel } from '@/lib/surgery-body';
 import type { Cirurgia } from '@/lib/types';
 import type { AvatarBodyContext } from '@/lib/health-profile/avatar-body';
 import { surgeryTime } from '@/lib/health-profile/avatar-surgeries';
@@ -15,6 +16,7 @@ function SurgeryGroup({ title, rows, status, today }: {
       {rows.slice(0, 3).map((surgery, index) => {
         const content = <>
           <span className="block break-words font-medium">{surgery.procedimento || 'Procedimento registrado'}</span>
+          {surgeryBodyLabel(surgery) ? <span className="mt-1 block text-sky-200">{surgeryBodyLabel(surgery)}</span> : null}
           <span className="mt-1 block text-ink-muted">
             {formatDate(surgery.data)}{surgeryTime(surgery.horario) ? ` às ${surgeryTime(surgery.horario)}` : ''}
             {' · '}{surgery.status === 'agendada' && surgery.data === today ? 'agendada para hoje' : status}

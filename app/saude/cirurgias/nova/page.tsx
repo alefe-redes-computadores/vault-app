@@ -1,5 +1,7 @@
 // app/saude/cirurgias/novo/page.tsx
 "use client";
+import { SurgeryBodyFields } from "@/components/saude/SurgeryBodyFields";
+import { type SurgeryBody } from "@/lib/surgery-body";
 
 import {
   useRef,
@@ -526,6 +528,8 @@ export default function NovaCirurgiaPage() {
     >(
       "agendada"
     );
+
+  const [surgeryBody, setSurgeryBody] = useState<SurgeryBody>({ regiao_corporal: null, lateralidade: null });
 
   const [
     observacoes,
@@ -1064,6 +1068,7 @@ export default function NovaCirurgiaPage() {
                   undefined,
 
                 status,
+                ...surgeryBody,
 
                 observacoes:
                   observacoes.trim() ||
@@ -1896,6 +1901,8 @@ export default function NovaCirurgiaPage() {
           {/* ==================================================
               OBSERVAÇÕES
               ================================================== */}
+
+          <SurgeryBodyFields value={surgeryBody} onChange={setSurgeryBody} />
 
           <motion.div
             variants={

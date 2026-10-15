@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useHealthProfile } from "@/hooks/useHealthProfile";
 import {avatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
+import { surgeryBodyLabel } from "@/lib/surgery-body";
 import {AvatarBodyEvidence} from "@/components/saude/AvatarBodyEvidence";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
@@ -275,7 +276,7 @@ function HealthDashboard({
                   <div className="my-2 flex flex-wrap gap-2" aria-label="Registros representados no corpo">
                     <button type="button" onClick={()=>setBodyPart('mood')} className="min-h-11 rounded-xl border border-violet-400/25 px-3 py-2 text-xs text-violet-300">{bodyContext.expression==='happy'?'☺ Humor informado':bodyContext.expression==='reflective'?'☹ Humor informado':'Humor · registros'}</button>
                     <button type="button" onClick={()=>setBodyPart('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">{bodyContext.weight?`Peso ${bodyContext.weight.delta>0?'+':''}${bodyContext.weight.delta.toLocaleString('pt-BR')} kg`:'Peso · registros'}</button>
-                    {bodyContext.surgeryAgenda.total?<button type="button" aria-label="Abrir contexto de cirurgias" onClick={()=>setBodyPart('surgery')} className={"min-h-11 rounded-xl border px-3 py-2 text-xs "+(bodyContext.surgeryAgenda.unconfirmed.length?'border-amber-400/25 text-amber-200':'border-sky-400/25 text-sky-300')}>{bodyContext.surgeryAgenda.unconfirmed.length?`Conferir status · ${bodyContext.surgeryAgenda.unconfirmed.length}`:`Cirurgias · ${bodyContext.surgeryAgenda.total}`} ›</button>:null}
+                    {bodyContext.surgeryAgenda.total?<button type="button" aria-label="Abrir contexto de cirurgias" onClick={()=>setBodyPart('surgery')} className={"min-h-11 rounded-xl border px-3 py-2 text-xs "+(bodyContext.surgeryAgenda.unconfirmed.length?'border-amber-400/25 text-amber-200':'border-sky-400/25 text-sky-300')}>{bodyContext.surgeryAgenda.unconfirmed.length?`Conferir status · ${bodyContext.surgeryAgenda.unconfirmed.length}`:(bodyContext.surgery && surgeryBodyLabel(bodyContext.surgery) ? surgeryBodyLabel(bodyContext.surgery) : `Cirurgias · ${bodyContext.surgeryAgenda.total}`)} ›</button>:null}
                     {bodyContext.supports.length?<button type="button" onClick={()=>setBodyPart('equipment')} className="min-h-11 rounded-xl border border-sky-400/25 px-3 py-2 text-xs text-sky-300">Equipamentos em uso ›</button>:null}
                   </div>
                   <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>

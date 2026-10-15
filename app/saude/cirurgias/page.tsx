@@ -1,5 +1,6 @@
 // app/saude/cirurgias/page.tsx
 "use client";
+import { surgeryBodyLabel } from "@/lib/surgery-body";
 
 import {
   useMemo,
@@ -396,7 +397,7 @@ export default function CirurgiasPage() {
         if (!term) return true;
         const medico = cirurgia.medico_id ? medicosMap.get(cirurgia.medico_id)?.nome : "";
         const hospital = cirurgia.hospital_id ? hospitaisMap.get(cirurgia.hospital_id)?.nome : "";
-        return normalizeSearch([cirurgia.procedimento, medico, hospital].filter(Boolean).join(" ")).includes(term);
+        return normalizeSearch([cirurgia.procedimento, surgeryBodyLabel(cirurgia), medico, hospital].filter(Boolean).join(" ")).includes(term);
       });
     }, [
       listaBase,
@@ -838,6 +839,8 @@ export default function CirurgiasPage() {
                         cirurgia.procedimento
                       }
                     </h3>
+
+                    {surgeryBodyLabel(cirurgia) ? <p className="mt-1 text-xs text-sky-200">{surgeryBodyLabel(cirurgia)}</p> : null}
 
                     {hospitalNome && (
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">

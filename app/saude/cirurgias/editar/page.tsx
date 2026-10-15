@@ -1,5 +1,7 @@
 // app/saude/cirurgias/editar/page.tsx
 "use client";
+import { SurgeryBodyFields } from "@/components/saude/SurgeryBodyFields";
+import { readSurgeryRegion, readSurgerySide, type SurgeryBody } from "@/lib/surgery-body";
 
 import {
   Suspense,
@@ -555,6 +557,8 @@ function EditarCirurgiaContent() {
       "agendada"
     );
 
+  const [surgeryBody, setSurgeryBody] = useState<SurgeryBody>({ regiao_corporal: null, lateralidade: null });
+
   const [
     observacoes,
     setObservacoes,
@@ -806,6 +810,8 @@ function EditarCirurgiaContent() {
             data.status ||
               "agendada"
           );
+
+          setSurgeryBody({ regiao_corporal: readSurgeryRegion(data.regiao_corporal), lateralidade: readSurgeryRegion(data.regiao_corporal) ? readSurgerySide(data.lateralidade) : null });
 
           setObservacoes(
             data.observacoes ||
@@ -1358,6 +1364,7 @@ function EditarCirurgiaContent() {
                   undefined,
 
                 status,
+                ...surgeryBody,
 
                 observacoes:
                   observacoes.trim() ||
@@ -2182,6 +2189,8 @@ function EditarCirurgiaContent() {
           {/* ==================================================
               OBS
               ================================================== */}
+
+          <SurgeryBodyFields value={surgeryBody} onChange={setSurgeryBody} />
 
           <motion.div
             variants={

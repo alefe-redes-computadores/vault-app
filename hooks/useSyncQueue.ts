@@ -2694,6 +2694,9 @@ export function useSyncQueue() {
                   procedimento:
                     cirurgia.procedimento,
 
+                  ...(cirurgia.regiao_corporal !== undefined ? { regiao_corporal: cirurgia.regiao_corporal } : {}),
+                  ...(cirurgia.lateralidade !== undefined ? { lateralidade: cirurgia.lateralidade } : {}),
+
                   data:
                     cirurgia.data,
 
