@@ -50,7 +50,7 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     camera.position.set(0, 1.55, 6); camera.lookAt(0, 1.55, 0);
     scene.add(new THREE.HemisphereLight(0xdbeafe, 0x17212b, 2.3));
     const key = new THREE.DirectionalLight(0xffffff, 3); key.position.set(-3,5,4); scene.add(key);
-    const rim = new THREE.DirectionalLight(0xa78bfa, 1.8); rim.position.set(3,3,-3); scene.add(rim);
+    const rim = new THREE.DirectionalLight(0xc3e5dc, 1.4); rim.position.set(3,3,-3); scene.add(rim);
     const materials = {
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .72 }),
       cloth: new THREE.MeshStandardMaterial({ color: "#31465b", roughness: .8 }),
@@ -68,7 +68,7 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
     // V158: narrower face with a soft jaw/chin; stylized, not derived from clinical metrics.
     oval(materials.skin,0,2.80,0,[.222,.307,.208]);
-    oval(materials.skin,0,2.627,.075,[.157,.103,.14]);
+    oval(materials.skin,0,2.627,.025,[.145,.075,.11]);
     // Brows, eye highlights and clothing seams provide depth without remote assets.
     for(const sign of [-1,1]) {
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
@@ -87,11 +87,11 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
       mesh(new THREE.BoxGeometry(.10,.012,.014),materials.white,sign*.15,.235,.26);
     }
     for (const sign of [-1,1]) {
-      oval(materials.cloth,sign*.32,2.34,0,[.16,.18,.16]);
+      oval(materials.cloth,sign*.32,2.34,0,[.142,.14,.125]);
       const arm = mesh(new THREE.CapsuleGeometry(.105,.65,6,16),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
       oval(materials.skin,sign*.51,1.48,.015,[.1,.14,.08]);
       mesh(new THREE.CapsuleGeometry(.13,.8,6,16),materials.skin,sign*.15,.77,0);
-      mesh(new THREE.CylinderGeometry(.18,.15,.35,16),materials.cloth,sign*.15,1.28,0,[1,1,.85]);
+      mesh(new THREE.CylinderGeometry(.145,.145,.35,20),materials.cloth,sign*.15,1.28,0,[1,1,1]);
       oval(materials.dark,sign*.15,.17,.07,[.15,.09,.27]);
       oval(materials.white,sign*.083,2.82,.214,[.036,.022,.017]);
       oval(materials.dark,sign*.083,2.82,.23,[.013,.015,.008]);
@@ -102,8 +102,13 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     if (appearance.hat !== "none") {
       const crown=mesh(new THREE.SphereGeometry(.246,28,16,0,Math.PI*2,0,Math.PI/2),materials.cap,0,3.038,-.01,[1,.75,.93]);
       crown.raycast=()=>{};
-      const brim=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.43:.375,.024,appearance.hat==="flat"?.22:.17),materials.cap,0,3.043,.207);
-      if(appearance.hat==="baseball")brim.rotation.x=-.18;
+      const brimShape=new THREE.Shape();
+      const width=appearance.hat==="flat"?.225:.196;
+      brimShape.moveTo(-width,0);brimShape.lineTo(width,0);
+      brimShape.bezierCurveTo(width+.015,.19,width*.6,.24,0,.245);
+      brimShape.bezierCurveTo(-width*.6,.24,-width-.015,.19,-width,0);
+      const brim=mesh(new THREE.ExtrudeGeometry(brimShape,{depth:.018,bevelEnabled:false,curveSegments:8}),materials.cap,0,3.043,.11);
+      brim.rotation.x=appearance.hat==="baseball"?-Math.PI/2-.12:-Math.PI/2;
       brim.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,3.042,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
@@ -118,14 +123,23 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     if (appearance.glasses !== "none") {
       for(const side of [-1,1]) {
         const x=side*.082,y=2.825,z=.256;
-        const ring=mesh(new THREE.TorusGeometry(appearance.glasses==="round"?.070:.071,.009,7,20),materials.glasses,x,y,z);
-        if(appearance.glasses==="rectangular")ring.scale.set(1.03,.75,1);
+        const rectangular = appearance.glasses === "rectangular";
+        const outline = new THREE.Shape();
+        outline.moveTo(-.065,-.041); outline.lineTo(.065,-.041); outline.quadraticCurveTo(.073,-.041,.073,-.033);
+        outline.lineTo(.073,.033); outline.quadraticCurveTo(.073,.041,.065,.041);
+        outline.lineTo(-.065,.041); outline.quadraticCurveTo(-.073,.041,-.073,.033);
+        outline.lineTo(-.073,-.033); outline.quadraticCurveTo(-.073,-.041,-.065,-.041);
+        const hole = new THREE.Path();
+        hole.moveTo(-.058,-.029); hole.lineTo(-.058,.029); hole.lineTo(.058,.029); hole.lineTo(.058,-.029); hole.closePath();
+        outline.holes.push(hole);
+        const frameGeometry = rectangular ? new THREE.ExtrudeGeometry(outline,{depth:.009,bevelEnabled:false,curveSegments:3}) : new THREE.TorusGeometry(.070,.009,7,24);
+        const ring=mesh(frameGeometry,materials.glasses,x,y,z);
         ring.raycast=()=>{};
-        const temple=mesh(new THREE.BoxGeometry(.11,.009,.009),materials.glasses,side*.166,y,.193);
+        const temple=mesh(new THREE.BoxGeometry(.009,.009,.14),materials.glasses,side*.166,y,.193);
         temple.raycast=()=>{};
       }
       const bridge=mesh(new THREE.BoxGeometry(.044,.01,.012),materials.glasses,0,2.831,.263);bridge.raycast=()=>{};
-      for(const side of [-1,1]){const lens=oval(new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false}),side*.082,2.825,.254,[.055,.038,.003]);lens.raycast=()=>{};}
+      for(const side of [-1,1]){const lens=oval(new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false}),side*.082,2.825,.254,[.055,appearance.glasses==="round"?.055:.029,.003]);lens.raycast=()=>{};}
     }
     for(const side of [-1,1]) {
       const x=side*.15;
@@ -264,7 +278,7 @@ export default function HealthAvatar3D({ skin, appearance, devices, onUnavailabl
     <label htmlFor={zoomId} className="mt-3 flex items-center justify-between text-xs text-slate-300">Zoom <span>{zoom}%</span></label><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=avatarZoom(Number(e.target.value));setZoom(value);controller.current?.zoom(value);}} className="mt-2 min-h-8 w-full accent-violet-400" />
     {slots.length>0?<ul aria-label="Aparelhos representados" className="mt-3 space-y-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">{onDeviceSelect?<button type="button" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)} className="min-h-11 w-full text-left font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{device.name} <span aria-hidden="true">›</span></button>:<strong>{device.name}</strong>}<span className="mt-1 block text-[10px] text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></li>)}</ul>:null}</>;
   return <div className="mx-auto w-full max-w-[340px]">
-    <div ref={host} style={{height:compact?200:340}} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Acessórios pessoais são cosméticos, separados dos aparelhos de saúde. Celular ilustrativo.`} className="h-[340px] w-full cursor-grab overflow-hidden rounded-3xl bg-gradient-to-b from-violet-500/5 to-transparent active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
+    <div ref={host} style={{height:compact?200:"clamp(220px, 36dvh, 340px)"}} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Acessórios pessoais são cosméticos, separados dos aparelhos de saúde. Celular ilustrativo.`} className="h-[340px] w-full cursor-grab overflow-hidden rounded-3xl bg-gradient-to-b from-emerald-300/[.04] via-transparent to-slate-900/30 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
     {compact?null:<p className="text-center text-[11px] text-slate-400">Arraste para girar · toque em uma região para explorar</p>}
     {controlsContainer===undefined?controls:controlsContainer?createPortal(controls,controlsContainer):null}
   </div>;

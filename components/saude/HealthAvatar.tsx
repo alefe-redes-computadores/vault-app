@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { ChevronDown, SlidersHorizontal, Brain, EyeOff } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, Brain, EyeOff, Shirt, X } from "lucide-react";
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarLayout } from "@/lib/health-profile/avatar";
@@ -45,13 +45,31 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
     setAppearance(normalized);
     try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,size,normalized));}catch{}
   };
+  const expandedRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(!expanded || size!=='expanded') return;
+    const previous=document.activeElement as HTMLElement|null;
+    const overflow=document.body.style.overflow;
+    document.body.style.overflow='hidden'; expandedRef.current?.focus();
+    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!event.defaultPrevented&&(!(event.target instanceof Element)||!event.target.closest('[role="dialog"]')||event.target.closest('[role="dialog"]')===expandedRef.current)){event.stopPropagation();expandedRef.current?.querySelector<HTMLButtonElement>('[data-avatar-close]')?.click();}};
+    document.addEventListener('keydown',escape);
+    return()=>{document.body.style.overflow=overflow;document.removeEventListener('keydown',escape);if(previous?.isConnected)previous.focus();};
+  },[size,expanded,preferenceKey]);
   const ready=loadedKey===preferenceKey;
   const toggleExpanded=useCallback(()=>chooseSize(size==='expanded'?'compact':'expanded'),[size,preferenceKey,appearance,mode]);
-  return <div className={expanded&&size==='expanded'?"fixed inset-3 z-[110] overflow-y-auto rounded-3xl border border-violet-400/30 bg-void p-4 shadow-2xl":"relative"}>{expanded&&size==='expanded'?<button type="button" onClick={toggleExpanded} className="mb-3 flex min-h-11 items-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200">‹ Voltar ao perfil</button>:null}
+  return <div ref={expandedRef} tabIndex={expanded&&size==='expanded'?-1:undefined} role={expanded&&size==='expanded'?'dialog':undefined} aria-modal={expanded&&size==='expanded'?true:undefined} aria-label={expanded&&size==='expanded'?'Meu avatar':undefined} onKeyDown={event=>{
+    if(size!=='expanded'||event.key!=='Tab')return;
+    const items=Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), summary, input:not(:disabled), [tabindex="0"]')).filter(x=>x.getClientRects().length);
+    const first=items[0],last=items[items.length-1];if(!first)return;
+    if(event.shiftKey&&(document.activeElement===first||document.activeElement===event.currentTarget)){event.preventDefault();last.focus();}
+    else if(!event.shiftKey&&(document.activeElement===last||document.activeElement===event.currentTarget)){event.preventDefault();first.focus();}
+  }} className={expanded&&size==='expanded'?"fixed inset-0 z-[110] sm:inset-3 overflow-y-auto rounded-3xl border border-surface-border bg-void p-4 shadow-2xl":"relative"}>{expanded&&size==='expanded'?<button data-avatar-close type="button" onClick={toggleExpanded} className="mb-3 flex min-h-11 items-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/10 px-3 py-2 text-xs font-semibold text-violet-200"><X size={16}/> Voltar ao perfil</button>:null}
 
-    {expanded&&size==='hidden'?<p className="rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">Avatar oculto. Os registros continuam disponíveis. <button type="button" className="ml-1 underline" onClick={()=>chooseSize('compact')}>Mostrar</button></p>:!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-slate-400">Preparando avatar…</p>:
+    <div className={expanded&&size==='expanded'?'sticky top-0 z-10 rounded-2xl bg-void pb-2':''}>{expanded&&size==='hidden'?<p className="rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">Avatar oculto. Os registros continuam disponíveis. <button type="button" className="ml-1 underline" onClick={()=>chooseSize('compact')}>Mostrar</button></p>:!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-slate-400">Preparando avatar…</p>:
       expanded&&mode==='3d'?<Avatar3DBoundary onUnavailable={fallback}><Avatar3D skin={skin} appearance={appearance} devices={devices} onDeviceSelect={onDeviceSelect} onBrainSelect={onBrainSelect} body={body} onBodySelect={onBodySelect} compact={size!=='expanded'} controlsContainer={size==='expanded'?controlsContainer:null} onEmptyTap={toggleExpanded} attention={attention} onUnavailable={fallback}/></Avatar3DBoundary>:
       <div className="relative"><HealthBody appearance={appearance} surgeryMarkers={body?.surgeryMarkers} expression={body?.expression} onBodySelect={onBodySelect} onDeviceSelect={onDeviceSelect} skin={skin} devices={devices} expanded={expanded&&size==='expanded'} showControls={!expanded} controlsContainer={expanded&&size==='expanded'?controlsContainer:undefined}/>{expanded&&ready&&size!=='hidden'?<button type="button" aria-label={size==='expanded'?'Minimizar avatar':'Ampliar avatar'} onClick={toggleExpanded} className="absolute inset-0 h-full w-full rounded-2xl focus-visible:outline-2 focus-visible:outline-violet-300"/>:null}</div>}
+    </div>
+    {expanded&&ready&&size==='compact'?<button type="button" onClick={()=>chooseSize('expanded')} className="mx-auto flex min-h-11 items-center justify-center gap-1.5 px-2 text-[11px] font-semibold text-emerald-200"><Shirt size={14}/> Meu avatar · personalizar</button>:null}
     {expanded&&ready&&size==='expanded'?<details className="group mt-3 rounded-2xl border border-violet-400/25 bg-violet-400/[0.045] p-3">
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl px-2 py-1 text-xs font-semibold text-violet-200"><SlidersHorizontal size={18}/><span className="flex-1"><span className="block text-sm">Visualização e controles</span><span className="mt-1 block text-[10px] font-normal text-ink-muted">Girar, aproximar e escolher a apresentação</span></span><ChevronDown size={17} className="transition-transform group-open:rotate-180"/></summary>
       <div className="mx-auto mb-3 flex max-w-[340px] gap-2" aria-label="Visualização do avatar">

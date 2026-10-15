@@ -251,7 +251,7 @@ function HealthDashboard({
                     {person?.name || "Seu perfil"}
                   </h2>
                   <p className="text-xs text-ink-muted">
-                    {age !== null ? `${age} anos · ` : ""}Perfil da pessoa ativa
+                    {age !== null ? `${age} anos · ` : ""}Seu espaço de saúde
                   </p>
                 </div>
                 <button
@@ -273,13 +273,13 @@ function HealthDashboard({
                 </button>
               </div>
               {/* V156 compact health identity: model at left, evidence to the right. */}
-              <div className="mt-3 grid grid-cols-[minmax(0,42%)_minmax(0,1fr)] items-start gap-3">
-                <div className="min-w-0 rounded-2xl bg-violet-400/[0.025]">
+              <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-start gap-3">
+                <div className="min-w-0 rounded-2xl bg-emerald-300/[0.025]">
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3 self-center">
                   <div>
-                    <p className="text-[10px] text-ink-muted">Altura</p>
+                    <p className="text-[11px] text-ink-muted">Altura</p>
                     <p className="text-lg font-semibold">
                       {profile?.height_cm ? `${profile.height_cm} cm` : "—"}
                     </p>
@@ -287,9 +287,9 @@ function HealthDashboard({
                   <button
                     type="button"
                     onClick={() => open("peso")}
-                    className="block text-left"
+                    className="block min-h-14 w-full rounded-xl text-left focus-visible:outline focus-visible:outline-emerald-300"
                   >
-                    <p className="text-[10px] text-ink-muted">Último peso</p>
+                    <p className="text-[11px] text-ink-muted">Último peso</p>
                     <p className="text-lg font-semibold">
                       {weight?.valor_numerico
                         ? `${weight.valor_numerico} kg`
@@ -302,7 +302,7 @@ function HealthDashboard({
                     )}
                   </button>
                   <div>
-                    <p className="text-[10px] text-ink-muted">IMC calculado</p>
+                    <p className="text-[11px] text-ink-muted">IMC calculado</p>
                     <p className="text-lg font-semibold">{index ?? "—"}</p>
                   </div>
                 </div>
@@ -325,21 +325,7 @@ function HealthDashboard({
                   {bodyContext.supports.length>0?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Equipamentos</button>:null}
                 </div>
               </details>
-              <p className="text-[10px] leading-relaxed text-ink-muted">
-                O avatar representa seu perfil e aparelhos. O IMC não mede
-                composição corporal.{" "}
-                {age !== null && age < 20
-                  ? "A avaliação de crianças e adolescentes utiliza idade e crescimento."
-                  : "Interprete com seu histórico e avaliação profissional."}{" "}
-                <a
-                  href="https://www.cdc.gov/bmi/about/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  Fonte: CDC
-                </a>
-              </p>
+              <details className="mt-2 text-[11px] leading-relaxed text-ink-muted"><summary className="min-h-11 cursor-pointer py-3">Sobre o perfil e o IMC</summary><p className="pb-3">O avatar representa suas escolhas e os registros disponíveis. O IMC não mede composição corporal. {age !== null && age < 20 ? "A avaliação de crianças e adolescentes utiliza idade e crescimento." : "Interprete com seu histórico e avaliação profissional."} <a href="https://www.cdc.gov/bmi/about/" target="_blank" rel="noreferrer" className="underline">Fonte: CDC</a></p></details>
               {!profile && (
                 <button
                   type="button"
@@ -350,7 +336,7 @@ function HealthDashboard({
                 </button>
               )}
             </section>
-            <section className="rounded-[24px] border border-violet-400/15 bg-surface p-3">
+            <section className="rounded-[24px] border border-surface-border bg-surface p-3">
               <div className="flex items-center gap-3">
                 <span className={`rounded-xl p-3 ${intelligence.insights.some(x=>x.urgencia==='alta'||x.gravidadeSeguranca==='critica')?'bg-rose-400/10 text-rose-300':intelligence.insights.some(x=>x.urgencia==='media')?'bg-amber-400/10 text-amber-300':'bg-violet-400/10 text-violet-300'}`}><Brain size={20}/></span>
                 <div className="min-w-0 flex-1">

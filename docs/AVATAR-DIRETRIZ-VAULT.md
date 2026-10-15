@@ -25,3 +25,10 @@ O Avatar é uma representação escolhida pela própria pessoa — não um perso
 4. Auditar performance e precisão da sincronização em todas as áreas, preservar a autoridade do repositório e nunca transformar um arquivo compartilhado em registros clínicos duplicados.
 
 Esta diretriz é parte do código versionado e independe da memória da conta do ChatGPT.
+
+## Continuidade V159
+
+- Priorizar evolução conjunta de Minha Saúde, rotina de doses, documentos, medicamentos, performance e sincronização. O Avatar é uma parte da experiência.
+- Armações retangulares devem ter lados retos; não simular o formato achatando uma circunferência.
+- Falta de medicamento é um motivo confirmado pela pessoa, não inferido automaticamente do estoque zerado. Revisão em lote exige confirmação explícita e mantém os slots e registros individuais.
+- Manter renderização 3D sob demanda, pausa fora da tela, descarte de recursos e fallback. Não adicionar animação permanente apenas para parecer vivo.
