@@ -4,6 +4,7 @@ import {avatarVisualSignature,avatarColor} from "./avatar";
 import {validDate} from './metrics';
 import {avatarWeightContext} from './avatar-readings';
 import {avatarSurgeryAgenda} from './avatar-surgeries';
+import {avatarSurgeryMarkers} from './avatar-surgery-markers';
 export const MOOD_CHOICES={muito_bem:'Muito bem',bem:'Bem',neutro:'Neutro',triste:'Triste',muito_triste:'Muito triste'} as const;
 export type MoodChoice=keyof typeof MOOD_CHOICES;
 export type AvatarBodyPart='mood'|'weight'|'surgery'|'equipment';
@@ -27,7 +28,7 @@ export function avatarBodyContext(records:RegistroSaude[],surgeries:Cirurgia[],d
  const surgery=surgeryAgenda.upcoming[0]||surgeryAgenda.unconfirmed[0]||null;
  const moodEvidence={from:start,to:today,days:moods.length,positive,negative,neutral:moods.length-positive-negative,
   reason:expression==='happy'?'positive':expression==='reflective'?'negative':moods.length<3?'insufficient':'mixed'} as const;
- return {today,expression,moods,positive,negative,moodEvidence,weight:avatarWeightContext(records,pid,uid,today).comparison,surgery,surgeryAgenda,supports:avatarBraceSlots(devices.filter(own))} as const;
+ return {today,expression,moods,positive,negative,moodEvidence,weight:avatarWeightContext(records,pid,uid,today).comparison,surgery,surgeryAgenda,surgeryMarkers:avatarSurgeryMarkers(surgeryAgenda),supports:avatarBraceSlots(devices.filter(own))} as const;
 }
 export type AvatarBodyContext=ReturnType<typeof avatarBodyContext>;
 

@@ -3,6 +3,7 @@ import { surgeryBodyLabel } from '@/lib/surgery-body';
 import type { Cirurgia } from '@/lib/types';
 import type { AvatarBodyContext } from '@/lib/health-profile/avatar-body';
 import { surgeryTime } from '@/lib/health-profile/avatar-surgeries';
+import { surgeriesForMarker } from '@/lib/health-profile/avatar-surgery-markers';
 
 const formatDate = (value: string) => value.split('-').reverse().join('/');
 
@@ -33,9 +34,11 @@ function SurgeryGroup({ title, rows, status, today }: {
   </section>;
 }
 
-export function AvatarSurgeryAgenda({ context }: { context: AvatarBodyContext }) {
-  const { upcoming, unconfirmed, completed, total } = context.surgeryAgenda;
+export function AvatarSurgeryAgenda({ context, markerKey, onShowAll }: { context: AvatarBodyContext; markerKey?: string | null; onShowAll?: () => void }) {
+  const marker = context.surgeryMarkers.find(item => item.key === markerKey);
+  const { upcoming, unconfirmed, completed, total } = markerKey ? surgeriesForMarker(context.surgeryAgenda, marker) : context.surgeryAgenda;
   return <div className="mt-3 space-y-4">
+    {markerKey ? <div className="rounded-xl border border-sky-400/25 bg-sky-400/5 p-3"><h3 className="text-sm font-semibold text-sky-200">{marker?.label || 'Marcação indisponível'}</h3><p className="mt-1 text-xs text-ink-muted">{marker ? 'Registros vinculados a esta região informada. A marca é esquemática.' : 'O registro pode ter sido alterado ou removido. Consulte todas as regiões.'}</p>{onShowAll ? <button type="button" onClick={onShowAll} className="mt-2 min-h-11 text-xs text-sky-300">Ver todas as regiões ›</button> : null}</div> : null}
     <p className="text-xs leading-relaxed text-ink-muted">Um agendamento não confirma cirurgia realizada nem uso de tala. Abra o registro para conferir ou atualizar o status.</p>
     {unconfirmed.length ? <section className="space-y-2 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
       <p className="text-xs leading-relaxed text-amber-200">A data agendada já passou em {unconfirmed.length} {unconfirmed.length === 1 ? 'registro' : 'registros'}. O status continua agendada; confira o que aconteceu.</p>

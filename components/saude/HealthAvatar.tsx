@@ -5,6 +5,7 @@ import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarLayout } from "@/lib/health-profile/avatar";
 import { parseAvatarMode, parseAvatarSize, type AvatarSize, type AvatarMode } from "@/lib/health-profile/avatar-preference";
 import type {AvatarBodyContext,AvatarBodyPart} from "@/lib/health-profile/avatar-body";
+import { SURGERY_MARKER_COLORS, SURGERY_MARKER_LABELS } from "@/lib/health-profile/avatar-surgery-markers";
 import { HealthBody } from "./HealthBody";
 const Avatar3D = dynamic(() => import("./HealthAvatar3D"), { ssr: false, loading: () => <p role="status" className="py-16 text-center text-sm text-slate-400">Preparando avatar 3D…</p> });
 class Avatar3DBoundary extends Component<{onUnavailable:()=>void;children:ReactNode},{failed:boolean}> {
@@ -14,7 +15,7 @@ class Avatar3DBoundary extends Component<{onUnavailable:()=>void;children:ReactN
   render(){return this.state.failed?null:this.props.children;}
 }
 export function HealthAvatar({skin,devices,expanded=false,attention=0,preferenceKey,onDeviceSelect,onBrainSelect,body,onBodySelect}: {
-  body?:AvatarBodyContext;onBodySelect?:(part:AvatarBodyPart)=>void;
+  body?:AvatarBodyContext;onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void;
   skin:string;devices:HealthDevice[];expanded?:boolean;attention?:number;preferenceKey?:string;
   onDeviceSelect?:(id:string)=>void;onBrainSelect?:()=>void;
 }) {
@@ -40,7 +41,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
     {expanded&&ready?<div className="mb-2 flex items-center justify-end gap-2"><button type="button" onClick={()=>chooseSize(size==='expanded'?'compact':size==='hidden'?'compact':'expanded')} aria-expanded={size==='expanded'} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-violet-300">{size==='expanded'?'Recolher avatar':size==='hidden'?'Mostrar avatar':'Ampliar avatar'}</button>{size!=='hidden'?<button type="button" onClick={()=>chooseSize('hidden')} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">Ocultar avatar</button>:null}</div>:null}
     {expanded&&size==='hidden'?<p className="rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">Avatar oculto. Os registros e alertas continuam disponíveis.</p>:!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-slate-400">Preparando avatar…</p>:
       expanded&&mode==='3d'?<Avatar3DBoundary onUnavailable={fallback}><Avatar3D skin={skin} devices={devices} onDeviceSelect={onDeviceSelect} onBrainSelect={onBrainSelect} body={body} onBodySelect={onBodySelect} compact={size!=='expanded'} controlsContainer={size==='expanded'?controlsContainer:null} attention={attention} onUnavailable={fallback}/></Avatar3DBoundary>:
-      <HealthBody expression={body?.expression} onBodySelect={onBodySelect} onDeviceSelect={onDeviceSelect} skin={skin} devices={devices} expanded={expanded&&size==='expanded'} showControls={!expanded} controlsContainer={expanded&&size==='expanded'?controlsContainer:undefined}/>}
+      <HealthBody surgeryMarkers={body?.surgeryMarkers} expression={body?.expression} onBodySelect={onBodySelect} onDeviceSelect={onDeviceSelect} skin={skin} devices={devices} expanded={expanded&&size==='expanded'} showControls={!expanded} controlsContainer={expanded&&size==='expanded'?controlsContainer:undefined}/>}
     {expanded&&ready&&size==='expanded'?<details className="mt-3 rounded-xl border border-slate-400/20 p-3">
       <summary className="min-h-11 cursor-pointer content-center text-xs text-slate-300">Controles do avatar</summary>
       <div className="mx-auto mb-3 flex max-w-[340px] gap-2" aria-label="Visualização do avatar">
@@ -50,6 +51,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
       {mode==='illustration'&&onDeviceSelect?<ul className="mt-3 space-y-2" aria-label="Aparelhos representados">{avatarLayout(devices).slots.map(({device,kind,side})=><li key={`${side}-${kind}`}><button type="button" className="min-h-11 w-full rounded-xl border border-surface-border p-3 text-left text-xs text-ink-primary" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)}>{device.name} ›</button></li>)}</ul>:null}
       {onBrainSelect?<button type="button" onClick={onBrainSelect} className="mt-3 min-h-11 w-full rounded-xl border border-violet-400/25 bg-violet-400/5 p-3 text-xs text-violet-300">Abrir contexto do Brain ›</button>:null}
     </details>:null}
+    {expanded&&body?.surgeryMarkers.length&&onBodySelect?<details className="mt-2 rounded-xl border border-surface-border p-3"><summary className="min-h-11 cursor-pointer content-center text-xs text-sky-300">Regiões informadas · {body.surgeryMarkers.length}</summary><p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Marcação esquemática das cirurgias registradas. Direita e esquerda são da pessoa representada. A coluna fica nas costas do 3D e também pode ser consultada nesta lista.</p><ul className="space-y-1">{body.surgeryMarkers.map(marker=><li key={marker.key}><button type="button" onClick={()=>onBodySelect('surgery',marker.key)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-left text-xs"><span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:SURGERY_MARKER_COLORS[marker.tone]}}/><span className="min-w-0 flex-1">{marker.label}<span className="mt-1 block text-[10px] text-ink-muted">{SURGERY_MARKER_LABELS[marker.tone]} · {marker.surgeryIds.length} registro(s)</span></span><span aria-hidden="true">›</span></button></li>)}</ul></details>:null}
     {expanded&&unavailable?<p role="status" className="mt-3 text-center text-xs text-slate-400">O 3D ficou indisponível neste aparelho. A ilustração continua disponível.</p>:null}
   </div>;
 }

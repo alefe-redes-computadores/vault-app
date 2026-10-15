@@ -6,16 +6,19 @@ import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarColor, avatarLayout, avatarTapEligible } from "@/lib/health-profile/avatar";
 import { avatarRenderRatio, avatarZoom } from "@/lib/health-profile/avatar-preference";
 import {avatarBodyVisualSignature,avatarBraceSlots,type AvatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
+import { SURGERY_MARKER_COLORS, type AvatarSurgeryMarker } from "@/lib/health-profile/avatar-surgery-markers";
 import { watchModelByName } from "@/lib/health-profile/device-catalog";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 
 import { avatarAttentionColor, shortestAvatarAngle } from "@/lib/health-profile/avatar-context";
 
-type Controller = { attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void; nudge:(delta:number)=>void;expression:(value:AvatarBodyContext["expression"])=>void;weight:(visible:boolean)=>void };
-export default function HealthAvatar3D({ skin, devices, onUnavailable, attention=0, onDeviceSelect, onBrainSelect, controlsContainer, compact=false, body, onBodySelect }: { skin: string; devices: HealthDevice[]; attention?:number; onDeviceSelect?:(id:string)=>void; onBrainSelect?:()=>void; compact?:boolean;body?:AvatarBodyContext;onBodySelect?:(part:AvatarBodyPart)=>void; controlsContainer?:HTMLElement|null; onUnavailable: () => void }) {
+type Controller = { markers:(markers:AvatarSurgeryMarker[])=>void; attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void; nudge:(delta:number)=>void;expression:(value:AvatarBodyContext["expression"])=>void;weight:(visible:boolean)=>void };
+export default function HealthAvatar3D({ skin, devices, onUnavailable, attention=0, onDeviceSelect, onBrainSelect, controlsContainer, compact=false, body, onBodySelect }: { skin: string; devices: HealthDevice[]; attention?:number; onDeviceSelect?:(id:string)=>void; onBrainSelect?:()=>void; compact?:boolean;body?:AvatarBodyContext;onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void; controlsContainer?:HTMLElement|null; onUnavailable: () => void }) {
   const host = useRef<HTMLDivElement>(null), controller = useRef<Controller | null>(null);
   const [zoom, setZoom] = useState(100), [direction, setDirection] = useState("front");
   const zoomId = useId();
+  const markersRef=useRef(body?.surgeryMarkers||[]);
+  useEffect(()=>{markersRef.current=body?.surgeryMarkers||[];controller.current?.markers(markersRef.current);},[body?.surgeryMarkers]);
   const weightRef=useRef(!!body?.weight);
   useEffect(()=>{weightRef.current=!!body?.weight;controller.current?.weight(weightRef.current);},[!!body?.weight]);
   const expressionRef=useRef(body?.expression||"neutral");
@@ -96,6 +99,29 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     const faceTarget=mesh(new THREE.BoxGeometry(.56,.68,.66),hitMaterial,0,2.8,0);faceTarget.userData.action="mood";
     const weightMarker=mesh(new THREE.TorusGeometry(.032,.006,6,18),materials.white,0,1.84,.216);weightMarker.visible=weightRef.current;
     const weightTarget=mesh(new THREE.BoxGeometry(.36,.14,.12),hitMaterial,0,1.84,.26);weightTarget.userData.action="weight";
+    const markerGroup=new THREE.Group();model.add(markerGroup);
+    const markerGeometry=new THREE.SphereGeometry(.036,12,8),markerRingGeometry=new THREE.TorusGeometry(.057,.008,6,18),markerHitGeometry=new THREE.SphereGeometry(.10,10,8);
+    const markerMaterials={upcoming:new THREE.MeshBasicMaterial({color:SURGERY_MARKER_COLORS.upcoming}),unconfirmed:new THREE.MeshBasicMaterial({color:SURGERY_MARKER_COLORS.unconfirmed}),completed:new THREE.MeshBasicMaterial({color:SURGERY_MARKER_COLORS.completed})};
+    const markerLines=new Map<string,THREE.BufferGeometry>();
+    const markerLineMaterials={upcoming:new THREE.LineBasicMaterial({color:SURGERY_MARKER_COLORS.upcoming,transparent:true,opacity:.55}),unconfirmed:new THREE.LineBasicMaterial({color:SURGERY_MARKER_COLORS.unconfirmed,transparent:true,opacity:.55}),completed:new THREE.LineBasicMaterial({color:SURGERY_MARKER_COLORS.completed,transparent:true,opacity:.55})};
+    let markerSignature='';
+    const setMarkers=(markers:AvatarSurgeryMarker[])=>{
+      const signature=JSON.stringify(markers.map(marker=>[marker.key,marker.tone]));
+      if(signature===markerSignature)return;markerSignature=signature;markerGroup.clear();
+      for(const marker of markers){
+        const material=markerMaterials[marker.tone];
+        if(marker.position[0]!==0){
+          let geometry=markerLines.get(marker.key);
+          if(!geometry){const [x,y,z]=marker.position;geometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x*.78,y,z),new THREE.Vector3(x,y,z)]);markerLines.set(marker.key,geometry);}
+          const line=new THREE.Line(geometry,markerLineMaterials[marker.tone]);line.raycast=()=>{};markerGroup.add(line);
+        }
+
+        for(const geometry of [markerGeometry,markerRingGeometry,markerHitGeometry]){
+          const object=new THREE.Mesh(geometry,geometry===markerHitGeometry?hitMaterial:material);
+          object.position.set(...marker.position);object.userData.action='surgery';object.userData.markerKey=marker.key;markerGroup.add(object);
+        }
+      }
+    };
     // Badge and phone are local canvas textures, not downloads or personal data.
     const textures: THREE.Texture[]=[];
     const label=(title:string,subtitle:string)=>{
@@ -157,7 +183,8 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     });};
     const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
     const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
-    controller.current={weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+    setMarkers(markersRef.current);
+    controller.current={markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};
@@ -168,13 +195,13 @@ export default function HealthAvatar3D({ skin, devices, onUnavailable, attention
     const raycaster=new THREE.Raycaster();
     const down=(e:PointerEvent)=>{if(!e.isPrimary || (e.pointerType==='mouse' && e.button!==0))return;transition=null;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,angle:model.rotation.y,moved:false,rotating:false};};
     const move=(e:PointerEvent)=>{if(!pointer||pointer.id!==e.pointerId)return;const dx=e.clientX-pointer.x;pointer.moved ||= Math.hypot(dx,e.clientY-pointer.y)>6;if(Math.abs(dx)<=6||Math.abs(dx)<Math.abs(e.clientY-pointer.y))return;try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}model.rotation.y=pointer.angle+dx*.012;if(!pointer.rotating){pointer.rotating=true;setDragging(true);setDirection("custom");}draw();};
-    const up=(e:PointerEvent)=>{if(pointer?.id!==e.pointerId)return;const tap=avatarTapEligible(e.type,pointer.moved,pointer,{x:e.clientX,y:e.clientY});if(pointer.rotating){setDragging(false);draw();}pointer=null;if(tap){const rect=renderer.domElement.getBoundingClientRect();if(e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom){model.updateMatrixWorld(true);camera.updateMatrixWorld(true);raycaster.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const target=raycaster.intersectObject(model,true)[0]?.object.userData;if(target?.action==="device")actions.current.onDeviceSelect?.(target.deviceId);else if(target?.action==="brain")actions.current.onBrainSelect?.();else if(target?.action==="mood"||target?.action==="weight")actions.current.onBodySelect?.(target.action);}}try{if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}catch{}pointer=null;};
+    const up=(e:PointerEvent)=>{if(pointer?.id!==e.pointerId)return;const tap=avatarTapEligible(e.type,pointer.moved,pointer,{x:e.clientX,y:e.clientY});if(pointer.rotating){setDragging(false);draw();}pointer=null;if(tap){const rect=renderer.domElement.getBoundingClientRect();if(e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom){model.updateMatrixWorld(true);camera.updateMatrixWorld(true);raycaster.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const target=raycaster.intersectObject(model,true)[0]?.object.userData;if(target?.action==="device")actions.current.onDeviceSelect?.(target.deviceId);else if(target?.action==="brain")actions.current.onBrainSelect?.();else if(target?.action==="surgery")actions.current.onBodySelect?.("surgery",target.markerKey);else if(target?.action==="mood"||target?.action==="weight")actions.current.onBodySelect?.(target.action);}}try{if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}catch{}pointer=null;};
     const lost=(event:Event)=>{event.preventDefault();onUnavailable();};
     element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);element.addEventListener("lostpointercapture",up);renderer.domElement.addEventListener("webglcontextlost",lost);
     resize();
     return ()=>{
       disposed=true;cancelAnimationFrame(frame);controller.current=null;resizeObserver.disconnect();visibilityObserver.disconnect();document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
-      const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});Object.values(materials).forEach(m=>mats.add(m));geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
+      const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});Object.values(materials).forEach(m=>mats.add(m));[markerGeometry,markerRingGeometry,markerHitGeometry].forEach(g=>geometries.add(g));Object.values(markerMaterials).forEach(m=>mats.add(m));markerLines.forEach(g=>geometries.add(g));Object.values(markerLineMaterials).forEach(m=>mats.add(m));mats.add(hitMaterial);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
     };
     // Signature includes every appearance field used by this scene; metadata updates keep the canvas.
   },[visualSignature,onUnavailable]);

@@ -1,5 +1,6 @@
 import { memo, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { SurgeryIllustrationMarkers } from "./SurgeryIllustrationMarkers";
 import { Brain } from "lucide-react";
 import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 import type { HealthDevice } from "@/lib/health-profile/types";
@@ -7,7 +8,7 @@ import {avatarBraceSlots,type AvatarBodyContext,type AvatarBodyPart} from "@/lib
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
-export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false, showControls = true, controlsContainer, expression="neutral", onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart)=>void;onDeviceSelect?:(id:string)=>void }) {
+export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false, showControls = true, controlsContainer, expression="neutral", surgeryMarkers=[], onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; surgeryMarkers?:AvatarBodyContext["surgeryMarkers"];expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void;onDeviceSelect?:(id:string)=>void }) {
   const [view,setView]=useState<"front"|"left"|"right">("front");
   const angle=view==="front"?0:view==="left"?-18:18;
   const uid = useId().replace(/:/g, "");
@@ -152,6 +153,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
         })}
         {onBodySelect?<g role="button" tabIndex={0} aria-label="Ver humor informado" onClick={()=>onBodySelect('mood')} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onBodySelect('mood');}}}><rect x="65" y="6" width="50" height="56" fill="transparent" className="cursor-pointer"/></g>:null}
         {avatarBraceSlots(devices).map(d=>{const x=d.side==='right'?32:134;return <g key={d.id} role="button" tabIndex={0} aria-label={`Abrir equipamento ${d.name}`} onClick={()=>onDeviceSelect?.(d.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onDeviceSelect?.(d.id);}}}><rect x={x} y="147" width="14" height="18" rx="4" fill={avatarColor(d.color,'#7dd3fc')}/><path d={`M${x} 151 h14 M${x} 160 h14`} stroke="#17212b" strokeWidth="2"/></g>;})}
+        {onBodySelect?<SurgeryIllustrationMarkers markers={surgeryMarkers} onSelect={key=>onBodySelect("surgery",key)}/>:null}
       </svg>
       <p aria-hidden="true" className="-mt-1 text-center font-mono text-[9px] tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
       {controlsContainer===undefined?(showControls?perspective:null):controlsContainer?createPortal(perspective,controlsContainer):null}

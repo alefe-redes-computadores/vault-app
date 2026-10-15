@@ -80,6 +80,8 @@ function HealthDashboard({
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
+  const [bodyMarkerKey,setBodyMarkerKey]=useState<string|null>(null);
+  const selectBody=(part:AvatarBodyPart|null,markerKey?:string)=>{setBodyMarkerKey(markerKey||null);setBodyPart(part);};
   const intelligence = useHealthIntelligence({ includeAudit: false });
   const { personId, person, profile, devices, loading, error } = data;
   const [panel, setPanel] = useState<
@@ -271,13 +273,13 @@ function HealthDashboard({
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <div className="w-full">
                   <AvatarHealthContext insights={intelligence.insights} loading={intelligence.isLoading} error={intelligence.error} />
-                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={setBodyPart} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
+                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
 
                   <div className="my-2 flex flex-wrap gap-2" aria-label="Registros representados no corpo">
-                    <button type="button" onClick={()=>setBodyPart('mood')} className="min-h-11 rounded-xl border border-violet-400/25 px-3 py-2 text-xs text-violet-300">{bodyContext.expression==='happy'?'☺ Humor informado':bodyContext.expression==='reflective'?'☹ Humor informado':'Humor · registros'}</button>
-                    <button type="button" onClick={()=>setBodyPart('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">{bodyContext.weight?`Peso ${bodyContext.weight.delta>0?'+':''}${bodyContext.weight.delta.toLocaleString('pt-BR')} kg`:'Peso · registros'}</button>
-                    {bodyContext.surgeryAgenda.total?<button type="button" aria-label="Abrir contexto de cirurgias" onClick={()=>setBodyPart('surgery')} className={"min-h-11 rounded-xl border px-3 py-2 text-xs "+(bodyContext.surgeryAgenda.unconfirmed.length?'border-amber-400/25 text-amber-200':'border-sky-400/25 text-sky-300')}>{bodyContext.surgeryAgenda.unconfirmed.length?`Conferir status · ${bodyContext.surgeryAgenda.unconfirmed.length}`:(bodyContext.surgery && surgeryBodyLabel(bodyContext.surgery) ? surgeryBodyLabel(bodyContext.surgery) : `Cirurgias · ${bodyContext.surgeryAgenda.total}`)} ›</button>:null}
-                    {bodyContext.supports.length?<button type="button" onClick={()=>setBodyPart('equipment')} className="min-h-11 rounded-xl border border-sky-400/25 px-3 py-2 text-xs text-sky-300">Equipamentos em uso ›</button>:null}
+                    <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/25 px-3 py-2 text-xs text-violet-300">{bodyContext.expression==='happy'?'☺ Humor informado':bodyContext.expression==='reflective'?'☹ Humor informado':'Humor · registros'}</button>
+                    <button type="button" onClick={()=>selectBody('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">{bodyContext.weight?`Peso ${bodyContext.weight.delta>0?'+':''}${bodyContext.weight.delta.toLocaleString('pt-BR')} kg`:'Peso · registros'}</button>
+                    {bodyContext.surgeryAgenda.total?<button type="button" aria-label="Abrir contexto de cirurgias" onClick={()=>selectBody('surgery')} className={"min-h-11 rounded-xl border px-3 py-2 text-xs "+(bodyContext.surgeryAgenda.unconfirmed.length?'border-amber-400/25 text-amber-200':'border-sky-400/25 text-sky-300')}>{bodyContext.surgeryAgenda.unconfirmed.length?`Conferir status · ${bodyContext.surgeryAgenda.unconfirmed.length}`:(bodyContext.surgery && surgeryBodyLabel(bodyContext.surgery) ? surgeryBodyLabel(bodyContext.surgery) : `Cirurgias · ${bodyContext.surgeryAgenda.total}`)} ›</button>:null}
+                    {bodyContext.supports.length?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-sky-400/25 px-3 py-2 text-xs text-sky-300">Equipamentos em uso ›</button>:null}
                   </div>
                   <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 </div>
@@ -491,7 +493,7 @@ function HealthDashboard({
                 ))}
               </div>
             </section>
-            {bodyPart?<AvatarBodyEvidence part={bodyPart} context={bodyContext} onClose={()=>setBodyPart(null)} onWeight={()=>{setBodyPart(null);setMetric('peso');}} onEquipment={()=>{setBodyPart(null);setEditDevice(null);open('device');}}/>:null}
+            {bodyPart?<AvatarBodyEvidence surgeryMarkerKey={bodyMarkerKey} onShowAllSurgeries={()=>selectBody("surgery")} part={bodyPart} context={bodyContext} onClose={()=>selectBody(null)} onWeight={()=>{selectBody(null);setMetric('peso');}} onEquipment={()=>{selectBody(null);setEditDevice(null);open('device');}}/>:null}
             <MetricHistoryLink personId={loading||isLoading||!person?.user_id?"":personId} today={today} onOpen={target=>{setInsightTarget(target);setMetric(target.type);}}/>
             {metric && <HealthMetricDetails key={metric+(insightTarget?.since||"")+(insightTarget?.until||"")} initialRange={insightTarget?.type===metric?insightTarget:undefined} type={metric} records={records} devices={devices} today={today} onClose={closeMetric} onAdd={() => { closeMetric(); open(metric); }} onRecord={id => go(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`)} />}
             {panel && Object.prototype.hasOwnProperty.call(METRICS, panel) && (
