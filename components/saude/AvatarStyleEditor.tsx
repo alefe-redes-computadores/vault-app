@@ -18,14 +18,14 @@ function ColorSelector({value, onChange, label}:{value:string;onChange:(color:st
     </div>
   </fieldset>;
 }
-export function AvatarStyleEditor({value,onChange}:{value:AvatarStyle;onChange:(next:AvatarStyle)=>void}) {
+export function AvatarStyleEditor({value,onChange,onPreview}:{value:AvatarStyle;onChange:(next:AvatarStyle)=>void;onPreview?:(frame:"face"|"shoes")=>void}) {
   const [category,setCategory]=useState<'hat'|'glasses'|'sneakers'>('hat');
   const change=(key:Key,next:string)=>onChange(normalizeAvatarStyle({...value,[key]:next}));
-  return <details className="group mt-3 rounded-2xl border border-surface-border bg-gradient-to-br from-emerald-400/[0.035] to-transparent p-3">
+  return <details onToggle={event=>{if(event.currentTarget.open)onPreview?.(category==='sneakers'?'shoes':'face');}} className="group mt-3 rounded-2xl border border-surface-border bg-gradient-to-br from-emerald-400/[0.035] to-transparent p-3">
     <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-xl px-1 text-left text-emerald-200"><span className="rounded-xl bg-emerald-400/10 p-2"><Shirt size={19}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-bold">Meu estilo</span><span className="mt-1 block truncate text-[11px] text-ink-muted">{avatarStyleLabel(value)} · Toque para personalizar</span></span><ChevronDown size={19} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
     <p className="my-3 rounded-xl bg-surface-raised/50 p-3 text-[11px] leading-relaxed text-ink-muted">Personalize o visual do seu personagem. Acessórios são cosméticos, não aparelhos médicos. A escolha fica salva por pessoa neste dispositivo.</p>
     <div className="mb-4 grid grid-cols-3 gap-2" role="group" aria-label="Acessório para personalizar">
-      {([['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>setCategory(key)} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border text-xs ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}><Icon size={19}/>{label}</button>)}
+      {([['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>{setCategory(key);onPreview?.(key==='sneakers'?'shoes':'face');}} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border text-xs ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}><Icon size={19}/>{label}</button>)}
     </div>
     {sections.filter(section=>section.key===category||(category==='hat'&&section.key==='hatBrand'&&value.hat!=='none')).map(section=><div key={section.key} className="mb-4">
       <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-primary">{section.key==='glasses'?<Glasses size={15}/>:section.key==='sneakers'?<Footprints size={15}/>:<Shirt size={15}/>} {section.title}</p>

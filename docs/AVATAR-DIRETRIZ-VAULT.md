@@ -45,3 +45,9 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - A visão do tratamento inclui documentos ligados explicitamente aos seus medicamentos e aquisições, sem duplicar arquivos. Retiradas e processos exigem os vínculos e o escopo de conta/pessoa.
 - Um processo só entra na projeção por uma cadeia válida processo → ciclo → item → medicamento vinculado. Origem comprada e SUS mantêm identidades próprias.
 - Buscar pelo medicamento pode localizar o tratamento, mas a busca nunca cria o vínculo. Medicamento descontinuado pode continuar compondo o histórico sem reativação automática.
+
+## Continuidade V162 — personalização com aproximação
+
+- Corpo, rosto e tênis têm enquadramentos visuais fixos; não dependem de dados clínicos. Boné/óculos aproximam o rosto e tênis aproximam os pés no editor.
+- Cores cosméticas devem atualizar materiais na cena existente, preservando canvas e câmera. Mudanças estruturais de modelo podem reconstruir a geometria com descarte dos recursos anteriores.
+- Manter renderização sob demanda e pausa fora da tela. A aproximação é ferramenta de inspeção, não análise clínica ou reconhecimento facial.
