@@ -39,3 +39,9 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - Pesquisar não cria vínculos nem altera medicamentos, prescrições, estoque ou sincronização.
 - Grupos de Hoje preservam ordem e posição de origem. O botão de grupo abre a revisão existente; estoque zerado não implica automaticamente dose não tomada.
 - Continuar evoluindo também documentos, medicamentos e rotina, além do Avatar.
+
+## Continuidade V161 — tratamentos relacionais
+
+- A visão do tratamento inclui documentos ligados explicitamente aos seus medicamentos e aquisições, sem duplicar arquivos. Retiradas e processos exigem os vínculos e o escopo de conta/pessoa.
+- Um processo só entra na projeção por uma cadeia válida processo → ciclo → item → medicamento vinculado. Origem comprada e SUS mantêm identidades próprias.
+- Buscar pelo medicamento pode localizar o tratamento, mas a busca nunca cria o vínculo. Medicamento descontinuado pode continuar compondo o histórico sem reativação automática.

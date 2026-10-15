@@ -2,6 +2,7 @@
 "use client";
 // VAULT_TREATMENT_DENSITY_V70
 
+import {createLocalSearchIndex,filterLocalSearchIndex} from "@/lib/local-search";
 import {
   Suspense,
   useMemo,
@@ -212,7 +213,7 @@ function TratamentoListContent() {
     useTratamentos();
 
   const {
-    medicamentos = [],
+    medicamentosIncluindoDescontinuados: medicamentos = [],
   } =
     useMedicamentos();
 
@@ -347,6 +348,12 @@ function TratamentoListContent() {
   // ENRIQUECIMENTO
   // ==========================================================
 
+  const acquisitionsByMedication=useMemo(()=>{
+    const map=new Map<string,typeof renovacoes>();
+    for(const row of renovacoes){const list=map.get(row.medicamento_id);if(list)list.push(row);else map.set(row.medicamento_id,[row]);}
+    return map;
+  },[renovacoes]);
+
   const listaEnriquecida =
     useMemo<
       TratamentoEnriquecido[]
@@ -421,7 +428,7 @@ function TratamentoListContent() {
                 tratamento,
                 medicamentos:
                   meds,
-                renovacoes,
+                renovacoes:meds.flatMap(m=>acquisitionsByMedication.get(m.id||"")||[]),
               });
 
             return {
@@ -444,7 +451,7 @@ function TratamentoListContent() {
         tratamentos,
         medicamentosPorTratamento,
         gastoPorMedicamento,
-        renovacoes,
+        acquisitionsByMedication,
       ]
     );
 
@@ -504,42 +511,14 @@ function TratamentoListContent() {
   // FILTRO / BUSCA / ORDENAÇÃO
   // ==========================================================
 
+  const treatmentSearchIndex=useMemo(()=>createLocalSearchIndex(listaEnriquecida,treatment=>[
+    treatment.nome,treatment.condicao,treatment.observacoes,...(medicamentosPorTratamento.get(treatment.id||"")||[]).flatMap(m=>[m.nome,m.dosagem])
+  ]),[listaEnriquecida,medicamentosPorTratamento]);
+
   const filteredList =
     useMemo(
       () => {
-        const normalizedSearch =
-          normalizeSearch(
-            search
-          );
-
-        const result =
-          listaEnriquecida.filter(
-            (
-              tratamento
-            ) => {
-              if (
-                filtroStatus !==
-                  "todos" &&
-                tratamento.status !==
-                  filtroStatus
-              ) {
-                return false;
-              }
-
-              if (
-                !normalizedSearch
-              ) {
-                return true;
-              }
-
-              return normalizeSearch(
-                tratamento.nome ||
-                  ""
-              ).includes(
-                normalizedSearch
-              );
-            }
-          );
+        const result=filterLocalSearchIndex(treatmentSearchIndex,search).filter(tratamento=>filtroStatus==='todos'||tratamento.status===filtroStatus);
 
         return [
           ...result,
@@ -565,7 +544,7 @@ function TratamentoListContent() {
         );
       },
       [
-        listaEnriquecida,
+        treatmentSearchIndex,
         filtroStatus,
         search,
       ]
@@ -658,7 +637,7 @@ function TratamentoListContent() {
           }
         >
           {listaEnriquecida.length > 0 && (
-            <ListSearch
+            <ListSearch initiallyExpanded
               value={search}
               onChange={setSearch}
               placeholder="Buscar tratamento..."

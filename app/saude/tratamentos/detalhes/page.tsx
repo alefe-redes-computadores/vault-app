@@ -1,6 +1,11 @@
 // app/saude/tratamentos/detalhes/page.tsx
 "use client";
 
+import {useAuth} from "@/hooks/useAuth";
+import {useRetiradas} from "@/hooks/useRetiradas";
+import {useHealthSupply} from "@/hooks/useHealthSupply";
+import {treatmentCareContext} from "@/lib/treatment-care-context";
+import {TreatmentCareLinks} from "@/components/saude/TreatmentCareLinks";
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -273,6 +278,9 @@ function TratamentoContent() {
   const id = searchParams.get("id") || "";
 
   const { activePersonId } = useActivePersonId();
+  const {user}=useAuth();
+  const {retiradas}=useRetiradas();
+  const supply=useHealthSupply();
 
   const {
     getTratamento,
@@ -530,23 +538,8 @@ function TratamentoContent() {
   // RENOVAÇÕES DO TRATAMENTO
   // ==========================================================
 
-  const linkedRenovacoes = useMemo(() => {
-    const medIds = new Set(
-      linkedMedicamentos
-        .map((medicamento) => medicamento.id)
-        .filter((medicamentoId): medicamentoId is string =>
-          Boolean(medicamentoId),
-        ),
-    );
-
-    return renovacoes
-      .filter((renovacao) => medIds.has(renovacao.medicamento_id))
-      .sort((a, b) =>
-        String(b.data_aquisicao || b.data || "").localeCompare(
-          String(a.data_aquisicao || a.data || ""),
-        ),
-      );
-  }, [linkedMedicamentos, renovacoes]);
+  const careContext=useMemo(()=>treatmentCareContext(tratamento,linkedMedicamentos,documentosDaPessoa,renovacoes,retiradas,supply.data,user?.id||"",activePersonId||""),[tratamento,linkedMedicamentos,documentosDaPessoa,renovacoes,retiradas,supply.data,user?.id,activePersonId]);
+  const linkedRenovacoes=careContext.renewals;
 
   // ==========================================================
   // INTELIGÊNCIA DO TRATAMENTO
@@ -568,29 +561,7 @@ function TratamentoContent() {
   // DOCUMENTOS DO TRATAMENTO
   // ==========================================================
 
-  const linkedDocuments = useMemo(() => {
-    if (!id || !activePersonId) {
-      return [];
-    }
-
-    return (documentosDaPessoa as DocumentPersonScoped[])
-      .filter((document) => {
-        if (document.person_id !== activePersonId) {
-          return false;
-        }
-
-        const metadata = (document.metadata || {}) as DocumentMetadata;
-
-        return (
-          metadata.tratamento_id === id ||
-          (document.entidade_tipo === "tratamento" &&
-            document.entidade_id === id)
-        );
-      })
-      .sort((a, b) =>
-        String(b.created_at || "").localeCompare(String(a.created_at || "")),
-      );
-  }, [documentosDaPessoa, activePersonId, id]);
+  const linkedDocuments=careContext.documents;
 
   // ==========================================================
   // HISTÓRICO CLÍNICO RELACIONAL
@@ -898,7 +869,7 @@ function TratamentoContent() {
           belongsToPerson(documento, activePersonId),
         ),
 
-        retiradas: [],
+        retiradas: careContext.withdrawals,
       },
       12,
     );
@@ -913,6 +884,7 @@ function TratamentoContent() {
     linkedCirurgias,
     cidsVinculados,
     linkedDocuments,
+    careContext.withdrawals,
   ]);
 
   // ==========================================================
@@ -1348,6 +1320,8 @@ function TratamentoContent() {
               />
             </div>
           </motion.div>
+
+          <TreatmentCareLinks context={careContext} color={theme.hex} onNavigate={href=>router.push(href)} loading={supply.loading}/>
 
           {tratamentoInsight && tratamentoInsight.alertas.length > 0 && (
             <motion.div

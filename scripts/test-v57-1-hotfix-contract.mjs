@@ -5,6 +5,6 @@ const ok=(v,m)=>{if(!v)throw new Error(`FALHOU: ${m}`);console.log(`OK: ${m}`)};
 ok(!b.includes("item.data,\n      contexto.hoje || getLocalTodayISO()"),"assinatura inválida removida");
 ok(b.includes("startOfToday(\n        contexto.hoje"),"agenda respeita data-base contextual");
 ok(b.includes("retiradas: Array<"),"HealthInsightContext continua estrito");
-ok(t.includes("retiradas: []"),"timeline manual declara retiradas");
+ok(t.includes("retiradas: careContext.withdrawals") && t.includes("careContext.withdrawals,"),"timeline declara retiradas vinculadas e reage às mudanças");
 ok(b.includes("VAULT_HEALTH_AGENDA_V57"),"V57 preservada");
 console.log("VAULT V57.1 R2 — CONTRATO OK");
