@@ -80,6 +80,7 @@ function HealthDashboard({
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
+  const [brainSummaryOpen,setBrainSummaryOpen]=useState(false);
   const [bodyMarkerKey,setBodyMarkerKey]=useState<string|null>(null);
   const selectBody=(part:AvatarBodyPart|null,markerKey?:string)=>{setBodyMarkerKey(markerKey||null);setBodyPart(part);};
   const intelligence = useHealthIntelligence({ includeAudit: false });
@@ -270,20 +271,12 @@ function HealthDashboard({
                   <Settings size={18} />
                 </button>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <div className="w-full">
-                  <AvatarHealthContext insights={intelligence.insights} loading={intelligence.isLoading} error={intelligence.error} />
+              {/* V156 compact health identity: model at left, evidence to the right. */}
+              <div className="mt-3 grid grid-cols-[minmax(0,42%)_minmax(0,1fr)] items-start gap-3">
+                <div className="min-w-0 rounded-2xl bg-violet-400/[0.025]">
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=avatarContext.primary;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
-
-                  <div className="my-2 flex flex-wrap gap-2" aria-label="Registros representados no corpo">
-                    <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/25 px-3 py-2 text-xs text-violet-300">{bodyContext.expression==='happy'?'☺ Humor informado':bodyContext.expression==='reflective'?'☹ Humor informado':'Humor · registros'}</button>
-                    <button type="button" onClick={()=>selectBody('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted">{bodyContext.weight?`Peso ${bodyContext.weight.delta>0?'+':''}${bodyContext.weight.delta.toLocaleString('pt-BR')} kg`:'Peso · registros'}</button>
-                    {bodyContext.surgeryAgenda.total?<button type="button" aria-label="Abrir contexto de cirurgias" onClick={()=>selectBody('surgery')} className={"min-h-11 rounded-xl border px-3 py-2 text-xs "+(bodyContext.surgeryAgenda.unconfirmed.length?'border-amber-400/25 text-amber-200':'border-sky-400/25 text-sky-300')}>{bodyContext.surgeryAgenda.unconfirmed.length?`Conferir status · ${bodyContext.surgeryAgenda.unconfirmed.length}`:(bodyContext.surgery && surgeryBodyLabel(bodyContext.surgery) ? surgeryBodyLabel(bodyContext.surgery) : `Cirurgias · ${bodyContext.surgeryAgenda.total}`)} ›</button>:null}
-                    {bodyContext.supports.length?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-sky-400/25 px-3 py-2 text-xs text-sky-300">Equipamentos em uso ›</button>:null}
-                  </div>
-                  <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 </div>
-                <div className="min-w-0 flex-1 space-y-3">
+                <div className="min-w-0 flex-1 space-y-3 self-center">
                   <div>
                     <p className="text-[10px] text-ink-muted">Altura</p>
                     <p className="text-lg font-semibold">
@@ -313,6 +306,16 @@ function HealthDashboard({
                   </div>
                 </div>
               </div>
+              <details className="mt-3 rounded-2xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
+                <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Evolução e medições · abrir histórico</summary>
+                <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
+                <div className="my-2 flex flex-wrap gap-2" aria-label="Outros registros representados no avatar">
+                  <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/20 px-3 text-xs text-violet-300">Humor</button>
+                  <button type="button" onClick={()=>selectBody('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Peso</button>
+                  {bodyContext.surgeryAgenda.total>0?<button type="button" onClick={()=>selectBody('surgery')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Cirurgias</button>:null}
+                  {bodyContext.supports.length>0?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Equipamentos</button>:null}
+                </div>
+              </details>
               <p className="text-[10px] leading-relaxed text-ink-muted">
                 O avatar representa seu perfil e aparelhos. O IMC não mede
                 composição corporal.{" "}
@@ -338,11 +341,11 @@ function HealthDashboard({
                 </button>
               )}
             </section>
-            <section className="rounded-[24px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[.07] to-surface p-4">
+            <section className="rounded-[24px] border border-violet-400/15 bg-surface p-3">
               <div className="flex items-center gap-3">
                 <span className="rounded-xl bg-violet-400/10 p-3 text-violet-300"><Brain size={20} /></span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-semibold">O cérebro do Vault observou</h2>
+                  <button type="button" aria-expanded={brainSummaryOpen} onClick={()=>setBrainSummaryOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between text-left text-sm font-semibold">Vault Intelligence <ChevronDown size={16} className={brainSummaryOpen?"rotate-180":""}/></button>
                   <p className="mt-1 text-[11px] text-ink-muted">
                     {intelligence.isLoading
                       ? "Analisando os registros disponíveis…"
@@ -350,7 +353,7 @@ function HealthDashboard({
                   </p>
                 </div>
               </div>
-              {intelligence.experienceHighlights.length > 0 ? (
+              {brainSummaryOpen && (intelligence.experienceHighlights.length > 0 ? (
                 <ul className="mt-3 space-y-2">
                   {intelligence.experienceHighlights.slice(0, 2).map((item) => (
                     <li key={item.id} className="rounded-xl bg-surface/70 p-3">
@@ -365,8 +368,8 @@ function HealthDashboard({
                     ? "Os padrões aparecem quando a análise terminar."
                     : "Ainda não há padrões com amostra suficiente. O Vault mostra apenas o que os registros sustentam."}
                 </p>
-              )}
-              <button type="button" onClick={() => go("/inteligencia/saude")} className="mt-3 flex items-center gap-1 text-xs font-semibold text-violet-300">
+              ))}
+              <button type="button" onClick={() => go("/inteligencia/saude")} className="mt-2 flex items-center gap-1 text-xs font-semibold text-violet-300">
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>

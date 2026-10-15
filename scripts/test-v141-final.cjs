@@ -25,9 +25,9 @@ assert(supply.includes('Visão conjunta')||supply.includes('Visão conjunta do t
 assert(supply.includes('antecedenciaText'),"campo antecedência não editável");
 assert(supply.includes("antecedenciaText.trim()"),"antecedência deve usar String.trim(), nunca .strip()");
 assert(supply.includes('calculateBottleReference('),"cálculo de frascos não integrado");
-assert(supply.includes('isSupplyMedicationEligible(m)'),"SOS não alcança seletor");
-assert(repo.includes('!isSupplyMedicationEligible(med)'),"SOS não alcança o repositório");
-assert(intelligence.includes('!isSupplyMedicationEligible(med)'),"SOS não alcança o Brain");
+assert(supply.includes('canTrackSupplyMedication(m, retiradas'),"SOS e retirada real não alcançam seletor");
+assert(repo.includes('!canTrackSupplyMedication(med,knownWithdrawals,pid,uid)'),"SOS e retirada real não alcançam repositório");
+assert(intelligence.includes('hasRecordedSupplyWithdrawal(med,context.retiradas'),"SOS e retirada real não alcançam o Brain");
 assert(today.includes("dosesSemEstoqueNoLote")&&today.includes("dosesComEstoqueNoLote"),"lote sem separação de estoque");
 assert(today.includes('\"sem_estoque\"')&&today.includes("confirmarDosesNaoTomadasPorEstoque"),"motivo não confirmado");
 assert(logs.includes('motivo: status === \"ignored\"'),"motivo não gravado no registro");

@@ -1,4 +1,4 @@
-import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
+import { isSupplyMedicationEligible, hasRecordedSupplyWithdrawal } from "@/lib/health-supply/medication-eligibility";
 import type {
   HealthInsight,
   HealthInsightContext,
@@ -18,7 +18,7 @@ export function buildSupplyInsights(
     if (
       !med.id ||
       med.person_id !== context.personId ||
-      !isSupplyMedicationEligible(med)
+      !(isSupplyMedicationEligible(med) || hasRecordedSupplyWithdrawal(med,context.retiradas,context.personId || "",med.user_id))
     )
       continue;
     const processes = data.processos.filter(
@@ -224,7 +224,7 @@ export function buildSupplyInsights(
         (m) =>
           m.person_id === p.person_id &&
           m.user_id === p.user_id &&
-          isSupplyMedicationEligible(m) &&
+          (isSupplyMedicationEligible(m) || hasRecordedSupplyWithdrawal(m,context.retiradas,context.personId || "",p.user_id)) &&
           data.itens.some(
             (i) =>
               i.ciclo_id === cycle.id &&

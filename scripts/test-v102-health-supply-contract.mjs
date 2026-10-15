@@ -348,7 +348,35 @@ assert.equal(
     ...context,
     medicamentos: [{ ...med, status: "descontinuado" }],
   }).length,
+  1,
+  "medicamento descontinuado com retirada agendada permanece visível no Brain do fornecimento",
+);
+assert.equal(
+  buildSupplyInsights({
+    ...context,
+    medicamentos: [{ ...med, status: "descontinuado" }],
+    retiradas: [],
+  }).length,
   0,
+  "sem retirada nem uso SOS, medicamento descontinuado não cria alerta",
+);
+assert.equal(
+  buildSupplyInsights({
+    ...context,
+    medicamentos: [{ ...med, status: "descontinuado" }],
+    retiradas: [{ ...withdrawal, status: "cancelada" }],
+  }).length,
+  0,
+  "retirada cancelada não autoriza insight de medicamento descontinuado",
+);
+assert.equal(
+  buildSupplyInsights({
+    ...context,
+    medicamentos: [{ ...med, status: "descontinuado" }],
+    retiradas: [{ ...withdrawal, person_id: "other" }],
+  }).length,
+  0,
+  "retirada de outra pessoa não autoriza insight",
 );
 const oldAuthorized = {
   ...authorized,

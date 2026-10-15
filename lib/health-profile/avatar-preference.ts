@@ -1,3 +1,4 @@
+import { normalizeAvatarStyle, type AvatarStyle } from "./avatar-style";
 export type AvatarMode = 'illustration' | '3d';
 
 /** Visual-only, scoped to the account and active person; never synced as health data. */
@@ -26,4 +27,16 @@ export type AvatarSize='compact'|'expanded'|'hidden';
 export function parseAvatarSize(value:string|null):AvatarSize {
  try{const saved=JSON.parse(value||'null');if(saved?.version===1&&['compact','expanded','hidden'].includes(saved.size))return saved.size;}catch{}
  return 'compact';
+}
+
+/** V155: appearance is saved in the same account/person-scoped local preference. */
+export function parseAvatarStyle(value: string | null): AvatarStyle {
+  try {
+    const saved = JSON.parse(value || 'null');
+    if (saved?.version === 1) return normalizeAvatarStyle(saved.appearance);
+  } catch { /* Existing/corrupt preferences fall back safely. */ }
+  return normalizeAvatarStyle(null);
+}
+export function avatarPreferencePayload(mode: AvatarMode, size: AvatarSize, appearance: AvatarStyle) {
+  return JSON.stringify({ version: 1, mode, size, appearance: normalizeAvatarStyle(appearance) });
 }

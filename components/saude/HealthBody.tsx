@@ -6,9 +6,10 @@ import { BRAIN_BRAND } from "@/lib/health-intelligence/version";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import {avatarBraceSlots,type AvatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
+import { DEFAULT_AVATAR_STYLE, type AvatarStyle } from "@/lib/health-profile/avatar-style";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
-export const HealthBody = memo(function HealthBody({ skin, devices, expanded = false, showControls = true, controlsContainer, expression="neutral", surgeryMarkers=[], onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; surgeryMarkers?:AvatarBodyContext["surgeryMarkers"];expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void;onDeviceSelect?:(id:string)=>void }) {
+export const HealthBody = memo(function HealthBody({ skin, devices, appearance=DEFAULT_AVATAR_STYLE, expanded = false, showControls = true, controlsContainer, expression="neutral", surgeryMarkers=[], onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; appearance?:AvatarStyle; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; surgeryMarkers?:AvatarBodyContext["surgeryMarkers"];expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void;onDeviceSelect?:(id:string)=>void }) {
   const [view,setView]=useState<"front"|"left"|"right">("front");
   const angle=view==="front"?0:view==="left"?-18:18;
   const uid = useId().replace(/:/g, "");
@@ -28,7 +29,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
     <div className={"mx-auto w-full " + (expanded ? "max-w-[320px]" : "max-w-[180px]")}>
       <svg viewBox="0 0 180 260" role={onBodySelect?"group":"img"} aria-labelledby={`${ids.title} ${ids.description}`} className={"w-full motion-safe:transition-transform motion-safe:duration-300 " + (expanded ? "h-auto" : "h-60")} style={{transform:`perspective(700px) rotateY(${angle}deg)`,transformOrigin:"50% 55%"}}>
         <title id={ids.title}>{`Avatar Vault com emblema ${BRAIN_BRAND}`}</title>
-        <desc id={ids.description}>Ilustração de perfil. {description} Celular ilustrativo com Vault aberto. Os acessórios representam o cadastro; o desenho não indica conexão nem estado de saúde.</desc>
+        <desc id={ids.description}>Ilustração de perfil. {description} Celular ilustrativo com Vault aberto. Acessórios cosméticos são independentes dos aparelhos cadastrados; o desenho não indica conexão nem estado de saúde.</desc>
         <defs>
           <linearGradient id={ids.skin} x1="0" x2="1">
             <stop offset="0" stopColor={avatarShade(color, .78)} />
@@ -60,6 +61,16 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
         <path d="M81 52 Q90 62 99 52 L99 58 Q90 64 81 58Z" fill="#241b18" opacity=".16" />
         <path d="M68 30 Q68 10 90 11 Q112 12 112 32 L110 44 Q106 58 90 60 Q74 58 70 44Z" fill={`url(#${ids.skin})`} />
         <path d="M69 28 Q66 13 80 10 Q103 3 112 21 L112 30 Q103 21 94 21 Q82 24 69 28Z" fill="#17212b" />
+        {appearance.hat!=='none'&&<g aria-label="Boné decorativo">
+          <path d="M65 28 Q65 1 90 3 Q115 1 115 28 L108 30 Q89 22 70 30Z" fill={appearance.hatColor} stroke="#f8fafc" strokeOpacity=".13" strokeWidth=".9"/>
+          <path d={appearance.hat==='flat'?"M68 26 L116 26 L132 30 L132 34 Q90 35 66 31Z":"M68 27 Q98 22 118 28 Q128 30 119 33 Q96 37 66 31Z"} fill={appearance.hatColor} stroke="#e2e8f0" strokeOpacity=".23" strokeWidth=".8" />
+          <path d="M81 13 Q91 8 99 13" stroke="#fff" strokeOpacity=".22" strokeWidth="1.1" fill="none"/>
+          {(appearance.hatBrand==='nike'||appearance.hatBrand==='new-era')&&<text x="90" y="19" textAnchor="middle" fontSize="6" fontWeight="800" fill="#f8fafc">{appearance.hatBrand==='nike'?'N':'NE'}</text>}
+        </g>}
+        {appearance.glasses!=='none'&&<g aria-label="Óculos decorativos" stroke={appearance.glassesColor} strokeWidth="2.2" fill="#a5f3fc" fillOpacity=".035">
+          {appearance.glasses==='round'?<><ellipse cx="81" cy="37" rx="8.2" ry="7.2"/><ellipse cx="99" cy="37" rx="8.2" ry="7.2"/></>:<><rect x="73" y="32" width="16" height="10.5" rx="2.5"/><rect x="91" y="32" width="16" height="10.5" rx="2.5"/></>}
+          <path d="M89 36 Q90 34 91 36 M73 34 L68 32 M107 34 L112 32" fill="none" />
+        </g>}
         <path d="M74 17 Q88 9 101 15" fill="none" stroke="#526273" strokeOpacity=".32" strokeWidth="2.5" strokeLinecap="round" />
         <path d="M79 33 Q82 31 85 33 M96 33 Q99 31 102 33" fill="none" stroke={faceDetail} strokeOpacity=".75" strokeWidth="1.5" strokeLinecap="round" />
         <path d="M80 37 h3 M97 37 h3" stroke="#231f1e" strokeWidth="2" strokeLinecap="round" />
@@ -82,6 +93,12 @@ export const HealthBody = memo(function HealthBody({ skin, devices, expanded = f
         <path d="M66 149 Q90 158 114 149 M90 157 L90 169" fill="none" stroke="#94a3b8" strokeOpacity=".23" strokeWidth="1" />
         <path d="M76 230 L88 231 L88 242 Q80 250 71 246 L72 239Z M92 231 L104 230 L108 239 L109 246 Q100 250 92 242Z" fill="#182634" stroke="#607083" strokeOpacity=".35" strokeWidth=".8" />
         <path d="M73 245 Q80 248 88 242 M92 242 Q100 248 107 245" fill="none" stroke="#a8b5c4" strokeOpacity=".6" strokeWidth="1.4" />
+        <g aria-label="Tênis decorativos">
+          <path d="M76 231 L88 232 L88 242 Q79 247 71 244 L73 237Z M92 232 L103 230 L109 238 L108 244 Q100 247 92 242Z" fill={appearance.sneakersColor} stroke="#cbd5e1" strokeOpacity=".42" strokeWidth=".7"/>
+          {appearance.sneakers==='runner'&&<path d="M76 236 L84 239 M97 239 L103 235" stroke="#f8fafc" strokeWidth="2.2"/>}
+          {appearance.sneakers==='high-top'&&<path d="M75 230 L75 219 L88 219 L88 232 M92 232 L92 219 L104 219 L104 230" fill={appearance.sneakersColor} stroke="#cbd5e1" strokeOpacity=".4"/>}
+          <path d="M72 245 Q79 249 88 244 M92 244 Q100 249 108 245" stroke="#f8fafc" strokeWidth="1.6" fill="none"/>
+        </g>
 
         {/* V121: cloth folds, shoulder volume, shoe laces and fingers. */}
         <path d="M65 77 L69 88 L68 137 M115 77 L111 88 L112 137" fill="none" stroke="#dbeafe" strokeOpacity=".2" strokeWidth="1.7" strokeLinecap="round" />

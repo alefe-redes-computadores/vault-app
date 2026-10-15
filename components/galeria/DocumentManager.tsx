@@ -25,6 +25,9 @@ import {
 import {
   db,
 } from "@/lib/db";
+import { useAuth } from "@/hooks/useAuth";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { buildDocumentMedicationIndex } from "@/lib/health-documents/relations";
 
 import {
   documentsRepository,
@@ -68,6 +71,8 @@ export function DocumentManager({
 }: DocumentManagerProps) {
   const router =
     useRouter();
+  const { user } = useAuth();
+  const { activePersonId } = useActivePersonId();
 
   const {
     trigger,
@@ -108,52 +113,26 @@ export function DocumentManager({
   const documentsQuery =
     useLiveQuery(
       async () => {
-        if (
-          !entidadeTipo ||
-          !entidadeId
-        ) {
-          return [] as Document[];
+        if (!entidadeTipo || !entidadeId || !activePersonId || !user?.id) return [] as Document[];
+        let rows: Document[];
+        if (entidadeTipo === "medicamento") {
+          const med = await db.medicamentos.get(entidadeId);
+          if (!med || med.person_id !== activePersonId || med.user_id !== user.id) return [];
+          const [docs, purchases] = await Promise.all([
+            db.documents.where("person_id").equals(activePersonId).toArray(),
+            db.renovacoes.where("person_id").equals(activePersonId).toArray(),
+          ]);
+          // One local index for all documents: no query storm per file/medication.
+          // Reverse medication.document_id, renewal.document_id, canonical and multi-ID metadata.
+          const links = buildDocumentMedicationIndex(docs, [med], purchases, activePersonId, user.id);
+          rows = docs.filter(doc => links.get(doc.id || "")?.some(link => link.id === entidadeId));
+        } else {
+          rows = await db.documents.where("[entidade_tipo+entidade_id]").equals([entidadeTipo, entidadeId]).toArray();
+          rows = rows.filter(doc => doc.person_id === activePersonId && doc.user_id === user.id);
         }
-
-        const documents =
-          await db.documents
-            .where(
-              "[entidade_tipo+entidade_id]"
-            )
-            .equals([
-              entidadeTipo,
-              entidadeId,
-            ])
-            .toArray();
-
-        return documents.sort(
-          (
-            a,
-            b
-          ) => {
-            const timeA =
-              new Date(
-                a.created_at ||
-                  0
-              ).getTime();
-
-            const timeB =
-              new Date(
-                b.created_at ||
-                  0
-              ).getTime();
-
-            return (
-              timeB -
-              timeA
-            );
-          }
-        );
+        return rows.sort((a,b) => (b.created_at || "").localeCompare(a.created_at || ""));
       },
-      [
-        entidadeTipo,
-        entidadeId,
-      ]
+      [entidadeTipo, entidadeId, activePersonId, user?.id]
     );
 
   const isLoading =

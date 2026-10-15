@@ -1094,7 +1094,7 @@ function EditarDocumentoSaudeContent() {
     useDocumentActions();
 
   const {
-    medicamentos = [],
+    medicamentosIncluindoDescontinuados: medicamentos = [],
   } =
     useMedicamentos();
 
@@ -1523,12 +1523,13 @@ function EditarDocumentoSaudeContent() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+            activePersonId && item.user_id === user?.id
         );
       },
       [
         medicamentos,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1775,9 +1776,10 @@ function EditarDocumentoSaudeContent() {
                   description:
                     [
                       medicamento.dosagem,
+                      medicamento.tipo_uso === "sos" ? "Uso SOS" : undefined,
                       medicamento.status ===
                         "descontinuado"
-                        ? "Descontinuado"
+                        ? "Rotina descontinuada · histórico preservado"
                         : undefined,
                     ]
                       .filter(

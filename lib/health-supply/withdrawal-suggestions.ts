@@ -1,9 +1,9 @@
 import type { Medicamento,Retirada } from "@/lib/types";
 import type { SupplyData } from "./types";
-import { isSupplyMedicationEligible } from "./medication-eligibility";
+import { canTrackSupplyMedication } from "./medication-eligibility";
 /** Suggestions only: no authorization, recurrence or stock is inferred. */
 export function withdrawalSupplySuggestions(pid:string,meds:Medicamento[],withdrawals:Retirada[],data:SupplyData){
- const medications=new Map(meds.filter(m=>m.id&&m.person_id===pid&&isSupplyMedicationEligible(m)).map(m=>[m.id!,m]));
+ const medications=new Map(meds.filter(m=>canTrackSupplyMedication(m,withdrawals,pid,m.user_id)).map(m=>[m.id!,m]));
  const latest=new Map<string,Retirada>();
  for(const r of withdrawals){const med=medications.get(r.medicamento_id);
   if(!r.id||!med||r.person_id!==pid||r.user_id!==med.user_id||r.status==="cancelada"||r.status==="nao_realizada")continue;

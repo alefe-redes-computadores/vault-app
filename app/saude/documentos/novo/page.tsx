@@ -1016,7 +1016,7 @@ export default function NovoDocumentoSaudePage() {
     useDocumentActions();
 
   const {
-    medicamentos = [],
+    medicamentosIncluindoDescontinuados: medicamentos = [],
   } =
     useMedicamentos();
 
@@ -1413,12 +1413,13 @@ export default function NovoDocumentoSaudePage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+            activePersonId && item.user_id === user?.id
         );
       },
       [
         medicamentos,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1643,9 +1644,10 @@ export default function NovoDocumentoSaudePage() {
                     [
                       medicamento.dosagem,
 
+                      medicamento.tipo_uso === "sos" ? "Uso SOS" : undefined,
                       medicamento.status ===
                         "descontinuado"
-                        ? "Descontinuado"
+                        ? "Rotina descontinuada · histórico preservado"
                         : undefined,
                     ]
                       .filter(

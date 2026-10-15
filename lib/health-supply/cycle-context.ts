@@ -1,11 +1,11 @@
-import type { Document, Medicamento, Tratamento } from '@/lib/types';
+import type { Document, Medicamento, Tratamento, Retirada } from '@/lib/types';
 import type { SupplyCycle, SupplyData, SupplyProcess } from './types';
 import { validSupplyDate } from './rules';
-import { isSupplyMedicationEligible } from './medication-eligibility';
+import { isSupplyMedicationEligible, hasRecordedSupplyWithdrawal } from './medication-eligibility';
 import { preparationStart } from './overview';
-export function treatmentSupplyMedicationIds(t:Tratamento, medications:Medicamento[],pid:string,uid:string) {
+export function treatmentSupplyMedicationIds(t:Tratamento, medications:Medicamento[],pid:string,uid:string,withdrawals:Retirada[] = []) {
  if(!t.id||t.person_id!==pid||t.user_id!==uid)return [];
- return medications.filter(m=>m.id && m.person_id===pid && m.user_id===uid && isSupplyMedicationEligible(m) && ((t.medicamento_ids||[]).includes(m.id) || (m.tratamento_ids||[]).includes(t.id||''))).map(m=>m.id!);
+ return medications.filter(m=>m.id && m.person_id===pid && m.user_id===uid && (isSupplyMedicationEligible(m) || hasRecordedSupplyWithdrawal(m,withdrawals,pid,uid)) && ((t.medicamento_ids||[]).includes(m.id) || (m.tratamento_ids||[]).includes(t.id||''))).map(m=>m.id!);
 }
 export function cycleDocumentContext(process:SupplyProcess,cycle:SupplyCycle,data:SupplyData,documents:Document[]) {
  if(cycle.processo_id!==process.id||cycle.person_id!==process.person_id||cycle.user_id!==process.user_id)return {lmeLinked:0,lmeDelivered:0,confirmed:false,prepareRenewalFrom:null};

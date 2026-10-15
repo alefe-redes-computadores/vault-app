@@ -96,6 +96,7 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   useHapticFeedback,
@@ -133,6 +134,7 @@ import {
 import {
   MedicationFormatIcon,
 } from "@/components/saude/MedicationFormatIcon";
+import { buildDocumentMedicationIndex } from "@/lib/health-documents/relations";
 
 import type {
   Cid,
@@ -183,6 +185,7 @@ interface DocumentViewModel {
   parentIcon: LucideIcon;
   parentColor: string;
   medication?: Medicamento;
+  sharedMedicationCount?: number;
   entityLabel?: string;
   alert: PrescriptionAlert | null;
 }
@@ -987,6 +990,7 @@ function matchesViewModelSearch(
 // ============================================================
 
 export default function DocumentsPage() {
+  const { user } = useAuth();
   const router =
     useRouter();
 
@@ -1004,7 +1008,7 @@ export default function DocumentsPage() {
     useDocuments();
 
   const {
-    medicamentos = [],
+    medicamentosIncluindoDescontinuados: medicamentos = [],
   } =
     useMedicamentos();
 
@@ -1177,12 +1181,13 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+            activePersonId && item.user_id === user?.id
         );
       },
       [
         medicamentos,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1628,7 +1633,7 @@ export default function DocumentsPage() {
         const map =
           new Map<
             string,
-            Medicamento
+            Medicamento[]
           >();
 
         for (
@@ -1645,16 +1650,9 @@ export default function DocumentsPage() {
             continue;
           }
 
-          if (
-            !map.has(
-              documentId
-            )
-          ) {
-            map.set(
-              documentId,
-              medicamento
-            );
-          }
+          const linked = map.get(documentId) || [];
+          linked.push(medicamento);
+          map.set(documentId, linked);
         }
 
         return map;
@@ -2884,20 +2882,16 @@ export default function DocumentsPage() {
                   id
                 ) || [];
 
-              const reverseMedicationForConflict =
+              const reverseMedicationsForConflict =
                 medicationByDocumentId.get(
                   id
-                );
+                ) || [];
 
               const reverseMedicationIds =
                 new Set<string>();
 
-              if (
-                reverseMedicationForConflict?.id
-              ) {
-                reverseMedicationIds.add(
-                  reverseMedicationForConflict.id
-                );
+              for (const med of reverseMedicationsForConflict) {
+                if (med.id) reverseMedicationIds.add(med.id);
               }
 
               for (
@@ -3284,7 +3278,7 @@ export default function DocumentsPage() {
               const currentMedication =
                 medicationByDocumentId.get(
                   id
-                );
+                )?.[0];
 
               if (
                 currentMedication?.id
@@ -3750,35 +3744,55 @@ export default function DocumentsPage() {
   // SEARCH
   // ==========================================================
 
-  const viewModels =
-    useMemo(
-      () => {
-        const normalizedQuery =
-          normalizeSearch(
-            searchQuery
-          );
+  // V155: one physical file can appear under multiple linked medications.
+  // This projection never duplicates storage, clinical records or attachments.
+  const medicationLinksByDocument = useMemo(() => {
+    const byOwner = new Map<string, Map<string, Medicamento[]>>();
+    for (const doc of periodDocuments) {
+      if (!doc.id || !doc.person_id || !doc.user_id) continue;
+      const ownerKey = `${doc.user_id}:${doc.person_id}`;
+      if (!byOwner.has(ownerKey)) {
+        byOwner.set(ownerKey, buildDocumentMedicationIndex(
+          periodDocuments.filter(d => d.user_id === doc.user_id && d.person_id === doc.person_id),
+          scopedMedicamentos, scopedRenovacoes, doc.person_id, doc.user_id
+        ));
+      }
+    }
+    return byOwner;
+  }, [periodDocuments, scopedMedicamentos, scopedRenovacoes]);
 
-        if (
-          !normalizedQuery
-        ) {
-          return resolvedViewModels;
-        }
+  const viewModels = useMemo(() => {
+    const expanded = resolvedViewModels.flatMap(item => {
+      const doc = item.document;
+      const linked = medicationLinksByDocument.get(`${doc.user_id}:${doc.person_id}`)?.get(item.id) || [];
+      if (linked.length < 2) return [item];
+      const medicationRows: DocumentViewModel[] = linked.map(m => ({
+        ...item,
+        domainId: 'medicamentos',
+        parentKey: `medicamento:${m.id}`,
+        parentName: m.nome,
+        parentDescription: m.dosagem || undefined,
+        parentIcon: Pill,
+        parentColor: getMedicationPrimaryColor(m),
+        medication: m,
+        sharedMedicationCount: linked.length,
+        entityLabel: m.dosagem ? `${m.nome} · ${m.dosagem}` : m.nome,
+        alert: getPrescriptionAlert(doc, renewalsByMedication, m.id),
+      }));
+      return item.domainId === 'medicamentos' || item.domainId === 'outros'
+        ? medicationRows : [item, ...medicationRows];
+    });
+    const normalizedQuery = normalizeSearch(searchQuery);
+    return normalizedQuery ? expanded.filter(item => matchesViewModelSearch(item, normalizedQuery)) : expanded;
+  }, [resolvedViewModels, searchQuery, medicationLinksByDocument, renewalsByMedication]);
 
-        return resolvedViewModels.filter(
-          (
-            item
-          ) =>
-            matchesViewModelSearch(
-              item,
-              normalizedQuery
-            )
-        );
-      },
-      [
-        resolvedViewModels,
-        searchQuery,
-      ]
-    );
+  // A document may have two *visual* parents, yet it still has one physical ID,
+  // one export card, one set of attachments and one count in the acervo summary.
+  const uniqueDocumentViewModels = useMemo(() => {
+    const files = new Map<string, DocumentViewModel>();
+    for (const item of viewModels) if (!files.has(item.id)) files.set(item.id, item);
+    return [...files.values()];
+  }, [viewModels]);
 
   // ==========================================================
   // BUILD TREE
@@ -3965,16 +3979,7 @@ export default function DocumentsPage() {
 
                 parents,
 
-                count:
-                  parents.reduce(
-                    (
-                      total,
-                      parent
-                    ) =>
-                      total +
-                      parent.documents.length,
-                    0
-                  ),
+                count: new Set(parents.flatMap(parent => parent.documents.map(item => item.id))).size,
               };
             }
           )
@@ -4285,7 +4290,7 @@ export default function DocumentsPage() {
   const exportCards =
     useMemo(
       () =>
-        viewModels.map(
+        uniqueDocumentViewModels.map(
           (
             item
           ) => ({
@@ -4299,7 +4304,7 @@ export default function DocumentsPage() {
           })
         ),
       [
-        viewModels,
+        uniqueDocumentViewModels,
         getExportCardRef,
       ]
     );
@@ -4354,14 +4359,14 @@ export default function DocumentsPage() {
             EXPORT SURFACE
             ==================================================== */}
 
-        {viewModels.length >
+        {uniqueDocumentViewModels.length >
           0 && (
           <div
             aria-hidden="true"
             className="pointer-events-none fixed -left-[10000px] top-0 w-[720px]"
           >
             <div className="space-y-6 bg-void p-6">
-              {viewModels.map(
+              {uniqueDocumentViewModels.map(
                 (
                   item
                 ) => {
@@ -4442,7 +4447,7 @@ export default function DocumentsPage() {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              {viewModels.length >
+              {uniqueDocumentViewModels.length >
                 0 && (
                 <ExportCardButton
                   cards={
@@ -4544,13 +4549,13 @@ export default function DocumentsPage() {
                 <div className="shrink-0 text-right">
                   <p className="font-display text-lg font-bold text-ink-primary">
                     {
-                      viewModels.length
+                      uniqueDocumentViewModels.length
                     }
                   </p>
 
                   <p className="text-[9px] text-ink-faint">
                     documento
-                    {viewModels.length ===
+                    {uniqueDocumentViewModels.length ===
                     1
                       ? ""
                       : "s"}
@@ -4656,7 +4661,7 @@ export default function DocumentsPage() {
                         totalParents
                       }
                       documents={
-                        viewModels.length
+                        uniqueDocumentViewModels.length
                       }
                     />
                   </div>
@@ -5133,6 +5138,8 @@ export default function DocumentsPage() {
                                                                       primaryLabel
                                                                     }
                                                                   </p>
+
+                                                                  {item.sharedMedicationCount && item.sharedMedicationCount > 1 ? <span className="shrink-0 rounded-lg bg-violet-400/10 px-1.5 py-1 text-[9px] font-semibold text-violet-300" title="Um mesmo documento pode ter vínculos com vários medicamentos">{item.sharedMedicationCount} vínculos</span> : null}
 
                                                                   {item.alert && (
                                                                     <span

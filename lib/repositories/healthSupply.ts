@@ -1,4 +1,4 @@
-import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
+import { isSupplyMedicationEligible, canTrackSupplyMedication } from "@/lib/health-supply/medication-eligibility";
 import { findDuplicateSupplyProcess, findActiveMedicationConflict } from "@/lib/health-supply/process-integrity";
 import { preparationStart } from "@/lib/health-supply/overview";
 import { db } from "@/lib/db";
@@ -111,6 +111,9 @@ export const healthSupplyRepository = {
       )
     );
     if (meds.some(m => !isSupplyMedicationEligible(m))) throw new Error("Medicamento indisponível para novo fornecimento.");
+    const knownWithdrawals = await db.retiradas.where("person_id").equals(personId).toArray();
+    if (meds.some(m => !canTrackSupplyMedication(m,knownWithdrawals,personId,uid)))
+      throw new Error("Medicamento sem SOS e sem retirada registrada: confira a vinculação antes de organizar o fornecimento.");
     const t = stamp(),
       base = {
         user_id: uid,
@@ -278,6 +281,7 @@ export const healthSupplyRepository = {
         updated_at: t,
         synced: false,
       };
+    const knownWithdrawals = await db.retiradas.where("person_id").equals(pid).toArray();
     const copied: SupplyItem[] = [];
     for (const item of items) {
       const med = await owned(
@@ -285,7 +289,7 @@ export const healthSupplyRepository = {
         pid,
         uid
       );
-      if (!isSupplyMedicationEligible(med)) continue;
+      if (!canTrackSupplyMedication(med,knownWithdrawals,pid,uid)) continue;
       copied.push({
         ...item,
         id: id(),
@@ -467,7 +471,8 @@ export const healthSupplyRepository = {
         if (currentProcess.status !== "ativo" || currentCycle.status !== "preparando")
           throw new Error("Altere medicamentos apenas em um processo ativo e ciclo em preparação.");
         if (include) {
-          if (!isSupplyMedicationEligible(med)) throw new Error("Medicamento indisponível: consulte o histórico.");
+          const knownWithdrawals = await db.retiradas.where("person_id").equals(pid).toArray();
+          if (!canTrackSupplyMedication(med,knownWithdrawals,pid,uid)) throw new Error("Medicamento sem SOS e sem retirada registrada: confira o histórico.");
           const processes = await db.fornecimentos.where("person_id").equals(pid).toArray();
           const items = await db.fornecimento_itens.where("person_id").equals(pid).toArray();
           const conflict = findActiveMedicationConflict(pid, uid, [medicationId], processes, items, c.processo_id);

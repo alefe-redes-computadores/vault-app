@@ -20,7 +20,7 @@ import { useCids } from "@/hooks/useCids";
 import { getClinicalTheme } from "@/lib/health-utils";
 import { SupplyChoiceIcon } from "@/components/saude/SupplyChoiceIcon";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
-import { isSupplyMedicationEligible } from "@/lib/health-supply/medication-eligibility";
+import { isSupplyMedicationEligible, canTrackSupplyMedication } from "@/lib/health-supply/medication-eligibility";
 import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
 import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
 import { treatmentSupplyMedicationIds, cycleDocumentContext, matchesSupplyTreatment } from "@/lib/health-supply/cycle-context";
@@ -83,8 +83,10 @@ function ProcessForm({
   meds,
   seed,
   personId,
+  withdrawals,
 }: {
   personId: string;
+  withdrawals: Retirada[];
   seed?: Retirada | null;
   initial?: SupplyProcess;
   medicationId: string | null;
@@ -135,7 +137,7 @@ function ProcessForm({
         void run(async()=>{
           if(!values.titulo.trim())throw new Error("Informe um nome para o fornecimento.");
           if(!initial&&!selected.length)throw new Error("Selecione ao menos um medicamento.");
-          if(!initial && selected.some(id => !meds.some(m => m.id === id && m.person_id === personId && isSupplyMedicationEligible(m)))) throw new Error("A seleção mudou. Confira os medicamentos disponíveis antes de salvar.");
+          if(!initial && selected.some(id => !meds.some(m => m.id === id && canTrackSupplyMedication(m, withdrawals, personId, user?.id || "")))) throw new Error("A seleção mudou. Confira os medicamentos disponíveis antes de salvar.");
           if (!/^\d{1,3}$/.test(antecedenciaText) || Number(antecedenciaText)>180) throw new Error("Informe a antecedência entre 0 e 180 dias.");
            return onSave({...values, antecedencia_dias: Number(antecedenciaText)}, selected);
         },initial?"Processo atualizado":"Fornecimento organizado");
@@ -145,7 +147,7 @@ function ProcessForm({
     >
       {seed&&!initial&&<p role="status" className="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-xs leading-relaxed text-cyan-200">Dados reaproveitados da retirada de {fmt(seed.data)}. Confira os vínculos e escolha a origem do fornecimento. Quantidade, periodicidade e autorização não são presumidas.</p>}
       {!initial ? <div className="space-y-2">
-        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=>{const t=existingTreatments.find(x=>x.id===value);const Icon=getVaultTreatmentIcon(t?.nome||"");return <Icon size={20} style={{color:t?.cor || "#8b5cf6"}}/>;}} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
+        <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=>{const t=existingTreatments.find(x=>x.id===value);const Icon=getVaultTreatmentIcon(t?.nome||"");return <Icon size={20} style={{color:t?.cor || "#8b5cf6"}}/>;}} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id,withdrawals);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
           <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status!=='concluido').map(t=><option key={t.id} value={t.id}>{t.nome}{t.status === "suspenso" ? " · tratamento suspenso (SOS permitido)" : ""}</option>)}
         </HealthRelationPicker>
         {treatmentId && !selected.length ? <p className="text-xs text-amber-300">Nenhum medicamento disponível foi encontrado neste tratamento. Confira os vínculos em Medicamentos e os processos ativos antes de continuar.</p> : null}
@@ -228,10 +230,10 @@ function ProcessForm({
       {!initial && (
         <fieldset>
           <legend className="text-xs text-ink-muted">Medicamentos deste processo</legend>
-          {!meds.some(m => m.id && isSupplyMedicationEligible(m)) && <p className="mt-2 text-xs text-amber-200">Nenhum medicamento disponível. Confira os processos ativos ou cadastre um medicamento na área de Medicamentos.</p>}
+          {!meds.some(m => m.id && canTrackSupplyMedication(m, withdrawals, personId, user?.id || "")) && <p className="mt-2 text-xs text-amber-200">Nenhum medicamento disponível. Confira os processos ativos ou cadastre um medicamento na área de Medicamentos.</p>}
           <div className="mt-2 space-y-2">
             {meds
-              .filter((m) => m.id && isSupplyMedicationEligible(m))
+              .filter((m) => m.id && canTrackSupplyMedication(m, withdrawals, personId, user?.id || ""))
               .map((m) => (
                 <label
                   key={m.id}
@@ -249,7 +251,7 @@ function ProcessForm({
                       )
                     }
                   />
-                  <MedicationFormatIcon formato={m.formato} cores={m.cores} size={24} /><span>{m.nome} · {m.dosagem}</span>
+                  <MedicationFormatIcon formato={m.formato} cores={m.cores} size={24} /><span className="min-w-0 flex-1">{m.nome} · {m.dosagem}{m.status === "descontinuado" && <span className="mt-0.5 block text-[10px] text-amber-300">{m.tipo_uso === "sos" ? "SOS · rotina descontinuada" : "Histórico · retirada já registrada"}</span>}</span>
                 </label>
               ))}
           </div>
@@ -444,7 +446,7 @@ function ItemEditor({
         <p className="mt-2 text-[11px] text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
         <button type="button" className={button+" mt-2"} disabled={monthlyReference===null} onClick={()=>{if(monthlyReference!==null)setQuantity(String(monthlyReference));}}>Usar referência {monthlyReference!==null?monthlyReference.toLocaleString('pt-BR'):''}</button>
       </details>
-      {med && <details className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-3">
+      {med && isDropMedication && <details className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-3">
         <summary className="min-h-11 cursor-pointer py-2 text-xs font-bold text-sky-300">Frascos · volume e gotas por mês</summary>
         <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Confirme no rótulo o volume de CADA frasco e o fator de gotas/ml. O Vault não presume 20 gotas/ml nem que o frasco tenha 20 ml.</p>
         <div className="grid grid-cols-2 gap-2">
@@ -879,7 +881,7 @@ function CyclePanel({
                 .filter(
                   (m) =>
                     m.id &&
-                    (isSupplyMedicationEligible(m) ||
+                    (canTrackSupplyMedication(m,withdrawals,pid,process.user_id) ||
                       items.some((i) => i.medicamento_id === m.id)) &&
                     !data.itens.some(i => i.medicamento_id === m.id && i.processo_id !== process.id && data.processos.some(p => p.id === i.processo_id && p.status === "ativo" && p.person_id === pid && p.user_id === process.user_id))
                 )
@@ -908,7 +910,7 @@ function CyclePanel({
                         );
                       }}
                     />
-                    <MedicationFormatIcon formato={m.formato} cores={m.cores} size={24} /><span>{m.nome} · {m.dosagem}</span>
+                    <MedicationFormatIcon formato={m.formato} cores={m.cores} size={24} /><span className="min-w-0 flex-1">{m.nome} · {m.dosagem}{m.status === "descontinuado" && <span className="mt-0.5 block text-[10px] text-amber-300">{m.tipo_uso === "sos" ? "SOS · rotina descontinuada" : "Histórico · retirada já registrada"}</span>}</span>
                   </label>
                 ))}
             </div>
@@ -972,7 +974,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   const {user}=useAuth();
   const params = useSearchParams(),
     { data, personId, loading } = supply,
-    { medicamentos } = useMedicamentos(),
+    { medicamentosIncluindoDescontinuados: medicamentos } = useMedicamentos(),
     { tratamentos } = useTratamentos(),
     { cids } = useCids(),
     { retiradas } = useRetiradas(),
@@ -996,9 +998,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   const medId = params.get("medicamento_id"),
     withdrawal = seed || retiradas.find((r) => r.id === withdrawalId && r.person_id === personId);
   const occupiedMedicationIds = new Set(data.itens.filter(i =>
-    data.processos.some(p => p.id === i.processo_id && p.person_id === personId && p.status === "ativo")
+    i.person_id === personId && i.user_id === user?.id &&
+    data.processos.some(p => p.id === i.processo_id && p.person_id === personId && p.user_id === user?.id && p.status === "ativo")
   ).map(i => i.medicamento_id));
-  const availableMedications = medicamentos.filter(m => m.person_id === personId && m.id && isSupplyMedicationEligible(m) && !occupiedMedicationIds.has(m.id));
+  const availableMedications = medicamentos.filter(m => m.id && !occupiedMedicationIds.has(m.id) && canTrackSupplyMedication(m, retiradas, personId || "", user?.id || ""));
   // V131 SUPPLY DOSSIER: immutable acquisition snapshots, never a prescription or a SUS withdrawal.
   const acquisitionSummary = (medicationIds: Set<string>) => {
     const acquisitions = purchaseHistory(renovacoes, personId || "", process?.user_id || "", medicationIds);
@@ -1006,7 +1009,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     return { count: acquisitions.length, total };
   };
   const processes = data.processos.filter(
-    (p) => p.person_id === personId && (
+    (p) => p.person_id === personId && p.user_id === user?.id && (
       !medId || data.itens.some(
         (i) => i.processo_id === p.id && i.medicamento_id === medId
       ))
@@ -1067,7 +1070,13 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     }
   };
   const processMedicationIds=useMemo(()=>indexSupplyMedicationIds(personId||"",user?.id||"",data.processos,data.itens),[personId,user?.id,data.processos,data.itens]);
-  const treatmentProcessGroups=useMemo(()=>tratamentos.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id).map(t=>({t,linked:processes.filter(p=>p.user_id===user?.id&&matchesSupplyTreatment(t,medicamentos,processMedicationIds.get(p.id)||new Set<string>(),personId||"",p.user_id))})).filter(group=>group.linked.length>1),[tratamentos,medicamentos,processMedicationIds,personId,user?.id,medId]);
+  const treatmentProcessGroups=useMemo(()=>tratamentos.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id).map(t=>({
+    t,
+    linked:processes.filter(p=>p.user_id===user?.id&&matchesSupplyTreatment(t,medicamentos,processMedicationIds.get(p.id)||new Set<string>(),personId||"",p.user_id)),
+    purchased:medicamentos.filter(m=>m.id&&m.person_id===personId&&m.user_id===user?.id&&
+      (t.medicamento_ids?.includes(m.id)||m.tratamento_ids?.includes(t.id!))&&
+      (m.tipo_aquisicao==='comprado'||renovacoes.some(r=>r.medicamento_id===m.id&&r.person_id===personId&&r.user_id===user?.id&&r.tipo_aquisicao==='comprado')))
+  })).filter(group=>group.linked.length>1||group.purchased.length>0),[tratamentos,medicamentos,processes,processMedicationIds,personId,user?.id,renovacoes]);
   const renderProcess = (p: SupplyProcess) => {
     const ids = processMedicationIds.get(p.id)||new Set<string>();
     const treatment = tratamentos.find(t => matchesSupplyTreatment(t, medicamentos, ids, personId || "", p.user_id));
@@ -1093,7 +1102,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   setCreating(false);
                 }}
               >
-                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="truncate text-ink-primary">{p.titulo}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="truncate text-ink-primary">{p.titulo}</span><span className="shrink-0 text-[9px] font-normal text-ink-muted">{SUPPLY_ORIGIN_LABELS[p.origem]}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
               </button>
     );
   };
@@ -1146,13 +1155,16 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <p className="text-xs text-ink-muted">Carregando fornecimentos…</p>
       ) : (
         <>
+          {/* V156: a treatment is not a funding source; each process retains its own origin. */}
+          <p className="mb-2 rounded-xl border border-sky-400/10 bg-sky-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode incluir medicamentos comprados e fornecidos pelo SUS. Selecione a origem real de cada processo; compartilhar tratamento não torna a compra uma retirada SUS.</p>
           {/* Mixed origins remain accessible without duplicating one-process navigation. */}
-          {treatmentProcessGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos com vários fornecimentos ({treatmentProcessGroups.length})</summary><div className="mt-2 space-y-2">{treatmentProcessGroups.map(({t,linked})=>{
+          {treatmentProcessGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({treatmentProcessGroups.length})</summary><div className="mt-2 space-y-2">{treatmentProcessGroups.map(({t,linked,purchased})=>{
             const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:"#8b5cf6";
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
-              <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos</span></div>
+              <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
               <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
-              <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta do tratamento; autorizações, compras e retiradas continuam separadas por origem.</p>
+              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-wider text-sky-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-sky-400/15 bg-sky-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 truncate">{m.nome} · {m.dosagem}</span><span className="text-sky-300">Compra ›</span></Link>)}</div>:null}
+              <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
           <div className="mb-3 flex flex-wrap gap-2" aria-label="Selecionar fornecimento">
@@ -1194,6 +1206,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   key={personId + "create" + (seed?.id || "") + (medId || "")}
                   seed={seed}
                   meds={availableMedications}
+                  withdrawals={retiradas}
                   medicationId={[seed?.medicamento_id, medId, withdrawal?.medicamento_id].find(id => id && !occupiedMedicationIds.has(id)) || null}
                   run={run}
                   onSave={async (v, ids) => {
@@ -1299,6 +1312,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       key={process.id + process.updated_at}
                       initial={process}
                       meds={medicamentos.filter(m=>data.itens.some(i=>i.processo_id===process.id&&i.medicamento_id===m.id))}
+                      withdrawals={retiradas}
                       medicationId={null}
                       run={run}
                       onSave={(v) =>
