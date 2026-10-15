@@ -12,7 +12,16 @@ assert(editor.includes('Toque para personalizar'));
 assert(editor.includes('group-open:rotate-180'));
 assert(editor.includes('Check size={14}'));
 assert(scene.includes('narrower face with a soft jaw/chin'));
-assert(scene.includes('const brainBadge=mesh(new THREE.PlaneGeometry(.255,.255)'));
+// V158: aceitar tanto o emblema antigo quanto o núcleo geométrico interativo V164.
+// Em V164 não se deve recolocar a placa plana obsoleta apenas para satisfazer este teste.
+assert(
+  scene.includes('const brainBadge=mesh(new THREE.PlaneGeometry(.255,.255)') ||
+  (scene.includes('const brainPanel=mesh(softBox(') &&
+   scene.includes('brainPanel.userData.action="brain"') &&
+   scene.includes('brainGlyph.add(segment)') &&
+   scene.includes('segment.userData.action="brain"')),
+  'Brain deve manter o emblema V158 ou o núcleo geométrico interativo V164'
+);
 assert(scene.includes('const lace=mesh('));
 assert(page.includes('Corpo e sinais · explorar regiões'));
 assert(page.includes('Histórico completo, tendências e datas'));

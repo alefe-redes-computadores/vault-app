@@ -58,3 +58,10 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - Saldo cadastrado e tomadas da data são informações distintas. Nunca recompor saldo real por subtração de horários previstos ou corrigir divergências históricas por suposição.
 - Torso, mangas, mãos, bermuda e tênis usam painéis com bordas discretas; membros afunilados substituem cápsulas. Preservar os pontos clínicos esquemáticos e renderização sob demanda.
 - Brain destaca evidências prioritárias existentes; erro de atualização não é ausência de risco. Consulta ao banco nesta rodada foi somente de leitura.
+
+## Continuidade V164 — cena, Brain e energia
+
+- O Brain é um núcleo geométrico interativo, não um adesivo ou diagnóstico. Cor e destaque continuam derivados somente da prioridade de evidências já calculadas.
+- A base de inspeção e a luz de recorte dão profundidade sem animação contínua. A cena preserva renderização sob demanda, pausa fora da tela e preferência de GPU de baixo consumo.
+- A forma visual usa planos, linhas e bordas discretas. Cards e controles devem formar hierarquia, não uma coleção de bolhas arredondadas.
+- A tela expandida ocupa o viewport móvel inteiro, mantém saída visível e respeita foco, rotação, zoom e fallback para ilustração.

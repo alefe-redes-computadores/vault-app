@@ -191,7 +191,7 @@ function HealthDashboard({
   }
   return (
     <main className="min-h-screen bg-void px-4 pb-28 pt-6 text-ink-primary">
-      <div className="mx-auto max-w-xl space-y-5">
+      <div className="mx-auto max-w-xl space-y-4">
         <header className="flex items-center gap-3">
           <button
             type="button"
@@ -235,7 +235,7 @@ function HealthDashboard({
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
               </div>
             )}
-            <section className="overflow-hidden rounded-[28px] border border-surface-border bg-gradient-to-br from-emerald-400/[.035] to-surface p-3">
+            <section className="overflow-hidden rounded-2xl border border-surface-border border-l-2 border-l-emerald-300/40 bg-gradient-to-br from-emerald-400/[.035] to-surface p-3">
               <div className="flex items-center gap-3">
                 {person?.avatar_url ? (
                   <img
@@ -274,7 +274,7 @@ function HealthDashboard({
               </div>
               {/* V156 compact health identity: model at left, evidence to the right. */}
               <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-start gap-3">
-                <div className="min-w-0 rounded-2xl bg-emerald-300/[0.025]">
+                <div className="min-w-0 overflow-hidden rounded-lg bg-emerald-300/[0.025]">
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3 self-center">
@@ -287,7 +287,7 @@ function HealthDashboard({
                   <button
                     type="button"
                     onClick={() => open("peso")}
-                    className="block min-h-14 w-full rounded-xl text-left focus-visible:outline focus-visible:outline-emerald-300"
+                    className="block min-h-14 w-full rounded-lg text-left focus-visible:outline focus-visible:outline-emerald-300"
                   >
                     <p className="text-[11px] text-ink-muted">Último peso</p>
                     <p className="text-lg font-semibold">
@@ -307,16 +307,16 @@ function HealthDashboard({
                   </div>
                 </div>
               </div>
-              <details className="mt-3 rounded-2xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
+              <details className="mt-3 rounded-xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
                 <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Corpo e sinais · explorar regiões</summary>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 {/* V157 ANATOMICAL LINKS: available on demand, not permanent visual markers or diagnoses. */}
                 <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Explorar dados de saúde por região">
-                  <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-xl border border-violet-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Cabeça · sono</button>
-                  <button type="button" onClick={()=>go('/saude/exames')} className="min-h-11 rounded-xl border border-sky-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Olhos · exames</button>
-                  <button type="button" onClick={()=>setMetric('frequencia_cardiaca')} className="min-h-11 rounded-xl border border-rose-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Tórax · batimentos</button>
-                  <button type="button" onClick={()=>setMetric('peso')} className="min-h-11 rounded-xl border border-emerald-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Abdômen · peso</button>
-                  <button type="button" onClick={()=>setMetric('caminhada')} className="col-span-2 min-h-11 rounded-xl border border-amber-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Pernas · caminhada</button>
+                  <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-lg border border-violet-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Cabeça · sono</button>
+                  <button type="button" onClick={()=>go('/saude/exames')} className="min-h-11 rounded-lg border border-sky-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Olhos · exames</button>
+                  <button type="button" onClick={()=>setMetric('frequencia_cardiaca')} className="min-h-11 rounded-lg border border-rose-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Tórax · batimentos</button>
+                  <button type="button" onClick={()=>setMetric('peso')} className="min-h-11 rounded-lg border border-emerald-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Abdômen · peso</button>
+                  <button type="button" onClick={()=>setMetric('caminhada')} className="col-span-2 min-h-11 rounded-lg border border-amber-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Pernas · caminhada</button>
                 </div>
                 <div className="my-2 flex flex-wrap gap-2" aria-label="Outros registros representados no avatar">
                   <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/20 px-3 text-xs text-violet-300">Humor</button>
@@ -336,7 +336,7 @@ function HealthDashboard({
                 </button>
               )}
             </section>
-            <section className="rounded-[24px] border border-surface-border bg-surface p-3">
+            <section className="rounded-2xl border border-surface-border border-l-2 border-l-violet-300/40 bg-surface p-3">
               <div className="flex items-center gap-3">
                 <span className={`rounded-xl p-3 ${!intelligence.error&&!intelligence.isLoading&&intelligence.insights.some(x=>x.urgencia==='alta'||x.gravidadeSeguranca==='critica')?'bg-rose-400/10 text-rose-300':!intelligence.error&&!intelligence.isLoading&&intelligence.insights.some(x=>x.urgencia==='media')?'bg-amber-400/10 text-amber-300':'bg-violet-400/10 text-violet-300'}`}><Brain size={20}/></span>
                 <div className="min-w-0 flex-1">
@@ -351,7 +351,7 @@ function HealthDashboard({
               {brainSummaryOpen && (!intelligence.error && avatarContext.items.length > 0 ? (
                 <ul className="mt-3 space-y-2">
                   {avatarContext.items.map((item) => (
-                    <li key={item.id} className="rounded-xl bg-surface/70 p-3">
+                    <li key={item.id} className="border-l-2 border-violet-300/25 bg-surface/70 py-2 pl-3 pr-2">
                       <button type="button" onClick={()=>go(`/inteligencia/alertas?insight=${encodeURIComponent(item.id)}`)} className="flex min-h-11 w-full items-center gap-2 text-left text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex-1">{item.titulo}</span><ChevronRight size={14} className="shrink-0 text-violet-300"/><span className="sr-only">Ver evidências</span></button>
                       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.mensagem}</p>
                     </li>
