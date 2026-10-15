@@ -51,3 +51,10 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - Corpo, rosto e tênis têm enquadramentos visuais fixos; não dependem de dados clínicos. Boné/óculos aproximam o rosto e tênis aproximam os pés no editor.
 - Cores cosméticas devem atualizar materiais na cena existente, preservando canvas e câmera. Mudanças estruturais de modelo podem reconstruir a geometria com descarte dos recursos anteriores.
 - Manter renderização sob demanda e pausa fora da tela. A aproximação é ferramenta de inspeção, não análise clínica ou reconhecimento facial.
+
+## Continuidade V163 — saldo, forma e leitura
+
+- Abrir formulário, consultar histórico ou mudar a data não pode movimentar estoque. Dose e baixa devem passar pelo repositório canônico e sua transação. Travas síncronas de envio impedem confirmações repetidas no mesmo ciclo de renderização.
+- Saldo cadastrado e tomadas da data são informações distintas. Nunca recompor saldo real por subtração de horários previstos ou corrigir divergências históricas por suposição.
+- Torso, mangas, mãos, bermuda e tênis usam painéis com bordas discretas; membros afunilados substituem cápsulas. Preservar os pontos clínicos esquemáticos e renderização sob demanda.
+- Brain destaca evidências prioritárias existentes; erro de atualização não é ausência de risco. Consulta ao banco nesta rodada foi somente de leitura.

@@ -70,6 +70,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, scale?: [number,number,number]) => {
       const object = new THREE.Mesh(geometry, material); object.position.set(x,y,z); if (scale) object.scale.set(...scale); model.add(object); return object;
     };
+    const softBox=(width:number,height:number,depth:number,radius=.02)=>{
+      const shape=new THREE.Shape(),w=width/2,h=height/2,r=Math.min(radius,w/2,h/2);
+      shape.moveTo(-w+r,-h);shape.lineTo(w-r,-h);shape.quadraticCurveTo(w,-h,w,-h+r);shape.lineTo(w,h-r);shape.quadraticCurveTo(w,h,w-r,h);shape.lineTo(-w+r,h);shape.quadraticCurveTo(-w,h,-w,h-r);shape.lineTo(-w,-h+r);shape.quadraticCurveTo(-w,-h,-w+r,-h);
+      const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:3});geometry.translate(0,0,-depth/2);return geometry;
+    };
     const sphereGeometry=new THREE.SphereGeometry(1,24,16);
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
     // V158: narrower face with a soft jaw/chin; stylized, not derived from clinical metrics.
@@ -83,9 +88,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     oval(materials.hair,0,appearance.hat==="none"?2.98:2.94,-.035,[.247,appearance.hat==="none"?.17:.12,.23]);
     oval(materials.skin,-.224,2.77,0,[.031,.064,.041]); oval(materials.skin,.224,2.77,0,[.031,.064,.041]);
     mesh(new THREE.CylinderGeometry(.095,.11,.22,16),materials.skin,0,2.45,0);
-    const shirtProfile=[[.265,0],[.27,.08],[.28,.35],[.31,.58],[.335,.70],[.32,.75],[.15,.80]].map(([radius,y])=>new THREE.Vector2(radius,y));
-    mesh(new THREE.LatheGeometry(shirtProfile,24),materials.cloth,0,1.665,0,[1,1,.67]);
-    mesh(new THREE.CylinderGeometry(.27,.275,.28,24),materials.cloth,0,1.535,0,[1,1,.72]);
+    const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();
+    const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
+    mesh(shirtGeometry,materials.cloth,0,1.665,0);
+    mesh(softBox(.54,.25,.35),materials.cloth,0,1.535,0);
     mesh(new THREE.TorusGeometry(.108,.012,6,24),materials.dark,0,2.43,0).rotation.x=Math.PI/2;
     mesh(new THREE.BoxGeometry(.014,.31,.009),materials.dark,0,1.44,.19);
     for(const sign of [-1,1]) {
@@ -93,11 +99,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       mesh(new THREE.BoxGeometry(.10,.012,.014),materials.white,sign*.15,.235,.26);
     }
     for (const sign of [-1,1]) {
-      oval(materials.cloth,sign*.32,2.34,0,[.142,.14,.125]);
-      const arm = mesh(new THREE.CapsuleGeometry(.105,.65,6,16),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
-      oval(materials.skin,sign*.51,1.48,.015,[.1,.14,.08]);
-      mesh(new THREE.CapsuleGeometry(.13,.8,6,16),materials.skin,sign*.15,.77,0);
-      mesh(new THREE.CylinderGeometry(.145,.145,.35,20),materials.cloth,sign*.15,1.28,0,[1,1,1]);
+      const sleeve=mesh(softBox(.22,.25,.28,.025),materials.cloth,sign*.32,2.32,0);sleeve.rotation.z=sign*.10;
+      const arm = mesh(new THREE.CylinderGeometry(.085,.096,.77,8),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
+      mesh(softBox(.15,.21,.13,.025),materials.skin,sign*.51,1.48,.015);
+      mesh(new THREE.CylinderGeometry(.125,.095,1.03,10),materials.skin,sign*.15,.77,0);
+      mesh(softBox(.28,.35,.31,.018),materials.cloth,sign*.15,1.28,0,[1,1,1]);
       oval(materials.white,sign*.083,2.82,.214,[.036,.022,.017]);
       oval(materials.dark,sign*.083,2.82,.23,[.013,.015,.008]);
     }
@@ -148,11 +154,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     for(const side of [-1,1]) {
       const x=side*.15;
-      const sole=oval(materials.white,x,.125,.085,[.151,.026,.259]);sole.raycast=()=>{};
-      const shoe=oval(materials.sneakers,x,.175,.095,[.150,.065,.248]);shoe.raycast=()=>{};
+      const sole=mesh(softBox(.30,.035,.49,.018),materials.white,x,.125,.085);sole.raycast=()=>{};
+      const shoe=mesh(softBox(.29,.12,.46,.035),materials.sneakers,x,.195,.095);shoe.raycast=()=>{};
       for(let j=0;j<3;j++){const lace=mesh(new THREE.BoxGeometry(.075,.005,.008),materials.white,x,.204-j*.014,.309);lace.raycast=()=>{};}
       if(appearance.sneakers==="high-top"){
-        const high=mesh(new THREE.CylinderGeometry(.12,.137,.19,14),materials.sneakers,x,.26,.043);high.raycast=()=>{};
+        const high=mesh(softBox(.235,.19,.27,.025),materials.sneakers,x,.26,.043);high.raycast=()=>{};
       }
       if(appearance.sneakers==="runner"){
         const stripe=mesh(new THREE.BoxGeometry(.099,.017,.009),materials.white,x,.22,.327);stripe.raycast=()=>{};
@@ -199,7 +205,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     };
     const brainBadge=mesh(new THREE.PlaneGeometry(.255,.255),label("VAULT",BRAIN_BRAND),0,2.14,.239);brainBadge.userData.action="brain";
     const signalMaterial=new THREE.MeshStandardMaterial({color:avatarAttentionColor(attentionRef.current),emissive:avatarAttentionColor(attentionRef.current),emissiveIntensity:.35,metalness:.3,roughness:.4});
-    const signalRing=mesh(new THREE.TorusGeometry(.245,.008,8,48),signalMaterial,0,2.1,.248,[1,.86,1]);
+    const signalRing=new THREE.Group();model.add(signalRing);
+    for(const [x,y,w,h] of [[0,2.305,.34,.012],[0,1.975,.34,.012],[-.164,2.14,.012,.32],[.164,2.14,.012,.32]]){const rail=mesh(softBox(w,h,.012,.003),signalMaterial,x,y,.248);rail.userData.action="brain";signalRing.add(rail);}
+
     const setAttention=(rank:number)=>{const color=avatarAttentionColor(rank);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalRing.visible=rank>0;};
     setAttention(attentionRef.current);
     const backBadge=mesh(new THREE.PlaneGeometry(.22,.22),label("VAULT",BRAIN_BRAND),0,2.16,-.237);backBadge.rotation.y=Math.PI;backBadge.userData.action="brain";
@@ -233,7 +241,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       }
     }
     const phoneX=layout.phoneSide==="right"?-.55:.55;
-    const phone=mesh(new THREE.BoxGeometry(.17,.3,.035),materials.dark,phoneX,1.30,.09);phone.rotation.z=layout.phoneSide==="right"?-.12:.12;
+    const phone=mesh(softBox(.17,.3,.035,.015),materials.dark,phoneX,1.30,.09);phone.rotation.z=layout.phoneSide==="right"?-.12:.12;
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.30,.109);screen.rotation.z=phone.rotation.z;screen.userData.action="brain";
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
     const shadowContext=shadowCanvas.getContext("2d");

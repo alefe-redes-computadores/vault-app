@@ -4,6 +4,7 @@
 import {
   useCallback,
   useState,
+  useRef,
 } from "react";
 import {
   usePathname,
@@ -33,6 +34,7 @@ function getCanonicalSubmitUrl(pathname: string) {
 }
 
 export function useSubmitAction() {
+  const submissionLock=useRef(false);
   const [isSubmitting, setIsSubmitting] =
     useState(false);
 
@@ -51,8 +53,9 @@ export function useSubmitAction() {
         successUrl?: string;
       }
     ) => {
-      if (isSubmitting) return;
+      if (isSubmitting || submissionLock.current) return;
 
+      submissionLock.current=true;
       setIsSubmitting(true);
 
       try {
@@ -85,6 +88,7 @@ export function useSubmitAction() {
           "error"
         );
       } finally {
+        submissionLock.current=false;
         setIsSubmitting(false);
       }
     },

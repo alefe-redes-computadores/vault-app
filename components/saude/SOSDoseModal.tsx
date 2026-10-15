@@ -2,7 +2,7 @@
 "use client";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,8 +19,8 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useToast } from "@/components/ToastProvider";
-import { safeSetDoseLog, safeUpdateMedicamento } from "@/lib/db";
-import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
+import {doseLogsRepository} from "@/lib/repositories/doseLogs";
+import {getLocalTodayISO} from "@/lib/health-utils";
 import type { Medicamento } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
@@ -32,6 +32,7 @@ interface SOSDoseModalProps {
 
 export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
   const router = useRouter();
+  const saveLock=useRef(false);
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const { medicamentos } = useMedicamentos();
@@ -76,14 +77,17 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
     setEstoqueZerado(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if(saveLock.current||isSubmitting)return;
     if (!selectedMed) {
       trigger("error");
       showToast("Selecione um medicamento", "error");
       return;
     }
 
-    const qtd = Number(quantidade) || 1;
+    const qtd = Number(quantidade);
+    if(!Number.isFinite(qtd)||qtd<=0){showToast("Informe uma quantidade válida.","error");return;}
+    if(!activePersonId||selectedMed.person_id!==activePersonId){showToast("Confira a pessoa ativa.","error");return;}
     const doseUsual = Number(selectedMed.estoque_unidade_por_dose) || 1;
 
     // Alerta de saúde
@@ -102,47 +106,10 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
       return;
     }
 
-    run(
+    saveLock.current=true;
+    try { await run(
       async () => {
-        const agora = new Date();
-        const isoData = agora.toISOString().slice(0, 10);
-
-        // 1. Registra a dose
-        const doseId = await safeSetDoseLog({
-          user_id: selectedMed.user_id,
-          person_id: activePersonId || undefined,
-          medicamento_id: selectedMed.id!,
-          data: isoData,
-          horario: hora,
-          quantidade: qtd,
-          tomado_em: agora.toISOString(),
-        });
-
-        await enfileirarOperacao("doseLogs", "add", {
-          id: doseId,
-          user_id: selectedMed.user_id,
-          person_id: activePersonId,
-          medicamento_id: selectedMed.id,
-          data: isoData,
-          horario: hora,
-          quantidade: qtd,
-          tomado_em: agora.toISOString(),
-        });
-
-        // 2. Abate do estoque
-        if (typeof selectedMed.estoque_quantidade === "number") {
-          const novoEstoque = Math.max(0, selectedMed.estoque_quantidade - qtd);
-          await safeUpdateMedicamento(selectedMed.id!, {
-            estoque_quantidade: novoEstoque,
-            estoque_data_referencia: isoData,
-          });
-          await enfileirarOperacao("medicamentos", "update", {
-            id: selectedMed.id,
-            estoque_quantidade: novoEstoque,
-            estoque_data_referencia: isoData,
-          });
-        }
-
+        await doseLogsRepository.registrarTomadaAvulsa({personId:activePersonId,medicamentoId:selectedMed.id!,data:getLocalTodayISO(),horario:hora,quantidade:qtd,doseKind:"sos",motivo:observacoes.trim()||undefined});
         trigger("success");
         showToast("Dose registrada com sucesso!", "success");
         handleClose();
@@ -152,7 +119,7 @@ export function SOSDoseModal({ isOpen, onClose }: SOSDoseModalProps) {
         errorMessage: "Erro ao registrar dose",
         goBackOnSuccess: false,
       }
-    );
+    ); } finally {saveLock.current=false;}
   };
 
   const handleEstoqueRedirect = () => {

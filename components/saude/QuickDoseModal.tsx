@@ -1,10 +1,12 @@
 // components/saude/QuickDoseModal.tsx
 "use client";
+import {useRouter} from "next/navigation";
 import { CustomDatePicker } from "@/components/DatePicker";
 
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -537,6 +539,8 @@ export function QuickDoseModal({
   preselectedMedicamentoId,
   onSuccess,
 }: QuickDoseModalProps) {
+  const router=useRouter();
+  const saveLock=useRef(false);
   const [portalReady, setPortalReady] = useState(false);
 
   useEffect(() => {
@@ -1189,7 +1193,7 @@ export function QuickDoseModal({
       }
     ) => {
       if (
-        isSaving
+        isSaving || saveLock.current
       ) {
         return;
       }
@@ -1328,6 +1332,7 @@ export function QuickDoseModal({
         return;
       }
 
+      saveLock.current=true;
       setIsSaving(
         true
       );
@@ -1476,6 +1481,7 @@ export function QuickDoseModal({
           "error"
         );
       } finally {
+        saveLock.current=false;
         setIsSaving(
           false
         );
@@ -2162,7 +2168,7 @@ export function QuickDoseModal({
           <div className="h-1 w-10 rounded-full bg-surface-border" />
         </div>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-6 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] touch-pan-y sm:pt-6">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] touch-pan-y sm:pt-6">
           {/* ==================================================
               HEADER
               ================================================== */}
@@ -2184,7 +2190,7 @@ export function QuickDoseModal({
                 </h3>
 
                 <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
-                  A tomada entra no histórico e ajusta o estoque quando configurado.
+                  Confirme a quantidade e o horário.
                 </p>
               </div>
             </div>
@@ -2287,7 +2293,7 @@ export function QuickDoseModal({
 
               {filteredMedicamentos.length >
               0 ? (
-                <div className="-mx-6 flex gap-2.5 overflow-x-auto px-6 pb-2 scrollbar-hide">
+                <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-hide">
                   {filteredMedicamentos.map(
                     (
                       medicamento
@@ -2370,68 +2376,11 @@ export function QuickDoseModal({
               MEDICAMENTO ATUAL
               ================================================== */}
 
-          {selectedMed && (
-            <div className="flex items-center gap-3 rounded-[22px] border border-surface-border/50 bg-surface-raised p-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-surface-border/60 bg-void/55">
-                <MedicationFormatIcon
-                  formato={selectedMed.formato}
-                  cores={selectedMed.cores}
-                  size={27}
-                />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-ink-primary">
-                  {
-                    selectedMed.nome
-                  }
-                </p>
-
-                <p className="mt-0.5 truncate text-xs text-ink-muted">
-                  {selectedMed.dosagem ||
-                    "Dosagem não informada"}
-                </p>
-
-                {typeof stockQuantity ===
-                  "number" && (
-                  <p
-                    className={`mt-1 text-[10px] font-medium ${
-                      stockQuantity <=
-                      0
-                        ? "text-coral"
-                        : "text-ink-faint"
-                    }`}
-                  >
-                    Estoque:{" "}
-                    <span className="font-bold">
-                      {
-                        formatQuantity(
-                          stockQuantity
-                        )
-                      }{" "}
-                      {
-                        stockUnit
-                      }
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              <span
-                className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold uppercase ${
-                  selectedMed.tipo_uso ===
-                  "continuo"
-                    ? "bg-ice/10 text-ice"
-                    : "bg-amber-400/10 text-amber-400"
-                }`}
-              >
-                {selectedMed.tipo_uso ===
-                "continuo"
-                  ? "Contínuo"
-                  : "SOS"}
-              </span>
-            </div>
-          )}
+          {selectedMed && <section className="rounded-2xl border border-surface-border/50 bg-surface-raised p-3" aria-label="Medicamento e saldo">
+            <div className="flex items-start gap-2.5"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-void/55"><MedicationFormatIcon formato={selectedMed.formato} cores={selectedMed.cores} size={24}/></span><div className="min-w-0 flex-1"><p className="break-words text-sm font-bold text-ink-primary">{selectedMed.nome}</p><p className="mt-1 text-xs text-ink-muted">{selectedMed.dosagem||'Dosagem não informada'} · {selectedMed.tipo_uso==='continuo'?'Contínuo':'SOS'}</p></div></div>
+            <div className="mt-3 border-t border-surface-border pt-2 text-xs"><p className={typeof stockQuantity==='number'&&stockQuantity<=0?'text-coral':'text-ink-primary'}>Saldo cadastrado: <strong>{typeof stockQuantity==='number'?`${formatQuantity(stockQuantity)} ${stockUnit}`:'Não informado'}</strong></p><p className="mt-1 text-[11px] text-ink-muted">{doseLogs.filter(log=>log.medicamento_id===selectedMed.id&&log.person_id===activePersonId&&log.tomado_em&&!log.ignorado_em).length} tomadas registradas em {doseDate.split('-').reverse().join('/')}</p></div>
+            <details className="mt-1 text-[11px] text-ink-muted"><summary className="min-h-11 cursor-pointer py-3">Conferir histórico e saldo</summary><p>Abrir este formulário não movimenta estoque.</p>{selectedMed.estoque_data_referencia?<p className="mt-1">Referência do saldo: {selectedMed.estoque_data_referencia.slice(0,10).split('-').reverse().join('/')}</p>:null}<button type="button" disabled={isSaving} onClick={()=>{onClose();router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(selectedMed.id!)}`);}} className="mt-1 min-h-11 text-left text-xs font-semibold text-emerald-300">Abrir histórico do medicamento ›</button></details>
+          </section>}
 
           {preselectedMedicamentoId &&
             !selectedMed && (
@@ -2557,7 +2506,7 @@ export function QuickDoseModal({
                       : selectedMed.tipo_uso ===
                           "continuo"
                         ? "O horário informado está fora da rotina cadastrada e será salvo como uma tomada adicional."
-                        : "Cada confirmação cria um novo evento no histórico, inclusive se houver outra tomada no mesmo horário."}
+                        : "Cada confirmação registra uma nova tomada, mesmo no mesmo horário."}
                   </p>
                 </div>
               </motion.div>
@@ -2780,7 +2729,7 @@ export function QuickDoseModal({
                 />
               </div>
 
-              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data da tomada</span><CustomDatePicker value={doseDate} maxDate={today} disabled={isSaving} onChange={next=>setDoseDate(next||today)} /><span className="mt-1 block text-[9px] text-ink-faint">Hoje vem selecionado; altere apenas para uma tomada que já aconteceu.</span></label>
+              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data da tomada</span><CustomDatePicker className="[&_input]:text-xs [&_input]:pl-2 [&_input]:pr-8" value={doseDate} maxDate={today} disabled={isSaving} onChange={next=>setDoseDate(next||today)} /><span className="mt-1 block text-[9px] text-ink-faint">Hoje vem selecionado; altere apenas para uma tomada que já aconteceu.</span></label>
             </div>
           </div>
 
