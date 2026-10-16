@@ -85,9 +85,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     };
     const sphereGeometry=new THREE.SphereGeometry(1,24,16);
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
-    // V158: narrower face with a soft jaw/chin; stylized, not derived from clinical metrics.
-    oval(materials.skin,0,2.80,0,[.216,.302,.202]);
-    const jaw=mesh(new THREE.CylinderGeometry(.132,.082,.13,8),materials.skin,0,2.625,.018);jaw.rotation.x=.03;
+    // V158 continuity: narrower face with a soft jaw/chin.
+    // V167: face planes remain stylized but no longer read as one circular mass.
+    oval(materials.skin,0,2.81,-.008,[.205,.292,.188]);
+    const jaw=mesh(new THREE.CylinderGeometry(.142,.072,.145,10),materials.skin,0,2.625,.018);jaw.rotation.x=.03;
+    for(const sign of [-1,1]) oval(materials.skin,sign*.132,2.735,.075,[.072,.112,.105]);
+    const chin=oval(materials.skin,0,2.585,.045,[.083,.047,.078]);chin.rotation.x=.08;
     // Brows, eye highlights and clothing seams provide depth without remote assets.
     for(const sign of [-1,1]) {
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
@@ -111,6 +114,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const arm = mesh(new THREE.CylinderGeometry(.085,.096,.77,8),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
       const palm=mesh(softBox(.15,.21,.13,.035),materials.skin,sign*.51,1.48,.015);
       const thumb=mesh(new THREE.CapsuleGeometry(.026,.075,3,7),materials.skin,sign*.445,1.49,.075);thumb.rotation.z=sign*.78;
+      // Four articulated silhouettes make both hands readable from the front
+      // without multiplying draw calls into a realistic hand rig.
+      for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
+        const finger=mesh(new THREE.CapsuleGeometry(.015,.075-fingerIndex*.004,3,6),materials.skin,sign*(.475+fingerIndex*.024),1.405,.065);
+        finger.rotation.z=sign*(.03+fingerIndex*.025);finger.raycast=()=>{};
+      }
       mesh(new THREE.CylinderGeometry(.125,.095,1.03,10),materials.skin,sign*.15,.77,0);
       mesh(softBox(.28,.35,.31,.018),materials.cloth,sign*.15,1.28,0,[1,1,1]);
       oval(materials.white,sign*.083,2.82,.214,[.036,.022,.017]);
@@ -122,10 +131,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     if (appearance.hat !== "none") {
       const crown=mesh(new THREE.SphereGeometry(.246,28,16,0,Math.PI*2,0,Math.PI/2),materials.cap,0,2.98,-.01,[1,.75,.93]);
       crown.raycast=()=>{};
-      const brim=mesh(taperedBox(appearance.hat==="flat"?.37:.34,appearance.hat==="flat"?.46:.41,.026,.235),materials.cap,0,2.995,.205);
-      brim.rotation.x=appearance.hat==="baseball"?-.13:-.04;
+      const brim=mesh(taperedBox(appearance.hat==="flat"?.39:.36,appearance.hat==="flat"?.50:.46,.03,.285),materials.cap,0,2.988,.235);
+      brim.rotation.x=appearance.hat==="baseball"?-.16:-.055;
       brim.raycast=()=>{};
-      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.45:.40,.012,.018),materials.white,0,2.976,.322);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
+      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.49:.45,.012,.022),materials.white,0,2.963,.382);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {
@@ -161,6 +170,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const x=side*.15;
       const sole=mesh(taperedBox(.25,.33,.045,.50),materials.white,x,.125,.085);sole.raycast=()=>{};
       const shoe=mesh(taperedBox(.24,.31,.13,.46),materials.sneakers,x,.195,.095);shoe.raycast=()=>{};
+      const toe=oval(materials.sneakers,x,.19,.292,[.155,.075,.145]);toe.raycast=()=>{};
+      const toeGuard=mesh(new THREE.BoxGeometry(.235,.018,.018),materials.white,x,.153,.405);toeGuard.raycast=()=>{};
       const tongue=mesh(softBox(.13,.12,.025,.012),materials.sneakers,x,.245,.275);tongue.rotation.x=-.22;tongue.raycast=()=>{};
       const heel=mesh(softBox(.235,.12,.055,.018),materials.dark,x,.205,-.145);heel.raycast=()=>{};
       for(let j=0;j<3;j++){const lace=mesh(new THREE.BoxGeometry(.075,.005,.008),materials.white,x,.204-j*.014,.309);lace.raycast=()=>{};}

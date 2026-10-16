@@ -2255,6 +2255,32 @@ export default function HojePage() {
       }
     };
 
+  const handleCancelPlannedDose = async (item: DoseItemExt) => {
+    if (
+      processandoDoseId ||
+      item.doseKind !== "planned" ||
+      !item.logId
+    ) return;
+
+    const confirmed = window.confirm(
+      `Cancelar a dose de ${item.medicamentoNome || "medicamento"} agendada para ${item.horario}? O estoque não será alterado.`
+    );
+    if (!confirmed) return;
+
+    setProcessandoDoseId(`log-${item.logId}`);
+    try {
+      await removerDosePorId(item.logId);
+      trigger("success");
+      showToast("Agendamento cancelado. O estoque não foi alterado.", "info");
+    } catch (error) {
+      console.error("Erro ao cancelar dose agendada:", error);
+      trigger("error");
+      showToast("Não foi possível cancelar o agendamento", "error");
+    } finally {
+      setProcessandoDoseId(null);
+    }
+  };
+
   const handleToggle = async (
     item: DoseItemExt
   ) => {
@@ -4550,8 +4576,27 @@ export default function HojePage() {
                                     )
                                   ) : (
                                     <>
+                                      {!isHoje &&
+                                        item.doseKind === "planned" &&
+                                        !item.tomada &&
+                                        !item.ignorada && (
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              void handleCancelPlannedDose(item);
+                                            }}
+                                            disabled={isProcessando || isProcessing}
+                                            className="inline-flex min-h-8 items-center gap-1 rounded-full border border-coral/25 bg-coral/10 px-3 py-1 text-[9px] font-semibold text-coral transition-all active:scale-95 disabled:opacity-50"
+                                          >
+                                            <X size={12} />
+                                            Cancelar agendamento
+                                          </button>
+                                        )}
+
                                       {!item.tomada &&
                                         !item.ignorada &&
+                                        isHoje &&
                                         (!item.isAvulsa || item.doseKind === "planned") && (
                                           <>
                                             {!item.isAvulsa && <button
