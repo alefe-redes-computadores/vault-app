@@ -523,7 +523,7 @@ export function PendingDosesModal({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-void/80 p-4 backdrop-blur-md sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-void/80 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-[max(.5rem,env(safe-area-inset-top))] backdrop-blur-md sm:items-center sm:p-4"
       onPointerDown={
         (
           event
@@ -578,7 +578,7 @@ export function PendingDosesModal({
           ) =>
             event.stopPropagation()
         }
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-md space-y-4 overflow-y-auto overscroll-contain rounded-[32px] border border-surface-border bg-surface p-4 shadow-2xl sm:p-5"
+        className="max-h-[calc(100dvh-max(1rem,env(safe-area-inset-top))-max(1rem,env(safe-area-inset-bottom)))] w-full max-w-md space-y-3 overflow-y-auto overscroll-contain rounded-[26px] border border-surface-border bg-surface p-3.5 shadow-2xl sm:space-y-4 sm:rounded-[32px] sm:p-5"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -714,9 +714,9 @@ export function PendingDosesModal({
               </p>
             </div>
 
-            {selectedDose.stockUnavailable && <div className="rounded-xl border border-coral/30 bg-coral/5 p-3 text-xs"><p className="text-coral">O estoque cadastrado está zerado. O que aconteceu com esta dose?</p><a className="mt-2 block min-h-11 py-3 text-sky-300" href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(selectedDose.medicamentoId)}`}>Conferir medicamento e aquisições ›</a></div>}
+            {selectedDose.stockUnavailable && <div className="flex items-start gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[.055] p-3"><PackageX size={18} className="mt-0.5 shrink-0 text-amber-300"/><div className="min-w-0"><p className="text-xs font-semibold text-amber-100">Estoque cadastrado zerado</p><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Escolha “faltou medicamento” se você não tomou. Se tomou, registre normalmente e depois confira o estoque.</p><a className="mt-1.5 inline-flex min-h-9 items-center py-2 text-xs font-semibold text-sky-300" href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(selectedDose.medicamentoId)}`}>Conferir estoque e aquisições <ChevronRight size={13}/></a></div></div>}
             <div className="space-y-2">
-              {selectedDose.stockUnavailable && <button type="button" disabled={existeProcessamento} onClick={()=>void handleResolve({kind:"ignored",motivo:"sem_estoque"})} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3.5 text-left disabled:opacity-50"><PackageX size={20} className="shrink-0 text-amber-300"/><span><span className="block text-sm font-semibold">Não tomei · faltou medicamento</span><span className="mt-1 block text-xs text-ink-muted">Salva o motivo no histórico desta dose.</span></span></button>}
+              {selectedDose.stockUnavailable && <button type="button" disabled={existeProcessamento} onClick={()=>void handleResolve({kind:"ignored",motivo:"sem_estoque"})} className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-left disabled:opacity-50"><PackageX size={19} className="shrink-0 text-amber-300"/><span><span className="block text-sm font-semibold">Não tomei: medicamento em falta</span><span className="mt-0.5 block text-[10px] text-ink-muted">Registra o motivo sem alterar o estoque.</span></span></button>}
               <button
                 type="button"
                 disabled={
@@ -979,7 +979,7 @@ export function PendingDosesModal({
                         disabled={
                           existeProcessamento
                         }
-                        className={`flex w-full items-center justify-between gap-3 rounded-2xl border ${dose.stockUnavailable ? "border-amber-400/20 bg-amber-400/[.035]" : "border-surface-border/50 bg-surface-raised"} p-3.5 text-left active:scale-[0.99] disabled:opacity-55`}
+                        className={`flex min-h-[62px] w-full items-center justify-between gap-3 rounded-2xl border ${dose.stockUnavailable ? "border-amber-400/20 bg-amber-400/[.035]" : "border-surface-border/50 bg-surface-raised"} px-3 py-2.5 text-left active:scale-[0.99] disabled:opacity-55`}
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/60 bg-void/55">
@@ -1016,7 +1016,7 @@ export function PendingDosesModal({
                               {
                                 dose.horario
                               }
-                              {dose.stockUnavailable && <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-300"><PackageX size={12}/> Sem estoque cadastrado</span>}
+                              {dose.stockUnavailable && <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-amber-300"><PackageX size={11}/> Estoque zerado</span>}
                             </p>
                           </div>
                         </div>
@@ -1043,10 +1043,9 @@ export function PendingDosesModal({
               )}
             </div>
 
-            {unavailableDoses.length > 0 && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[.04] p-3.5">
-              <div className="flex items-center gap-2 text-sm font-semibold text-amber-200"><PackageX size={18}/>{unavailableDoses.length} sem estoque cadastrado</div>
-              <p className="mt-2 text-xs leading-relaxed text-ink-muted">Essas doses ficam fora do lote de tomadas. Se você tomou, abra a dose e registre o que aconteceu.</p>
-              {!stockConfirmationOpen ? <button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(true)} className="mt-2 min-h-11 text-left text-xs font-semibold text-amber-200">Revisar faltas de medicamento ›</button> : <div className="mt-3 border-t border-amber-400/20 pt-3"><p className="text-xs leading-relaxed">Você não tomou nenhuma dessas {unavailableDoses.length} doses porque o medicamento faltou?</p><div className="mt-2 flex gap-2"><button type="button" disabled={existeProcessamento} onClick={()=>void handleStockBatch()} className="min-h-11 flex-1 rounded-xl bg-amber-200 px-3 text-xs font-bold text-void disabled:opacity-50">{isProcessingAll ? "Salvando…" : "Confirmar falta"}</button><button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(false)} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs">Cancelar</button></div></div>}
+            {unavailableDoses.length > 0 && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[.04] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2 text-xs font-semibold text-amber-100"><PackageX size={15}/>{unavailableDoses.length} {unavailableDoses.length===1?"dose com estoque zerado":"doses com estoque zerado"}</div><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Ficam fora do registro em lote.</p></div>{!stockConfirmationOpen&&<button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(true)} className="min-h-10 shrink-0 rounded-xl border border-amber-400/20 px-3 text-[10px] font-semibold text-amber-200">Resolver faltas</button>}</div>
+              {stockConfirmationOpen && <div className="mt-2 border-t border-amber-400/15 pt-2.5"><p className="text-xs leading-relaxed">Confirmar que você não tomou {unavailableDoses.length===1?"esta dose":"essas doses"} porque o medicamento faltou?</p><div className="mt-2 flex gap-2"><button type="button" disabled={existeProcessamento} onClick={()=>void handleStockBatch()} className="min-h-10 flex-1 rounded-xl bg-amber-200 px-3 text-xs font-bold text-void disabled:opacity-50">{isProcessingAll ? "Salvando…" : "Confirmar falta"}</button><button type="button" disabled={existeProcessamento} onClick={()=>setStockConfirmationOpen(false)} className="min-h-10 rounded-xl border border-surface-border px-3 text-xs">Cancelar</button></div></div>}
             </div>}
             {availableDoses.length > 0 && doses.length > 1 && (
               <div className="rounded-[22px] border border-emerald-400/20 bg-emerald-400/[0.06] p-3.5">

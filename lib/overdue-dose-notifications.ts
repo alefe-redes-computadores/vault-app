@@ -59,6 +59,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
 
   type PendingSlot={medicamentoId:string;nome:string;data:string;horario:string;base:Date};
   const grouped=new Map<string,PendingSlot[]>();
+  const slotKeys=new Set<string>();
 
   for(let day=0;day<HORIZON_DAYS;day+=1){
     const data=localDateKey(addLocalDays(now,day));
@@ -74,8 +75,29 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
         const slots=grouped.get(key)??[];
         slots.push({medicamentoId,nome:med.nome?.trim()||"Medicamento",data,horario,base});
         grouped.set(key,slots);
+        slotKeys.add(slotKey(personId,medicamentoId,data,horario));
       }
     }
+  }
+
+  // V166: agendamentos avulsos usam o mesmo acompanhamento de atraso da
+  // rotina, mas continuam sendo DoseLogs explícitos e não viram prescrição.
+  const medicationById=new Map(input.medicamentos.filter(m=>m.person_id===personId&&Boolean(m.id)).map(m=>[m.id!,m]));
+  for(const log of input.logs){
+    if(log.person_id!==personId||log.dose_kind!=="planned"||log.tomado_em||log.ignorado_em)continue;
+    const medicamentoId=log.medicamento_id?.trim();
+    const horario=normalizeHorario(log.horario||"");
+    const med=medicamentoId?medicationById.get(medicamentoId):undefined;
+    if(!medicamentoId||!horario||!med||slotKeys.has(slotKey(personId,medicamentoId,log.data,horario)))continue;
+    const base=dateAt(log.data,horario);if(!base)continue;
+    const at=new Date(base.getTime()+offsetMinutes*60000);
+    const horizonEnd=addLocalDays(now,HORIZON_DAYS);
+    if(at<=now||at>=horizonEnd)continue;
+    const key=`${log.data}|${horario}`;
+    const slots=grouped.get(key)??[];
+    slots.push({medicamentoId,nome:med.nome?.trim()||"Medicamento",data:log.data,horario,base});
+    grouped.set(key,slots);
+    slotKeys.add(slotKey(personId,medicamentoId,log.data,horario));
   }
 
   const desired=new Map<number,{id:number;title:string;body:string;at:Date;personId:string;medicamentoIds:string[];data:string;horario:string;offsetMinutes:number}>();

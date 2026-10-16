@@ -177,6 +177,7 @@ export function useDoseNotificationActions() {
                 !extra ||
                 (
                   extra.type !== "dose_reminder" &&
+                  extra.type !== "dose_planned" &&
                   extra.type !== "dose_overdue"
                 )
               ) {
@@ -222,7 +223,7 @@ export function useDoseNotificationActions() {
 
               // VAULT_NOTIFICATION_EXACT_SLOT_V51
               const exactNotificationDate =
-                (extra.type === "dose_overdue" || extra.type === "dose_reminder") &&
+                (extra.type === "dose_overdue" || extra.type === "dose_reminder" || extra.type === "dose_planned") &&
                 typeof extra.data === "string" &&
                 /^\d{4}-\d{2}-\d{2}$/.test(extra.data)
                   ? extra.data

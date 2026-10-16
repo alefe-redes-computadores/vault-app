@@ -338,30 +338,15 @@ export async function cancelDoseNotifications(
         const extra =
           notification.extra;
 
+        const stockExtra = extra as Record<string, unknown> | undefined;
         if (
-          extra &&
-          typeof extra ===
-            "object" &&
-          (
-            extra as Record<
-              string,
-              unknown
-            >
-          ).type ===
-            "dose_reminder" &&
-          (
-            extra as Record<
-              string,
-              unknown
-            >
-          ).medicamentoId ===
-            medicamentoId
+          (stockExtra?.type === "dose_reminder" || stockExtra?.type === "dose_planned") &&
+          stockExtra.medicamentoId === medicamentoId
         ) {
           ids.add(
             notification.id
           );
         }
-        const stockExtra = extra as Record<string, unknown> | undefined;
         if (stockExtra?.type === "dose_stock_review" && Array.isArray(stockExtra.medicamentoIds) && stockExtra.medicamentoIds.includes(medicamentoId)) ids.add(notification.id);
       }
     );
@@ -447,18 +432,8 @@ export async function cancelAllDoseNotifications(
         const extra =
           notification.extra;
 
-        if (
-          extra &&
-          typeof extra ===
-            "object" &&
-          (
-            extra as Record<
-              string,
-              unknown
-            >
-          ).type ===
-            "dose_reminder"
-        ) {
+        const doseType = (extra as Record<string, unknown> | undefined)?.type;
+        if (doseType === "dose_reminder" || doseType === "dose_planned") {
           ids.add(
             notification.id
           );
@@ -549,7 +524,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
   const oldDoseIds=pending.notifications
     .filter((notification) => {
       const extra=notification.extra as Record<string,unknown>|undefined;
-      return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group" || extra?.type==="dose_stock_review";
+      return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group" || extra?.type==="dose_planned" || extra?.type==="dose_stock_review";
     })
     .map((notification)=>({id:notification.id}));
 
@@ -581,6 +556,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
     data: string;
     horario: string;
     at: Date;
+    planned: boolean;
   };
 
   const slots: PendingDoseSlot[]=[];
@@ -601,7 +577,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
           const key = `${medicamentoId}:${data}`;
           if (!stockDays.has(key)) {
             stockDays.add(key);
-            stockSlots.push({ medicamentoId, nome: med.nome?.trim() || "Medicamento", dosagem: "", data, horario, at });
+            stockSlots.push({ medicamentoId, nome: med.nome?.trim() || "Medicamento", dosagem: "", data, horario, at, planned: false });
           }
           continue;
         }
@@ -612,9 +588,46 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
           data,
           horario,
           at,
+          planned: false,
         });
       }
     }
+  }
+
+  // V166: uma dose avulsa futura já é um compromisso explícito do usuário.
+  // Ela participa da mesma agenda local, inclusive para medicamentos SOS ou
+  // descontinuados, sem movimentar estoque antes da confirmação da tomada.
+  const medicationById = new Map(
+    input.medicamentos
+      .filter((med) => med.person_id === personId && Boolean(med.id))
+      .map((med) => [med.id!, med])
+  );
+  const existingSlotKeys = new Set(
+    slots.map((slot) => `${slot.medicamentoId}:${slot.data}:${slot.horario}`)
+  );
+  for (const log of input.logs) {
+    if (
+      log.person_id !== personId ||
+      log.dose_kind !== "planned" ||
+      log.tomado_em ||
+      log.ignorado_em
+    ) continue;
+    const medicamentoId = log.medicamento_id?.trim();
+    const horario = normalizeHorario(log.horario || "");
+    const med = medicamentoId ? medicationById.get(medicamentoId) : undefined;
+    if (!medicamentoId || !horario || !med || existingSlotKeys.has(`${medicamentoId}:${log.data}:${horario}`)) continue;
+    const at = scheduledDateAtV51(log.data, horario);
+    if (!at || at.getTime() <= now.getTime()) continue;
+    slots.push({
+      medicamentoId,
+      nome: med.nome?.trim() || "Medicamento",
+      dosagem: med.dosagem?.trim() || "",
+      data: log.data,
+      horario,
+      at,
+      planned: true,
+    });
+    existingSlotKeys.add(`${medicamentoId}:${log.data}:${horario}`);
   }
 
   const grouped=new Map<string,PendingDoseSlot[]>();
@@ -637,13 +650,16 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
     if(group.length===1){
       notifications.push({
         id: hashToId(`dose:v51:${personId}:${first.medicamentoId}:${first.data}:${first.horario}`),
-        title:`Hora do ${first.nome}`,
-        body:first.dosagem ? `${first.dosagem} — registre a dose no Vault` : "Registre a dose no Vault",
+        title:first.planned ? `Dose agendada: ${first.nome}` : `Hora do ${first.nome}`,
+        body:first.planned
+          ? `${first.horario}${first.dosagem ? ` · ${first.dosagem}` : ""} — confirme somente depois de tomar.`
+          : first.dosagem ? `${first.dosagem} — registre a dose no Vault` : "Registre a dose no Vault",
         actionTypeId:ACTION_TYPE_ID,
         channelId:VAULT_NOTIFICATION_CHANNEL_ID,
         schedule:{at:first.at,allowWhileIdle:true},
         extra:{
           type:"dose_reminder",
+          ...(first.planned ? {type:"dose_planned"} : {}),
           medicamentoId:first.medicamentoId,
           personId,
           horario:first.horario,
