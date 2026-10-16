@@ -24,6 +24,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 import type { HealthInsight } from "@/lib/health-insights";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import {
   buildBrainHealthV4,
   buildConsultationPrepV4,
@@ -82,6 +83,7 @@ function humanSignalSubject(subject: string, medications: Array<{ id?: string; n
 
 export default function HealthIntelligenceLabPage() {
   const router = useRouter();
+  const {backTarget,preserveReturn}=useReturnContext("/inteligencia");
   const health = useHealthIntelligence();
   const [selected, setSelected] = useState<HealthInsight | null>(null);
   const [period, setPeriod] = useState<30 | 90>(30);
@@ -165,7 +167,7 @@ export default function HealthIntelligenceLabPage() {
         <header className="mx-auto flex max-w-2xl items-start gap-3">
           <button
             type="button"
-            onClick={() => router.replace("/inteligencia")}
+            onClick={() => router.replace(backTarget)}
             className="rounded-2xl border border-surface-border bg-surface p-3 text-ink-muted"
             aria-label="Voltar"
           >
@@ -270,7 +272,7 @@ export default function HealthIntelligenceLabPage() {
             <p className="text-xs text-ink-muted">Eventos recentes usados para construir contexto, sem inferir causalidade.</p>
             <button
               type="button"
-              onClick={() => router.push("/saude/timeline")}
+              onClick={() => router.push(preserveReturn("/saude/timeline"))}
               className="shrink-0 rounded-full border border-ice/20 bg-ice/5 px-3 py-1.5 text-[10px] font-semibold text-ice"
             >
               Ver histórico completo

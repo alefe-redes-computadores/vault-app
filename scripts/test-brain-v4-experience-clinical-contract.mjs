@@ -33,7 +33,10 @@ ok(page.includes("Ensinar relevância ao Vault"), "UI oferece feedback");
 ok(page.includes("não provam causa") && page.includes("não certeza médica"), "UI mantém limites clínicos explícitos");
 
 ok(central.includes('router.push("/inteligencia/alertas")'), "Central possui entrada para o Cérebro V5");
-ok(page.includes('router.replace("/inteligencia")'), "Saúde longitudinal V4 permanece integrada à Central");
+ok(
+  page.includes('router.replace("/inteligencia")') || page.includes("router.replace(backTarget)"),
+  "Saúde longitudinal V4 permanece integrada à Central com retorno contextual"
+);
 ok(!central.includes("VAULT INSIGHT · V60"), "branding não exibe versão técnica antiga");
 
 ok(brain.includes('version: "4.0-shadow"'), "motor longitudinal continua shadow para notificações");

@@ -196,7 +196,7 @@ interface DoseItemExt {
   comportamento?: any;
   isAvulsa?: boolean;
   motivoAvulsa?: string;
-  doseKind?: "sos" | "extra";
+  doseKind?: "sos" | "extra" | "planned";
   logId?: string;
 
   /**
@@ -1563,8 +1563,9 @@ export default function HojePage() {
       if (
         (!isOficialTomada ||
           log.dose_kind === "extra" ||
-          log.dose_kind === "sos") &&
-        log.tomado_em
+          log.dose_kind === "sos" ||
+          log.dose_kind === "planned") &&
+        (log.tomado_em || log.dose_kind === "planned")
       ) {
         const jaExisteAvulsa =
           list.some(
@@ -1593,7 +1594,7 @@ export default function HojePage() {
             cores: med.cores,
             horario:
               log.horario || "00:00",
-            tomada: true,
+            tomada: Boolean(log.tomado_em),
             ignorada: false,
             cor:
               tratamentoObj?.cor ||
@@ -1627,11 +1628,15 @@ export default function HojePage() {
             isAvulsa: true,
             motivoAvulsa:
               log.motivo ||
-              (log.dose_kind === "extra"
+              (log.dose_kind === "planned"
+                ? "Dose avulsa agendada"
+                : log.dose_kind === "extra"
                 ? "Dose extra"
                 : "Dose avulsa / SOS"),
             doseKind:
-              log.dose_kind === "extra" ? "extra" : "sos",
+              log.dose_kind === "planned"
+                ? "planned"
+                : log.dose_kind === "extra" ? "extra" : "sos",
             logId: log.id,
           });
         }
@@ -2303,7 +2308,8 @@ export default function HojePage() {
 
       if (
         item.isAvulsa &&
-        item.logId
+        item.logId &&
+        item.doseKind !== "planned"
       ) {
         await removerDosePorId(
           item.logId
@@ -4299,7 +4305,8 @@ export default function HojePage() {
 
                                       {item.isAvulsa && (
                                         <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-400">
-                                          <Zap size={10} /> SOS / Avulsa
+                                          {item.doseKind === "planned" ? <Clock size={10} /> : <Zap size={10} />}
+                                          {item.doseKind === "planned" ? "Agendada" : "SOS / Avulsa"}
                                         </span>
                                       )}
                                     </div>
@@ -4545,9 +4552,9 @@ export default function HojePage() {
                                     <>
                                       {!item.tomada &&
                                         !item.ignorada &&
-                                        !item.isAvulsa && (
+                                        (!item.isAvulsa || item.doseKind === "planned") && (
                                           <>
-                                            <button
+                                            {!item.isAvulsa && <button
                                               type="button"
                                               onClick={(
                                                 e
@@ -4565,7 +4572,7 @@ export default function HojePage() {
                                               className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                             >
                                               Ignorar
-                                            </button>
+                                            </button>}
 
                                             <button
                                               type="button"

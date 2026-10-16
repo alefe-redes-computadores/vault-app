@@ -19,7 +19,11 @@ ok(timeline.includes("VAULT_CLINICAL_TIMELINE_V67"), "timeline clínica de leitu
 ok(timeline.includes("health.brainV4?.timeline"), "timeline reutiliza Brain V4 sem segunda fonte de verdade");
 ok(!timeline.includes("db."), "timeline não persiste nem duplica dados");
 ok(clinical.includes("buildCanonicalClinicalTimeline"), "timeline canônica existente preservada");
-ok(intelligence.includes('router.push("/saude/timeline")'), "saúde longitudinal abre histórico completo");
+ok(
+  intelligence.includes('router.push("/saude/timeline")') ||
+    intelligence.includes('router.push(preserveReturn("/saude/timeline"))'),
+  "saúde longitudinal abre histórico completo com retorno contextual"
+);
 ok(intelligence.includes("Fontes internas consultadas"), "explicabilidade mostra proveniência");
 ok(intelligence.includes("selected.acaoSegura"), "explicabilidade mostra próximo passo seguro");
 ok(hydration.includes("VAULT_HYDRATION_EXPERIENCE_V67"), "hidratação V67 instalada");

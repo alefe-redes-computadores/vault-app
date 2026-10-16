@@ -569,6 +569,11 @@ export function QuickDoseModal({
     useActivePersonId();
 
   const today = getLocalTodayISO();
+  const maxScheduleDate = useMemo(() => {
+    const date = new Date(`${today}T12:00:00`);
+    date.setDate(date.getDate() + 30);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }, [today]);
   // VAULT_RETROACTIVE_DOSE_V70
   const [doseDate,setDoseDate]=useState(today);
   const { doseLogs } = useDoseLogs(doseDate);
@@ -752,6 +757,15 @@ export function QuickDoseModal({
     !registerAsExtra
       ? "scheduled"
       : "ad-hoc";
+
+  const chosenDoseTime =
+    isValidTime(doseHora)
+      ? new Date(`${doseDate}T${doseHora}:00`).getTime()
+      : Number.NaN;
+  const willScheduleAdHoc =
+    doseMode === "ad-hoc" &&
+    Number.isFinite(chosenDoseTime) &&
+    chosenDoseTime > Date.now() + 30_000;
 
   const scheduledAlreadyTaken =
     doseMode ===
@@ -1273,6 +1287,7 @@ export function QuickDoseModal({
           doseQtd;
 
       if (
+        !willScheduleAdHoc &&
         requestedStatus ===
           "taken" &&
         quantitySafetyAssessment.level !==
@@ -1350,6 +1365,26 @@ export function QuickDoseModal({
       );
 
       try {
+        if (willScheduleAdHoc) {
+          await doseLogsRepository.agendarDoseAvulsa({
+            personId: activePersonId,
+            medicamentoId: selectedMed.id,
+            data: doseDate,
+            horario: doseHora,
+            quantidade: doseQtd,
+            motivo: doseReason,
+          });
+
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("sync:process"));
+          }
+          trigger("success");
+          showToast(`Dose de ${selectedMed.nome} agendada para ${doseHora}. O estoque não foi alterado.`, "success");
+          onSuccess?.();
+          onClose();
+          return;
+        }
+
         /*
          * Dose programada:
          *
@@ -2729,9 +2764,19 @@ export function QuickDoseModal({
                 />
               </div>
 
-              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data da tomada</span><CustomDatePicker className="[&_input]:text-xs [&_input]:pl-2 [&_input]:pr-8" value={doseDate} maxDate={today} disabled={isSaving} onChange={next=>setDoseDate(next||today)} /><span className="mt-1 block text-[9px] text-ink-faint">Hoje vem selecionado; altere apenas para uma tomada que já aconteceu.</span></label>
+              <label className="block px-1 pt-1"><span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-ink-faint">Data</span><CustomDatePicker className="[&_input]:text-xs [&_input]:pl-2 [&_input]:pr-8" value={doseDate} maxDate={maxScheduleDate} disabled={isSaving} onChange={next=>setDoseDate(next||today)} /><span className="mt-1 block text-[9px] text-ink-faint">Horário passado registra a tomada; horário futuro agenda sem baixar o estoque.</span></label>
             </div>
           </div>
+
+          {selectedMed && willScheduleAdHoc && (
+            <div className="flex items-start gap-3 rounded-2xl border border-ice/25 bg-ice/[0.07] p-3.5">
+              <Clock size={17} className="mt-0.5 shrink-0 text-ice" />
+              <div>
+                <p className="text-xs font-bold text-ice">Esta dose será agendada</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Ela ficará pendente para {doseDate.split("-").reverse().join("/")} às {doseHora}. Nenhuma unidade será retirada do estoque até você confirmar a tomada.</p>
+              </div>
+            </div>
+          )}
 
           {selectedMed?.tipo_uso === "continuo" &&
             existingScheduledLog?.tomado_em && (
@@ -2781,6 +2826,7 @@ export function QuickDoseModal({
               ================================================== */}
 
           {selectedMed &&
+            !willScheduleAdHoc &&
             typeof stockQuantity ===
               "number" &&
             stockQuantity <
@@ -2833,7 +2879,12 @@ export function QuickDoseModal({
                   className="animate-spin"
                 />
 
-                Registrando...
+                {willScheduleAdHoc ? "Agendando..." : "Registrando..."}
+              </>
+            ) : willScheduleAdHoc ? (
+              <>
+                <Clock size={18} />
+                Agendar Dose
               </>
             ) : scheduledAlreadyTaken ? (
               <>

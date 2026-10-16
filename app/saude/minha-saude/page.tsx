@@ -66,6 +66,10 @@ import { summarizeHealthDay, adjacentHealthDays } from "@/lib/health-profile/his
 import { ageOn, bmi } from "@/lib/health-profile/metrics";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
+import { withReturnTarget } from "@/lib/navigation/return-context";
+import type { HealthInsight } from "@/lib/health-insights";
+import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -81,6 +85,7 @@ function HealthDashboard({
     { registros, isLoading } = useRegistrosSaude();
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
   const [brainSummaryOpen,setBrainSummaryOpen]=useState(false);
+  const [selectedInsight,setSelectedInsight]=useState<HealthInsight|null>(null);
   // V158 keeps overview vs full metric-history semantically distinct.
   const [bodyMarkerKey,setBodyMarkerKey]=useState<string|null>(null);
   const selectBody=(part:AvatarBodyPart|null,markerKey?:string)=>{setBodyMarkerKey(markerKey||null);setBodyPart(part);};
@@ -148,6 +153,7 @@ function HealthDashboard({
     trigger("vibrate");
     router.push(path);
   };
+  const goFromHealth = (path: string) => go(withReturnTarget(path,"/saude/minha-saude"));
   const open = (next: typeof panel) => {
     trigger("vibrate");
     setPanel(next);
@@ -230,6 +236,7 @@ function HealthDashboard({
           </p>
         ) : (
           <>
+            <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
@@ -275,7 +282,7 @@ function HealthDashboard({
               {/* V156 compact health identity: model at left, evidence to the right. */}
               <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-start gap-3">
                 <div className="min-w-0 overflow-hidden rounded-lg bg-emerald-300/[0.025]">
-                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;go(insight?`/inteligencia/alertas?insight=${encodeURIComponent(insight.id)}`:"/inteligencia/alertas");}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
+                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3 self-center">
                   <div>
@@ -313,7 +320,7 @@ function HealthDashboard({
                 {/* V157 ANATOMICAL LINKS: available on demand, not permanent visual markers or diagnoses. */}
                 <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Explorar dados de saúde por região">
                   <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-lg border border-violet-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Cabeça · sono</button>
-                  <button type="button" onClick={()=>go('/saude/exames')} className="min-h-11 rounded-lg border border-sky-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Olhos · exames</button>
+                  <button type="button" onClick={()=>goFromHealth('/saude/exames')} className="min-h-11 rounded-lg border border-sky-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Olhos · exames</button>
                   <button type="button" onClick={()=>setMetric('frequencia_cardiaca')} className="min-h-11 rounded-lg border border-rose-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Tórax · batimentos</button>
                   <button type="button" onClick={()=>setMetric('peso')} className="min-h-11 rounded-lg border border-emerald-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Abdômen · peso</button>
                   <button type="button" onClick={()=>setMetric('caminhada')} className="col-span-2 min-h-11 rounded-lg border border-amber-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Pernas · caminhada</button>
@@ -352,7 +359,7 @@ function HealthDashboard({
                 <ul className="mt-3 space-y-2">
                   {avatarContext.items.map((item) => (
                     <li key={item.id} className="border-l-2 border-violet-300/25 bg-surface/70 py-2 pl-3 pr-2">
-                      <button type="button" onClick={()=>go(`/inteligencia/alertas?insight=${encodeURIComponent(item.id)}`)} className="flex min-h-11 w-full items-center gap-2 text-left text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex-1">{item.titulo}</span><ChevronRight size={14} className="shrink-0 text-violet-300"/><span className="sr-only">Ver evidências</span></button>
+                      <button type="button" onClick={()=>setSelectedInsight(item)} className="flex min-h-11 w-full items-center gap-2 text-left text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex-1">{item.titulo}</span><ChevronRight size={14} className="shrink-0 text-violet-300"/><span className="sr-only">Ver evidências</span></button>
                       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.mensagem}</p>
                     </li>
                   ))}
@@ -364,7 +371,7 @@ function HealthDashboard({
                     : intelligence.error ? "Tente consultar a análise completa novamente." : "Ainda não há padrões com amostra suficiente. O Vault mostra apenas o que os registros sustentam."}
                 </p>
               ))}
-              <button type="button" onClick={() => go("/inteligencia/saude")} className="mt-2 flex items-center gap-1 text-xs font-semibold text-violet-300">
+              <button type="button" onClick={() => goFromHealth("/inteligencia/saude")} className="mt-2 flex items-center gap-1 text-xs font-semibold text-violet-300">
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
@@ -486,7 +493,7 @@ function HealthDashboard({
             </section>
             {bodyPart?<AvatarBodyEvidence surgeryMarkerKey={bodyMarkerKey} onShowAllSurgeries={()=>selectBody("surgery")} part={bodyPart} context={bodyContext} onClose={()=>selectBody(null)} onWeight={()=>{selectBody(null);setMetric('peso');}} onEquipment={()=>{selectBody(null);setEditDevice(null);open('device');}}/>:null}
             <MetricHistoryLink personId={loading||isLoading||!person?.user_id?"":personId} today={today} onOpen={target=>{setInsightTarget(target);setMetric(target.type);}}/>
-            {metric && <HealthMetricDetails key={metric+(insightTarget?.since||"")+(insightTarget?.until||"")} initialRange={insightTarget?.type===metric?insightTarget:undefined} type={metric} records={records} devices={devices} today={today} onClose={closeMetric} onAdd={() => { closeMetric(); open(metric); }} onRecord={id => go(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`)} />}
+            {metric && <HealthMetricDetails key={metric+(insightTarget?.since||"")+(insightTarget?.until||"")} initialRange={insightTarget?.type===metric?insightTarget:undefined} type={metric} records={records} devices={devices} today={today} onClose={closeMetric} onAdd={() => { closeMetric(); open(metric); }} onRecord={id => goFromHealth(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`)} />}
             {panel && Object.prototype.hasOwnProperty.call(METRICS, panel) && (
               <HealthMeasurementForm
                 key={panel}
@@ -515,7 +522,7 @@ function HealthDashboard({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => go("/saude/registros/novo")}
+                onClick={() => goFromHealth("/saude/registros/novo")}
                 className="flex items-center gap-2 rounded-2xl border border-coral/20 bg-coral/[0.06] p-4 text-left text-xs"
               >
                 <Activity size={20} className="text-coral" />
@@ -523,7 +530,7 @@ function HealthDashboard({
               </button>
               <button
                 type="button"
-                onClick={() => go("/saude/registros")}
+                onClick={() => goFromHealth("/saude/registros")}
                 className="flex items-center gap-2 rounded-2xl border border-ice/20 bg-ice/[0.045] p-4 text-left text-xs"
               >
                 <History size={20} className="text-ice" />
@@ -531,7 +538,7 @@ function HealthDashboard({
               </button>
               <button
                 type="button"
-                onClick={() => go("/saude/rede")}
+                onClick={() => goFromHealth("/saude/rede")}
                 className="col-span-2 flex items-center gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.055] p-4 text-left"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
@@ -549,7 +556,7 @@ function HealthDashboard({
                 <h2 className="font-semibold">Registros do dia</h2>
                 <button
                   type="button"
-                  onClick={() => go("/saude/registros")}
+                  onClick={() => goFromHealth("/saude/registros")}
                   className="text-xs text-ink-muted"
                 >
                   Ver todos
@@ -607,7 +614,7 @@ function HealthDashboard({
                     <button
                       type="button"
                       key={r.id}
-                      onClick={() => go(`/saude/registros/detalhes?id=${r.id}`)}
+                      onClick={() => goFromHealth(`/saude/registros/detalhes?id=${r.id}`)}
                       className="flex w-full items-center gap-3 border-t border-surface-border py-3 text-left"
                     >
                       <span className={METRIC_TONES[r.tipo as HealthMetric]}>
@@ -652,6 +659,12 @@ function HealthDashboard({
           </>
         )}
       </div>
+      <HealthInsightSheet
+        insight={selectedInsight}
+        onClose={()=>setSelectedInsight(null)}
+        onNavigate={href=>{setSelectedInsight(null);goFromHealth(href);}}
+        onOpenCentral={selectedInsight?()=>{const id=selectedInsight.id;setSelectedInsight(null);goFromHealth(`/inteligencia/alertas?insight=${encodeURIComponent(id)}`);}:undefined}
+      />
       <ConfirmationModal
         isOpen={!!archive}
         onClose={() => setArchive(null)}

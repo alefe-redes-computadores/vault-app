@@ -4,6 +4,7 @@ import {MOOD_CHOICES,moodContext,type MoodChoice} from "@/lib/health-profile/ava
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {CustomDatePicker} from "@/components/DatePicker";
 import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
+import {useReturnContext} from "@/hooks/useReturnContext";
 
 import {
   useEffect,
@@ -483,6 +484,7 @@ function getCurrentTime(): string {
 // ============================================================
 
 export default function NovoRegistroSaudePage() {
+  const {backTarget} = useReturnContext("/saude/registros");
   const {
     trigger,
   } =
@@ -1301,7 +1303,7 @@ export default function NovoRegistroSaudePage() {
                     "vibrate"
                   );
 
-                  router.replace("/saude/registros");
+                  router.replace(backTarget);
                 }
               }
               className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"

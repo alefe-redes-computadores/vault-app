@@ -8,7 +8,8 @@ import type {
 export type DoseHistoryEventKind =
   | "scheduled_taken"
   | "scheduled_ignored"
-  | "avulsa";
+  | "avulsa"
+  | "planned";
 
 export type DoseHistoryEvent = {
   id?: string;
@@ -17,7 +18,7 @@ export type DoseHistoryEvent = {
   ignoradoEm?: string;
   quantidade?: number;
   kind: DoseHistoryEventKind;
-  origin?: "scheduled" | "sos" | "extra";
+  origin?: "scheduled" | "sos" | "extra" | "planned";
   motivo?: string;
 };
 
@@ -134,7 +135,9 @@ function eventFromLog(log: DoseLog, schedules: string[]): DoseHistoryEvent {
     quantidade: log.quantidade,
     origin: log.dose_kind || (scheduled ? "scheduled" : "sos"),
     motivo: log.motivo,
-    kind: scheduled
+    kind: log.dose_kind === "planned"
+      ? "planned"
+      : scheduled
       ? log.tomado_em
         ? "scheduled_taken"
         : "scheduled_ignored"

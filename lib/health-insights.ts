@@ -207,7 +207,7 @@ interface DoseLogLike {
   quantidade?: number;
 
   dose_kind?:
-    "scheduled" | "sos" | "extra";
+    "scheduled" | "sos" | "extra" | "planned";
 
   /**
    * Momento em que o registro entrou ou foi alterado no Vault.

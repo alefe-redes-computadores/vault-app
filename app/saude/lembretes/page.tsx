@@ -7,6 +7,7 @@ import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -51,6 +52,7 @@ function errorMessage(error: unknown) {
 }
 
 export default function HealthRemindersPage() {
+  const {backTarget} = useReturnContext("/saude/registros");
   const router = useRouter();
   const { showToast } = useToast();
   const { trigger } = useHapticFeedback();
@@ -180,7 +182,7 @@ export default function HealthRemindersPage() {
   return (
     <main className="min-h-screen bg-void px-4 pb-28 pt-6 text-ink-primary">
       <header className="mx-auto flex max-w-xl items-center gap-3">
-        <button onClick={() => router.replace("/saude/registros")} className="rounded-xl border border-surface-border p-2" aria-label="Voltar">
+        <button onClick={() => router.replace(backTarget)} className="rounded-xl border border-surface-border p-2" aria-label="Voltar">
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0 flex-1">

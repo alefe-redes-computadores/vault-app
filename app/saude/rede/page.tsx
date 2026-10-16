@@ -11,6 +11,7 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
+import {useReturnContext} from "@/hooks/useReturnContext";
 
 import {
   AnimatePresence,
@@ -354,6 +355,7 @@ function getLocalTypeLabel(
 // ============================================================
 
 export default function RedeSaudePage() {
+  const {backTarget} = useReturnContext("/");
   const {
     trigger,
   } =
@@ -1702,7 +1704,7 @@ export default function RedeSaudePage() {
                     );
 
                     router.replace(
-                  "/"
+                  backTarget
                 );
                   }
                 }

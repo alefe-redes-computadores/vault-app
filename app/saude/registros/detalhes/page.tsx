@@ -3,6 +3,7 @@
 import {MOOD_CHOICES,readMoodContext} from "@/lib/health-profile/avatar-body";
 import {HealthRecordSource} from "@/components/saude/HealthRecordSource";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
+import {useReturnContext} from "@/hooks/useReturnContext";
 
 import {
   Suspense,
@@ -179,6 +180,7 @@ function DetalhesRegistroSaudeContent() {
 
   const searchParams =
     useSearchParams();
+  const {backTarget} = useReturnContext("/saude/registros");
 
   const id =
     searchParams.get(
@@ -694,7 +696,7 @@ function DetalhesRegistroSaudeContent() {
             onClick={
               () =>
                 router.replace(
-                  "/saude/registros"
+                  backTarget
                 )
             }
             className="mt-5 rounded-full bg-ice px-5 py-2.5 text-sm font-semibold text-void"
@@ -741,7 +743,7 @@ function DetalhesRegistroSaudeContent() {
                     );
 
                     router.replace(
-                    "/saude/registros"
+                    backTarget
                   );
                   }
                 }

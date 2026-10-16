@@ -96,6 +96,15 @@ interface RegistrarTomadaAvulsaInput {
   motivo?: string;
 }
 
+interface AgendarDoseAvulsaInput {
+  personId: string;
+  medicamentoId: string;
+  data: string;
+  horario: string;
+  quantidade?: number;
+  motivo?: string;
+}
+
 interface RemoveDoseLogByIdInput {
   personId: string;
 
@@ -1289,6 +1298,75 @@ export const doseLogsRepository = {
   // Diferente de setStatus(), esta operação SEMPRE cria um
   // novo evento independente.
   // ==========================================================
+
+  async agendarDoseAvulsa({
+    personId,
+    medicamentoId,
+    data,
+    horario,
+    quantidade,
+    motivo,
+  }: AgendarDoseAvulsaInput): Promise<string> {
+    const safePersonId = requirePersonId(personId);
+    const safeMedicamentoId = requireMedicamentoId(medicamentoId);
+    const safeHorario = requireHorario(horario);
+    const targetDate = requireDate(data);
+    const scheduledAt = new Date(`${targetDate}T${safeHorario}:00`);
+
+    if (!Number.isFinite(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
+      throw new Error("Escolha um horário futuro para agendar a dose.");
+    }
+
+    const user = await requireAuthenticatedUser();
+
+    return db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+      const medicamento = await getMedicamentoForPerson(
+        safeMedicamentoId,
+        safePersonId,
+        user.id
+      );
+      const existing = await getDoseLogForSlot(
+        safeMedicamentoId,
+        safePersonId,
+        targetDate,
+        safeHorario
+      );
+
+      if (existing) {
+        throw new Error("Já existe uma dose registrada ou agendada nesse horário.");
+      }
+
+      const timestamp = new Date().toISOString();
+      const id = crypto.randomUUID();
+      const fullLog: DoseLog = {
+        id,
+        user_id: user.id,
+        person_id: safePersonId,
+        medicamento_id: safeMedicamentoId,
+        data: targetDate,
+        horario: safeHorario,
+        quantidade: resolveDoseQuantity(medicamento, quantidade),
+        dose_kind: "planned",
+        motivo: motivo?.trim() || undefined,
+        tomado_em: undefined,
+        ignorado_em: undefined,
+        created_at: timestamp,
+        updated_at: timestamp,
+        synced: false,
+      };
+
+      await db.doseLogs.add(fullLog);
+      const saved = await db.doseLogs.get(id);
+      if (!saved || saved.person_id !== safePersonId) {
+        throw new Error("Não foi possível confirmar o agendamento da dose.");
+      }
+      await enfileirarOperacao("doseLogs", "add", saved);
+
+      // Agendar nunca altera o estoque. O consumo acontece somente
+      // quando a pessoa confirma a tomada.
+      return id;
+    });
+  },
 
   async registrarTomadaAvulsa({
     personId,

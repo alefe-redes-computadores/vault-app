@@ -14,6 +14,7 @@ import {
 
 import { PageTransition } from "@/components/PageTransition";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import type {
   ClinicalTimelineEvent,
   ClinicalTimelineEventType,
@@ -67,6 +68,7 @@ function routeFor(event: ClinicalTimelineEvent): string | null {
 }
 
 export default function ClinicalTimelinePage() {
+  const {backTarget} = useReturnContext("/inteligencia/saude");
   const router = useRouter();
   const health = useHealthIntelligence();
   const [type, setType] = useState<"all" | ClinicalTimelineEventType>("all");
@@ -111,7 +113,7 @@ export default function ClinicalTimelinePage() {
         <header className="mx-auto flex max-w-2xl items-start gap-3">
           <button
             type="button"
-            onClick={() => router.replace("/inteligencia/saude")}
+            onClick={() => router.replace(backTarget)}
             className="rounded-2xl border border-surface-border bg-surface p-3 text-ink-muted"
             aria-label="Voltar"
           >

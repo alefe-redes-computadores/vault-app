@@ -1095,7 +1095,7 @@ export default function MedicamentosListPage() {
 
             {/* IDENTIDADE */}
 
-            <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-1">
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="flex min-w-0 flex-1 items-baseline gap-2">
@@ -1150,9 +1150,48 @@ export default function MedicamentosListPage() {
                       </strong>
                     </span>
                   )}
-                  {!isSuspenso &&
-                    canQuickDose &&
-                    quickDoseLabel ? (
+                </div>
+
+              </div>
+
+              <div className="flex min-w-[6.75rem] shrink-0 flex-col items-stretch gap-1.5">
+                {insight?.deveRenovar && (
+                  <button
+                    type="button"
+                    className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${
+                      insight.urgencia ===
+                      "alta"
+                        ? "border-coral/25 bg-coral/[0.08] text-coral"
+                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
+                    }`}
+                    title={`${insight.mensagem} · Adicionar nova receita`}
+                    aria-label={`Adicionar nova receita para ${med.nome}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      trigger(
+                        "vibrate"
+                      );
+
+                      router.push(
+                        `/saude/renovacao/nova-receita?medicamento_id=${med.id}&return_to=${encodeURIComponent(
+                          "/saude/medicamentos"
+                        )}`
+                      );
+                    }}
+                  >
+                    <AlertTriangle
+                      size={11}
+                    />
+
+                    Receita
+                  </button>
+                )}
+
+                {!isSuspenso &&
+                  canQuickDose &&
+                  quickDoseLabel ? (
                     <button
                       type="button"
                       onClick={(event) => {
@@ -1167,7 +1206,7 @@ export default function MedicamentosListPage() {
                           med.id!
                         );
                       }}
-                      className={`ml-auto inline-flex min-h-8 items-center gap-1.5 rounded-xl border px-3 text-[9px] font-black transition-all active:scale-[0.97] ${
+                      className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[9px] font-black transition-all active:scale-[0.97] ${
                         isSOS
                           ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
                           : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
@@ -1184,43 +1223,7 @@ export default function MedicamentosListPage() {
                       }
                     </button>
                   ) : null}
-                </div>
-
               </div>
-
-              {insight?.deveRenovar && (
-                <button
-                  type="button"
-                  className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-bold transition-all active:scale-[0.97] ${
-                    insight.urgencia ===
-                    "alta"
-                      ? "border-coral/25 bg-coral/[0.08] text-coral"
-                      : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
-                  }`}
-                  title={`${insight.mensagem} · Adicionar nova receita`}
-                  aria-label={`Adicionar nova receita para ${med.nome}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    trigger(
-                      "vibrate"
-                    );
-
-                    router.push(
-                      `/saude/renovacao/nova-receita?medicamento_id=${med.id}&return_to=${encodeURIComponent(
-                        "/saude/medicamentos"
-                      )}`
-                    );
-                  }}
-                >
-                  <AlertTriangle
-                    size={11}
-                  />
-
-                  Receita
-                </button>
-              )}
             </div>
 
             {/* VAULT_MEDICATION_LIST_HIERARCHY_V98

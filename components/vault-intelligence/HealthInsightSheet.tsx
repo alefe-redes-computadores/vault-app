@@ -8,6 +8,7 @@ type Props = {
   insight: HealthInsight | null;
   onClose: () => void;
   onNavigate: (href: string) => void;
+  onOpenCentral?: () => void;
 };
 
 function tone(insight: HealthInsight) {
@@ -15,7 +16,7 @@ function tone(insight: HealthInsight) {
 }
 
 // VAULT_HEALTH_EXPLAINABILITY_V55
-export function HealthInsightSheet({ insight, onClose, onNavigate }: Props) {
+export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral }: Props) {
   if (!insight) return null;
   const evidence = insight.evidencias || [];
   const sources = insight.fontesInternas || [];
@@ -44,7 +45,10 @@ export function HealthInsightSheet({ insight, onClose, onNavigate }: Props) {
           {evidence.length > 0 && <div className="mt-5"><p className="font-mono text-[9px] font-bold uppercase text-ink-faint">Por que o Vault mostrou isso?</p><div className="mt-2 space-y-2">{evidence.slice(0, 6).map((item, index) => <div key={`${item}-${index}`} className="rounded-2xl bg-void/30 px-3 py-2.5 text-[10px] leading-relaxed text-ink-muted">{item}</div>)}</div></div>}
           {sources.length > 0 && <div className="mt-4 rounded-2xl border border-surface-border bg-void/20 p-3"><div className="flex items-center gap-2"><ShieldCheck size={14} className="text-ice" /><b className="text-[10px]">Fontes internas</b></div><p className="mt-1 text-[10px] text-ink-muted">{sources.join(" · ")}</p></div>}
           {insight.acaoSegura && <div className="mt-4 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.05] p-3"><p className="font-mono text-[8px] uppercase text-emerald-300">Próximo passo seguro</p><p className="mt-1 text-[11px] text-ink-muted">{insight.acaoSegura}</p></div>}
-          {insight.link && <button type="button" onClick={() => onNavigate(insight.link!)} className="mt-5 flex w-full items-center justify-between rounded-2xl bg-ice px-4 py-3 text-sm font-bold text-void">Abrir contexto<ChevronRight size={17} /></button>}
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {insight.link && <button type="button" onClick={() => onNavigate(insight.link!)} className="flex w-full items-center justify-between rounded-xl bg-ice px-4 py-3 text-sm font-bold text-void">Abrir contexto<ChevronRight size={17} /></button>}
+            {onOpenCentral && <button type="button" onClick={onOpenCentral} className="flex w-full items-center justify-between rounded-xl border border-violet-400/25 px-4 py-3 text-sm font-semibold text-violet-300">Ver análise completa<ChevronRight size={17}/></button>}
+          </div>
           <p className="mt-4 text-center text-[9px] text-ink-faint">O Vault organiza sinais do histórico registrado. Ele não diagnostica nem substitui avaliação profissional.</p>
         </div>
       </section>

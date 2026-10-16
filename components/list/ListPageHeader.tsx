@@ -5,9 +5,11 @@ import { ReactNode } from "react";
 import {
   usePathname,
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
 
 interface ListPageHeaderProps {
   title: string;
@@ -91,13 +93,13 @@ export function ListPageHeader({
 }: ListPageHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { trigger } = useHapticFeedback();
 
   const handleBack = () => {
     trigger("vibrate");
     router.replace(
-      backUrl ||
-      getCanonicalBackUrl(pathname)
+      safeReturnTarget(searchParams.get("return_to"), backUrl || getCanonicalBackUrl(pathname))
     );
   };
 

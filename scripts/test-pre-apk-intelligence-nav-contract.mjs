@@ -115,8 +115,8 @@ ok(
 ok(
   health.includes(
     'router.replace("/inteligencia")'
-  ),
-  "Saúde longitudinal continua integrada à Central"
+  ) || health.includes("router.replace(backTarget)"),
+  "Saúde longitudinal continua integrada à Central com retorno contextual"
 );
 
 
