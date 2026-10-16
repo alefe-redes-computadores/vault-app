@@ -112,6 +112,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     for (const sign of [-1,1]) {
       const sleeve=mesh(softBox(.22,.25,.28,.025),materials.cloth,sign*.32,2.32,0);sleeve.rotation.z=sign*.10;
       const arm = mesh(new THREE.CylinderGeometry(.085,.096,.77,8),materials.skin,sign*.43,1.98,0); arm.rotation.z=sign*.17;
+      const elbow=oval(materials.skin,sign*.465,1.72,.002,[.092,.092,.088]);elbow.raycast=()=>{};
       const palm=mesh(softBox(.15,.21,.13,.035),materials.skin,sign*.51,1.48,.015);
       const thumb=mesh(new THREE.CapsuleGeometry(.026,.075,3,7),materials.skin,sign*.445,1.49,.075);thumb.rotation.z=sign*.78;
       // Four articulated silhouettes make both hands readable from the front
@@ -121,6 +122,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         finger.rotation.z=sign*(.03+fingerIndex*.025);finger.raycast=()=>{};
       }
       mesh(new THREE.CylinderGeometry(.125,.095,1.03,10),materials.skin,sign*.15,.77,0);
+      const ankle=mesh(new THREE.CylinderGeometry(.086,.092,.13,10),materials.skin,sign*.15,.265,.005);ankle.raycast=()=>{};
       mesh(softBox(.28,.35,.31,.018),materials.cloth,sign*.15,1.28,0,[1,1,1]);
       oval(materials.white,sign*.083,2.82,.214,[.036,.022,.017]);
       oval(materials.dark,sign*.083,2.82,.23,[.013,.015,.008]);
@@ -164,7 +166,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         temple.raycast=()=>{};
       }
       const bridge=mesh(new THREE.BoxGeometry(.044,.01,.012),materials.glasses,0,2.831,.263);bridge.raycast=()=>{};
-      for(const side of [-1,1]){const lens=oval(new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false}),side*.082,2.825,.254,[.055,appearance.glasses==="round"?.055:.029,.003]);lens.raycast=()=>{};}
+      const lensMaterial=new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false});
+      for(const side of [-1,1]){
+        const lens=appearance.glasses==="rectangular"
+          ? mesh(softBox(.116,.058,.004,.008),lensMaterial,side*.082,2.825,.254)
+          : oval(lensMaterial,side*.082,2.825,.254,[.055,.055,.003]);
+        lens.raycast=()=>{};
+      }
     }
     for(const side of [-1,1]) {
       const x=side*.15;
@@ -264,12 +272,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,watchY,.103);
       }
     }
-    const phoneX=layout.phoneSide==="right"?-.535:.535;
-    const phone=mesh(softBox(.17,.3,.035,.015),materials.dark,phoneX,1.49,.105);phone.rotation.z=layout.phoneSide==="right"?-.10:.10;
-    const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.49,.124);screen.rotation.z=phone.rotation.z;screen.userData.action="brain";
+    const phoneX=layout.phoneSide==="right"?-.505:.505;
     const gripSign=Math.sign(phoneX)||1;
-    for(const offset of [-.052,-.018,.018,.052]){const finger=mesh(new THREE.CapsuleGeometry(.012,.105,3,6),materials.skin,phoneX+offset,1.49,.148);finger.rotation.z=phone.rotation.z;finger.raycast=()=>{};}
-    const phoneThumb=mesh(new THREE.CapsuleGeometry(.018,.09,3,7),materials.skin,phoneX-gripSign*.09,1.50,.142);phoneThumb.rotation.z=gripSign*.45;phoneThumb.raycast=()=>{};
+    const phoneAngle=layout.phoneSide==="right"?-.10:.10;
+    const phone=mesh(softBox(.17,.3,.035,.015),materials.dark,phoneX,1.475,.095);phone.rotation.z=phoneAngle;
+    const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.475,.114);screen.rotation.z=phoneAngle;screen.userData.action="brain";
+    // V168: the grip wraps the device instead of floating over the screen.
+    for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
+      const finger=mesh(new THREE.CapsuleGeometry(.012,.072,3,6),materials.skin,phoneX+gripSign*.075,1.405+fingerIndex*.043,.128);
+      finger.rotation.z=Math.PI/2+phoneAngle;finger.raycast=()=>{};
+    }
+    const phoneThumb=mesh(new THREE.CapsuleGeometry(.018,.105,3,7),materials.skin,phoneX-gripSign*.045,1.49,.132);phoneThumb.rotation.z=gripSign*.58+phoneAngle;phoneThumb.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
     const shadowContext=shadowCanvas.getContext("2d");
     if(shadowContext){const gradient=shadowContext.createRadialGradient(64,64,8,64,64,64);gradient.addColorStop(0,"rgba(0,0,0,.4)");gradient.addColorStop(1,"rgba(0,0,0,0)");shadowContext.fillStyle=gradient;shadowContext.fillRect(0,0,128,128);}
