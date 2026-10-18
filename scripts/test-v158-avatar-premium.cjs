@@ -24,9 +24,9 @@ assert(
 );
 assert(scene.includes('const lace=mesh('));
 assert(page.includes('Corpo e sinais · explorar regiões'));
-assert(page.includes('Histórico completo, tendências e datas'));
+assert(page.includes('Valores recentes e acesso ao histórico')&&page.includes("goFromHealth('/saude/registros')"));
 assert(page.includes("gravidadeSeguranca==='critica'"));
-assert(page.includes('V157 ANATOMICAL LINKS'),'Retain V157 body links');
+assert(page.includes('aria-label="Explorar dados de saúde por região"'),'Retain V157 body links');
 assert(!/\.strip\(/.test(page+avatar+editor+scene));
 for (const path of ['app/saude/minha-saude/page.tsx','components/saude/HealthAvatar.tsx','components/saude/AvatarStyleEditor.tsx','components/saude/HealthAvatar3D.tsx'])assert(fs.existsSync(path));
 console.log('V158: geometria, identidade, estilo, gravidade, histórico e V157 preservados');

@@ -16,6 +16,6 @@ assert(!source.includes('prazo registrado para ${cycle.preparar_ate}'),'raw date
 assert(source.includes('ciclo_id=${encodeURIComponent(cycle.id)}'),'cycle deep link must remain');
 assert(source.includes('fornecimento-planejamento-v103-${p.id}-${cycle.id}-${cycle.preparar_ate}'),'idempotent identity unchanged');
 const health=fs.readFileSync('app/saude/minha-saude/page.tsx','utf8');
-assert(health.includes('V157 ANATOMICAL LINKS'),'Missing body-region contextual links');
+assert(health.includes('aria-label="Explorar dados de saúde por região"'),'Missing body-region contextual links');
 for(const key of ['sono','frequencia_cardiaca','peso','caminhada'])assert(health.includes(`setMetric('${key}')`),key);
 console.log('V157: data BR, pendências reais, contexto, link e identidade preservados');

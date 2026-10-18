@@ -29,7 +29,6 @@ import { CustomDatePicker } from "@/components/DatePicker";
 import { MetricHistoryLink } from "@/components/saude/MetricHistoryLink";
 import {clearMetricInsightQuery,type MetricInsightTarget} from "@/lib/health-profile/metric-link";
 import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
-import { HealthMetricTrend } from "@/components/saude/HealthMetricTrend";
 import { avatarWeightContext } from "@/lib/health-profile/avatar-readings";
 import { avatarPreferenceKey } from "@/lib/health-profile/avatar-preference";
 import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
@@ -317,17 +316,14 @@ function HealthDashboard({
               <details className="mt-3 rounded-xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
                 <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Corpo e sinais · explorar regiões</summary>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
-                {/* V157 ANATOMICAL LINKS: available on demand, not permanent visual markers or diagnoses. */}
-                <div className="mb-3 grid grid-cols-2 gap-2" aria-label="Explorar dados de saúde por região">
-                  <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-lg border border-violet-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Cabeça · sono</button>
-                  <button type="button" onClick={()=>goFromHealth('/saude/exames')} className="min-h-11 rounded-lg border border-sky-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Olhos · exames</button>
-                  <button type="button" onClick={()=>setMetric('frequencia_cardiaca')} className="min-h-11 rounded-lg border border-rose-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Tórax · batimentos</button>
-                  <button type="button" onClick={()=>setMetric('peso')} className="min-h-11 rounded-lg border border-emerald-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Abdômen · peso</button>
-                  <button type="button" onClick={()=>setMetric('caminhada')} className="col-span-2 min-h-11 rounded-lg border border-amber-400/15 bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">Pernas · caminhada</button>
+                <div className="mb-2 mt-1 flex flex-wrap gap-2" aria-label="Explorar dados de saúde por região">
+                  <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-full border border-violet-400/15 px-3 text-[11px] text-violet-200">Cabeça · sono</button>
+                  <button type="button" onClick={()=>goFromHealth('/saude/exames')} className="min-h-11 rounded-full border border-sky-400/15 px-3 text-[11px] text-sky-200">Olhos · exames</button>
+                  <button type="button" onClick={()=>setMetric('frequencia_cardiaca')} className="min-h-11 rounded-full border border-rose-400/15 px-3 text-[11px] text-rose-200">Tórax · batimentos</button>
+                  <button type="button" onClick={()=>setMetric('caminhada')} className="min-h-11 rounded-full border border-amber-400/15 px-3 text-[11px] text-amber-200">Pernas · caminhada</button>
                 </div>
-                <div className="my-2 flex flex-wrap gap-2" aria-label="Outros registros representados no avatar">
+                <div className="flex flex-wrap gap-2 border-t border-surface-border/60 pt-2" aria-label="Outros registros representados no avatar">
                   <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/20 px-3 text-xs text-violet-300">Humor</button>
-                  <button type="button" onClick={()=>selectBody('weight')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Peso</button>
                   {bodyContext.surgeryAgenda.total>0?<button type="button" onClick={()=>selectBody('surgery')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Cirurgias</button>:null}
                   {bodyContext.supports.length>0?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Equipamentos</button>:null}
                 </div>
@@ -376,18 +372,18 @@ function HealthDashboard({
               </button>
             </section>
             <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold">Minha rede de dados</h2>
+              <div className="flex items-center justify-between gap-3">
+                <div><h2 className="font-semibold">Minha rede de dados</h2><p className="mt-0.5 text-[10px] text-ink-muted">{active.length} {active.length===1?'aparelho ativo':'aparelhos ativos'}</p></div>
                 <button
                   type="button"
                   onClick={() => {
                     setEditDevice(null);
                     open("device");
                   }}
-                  className="flex items-center gap-1 p-2 text-xs text-emerald-400"
+                  className="flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs font-semibold text-emerald-400"
                 >
-                  <ChevronRight size={15} />
-                  Aparelho
+                  <Settings size={15} />
+                  Gerenciar
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -399,7 +395,7 @@ function HealthDashboard({
                       setEditDevice(d.id);
                       open("device");
                     }}
-                    className="flex max-w-full items-center gap-2 rounded-2xl border border-surface-border bg-surface p-3 text-xs"
+                    className="flex min-h-11 max-w-full items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2 text-xs"
                   >
                     <HealthDeviceIcon kind={d.kind} color={d.color} />
                     <span className="truncate">{d.name}</span>
@@ -460,33 +456,19 @@ function HealthDashboard({
             )}
             <HealthConnectPanel key={personId} personId={personId} personName={person?.name || "esta pessoa"} devices={devices} />
             <section className="space-y-3">
-              <div><h2 className="font-semibold">Meus registros</h2><p className="mt-1 text-[11px] text-ink-muted">Histórico completo, tendências e datas de cada medição</p></div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-end justify-between gap-3"><div><h2 className="font-semibold">Meus registros</h2><p className="mt-1 text-[11px] text-ink-muted">Valores recentes e acesso ao histórico</p></div><button type="button" onClick={()=>goFromHealth('/saude/registros')} className="min-h-11 shrink-0 text-xs font-semibold text-emerald-400">Ver todos</button></div>
+              <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface">
                 {(Object.keys(METRICS) as HealthMetric[]).map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => { trigger("vibrate"); setMetric(type); }}
-                    className="rounded-[22px] border border-surface-border bg-surface p-4 text-left active:scale-[.98]"
+                    className="flex min-h-[68px] w-full items-center gap-3 border-b border-surface-border/70 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-raised/50 active:bg-surface-raised"
                   >
-                    <span
-                      className={`flex items-center justify-between ${METRIC_TONES[type]}`}
-                    >
-                      <HealthMetricIcon type={type} />
-                      <ChevronRight size={15} />
-                    </span>
-                    <p className="mt-3 text-xs font-semibold">
-                      {METRICS[type].label}
-                    </p>
-                    <p className="mt-1 truncate text-sm font-medium">
-                      {loading || isLoading ? "Carregando…" : value(type)}
-                    </p>
-                    <div className={METRIC_TONES[type]}><HealthMetricTrend records={records} type={type} /></div>
-                    {latest(type) && (
-                      <p className="mt-1 text-[9px] text-ink-muted">
-                        {latest(type)!.data.split("-").reverse().join("/")}
-                      </p>
-                    )}
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-xl bg-surface-raised ${METRIC_TONES[type]}`}><HealthMetricIcon type={type} size={18} /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">{METRICS[type].label}</span><span className="mt-0.5 block truncate text-[10px] text-ink-muted">{latest(type)?`Atualizado em ${latest(type)!.data.split("-").reverse().join("/")}`:"Sem registro"}</span></span>
+                    <strong className="max-w-[36%] truncate text-right text-xs font-semibold text-ink-primary">{loading || isLoading ? "Carregando…" : value(type)}</strong>
+                    <ChevronRight size={15} className="shrink-0 text-ink-muted" />
                   </button>
                 ))}
               </div>

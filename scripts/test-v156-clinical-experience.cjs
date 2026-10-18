@@ -10,7 +10,7 @@ assert(av.includes('fixed inset-0 z-[110] sm:inset-3'),'expanded modal absent');
 assert(three.includes('actions.current.onEmptyTap?.()'),'3D touch toggle missing');
 assert(health.includes('grid-cols-[minmax(0,46%)_minmax(0,1fr)]'),'compact layout absent');
 assert(health.includes('brainSummaryOpen &&'),'Brain not collapsible');
-assert(health.includes('Histórico completo, tendências e datas'),'measurements not collapsed');
+assert(health.includes('Valores recentes e acesso ao histórico')&&health.includes("goFromHealth('/saude/registros')"),'compact measurements or complete history access missing');
 assert(supply.includes('{med && isDropMedication && <details'),'bottle calculator visible to pills');
 assert(supply.includes('SUPPLY_ORIGIN_LABELS[p.origem]'),'origin label missing');
 assert(supply.includes('Um tratamento pode incluir medicamentos comprados'),'mixed-treatment explanation absent');

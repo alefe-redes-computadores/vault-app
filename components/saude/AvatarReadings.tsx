@@ -1,11 +1,27 @@
 "use client";
-import { useMemo } from 'react';
-import type { RegistroSaude } from '@/lib/types';
-import { METRICS,type HealthMetric,type HealthDevice } from '@/lib/health-profile/types';
-import { readingRecency } from '@/lib/health-profile/history';
-import { latestAvatarReadings } from '@/lib/health-profile/avatar-readings';
-import { HealthMetricIcon,METRIC_TONES } from './HealthDeviceIcon';
-export function AvatarReadings({records,devices,personId,userId,today,onView,onAdd}:{records:RegistroSaude[];devices:HealthDevice[];personId:string;userId:string;today:string;onView:(metric:HealthMetric)=>void;onAdd:(metric:HealthMetric)=>void}) {
- const rows=useMemo(()=>latestAvatarReadings(records,devices,personId,userId,today),[records,devices,personId,userId,today]);
- return <details className="mt-3 rounded-2xl border border-surface-border p-3"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Medições junto ao avatar · {rows.size} de 6 com registro válido</summary><div className="mt-2 grid grid-cols-2 gap-2">{(Object.keys(METRICS) as HealthMetric[]).map(type=>{const item=rows.get(type);return <button type="button" key={type} onClick={()=>item?onView(type):onAdd(type)} aria-label={`${item?'Ver histórico de':'Registrar'} ${METRICS[type].label}`} className="min-h-24 rounded-xl border border-surface-border bg-surface-raised p-3 text-left"><span className={`flex items-center gap-2 text-[11px] ${METRIC_TONES[type]}`}><HealthMetricIcon type={type} size={16}/>{METRICS[type].label}</span>{item?<span className={`mt-2 inline-block rounded-md px-2 py-1 text-[10px] ${item.record.data===today?'bg-emerald-400/10 text-emerald-300':'bg-slate-400/10 text-ink-muted'}`}>{readingRecency(item.record.data,today)}{item.record.data!==today?' · histórico':''}</span>:null}<strong className="mt-2 block text-sm text-ink-primary">{item?.value||'Registrar'}</strong>{item?<span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">{item.record.data.split('-').reverse().join('/')}{item.record.horario?` · ${item.record.horario}`:''}<br/>{item.source}{item.device?` · ${item.device.name}`:''}</span>:<span className="mt-1 block text-[10px] text-ink-muted">Sem medição válida cadastrada</span>}</button>;})}</div><p className="mt-3 text-[10px] leading-relaxed text-ink-muted">Últimos registros informados, sem leitura em tempo real. Ausência de dados não significa valor zero.</p></details>;
-}
+
+import { memo, useMemo } from "react";
+import { ChevronRight } from "lucide-react";
+import type { RegistroSaude } from "@/lib/types";
+import { METRICS, type HealthDevice, type HealthMetric } from "@/lib/health-profile/types";
+import { readingRecency } from "@/lib/health-profile/history";
+import { latestAvatarReadings } from "@/lib/health-profile/avatar-readings";
+import { HealthMetricIcon, METRIC_TONES } from "./HealthDeviceIcon";
+
+type Props = { records: RegistroSaude[]; devices: HealthDevice[]; personId: string; userId: string; today: string; onView: (metric: HealthMetric) => void; onAdd: (metric: HealthMetric) => void };
+
+export const AvatarReadings = memo(function AvatarReadings({ records, devices, personId, userId, today, onView, onAdd }: Props) {
+  const rows = useMemo(() => latestAvatarReadings(records, devices, personId, userId, today), [records, devices, personId, userId, today]);
+  return <section className="py-2" aria-label="Sinais recentes representados no avatar">
+    <div className="mb-2 flex items-end justify-between gap-3">
+      <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Sinais recentes</p><p className="mt-0.5 text-[10px] text-ink-muted">Última medição válida por categoria</p></div>
+      <span className="shrink-0 rounded-full bg-surface-raised px-2 py-1 text-[10px] text-ink-muted">{rows.size}/6 disponíveis</span>
+    </div>
+    <div className="grid grid-cols-2 gap-2">{(Object.keys(METRICS) as HealthMetric[]).map(type => { const item = rows.get(type); const action = item ? onView : onAdd; return <button type="button" key={type} onClick={() => action(type)} aria-label={`${item ? "Ver histórico de" : "Registrar"} ${METRICS[type].label}`} className="group min-h-[76px] min-w-0 rounded-xl border border-surface-border/80 bg-surface-raised/65 p-2.5 text-left transition-colors hover:border-surface-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      <span className={`flex min-w-0 items-center gap-1.5 text-[10px] ${METRIC_TONES[type]}`}><HealthMetricIcon type={type} size={14}/><span className="truncate">{METRICS[type].label}</span><ChevronRight size={12} className="ml-auto shrink-0 opacity-50 transition-transform group-hover:translate-x-0.5"/></span>
+      <strong className="mt-1.5 block truncate text-sm text-ink-primary">{item?.value || "Registrar"}</strong>
+      <span className="mt-1 block truncate text-[9px] text-ink-muted">{item ? `${readingRecency(item.record.data, today)} · ${item.device?.name || item.source}` : "Sem medição cadastrada"}</span>
+    </button>; })}</div>
+    <p className="mt-2 text-[9px] leading-relaxed text-ink-muted">Registros informados, não leituras em tempo real. Ausência de dado não significa valor zero.</p>
+  </section>;
+});
