@@ -9,9 +9,10 @@ export function healthRecordArrivalKey(record: RegistroSaude): string | null {
   return identity ? `${record.source}:${identity}` : null;
 }
 
-export function selectNewHealthData(records: RegistroSaude[], seen: ReadonlySet<string>, now = new Date()): { keys: string[]; groups: NewHealthDataGroup[] } {
+export function selectNewHealthData(records: RegistroSaude[], seen: ReadonlySet<string>, now = new Date(), scope?:{personId:string;userId:string}): { keys: string[]; groups: NewHealthDataGroup[] } {
   const cutoff = now.getTime() - 36 * 60 * 60 * 1000;
   const selected = records.filter(record => {
+    if(scope&&(record.person_id!==scope.personId||record.user_id!==scope.userId))return false;
     const key = healthRecordArrivalKey(record);
     if (!key || seen.has(key) || !Object.prototype.hasOwnProperty.call(METRICS, record.tipo)) return false;
     const arrived = Date.parse(record.updated_at || record.created_at || `${record.data}T${record.horario || "00:00"}`);
@@ -29,7 +30,7 @@ export function selectNewHealthData(records: RegistroSaude[], seen: ReadonlySet<
       if (nextTime > currentTime) current.latest = record;
     }
   }
-  return { keys:selected.map(healthRecordArrivalKey).filter((key):key is string=>Boolean(key)), groups:[...map.values()] };
+  return { keys:selected.map(healthRecordArrivalKey).filter((key):key is string=>Boolean(key)), groups:[...map.values()].sort((a,b)=>`${b.latest.data}T${b.latest.horario||"00:00"}`.localeCompare(`${a.latest.data}T${a.latest.horario||"00:00"}`)) };
 }
 
 export function compactSeenHealthData(previous: string[], added: string[], limit=300): string[] {
