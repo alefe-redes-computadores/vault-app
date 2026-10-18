@@ -281,7 +281,7 @@ function HealthDashboard({
               {/* V156 compact health identity: model at left, evidence to the right. */}
               <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-start gap-3">
                 <div className="min-w-0 overflow-hidden rounded-lg bg-emerald-300/[0.025]">
-                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
+                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3 self-center">
                   <div>

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Glasses, Footprints, Shirt, RotateCcw, ChevronDown, Check, Palette, UserRound } from "lucide-react";
+import { Glasses, Footprints, Shirt, RotateCcw, ChevronDown, Check, Palette, UserRound, BadgeCheck } from "lucide-react";
 import { AVATAR_STYLE_COLORS, DEFAULT_AVATAR_STYLE, avatarStyleLabel, normalizeAvatarStyle, type AvatarStyle } from "@/lib/health-profile/avatar-style";
 
 type Key = keyof AvatarStyle;
@@ -20,12 +20,17 @@ function ColorSelector({value, onChange, label}:{value:string;onChange:(color:st
     </div>
   </fieldset>;
 }
-export function AvatarStyleEditor({value,onChange,onPreview}:{value:AvatarStyle;onChange:(next:AvatarStyle)=>void;onPreview?:(frame:"face"|"shoes")=>void}) {
+export function AvatarStyleEditor({value,onChange,onPreview,name,onNameChange}:{value:AvatarStyle;onChange:(next:AvatarStyle)=>void;onPreview?:(frame:"face"|"shoes")=>void;name:string;onNameChange:(name:string)=>void}) {
   const [category,setCategory]=useState<'outfit'|'face'|'hat'|'glasses'|'sneakers'>('outfit');
   const change=(key:Key,next:string)=>onChange(normalizeAvatarStyle({...value,[key]:next}));
   return <details onToggle={event=>{if(event.currentTarget.open)onPreview?.(category==='sneakers'?'shoes':'face');}} className="group mt-3 rounded-2xl border border-surface-border bg-gradient-to-br from-emerald-400/[0.035] to-transparent p-3">
     <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-xl px-1 text-left text-emerald-200"><span className="rounded-xl bg-emerald-400/10 p-2"><Shirt size={19}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-bold">Meu estilo</span><span className="mt-1 block truncate text-[11px] text-ink-muted">{avatarStyleLabel(value)} · Toque para personalizar</span></span><ChevronDown size={19} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
     <p className="my-3 rounded-xl bg-surface-raised/50 p-3 text-[11px] leading-relaxed text-ink-muted">Personalize o visual do seu personagem. Acessórios são cosméticos, não aparelhos médicos. A escolha fica salva por pessoa neste dispositivo.</p>
+    <label className="mb-4 block rounded-xl border border-surface-border/70 bg-surface-raised/30 p-3">
+      <span className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><BadgeCheck size={15}/> Como chamar seu Avatar</span>
+      <span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">É apenas um apelido visual. Não altera o nome da pessoa nem qualquer registro de saúde.</span>
+      <input value={name} maxLength={32} onChange={event=>onNameChange(event.target.value)} placeholder="Meu Avatar" aria-label="Nome do Avatar" className="mt-3 min-h-11 w-full rounded-xl border border-surface-border bg-void px-3 text-sm text-ink-primary outline-none focus:border-emerald-300/50"/>
+    </label>
     <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-5" role="group" aria-label="Parte do visual para personalizar">
       {([['outfit','Roupa',Palette],['face','Rosto',UserRound],['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>{setCategory(key);if(key!=='outfit')onPreview?.(key==='sneakers'?'shoes':'face');}} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-1 text-[11px] ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}><Icon size={19}/>{label}</button>)}
     </div>
