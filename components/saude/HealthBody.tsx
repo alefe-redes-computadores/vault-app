@@ -65,7 +65,8 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         {appearance.hair==='curly'?<g fill={appearance.hairColor}>{[72,79,86,93,100,107].map((x,index)=><circle key={x} cx={x} cy={index%2?13:16} r="7"/>)}<circle cx="69" cy="23" r="6"/><circle cx="111" cy="23" r="6"/></g>:null}
         {appearance.hat!=='none'&&<g aria-label="Boné decorativo">
           <path d="M65 28 Q65 1 90 3 Q115 1 115 28 L108 30 Q89 22 70 30Z" fill={appearance.hatColor} stroke="#f8fafc" strokeOpacity=".13" strokeWidth=".9"/>
-          <path d={appearance.hat==='flat'?"M68 26 L116 26 L132 30 L132 34 Q90 35 66 31Z":"M68 27 Q98 22 118 28 Q128 30 119 33 Q96 37 66 31Z"} fill={appearance.hatColor} stroke="#e2e8f0" strokeOpacity=".23" strokeWidth=".8" />
+          <path d={appearance.hat==='flat'?"M64 26 L117 26 L137 30 L137 35 Q96 37 63 31Z":"M65 27 Q99 21 121 28 Q135 30 122 35 Q96 39 63 31Z"} fill={appearance.hatColor} stroke="#e2e8f0" strokeOpacity=".3" strokeWidth=".9" />
+          <path d="M66 31 Q99 38 132 33" fill="none" stroke="#07101a" strokeOpacity=".55" strokeWidth="1.2"/>
           <path d="M81 13 Q91 8 99 13" stroke="#fff" strokeOpacity=".22" strokeWidth="1.1" fill="none"/>
           {(appearance.hatBrand==='nike'||appearance.hatBrand==='new-era')&&<text x="90" y="19" textAnchor="middle" fontSize="6" fontWeight="800" fill="#f8fafc">{appearance.hatBrand==='nike'?'N':'NE'}</text>}
         </g>}
@@ -99,7 +100,8 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         <path d="M76 230 L88 231 L88 242 Q80 250 71 246 L72 239Z M92 231 L104 230 L108 239 L109 246 Q100 250 92 242Z" fill="#182634" stroke="#607083" strokeOpacity=".35" strokeWidth=".8" />
         <path d="M73 245 Q80 248 88 242 M92 242 Q100 248 107 245" fill="none" stroke="#a8b5c4" strokeOpacity=".6" strokeWidth="1.4" />
         <g aria-label="Tênis decorativos">
-          <path d="M76 231 L88 232 L88 242 Q79 247 71 244 L73 237Z M92 232 L103 230 L109 238 L108 244 Q100 247 92 242Z" fill={appearance.sneakersColor} stroke="#cbd5e1" strokeOpacity=".42" strokeWidth=".7"/>
+          <path d="M76 231 L88 232 L90 241 Q81 248 69 245 L71 238 Q73 234 76 231Z M92 232 L103 230 Q108 233 111 239 L110 245 Q99 248 90 242Z" fill={appearance.sneakersColor} stroke="#cbd5e1" strokeOpacity=".42" strokeWidth=".7"/>
+          <path d="M72 239 Q80 236 88 239 M92 239 Q100 236 108 239" fill="none" stroke="#0b1520" strokeOpacity=".55" strokeWidth="1.5"/>
           {appearance.sneakers==='runner'&&<path d="M76 236 L84 239 M97 239 L103 235" stroke="#f8fafc" strokeWidth="2.2"/>}
           {appearance.sneakers==='high-top'&&<path d="M75 230 L75 219 L88 219 L88 232 M92 232 L92 219 L104 219 L104 230" fill={appearance.sneakersColor} stroke="#cbd5e1" strokeOpacity=".4"/>}
           <path d="M72 245 Q79 249 88 244 M92 244 Q100 249 108 245" stroke="#f8fafc" strokeWidth="1.6" fill="none"/>
@@ -134,6 +136,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
 
         <g aria-hidden="true" transform={`translate(${phoneX},174) rotate(${phoneSide === "right" ? -10 : 10})`}>
           <path d={phoneSide === "right" ? "M8 -8 Q15 -13 16 -16 Q19 -8 12 -4 L8 0Z" : "M-8 -8 Q-15 -13 -16 -16 Q-19 -8 -12 -4 L-8 0Z"} fill={`url(#${ids.skin})`} stroke={avatarShade(color, .7)} strokeWidth=".6" />
+          {[ -7,-1,5,11 ].map(y=><path key={y} d={phoneSide === "right" ? `M7 ${y} Q13 ${y+1} 15 ${y+4}` : `M-7 ${y} Q-13 ${y+1} -15 ${y+4}`} fill="none" stroke={avatarShade(color,.72)} strokeWidth="2.2" strokeLinecap="round"/>)}
         </g>
         {slots.map(({ kind, side, device, count }) => {
           const supported=kind==="watch"&&avatarBraceSlots(devices).some(d=>d.side===side);

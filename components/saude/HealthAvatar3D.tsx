@@ -98,6 +98,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       oval(materials.skin,sign*.137,2.735,.072,[.068,.108,.1]);
       oval(materials.skin,sign*.219,2.77,.001,[.031,.064,.041]);
       oval(materials.skin,sign*.218,2.77,.028,[.014,.041,.024]);
+      oval(materials.skin,sign*.112,2.748,.167,[.073,.078,.035]).raycast=()=>{};
+      const innerEar=mesh(new THREE.TorusGeometry(.023,.005,5,12,Math.PI*1.35),materials.dark,sign*.221,2.77,.052);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
     const chin=oval(materials.skin,0,2.585,.045,[.083,.047,.078]);chin.rotation.x=.08;
     // Brows, eye highlights and clothing seams provide depth without remote assets.
@@ -105,6 +107,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
     }
+    const noseBridge=mesh(new THREE.CapsuleGeometry(.016,.075,4,8),materials.skin,0,2.772,.205);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
+    oval(materials.skin,0,2.735,.237,[.04,.03,.035]).raycast=()=>{};
     const hairHeight=appearance.hat==="none"?2.99:2.945;
     if(appearance.hair==='short')oval(materials.hair,0,hairHeight,-.035,[.232,appearance.hat==="none"?.145:.095,.215]);
     if(appearance.hair==='fade'){
@@ -141,13 +145,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       mesh(new THREE.BoxGeometry(.11,.012,.014),materials.white,sign*.15,.20,.28);
       mesh(new THREE.BoxGeometry(.10,.012,.014),materials.white,sign*.15,.235,.26);
     }
+    const layout=avatarLayout(devices);
+    const phoneArmSign=layout.phoneSide==="right"?-1:1;
     for (const sign of [-1,1]) {
+      const holdsPhone=sign===phoneArmSign;
       const sleeve=limb(.112,.1,.27,materials.top,sign*.337,2.25,0,sign*.13);sleeve.scale.z=1.08;
       const upperArm=limb(.09,.082,.36,materials.skin,sign*.39,2.005,0,sign*.13);upperArm.raycast=()=>{};
       const elbow=oval(materials.skin,sign*.418,1.815,.002,[.086,.087,.084]);elbow.raycast=()=>{};
-      const forearm=limb(.081,.068,.35,materials.skin,sign*.454,1.64,.008,sign*.08);forearm.raycast=()=>{};
+      const forearm=limb(.081,.068,.35,materials.skin,sign*(holdsPhone?.45:.454),1.64,holdsPhone?.028:.008,sign*(holdsPhone?.045:.08));forearm.raycast=()=>{};
       const wrist=oval(materials.skin,sign*.469,1.475,.01,[.071,.057,.065]);wrist.raycast=()=>{};
       const palm=mesh(softBox(.145,.19,.13,.035),materials.skin,sign*.49,1.395,.018);
+      palm.rotation.z=holdsPhone?sign*.10:0;
       const thumb=mesh(new THREE.CapsuleGeometry(.026,.075,3,7),materials.skin,sign*.445,1.49,.075);thumb.rotation.z=sign*.78;
       // Four articulated silhouettes make both hands readable from the front
       // without multiplying draw calls into a realistic hand rig.
@@ -155,6 +163,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const finger=mesh(new THREE.CapsuleGeometry(.015,.071-fingerIndex*.004,3,6),materials.skin,sign*(.456+fingerIndex*.023),1.318,.067);
         finger.rotation.z=sign*(.03+fingerIndex*.025);finger.raycast=()=>{};
       }
+      for(let knuckleIndex=0;knuckleIndex<3;knuckleIndex+=1)oval(materials.skin,sign*(.462+knuckleIndex*.027),1.356,.087,[.017,.014,.016]).raycast=()=>{};
       const shorts=mesh(softBox(.275,.34,.315,.028),materials.bottom,sign*.15,1.305,0);shorts.raycast=()=>{};
       const thigh=limb(.116,.102,.43,materials.skin,sign*.15,1.02,0);thigh.raycast=()=>{};
       const knee=oval(materials.skin,sign*.15,.79,.012,[.108,.105,.1]);knee.raycast=()=>{};
@@ -172,10 +181,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       crown.raycast=()=>{};
       const crownFront=mesh(softBox(.31,.13,.018,.04),materials.cap,0,3.035,.178);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
       const capButton=mesh(new THREE.SphereGeometry(.018,10,6),materials.white,0,3.165,-.012);capButton.raycast=()=>{};
-      const brim=mesh(taperedBox(appearance.hat==="flat"?.39:.36,appearance.hat==="flat"?.50:.46,.03,.285),materials.cap,0,2.988,.235);
+      const crownSide=mesh(new THREE.CylinderGeometry(.225,.244,.12,18,1,true),materials.cap,0,3.012,-.008);crownSide.raycast=()=>{};
+      const brim=mesh(taperedBox(appearance.hat==="flat"?.39:.36,appearance.hat==="flat"?.52:.49,.035,.33),materials.cap,0,2.988,.26);
       brim.rotation.x=appearance.hat==="baseball"?-.16:-.055;
       brim.raycast=()=>{};
-      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.49:.45,.012,.022),materials.white,0,2.963,.382);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
+      const underBrim=mesh(taperedBox(.35,appearance.hat==="flat"?.49:.46,.012,.30),materials.dark,0,2.968,.27);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
+      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.52:.49,.014,.025),materials.white,0,2.956,.425);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {
@@ -219,12 +230,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const sole=mesh(taperedBox(.25,.33,.045,.50),materials.white,x,.125,.085);sole.raycast=()=>{};
       const outsole=mesh(taperedBox(.255,.34,.018,.515),materials.dark,x,.102,.083);outsole.raycast=()=>{};
       const shoe=mesh(taperedBox(.24,.31,.13,.46),materials.sneakers,x,.195,.095);shoe.raycast=()=>{};
-      const toe=oval(materials.sneakers,x,.19,.292,[.155,.075,.145]);toe.raycast=()=>{};
-      const toeGuard=mesh(new THREE.BoxGeometry(.235,.018,.018),materials.white,x,.153,.405);toeGuard.raycast=()=>{};
+      shoe.rotation.x=-.035;
+      const toe=oval(materials.sneakers,x,.19,.315,[.158,.07,.17]);toe.raycast=()=>{};
+      const toeGuard=mesh(new THREE.CapsuleGeometry(.014,.19,3,10),materials.white,x,.153,.423);toeGuard.rotation.z=Math.PI/2;toeGuard.raycast=()=>{};
       const tongue=mesh(softBox(.13,.12,.025,.012),materials.sneakers,x,.245,.275);tongue.rotation.x=-.22;tongue.raycast=()=>{};
       const heel=mesh(softBox(.235,.12,.055,.018),materials.dark,x,.205,-.145);heel.raycast=()=>{};
+      const quarter=mesh(taperedBox(.15,.205,.075,.19),materials.dark,x,.205,.12);quarter.rotation.x=-.18;quarter.raycast=()=>{};
       const collar=mesh(new THREE.TorusGeometry(.078,.012,6,18,Math.PI),materials.dark,x,.282,.12);collar.rotation.x=Math.PI/2;collar.rotation.z=Math.PI;collar.raycast=()=>{};
-      for(let j=0;j<4;j++){const lace=mesh(new THREE.BoxGeometry(.082,.006,.009),materials.white,x,.224-j*.016,.31);lace.rotation.z=(j%2?1:-1)*.12;lace.raycast=()=>{};}
+      for(let j=0;j<4;j++){const lace=mesh(new THREE.BoxGeometry(.082-j*.006,.006,.009),materials.white,x,.237-j*.017,.326);lace.rotation.z=(j%2?1:-1)*.12;lace.raycast=()=>{};for(const eyeletSide of [-1,1])oval(materials.white,x+eyeletSide*.052,.237-j*.017,.322,[.007,.007,.004]).raycast=()=>{};}
       if(appearance.sneakers==="high-top"){
         const high=mesh(softBox(.235,.19,.27,.025),materials.sneakers,x,.26,.043);high.raycast=()=>{};
       }
@@ -287,7 +300,6 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const backBadge=mesh(softBox(.22,.18,.018,.015),brainPanelMaterial,0,2.16,-.229);backBadge.rotation.y=Math.PI;backBadge.userData.action="brain";
     const braces=avatarBraceSlots(devices);
     for(const device of braces){const x=device.side==="right"?-.50:.50;const fabric=new THREE.MeshStandardMaterial({color:avatarColor(device.color,"#7dd3fc"),roughness:.9});const brace=mesh(new THREE.CylinderGeometry(.122,.118,.26,16),fabric,x,1.65,.012);brace.rotation.z=device.side==="right"?-.17:.17;for(const y of [1.57,1.72])mesh(new THREE.BoxGeometry(.23,.018,.018),materials.dark,x,y,.131);const pick=mesh(new THREE.BoxGeometry(.28,.26,.36),hitMaterial,x,1.65,.025);pick.userData.action="device";pick.userData.deviceId=device.id;}
-    const layout=avatarLayout(devices);
     for (const slot of layout.slots) {
       const watchY=braces.some(d=>d.side===slot.side)?1.99:1.61;
       const x=(slot.side==='right'?-1:1)*(watchY>1.61&&slot.kind==='watch'?.43:.50);
@@ -318,13 +330,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const gripSign=Math.sign(phoneX)||1;
     const phoneAngle=layout.phoneSide==="right"?-.10:.10;
     const phone=mesh(softBox(.17,.3,.035,.015),materials.dark,phoneX,1.39,.095);phone.rotation.z=phoneAngle;
+    const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.089);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.114);screen.rotation.z=phoneAngle;screen.userData.action="brain";
     // V168: the grip wraps the device instead of floating over the screen.
     for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
-      const finger=mesh(new THREE.CapsuleGeometry(.012,.072,3,6),materials.skin,phoneX+gripSign*.075,1.32+fingerIndex*.043,.128);
+      const finger=mesh(new THREE.CapsuleGeometry(.013,.078,3,6),materials.skin,phoneX+gripSign*.073,1.321+fingerIndex*.043,.126);
       finger.rotation.z=Math.PI/2+phoneAngle;finger.raycast=()=>{};
     }
     const phoneThumb=mesh(new THREE.CapsuleGeometry(.018,.105,3,7),materials.skin,phoneX-gripSign*.045,1.405,.132);phoneThumb.rotation.z=gripSign*.58+phoneAngle;phoneThumb.raycast=()=>{};
+    const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
     const shadowContext=shadowCanvas.getContext("2d");
     if(shadowContext){const gradient=shadowContext.createRadialGradient(64,64,8,64,64,64);gradient.addColorStop(0,"rgba(0,0,0,.4)");gradient.addColorStop(1,"rgba(0,0,0,0)");shadowContext.fillStyle=gradient;shadowContext.fillRect(0,0,128,128);}
