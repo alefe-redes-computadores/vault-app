@@ -4,6 +4,8 @@ export type AvatarHatBrand = 'none' | 'nike' | 'new-era' | 'generic';
 export type AvatarGlasses = 'none' | 'rectangular' | 'round';
 export type AvatarSneakers = 'classic' | 'runner' | 'high-top';
 export type AvatarStyle = {
+  topColor: string;
+  bottomColor: string;
   hat: AvatarHat;
   hatBrand: AvatarHatBrand;
   hatColor: string;
@@ -16,6 +18,7 @@ export const AVATAR_STYLE_COLORS = [
   '#111827', '#e2e8f0', '#64748b', '#2563eb', '#0f766e', '#dc2626', '#9333ea', '#f59e0b',
 ] as const;
 export const DEFAULT_AVATAR_STYLE: AvatarStyle = {
+  topColor: '#31465b', bottomColor: '#243447',
   hat: 'none', hatBrand: 'none', hatColor: '#111827',
   glasses: 'none', glassesColor: '#111827',
   sneakers: 'classic', sneakersColor: '#111827',
@@ -34,6 +37,8 @@ function color(value: unknown, fallback: string) {
 export function normalizeAvatarStyle(value: unknown): AvatarStyle {
   const data = value && typeof value === 'object' && !Array.isArray(value) ? value as Partial<AvatarStyle> : {};
   return {
+    topColor: color(data.topColor, DEFAULT_AVATAR_STYLE.topColor),
+    bottomColor: color(data.bottomColor, DEFAULT_AVATAR_STYLE.bottomColor),
     hat: oneOf(data.hat, hatValues, DEFAULT_AVATAR_STYLE.hat),
     hatBrand: oneOf(data.hatBrand, brandValues, DEFAULT_AVATAR_STYLE.hatBrand),
     hatColor: color(data.hatColor, DEFAULT_AVATAR_STYLE.hatColor),

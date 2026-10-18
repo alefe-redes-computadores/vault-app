@@ -86,10 +86,10 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         {/* Same illustrative proportions, with layered clothing. */}
         <path d="M74 64 Q90 71 106 64 L120 113 L117 157 L104 237 Q100 247 92 239 L90 169 L88 239 Q80 247 76 237 L63 157 L60 113Z" fill={`url(#${ids.skin})`} />
         <path d="M67 70 Q53 69 47 95 L30 153 Q28 166 38 168 Q44 168 47 155 L67 102 M113 70 Q127 69 133 95 L150 153 Q152 166 142 168 Q136 168 133 155 L113 102" fill={`url(#${ids.skin})`} />
-        <path d="M65 76 Q90 87 115 76 L117 140 Q90 147 63 140Z" fill={`url(#${ids.cloth})`} />
+        <path d="M65 76 Q90 87 115 76 L117 140 Q90 147 63 140Z" fill={appearance.topColor} />
         <path d="M65 77 Q90 89 115 77" fill="none" stroke="#94a3b8" strokeOpacity=".38" strokeWidth="1.5" />
         <path d="M67 88 L66 132 M113 88 L114 132" stroke="#94a3b8" strokeOpacity=".15" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M63 146 Q90 155 117 146 L108 185 L94 185 L90 169 L86 185 L72 185Z" fill={`url(#${ids.cloth})`} />
+        <path d="M63 146 Q90 155 117 146 L108 185 L94 185 L90 169 L86 185 L72 185Z" fill={appearance.bottomColor} />
         <path d="M66 149 Q90 158 114 149 M90 157 L90 169" fill="none" stroke="#94a3b8" strokeOpacity=".23" strokeWidth="1" />
         <path d="M76 230 L88 231 L88 242 Q80 250 71 246 L72 239Z M92 231 L104 230 L108 239 L109 246 Q100 250 92 242Z" fill="#182634" stroke="#607083" strokeOpacity=".35" strokeWidth=".8" />
         <path d="M73 245 Q80 248 88 242 M92 242 Q100 248 107 245" fill="none" stroke="#a8b5c4" strokeOpacity=".6" strokeWidth="1.4" />

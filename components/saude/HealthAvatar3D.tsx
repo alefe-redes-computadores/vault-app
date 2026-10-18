@@ -61,7 +61,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .66, metalness: .015 }),
-      cloth: new THREE.MeshStandardMaterial({ color: "#31465b", roughness: .76 }),
+      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
+      bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
       hair: new THREE.MeshStandardMaterial({ color: "#17212b", roughness: .9 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
@@ -107,12 +108,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const neck=limb(.092,.112,.22,materials.skin,0,2.45,0);neck.scale.z=.92;
     const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();
     const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
-    mesh(shirtGeometry,materials.cloth,0,1.665,0);
-    mesh(softBox(.54,.25,.35),materials.cloth,0,1.535,0);
+    mesh(shirtGeometry,materials.top,0,1.665,0);
+    mesh(softBox(.54,.25,.35),materials.bottom,0,1.535,0);
     // Collar bones and shoulder caps soften the torso-to-arm transition in every view.
     for(const sign of [-1,1]){
       const collar=mesh(new THREE.CapsuleGeometry(.018,.17,3,8),materials.dark,sign*.105,2.383,.183);collar.rotation.z=sign*1.08;collar.raycast=()=>{};
-      oval(materials.cloth,sign*.303,2.323,0,[.135,.142,.157]);
+      oval(materials.top,sign*.303,2.323,0,[.135,.142,.157]);
     }
     mesh(new THREE.TorusGeometry(.108,.012,6,24),materials.dark,0,2.43,0).rotation.x=Math.PI/2;
     mesh(new THREE.BoxGeometry(.014,.31,.009),materials.dark,0,1.44,.19);
@@ -121,7 +122,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       mesh(new THREE.BoxGeometry(.10,.012,.014),materials.white,sign*.15,.235,.26);
     }
     for (const sign of [-1,1]) {
-      const sleeve=limb(.112,.1,.27,materials.cloth,sign*.337,2.25,0,sign*.13);sleeve.scale.z=1.08;
+      const sleeve=limb(.112,.1,.27,materials.top,sign*.337,2.25,0,sign*.13);sleeve.scale.z=1.08;
       const upperArm=limb(.09,.082,.36,materials.skin,sign*.39,2.005,0,sign*.13);upperArm.raycast=()=>{};
       const elbow=oval(materials.skin,sign*.418,1.815,.002,[.086,.087,.084]);elbow.raycast=()=>{};
       const forearm=limb(.081,.068,.35,materials.skin,sign*.454,1.64,.008,sign*.08);forearm.raycast=()=>{};
@@ -134,7 +135,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const finger=mesh(new THREE.CapsuleGeometry(.015,.071-fingerIndex*.004,3,6),materials.skin,sign*(.456+fingerIndex*.023),1.318,.067);
         finger.rotation.z=sign*(.03+fingerIndex*.025);finger.raycast=()=>{};
       }
-      const shorts=mesh(softBox(.275,.34,.315,.028),materials.cloth,sign*.15,1.305,0);shorts.raycast=()=>{};
+      const shorts=mesh(softBox(.275,.34,.315,.028),materials.bottom,sign*.15,1.305,0);shorts.raycast=()=>{};
       const thigh=limb(.116,.102,.43,materials.skin,sign*.15,1.02,0);thigh.raycast=()=>{};
       const knee=oval(materials.skin,sign*.15,.79,.012,[.108,.105,.1]);knee.raycast=()=>{};
       const calf=limb(.102,.079,.43,materials.skin,sign*.15,.55,.004);calf.raycast=()=>{};
@@ -149,6 +150,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     if (appearance.hat !== "none") {
       const crown=mesh(new THREE.SphereGeometry(.246,28,16,0,Math.PI*2,0,Math.PI/2),materials.cap,0,2.98,-.01,[1,.75,.93]);
       crown.raycast=()=>{};
+      const crownFront=mesh(softBox(.31,.13,.018,.04),materials.cap,0,3.035,.178);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
+      const capButton=mesh(new THREE.SphereGeometry(.018,10,6),materials.white,0,3.165,-.012);capButton.raycast=()=>{};
       const brim=mesh(taperedBox(appearance.hat==="flat"?.39:.36,appearance.hat==="flat"?.50:.46,.03,.285),materials.cap,0,2.988,.235);
       brim.rotation.x=appearance.hat==="baseball"?-.16:-.055;
       brim.raycast=()=>{};
@@ -156,7 +159,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {
-        const badge=mesh(new THREE.BoxGeometry(appearance.hatBrand==="new-era"?.091:.065,.034,.008),materials.white,0,3.075,.202);
+        const badge=mesh(appearance.hatBrand==="nike"?new THREE.CapsuleGeometry(.008,.07,3,8):new THREE.BoxGeometry(.091,.034,.008),materials.white,0,3.075,.202);
+        if(appearance.hatBrand==="nike")badge.rotation.z=-1.18;
         badge.raycast=()=>{};
         if(appearance.hatBrand==="new-era"){
           const line=mesh(new THREE.BoxGeometry(.047,.008,.01),materials.cap,0,3.075,.209);line.raycast=()=>{};
@@ -193,12 +197,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     for(const side of [-1,1]) {
       const x=side*.15;
       const sole=mesh(taperedBox(.25,.33,.045,.50),materials.white,x,.125,.085);sole.raycast=()=>{};
+      const outsole=mesh(taperedBox(.255,.34,.018,.515),materials.dark,x,.102,.083);outsole.raycast=()=>{};
       const shoe=mesh(taperedBox(.24,.31,.13,.46),materials.sneakers,x,.195,.095);shoe.raycast=()=>{};
       const toe=oval(materials.sneakers,x,.19,.292,[.155,.075,.145]);toe.raycast=()=>{};
       const toeGuard=mesh(new THREE.BoxGeometry(.235,.018,.018),materials.white,x,.153,.405);toeGuard.raycast=()=>{};
       const tongue=mesh(softBox(.13,.12,.025,.012),materials.sneakers,x,.245,.275);tongue.rotation.x=-.22;tongue.raycast=()=>{};
       const heel=mesh(softBox(.235,.12,.055,.018),materials.dark,x,.205,-.145);heel.raycast=()=>{};
-      for(let j=0;j<3;j++){const lace=mesh(new THREE.BoxGeometry(.075,.005,.008),materials.white,x,.204-j*.014,.309);lace.raycast=()=>{};}
+      const collar=mesh(new THREE.TorusGeometry(.078,.012,6,18,Math.PI),materials.dark,x,.282,.12);collar.rotation.x=Math.PI/2;collar.rotation.z=Math.PI;collar.raycast=()=>{};
+      for(let j=0;j<4;j++){const lace=mesh(new THREE.BoxGeometry(.082,.006,.009),materials.white,x,.224-j*.016,.31);lace.rotation.z=(j%2?1:-1)*.12;lace.raycast=()=>{};}
       if(appearance.sneakers==="high-top"){
         const high=mesh(softBox(.235,.19,.27,.025),materials.sneakers,x,.26,.043);high.raycast=()=>{};
       }
@@ -317,7 +323,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
     const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
     setMarkers(markersRef.current);
-    controller.current={style:value=>{materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+    controller.current={style:value=>{materials.top.color.set(value.topColor);materials.bottom.color.set(value.bottomColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Glasses, Footprints, Shirt, RotateCcw, ChevronDown, Check } from "lucide-react";
+import { Glasses, Footprints, Shirt, RotateCcw, ChevronDown, Check, Palette } from "lucide-react";
 import { AVATAR_STYLE_COLORS, DEFAULT_AVATAR_STYLE, avatarStyleLabel, normalizeAvatarStyle, type AvatarStyle } from "@/lib/health-profile/avatar-style";
 
 type Key = keyof AvatarStyle;
@@ -19,14 +19,19 @@ function ColorSelector({value, onChange, label}:{value:string;onChange:(color:st
   </fieldset>;
 }
 export function AvatarStyleEditor({value,onChange,onPreview}:{value:AvatarStyle;onChange:(next:AvatarStyle)=>void;onPreview?:(frame:"face"|"shoes")=>void}) {
-  const [category,setCategory]=useState<'hat'|'glasses'|'sneakers'>('hat');
+  const [category,setCategory]=useState<'outfit'|'hat'|'glasses'|'sneakers'>('outfit');
   const change=(key:Key,next:string)=>onChange(normalizeAvatarStyle({...value,[key]:next}));
   return <details onToggle={event=>{if(event.currentTarget.open)onPreview?.(category==='sneakers'?'shoes':'face');}} className="group mt-3 rounded-2xl border border-surface-border bg-gradient-to-br from-emerald-400/[0.035] to-transparent p-3">
     <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-xl px-1 text-left text-emerald-200"><span className="rounded-xl bg-emerald-400/10 p-2"><Shirt size={19}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-bold">Meu estilo</span><span className="mt-1 block truncate text-[11px] text-ink-muted">{avatarStyleLabel(value)} · Toque para personalizar</span></span><ChevronDown size={19} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
     <p className="my-3 rounded-xl bg-surface-raised/50 p-3 text-[11px] leading-relaxed text-ink-muted">Personalize o visual do seu personagem. Acessórios são cosméticos, não aparelhos médicos. A escolha fica salva por pessoa neste dispositivo.</p>
-    <div className="mb-4 grid grid-cols-3 gap-2" role="group" aria-label="Acessório para personalizar">
-      {([['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>{setCategory(key);onPreview?.(key==='sneakers'?'shoes':'face');}} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border text-xs ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}><Icon size={19}/>{label}</button>)}
+    <div className="mb-4 grid grid-cols-4 gap-2" role="group" aria-label="Parte do visual para personalizar">
+      {([['outfit','Roupa',Palette],['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>{setCategory(key);if(key!=='outfit')onPreview?.(key==='sneakers'?'shoes':'face');}} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-1 text-[11px] ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}><Icon size={19}/>{label}</button>)}
     </div>
+    {category==='outfit'?<div className="mb-4 rounded-xl border border-surface-border/70 bg-surface-raised/30 p-3">
+      <p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><Palette size={15}/> Cores da roupa</p>
+      <ColorSelector label="Camiseta" value={value.topColor} onChange={color=>change('topColor',color)}/>
+      <ColorSelector label="Parte de baixo" value={value.bottomColor} onChange={color=>change('bottomColor',color)}/>
+    </div>:null}
     {sections.filter(section=>section.key===category||(category==='hat'&&section.key==='hatBrand'&&value.hat!=='none')).map(section=><div key={section.key} className="mb-4">
       <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-primary">{section.key==='glasses'?<Glasses size={15}/>:section.key==='sneakers'?<Footprints size={15}/>:<Shirt size={15}/>} {section.title}</p>
       <div className="flex flex-wrap gap-2">
