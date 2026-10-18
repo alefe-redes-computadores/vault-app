@@ -63,7 +63,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .66, metalness: .015 }),
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
-      hair: new THREE.MeshStandardMaterial({ color: "#17212b", roughness: .9 }),
+      hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .9 }),
+      facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .94, transparent:true, opacity:.88 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
@@ -104,7 +105,26 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
     }
-    oval(materials.hair,0,appearance.hat==="none"?2.98:2.94,-.035,[.238,appearance.hat==="none"?.16:.11,.22]);
+    const hairHeight=appearance.hat==="none"?2.99:2.945;
+    if(appearance.hair==='short')oval(materials.hair,0,hairHeight,-.035,[.232,appearance.hat==="none"?.145:.095,.215]);
+    if(appearance.hair==='fade'){
+      oval(materials.hair,0,hairHeight+.018,-.045,[.205,appearance.hat==="none"?.115:.075,.195]);
+      for(const sign of [-1,1])oval(materials.hair,sign*.176,2.886,-.035,[.043,.092,.165]);
+    }
+    if(appearance.hair==='curly'){
+      const curls:[number,number,number][]=[[-.15,3.015,-.02],[-.08,3.045,-.035],[0,3.055,-.04],[.08,3.045,-.035],[.15,3.015,-.02],[-.18,2.96,-.02],[.18,2.96,-.02]];
+      for(const [x,y,z] of curls)oval(materials.hair,x,appearance.hat==='none'?y:y-.055,z,[.075,.072,.075]);
+    }
+    if(appearance.facialHair==='stubble'){
+      const stubble=mesh(new THREE.CylinderGeometry(.145,.074,.135,10),materials.facialHair,0,2.62,.035);stubble.scale.set(1.01,1,.92);stubble.raycast=()=>{};
+    }else if(appearance.facialHair==='goatee'){
+      oval(materials.facialHair,0,2.603,.197,[.055,.065,.018]).raycast=()=>{};
+      const moustache=mesh(new THREE.CapsuleGeometry(.011,.075,3,8),materials.facialHair,0,2.686,.209);moustache.rotation.z=Math.PI/2;moustache.raycast=()=>{};
+    }else if(appearance.facialHair==='beard'){
+      const beard=mesh(new THREE.CylinderGeometry(.15,.082,.17,10),materials.facialHair,0,2.605,.035);beard.raycast=()=>{};
+      oval(materials.facialHair,0,2.56,.085,[.09,.07,.07]).raycast=()=>{};
+      const moustache=mesh(new THREE.CapsuleGeometry(.012,.09,3,8),materials.facialHair,0,2.688,.21);moustache.rotation.z=Math.PI/2;moustache.raycast=()=>{};
+    }
     const neck=limb(.092,.112,.22,materials.skin,0,2.45,0);neck.scale.z=.92;
     const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();
     const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
@@ -323,7 +343,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
     const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
     setMarkers(markersRef.current);
-    controller.current={style:value=>{materials.top.color.set(value.topColor);materials.bottom.color.set(value.bottomColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+    controller.current={style:value=>{materials.top.color.set(value.topColor);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};

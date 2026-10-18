@@ -60,7 +60,9 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         <path d="M81 51 L99 51 L103 69 Q90 76 77 69Z" fill={`url(#${ids.skin})`} />
         <path d="M81 52 Q90 62 99 52 L99 58 Q90 64 81 58Z" fill="#241b18" opacity=".16" />
         <path d="M68 30 Q68 10 90 11 Q112 12 112 32 L110 44 Q106 58 90 60 Q74 58 70 44Z" fill={`url(#${ids.skin})`} />
-        <path d="M69 28 Q66 13 80 10 Q103 3 112 21 L112 30 Q103 21 94 21 Q82 24 69 28Z" fill="#17212b" />
+        {appearance.hair==='short'?<path d="M69 28 Q66 13 80 10 Q103 3 112 21 L112 30 Q103 21 94 21 Q82 24 69 28Z" fill={appearance.hairColor}/>:null}
+        {appearance.hair==='fade'?<><path d="M70 27 Q72 12 90 10 Q108 11 111 27 Q100 20 90 21 Q80 20 70 27Z" fill={appearance.hairColor}/><path d="M69 24 L72 36 M111 24 L108 36" stroke={appearance.hairColor} strokeWidth="3"/></>:null}
+        {appearance.hair==='curly'?<g fill={appearance.hairColor}>{[72,79,86,93,100,107].map((x,index)=><circle key={x} cx={x} cy={index%2?13:16} r="7"/>)}<circle cx="69" cy="23" r="6"/><circle cx="111" cy="23" r="6"/></g>:null}
         {appearance.hat!=='none'&&<g aria-label="Boné decorativo">
           <path d="M65 28 Q65 1 90 3 Q115 1 115 28 L108 30 Q89 22 70 30Z" fill={appearance.hatColor} stroke="#f8fafc" strokeOpacity=".13" strokeWidth=".9"/>
           <path d={appearance.hat==='flat'?"M68 26 L116 26 L132 30 L132 34 Q90 35 66 31Z":"M68 27 Q98 22 118 28 Q128 30 119 33 Q96 37 66 31Z"} fill={appearance.hatColor} stroke="#e2e8f0" strokeOpacity=".23" strokeWidth=".8" />
@@ -77,7 +79,10 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         <circle cx="81" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
         <circle cx="98" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
         <path d="M90 38 L88 44 L92 44" fill="none" stroke="#30251f" strokeOpacity=".3" strokeWidth="1" strokeLinecap="round" />
-        <path d={expression==='happy'?"M84 49 Q90 53 97 49":expression==='reflective'?"M84 49 Q90 45 97 49":"M84 49 L97 49"} fill="none" stroke={faceDetail} strokeOpacity=".6" strokeWidth="1.2" strokeLinecap="round" />
+        {appearance.facialHair==='stubble'?<path d="M75 46 Q76 59 90 62 Q104 59 106 46 Q101 58 90 59 Q79 58 75 46Z" fill={appearance.hairColor} opacity=".32"/>:null}
+        {appearance.facialHair==='goatee'?<><path d="M85 51 Q90 55 96 51 L95 61 Q90 65 85 61Z" fill={appearance.hairColor} opacity=".9"/><path d="M84 47 Q90 44 97 47" stroke={appearance.hairColor} strokeWidth="2"/></>:null}
+        {appearance.facialHair==='beard'?<><path d="M73 43 Q74 60 90 66 Q106 60 108 43 Q103 56 90 61 Q77 56 73 43Z" fill={appearance.hairColor} opacity=".92"/><path d="M83 47 Q90 43 98 47" stroke={appearance.hairColor} strokeWidth="2.4"/></>:null}
+        <path d={expression==='happy'?"M84 49 Q90 53 97 49":expression==='reflective'?"M84 49 Q90 45 97 49":"M84 49 L97 49"} fill="none" stroke={faceDetail} strokeOpacity=".78" strokeWidth="1.2" strokeLinecap="round" />
 
         {/* V122: cheek light, hair texture and a more defined jaw. */}
         <path d="M73 32 Q70 44 78 50 M107 32 Q110 44 102 50" fill="none" stroke={avatarShade(color, 1.35)} strokeOpacity=".28" strokeWidth="2" strokeLinecap="round" />
