@@ -5,8 +5,8 @@ const three=fs.readFileSync('components/saude/HealthAvatar3D.tsx','utf8');
 const avatar=fs.readFileSync('components/saude/HealthAvatar.tsx','utf8');
 const health=fs.readFileSync('app/saude/minha-saude/page.tsx','utf8');
 
-assert(three.includes('new THREE.CircleGeometry(.72,32)'),'inspection stage missing');
-assert(three.includes('new THREE.RingGeometry(.70,.715,48)'),'stage depth ring missing');
+assert(three.includes('new THREE.BoxGeometry(1.18,.025,.68)'),'inspection stage missing');
+assert(three.includes('new THREE.EdgesGeometry(stage.geometry)'),'stage depth outline missing');
 assert(three.includes('const brainGlyph=new THREE.Group()'),'geometric Brain core missing');
 assert(three.includes('const brainPanel=mesh(softBox(.27,.24,.025,.018)'),'angular Brain panel missing');
 assert(!three.includes('label("VAULT",BRAIN_BRAND)'),'legacy textured Brain badge retained');

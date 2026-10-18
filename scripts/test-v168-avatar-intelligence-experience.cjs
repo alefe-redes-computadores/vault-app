@@ -12,7 +12,7 @@ assert.match(scene, /appearance\.glasses==="rectangular"[\s\S]*softBox\(\.116,\.
 assert.match(scene, /V168: the grip wraps the device/);
 assert.match(scene, /Math\.PI\/2\+phoneAngle/);
 assert.match(scene, /const elbow=oval/);
-assert.match(scene, /const ankle=mesh/);
+assert.match(scene, /const ankle=(?:mesh|limb)/);
 assert.match(avatar, /overscroll-contain/);
 assert.match(avatar, /max-w-\[420px\]/);
 assert.match(avatar, /<details open/);
