@@ -57,7 +57,7 @@ for(const file of ['components/saude/HealthAvatar.tsx','components/saude/HealthA
  assert.equal(diag.length,0,file+': '+diag.map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')).join(' '));
 }
 const page=fs.readFileSync('app/saude/documentos/page.tsx','utf8');
-assert(page.includes('buildDocumentMedicationIndex('));assert(page.includes('const expanded = resolvedViewModels.flatMap('));assert(page.includes('sharedMedicationCount'));assert(page.includes('uniqueDocumentViewModels'));assert(page.includes('new Set(parents.flatMap'));
+assert(page.includes('buildDocumentMedicationIndex(')||page.includes('buildDocumentMedicationIndexesByOwner('),'document medication index integration');assert(page.includes('const expanded = resolvedViewModels.flatMap('));assert(page.includes('sharedMedicationCount'));assert(page.includes('uniqueDocumentViewModels'));assert(page.includes('new Set(parents.flatMap'));
 const manager=fs.readFileSync('components/galeria/DocumentManager.tsx','utf8');
 assert(manager.includes('buildDocumentMedicationIndex(docs, [med]'));
 assert(manager.includes('doc.user_id === user.id'));

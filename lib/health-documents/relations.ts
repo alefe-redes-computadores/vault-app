@@ -42,6 +42,55 @@ export function buildDocumentMedicationIndex(
   for (const [id, ids] of byDoc) result.set(id, [...ids].map(mid => meds.get(mid)!).sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR')));
   return result;
 }
+
+/**
+ * Builds every owner index in one pass.
+ *
+ * The health archive previously filtered the complete document list once for
+ * every document. Apart from becoming quadratic, that made a large offline
+ * archive noticeably expensive to open. Ownership remains explicit here: a
+ * document is never allowed to borrow relations from another account/person.
+ */
+export function buildDocumentMedicationIndexesByOwner(
+  documents: Document[],
+  medications: Medicamento[],
+  renewals: Renovacao[]
+): Map<string, Map<string, Medicamento[]>> {
+  const documentsByOwner = new Map<string, Document[]>();
+  const medicationsByOwner = new Map<string, Medicamento[]>();
+  const renewalsByOwner = new Map<string, Renovacao[]>();
+
+  const ownerKey = (row: { user_id?: string; person_id?: string }) =>
+    row.user_id && row.person_id ? `${row.user_id}:${row.person_id}` : null;
+  const append = <T,>(target: Map<string, T[]>, key: string | null, row: T) => {
+    if (!key) return;
+    const bucket = target.get(key);
+    if (bucket) bucket.push(row);
+    else target.set(key, [row]);
+  };
+
+  for (const document of documents) append(documentsByOwner, ownerKey(document), document);
+  for (const medication of medications) append(medicationsByOwner, ownerKey(medication), medication);
+  for (const renewal of renewals) append(renewalsByOwner, ownerKey(renewal), renewal);
+
+  const result = new Map<string, Map<string, Medicamento[]>>();
+  for (const [key, ownedDocuments] of documentsByOwner) {
+    const separator = key.indexOf(":");
+    const userId = key.slice(0, separator);
+    const personId = key.slice(separator + 1);
+    result.set(
+      key,
+      buildDocumentMedicationIndex(
+        ownedDocuments,
+        medicationsByOwner.get(key) ?? [],
+        renewalsByOwner.get(key) ?? [],
+        personId,
+        userId
+      )
+    );
+  }
+  return result;
+}
 /** Narrow helper for medication details; no duplicate document records are created. */
 export function documentMedicationLinks(document: Document, medications: Medicamento[], renewals: Renovacao[], pid: string, uid: string): Medicamento[] {
   return buildDocumentMedicationIndex([document],medications,renewals,pid,uid).get(document.id || '') || [];

@@ -135,7 +135,7 @@ import {
   MedicationFormatIcon,
 } from "@/components/saude/MedicationFormatIcon";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
-import { buildDocumentMedicationIndex } from "@/lib/health-documents/relations";
+import { buildDocumentMedicationIndexesByOwner } from "@/lib/health-documents/relations";
 
 import type {
   Cid,
@@ -1029,6 +1029,11 @@ export default function DocumentsPage() {
     );
 
   const [
+    exportSurfaceReady,
+    setExportSurfaceReady,
+  ] = useState(false);
+
+  const [
     expandedDomains,
     setExpandedDomains,
   ] =
@@ -1084,6 +1089,17 @@ export default function DocumentsPage() {
       },
       []
     );
+
+  const prepareExportSurface = useCallback(async () => {
+    setExportSurfaceReady(true);
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+  }, []);
+
+  const releaseExportSurface = useCallback(() => {
+    setExportSurfaceReady(false);
+  }, []);
 
   // ==========================================================
   // STRICT PERSON SCOPE
@@ -3694,18 +3710,11 @@ export default function DocumentsPage() {
   // V155: one physical file can appear under multiple linked medications.
   // This projection never duplicates storage, clinical records or attachments.
   const medicationLinksByDocument = useMemo(() => {
-    const byOwner = new Map<string, Map<string, Medicamento[]>>();
-    for (const doc of periodDocuments) {
-      if (!doc.id || !doc.person_id || !doc.user_id) continue;
-      const ownerKey = `${doc.user_id}:${doc.person_id}`;
-      if (!byOwner.has(ownerKey)) {
-        byOwner.set(ownerKey, buildDocumentMedicationIndex(
-          periodDocuments.filter(d => d.user_id === doc.user_id && d.person_id === doc.person_id),
-          scopedMedicamentos, scopedRenovacoes, doc.person_id, doc.user_id
-        ));
-      }
-    }
-    return byOwner;
+    return buildDocumentMedicationIndexesByOwner(
+      periodDocuments,
+      scopedMedicamentos,
+      scopedRenovacoes
+    );
   }, [periodDocuments, scopedMedicamentos, scopedRenovacoes]);
 
   const projectedViewModels = useMemo(() => {
@@ -4308,7 +4317,7 @@ export default function DocumentsPage() {
             EXPORT SURFACE
             ==================================================== */}
 
-        {uniqueDocumentViewModels.length >
+        {exportSurfaceReady && uniqueDocumentViewModels.length >
           0 && (
           <div
             aria-hidden="true"
@@ -4400,6 +4409,8 @@ export default function DocumentsPage() {
                 0 && (
                 <ExportCardButton
                   compact
+                  onBeforeExport={prepareExportSurface}
+                  onAfterExport={releaseExportSurface}
                   cards={
                     exportCards
                   }
@@ -4656,7 +4667,7 @@ export default function DocumentsPage() {
                               domainIndex *
                               0.025,
                           }}
-                          className="overflow-hidden rounded-[26px] border border-surface-border/50 bg-surface shadow-sm"
+                          className="overflow-hidden rounded-[20px] border border-surface-border/50 bg-surface shadow-sm [content-visibility:auto] [contain-intrinsic-size:0_160px]"
                         >
                           <button
                             type="button"
@@ -4666,14 +4677,14 @@ export default function DocumentsPage() {
                                   domain.id
                                 )
                             }
-                            className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-raised/40"
+                            className="flex min-h-[58px] w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-surface-raised/40"
                             aria-expanded={
                               isDomainExpanded
                             }
                           >
                             <div className="flex min-w-0 items-center gap-3">
                               <div
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px]"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
                                 style={{
                                   backgroundColor:
                                     `${domain.color}15`,

@@ -15,6 +15,8 @@ interface ExportCardButtonProps {
   className?: string;
   label?: string;
   compact?: boolean;
+  onBeforeExport?: () => void | Promise<void>;
+  onAfterExport?: () => void;
 }
 
 export function ExportCardButton({
@@ -26,6 +28,8 @@ export function ExportCardButton({
   className = "",
   label = "Exportar PDF",
   compact = false,
+  onBeforeExport,
+  onAfterExport,
 }: ExportCardButtonProps) {
   const { trigger } = useHapticFeedback();
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +43,7 @@ export function ExportCardButton({
     trigger("vibrate");
 
     try {
+      await onBeforeExport?.();
       if (cards && cards.length > 0) {
         const refs = cards.map((c) => c.ref);
         await exportCardsToPDF({
@@ -65,6 +70,7 @@ export function ExportCardButton({
       setError("Erro ao gerar o PDF. Tente novamente.");
       trigger("error");
     } finally {
+      onAfterExport?.();
       setIsLoading(false);
       setProgress(0);
     }

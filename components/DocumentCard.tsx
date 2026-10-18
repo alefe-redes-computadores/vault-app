@@ -954,7 +954,7 @@ function DocumentCardComponent({
       onKeyDown={
         handleKeyDown
       }
-      className="group relative cursor-pointer overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface shadow-sm transition-all duration-200 active:scale-[0.985] hover:border-ice/20 hover:shadow-lg"
+      className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-surface-border/50 bg-surface shadow-sm transition-all duration-200 [content-visibility:auto] [contain-intrinsic-size:0_132px] active:scale-[0.985] hover:border-ice/20 hover:shadow-lg"
       role="button"
       tabIndex={
         documentHref
@@ -975,14 +975,14 @@ function DocumentCardComponent({
         }}
       />
 
-      <div className="p-4 pl-5">
+      <div className={compact ? "p-3 pl-4" : "p-4 pl-5"}>
         <div className="flex items-start gap-3">
           {/* ==================================================
               ÍCONE
               ================================================== */}
 
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] transition-all duration-200"
+            className={`flex shrink-0 items-center justify-center transition-all duration-200 ${compact ? "h-9 w-9 rounded-xl" : "h-11 w-11 rounded-[14px]"}`}
             style={{
               background:
                 `linear-gradient(135deg, ${color}26, ${color}0d)`,
@@ -1258,7 +1258,7 @@ function DocumentCardComponent({
             RODAPÉ
             ==================================================== */}
 
-        <div className="mt-3 flex items-center justify-between border-t border-surface-border/40 pt-3">
+        <div className={`${compact ? "mt-2 pt-2" : "mt-3 pt-3"} flex items-center justify-between border-t border-surface-border/40`}>
           <div className="flex items-center gap-2 text-xs text-ink-faint">
             {hasAttachments && (
               <span className="inline-flex items-center gap-1">
@@ -1333,9 +1333,9 @@ function DocumentCardComponent({
                 />
               )}
 
-              {document.synced
-                ? "Sincronizado"
-                : "Pendente"}
+              <span className={compact && document.synced ? "sr-only" : undefined}>
+                {document.synced ? "Sincronizado" : "Pendente"}
+              </span>
             </button>
 
             <AnimatePresence>
