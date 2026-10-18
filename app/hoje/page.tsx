@@ -37,6 +37,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Bell,
+  PackageX,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
@@ -3085,7 +3086,7 @@ export default function HojePage() {
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 rounded-[20px] border border-emerald-400/20 bg-emerald-400/[0.055] p-3"
+              className="flex items-center gap-3 rounded-[18px] border border-emerald-400/20 bg-gradient-to-r from-emerald-400/[0.07] to-surface p-3"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
                 <ListChecks size={17} />
@@ -3102,7 +3103,7 @@ export default function HojePage() {
                 type="button"
                 onClick={() => void handleTomarTodos()}
                 disabled={processandoTodos || Boolean(processandoDoseId)}
-                className="shrink-0 rounded-xl bg-emerald-400 px-3 py-2 text-[10px] font-black text-void active:scale-[0.97] disabled:opacity-50"
+                className="min-h-11 shrink-0 rounded-xl bg-emerald-400 px-3 py-2 text-[10px] font-black text-void active:scale-[0.97] disabled:opacity-50"
               >
                 {processandoTodos ? "Registrando..." : "Tomar todas"}
               </button>
@@ -4736,16 +4737,14 @@ export default function HojePage() {
                 initial={{ opacity: 0, y: 24, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 24, scale: 0.98 }}
-                className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[99] mx-auto max-w-md rounded-[28px] border border-surface-border bg-surface p-4 shadow-2xl"
+                className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[99] mx-auto max-h-[calc(100dvh-env(safe-area-inset-bottom)-8rem)] max-w-md overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border bg-surface p-4 shadow-2xl"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
                     <Clock size={19} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">
-                      Confirmação temporal
-                    </p>
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">Revisão de doses</p>
                     <h3 className="mt-1 text-base font-bold text-ink-primary">
                       Como registrar estas {dosesElegiveisLote.length} doses?
                     </h3>
@@ -4755,19 +4754,18 @@ export default function HojePage() {
                   </div>
                 </div>
 
-                {dosesSemEstoqueNoLote.length>0 && <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-400/[0.07] p-3">
-                  <p className="text-xs font-bold text-amber-300">{dosesSemEstoqueNoLote.length} dose(s) com estoque registrado zerado</p>
-                  <ul className="mt-2 space-y-1 text-[11px] text-ink-primary">{dosesSemEstoqueNoLote.map(d=><li key={`${d.medicamentoId}-${d.horario}`}>{d.medicamentoNome} · {d.horario} · não entra no lote de tomadas</li>)}</ul>
-                  <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Estoque zerado não comprova que a dose não foi tomada. Confirme apenas se realmente NÃO tomou essas doses.</p>
-                  <button type="button" disabled={processandoTodos} onClick={()=>void confirmarDosesNaoTomadasPorEstoque()} className="mt-2 min-h-11 w-full rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40">Não tomei · registrar motivo sem estoque</button>
+                {dosesSemEstoqueNoLote.length>0 && <div className="mt-3 overflow-hidden rounded-xl border border-amber-400/25 bg-amber-400/[0.055]">
+                  <div className="flex items-start gap-2 p-3"><PackageX size={16} className="mt-0.5 shrink-0 text-amber-300"/><div><p className="text-xs font-bold text-amber-200">Saldo insuficiente em {dosesSemEstoqueNoLote.length} {dosesSemEstoqueNoLote.length===1?'dose':'doses'}</p><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Saldo zerado não comprova que a dose deixou de ser tomada. Revise o que aconteceu.</p></div></div>
+                  <ul className="border-y border-amber-400/15 bg-void/15 px-3 py-2 text-[10px] text-ink-primary">{dosesSemEstoqueNoLote.map(d=><li key={`${d.medicamentoId}-${d.horario}`} className="flex min-h-8 items-center justify-between gap-2"><span className="truncate">{d.medicamentoNome}</span><span className="shrink-0 text-ink-muted">{d.horario}</span></li>)}</ul>
+                  <button type="button" disabled={processandoTodos} onClick={()=>void confirmarDosesNaoTomadasPorEstoque()} className="min-h-11 w-full px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40">Confirmar que não tomei por falta de estoque</button>
                 </div>}
-                {dosesComEstoqueNoLote.length>0 ? <p className="mt-3 rounded-xl bg-emerald-400/[0.06] p-2 text-xs text-emerald-300">Confirmar somente {dosesComEstoqueNoLote.length} dose(s) disponíveis.</p> : <p className="mt-3 text-xs text-amber-300">Nenhuma dose com estoque confirmado para registrar como tomada neste lote.</p>}
+                {dosesComEstoqueNoLote.length>0 ? <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/[0.06] p-2.5 text-xs text-emerald-300"><CheckCircle2 size={14}/>{dosesComEstoqueNoLote.length} {dosesComEstoqueNoLote.length===1?'dose disponível':'doses disponíveis'} para confirmar</p> : <p className="mt-3 text-xs text-amber-300">Nenhuma dose com saldo confirmado para registrar como tomada neste lote.</p>}
                 <div className="mt-4 space-y-2">
                   <button
                     type="button"
                     disabled={processandoTodos}
                     onClick={() => void executarTomadaEmLote("now")}
-                    className="flex w-full items-center justify-between rounded-2xl bg-emerald-400 px-4 py-3.5 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
+                    className="flex min-h-[58px] w-full items-center justify-between rounded-xl bg-emerald-400 px-4 py-3 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
                   >
                     <div>
                       <p className="text-xs font-bold">Tomei agora</p>
@@ -4786,7 +4784,7 @@ export default function HojePage() {
                     type="button"
                     disabled={processandoTodos}
                     onClick={() => void executarTomadaEmLote("scheduled")}
-                    className="flex w-full items-center justify-between rounded-2xl border border-ice/20 bg-ice/5 px-4 py-3.5 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
+                    className="flex min-h-[58px] w-full items-center justify-between rounded-xl border border-ice/20 bg-ice/5 px-4 py-3 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
                   >
                     <div>
                       <p className="text-xs font-bold">Tomei nos horários programados</p>
@@ -4797,7 +4795,7 @@ export default function HojePage() {
                     <Clock size={18} className="text-ice" />
                   </button>
 
-                  <div className="rounded-2xl border border-surface-border bg-surface-raised p-3">
+                  <div className="rounded-xl border border-surface-border bg-surface-raised p-3">
                     <label htmlFor="vault-batch-real-time" className="text-[10px] font-semibold text-ink-muted">
                       Tomei as disponíveis em outro horário
                     </label>
