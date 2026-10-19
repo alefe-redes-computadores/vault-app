@@ -62,7 +62,9 @@ import {
 } from "@/components/list";
 
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { withReturnTarget } from "@/lib/navigation/return-context";
+import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 
 import type {
   Renovacao,
@@ -580,6 +582,15 @@ export default function RenovacoesPage() {
   const hojeISO = localDateISO();
   const datasFuturas = useMemo(() => renovacoesEnriquecidas.filter((item) => getEffectiveAcquisitionDate(item) > hojeISO).length, [renovacoesEnriquecidas, hojeISO]);
 
+  const renewalSearchIndex = useMemo(() => createLocalSearchIndex(renovacoesEnriquecidas, (item) => [
+    item.medicamentoNome,
+    item.medicamentoDosagem,
+    item.observacoes,
+    item.lote,
+    getAcquisitionTypeLabel(item),
+    getEffectiveAcquisitionDate(item),
+  ]), [renovacoesEnriquecidas]);
+
   // ==========================================================
   // FILTROS
   // ==========================================================
@@ -587,46 +598,7 @@ export default function RenovacoesPage() {
   const filteredRenovacoes =
     useMemo(
       () => {
-        let result =
-          renovacoesEnriquecidas;
-
-        const normalizedSearch =
-          search
-            .trim()
-            .toLocaleLowerCase(
-              "pt-BR"
-            );
-
-        if (
-          normalizedSearch
-        ) {
-          result =
-            result.filter(
-              (
-                renovacao
-              ) => {
-                const fields = [
-                  renovacao.medicamentoNome,
-                  renovacao.medicamentoDosagem,
-                  renovacao.observacoes,
-                  renovacao.lote,
-                ];
-
-                return fields.some(
-                  (
-                    value
-                  ) =>
-                    value
-                      ?.toLocaleLowerCase(
-                        "pt-BR"
-                      )
-                      .includes(
-                        normalizedSearch
-                      )
-                );
-              }
-            );
-        }
+        let result = filterLocalSearchIndex(renewalSearchIndex, search);
 
         if (
           filtroPeriodo ===
@@ -718,7 +690,7 @@ export default function RenovacoesPage() {
         ];
       },
       [
-        renovacoesEnriquecidas,
+        renewalSearchIndex,
         search,
         filtroPeriodo,
         filtroStatus,
@@ -747,6 +719,8 @@ export default function RenovacoesPage() {
       setFiltroAquisicao(
         "todos"
       );
+
+      setSearch("");
     };
 
   const hasActiveFilters =
@@ -755,7 +729,10 @@ export default function RenovacoesPage() {
     filtroStatus !==
       "todos" ||
     filtroAquisicao !==
-      "todos";
+      "todos" ||
+    search.trim().length > 0;
+
+  const activeFilterCount = Number(filtroPeriodo !== "todos") + Number(filtroStatus !== "todos") + Number(filtroAquisicao !== "todos") + Number(search.trim().length > 0);
 
   // ==========================================================
   // RENDER
@@ -809,23 +786,20 @@ export default function RenovacoesPage() {
               ================================================== */}
 
           {indicadores.total > 0 && (
-            <section className="order-3 w-full overflow-hidden rounded-[18px] border border-surface-border/55 bg-gradient-to-r from-white/[.025] to-surface" aria-label="Resumo de receitas e aquisições">
-              <div className="flex items-center gap-3 px-3 py-2.5">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-emerald-400/20 bg-emerald-400/[.07] text-emerald-300"><Receipt size={17}/></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[8px] font-bold uppercase tracking-[.16em] text-ink-faint">Histórico separado por origem</p>
-                  <p className="truncate text-sm font-semibold text-ink-primary">{receitasRegistradas} receitas · {comprasRegistradas.length} aquisições</p>
-                  <p className="mt-0.5 truncate text-[9px] text-ink-muted">{indicadores.sus} via SUS ou gratuito · {comprasComValor.length} com valor informado</p>
-                </div>
-                <div className="shrink-0 text-right"><strong className="block font-mono text-sm text-emerald-300">{formatCurrency(totalCompras)}</strong><span className="text-[8px] uppercase tracking-wide text-ink-faint">valores registrados</span></div>
-              </div>
-              <div className="grid grid-cols-3 border-t border-surface-border/45 bg-void/15">
-                <div className="px-3 py-2"><strong className="block font-mono text-base text-ink-primary">{indicadores.total}</strong><span className="text-[8px] font-bold uppercase tracking-wide text-ink-faint">Eventos</span></div>
-                <div className="border-l border-surface-border/40 px-3 py-2"><strong className="block font-mono text-base text-amber-300">{indicadores.proximas}</strong><span className="text-[8px] font-bold uppercase tracking-wide text-ink-faint">Até 7 dias</span></div>
-                <div className="border-l border-surface-border/40 px-3 py-2"><strong className="block font-mono text-base text-coral">{indicadores.vencidas}</strong><span className="text-[8px] font-bold uppercase tracking-wide text-ink-faint">Expiradas</span></div>
-              </div>
-              <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/nova-receita"); }} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-surface-border/45 text-xs font-bold text-ice active:bg-ice/5"><FileText size={14}/>Registrar somente uma receita</button>
-            </section>
+            <div className="order-3 w-full">
+              <ClinicalListSummary
+                icon={Receipt}
+                eyebrow="Receita ≠ aquisição"
+                title={`${receitasRegistradas} receita${receitasRegistradas === 1 ? "" : "s"} · ${comprasRegistradas.length} aquisição${comprasRegistradas.length === 1 ? "" : "ões"}`}
+                detail={`${indicadores.sus} via SUS/gratuito · ${formatCurrency(totalCompras)} em valores informados`}
+                metrics={[
+                  { label: "Eventos", value: indicadores.total },
+                  { label: "Até 7 dias", value: indicadores.proximas, tone: indicadores.proximas ? "attention" : "neutral" },
+                  { label: "Expiradas", value: indicadores.vencidas, tone: indicadores.vencidas ? "critical" : "neutral" },
+                ]}
+              />
+              <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/nova-receita"); }} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[.055] text-xs font-bold text-violet-200 active:scale-[.99]"><FileText size={14}/>Registrar somente uma receita</button>
+            </div>
           )}
           {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-amber-400/25 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-300"><strong>Data futura: confira este registro.</strong> {datasFuturas} item(ns) não entram como gasto atual até a data informada.</div>}
 
@@ -835,7 +809,7 @@ export default function RenovacoesPage() {
 
           <ListFilters
             className="order-2"
-            activeCount={hasActiveFilters ? 1 : 0}
+            activeCount={activeFilterCount}
             onClear={
               handleClearFilters
             }
@@ -1130,6 +1104,7 @@ export default function RenovacoesPage() {
                       0.025
                     }
                     density="compact"
+                    className="[content-visibility:auto] [contain-intrinsic-size:142px]"
                     icon={
                       <MedicationFormatIcon
                         formato={renovacao.medicamentoFormato}

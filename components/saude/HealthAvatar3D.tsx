@@ -288,10 +288,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const toe=oval(materials.sneakers,x,.187,.29,[.14,.062,.148]);toe.raycast=()=>{};
       const toeTop=mesh(taperedBox(.11,.18,.021,.17),materials.white,x,.235,.268);toeTop.rotation.x=-.16;toeTop.raycast=()=>{};
       const toeGuard=mesh(new THREE.CapsuleGeometry(.014,.19,3,10),materials.white,x,.153,.423);toeGuard.rotation.z=Math.PI/2;toeGuard.raycast=()=>{};
+      // V191: linhas de construção suavizam a leitura frontal, lateral e traseira do tênis
+      // sem animação contínua ou geometria de alta densidade.
+      const toeSeam=mesh(new THREE.TorusGeometry(.095,.003,4,18,Math.PI),materials.dark,x,.205,.337);toeSeam.rotation.x=Math.PI/2;toeSeam.rotation.z=Math.PI;toeSeam.raycast=()=>{};
       const tongue=mesh(softBox(.13,.12,.025,.012),materials.sneakers,x,.245,.275);tongue.rotation.x=-.22;tongue.raycast=()=>{};
       const heel=mesh(softBox(.235,.12,.055,.018),materials.dark,x,.205,-.145);heel.raycast=()=>{};
       const heelCounter=mesh(taperedBox(.185,.215,.105,.095),materials.sneakers,x,.245,-.105);heelCounter.rotation.x=.04;heelCounter.raycast=()=>{};
+      const heelStabilizer=mesh(new THREE.CapsuleGeometry(.005,.115,2,7),materials.white,x,.214,-.158);heelStabilizer.rotation.z=Math.PI/2;heelStabilizer.raycast=()=>{};
       const quarter=mesh(taperedBox(.15,.205,.075,.19),materials.dark,x,.205,.12);quarter.rotation.x=-.18;quarter.raycast=()=>{};
+      const sidePanel=mesh(taperedBox(.052,.145,.055,.012),materials.white,x+side*.077,.224,.105);sidePanel.rotation.z=-side*.24;sidePanel.raycast=()=>{};
       const collar=mesh(new THREE.TorusGeometry(.078,.012,6,18,Math.PI),materials.dark,x,.282,.12);collar.rotation.x=Math.PI/2;collar.rotation.z=Math.PI;collar.raycast=()=>{};
       for(let j=0;j<4;j++){const lace=mesh(new THREE.BoxGeometry(.082-j*.006,.006,.009),materials.white,x,.237-j*.017,.326);lace.rotation.z=(j%2?1:-1)*.12;lace.raycast=()=>{};for(const eyeletSide of [-1,1])oval(materials.white,x+eyeletSide*.052,.237-j*.017,.322,[.007,.007,.004]).raycast=()=>{};}
       if(appearance.sneakers==="high-top"){
