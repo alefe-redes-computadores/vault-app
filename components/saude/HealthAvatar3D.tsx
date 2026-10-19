@@ -166,16 +166,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const elbow=oval(materials.skin,sign*.418,1.815,.002,[.086,.087,.084]);elbow.raycast=()=>{};
       const forearm=limb(.081,.068,.35,materials.skin,sign*(holdsPhone?.45:.454),1.64,holdsPhone?.028:.008,sign*(holdsPhone?.045:.08));forearm.raycast=()=>{};
       const wrist=oval(materials.skin,sign*.469,1.475,.01,[.071,.057,.065]);wrist.raycast=()=>{};
-      const palm=mesh(softBox(.145,.19,.13,.035),materials.skin,sign*.49,1.395,.018);
+      // A mão do celular usa uma única palma atrás do aparelho; a outra mantém os dedos relaxados.
+      const palm=mesh(softBox(holdsPhone?.138:.145,holdsPhone?.205:.19,.13,.035),materials.skin,sign*.49,1.395,holdsPhone?.052:.018);
       palm.rotation.z=holdsPhone?sign*.10:0;
-      const thumb=mesh(new THREE.CapsuleGeometry(.026,.075,3,7),materials.skin,sign*.445,1.49,.075);thumb.rotation.z=sign*.78;
+      if(!holdsPhone){const thumb=mesh(new THREE.CapsuleGeometry(.026,.075,3,7),materials.skin,sign*.445,1.49,.075);thumb.rotation.z=sign*.78;thumb.raycast=()=>{};}
       // Four articulated silhouettes make both hands readable from the front
       // without multiplying draw calls into a realistic hand rig.
-      for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
+      for(let fingerIndex=0;!holdsPhone&&fingerIndex<4;fingerIndex+=1){
         const finger=mesh(new THREE.CapsuleGeometry(.015,.071-fingerIndex*.004,3,6),materials.skin,sign*(.456+fingerIndex*.023),1.318,.067);
         finger.rotation.z=sign*(.03+fingerIndex*.025);finger.raycast=()=>{};
       }
-      for(let knuckleIndex=0;knuckleIndex<3;knuckleIndex+=1)oval(materials.skin,sign*(.462+knuckleIndex*.027),1.356,.087,[.017,.014,.016]).raycast=()=>{};
+      for(let knuckleIndex=0;!holdsPhone&&knuckleIndex<3;knuckleIndex+=1)oval(materials.skin,sign*(.462+knuckleIndex*.027),1.356,.087,[.017,.014,.016]).raycast=()=>{};
       const shorts=mesh(softBox(.275,.34,.315,.028),materials.bottom,sign*.15,1.305,0);shorts.raycast=()=>{};
       const thigh=limb(.116,.102,.43,materials.skin,sign*.15,1.02,0);thigh.raycast=()=>{};
       const knee=oval(materials.skin,sign*.15,.79,.012,[.108,.105,.1]);knee.raycast=()=>{};
@@ -352,12 +353,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const phone=mesh(softBox(.17,.3,.035,.015),materials.dark,phoneX,1.39,.095);phone.rotation.z=phoneAngle;
     const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.089);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.114);screen.rotation.z=phoneAngle;screen.userData.action="brain";
-    // V168: the grip wraps the device instead of floating over the screen.
+    // V183: the dedicated grip replaces the generic fingers on this hand, avoiding an eight-finger overlap.
     for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
-      const finger=mesh(new THREE.CapsuleGeometry(.013,.078,3,6),materials.skin,phoneX+gripSign*.073,1.321+fingerIndex*.043,.126);
-      finger.rotation.z=Math.PI/2+phoneAngle;finger.raycast=()=>{};
+      const finger=mesh(new THREE.CapsuleGeometry(.0125,.073-fingerIndex*.003,3,6),materials.skin,phoneX+gripSign*.071,1.323+fingerIndex*.042,.119);
+      finger.rotation.z=Math.PI/2+phoneAngle;finger.rotation.y=gripSign*.12;finger.raycast=()=>{};
     }
-    const phoneThumb=mesh(new THREE.CapsuleGeometry(.018,.105,3,7),materials.skin,phoneX-gripSign*.045,1.405,.132);phoneThumb.rotation.z=gripSign*.58+phoneAngle;phoneThumb.raycast=()=>{};
+    const phoneThumb=mesh(new THREE.CapsuleGeometry(.017,.092,3,7),materials.skin,phoneX-gripSign*.043,1.406,.126);phoneThumb.rotation.z=gripSign*.55+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
     const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
     const shadowContext=shadowCanvas.getContext("2d");

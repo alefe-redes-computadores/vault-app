@@ -9,7 +9,8 @@ const avatar = read("components/saude/HealthAvatar.tsx");
 const brain = read("components/vault-intelligence/BrainV5DetailSheet.tsx");
 
 assert.match(scene, /appearance\.glasses==="rectangular"[\s\S]*softBox\(\.116,\.058/);
-assert.match(scene, /V168: the grip wraps the device/);
+assert.ok(/V168: the grip wraps the device/.test(scene)||/V183: the dedicated grip replaces the generic fingers/.test(scene),"pegada dedicada preservada e versionada");
+assert.match(scene, /!holdsPhone&&fingerIndex<4/);
 assert.match(scene, /Math\.PI\/2\+phoneAngle/);
 assert.match(scene, /const elbow=oval/);
 assert.match(scene, /const ankle=(?:mesh|limb)/);

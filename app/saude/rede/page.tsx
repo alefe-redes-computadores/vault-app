@@ -27,6 +27,7 @@ import {
   Building2,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Droplets,
   FileHeart,
@@ -138,6 +139,7 @@ import type {
   Medico,
   Medicamento,
   Renovacao,
+  Retirada,
   Tratamento,
 } from "@/lib/types";
 
@@ -355,7 +357,7 @@ function getLocalTypeLabel(
 // ============================================================
 
 export default function RedeSaudePage() {
-  const {backTarget} = useReturnContext("/");
+  const {backTarget,preserveReturn} = useReturnContext("/");
   const {
     trigger,
   } =
@@ -481,6 +483,7 @@ export default function RedeSaudePage() {
     useState<TabType>(
       tabFromUrl
     );
+  const [alertsOpen,setAlertsOpen]=useState(false);
 
   // ==========================================================
   // TAB SYNC
@@ -513,7 +516,12 @@ export default function RedeSaudePage() {
       locais: "/saude/locais",
       tratamentos: "/saude/tratamentos",
     };
-    router.push(routes[tab]);
+    router.push(preserveReturn(routes[tab]));
+  };
+
+  const openFromNetwork=(path:string)=>{
+    trigger("vibrate");
+    router.push(preserveReturn(path));
   };
 
   // ==========================================================
@@ -714,6 +722,15 @@ export default function RedeSaudePage() {
         cids,
         activePersonId,
       ]
+    );
+
+  const filteredRetiradas =
+    useMemo(
+      () => {
+        if (!activePersonId) return [];
+        return retiradas.filter((retirada: Retirada) => retirada.person_id === activePersonId);
+      },
+      [retiradas, activePersonId]
     );
 
   // ==========================================================
@@ -1461,7 +1478,7 @@ export default function RedeSaudePage() {
             filteredRenovacoes.length,
 
           retiradas:
-            retiradas.length,
+            filteredRetiradas.length,
 
           consultas:
             filteredConsultas.length,
@@ -1492,7 +1509,7 @@ export default function RedeSaudePage() {
         filteredTratamentos,
         filteredRegistros,
         filteredRenovacoes,
-        retiradas,
+        filteredRetiradas,
         filteredConsultas,
         filteredExames,
         filteredCirurgias,
@@ -1788,7 +1805,7 @@ export default function RedeSaudePage() {
                 }}
                 className="space-y-4"
               >
-                <button type="button" onClick={() => router.push("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[22px] border border-violet-400/20 bg-violet-400/[0.055] p-3.5 text-left active:scale-[0.985]">
+                <button type="button" onClick={() => openFromNetwork("/inteligencia/saude")} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-violet-400/[0.055] p-3 text-left active:scale-[0.985]">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><Activity size={19} /></div>
                   <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">Inteligência de saúde</p><p className="text-[10px] text-ink-muted">Contexto, padrões e preparação para consulta</p></div><ArrowLeft size={16} className="rotate-180 text-violet-300" />
                 </button>
@@ -1823,14 +1840,14 @@ export default function RedeSaudePage() {
                       { label: "Timeline clínica", sub: "Histórico longitudinal", path: "/saude/timeline", icon: Activity, tone: "border-violet-400/20 bg-violet-400/[0.055] text-violet-300" },
                       { label: "Plano de segurança", sub: "Apoio, sinais e contatos", path: "/saude/plano-seguranca", icon: ShieldCheck, tone: "border-rose-400/20 bg-rose-400/[0.055] text-rose-300" },
                       { label: "Documentos de saúde", sub: "Receitas, exames e laudos", path: "/saude/documentos", icon: BookHeart, tone: "border-emerald-400/20 bg-emerald-400/[0.055] text-emerald-300" },
-                    ].map((item) => { const Icon=item.icon; return <button key={item.path} type="button" onClick={() => { trigger("vibrate"); router.push(item.path); }} className={`flex min-h-[82px] items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${item.tone}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17}/></span><span className="min-w-0"><strong className="block text-xs text-ink-primary">{item.label}</strong><span className="mt-0.5 block text-[9px] leading-snug text-ink-muted">{item.sub}</span></span></button>; })}
+                    ].map((item) => { const Icon=item.icon; return <button key={item.path} type="button" onClick={() => openFromNetwork(item.path)} className={`flex min-h-[70px] items-center gap-2.5 rounded-[18px] border p-2.5 text-left active:scale-[0.985] ${item.tone}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/15"><Icon size={16}/></span><span className="min-w-0"><strong className="block text-[11px] text-ink-primary">{item.label}</strong><span className="mt-0.5 block text-[9px] leading-snug text-ink-muted">{item.sub}</span></span></button>; })}
                   </div>
                 </section>
 
                 {alertas.length >
                   0 && (
-                  <div className="rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 shadow-sm">
-                    <div className="mb-3 flex items-center gap-2">
+                  <div className="overflow-hidden rounded-[20px] border border-amber-400/25 bg-amber-400/[0.045] shadow-sm">
+                    <button type="button" onClick={()=>setAlertsOpen(value=>!value)} aria-expanded={alertsOpen} className="flex min-h-14 w-full items-center gap-2 px-3 text-left">
                       <AlertTriangle
                         size={
                           16
@@ -1839,17 +1856,18 @@ export default function RedeSaudePage() {
                       />
 
                       <h3 className="text-sm font-semibold text-ink-primary">
-                        Alertas Inteligentes
+                        Atenções da rotina
                       </h3>
 
-                      <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
+                      <span className="rounded-lg bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
                         {
                           alertas.length
                         }
                       </span>
-                    </div>
+                      <ChevronDown size={16} className={`ml-auto text-ink-muted transition ${alertsOpen?"rotate-180":""}`}/>
+                    </button>
 
-                    <div className="space-y-2">
+                    {alertsOpen&&<div className="space-y-1 border-t border-amber-400/10 p-2">
                       {alertas
                         .slice(
                           0,
@@ -1870,9 +1888,7 @@ export default function RedeSaudePage() {
                                     "vibrate"
                                   );
 
-                                  router.push(
-                                    alerta.link
-                                  );
+                                  router.push(preserveReturn(alerta.link));
                                 }
                               }
                               className={`flex w-full items-start gap-2 rounded-xl p-2 pl-2 text-left text-xs transition-colors hover:bg-surface-raised/50 ${
@@ -1918,11 +1934,13 @@ export default function RedeSaudePage() {
                             </button>
                           )
                         )}
-                    </div>
+                    </div>}
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
+                <section>
+                  <div className="mb-2"><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Acervo conectado</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Resumo da sua saúde</h2></div>
+                  <div className="grid grid-cols-2 gap-2">
                   <ResumoCard
                     icon={
                       Pill
@@ -1935,9 +1953,7 @@ export default function RedeSaudePage() {
                     color="#10B981"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/medicamentos"
-                        )
+                        openFromNetwork("/saude/medicamentos")
                     }
                   />
 
@@ -1953,9 +1969,7 @@ export default function RedeSaudePage() {
                     color="#8B5CF6"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/tratamentos"
-                        )
+                        openFromNetwork("/saude/tratamentos")
                     }
                   />
 
@@ -1971,9 +1985,7 @@ export default function RedeSaudePage() {
                     color="#38BDF8"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/registros"
-                        )
+                        openFromNetwork("/saude/registros")
                     }
                   />
 
@@ -1989,9 +2001,7 @@ export default function RedeSaudePage() {
                     color="#F59E0B"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/renovacao"
-                        )
+                        openFromNetwork("/saude/renovacao")
                     }
                   />
 
@@ -2007,9 +2017,7 @@ export default function RedeSaudePage() {
                     color="#38BDF8"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/retiradas"
-                        )
+                        openFromNetwork("/saude/retiradas")
                     }
                   />
 
@@ -2025,9 +2033,7 @@ export default function RedeSaudePage() {
                     color="#38BDF8"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/consultas"
-                        )
+                        openFromNetwork("/saude/consultas")
                     }
                   />
 
@@ -2043,9 +2049,7 @@ export default function RedeSaudePage() {
                     color="#10B981"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/exames"
-                        )
+                        openFromNetwork("/saude/exames")
                     }
                   />
 
@@ -2061,9 +2065,7 @@ export default function RedeSaudePage() {
                     color="#EF4444"
                     onClick={
                       () =>
-                        router.push(
-                          "/saude/cirurgias"
-                        )
+                        openFromNetwork("/saude/cirurgias")
                     }
                   />
 
@@ -2080,9 +2082,10 @@ export default function RedeSaudePage() {
                     }
                     sub={`${stats.medicos} méd., ${stats.farmacias} farm., ${stats.hospitais} hosp., ${stats.locais} locais`}
                     color="#38BDF8"
-                    onClick={() => router.push("/saude/medicos")}
+                    onClick={() => openFromNetwork("/saude/medicos")}
                   />
-                </div>
+                  </div>
+                </section>
               </motion.div>
             )}
 
@@ -2482,27 +2485,14 @@ function ResumoCard({
   color,
   onClick,
 }: ResumoCardProps) {
-  const {
-    trigger,
-  } =
-    useHapticFeedback();
-
   return (
     <button
       type="button"
-      onClick={
-        () => {
-          trigger(
-            "vibrate"
-          );
-
-          onClick();
-        }
-      }
-      className="flex min-h-[150px] flex-col items-start justify-between rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.98]"
+      onClick={onClick}
+      className="flex min-h-[72px] items-center gap-3 rounded-[18px] border border-surface-border/50 bg-surface p-3 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.98]"
     >
       <div
-        className="flex h-10 w-10 items-center justify-center rounded-2xl"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
         style={{
           backgroundColor:
             `${color}20`,
@@ -2517,20 +2507,20 @@ function ResumoCard({
         />
       </div>
 
-      <div className="mt-3 min-w-0">
-        <p className="text-2xl font-bold text-ink-primary">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-1.5"><p className="font-mono text-base font-bold text-ink-primary">
           {
             value
           }
         </p>
 
-        <p className="truncate text-xs font-medium text-ink-muted">
+        <p className="truncate text-[11px] font-semibold text-ink-primary">
           {
             label
           }
-        </p>
+        </p></div>
 
-        <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-ink-faint">
+        <p className="mt-0.5 truncate text-[9px] text-ink-muted">
           {
             sub
           }
