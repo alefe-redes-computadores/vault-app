@@ -118,11 +118,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // Brows, eye highlights and clothing seams provide depth without remote assets.
     for(const sign of [-1,1]) {
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
+      // V192: planos supraorbitais conectam sobrancelha, têmpora e ponte nasal;
+      // o rosto mantém expressão e acessórios sem voltar ao aspecto circular.
+      const browPlane=mesh(taperedBox(.055,.071,.018,.022),materials.skinShade,sign*.083,2.878,.188);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
       const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
       const lowerLid=mesh(new THREE.CapsuleGeometry(.0035,.055,2,7),materials.skinShade,sign*.083,2.804,.239);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
     }
     const noseBridge=mesh(new THREE.CapsuleGeometry(.014,.068,4,8),materials.skin,0,2.778,.207);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
+    const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
     const noseTip=oval(materials.skin,0,2.724,.239,[.038,.027,.033]);noseTip.raycast=()=>{};
     for(const sign of [-1,1]){
       oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
