@@ -18,7 +18,7 @@ assert.match(today, /!item\.ignorada &&\s+isHoje &&/);
 assert.match(avatar, /V167: face planes/);
 assert.match(avatar, /fingerIndex<4/);
 assert.match(avatar, /const toe=oval/);
-assert.ok(/\.52:\.49/.test(avatar) || /\.47:\.44/.test(avatar), "aba frontal V167 ou refinamento compacto V177");
+assert.ok(/\.52:\.49/.test(avatar) || /\.47:\.44/.test(avatar) || /\.43:\.40/.test(avatar), "aba frontal V167 ou refinamentos compactos V177/V178");
 assert.match(avatar, /const underBrim=mesh/);
 assert.match(avatar, /powerPreference: "low-power"/);
 assert.match(avatar, /IntersectionObserver/);

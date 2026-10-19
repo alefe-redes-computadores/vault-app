@@ -4,7 +4,7 @@ const avatar=read('components/saude/HealthAvatar.tsx');
 const editor=read('components/saude/AvatarStyleEditor.tsx');
 const scene=read('components/saude/HealthAvatar3D.tsx');
 const page=read('app/saude/minha-saude/page.tsx');
-assert(avatar.includes('Visualização e controles'));
+assert(avatar.includes('Visualização e controles')||avatar.includes('Ajustar visualização'));
 assert(avatar.includes('toggleExpanded'));
 assert(avatar.includes('onEmptyTap={toggleExpanded}'));
 assert(avatar.includes('AvatarStyleEditor value={appearance}'));

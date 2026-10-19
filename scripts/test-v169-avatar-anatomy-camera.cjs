@@ -26,7 +26,11 @@ assert.match(scene, /cameraTransition=null/);
 assert.doesNotMatch(scene, /setAnimationLoop/);
 
 // Viewport responsivo preserva leitura compacta e amplia a inspeção dedicada.
-assert.match(scene, /compact\?"clamp\(210px, 29dvh, 250px\)":"clamp\(300px, 48dvh, 440px\)"/);
+assert.ok(
+  /compact\?"clamp\(210px, 29dvh, 250px\)":"clamp\(300px, 48dvh, 440px\)"/.test(scene) ||
+  /compact\?"clamp\(210px, 29dvh, 250px\)":"clamp\(330px, 52dvh, 470px\)"/.test(scene),
+  "viewport compacto preservado e inspeção V169/V178 responsiva"
+);
 assert.match(scene, /linear-gradient\(180deg/);
 
 console.log("V169 avatar anatomy + camera contract: OK");

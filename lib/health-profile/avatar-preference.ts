@@ -1,4 +1,5 @@
 import { normalizeAvatarStyle, type AvatarStyle } from "./avatar-style";
+import type { AvatarFraming } from "./avatar-framing";
 export type AvatarMode = 'illustration' | '3d';
 
 /** Visual-only, scoped to the account and active person; never synced as health data. */
@@ -40,6 +41,14 @@ export function avatarZoom(value: number): number {
   return Number.isFinite(value) ? Math.max(80, Math.min(130, value)) : 100;
 }
 
+export function parseAvatarFraming(value: string | null): AvatarFraming {
+  try {
+    const saved = JSON.parse(value || "null");
+    if (saved?.version === 1 && ["body", "face", "shoes"].includes(saved.framing)) return saved.framing;
+  } catch { /* Old and corrupt preferences start with the complete body. */ }
+  return "body";
+}
+
 export type AvatarSize='compact'|'expanded'|'hidden';
 export function parseAvatarSize(value:string|null):AvatarSize {
  try{const saved=JSON.parse(value||'null');if(saved?.version===1&&['compact','expanded','hidden'].includes(saved.size))return saved.size;}catch{}
@@ -69,6 +78,6 @@ export function parseAvatarName(value: string | null, personName = ""): string {
   } catch { /* Corrupt local preferences use the active person's identity. */ }
   return avatarDisplayName(null, personName);
 }
-export function avatarPreferencePayload(mode: AvatarMode, size: AvatarSize, appearance: AvatarStyle, name?: string) {
-  return JSON.stringify({ version: 1, mode, size, appearance: normalizeAvatarStyle(appearance), ...(name ? { name: avatarDisplayName(name) } : {}) });
+export function avatarPreferencePayload(mode: AvatarMode, size: AvatarSize, appearance: AvatarStyle, name?: string, framing: AvatarFraming="body") {
+  return JSON.stringify({ version: 1, mode, size, framing, appearance: normalizeAvatarStyle(appearance), ...(name ? { name: avatarDisplayName(name) } : {}) });
 }

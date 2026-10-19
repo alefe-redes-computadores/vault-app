@@ -4,7 +4,7 @@ import { ChevronDown, SlidersHorizontal, Brain, EyeOff, Shirt, X } from "lucide-
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarLayout } from "@/lib/health-profile/avatar";
-import { avatarDisplayName, avatarPreferencePayload, parseAvatarMode, parseAvatarName, parseAvatarSize, parseAvatarStyle, type AvatarSize, type AvatarMode } from "@/lib/health-profile/avatar-preference";
+import { avatarDisplayName, avatarPreferencePayload, parseAvatarFraming, parseAvatarMode, parseAvatarName, parseAvatarSize, parseAvatarStyle, type AvatarSize, type AvatarMode } from "@/lib/health-profile/avatar-preference";
 import { DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, type AvatarStyle } from "@/lib/health-profile/avatar-style";
 import type {AvatarFraming} from "@/lib/health-profile/avatar-framing";
 import { AvatarStyleEditor } from "./AvatarStyleEditor";
@@ -33,22 +33,23 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   const [controlsContainer,setControlsContainer]=useState<HTMLDivElement|null>(null);
   const [unavailable,setUnavailable]=useState(false);
   useEffect(()=>{
-    let next:AvatarMode='3d',nextSize:AvatarSize='compact',nextAppearance:AvatarStyle=DEFAULT_AVATAR_STYLE,nextName=avatarDisplayName(null,personName);
-    try{if(preferenceKey){const stored=localStorage.getItem(preferenceKey);next=parseAvatarMode(stored);nextSize=parseAvatarSize(stored);nextAppearance=parseAvatarStyle(stored);nextName=parseAvatarName(stored,personName);}}catch{}
-    requestedMode.current=next;setFraming('body');setMode(next);setSize(nextSize);setAppearance(nextAppearance);setAvatarName(nextName);setUnavailable(false);setLoadedKey(preferenceKey);
+    let next:AvatarMode='3d',nextSize:AvatarSize='compact',nextAppearance:AvatarStyle=DEFAULT_AVATAR_STYLE,nextName=avatarDisplayName(null,personName),nextFraming:AvatarFraming='body';
+    try{if(preferenceKey){const stored=localStorage.getItem(preferenceKey);next=parseAvatarMode(stored);nextSize=parseAvatarSize(stored);nextAppearance=parseAvatarStyle(stored);nextName=parseAvatarName(stored,personName);nextFraming=parseAvatarFraming(stored);}}catch{}
+    requestedMode.current=next;setFraming(nextFraming);setMode(next);setSize(nextSize);setAppearance(nextAppearance);setAvatarName(nextName);setUnavailable(false);setLoadedKey(preferenceKey);
   },[preferenceKey,personName]);
   const fallback=useCallback(()=>{setUnavailable(true);setMode('illustration');},[]);
   const chooseMode=(next:AvatarMode)=>{
     requestedMode.current=next;setUnavailable(false);setMode(next);
-    try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(next,size,appearance,avatarName));}catch{}
+    try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(next,size,appearance,avatarName,framing));}catch{}
   };
-  const chooseSize=(next:AvatarSize)=>{setFraming('body');setSize(next);try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,next,appearance,avatarName));}catch{}};
+  const chooseSize=(next:AvatarSize)=>{setSize(next);try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,next,appearance,avatarName,framing));}catch{}};
   const chooseAppearance=(next:AvatarStyle)=>{
     const normalized=normalizeAvatarStyle(next);
     setAppearance(normalized);
-    try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,size,normalized,avatarName));}catch{}
+    try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,size,normalized,avatarName,framing));}catch{}
   };
-  const chooseName=(next:string)=>{const editable=next.replace(/[\u0000-\u001f\u007f]/g,"").slice(0,32);const normalized=avatarDisplayName(editable,personName);setAvatarName(editable);try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,size,appearance,normalized));}catch{}};
+  const chooseName=(next:string)=>{const editable=next.replace(/[\u0000-\u001f\u007f]/g,"").slice(0,32);const normalized=avatarDisplayName(editable,personName);setAvatarName(editable);try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,size,appearance,normalized,framing));}catch{}};
+  const chooseFraming=useCallback((next:AvatarFraming)=>{setFraming(next);try{if(preferenceKey)localStorage.setItem(preferenceKey,avatarPreferencePayload(requestedMode.current,size,appearance,avatarName,next));}catch{}},[preferenceKey,size,appearance,avatarName]);
   const expandedRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{
     if(!expanded || size!=='expanded') return;
@@ -67,15 +68,15 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
     const first=items[0],last=items[items.length-1];if(!first)return;
     if(event.shiftKey&&(document.activeElement===first||document.activeElement===event.currentTarget)){event.preventDefault();last.focus();}
     else if(!event.shiftKey&&(document.activeElement===last||document.activeElement===event.currentTarget)){event.preventDefault();first.focus();}
-  }} className={expanded&&size==='expanded'?"fixed inset-0 z-[110] sm:inset-3 overflow-y-auto overscroll-contain border border-surface-border bg-void px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] shadow-2xl sm:rounded-2xl sm:p-4":"relative"}>{expanded&&size==='expanded'?<button data-avatar-close type="button" onClick={toggleExpanded} className="sticky top-0 z-30 mb-2 flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-void/95 px-3 py-2 text-xs font-semibold text-ink-primary shadow-lg backdrop-blur"><X size={16}/> Voltar ao perfil</button>:null}
+  }} className={expanded&&size==='expanded'?"fixed inset-0 z-[110] overflow-y-auto overscroll-contain border border-surface-border bg-void px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] shadow-2xl sm:inset-3 sm:rounded-2xl sm:p-4":"relative"}>{expanded&&size==='expanded'?<div className="sticky top-0 z-30 mx-auto mb-2 flex max-w-[520px] items-center gap-2 rounded-2xl border border-surface-border bg-void/90 p-1.5 shadow-xl backdrop-blur-xl"><button data-avatar-close type="button" onClick={toggleExpanded} className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-ink-primary"><X size={17}/> Voltar</button><div className="min-w-0 flex-1 border-l border-surface-border pl-3"><p className="truncate text-xs font-semibold text-ink-primary">{avatarDisplayName(avatarName,personName)}</p><p className="truncate text-[9px] text-ink-muted">Sua representação pessoal e de saúde</p></div></div>:null}
 
-    <div className={expanded&&size==='expanded'?'mx-auto max-w-[420px] rounded-2xl border border-emerald-300/10 bg-[linear-gradient(180deg,rgba(110,231,183,.035),transparent)] p-2':''}>{expanded&&size==='hidden'?<p className="rounded-lg border border-surface-border px-3 py-2 text-xs text-ink-muted">Avatar oculto. Os registros continuam disponíveis. <button type="button" className="ml-1 underline" onClick={()=>chooseSize('compact')}>Mostrar</button></p>:!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-slate-400">Preparando avatar…</p>:
-      expanded&&mode==='3d'?<Avatar3DBoundary onUnavailable={fallback}><Avatar3D framing={framing} onFramingChange={setFraming} skin={skin} appearance={appearance} devices={devices} onDeviceSelect={onDeviceSelect} onBrainSelect={onBrainSelect} body={body} onBodySelect={onBodySelect} compact={size!=='expanded'} controlsContainer={size==='expanded'?controlsContainer:null} onEmptyTap={toggleExpanded} attention={attention} onUnavailable={fallback}/></Avatar3DBoundary>:
+    <div className={expanded&&size==='expanded'?'mx-auto max-w-[520px] overflow-hidden rounded-2xl border border-emerald-300/10 bg-[radial-gradient(circle_at_50%_15%,rgba(110,231,183,.08),transparent_48%),linear-gradient(180deg,rgba(110,231,183,.025),transparent)] p-2':''}>{expanded&&size==='hidden'?<p className="rounded-lg border border-surface-border px-3 py-2 text-xs text-ink-muted">Avatar oculto. Os registros continuam disponíveis. <button type="button" className="ml-1 underline" onClick={()=>chooseSize('compact')}>Mostrar</button></p>:!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-slate-400">Preparando avatar…</p>:
+      expanded&&mode==='3d'?<Avatar3DBoundary onUnavailable={fallback}><Avatar3D framing={framing} onFramingChange={chooseFraming} skin={skin} appearance={appearance} devices={devices} onDeviceSelect={onDeviceSelect} onBrainSelect={onBrainSelect} body={body} onBodySelect={onBodySelect} compact={size!=='expanded'} controlsContainer={size==='expanded'?controlsContainer:null} onEmptyTap={toggleExpanded} attention={attention} onUnavailable={fallback}/></Avatar3DBoundary>:
       <div className="relative"><HealthBody appearance={appearance} surgeryMarkers={body?.surgeryMarkers} expression={body?.expression} onBodySelect={onBodySelect} onDeviceSelect={onDeviceSelect} skin={skin} devices={devices} expanded={expanded&&size==='expanded'} showControls={!expanded} controlsContainer={expanded&&size==='expanded'?controlsContainer:undefined}/>{expanded&&ready&&size!=='hidden'?<button type="button" aria-label={size==='expanded'?'Minimizar avatar':'Ampliar avatar'} onClick={toggleExpanded} className="absolute inset-0 h-full w-full rounded-2xl focus-visible:outline-2 focus-visible:outline-violet-300"/>:null}</div>}
     </div>
     {expanded&&ready&&size==='compact'?<button type="button" onClick={()=>chooseSize('expanded')} className="mx-auto flex min-h-11 items-center justify-center gap-1.5 px-2 text-[11px] font-semibold text-emerald-200"><Shirt size={14}/> {avatarDisplayName(avatarName,personName)} · personalizar</button>:null}
-    {expanded&&ready&&size==='expanded'?<details open className="group mx-auto mt-3 max-w-[520px] rounded-xl border border-violet-400/25 bg-violet-400/[0.045] p-3">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl px-2 py-1 text-xs font-semibold text-violet-200"><SlidersHorizontal size={18}/><span className="flex-1"><span className="block text-sm">Visualização e controles</span><span className="mt-1 block text-[10px] font-normal text-ink-muted">Girar, aproximar e escolher a apresentação</span></span><ChevronDown size={17} className="transition-transform group-open:rotate-180"/></summary>
+    {expanded&&ready&&size==='expanded'?<details className="group mx-auto mt-3 max-w-[520px] rounded-xl border border-violet-400/20 bg-violet-400/[0.035] p-2">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl px-2 py-1 text-xs font-semibold text-violet-200"><SlidersHorizontal size={18}/><span className="flex-1"><span className="block text-sm">Ajustar visualização</span><span className="mt-1 block text-[10px] font-normal text-ink-muted">Vista, zoom e modo de apresentação</span></span><ChevronDown size={17} className="transition-transform group-open:rotate-180"/></summary>
       <div className="mx-auto mb-3 flex max-w-[340px] gap-2" aria-label="Visualização do avatar">
         {([['illustration','Ilustração'],['3d','Ver em 3D']] as const).map(([id,label])=><button type="button" key={id} aria-pressed={mode===id} onClick={()=>chooseMode(id)} className={`min-h-11 flex-1 rounded-xl border text-xs ${mode===id?'border-violet-300/50 bg-violet-400/15 text-violet-200':'border-slate-400/20 text-slate-300'}`}>{label}</button>)}
       </div>

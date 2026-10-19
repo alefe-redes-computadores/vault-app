@@ -14,8 +14,8 @@ assert.match(scene, /Math\.PI\/2\+phoneAngle/);
 assert.match(scene, /const elbow=oval/);
 assert.match(scene, /const ankle=(?:mesh|limb)/);
 assert.match(avatar, /overscroll-contain/);
-assert.match(avatar, /max-w-\[420px\]/);
-assert.match(avatar, /<details open/);
+assert.ok(/max-w-\[420px\]/.test(avatar)||/max-w-\[520px\]/.test(avatar), "palco imersivo V168/V178 mantém largura limitada");
+assert.ok(/<details open/.test(avatar)||/Ajustar visualização/.test(avatar), "controles V168 visíveis ou inspeção compacta V178 acessível");
 assert.doesNotMatch(avatar, /sticky top-\[52px\]/);
 
 assert.match(brain, /Risco potencial identificado nos registros/);

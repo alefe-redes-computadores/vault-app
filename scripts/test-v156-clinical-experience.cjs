@@ -6,7 +6,7 @@ const supply=fs.readFileSync('app/saude/fornecimento/page.tsx','utf8');
 assert(av.includes('onEmptyTap={toggleExpanded}'),'3D not interactive');
 assert(!av.includes('Ampliar avatar</button>'),'redundant button still exists');
 assert(!av.includes('Ocultar avatar</button>'),'redundant hide button');
-assert(av.includes('fixed inset-0 z-[110] sm:inset-3'),'expanded modal absent');
+assert(av.includes('fixed inset-0 z-[110]')&&av.includes('sm:inset-3'),'expanded modal absent');
 assert(three.includes('actions.current.onEmptyTap?.()'),'3D touch toggle missing');
 assert(health.includes('grid-cols-[minmax(0,46%)_minmax(0,1fr)]'),'compact layout absent');
 assert(health.includes('brainSummaryOpen &&'),'Brain not collapsible');

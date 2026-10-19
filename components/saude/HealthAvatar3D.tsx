@@ -97,17 +97,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // V167: face planes preserved and refined by V177.
     // V177: the face uses a cranial volume plus a planar jaw. It stays stylized,
     // but no longer reads as a sphere stacked over a cylinder.
-    oval(materials.skin,0,2.825,-.012,[.198,.278,.181]);
+    oval(materials.skin,0,2.825,-.012,[.194,.272,.178]);
     const jawShape=new THREE.Shape();
     jawShape.moveTo(-.153,.087);jawShape.lineTo(.153,.087);jawShape.lineTo(.128,-.045);jawShape.lineTo(.066,-.111);jawShape.lineTo(0,-.132);jawShape.lineTo(-.066,-.111);jawShape.lineTo(-.128,-.045);jawShape.closePath();
     const jawGeometry=new THREE.ExtrudeGeometry(jawShape,{depth:.166,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});jawGeometry.translate(0,0,-.083);
     const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
-      const cheek=oval(materials.skin,sign*.116,2.742,.116,[.047,.066,.052]);cheek.rotation.z=sign*.11;cheek.raycast=()=>{};
-      oval(materials.skin,sign*.219,2.77,.001,[.031,.064,.041]);
-      oval(materials.skin,sign*.218,2.77,.028,[.014,.041,.024]);
-      oval(materials.skin,sign*.112,2.748,.167,[.073,.078,.035]).raycast=()=>{};
-      const innerEar=mesh(new THREE.TorusGeometry(.023,.005,5,12,Math.PI*1.35),materials.dark,sign*.221,2.77,.052);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
+      const cheek=oval(materials.skin,sign*.108,2.738,.119,[.041,.058,.045]);cheek.rotation.z=sign*.11;cheek.raycast=()=>{};
+      oval(materials.skin,sign*.205,2.77,-.002,[.026,.058,.036]);
+      oval(materials.skin,sign*.204,2.77,.024,[.011,.036,.019]);
+      oval(materials.skin,sign*.105,2.746,.165,[.064,.069,.028]).raycast=()=>{};
+      const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
     const chin=oval(materials.skin,0,2.548,.056,[.073,.038,.069]);chin.rotation.x=.08;chin.raycast=()=>{};
     // Brows, eye highlights and clothing seams provide depth without remote assets.
@@ -138,7 +138,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       oval(materials.facialHair,0,2.56,.085,[.09,.07,.07]).raycast=()=>{};
       const moustache=mesh(new THREE.CapsuleGeometry(.012,.09,3,8),materials.facialHair,0,2.688,.21);moustache.rotation.z=Math.PI/2;moustache.raycast=()=>{};
     }
-    const neck=limb(.092,.112,.22,materials.skin,0,2.45,0);neck.scale.z=.92;
+    const neck=limb(.082,.108,.22,materials.skin,0,2.45,0);neck.scale.z=.9;
     const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();
     const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
     mesh(shirtGeometry,materials.top,0,1.665,0);
@@ -191,12 +191,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const crownFront=mesh(softBox(.31,.13,.018,.04),materials.cap,0,3.035,.178);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
       const capButton=mesh(new THREE.SphereGeometry(.018,10,6),materials.white,0,3.165,-.012);capButton.raycast=()=>{};
       const crownSide=mesh(new THREE.CylinderGeometry(.225,.244,.12,18,1,true),materials.cap,0,3.012,-.008);crownSide.raycast=()=>{};
-      const brim=mesh(taperedBox(appearance.hat==="flat"?.36:.34,appearance.hat==="flat"?.47:.44,.026,.245),materials.cap,0,2.986,.235);
+      const brim=mesh(taperedBox(appearance.hat==="flat"?.34:.32,appearance.hat==="flat"?.43:.40,.021,.21),materials.cap,0,2.986,.218);
       brim.rotation.x=appearance.hat==="baseball"?-.16:-.055;
       brim.raycast=()=>{};
-      const underBrim=mesh(taperedBox(.33,appearance.hat==="flat"?.45:.42,.007,.225),materials.dark,0,2.971,.238);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
-      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.46:.43,.006,.012),materials.white,0,2.966,.355);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
-      const brimStitch=mesh(new THREE.TorusGeometry(.18,.002,4,24,Math.PI),materials.white,0,2.984,.278);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
+      const underBrim=mesh(taperedBox(.31,appearance.hat==="flat"?.41:.38,.005,.195),materials.dark,0,2.974,.22);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
+      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.42:.39,.004,.009),materials.white,0,2.97,.316);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
+      const brimStitch=mesh(new THREE.TorusGeometry(.155,.0017,4,24,Math.PI),materials.white,0,2.985,.258);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {
@@ -237,12 +237,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     for(const side of [-1,1]) {
       const x=side*.15;
-      const sole=mesh(taperedBox(.25,.33,.045,.50),materials.white,x,.125,.085);sole.raycast=()=>{};
-      const outsole=mesh(taperedBox(.255,.34,.018,.515),materials.dark,x,.102,.083);outsole.raycast=()=>{};
-      const shoe=mesh(taperedBox(.24,.31,.13,.46),materials.sneakers,x,.195,.095);shoe.raycast=()=>{};
+      const sole=mesh(taperedBox(.225,.30,.038,.46),materials.white,x,.127,.075);sole.raycast=()=>{};
+      const outsole=mesh(taperedBox(.23,.305,.015,.475),materials.dark,x,.106,.073);outsole.raycast=()=>{};
+      const shoe=mesh(taperedBox(.215,.278,.115,.415),materials.sneakers,x,.192,.088);shoe.raycast=()=>{};
       shoe.rotation.x=-.035;
-      const toe=oval(materials.sneakers,x,.19,.315,[.158,.07,.17]);toe.raycast=()=>{};
-      const toeTop=mesh(taperedBox(.12,.205,.025,.19),materials.white,x,.245,.29);toeTop.rotation.x=-.16;toeTop.raycast=()=>{};
+      const toe=oval(materials.sneakers,x,.187,.29,[.14,.062,.148]);toe.raycast=()=>{};
+      const toeTop=mesh(taperedBox(.11,.18,.021,.17),materials.white,x,.235,.268);toeTop.rotation.x=-.16;toeTop.raycast=()=>{};
       const toeGuard=mesh(new THREE.CapsuleGeometry(.014,.19,3,10),materials.white,x,.153,.423);toeGuard.rotation.z=Math.PI/2;toeGuard.raycast=()=>{};
       const tongue=mesh(softBox(.13,.12,.025,.012),materials.sneakers,x,.245,.275);tongue.rotation.x=-.22;tongue.raycast=()=>{};
       const heel=mesh(softBox(.235,.12,.055,.018),materials.dark,x,.205,-.145);heel.raycast=()=>{};
@@ -395,15 +395,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     else if(event.key==='Home'){event.preventDefault();controller.current?.rotate(0);controller.current?.zoom(100);setDirection('front');setZoom(100);onFramingChange?.('body');}
     else if(event.key==='+'||event.key==='-'||event.key==='='){event.preventDefault();const value=avatarZoom(zoom+(event.key==='-'?-5:5));setZoom(value);controller.current?.zoom(value);}
   };
-  const controls=<>    {attention>0&&<p className="mt-1 text-center text-[10px] text-slate-400">O núcleo Brain acompanha a prioridade dos registros; não representa diagnóstico.</p>}
-    <p className="mt-2 text-[10px] text-slate-400">Teclado: setas giram; + e − ajustam o zoom; Home restaura a frente.</p>
-    <div aria-label="Vista do avatar 3D" className="mt-3 grid grid-cols-4 gap-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-xl border text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/50 bg-violet-400/15 text-violet-200':'border-slate-400/20 text-slate-300'}`}>{title}</button>)}</div>
-    <label htmlFor={zoomId} className="mt-3 flex items-center justify-between text-xs text-slate-300">Zoom <span>{zoom}%</span></label><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=avatarZoom(Number(e.target.value));setZoom(value);controller.current?.zoom(value);}} className="mt-2 min-h-8 w-full accent-violet-400" />
-    {slots.length>0?<ul aria-label="Aparelhos representados" className="mt-3 space-y-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-slate-400/20 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">{onDeviceSelect?<button type="button" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)} className="min-h-11 w-full text-left font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{device.name} <span aria-hidden="true">›</span></button>:<strong>{device.name}</strong>}<span className="mt-1 block text-[10px] text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></li>)}</ul>:null}</>;
-  return <div className="mx-auto w-full max-w-[340px]">
+  const controls=<div className="pt-1">{attention>0&&<p className="rounded-lg bg-violet-400/[0.05] px-2 py-2 text-center text-[10px] leading-relaxed text-slate-400">O núcleo Brain acompanha a prioridade dos registros; não representa diagnóstico.</p>}
+    <p className="sr-only">No teclado, as setas giram, mais e menos ajustam o zoom e Home restaura a frente.</p>
+    <div aria-label="Vista do avatar 3D" className="mt-2 grid grid-cols-4 gap-1 rounded-xl bg-black/15 p-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-lg border px-1 text-[10px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/45 bg-violet-400/15 font-semibold text-violet-200':'border-transparent text-slate-400'}`}>{title}</button>)}</div>
+    <label htmlFor={zoomId} className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-3 text-[11px] text-slate-300"><span>Zoom</span><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=avatarZoom(Number(e.target.value));setZoom(value);controller.current?.zoom(value);}} className="min-h-8 w-full accent-violet-400"/><span className="w-9 text-right tabular-nums">{zoom}%</span></label>
+    {slots.length>0?<details className="mt-2 rounded-xl border border-slate-400/15 px-2"><summary className="flex min-h-11 cursor-pointer items-center text-[10px] font-semibold text-slate-300">Aparelhos representados · {slots.length}<span className="ml-auto">›</span></summary><ul aria-label="Aparelhos representados" className="space-y-1 border-t border-slate-400/10 py-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-lg bg-slate-900/30 px-2 text-xs text-slate-200">{onDeviceSelect?<button type="button" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)} className="min-h-11 w-full text-left font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{device.name} <span aria-hidden="true">›</span><span className="mt-0.5 block text-[9px] font-normal text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></button>:<strong>{device.name}</strong>}</li>)}</ul></details>:null}</div>;
+  return <div className="mx-auto w-full max-w-[440px]">
     {!compact&&onFramingChange?<div className="mb-2 grid grid-cols-3 gap-2" role="group" aria-label="Enquadramento do avatar">{([['body','Corpo inteiro'],['face','Rosto'],['shoes','Tênis']] as const).map(([id,label])=><button type="button" key={id} aria-pressed={framing===id} onClick={()=>onFramingChange(id)} className={`min-h-11 rounded-xl border px-2 text-[11px] font-semibold ${framing===id?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>:null}
-    <div ref={host} style={{height:compact?"clamp(210px, 29dvh, 250px)":"clamp(300px, 48dvh, 440px)"}} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Acessórios pessoais são cosméticos, separados dos aparelhos de saúde. Celular ilustrativo.`} className="h-[360px] w-full cursor-grab overflow-hidden border-y border-emerald-300/10 bg-[linear-gradient(180deg,rgba(110,231,183,.055),transparent_56%)] active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
-    {compact?null:<p className="text-center text-[11px] text-slate-400">Arraste para girar · toque em uma região para explorar</p>}
+    <div ref={host} style={{height:compact?"clamp(210px, 29dvh, 250px)":"clamp(330px, 52dvh, 470px)"}} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Acessórios pessoais são cosméticos, separados dos aparelhos de saúde. Celular ilustrativo.`} className="w-full cursor-grab overflow-hidden rounded-2xl border border-emerald-300/10 bg-[radial-gradient(circle_at_50%_18%,rgba(110,231,183,.09),transparent_44%),linear-gradient(180deg,rgba(110,231,183,.035),rgba(2,6,12,.2)_65%)] shadow-[inset_0_-32px_70px_rgba(0,0,0,.28)] active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
+    {compact?null:<p className="py-1.5 text-center text-[10px] text-slate-400">Arraste para girar · toque no corpo, Brain ou aparelho para explorar</p>}
     {controlsContainer===undefined?controls:controlsContainer?createPortal(controls,controlsContainer):null}
   </div>;
 }
