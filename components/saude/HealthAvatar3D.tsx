@@ -193,12 +193,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const crownFront=mesh(softBox(.31,.13,.018,.04),materials.cap,0,3.035,.178);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
       const capButton=mesh(new THREE.SphereGeometry(.018,10,6),materials.white,0,3.165,-.012);capButton.raycast=()=>{};
       const crownSide=mesh(new THREE.CylinderGeometry(.225,.244,.12,18,1,true),materials.cap,0,3.012,-.008);crownSide.raycast=()=>{};
-      const brim=mesh(taperedBox(appearance.hat==="flat"?.34:.32,appearance.hat==="flat"?.43:.40,.021,.21),materials.cap,0,2.986,.218);
-      brim.rotation.x=appearance.hat==="baseball"?-.16:-.055;
+      // A aba acompanha a largura real da cabeça: nas vistas frontais ela não vira uma faixa flutuante.
+      const brim=mesh(taperedBox(appearance.hat==="flat"?.285:.27,appearance.hat==="flat"?.32:.30,.019,.18),materials.cap,0,2.984,.205);
+      brim.rotation.x=appearance.hat==="baseball"?-.19:-.085;
       brim.raycast=()=>{};
-      const underBrim=mesh(taperedBox(.31,appearance.hat==="flat"?.41:.38,.005,.195),materials.dark,0,2.974,.22);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
-      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.42:.39,.004,.009),materials.white,0,2.97,.316);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
-      const brimStitch=mesh(new THREE.TorusGeometry(.155,.0017,4,24,Math.PI),materials.white,0,2.985,.258);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
+      const underBrim=mesh(taperedBox(.255,appearance.hat==="flat"?.30:.28,.004,.165),materials.dark,0,2.971,.207);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
+      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.292:.277,.003,.007),materials.shirtDetail,0,2.963,.276);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
+      const brimStitch=mesh(new THREE.TorusGeometry(.118,.0014,4,24,Math.PI),materials.white,0,2.982,.238);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {

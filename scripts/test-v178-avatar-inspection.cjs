@@ -37,6 +37,9 @@ assert(scene.includes("IntersectionObserver"));
 assert(scene.includes("renderer.forceContextLoss()"));
 assert(scene.includes("Aparelhos representados · {slots.length}"));
 assert(scene.includes("Arraste para girar · toque no corpo, Brain ou aparelho para explorar"));
-assert(scene.includes('appearance.hat==="flat"?.43:.40'));
+// V181 mantém a diferenciação entre os modelos sem aceitar novamente a aba superdimensionada da V178.
+assert(scene.includes('appearance.hat==="flat"?.32:.30'));
+assert(scene.includes('appearance.hat==="flat"?.285:.27'));
+assert(!scene.includes('appearance.hat==="flat"?.43:.40'));
 
 console.log("V178 immersive avatar inspection, persisted framing and compact controls: OK");
