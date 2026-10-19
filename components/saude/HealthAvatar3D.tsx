@@ -71,6 +71,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .94, transparent:true, opacity:.88 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
+      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .48, metalness: .015 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .38, metalness: .3 }),
       sneakers: new THREE.MeshStandardMaterial({ color: appearance.sneakersColor, roughness: .67 }),
@@ -104,10 +105,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const jawGeometry=new THREE.ExtrudeGeometry(jawShape,{depth:.166,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});jawGeometry.translate(0,0,-.083);
     const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
-      const cheek=oval(materials.skin,sign*.108,2.738,.119,[.041,.058,.045]);cheek.rotation.z=sign*.11;cheek.raycast=()=>{};
+      const cheek=oval(materials.skin,sign*.108,2.738,.119,[.034,.046,.031]);cheek.rotation.z=sign*.11;cheek.raycast=()=>{};
       oval(materials.skin,sign*.205,2.77,-.002,[.026,.058,.036]);
       oval(materials.skin,sign*.204,2.77,.024,[.011,.036,.019]);
-      oval(materials.skin,sign*.105,2.746,.165,[.064,.069,.028]).raycast=()=>{};
+      oval(materials.skin,sign*.105,2.746,.165,[.052,.054,.021]).raycast=()=>{};
       const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
     const chin=oval(materials.skin,0,2.548,.056,[.073,.038,.069]);chin.rotation.x=.08;chin.raycast=()=>{};
@@ -181,8 +182,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const calf=limb(.102,.079,.43,materials.skin,sign*.15,.55,.004);calf.raycast=()=>{};
       oval(materials.skin,sign*.15,.37,.01,[.083,.105,.081]).raycast=()=>{};
       const ankle=limb(.076,.086,.14,materials.skin,sign*.15,.285,.018);ankle.raycast=()=>{};
-      oval(materials.white,sign*.083,2.82,.214,[.036,.022,.017]);
-      oval(materials.dark,sign*.083,2.82,.23,[.013,.015,.008]);
+      // Olhos em três planos: esclera baixa, íris e pupila. O formato horizontal evita a leitura de “olhos redondos colados”.
+      oval(materials.white,sign*.083,2.82,.214,[.042,.019,.014]);
+      oval(materials.iris,sign*.083,2.82,.228,[.017,.016,.007]);
+      oval(materials.dark,sign*.083,2.82,.235,[.007,.009,.004]);
+      oval(materials.white,sign*.079,2.827,.239,[.0025,.0025,.002]);
     }
     oval(materials.skin,0,2.76,.23,[.035,.055,.04]);
     // V155: cosmetic accessories follow head/body geometry, not medical-device records.

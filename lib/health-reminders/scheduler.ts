@@ -6,7 +6,7 @@ import {
   isNotificationPreferenceEnabled,
   ensureVaultNotificationChannel,
 } from "@/lib/notifications";
-import { reminderRunsOnWeekday } from "./domain";
+import { nextHealthReminderOccurrence, reminderRunsOnWeekday } from "./domain";
 import type { HealthReminderRule } from "./types";
 
 const DAYS_AHEAD = 21;
@@ -33,11 +33,8 @@ function dateKey(date: Date) {
 }
 
 function occurrences(rule: HealthReminderRule) {
+  if (!nextHealthReminderOccurrence(rule)) return [];
   const [hour, minute] = rule.time.split(":").map(Number);
-  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    return [];
-  }
-
   const now = new Date();
   const result: Date[] = [];
   for (let offset = 0; offset <= DAYS_AHEAD; offset += 1) {

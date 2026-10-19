@@ -1,6 +1,7 @@
 import type {
   CreateHealthReminderInput,
   HealthReminderFrequency,
+  HealthReminderRule,
   HealthReminderStatus,
 } from "./types";
 
@@ -72,4 +73,22 @@ export function reminderRunsOnWeekday(
   weekday: number
 ): boolean {
   return frequency === "daily" || normalizeWeekdays(weekdays).includes(weekday);
+}
+
+export function nextHealthReminderOccurrence(
+  rule: Pick<HealthReminderRule, "status" | "time" | "frequency" | "weekdays">,
+  now = new Date(),
+  daysAhead = 8
+): Date | null {
+  if (rule.status !== "active" || !CLOCK.test(rule.time)) return null;
+  const [hour, minute] = rule.time.split(":").map(Number);
+  for (let offset = 0; offset <= daysAhead; offset += 1) {
+    const candidate = new Date(now);
+    candidate.setDate(now.getDate() + offset);
+    candidate.setHours(hour, minute, 0, 0);
+    if (candidate > now && reminderRunsOnWeekday(rule.frequency, rule.weekdays, candidate.getDay())) {
+      return candidate;
+    }
+  }
+  return null;
 }
