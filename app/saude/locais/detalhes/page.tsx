@@ -49,6 +49,7 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import {
   useLocais,
 } from "@/hooks/useLocais";
@@ -264,6 +265,9 @@ function DetalhesLocalContent() {
 
   const searchParams =
     useSearchParams();
+
+  const { backTarget } =
+    useReturnContext("/saude/locais");
 
   const id =
     searchParams.get(
@@ -1226,7 +1230,7 @@ function DetalhesLocalContent() {
                   "vibrate"
                 );
 
-                router.replace("/saude/locais");
+                router.replace(backTarget);
               }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"

@@ -71,10 +71,10 @@ export function ListCard({
       className={`
         group relative
         overflow-hidden
-        rounded-[24px]
+        ${isCompact ? "rounded-[20px]" : "rounded-[24px]"}
         border
         bg-surface
-        shadow-md
+        ${isCompact ? "shadow-sm" : "shadow-md"}
         transition-all
         ${
           isDisabled
@@ -85,6 +85,8 @@ export function ListCard({
       `}
       style={{
         borderColor: isDisabled ? undefined : `${color}40`,
+        contentVisibility: "auto",
+        containIntrinsicSize: isCompact ? "148px" : "190px",
       }}
     >
       <div

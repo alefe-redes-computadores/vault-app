@@ -32,6 +32,8 @@ import type {
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
+import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 
 import {
   useActivePersonId,
@@ -68,6 +70,7 @@ import {
 import {
   EmptyState,
 } from "@/components/EmptyState";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 
 import {
   ListCard,
@@ -279,23 +282,6 @@ function getTodayIso(): string {
     );
 
   return `${year}-${month}-${day}`;
-}
-
-function normalizeSearch(
-  value: string
-): string {
-  return value
-    .normalize(
-      "NFD"
-    )
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .toLocaleLowerCase(
-      "pt-BR"
-    )
-    .trim();
 }
 
 // ============================================================
@@ -962,71 +948,24 @@ export default function LocaisPage() {
   // FILTERING
   // ==========================================================
 
-  const normalizedSearch =
+  const localSearchIndex =
     useMemo(
-      () =>
-        normalizeSearch(
-          search
-        ),
+      () => createLocalSearchIndex(
+        locaisEnriquecidos,
+        (local) => {
+          const style = LOCAL_TYPE_STYLE[local.tipo || "outro"] || LOCAL_TYPE_STYLE.outro;
+          return [local.nome, local.endereco, style.label, style.shortLabel];
+        }
+      ),
       [
-        search,
+        locaisEnriquecidos,
       ]
     );
 
   const filteredLocais =
     useMemo(
       () => {
-        let result =
-          locaisEnriquecidos;
-
-        if (
-          normalizedSearch
-        ) {
-          result =
-            result.filter(
-              (
-                local
-              ) => {
-                const nome =
-                  normalizeSearch(
-                    local.nome ||
-                      ""
-                  );
-
-                const endereco =
-                  normalizeSearch(
-                    local.endereco ||
-                      ""
-                  );
-
-                const tipo =
-                  LOCAL_TYPE_STYLE[
-                    local.tipo ||
-                      "outro"
-                  ] ||
-                  LOCAL_TYPE_STYLE.outro;
-
-                return (
-                  nome.includes(
-                    normalizedSearch
-                  ) ||
-                  endereco.includes(
-                    normalizedSearch
-                  ) ||
-                  normalizeSearch(
-                    tipo.label
-                  ).includes(
-                    normalizedSearch
-                  ) ||
-                  normalizeSearch(
-                    tipo.shortLabel
-                  ).includes(
-                    normalizedSearch
-                  )
-                );
-              }
-            );
-        }
+        let result = filterLocalSearchIndex(localSearchIndex, search);
 
         if (
           filtroTipo !==
@@ -1084,8 +1023,8 @@ export default function LocaisPage() {
         );
       },
       [
-        locaisEnriquecidos,
-        normalizedSearch,
+        localSearchIndex,
+        search,
         filtroTipo,
         filtroStatus,
       ]
@@ -1109,6 +1048,18 @@ export default function LocaisPage() {
         "todos"
       );
     };
+  const activeFilterCount =
+    (filtroTipo !== "todos" ? 1 : 0) +
+    (filtroStatus !== "todos" ? 1 : 0);
+  const locaisComHistorico = locaisEnriquecidos.filter(
+    (local) => local.historicoCount > 0
+  ).length;
+  const proximasConsultas = locaisEnriquecidos.reduce(
+    (total, local) => total + local.proximasConsultasCount,
+    0
+  );
+  const navigateFromList = (href: string) =>
+    router.push(withReturnTarget(href, "/saude/locais"));
 
   // ==========================================================
   // UI
@@ -1144,6 +1095,7 @@ export default function LocaisPage() {
             onClear={
               handleClearFilters
             }
+            activeCount={activeFilterCount}
           >
             {(
               [
@@ -1257,6 +1209,17 @@ export default function LocaisPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          <ClinicalListSummary
+            icon={MapPin}
+            eyebrow="Rede territorial"
+            title={`${locais.length} locais organizados`}
+            detail="Postos, clínicas e laboratórios relacionados ao histórico real."
+            metrics={[
+              { label: "Nesta visão", value: filteredLocais.length },
+              { label: "Com histórico", value: locaisComHistorico, tone: "positive" },
+              { label: "Próximas", value: proximasConsultas, tone: proximasConsultas ? "attention" : "neutral" },
+            ]}
+          />
           {!activePersonId &&
             locais.length >
               0 && (
@@ -1326,7 +1289,7 @@ export default function LocaisPage() {
                           "vibrate"
                         );
 
-                        router.push(
+                        navigateFromList(
                           `/saude/locais/detalhes?id=${local.id}`
                         );
                       }

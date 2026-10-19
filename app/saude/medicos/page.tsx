@@ -23,10 +23,13 @@ import {
 import { db } from "@/lib/db";
 import { useHapticFeedback } from "@/lib/haptics";
 import { sugerirRenovacao } from "@/lib/health-insights";
+import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 
 import {
   ListCard,
@@ -75,16 +78,8 @@ function formatDateDisplay(
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function normalizeText(
-  value?: string | null
-): string {
-  return (
-    value
-      ?.trim()
-      .toLocaleLowerCase(
-        "pt-BR"
-      ) ?? ""
-  );
+function normalizeText(value?: string | null): string {
+  return value?.trim().toLocaleLowerCase("pt-BR") ?? "";
 }
 
 // ============================================================
@@ -542,42 +537,28 @@ export default function MedicosPage() {
   // FILTER / SORT
   // ==========================================================
 
+  const medicoSearchIndex =
+    useMemo(
+      () =>
+        createLocalSearchIndex(
+          medicosComMetadados,
+          (medico) => [
+            medico.nome,
+            medico.especialidade,
+            medico.crm,
+            medico.telefone,
+            ...medico.tratamentos.map((item) => item.nome),
+            ...medico.hospitais.map((item) => item.nome),
+            ...medico.locais.map((item) => item.nome),
+          ]
+        ),
+      [medicosComMetadados]
+    );
+
   const filteredMedicos =
     useMemo(
       () => {
-        let result =
-          [
-            ...medicosComMetadados,
-          ];
-
-        const term =
-          normalizeText(
-            search
-          );
-
-        if (term) {
-          result =
-            result.filter(
-              (
-                medico
-              ) =>
-                normalizeText(
-                  medico.nome
-                ).includes(
-                  term
-                ) ||
-                normalizeText(
-                  medico.especialidade
-                ).includes(
-                  term
-                ) ||
-                normalizeText(
-                  medico.crm
-                ).includes(
-                  term
-                )
-            );
-        }
+        let result = filterLocalSearchIndex(medicoSearchIndex, search);
 
         if (
           filtroTratamento
@@ -667,7 +648,7 @@ export default function MedicosPage() {
         return result;
       },
       [
-        medicosComMetadados,
+        medicoSearchIndex,
         search,
         filtroTratamento,
         filtroHospital,
@@ -877,6 +858,19 @@ export default function MedicosPage() {
         filtroHospital ||
         filtroLocal
     );
+  const activeFilterCount =
+    (filtroTratamento ? 1 : 0) +
+    (filtroHospital ? 1 : 0) +
+    (filtroLocal ? 1 : 0) +
+    (sortBy !== "name" ? 1 : 0);
+  const medicosComHistorico = medicosComMetadados.filter(
+    (medico) => medico.consultasCount > 0 || medico.cirurgiasCount > 0
+  ).length;
+  const medicosComTratamento = medicosComMetadados.filter(
+    (medico) => medico.tratamentos.length > 0
+  ).length;
+  const navigateFromList = (href: string) =>
+    router.push(withReturnTarget(href, "/saude/medicos"));
 
   return (
     <PageTransition>
@@ -908,7 +902,7 @@ export default function MedicosPage() {
             onClear={
               handleClearFilters
             }
-            activeCount={hasFilters || sortBy !== "name" ? 1 : 0}
+            activeCount={activeFilterCount}
           >
             {SORT_OPTIONS.map((option) => (
               <button
@@ -1076,6 +1070,17 @@ export default function MedicosPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          <ClinicalListSummary
+            icon={Stethoscope}
+            eyebrow="Rede conectada"
+            title={`${medicosComMetadados.length} profissionais organizados`}
+            detail="Vínculos reais da pessoa ativa, sem duplicar cadastros globais."
+            metrics={[
+              { label: "Nesta visão", value: filteredMedicos.length },
+              { label: "Com histórico", value: medicosComHistorico, tone: "positive" },
+              { label: "Tratamentos", value: medicosComTratamento },
+            ]}
+          />
           {filteredMedicos.length ===
           0 ? (
             <EmptyState
@@ -1123,7 +1128,7 @@ export default function MedicosPage() {
                         "vibrate"
                       );
 
-                      router.push(
+                      navigateFromList(
                         `/saude/medicos/detalhes?id=${medico.id}`
                       );
                     }}
@@ -1149,7 +1154,7 @@ export default function MedicosPage() {
                               "vibrate"
                             );
 
-                            router.push(
+                            navigateFromList(
                               `/saude/consultas/nova?medico_id=${medico.id}`
                             );
                           }}
@@ -1172,7 +1177,7 @@ export default function MedicosPage() {
                               "vibrate"
                             );
 
-                            router.push(
+                            navigateFromList(
                               `/saude/medicos/editar?id=${medico.id}`
                             );
                           }}
@@ -1195,7 +1200,7 @@ export default function MedicosPage() {
                               "vibrate"
                             );
 
-                            router.push(
+                            navigateFromList(
                               `/saude/medicos/detalhes?id=${medico.id}`
                             );
                           }}

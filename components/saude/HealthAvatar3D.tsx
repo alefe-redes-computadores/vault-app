@@ -191,18 +191,20 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const phoneArmSign=layout.phoneSide==="right"?-1:1;
     for (const sign of [-1,1]) {
       const holdsPhone=sign===phoneArmSign;
-      const sleeve=limb(.112,.1,.27,materials.top,sign*.337,2.25,0,sign*.13);sleeve.scale.z=1.08;
-      const upperArm=limb(.09,.082,.36,materials.skin,sign*.39,2.005,0,sign*.13);upperArm.raycast=()=>{};
+      // V195: postura assimétrica discreta integra ombro, antebraço e pegada sem
+      // adicionar malhas, rig ou animação contínua ao renderer sob demanda.
+      const sleeve=limb(.112,.1,.27,materials.top,sign*.337,2.25,0,sign*(holdsPhone?.10:.14));sleeve.scale.z=1.08;
+      const upperArm=limb(.09,.082,.36,materials.skin,sign*(holdsPhone?.382:.39),2.005,holdsPhone?.012:0,sign*(holdsPhone?.09:.13));upperArm.raycast=()=>{};
       // V185: articulações facetadas preservam mobilidade visual sem o efeito de “bolinhas” entre os membros.
       const elbow=mesh(softBox(.137,.126,.13,.047),materials.skin,sign*.418,1.815,.002);elbow.rotation.z=sign*.08;elbow.raycast=()=>{};
       const elbowContour=mesh(new THREE.CapsuleGeometry(.005,.045,2,7),materials.skinShade,sign*.418,1.81,.071);elbowContour.rotation.z=Math.PI/2;elbowContour.raycast=()=>{};
-      const forearm=limb(.081,.068,.35,materials.skin,sign*(holdsPhone?.45:.454),1.64,holdsPhone?.028:.008,sign*(holdsPhone?.045:.08));forearm.raycast=()=>{};
+      const forearm=limb(.081,.068,.35,materials.skin,sign*(holdsPhone?.438:.454),1.64,holdsPhone?.035:.008,sign*(holdsPhone?.11:.08));forearm.raycast=()=>{};
       // V187: punho facetado e transição dorsal unem antebraço e mão sem a antiga esfera solta.
-      const wrist=mesh(softBox(.126,.105,.12,.032),materials.skin,sign*.469,1.475,.014);wrist.rotation.z=sign*.055;wrist.raycast=()=>{};
-      const wristContour=mesh(new THREE.CapsuleGeometry(.004,.052,2,7),materials.skinShade,sign*.469,1.469,.078);wristContour.rotation.z=Math.PI/2;wristContour.raycast=()=>{};
+      const wrist=mesh(softBox(.126,.105,.12,.032),materials.skin,sign*(holdsPhone?.458:.469),1.475,holdsPhone?.026:.014);wrist.rotation.z=sign*(holdsPhone?.105:.055);wrist.raycast=()=>{};
+      const wristContour=mesh(new THREE.CapsuleGeometry(.004,.052,2,7),materials.skinShade,sign*(holdsPhone?.458:.469),1.469,holdsPhone?.09:.078);wristContour.rotation.z=Math.PI/2;wristContour.raycast=()=>{};
       // A mão do celular usa uma única palma atrás do aparelho; a outra mantém os dedos relaxados.
-      const palm=mesh(softBox(holdsPhone?.138:.145,holdsPhone?.205:.19,.13,.035),materials.skin,sign*.49,1.395,holdsPhone?.052:.018);
-      palm.rotation.z=holdsPhone?sign*.10:0;
+      const palm=mesh(softBox(holdsPhone?.138:.145,holdsPhone?.205:.19,.13,.035),materials.skin,sign*(holdsPhone?.478:.49),1.395,holdsPhone?.052:.018);
+      palm.rotation.z=holdsPhone?sign*.115:0;
       const palmContour=mesh(new THREE.CapsuleGeometry(.004,.052,2,7),materials.skinShade,sign*.49,1.398,holdsPhone?.121:.088);palmContour.rotation.z=Math.PI/2;palmContour.raycast=()=>{};
       if(!holdsPhone){const thumb=mesh(new THREE.CapsuleGeometry(.026,.075,3,7),materials.skin,sign*.445,1.49,.075);thumb.rotation.z=sign*.78;thumb.raycast=()=>{};}
       // Four articulated silhouettes make both hands readable from the front

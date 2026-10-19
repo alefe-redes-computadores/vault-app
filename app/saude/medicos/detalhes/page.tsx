@@ -69,6 +69,7 @@ import {
 import {
   useMounted,
 } from "@/hooks/useMounted";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
@@ -296,6 +297,9 @@ function DetalhesMedicoContent() {
 
   const searchParams =
     useSearchParams();
+
+  const { backTarget } =
+    useReturnContext("/saude/medicos");
 
   const {
     trigger,
@@ -1412,7 +1416,7 @@ function DetalhesMedicoContent() {
                   "vibrate"
                 );
 
-                router.replace("/saude/medicos");
+                router.replace(backTarget);
               }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-all active:scale-95"
               aria-label="Voltar"

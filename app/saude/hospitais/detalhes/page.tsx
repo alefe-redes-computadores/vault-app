@@ -44,6 +44,7 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import {
   useHospitais,
 } from "@/hooks/useHospitais";
@@ -153,6 +154,9 @@ function DetalhesHospitalContent() {
 
   const searchParams =
     useSearchParams();
+
+  const { backTarget } =
+    useReturnContext("/saude/hospitais");
 
   const id =
     searchParams.get(
@@ -852,7 +856,7 @@ function DetalhesHospitalContent() {
                   "vibrate"
                 );
 
-                router.replace("/saude/hospitais");
+                router.replace(backTarget);
               }}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised transition-all active:scale-95"
               aria-label="Voltar"

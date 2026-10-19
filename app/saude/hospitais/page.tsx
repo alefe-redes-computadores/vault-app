@@ -22,6 +22,8 @@ import {
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
+import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 
 import {
   useHospitais,
@@ -45,6 +47,7 @@ import {
 import {
   EmptyState,
 } from "@/components/EmptyState";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import {
   ListCard,
   ListPageHeader,
@@ -412,48 +415,23 @@ export default function HospitaisPage() {
   // FILTER
   // ==========================================================
 
+  const hospitalSearchIndex =
+    useMemo(
+      () =>
+        createLocalSearchIndex(
+          hospitaisComCruzamento,
+          (hospital) => [
+            hospital.nome,
+            hospital.endereco,
+            hospital.telefone,
+          ]
+        ),
+      [hospitaisComCruzamento]
+    );
+
   const filteredHospitais =
     useMemo(() => {
-      const term =
-        search
-          .trim()
-          .toLocaleLowerCase(
-            "pt-BR"
-          );
-
-      let result =
-        hospitaisComCruzamento;
-
-      if (term) {
-        result =
-          result.filter(
-            (
-              hospital
-            ) => {
-              const nome =
-                hospital.nome
-                  .toLocaleLowerCase(
-                    "pt-BR"
-                  );
-
-              const endereco =
-                hospital.endereco
-                  ?.toLocaleLowerCase(
-                    "pt-BR"
-                  ) ||
-                "";
-
-              return (
-                nome.includes(
-                  term
-                ) ||
-                endereco.includes(
-                  term
-                )
-              );
-            }
-          );
-      }
+      const result = filterLocalSearchIndex(hospitalSearchIndex, search);
 
       return [
         ...result,
@@ -468,7 +446,7 @@ export default function HospitaisPage() {
           )
       );
     }, [
-      hospitaisComCruzamento,
+      hospitalSearchIndex,
       search,
     ]);
 
@@ -478,6 +456,14 @@ export default function HospitaisPage() {
 
   const HOSPITAL_COLOR =
     "#38BDF8";
+  const hospitaisComHistorico = hospitaisComCruzamento.filter(
+    (hospital) => hospital.consultasCount > 0 || hospital.cirurgiasCount > 0
+  ).length;
+  const corpoClinicoVinculado = hospitaisComCruzamento.filter(
+    (hospital) => hospital.medicosCadastradosCount > 0
+  ).length;
+  const navigateFromList = (href: string) =>
+    router.push(withReturnTarget(href, "/saude/hospitais"));
 
   return (
     <PageTransition>
@@ -503,6 +489,17 @@ export default function HospitaisPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          <ClinicalListSummary
+            icon={HospitalIcon}
+            eyebrow="Rede hospitalar"
+            title={`${hospitais.length} unidades disponíveis`}
+            detail="Cadastro global; histórico sempre isolado pela pessoa ativa."
+            metrics={[
+              { label: "Nesta visão", value: filteredHospitais.length },
+              { label: "Com histórico", value: hospitaisComHistorico, tone: "positive" },
+              { label: "Corpo clínico", value: corpoClinicoVinculado },
+            ]}
+          />
           {!activePersonId &&
             hospitais.length >
               0 && (
@@ -555,7 +552,7 @@ export default function HospitaisPage() {
                         "vibrate"
                       );
 
-                      router.push(
+                      navigateFromList(
                         `/saude/hospitais/detalhes?id=${hospital.id}`
                       );
                     }}
@@ -580,7 +577,7 @@ export default function HospitaisPage() {
                             "vibrate"
                           );
 
-                          router.push(
+                          navigateFromList(
                             `/saude/hospitais/editar?id=${hospital.id}`
                           );
                         }}
@@ -649,74 +646,11 @@ export default function HospitaisPage() {
                       </div>
                     )}
 
-                    <div className="mt-3 grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-2 sm:grid-cols-4">
-                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
-                        <p className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase text-ink-muted">
-                          <Stethoscope
-                            size={10}
-                            className="text-ice"
-                          />
-
-                          Consultas
-                        </p>
-
-                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                          {
-                            hospital.consultasCount
-                          }
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
-                        <p className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase text-ink-muted">
-                          <Syringe
-                            size={10}
-                            className="text-coral"
-                          />
-
-                          Cirurgias
-                        </p>
-
-                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                          {
-                            hospital.cirurgiasCount
-                          }
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
-                        <p className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase text-ink-muted">
-                          <Activity
-                            size={10}
-                            className="text-emerald-400"
-                          />
-
-                          Corpo clínico
-                        </p>
-
-                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                          {
-                            hospital.medicosCadastradosCount
-                          }
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-surface-raised/60 p-2 text-center">
-                        <p className="flex items-center justify-center gap-1 font-mono text-[10px] uppercase text-ink-muted">
-                          <Stethoscope
-                            size={10}
-                            className="text-violet-400"
-                          />
-
-                          No histórico
-                        </p>
-
-                        <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                          {
-                            hospital.medicosHistoricoCount
-                          }
-                        </p>
-                      </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-surface-border/40 pt-2">
+                      {hospital.consultasCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-1 text-[10px] text-ice"><Stethoscope size={11}/>{hospital.consultasCount} consultas</span>}
+                      {hospital.cirurgiasCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-1 text-[10px] text-coral"><Syringe size={11}/>{hospital.cirurgiasCount} cirurgias</span>}
+                      {hospital.medicosCadastradosCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-300"><Activity size={11}/>{hospital.medicosCadastradosCount} profissionais</span>}
+                      {hospital.consultasCount === 0 && hospital.cirurgiasCount === 0 && <span className="text-[10px] text-ink-faint">Sem histórico para a pessoa ativa</span>}
                     </div>
                   </ListCard>
                 );
