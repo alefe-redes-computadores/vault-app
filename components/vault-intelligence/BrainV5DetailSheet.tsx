@@ -3,6 +3,7 @@
 import {AlertTriangle, CheckCircle2, Database, ExternalLink, FileSearch, ShieldAlert, ShieldCheck, X} from "lucide-react";
 import {brainV5Presentation, brainV5RequiresAttention} from "@/lib/health-intelligence/brain-v5";
 import type {BrainV5Alert, BrainV5Feedback} from "@/lib/health-intelligence/brain-v5";
+import {useDialogGuard} from "@/hooks/useDialogGuard";
 
 const FEEDBACK: Array<[BrainV5Feedback, string]> = [
   ["useful", "Útil"], ["already_knew", "Já sabia"], ["not_relevant", "Não relevante"],
@@ -25,6 +26,7 @@ export function BrainV5DetailSheet({alert, familyLabel, stateLabel, onClose, onC
   onFeedback: (value: BrainV5Feedback) => void;
   onToggleResolved: () => void;
 }) {
+  useDialogGuard(true, onClose);
   const presentation = brainV5Presentation(alert);
   const urgent = brainV5RequiresAttention(alert);
   const PriorityIcon = urgent ? ShieldAlert : CheckCircle2;

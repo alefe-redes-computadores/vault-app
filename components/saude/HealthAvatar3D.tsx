@@ -100,14 +100,16 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // V167: face planes preserved and refined by V177.
     // V177: the face uses a cranial volume plus a planar jaw. It stays stylized,
     // but no longer reads as a sphere stacked over a cylinder.
-    oval(materials.skin,0,2.825,-.012,[.194,.272,.178]);
+    // V194: o volume craniano fica mais estreito na frente e mais profundo de perfil;
+    // o rosto ganha leitura humana sem aumentar a contagem de malhas.
+    oval(materials.skin,0,2.825,-.016,[.188,.268,.184]);
     const jawShape=new THREE.Shape();
     jawShape.moveTo(-.153,.087);jawShape.lineTo(.153,.087);jawShape.lineTo(.128,-.045);jawShape.lineTo(.066,-.111);jawShape.lineTo(0,-.132);jawShape.lineTo(-.066,-.111);jawShape.lineTo(-.128,-.045);jawShape.closePath();
     const jawGeometry=new THREE.ExtrudeGeometry(jawShape,{depth:.166,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});jawGeometry.translate(0,0,-.083);
     const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
       // V184: cheek volume follows the jaw plane instead of reading as a sphere attached to the face.
-      const cheek=mesh(taperedBox(.067,.085,.094,.042),materials.skin,sign*.108,2.738,.157);cheek.rotation.z=sign*.12;cheek.rotation.x=-.08;cheek.raycast=()=>{};
+      const cheek=mesh(taperedBox(.061,.077,.086,.043),materials.skin,sign*.106,2.738,.158);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.raycast=()=>{};
       const temple=mesh(taperedBox(.051,.063,.11,.032),materials.skin,sign*.158,2.824,.124);temple.rotation.z=sign*.08;temple.raycast=()=>{};
       oval(materials.skin,sign*.205,2.77,-.002,[.026,.058,.036]);
       oval(materials.skin,sign*.204,2.77,.024,[.011,.036,.019]);
@@ -128,7 +130,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     const noseBridge=mesh(taperedBox(.024,.032,.082,.032),materials.skin,0,2.778,.213);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
-    const noseTip=oval(materials.skin,0,2.724,.239,[.038,.027,.033]);noseTip.raycast=()=>{};
+    const noseTip=oval(materials.skin,0,2.724,.239,[.034,.022,.029]);noseTip.raycast=()=>{};
     for(const sign of [-1,1]){
       oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
       oval(materials.skinShade,sign*.018,2.711,.259,[.006,.004,.003]).raycast=()=>{};
@@ -312,8 +314,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const stripe=mesh(new THREE.BoxGeometry(.099,.017,.009),materials.white,x,.22,.327);stripe.raycast=()=>{};
       }
     }
-    const mouth=mesh(new THREE.TorusGeometry(.044,.006,6,18,Math.PI),materials.dark,0,2.647,.228);mouth.rotation.z=Math.PI;
-    const neutralMouth=mesh(new THREE.BoxGeometry(.064,.007,.004),materials.dark,0,2.647,.246);
+    const mouth=mesh(new THREE.TorusGeometry(.044,.005,5,18,Math.PI),materials.dark,0,2.647,.228);mouth.rotation.z=Math.PI;mouth.scale.y=.62;
+    const neutralMouth=mesh(softBox(.064,.007,.004,.003),materials.dark,0,2.647,.246);
     const lowerLip=mesh(new THREE.CapsuleGeometry(.004,.041,3,8),materials.skin,0,2.631,.244);lowerLip.rotation.z=Math.PI/2;lowerLip.raycast=()=>{};
     const setExpression=(value:AvatarBodyContext['expression'])=>{mouth.visible=value!=="neutral";neutralMouth.visible=value==="neutral";mouth.rotation.z=value==="reflective"?0:Math.PI;mouth.position.y=value==="reflective"?2.61:2.647;lowerLip.visible=value==="neutral";};
     setExpression(expressionRef.current);

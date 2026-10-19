@@ -101,15 +101,16 @@ ok(
 );
 
 ok(
-  central.includes('router.replace("/mais")'),
-  "Central retorna para Mais"
+  central.includes('useReturnContext("/mais")') &&
+    central.includes("router.replace(backTarget)"),
+  "Central retorna à origem segura com fallback para Mais"
 );
 
 ok(
   central.includes(
-    'router.push("/inteligencia/alertas")'
+    'router.push(preserveReturn("/inteligencia/alertas"))'
   ),
-  "Central abre Cérebro V5"
+  "Central abre Cérebro V5 preservando a origem"
 );
 
 ok(

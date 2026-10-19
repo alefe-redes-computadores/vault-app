@@ -32,7 +32,7 @@ ok(page.includes("Saúde da inteligência"), "UI mostra observabilidade");
 ok(page.includes("Ensinar relevância ao Vault"), "UI oferece feedback");
 ok(page.includes("não provam causa") && page.includes("não certeza médica"), "UI mantém limites clínicos explícitos");
 
-ok(central.includes('router.push("/inteligencia/alertas")'), "Central possui entrada para o Cérebro V5");
+ok(central.includes('router.push(preserveReturn("/inteligencia/alertas"))'), "Central possui entrada contextual para o Cérebro V5");
 ok(
   page.includes('router.replace("/inteligencia")') || page.includes("router.replace(backTarget)"),
   "Saúde longitudinal V4 permanece integrada à Central com retorno contextual"

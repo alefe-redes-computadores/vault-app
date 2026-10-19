@@ -35,7 +35,7 @@ expect(engine.includes('href: "/diagnostico"'), "pendência de sincronização a
 expect(engine.includes("vault-sharing-empty") && engine.includes("compartilhar continua opcional"), "organização de cofres não força compartilhamento");
 expect(types.includes('"security"') && types.includes('"data_quality"'), "achados mantêm natureza explícita");
 expect(page.includes("Central de atenção") && page.includes("kindMeta"), "inteligência possui hierarquia visual por natureza");
-expect(page.includes('router.replace("/mais")') && !page.includes("router.back()"), "retorno da inteligência é determinístico");
+expect(page.includes('useReturnContext("/mais")') && page.includes("router.replace(backTarget)") && !page.includes("router.back()"), "retorno da inteligência é contextual e possui fallback determinístico");
 expect(page.includes("coverage?.credentials") && page.includes("coverage?.accounts"), "cobertura diferencia senhas, cartões e contas");
 expect(more.includes('label: "Cartões"') && more.includes('router.push("/cartoes")'), "atalho de cartões descreve o destino correto");
 expect(more.includes('label: "Contas bancárias"') && more.includes('router.push("/contas")'), "contas bancárias deixam de ficar escondidas");

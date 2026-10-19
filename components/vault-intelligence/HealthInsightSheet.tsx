@@ -3,6 +3,7 @@
 import { AlertTriangle, BrainCircuit, ChevronRight, Database, ExternalLink, Info, ShieldCheck, X } from "lucide-react";
 import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
+import { useDialogGuard } from "@/hooks/useDialogGuard";
 
 type Props = {
   insight: HealthInsight | null;
@@ -17,6 +18,7 @@ function tone(insight: HealthInsight) {
 
 // VAULT_HEALTH_EXPLAINABILITY_V55
 export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral }: Props) {
+  useDialogGuard(Boolean(insight), onClose);
   if (!insight) return null;
   const evidence = insight.evidencias || [];
   const sources = insight.fontesInternas || [];
@@ -27,12 +29,12 @@ export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral
 
   return (
     <div className="fixed inset-0 z-[110] flex items-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <section role="dialog" aria-modal="true" aria-label={insight.titulo} onClick={(event) => event.stopPropagation()} className="max-h-[88dvh] w-full overscroll-contain overflow-y-auto rounded-t-[30px] border-t border-surface-border bg-surface px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4 sm:px-5">
+      <section role="dialog" aria-modal="true" aria-labelledby="health-insight-title" onClick={(event) => event.stopPropagation()} className="max-h-[calc(92dvh-env(safe-area-inset-top,0px))] w-full overscroll-contain overflow-y-auto rounded-t-[30px] border-t border-surface-border bg-surface px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4 sm:px-5">
         <div className="mx-auto max-w-2xl">
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-surface-border" />
           <div className="flex items-start gap-3">
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${tone(insight)}`}>{urgent ? <AlertTriangle size={19} /> : <BrainCircuit size={19} />}</div>
-            <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-semibold ${tone(insight)}`}>{priority.label}</span><span className="font-mono text-[8px] uppercase text-ink-faint">{insight.kind === "pattern" ? "Padrão longitudinal" : "Sinal de saúde"}</span></div><h2 className="mt-2 text-lg font-bold leading-snug">{insight.titulo}</h2></div>
+            <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-semibold ${tone(insight)}`}>{priority.label}</span><span className="font-mono text-[8px] uppercase text-ink-faint">{insight.kind === "pattern" ? "Padrão longitudinal" : "Sinal de saúde"}</span></div><h2 id="health-insight-title" className="mt-2 break-words text-lg font-bold leading-snug">{insight.titulo}</h2></div>
             <button type="button" onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-xl text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" aria-label="Fechar"><X size={19} /></button>
           </div>
           <p className="mt-4 border-l-2 border-violet-300/30 pl-3 text-sm leading-relaxed text-ink-muted">{insight.mensagem}</p>

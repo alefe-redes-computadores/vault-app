@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   BrainCircuit,
@@ -15,6 +15,7 @@ import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
 import type { HealthInsightEntityType } from "@/lib/health-intelligence/contextual";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 
 type Props = {
   entityType: HealthInsightEntityType;
@@ -50,6 +51,8 @@ export function ContextualHealthIntelligence({
   className = "",
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { getInsightsForEntity } = useHealthIntelligence({ includeAudit: false });
   const [selected, setSelected] = useState<HealthInsight | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -74,6 +77,9 @@ export function ContextualHealthIntelligence({
   if (!entityId || insights.length === 0) return null;
 
   const primary = insights[Math.min(activeIndex, insights.length - 1)] || insights[0];
+  const query = searchParams.toString();
+  const currentHref = `${pathname}${query ? `?${query}` : ""}`;
+  const openWithReturn = (href: string) => router.push(withReturnTarget(href, currentHref));
   const entityLabel = ENTITY_LABEL[entityType];
   const showInsight = (index: number) => {
     setActiveIndex(index);
@@ -153,7 +159,7 @@ export function ContextualHealthIntelligence({
             ) : <span className="text-[8px] text-ink-faint">Toque para ver evidências</span>}
             <button
               type="button"
-              onClick={() => router.push(`/inteligencia?healthInsight=${encodeURIComponent(primary.id)}`)}
+              onClick={() => openWithReturn(`/inteligencia?healthInsight=${encodeURIComponent(primary.id)}`)}
               className="ml-3 inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-400/20 bg-violet-400/[0.07] px-2.5 py-1 text-[9px] font-semibold text-violet-300 active:scale-95"
             >
               Central
@@ -168,7 +174,7 @@ export function ContextualHealthIntelligence({
         onClose={() => setSelected(null)}
         onNavigate={(href) => {
           setSelected(null);
-          router.push(href);
+          openWithReturn(href);
         }}
       />
     </>
