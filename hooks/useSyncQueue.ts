@@ -53,6 +53,7 @@ import {
   resetSyncFailure,
   SYNC_MAX_RETRIES,
 } from "@/lib/sync/queue-health";
+import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
 
 // ============================================================
 // CONSTANTES
@@ -5819,8 +5820,22 @@ export function useSyncQueue() {
           `${failedItems.length} item${failedItems.length === 1 ? "" : "s"} redefinido${failedItems.length === 1 ? "" : "s"} para reenvio.`,
           "success"
         );
-
-        await processQueue();
+        setVaultSyncRuntime({ phase: "pushing", error: null });
+        try {
+          const result = await processQueue();
+          if (result.fatalError || result.permanentlyFailed > 0) {
+            setVaultSyncRuntime({ phase: "error", error: result.fatalError || "Há itens que ainda precisam de revisão na sincronização." });
+          } else if (result.offline || result.remaining > 0) {
+            setVaultSyncRuntime({ phase: "idle", error: null });
+          } else {
+            setVaultSyncRuntime({ phase: "synced", error: null });
+          }
+          return result;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Não foi possível repetir a sincronização.";
+          setVaultSyncRuntime({ phase: "error", error: message });
+          throw error;
+        }
       },
       [
         processQueue,

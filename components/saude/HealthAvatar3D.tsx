@@ -63,7 +63,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const stageRingMaterial=new THREE.MeshBasicMaterial({color:0x89f3d4,transparent:true,opacity:.2,depthWrite:false});
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
-      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .66, metalness: .015 }),
+      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .58, metalness: .012 }),
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
       hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .9 }),
@@ -114,6 +114,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     for(const sign of [-1,1]) {
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
+      const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
     }
     const noseBridge=mesh(new THREE.CapsuleGeometry(.014,.068,4,8),materials.skin,0,2.778,.207);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
     const noseTip=oval(materials.skin,0,2.724,.239,[.038,.027,.033]);noseTip.raycast=()=>{};

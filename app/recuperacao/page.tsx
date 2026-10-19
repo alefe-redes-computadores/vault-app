@@ -24,6 +24,7 @@ import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 import { pullAllData } from "@/lib/sync/pull";
 import { db } from "@/lib/db";
+import { runManualVaultSync } from "@/lib/sync/manual-sync";
 import {
   getPullDiagnostics,
   type VaultPullRun,
@@ -72,11 +73,18 @@ export default function RecoveryCenterPage() {
     setSyncing(true);
     setResult(null);
     try {
-      await pullAllData(user.id);
       // VAULT_FINAL_RELEASE_V69_RECOVERY_TRUTH
+      const operation = await runManualVaultSync({
+        pull: () => pullAllData(user.id),
+        push: processQueue,
+        pullIssue: () => {
+          const failures = getPullDiagnostics().tables.filter((metric) => !metric.ok).length;
+          return failures > 0 ? `${failures} tabela(s) tiveram falha na leitura da nuvem.` : null;
+        },
+      });
       const pullDiagnostics = getPullDiagnostics();
       const failedPullTables = pullDiagnostics.tables.filter((metric) => !metric.ok);
-      const pushed = await processQueue();
+      const pushed = operation.queue;
 
       if (failedPullTables.length > 0) {
         setResult(

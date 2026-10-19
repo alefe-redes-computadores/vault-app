@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Smartphone,
+  ListChecks,
   TriangleAlert,
   WifiOff,
 } from "lucide-react";
@@ -27,6 +28,8 @@ import { enfileirarOperacao } from "@/lib/sync/enfileirarOperacao";
 import { supabase } from "@/lib/supabase/client";
 import type { DoseLog, SyncQueueItem } from "@/lib/types";
 import { getSyncQueueState, summarizeSyncQueue } from "@/lib/sync/queue-health";
+import { runManualVaultSync } from "@/lib/sync/manual-sync";
+import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 
 interface TableCheck {
   key: string;
@@ -95,6 +98,7 @@ export default function DiagnosticoPage() {
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
   const { processQueue, resetFailedItems, isProcessing, isOnline } = useSyncQueue();
+  const syncRuntime = useVaultSyncRuntime();
   const queue = (useLiveQuery(() => db.syncQueue.orderBy("created_at").toArray(), []) ?? []) as SyncQueueItem[];
   const [checks, setChecks] = useState<TableCheck[]>([]);
   const [checking, setChecking] = useState(false);
@@ -122,6 +126,25 @@ export default function DiagnosticoPage() {
       }, {}),
     [queue]
   );
+  const syncBusy = syncing || isProcessing || syncRuntime.phase === "pulling" || syncRuntime.phase === "pushing";
+  const syncHeadline = !isOnline
+    ? "Trabalhando offline"
+    : syncBusy
+      ? "Conferindo e enviando"
+      : failed > 0 || syncRuntime.phase === "error"
+        ? "Sincronização precisa de revisão"
+        : queueHealth.total > 0
+          ? "Alterações protegidas no aparelho"
+          : "Tudo sincronizado";
+  const syncDescription = !isOnline
+    ? "A fila está preservada e será retomada quando a conexão voltar."
+    : syncBusy
+      ? "Primeiro conferimos a nuvem; depois enviamos a fila local."
+      : failed > 0
+        ? `${failed} item(ns) chegaram ao limite de tentativas. Os dados não foram descartados.`
+        : queueHealth.total > 0
+          ? `${queueHealth.total} item(ns) aguardam envio ou nova tentativa.`
+          : "Não há alterações aguardando envio neste dispositivo.";
 
   const runDoseAudit = useCallback(async (): Promise<DoseAudit | null> => {
     if (!user?.id || !isOnline) return null;
@@ -178,12 +201,19 @@ export default function DiagnosticoPage() {
     setSyncing(true);
     trigger("vibrate");
     try {
-      await pullAllData(user.id);
-      const result = await processQueue();
-      showToast(
-        result.remaining === 0 ? "Sincronização concluída" : `${result.remaining} item(ns) continuam pendentes`,
-        result.remaining === 0 ? "success" : "info"
-      );
+      const operation = await runManualVaultSync({
+        pull: () => pullAllData(user.id),
+        push: processQueue,
+      });
+      const result = operation.queue;
+      if (operation.phase === "error") {
+        showToast(operation.error || "Há itens que precisam de revisão", "error");
+      } else {
+        showToast(
+          result.remaining === 0 ? "Sincronização concluída" : `${result.remaining} item(ns) continuam pendentes`,
+          result.remaining === 0 ? "success" : "info"
+        );
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Não foi possível sincronizar", "error");
     } finally {
@@ -290,16 +320,17 @@ export default function DiagnosticoPage() {
 
         {!isOnline && <div className="mt-5 flex gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4"><WifiOff className="shrink-0 text-amber-400" /><p className="text-sm text-ink-muted">Sem rede. Seus dados permanecem no aparelho e a fila será retomada quando a conexão voltar.</p></div>}
 
-        <section className="mt-4 grid grid-cols-3 gap-2">
-          {([ ["Prontos", queueHealth.ready], ["Com falha", failed], ["Aguardando", deferred] ] as const).map(([label, value]) => <div key={label} className={`rounded-2xl border bg-surface p-3 text-center ${label === "Com falha" && value > 0 ? "border-coral/35" : "border-surface-border"}`}><strong className="text-xl">{value}</strong><p className="text-[11px] text-ink-muted">{label}</p></div>)}
+        <section aria-live="polite" className={`mt-4 overflow-hidden rounded-[24px] border bg-gradient-to-br from-surface to-void ${failed>0||syncRuntime.phase==='error'?'border-amber-400/25':'border-emerald-300/20'}`}>
+          <div className="flex items-start gap-3 p-4">
+            <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${failed>0||syncRuntime.phase==='error'?'bg-amber-400/10 text-amber-300':'bg-emerald-300/10 text-emerald-300'}`}>{syncBusy?<Loader2 className="animate-spin" size={20}/>:failed>0||syncRuntime.phase==='error'?<TriangleAlert size={20}/>:<ShieldCheck size={20}/>}</span>
+            <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">{syncHeadline}</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{syncDescription}</p>{queue[0]?<p className="mt-1 text-[9px] text-ink-faint">Item mais antigo {ageLabel(queue[0].created_at)}.</p>:null}</div>
+          </div>
+          <div className="grid grid-cols-3 border-y border-surface-border/60 bg-black/10">
+            {([ ["Para enviar", queueHealth.ready], ["Em espera", deferred], ["Revisar", failed] ] as const).map(([label,value])=><div key={label} className="border-r border-surface-border/60 px-2 py-2.5 text-center last:border-r-0"><strong className={label==='Revisar'&&value>0?'text-amber-300':'text-ink-primary'}>{value}</strong><p className="mt-0.5 text-[9px] text-ink-muted">{label}</p></div>)}
+          </div>
+          <div className="p-3"><button disabled={!isOnline||syncBusy} onClick={()=>void syncNow()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ice px-4 text-sm font-semibold text-void disabled:opacity-40">{syncBusy?<Loader2 className="animate-spin" size={17}/>:<RefreshCw size={17}/>} {syncBusy?'Sincronizando…':'Conferir e sincronizar'}</button>{failed>0?<button disabled={!isOnline||syncBusy} onClick={()=>void resetFailedItems()} className="mt-2 min-h-11 w-full rounded-xl border border-amber-400/25 px-3 text-xs font-semibold text-amber-300 disabled:opacity-40">Liberar {failed} {failed===1?'falha':'falhas'} para nova tentativa</button>:null}</div>
         </section>
-        <p className="mt-2 text-xs text-ink-muted">{queue[0] ? `Item mais antigo ${ageLabel(queue[0].created_at)}.` : "Nenhuma alteração aguardando envio."}</p>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button disabled={!isOnline || syncing || isProcessing} onClick={() => void syncNow()} className="flex items-center justify-center gap-2 rounded-2xl bg-ice p-3 font-semibold text-void disabled:opacity-40">{syncing || isProcessing ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}Sincronizar</button>
-          <button disabled={!isOnline || failed === 0 || isProcessing} onClick={() => void resetFailedItems()} className="rounded-2xl border border-amber-400/40 p-3 text-sm font-semibold text-amber-300 disabled:opacity-40">Repetir falhas</button>
-        </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Nenhum item é descartado por esta tela. Reenvios sempre passam pela fila oficial do Vault.</p>
+        <p className="mt-2 px-1 text-[10px] leading-relaxed text-ink-muted">Esta tela nunca descarta itens. Toda nova tentativa passa pela fila oficial e mantém o funcionamento offline.</p>
 
         {failedItems.length > 0 && (
           <section className="mt-4 rounded-[20px] border border-coral/25 bg-coral/[0.05] p-3.5">
@@ -334,7 +365,7 @@ export default function DiagnosticoPage() {
           <div className="flex items-start gap-3"><div className="rounded-2xl bg-ice/10 p-3 text-ice"><ShieldCheck size={20} /></div><div className="min-w-0 flex-1"><h2 className="font-semibold">Reconciliação de doses</h2><p className="mt-1 text-xs leading-relaxed text-ink-muted">Compara os IDs e o conteúdo. Nada é apagado ou sobrescrito automaticamente.</p></div></div>
           <button disabled={!isOnline || auditingDoses || repairingDoses} onClick={() => void runDoseAudit()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-ice/30 p-3 text-sm font-semibold text-ice disabled:opacity-40">{auditingDoses ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}Comparar registros</button>
           {doseAudit && <div className="mt-4"><div className="grid grid-cols-2 gap-2">{([ ["Só no aparelho", doseAudit.localOnly.length, "text-amber-300"], ["Só na nuvem", doseAudit.remoteOnly.length, "text-ice"], ["Divergentes", doseAudit.divergent.length, "text-coral"], ["Locais inválidos", doseAudit.invalidLocal.length, "text-coral"] ] as const).map(([label, value, tone]) => <div key={label} className="rounded-2xl bg-void p-3"><strong className={`text-xl ${tone}`}>{value}</strong><p className="mt-1 text-[11px] text-ink-muted">{label}</p></div>)}</div>
-            {doseAudit.localOnly.length > 0 && <><p className="mt-3 text-xs leading-relaxed text-ink-muted">Somente doses válidas, pertencentes ao usuário, à pessoa e ao medicamento relacionados serão reenfileiradas.</p><button disabled={repairingDoses || isProcessing} onClick={() => void repairLocalDoses()} className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl p-3 text-sm font-semibold disabled:opacity-40 ${repairArmed ? "bg-amber-400 text-void" : "bg-ice text-void"}`}>{repairingDoses ? <Loader2 className="animate-spin" size={17} /> : <CloudUpload size={17} />}{repairArmed ? `Confirmar envio de ${doseAudit.localOnly.length} dose(s)` : "Enviar ausentes para a nuvem"}</button></>}
+            {doseAudit.localOnly.length > 0 && <><p className="mt-3 text-xs leading-relaxed text-ink-muted">Somente doses válidas, pertencentes ao usuário, à pessoa e ao medicamento relacionados serão reenfileiradas.</p>{repairArmed?<div role="alert" className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-400/[0.07] p-3"><div className="flex items-start gap-2"><ListChecks size={17} className="mt-0.5 shrink-0 text-amber-300"/><div><p className="text-xs font-semibold text-amber-200">Confirmar reparo seguro?</p><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{doseAudit.localOnly.length} {doseAudit.localOnly.length===1?'dose será reenfileirada':'doses serão reenfileiradas'}. Nada será apagado e o estoque não será movimentado novamente.</p></div></div><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={repairingDoses} onClick={()=>setRepairArmed(false)} className="min-h-11 rounded-xl border border-surface-border text-xs text-ink-muted">Cancelar</button><button type="button" disabled={repairingDoses||isProcessing} onClick={()=>void repairLocalDoses()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-400 px-2 text-xs font-bold text-void disabled:opacity-40">{repairingDoses?<Loader2 className="animate-spin" size={16}/>:<CloudUpload size={16}/>}Confirmar envio</button></div></div>:<button disabled={repairingDoses||isProcessing} onClick={()=>void repairLocalDoses()} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ice px-3 text-sm font-semibold text-void disabled:opacity-40"><CloudUpload size={17}/>Preparar envio das ausentes</button>}</>}
             {doseAudit.localOnly.length === 0 && doseAudit.invalidLocal.length === 0 && <p className="mt-3 flex items-center gap-2 text-sm text-emerald-400"><CheckCircle2 size={17} />Nenhuma dose local válida está faltando na nuvem.</p>}
           </div>}
         </section>
