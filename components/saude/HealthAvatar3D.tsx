@@ -158,9 +158,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const waist=mesh(taperedBox(.49,.535,.145,.34),materials.bottom,0,1.505,.002);waist.raycast=()=>{};
     const waistSeam=mesh(new THREE.BoxGeometry(.515,.018,.355),materials.shirtDetail,0,1.565,.004);waistSeam.raycast=()=>{};
     // Collar bones and shoulder caps soften the torso-to-arm transition in every view.
+    // V188: the shoulder girdle follows the torso plane instead of two spherical pads.
+    const clavicleBridge=mesh(new THREE.CapsuleGeometry(.007,.19,3,9),materials.shirtDetail,0,2.385,.176);clavicleBridge.rotation.z=Math.PI/2;clavicleBridge.raycast=()=>{};
     for(const sign of [-1,1]){
       const collar=mesh(new THREE.CapsuleGeometry(.006,.082,3,8),materials.shirtDetail,sign*.067,2.389,.174);collar.rotation.z=sign*1.02;collar.raycast=()=>{};
-      oval(materials.top,sign*.303,2.323,0,[.135,.142,.157]);
+      const shoulderCap=mesh(softBox(.235,.205,.27,.072),materials.top,sign*.303,2.315,0);shoulderCap.rotation.z=sign*.16;shoulderCap.raycast=()=>{};
+      const deltoidSeam=mesh(new THREE.CapsuleGeometry(.004,.078,2,7),materials.shirtDetail,sign*.305,2.327,.142);deltoidSeam.rotation.z=sign*.42;deltoidSeam.raycast=()=>{};
+      const scapulaPlane=mesh(taperedBox(.10,.14,.105,.018),materials.shirtDetail,sign*.178,2.322,-.184);scapulaPlane.rotation.z=sign*.24;scapulaPlane.raycast=()=>{};
     }
     mesh(new THREE.TorusGeometry(.108,.012,6,24),materials.dark,0,2.43,0).rotation.x=Math.PI/2;
     mesh(new THREE.BoxGeometry(.014,.31,.009),materials.dark,0,1.44,.19);
