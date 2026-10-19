@@ -8,6 +8,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
 import { buildClinicalReport, type ClinicalReportPeriod } from "@/lib/clinical-report";
+import { useReturnContext } from "@/hooks/useReturnContext";
 
 const periods: ClinicalReportPeriod[] = [7, 30, 90];
 const displayDate = (value: string) => { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; };
@@ -15,6 +16,7 @@ const deltaLabel = (value: number | null) => value === null ? "Novo no período"
 
 export default function ClinicalReportPage() {
   const router = useRouter();
+  const { backTarget } = useReturnContext("/saude/registros");
   const intelligence = useHealthIntelligence();
   const [period, setPeriod] = useState<ClinicalReportPeriod>(30);
   const report = useMemo(() => intelligence.context ? buildClinicalReport(intelligence.context, intelligence.insights, period) : null, [intelligence.context, intelligence.insights, period]);
@@ -24,8 +26,8 @@ export default function ClinicalReportPage() {
   if (!report) return null;
 
   return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:pb-0 print:text-black">
-    <header className="sticky top-0 z-20 border-b border-surface-border/40 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl print:static print:border-gray-300 print:bg-white">
-      <div className="flex items-center gap-3"><button type="button" onClick={() => router.replace("/saude/registros")} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised print:hidden" aria-label="Voltar ao prontuário"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><p className="font-mono text-[9px] uppercase tracking-[0.24em] text-emerald-300 print:text-gray-700">Prontuário clínico</p><h1 className="font-display text-xl font-semibold text-ink-primary print:text-black">Relatório do período</h1><p className="text-[10px] text-ink-muted print:text-gray-600">Síntese descritiva e explicável</p></div><button type="button" onClick={() => window.print()} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-300 text-void print:hidden" aria-label="Imprimir ou salvar PDF"><Printer size={19}/></button></div>
+    <header className="sticky top-0 z-20 border-b border-surface-border/40 bg-void/90 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl print:static print:border-gray-300 print:bg-white">
+<div className="flex items-center gap-3"><button type="button" onClick={() => router.replace(backTarget)} className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border bg-surface-raised print:hidden" aria-label="Voltar ao prontuário"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><p className="font-mono text-[9px] uppercase tracking-[0.24em] text-emerald-300 print:text-gray-700">Prontuário clínico</p><h1 className="font-display text-xl font-semibold text-ink-primary print:text-black">Relatório do período</h1><p className="text-[10px] text-ink-muted print:text-gray-600">Síntese descritiva e explicável</p></div><button type="button" onClick={() => window.print()} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-300 text-void print:hidden" aria-label="Imprimir ou salvar PDF"><Printer size={19}/></button></div>
       <div className="mt-4 grid grid-cols-3 gap-2 print:hidden">{periods.map((days) => <button key={days} type="button" onClick={() => setPeriod(days)} className={`rounded-xl border py-2 text-xs font-semibold ${period === days ? "border-emerald-300 bg-emerald-300/10 text-emerald-300" : "border-surface-border bg-surface-raised text-ink-muted"}`}>{days} dias</button>)}</div>
     </header>
     <section className="space-y-4 px-5 pt-4 print:px-0">
