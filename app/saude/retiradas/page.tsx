@@ -5,11 +5,10 @@ import {withdrawalSourceNote} from "@/lib/health-supply/overview";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 // VAULT_MEDICATION_ICON_INHERITANCE_V70
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft,
   Calendar,
   CheckCircle2,
   ChevronDown,
@@ -19,6 +18,8 @@ import {
 
   Store,
   XCircle,
+  Plus,
+  PackageCheck,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,11 +34,14 @@ import { PageTransition } from "@/components/PageTransition";
 import { EmptyState } from "@/components/EmptyState";
 import { ListSearch } from "@/components/list/ListSearch";
 import { ListFilters } from "@/components/list/ListFilters";
+import { ListPageHeader } from "@/components/list/ListPageHeader";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { Retirada, RetiradaStatus } from "@/lib/types";
 
-type StatusFilter = "todos" | "atrasada" | RetiradaStatus;
+type StatusFilter = "todos" | "hoje" | "atrasada" | RetiradaStatus;
 
 type MedicationGroup = {
   key: string;
@@ -122,6 +126,8 @@ function statusMeta(status: RetiradaStatus) {
 export default function RetiradasPage() {
  const supplyOverview=useSupplyOverview();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { trigger } = useHapticFeedback();
   const { retiradas } = useRetiradas();
   const { medicamentos = [] } = useMedicamentos();
@@ -131,6 +137,8 @@ export default function RetiradasPage() {
 
   const hoje = getLocalTodayISO();
   const currentMonth = hoje.slice(0, 7);
+  const listHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const navigateWithReturn = (href: string) => router.push(withReturnTarget(href, listHref));
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("todos");
@@ -165,6 +173,13 @@ export default function RetiradasPage() {
 
     return retiradas.filter((retirada) => {
       if (
+        status === "hoje" &&
+        !(retirada.status === "agendada" && retirada.data === hoje)
+      ) {
+        return false;
+      }
+
+      if (
         status === "atrasada" &&
         !(
           retirada.status === "agendada" &&
@@ -177,6 +192,7 @@ export default function RetiradasPage() {
       if (
         status !== "todos" &&
         status !== "atrasada" &&
+        status !== "hoje" &&
         retirada.status !== status
       ) {
         return false;
@@ -291,6 +307,14 @@ export default function RetiradasPage() {
     [retiradas, hoje]
   );
 
+  useEffect(() => {
+    if (!grouped.length) return;
+    setExpandedMonths((previous) => {
+      if (grouped.some((month) => previous.has(month.key))) return previous;
+      return new Set([grouped[0].key]);
+    });
+  }, [grouped]);
+
   const toggle = (
     setter: React.Dispatch<React.SetStateAction<Set<string>>>,
     key: string
@@ -306,66 +330,31 @@ export default function RetiradasPage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-16">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.replace("/saude/rede");
-                }}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary active:scale-95"
-                aria-label="Voltar para medicamentos"
-              >
-                <ArrowLeft size={18} />
-              </button>
-
-              <div className="min-w-0">
-                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-ice">
-                  Agenda de medicamentos
-                </p>
-                <h1 className="mt-1 truncate font-display text-xl font-semibold text-ink-primary">
-                  Retiradas
-                </h1>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-4 gap-2">
-            {[
-              ["Total", counts.total],
-              ["Hoje", counts.hoje],
-              ["Atras.", counts.atrasadas],
-              ["Feitas", counts.realizadas],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-surface-border/40 bg-surface-raised px-2 py-2.5 text-center"
-              >
-                <p className="font-mono text-base font-bold text-ink-primary">
-                  {value}
-                </p>
-                <p className="mt-0.5 text-[8px] font-bold uppercase tracking-wide text-ink-muted">
-                  {label}
-                </p>
-              </div>
+        <ListPageHeader
+          title="Retiradas"
+          badgeLabel="AGENDA DE MEDICAMENTOS"
+          badgeColor="text-emerald-300"
+          rightAction={
+            <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/retiradas/nova"); }} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95" aria-label="Agendar nova retirada">
+              <Plus size={15}/>Agendar
+            </button>
+          }
+        >
+          <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." className="order-1" />
+          <ListFilters className="order-2" title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
+            {[["todos", "Todas"], ["hoje", "Hoje"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (
+              <button key={key} type="button" aria-pressed={status === key} onClick={() => { trigger("vibrate"); setStatus(key as StatusFilter); }} className={`shrink-0 rounded-full border px-3 py-2 text-[10px] font-bold uppercase ${status === key ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{label}</button>
             ))}
-          </div>
-
-          {/* VAULT_COMPACT_SEARCH_FILTER_V79 */}
-          <div className="mt-2 flex h-10 items-center justify-end gap-2">
-            <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." />
-            <ListFilters title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
-              {[["todos", "Todos"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (
-                <button key={key} type="button" onClick={() => { trigger("vibrate"); setStatus(key as StatusFilter); }} className={`shrink-0 rounded-full border px-3 py-2 text-[10px] font-bold uppercase ${status === key ? "border-ice bg-ice/15 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{label}</button>
-              ))}
-            </ListFilters>
-          </div>
-        </header>
+          </ListFilters>
+          {counts.total > 0 ? <div className="order-3 w-full"><ClinicalListSummary icon={PackageCheck} eyebrow="Situação operacional" title={counts.atrasadas ? `${counts.atrasadas} retirada${counts.atrasadas === 1 ? "" : "s"} precisa${counts.atrasadas === 1 ? "" : "m"} de revisão` : counts.hoje ? `${counts.hoje} retirada${counts.hoje === 1 ? "" : "s"} para hoje` : "Agenda organizada"} detail={`${counts.agendadas} agendadas no histórico`} metrics={[{label:"Hoje",value:counts.hoje,tone:counts.hoje?"attention":"neutral"},{label:"Atrasadas",value:counts.atrasadas,tone:counts.atrasadas?"critical":"neutral"},{label:"Realizadas",value:counts.realizadas,tone:"positive"}]}/></div> : null}
+        </ListPageHeader>
 
         <section className="space-y-4 px-5 pt-4">
-          <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/fornecimento"); }} className="flex min-h-[64px] w-full items-center justify-between rounded-[24px] border border-ice/20 bg-ice/5 p-4 text-left"><span><span className="block text-xs font-bold text-ice">Fornecimento SUS e documentos</span><span className="mt-1 block text-[10px] text-ink-muted">Autorizações, anexos e preparo das próximas renovações</span></span><ChevronRight size={17} className="text-ice"/></button>
+          {(counts.atrasadas > 0 || counts.hoje > 0) ? <div className="grid grid-cols-2 gap-2">
+            <button type="button" disabled={!counts.hoje} onClick={() => { trigger("vibrate"); setStatus("hoje"); }} className="min-h-12 rounded-2xl border border-amber-400/20 bg-amber-400/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-amber-200">Hoje · {counts.hoje}</strong><span className="text-[9px] text-ink-muted">Abrir agenda atual</span></button>
+            <button type="button" disabled={!counts.atrasadas} onClick={() => { trigger("vibrate"); setStatus("atrasada"); }} className="min-h-12 rounded-2xl border border-coral/20 bg-coral/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-coral">Atrasadas · {counts.atrasadas}</strong><span className="text-[9px] text-ink-muted">Revisar pendências</span></button>
+          </div> : null}
+          <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/fornecimento"); }} className="flex min-h-[56px] w-full items-center justify-between rounded-[18px] border border-emerald-400/20 bg-emerald-400/[.05] px-3.5 py-3 text-left"><span><span className="block text-xs font-bold text-emerald-300">Fornecimento SUS e documentos</span><span className="mt-0.5 block text-[9px] text-ink-muted">Autorizações, anexos e preparo das próximas retiradas</span></span><ChevronRight size={16} className="text-emerald-300"/></button>
           {grouped.length === 0 ? (
             <EmptyState
               icon={Pill}
@@ -378,7 +367,7 @@ export default function RetiradasPage() {
               actionLabel={retiradas.length === 0 ? "Nova retirada" : undefined}
               onAction={
                 retiradas.length === 0
-                  ? () => router.push("/saude/retiradas/nova")
+                  ? () => navigateWithReturn("/saude/retiradas/nova")
                   : undefined
               }
             />
@@ -392,7 +381,7 @@ export default function RetiradasPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: monthIndex * 0.025 }}
-                  className="overflow-hidden rounded-[26px] border border-surface-border/50 bg-surface shadow-sm"
+                          className="overflow-hidden rounded-[20px] border border-surface-border/50 bg-surface shadow-sm"
                 >
                   <button
                     type="button"
@@ -542,7 +531,7 @@ export default function RetiradasPage() {
                                           key={retirada.id}
                                           onClick={() => {
                                             trigger("vibrate");
-                                            router.push(
+                        navigateWithReturn(
                                               `/saude/retiradas/detalhes?id=${retirada.id}`
                                             );
                                           }}
