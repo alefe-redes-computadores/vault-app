@@ -11,6 +11,8 @@ import {
 
 import {
   useRouter,
+  usePathname,
+  useSearchParams,
 } from "next/navigation";
 
 import {
@@ -18,9 +20,7 @@ import {
   AlertTriangle,
   History,
   Pill,
-
-  Search,
-  X,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -74,6 +74,9 @@ import {
   ListSearch,
 } from "@/components/list";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 
 // ============================================================
 // TIPOS
@@ -140,6 +143,12 @@ function getStatusClasses(
   return "border-coral/30 bg-coral/10 text-coral";
 }
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+function getTreatmentColor(treatment: Tratamento, fallback: string): string {
+  return HEX_COLOR.test(treatment.cor || "") ? treatment.cor! : fallback;
+}
+
 function getPrecoSeguro(
   value: Renovacao["preco"]
 ): number {
@@ -187,6 +196,9 @@ function TratamentoListContent() {
 
   const router =
     useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   const [
     filtroStatus,
@@ -566,6 +578,12 @@ function TratamentoListContent() {
     search.trim().length >
       0;
 
+  const treatmentCommand = useMemo(() => ({
+    linkedMedications: listaEnriquecida.reduce((total, item) => total + item.medicamentosCount, 0),
+    activeMedications: listaEnriquecida.reduce((total, item) => total + (item.status === "ativo" ? item.medicamentosAtivosCount : 0), 0),
+    insights: listaEnriquecida.filter((item) => Boolean(item.alertaPrincipal)).length,
+  }), [listaEnriquecida]);
+
   // ==========================================================
   // HANDLERS
   // ==========================================================
@@ -631,7 +649,10 @@ function TratamentoListContent() {
             ==================================================== */}
 
         <ListPageHeader
-          title="Seus Tratamentos"
+          title="Tratamentos"
+          badgeLabel="CUIDADO CONECTADO"
+          badgeColor="text-emerald-300"
+          rightAction={<button type="button" onClick={handleCreate} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95"><Plus size={15}/>Novo</button>}
           subtitle={
             filtroStatus ===
               "todos" &&
@@ -647,7 +668,7 @@ function TratamentoListContent() {
           }
         >
           {listaEnriquecida.length > 0 && (
-            <ListSearch initiallyExpanded
+            <ListSearch
               value={search}
               onChange={setSearch}
               placeholder="Buscar tratamento..."
@@ -755,6 +776,19 @@ function TratamentoListContent() {
             ==================================================== */}
 
         <section className="mx-auto max-w-3xl space-y-3.5 px-5 pt-4">
+          {listaEnriquecida.length > 0 ? (
+            <ClinicalListSummary
+              icon={Activity}
+              eyebrow="Comando do cuidado"
+              title={statusCounts.ativos ? `${statusCounts.ativos} tratamento${statusCounts.ativos === 1 ? "" : "s"} em andamento` : "Histórico de tratamentos"}
+              detail="Medicamentos e aquisições permanecem vinculados sem perder sua origem."
+              metrics={[
+                { label: "Em uso", value: treatmentCommand.activeMedications, tone: "positive" },
+                { label: "Vínculos", value: treatmentCommand.linkedMedications },
+                { label: "Revisar", value: treatmentCommand.insights, tone: treatmentCommand.insights ? "attention" : "neutral" },
+              ]}
+            />
+          ) : null}
           {filteredList.length ===
           0 ? (
             <EmptyState
@@ -793,34 +827,30 @@ function TratamentoListContent() {
                 ) {
                   return null;
                 }
+                const treatmentId = tratamento.id;
 
-                const theme =
-                  getClinicalTheme(
-                    tratamento.nome
-                  );
+                const theme = getClinicalTheme(tratamento.nome);
 
-                const IconComp =
-                  theme.icon;
+                const IconComp = getVaultTreatmentIcon(tratamento.nome);
+                const treatmentColor = getTreatmentColor(tratamento, theme.hex);
 
                 return (
                   <ListCard
                     key={
-                      tratamento.id
+                      treatmentId
                     }
                     id={
-                      tratamento.id
+                      treatmentId
                     }
                     color={
-                      theme.hex
+                      treatmentColor
                     }
                     onClick={() => {
                       trigger(
                         "vibrate"
                       );
 
-                      router.replace(
-                        `/saude/tratamentos/detalhes?id=${tratamento.id}`
-                      );
+                      router.push(withReturnTarget(`/saude/tratamentos/detalhes?id=${encodeURIComponent(treatmentId)}`, currentHref));
                     }}
                     delay={
                       Math.min(
@@ -830,6 +860,7 @@ function TratamentoListContent() {
                       0.025
                     }
                     density="compact"
+                    className="[content-visibility:auto] [contain-intrinsic-size:148px]"
                     icon={
                       <IconComp
                         size={

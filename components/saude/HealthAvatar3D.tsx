@@ -210,6 +210,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const knee=mesh(taperedBox(.162,.178,.155,.145),materials.skin,sign*.15,.79,.012);knee.raycast=()=>{};
       const patella=mesh(softBox(.086,.098,.018,.032),materials.skinShade,sign*.15,.79,.092);patella.raycast=()=>{};
       const calf=limb(.102,.079,.43,materials.skin,sign*.15,.55,.004);calf.raycast=()=>{};
+      // V190: coxa, joelho e panturrilha passam a ter planos contínuos em vez de cilindros
+      // isolados; são detalhes estáticos e preservam o renderer sob demanda.
+      const thighPlane=mesh(taperedBox(.105,.128,.255,.018),materials.skinShade,sign*.15,1.025,.108);thighPlane.rotation.z=-sign*.018;thighPlane.raycast=()=>{};
+      const kneeBridge=mesh(new THREE.CapsuleGeometry(.005,.055,2,7),materials.skinShade,sign*.15,.777,.098);kneeBridge.rotation.z=Math.PI/2;kneeBridge.raycast=()=>{};
+      const calfPlane=mesh(taperedBox(.072,.092,.245,.015),materials.skinShade,sign*.15,.565,.083);calfPlane.rotation.z=sign*.018;calfPlane.raycast=()=>{};
       oval(materials.skin,sign*.15,.37,.01,[.083,.105,.081]).raycast=()=>{};
       const ankle=limb(.076,.086,.14,materials.skin,sign*.15,.285,.018);ankle.raycast=()=>{};
       const ankleContour=mesh(taperedBox(.135,.16,.075,.145),materials.skin,sign*.15,.245,.026);ankleContour.raycast=()=>{};
