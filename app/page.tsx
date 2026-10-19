@@ -612,6 +612,12 @@ export default function HomePage() {
       [medicamentos]
     );
 
+  const medicamentosById =
+    useMemo(
+      () => new Map(medicamentos.map((medicamento: any) => [medicamento.id, medicamento])),
+      [medicamentos]
+    );
+
   // ==========================================================
   // ENTIDADES GLOBAIS
   // ==========================================================
@@ -2084,7 +2090,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.02,
             }}
-            className="relative overflow-hidden rounded-[30px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-[0_18px_50px_rgba(0,0,0,0.18)]"
+            className="relative overflow-hidden rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-[0_14px_38px_rgba(0,0,0,0.16)]"
           >
             <button
               type="button"
@@ -2129,7 +2135,7 @@ export default function HomePage() {
               </div>
 
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border"
                 style={{
                   borderColor:
                     `${resumoContextual.color}35`,
@@ -2180,7 +2186,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 border-t border-surface-border/40">
+            <div className="grid grid-cols-2 border-t border-surface-border/40 min-[380px]:grid-cols-4">
               <button
                 type="button"
                 onClick={() => {
@@ -2192,7 +2198,7 @@ export default function HomePage() {
                     "/hoje"
                   );
                 }}
-                className="border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
+                className="border-b border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50 min-[380px]:border-b-0"
               >
                 <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
                   <Calendar
@@ -2223,7 +2229,7 @@ export default function HomePage() {
                     true
                   );
                 }}
-                className="border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
+                className="border-b border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50 min-[380px]:border-b-0 min-[380px]:border-r"
               >
                 <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
                   <Clock
@@ -2336,7 +2342,7 @@ export default function HomePage() {
                 duration: 0.24,
                 delay: 0.04,
               }}
-              className="space-y-3"
+              className="vault-deferred space-y-3"
             >
               <div className="flex items-end justify-between gap-3">
                 <div>
@@ -2460,7 +2466,7 @@ export default function HomePage() {
                 duration: 0.24,
                 delay: 0.05,
               }}
-              className="space-y-3"
+              className="vault-deferred space-y-3"
             >
               <div className="flex items-end justify-between gap-3">
                 <div>
@@ -2842,7 +2848,7 @@ export default function HomePage() {
                       className="flex w-full items-center gap-3 rounded-[20px] border border-ice/25 bg-ice/[0.04] p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                        <MedicationFormatIcon formato={medicamentos.find(m => m.id === retirada.medicamento_id)?.formato} cores={medicamentos.find(m => m.id === retirada.medicamento_id)?.cores} size={22} />
+                        <MedicationFormatIcon formato={medicamentosById.get(retirada.medicamento_id)?.formato} cores={medicamentosById.get(retirada.medicamento_id)?.cores} size={22} />
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -2892,6 +2898,7 @@ export default function HomePage() {
                 delay:
                   0.08,
               }}
+              className="vault-deferred"
             >
               <div
                 className={`rounded-[24px] border p-4 shadow-sm ${
@@ -3051,7 +3058,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.08,
             }}
-            className="space-y-3"
+            className="vault-deferred-lg space-y-3"
           >
             <div className="flex items-center justify-between gap-3">
               <div>

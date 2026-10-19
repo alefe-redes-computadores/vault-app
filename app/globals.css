@@ -102,6 +102,19 @@ textarea:focus-visible {
   }
 }
 
+/* Conteúdo abaixo da dobra mantém o espaço previsto, mas só é pintado
+   quando se aproxima do viewport. Chromium/PWA ignora com segurança
+   navegadores sem suporte e preserva toda a árvore acessível. */
+.vault-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
+
+.vault-deferred-lg {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 520px;
+}
+
 .shadow-vault {
   box-shadow: var(--shadow-vault);
 }

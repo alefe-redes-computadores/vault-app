@@ -25,12 +25,12 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
 
   return (
-    <section className="space-y-5" aria-label="Central do Vault">
+    <section className="vault-deferred-lg space-y-5" aria-label="Central do Vault">
       <div>
         <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações frequentes em um só lugar</p></div><Stethoscope size={16} className="text-ice" /></div>
 
         <div className="grid grid-cols-2 gap-2.5">
-          <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex items-center gap-3 rounded-[24px] border border-emerald-400/25 bg-gradient-to-r from-emerald-400/10 to-surface p-4 text-left">
+          <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-emerald-400/25 bg-gradient-to-r from-emerald-400/10 to-surface p-3.5 text-left">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Pill size={21} /></div>
             <div className="min-w-0 flex-1"><p className="font-semibold text-ink-primary">Medicamentos</p><p className="mt-0.5 text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</p></div><ChevronRight size={17} className="text-emerald-300" />
           </button>
@@ -50,7 +50,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
 
       <div>
         <div className="mb-3 flex items-center gap-2"><FileText size={15} className="text-ice" /><div><h2 className="font-display text-sm font-semibold text-ink-primary">Organização</h2><p className="text-[10px] text-ink-muted">Arquivos, custos e rede de cuidado</p></div></div>
-        <div className="overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface">
+        <div className="overflow-hidden rounded-[20px] border border-surface-border/60 bg-surface">
           <button type="button" onClick={() => go("/saude/documentos")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><FileText size={18} className="text-ice" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Documentos de saúde</p><p className="text-[10px] text-ink-muted">Receitas, exames, laudos e acervo clínico</p></div><ChevronRight size={16} className="text-ink-faint" /></button>
           <button type="button" onClick={() => go("/saude/renovacao")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><ReceiptText size={18} className="text-emerald-400" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Compras de medicamentos</p><p className="text-[10px] text-ink-muted">R$ {gastoMes.toFixed(2).replace(".", ",")} no mês {diferencaMes ? `· ${diferencaMes > 0 ? "+" : "-"} R$ ${Math.abs(diferencaMes).toFixed(2).replace(".", ",")}` : ""}</p></div><ChevronRight size={16} className="text-ink-faint" /></button>
           <button type="button" onClick={() => go("/saude/rede")} className="flex w-full items-center gap-3 p-4 text-left"><Network size={18} className="text-cyan-400" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Sua rede</p><p className="text-[10px] text-ink-muted">{totalRede} profissionais e locais cadastrados</p></div><ChevronRight size={16} className="text-ink-faint" /></button>

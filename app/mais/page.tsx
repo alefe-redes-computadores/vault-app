@@ -1028,6 +1028,7 @@ export default function MaisPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, delay: 0.06 }}
+            className="vault-deferred"
           >
             <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Aparência
@@ -1118,6 +1119,7 @@ export default function MaisPage() {
               duration: 0.28,
               delay: 0.08,
             }}
+            className="vault-deferred"
           >
             <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Dados & Nuvem
@@ -1186,7 +1188,7 @@ export default function MaisPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.28, delay: 0.1 }}
-              className="overflow-hidden rounded-[22px] border border-violet-400/20 bg-violet-400/[0.035] shadow-sm"
+              className="vault-deferred overflow-hidden rounded-[20px] border border-violet-400/20 bg-violet-400/[0.035] shadow-sm"
             >
               <button
                 type="button"
@@ -1333,6 +1335,7 @@ export default function MaisPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, delay: 0.12 }}
+            className="vault-deferred"
           >
             <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
               Ajuda
@@ -1381,6 +1384,7 @@ export default function MaisPage() {
               duration: 0.28,
               delay: 0.14,
             }}
+            className="vault-deferred"
           >
             <button
               onClick={() =>
@@ -1429,7 +1433,7 @@ export default function MaisPage() {
               duration: 0.34,
               delay: 0.2,
             }}
-            className="pb-3 pt-1 text-center"
+            className="vault-deferred pb-3 pt-1 text-center"
           >
             <p className="text-xs text-ink-faint">
               Vault v{APP_VERSION}

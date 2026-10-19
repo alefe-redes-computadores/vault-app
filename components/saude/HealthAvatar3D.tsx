@@ -289,13 +289,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     for(const side of [-1,1]) {
       const x=side*.15;
-      const sole=mesh(taperedBox(.225,.30,.038,.46),materials.white,x,.127,.075);sole.raycast=()=>{};
-      const outsole=mesh(taperedBox(.23,.305,.015,.475),materials.dark,x,.106,.073);outsole.raycast=()=>{};
-      const shoe=mesh(taperedBox(.215,.278,.115,.415),materials.sneakers,x,.192,.088);shoe.raycast=()=>{};
+      // V196: o mesmo orçamento de meshes agora forma um tênis mais estreito no
+      // calcanhar e mais orgânico na ponta, reduzindo a antiga silhueta de bloco.
+      const sole=mesh(taperedBox(.218,.286,.034,.445),materials.white,x,.127,.075);sole.raycast=()=>{};
+      const outsole=mesh(taperedBox(.224,.292,.014,.458),materials.dark,x,.106,.073);outsole.raycast=()=>{};
+      const shoe=mesh(taperedBox(.205,.264,.108,.398),materials.sneakers,x,.192,.088);shoe.raycast=()=>{};
       shoe.rotation.x=-.035;
-      const vamp=mesh(taperedBox(.145,.235,.046,.225),materials.sneakers,x,.238,.225);vamp.rotation.x=-.16;vamp.raycast=()=>{};
-      const toe=oval(materials.sneakers,x,.187,.29,[.14,.062,.148]);toe.raycast=()=>{};
-      const toeTop=mesh(taperedBox(.11,.18,.021,.17),materials.white,x,.235,.268);toeTop.rotation.x=-.16;toeTop.raycast=()=>{};
+      const vamp=mesh(taperedBox(.138,.218,.043,.215),materials.sneakers,x,.238,.22);vamp.rotation.x=-.16;vamp.raycast=()=>{};
+      const toe=oval(materials.sneakers,x,.187,.28,[.128,.057,.14]);toe.raycast=()=>{};
+      const toeTop=mesh(taperedBox(.10,.165,.019,.16),materials.white,x,.235,.258);toeTop.rotation.x=-.16;toeTop.raycast=()=>{};
       const toeGuard=mesh(new THREE.CapsuleGeometry(.014,.19,3,10),materials.white,x,.153,.423);toeGuard.rotation.z=Math.PI/2;toeGuard.raycast=()=>{};
       // V191: linhas de construção suavizam a leitura frontal, lateral e traseira do tênis
       // sem animação contínua ou geometria de alta densidade.

@@ -468,6 +468,13 @@ export default function HojePage() {
       ]
     );
 
+  // V196: one indexed lookup shared by timeline, appointments and actions.
+  // This avoids repeatedly scanning the full medication collection while rendering.
+  const medicamentosById = useMemo(
+    () => new Map<string, any>(medicamentos.map((medicamento: any) => [medicamento.id, medicamento])),
+    [medicamentos]
+  );
+
   const regulatoryProfiles =
     useMedicationRegulatoryProfiles(
       medicamentos
@@ -950,15 +957,7 @@ export default function HojePage() {
           return null;
         }
 
-        const medicamento =
-          medicamentos.find(
-            (
-              item:
-                any
-            ) =>
-              item.id ===
-              retroReviewMedicationId
-          );
+        const medicamento = medicamentosById.get(retroReviewMedicationId);
 
         if (
           !medicamento
@@ -1551,9 +1550,7 @@ export default function HojePage() {
     for (const log of doseLogs || []) {
       if (!log.medicamento_id) continue;
 
-      const med = medicamentos.find(
-        (m) => m.id === log.medicamento_id
-      );
+      const med = medicamentosById.get(log.medicamento_id);
 
       if (!med) continue;
 
@@ -1995,7 +1992,7 @@ export default function HojePage() {
 
   // V141: pending stockless doses are visible, but never silently marked taken or ignored.
   const dosesSemEstoqueNoLote = dosesElegiveisLote.filter(d=>{
-    const med=medicamentos.find(m=>m.id===d.medicamentoId);
+    const med=d.medicamentoId ? medicamentosById.get(d.medicamentoId) : undefined;
     return med ? hasKnownEmptyMedicationStock(med) : false;
   });
   const chavesSemEstoqueNoLote = new Set(dosesSemEstoqueNoLote.map(d=>`${d.medicamentoId}-${d.horario}`));
@@ -2384,7 +2381,7 @@ export default function HojePage() {
       // O repository registra o DoseLog e movimenta o estoque.
       // ======================================================
 
-      const medicamentoDaDose=medicamentos.find(m=>m.id===item.medicamentoId);
+      const medicamentoDaDose=medicamentosById.get(item.medicamentoId);
       if (medicamentoDaDose && hasKnownEmptyMedicationStock(medicamentoDaDose)) {
         showToast("Estoque registrado zerado. Confira o saldo ou registre que a dose não foi tomada.","info");
         return;
@@ -3446,7 +3443,7 @@ export default function HojePage() {
           )}
 
           {remindersDoDia.length > 0 && (
-            <section className="space-y-3" aria-label="Lembretes de saúde do dia">
+            <section className="vault-deferred space-y-3" aria-label="Lembretes de saúde do dia">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2">
                   <Bell size={16} className="text-ice" />
@@ -3485,7 +3482,7 @@ export default function HojePage() {
 
           {renovacoesReceitaHoje.length >
             0 && (
-            <div className="space-y-3">
+            <div className="vault-deferred space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2">
                   <Pill size={16} className="text-emerald-400" />
@@ -3604,7 +3601,7 @@ export default function HojePage() {
           ======================================================= */}
           {compromissosFiltrados.length >
             0 && (
-            <div className="space-y-3">
+            <div className="vault-deferred space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2">
                   <Calendar
@@ -3664,7 +3661,7 @@ export default function HojePage() {
                       }
 
                       if (isRetirada) {
-                        const med = medicamentos.find(m => m.id === item.medicamento_id);
+                        const med = medicamentosById.get(item.medicamento_id);
                         return <MedicationFormatIcon formato={med?.formato} cores={med?.cores} size={26} />;
                       }
 
@@ -3743,7 +3740,7 @@ export default function HojePage() {
                             item
                           )
                         }
-                        className={`w-full rounded-[24px] border p-4 text-left transition-all ${getColor()}`}
+                        className={`w-full rounded-[20px] border p-3.5 text-left transition-all ${getColor()}`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-raised">
@@ -3886,7 +3883,7 @@ export default function HojePage() {
                 return (
                   <div
                     key={key}
-                    className="space-y-2"
+                    className="vault-deferred-lg space-y-2"
                   >
                     <div className="flex items-end justify-between gap-4 px-1">
                       <div className="flex items-center gap-2">
@@ -3944,7 +3941,7 @@ export default function HojePage() {
                                 style={{
                                   borderLeft: `6px solid ${item.cor}`,
                                 }}
-                                className="group relative flex w-full flex-col gap-3 rounded-[24px] border border-amber-400/30 bg-amber-400/5 p-4 text-left shadow-sm transition-all hover:border-amber-400/60"
+                                className="group relative flex w-full flex-col gap-3 rounded-[20px] border border-amber-400/30 bg-amber-400/5 p-3.5 text-left shadow-sm transition-all hover:border-amber-400/60"
                               >
                                 <div className="flex items-start gap-3">
                                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
@@ -4480,14 +4477,9 @@ export default function HojePage() {
                                                 "vibrate"
                                               );
 
-                                              const med =
-                                                medicamentos.find(
-                                                  (
-                                                    m
-                                                  ) =>
-                                                    m.id ===
-                                                    item.medicamentoId
-                                                );
+                                              const med = item.medicamentoId
+                                                ? medicamentosById.get(item.medicamentoId)
+                                                : undefined;
 
                                               if (
                                                 med
