@@ -239,16 +239,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     if (appearance.hat !== "none") {
       const crown=mesh(new THREE.SphereGeometry(.246,28,16,0,Math.PI*2,0,Math.PI/2),materials.cap,0,2.98,-.01,[1,.75,.93]);
       crown.raycast=()=>{};
-      const crownFront=mesh(softBox(.31,.13,.018,.04),materials.cap,0,3.035,.178);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
+      const crownFront=mesh(softBox(.292,.122,.018,.04),materials.cap,0,3.035,.172);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
       const capButton=mesh(new THREE.SphereGeometry(.018,10,6),materials.white,0,3.165,-.012);capButton.raycast=()=>{};
       const crownSide=mesh(new THREE.CylinderGeometry(.225,.244,.12,18,1,true),materials.cap,0,3.012,-.008);crownSide.raycast=()=>{};
-      // A aba acompanha a largura real da cabeça: nas vistas frontais ela não vira uma faixa flutuante.
-      const brim=mesh(taperedBox(appearance.hat==="flat"?.285:.27,appearance.hat==="flat"?.32:.30,.019,.18),materials.cap,0,2.984,.205);
+      // V197: copa e aba continuam legíveis de frente, mas ficam contidas na largura
+      // do rosto para não formar as antigas faixas flutuantes sobre os óculos.
+      const brim=mesh(taperedBox(appearance.hat==="flat"?.258:.246,appearance.hat==="flat"?.292:.278,.017,.158),materials.cap,0,2.987,.198);
       brim.rotation.x=appearance.hat==="baseball"?-.19:-.085;
       brim.raycast=()=>{};
-      const underBrim=mesh(taperedBox(.255,appearance.hat==="flat"?.30:.28,.004,.165),materials.dark,0,2.971,.207);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
-      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.292:.277,.003,.007),materials.shirtDetail,0,2.963,.276);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
-      const brimStitch=mesh(new THREE.TorusGeometry(.118,.0014,4,24,Math.PI),materials.white,0,2.982,.238);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
+      const underBrim=mesh(taperedBox(.232,appearance.hat==="flat"?.272:.258,.004,.143),materials.dark,0,2.975,.2);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
+      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.274:.26,.003,.006),materials.shirtDetail,0,2.969,.257);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
+      const brimStitch=mesh(new THREE.TorusGeometry(.104,.0014,4,24,Math.PI),materials.white,0,2.985,.224);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {

@@ -461,42 +461,26 @@ export default function MedicamentosListPage() {
   const statsProgresso =
     useMemo(
       () => {
-        const continuos =
-          listaBase.filter(
-            (
-              item
-            ) =>
-              !item.isSOS &&
-              !item.isSuspenso
-          );
+        let total = 0;
+        let completados = 0;
+        let ignoradas = 0;
+        let ativos = 0;
 
-        const total =
-          continuos.reduce(
-            (
-              acc,
-              item
-            ) =>
-              acc +
-              item.dosesEsperadasHoje,
-            0
-          );
+        // V197: uma única passagem alimenta resumo e cabeçalho da lista.
+        for (const item of listaBase) {
+          if (!item.isSuspenso) ativos += 1;
+          if (item.isSOS || item.isSuspenso) continue;
 
-        const completados =
-          continuos.reduce(
-            (
-              acc,
-              item
-            ) =>
-              acc +
-              Math.min(
-                item.dosesTomadasHoje,
-                item.dosesEsperadasHoje
-              ),
-            0
+          total += item.dosesEsperadasHoje;
+          completados += Math.min(item.dosesTomadasHoje, item.dosesEsperadasHoje);
+          ignoradas += Math.min(
+            item.dosesIgnoradasHoje,
+            Math.max(0, item.dosesEsperadasHoje - item.dosesTomadasHoje),
           );
+        }
 
-        const ignoradas = continuos.reduce((sum, item) => sum + Math.min(item.dosesIgnoradasHoje, Math.max(0, item.dosesEsperadasHoje - item.dosesTomadasHoje)), 0);
         return {
+          ativos,
           total,
           completados,
           ignoradas,
@@ -1350,13 +1334,7 @@ export default function MedicamentosListPage() {
     );
   }
 
-  const totalAtivos =
-    listaBase.filter(
-      (
-        item
-      ) =>
-        !item.isSuspenso
-    ).length;
+  const totalAtivos = statsProgresso.ativos;
 
   // ==========================================================
   // RENDER
@@ -1541,7 +1519,7 @@ export default function MedicamentosListPage() {
                   key={value}
                   type="button"
                   onClick={() => selectMedicationFilter(value)}
-                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition-all active:scale-[0.97] ${
+                  className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold transition-all active:scale-[0.97] ${
                     medicationFilter === value
                       ? value === "atencao"
                         ? "border-amber-400/35 bg-amber-400/10 text-amber-300"

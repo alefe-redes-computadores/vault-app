@@ -3162,7 +3162,7 @@ function MedicamentoDetalhesContent() {
                     scale:
                       0.96,
                   }}
-                  className="absolute right-5 top-[68px] z-50 w-60 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface p-1.5 shadow-2xl"
+                  className="absolute right-5 top-[68px] z-50 w-60 overflow-hidden rounded-[18px] border border-surface-border/60 bg-surface p-1.5 shadow-2xl"
                 >
                   <div className="px-3 pb-2 pt-3">
                     <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-ink-faint">
@@ -3230,14 +3230,14 @@ function MedicamentoDetalhesContent() {
 
 
 
-        <div className="mx-auto max-w-3xl space-y-6 px-5 pt-5">
+        <div className="mx-auto max-w-3xl space-y-4 px-5 pt-4">
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
               HERO
               ================================================== */}
 
           <HealthSupplyEntry medicamentoId={med.id!}/>
-          <section className="relative overflow-hidden rounded-[24px] border border-surface-border/70 bg-surface shadow-lg">
+          <section className="relative overflow-hidden rounded-[20px] border border-surface-border/70 bg-surface shadow-lg">
             <div
               className="absolute bottom-0 left-0 top-0 w-1.5"
               style={{
@@ -3642,7 +3642,7 @@ function MedicamentoDetalhesContent() {
                     height:
                       0,
                   }}
-                  className={`rounded-[24px] border p-4 ${
+                  className={`rounded-[20px] border p-3.5 ${
                     alertaInteligente.urgencia ===
                     "alta"
                       ? "border-coral/30 bg-coral/10"
@@ -3771,7 +3771,7 @@ function MedicamentoDetalhesContent() {
                 y:
                   0,
               }}
-              className={`rounded-[24px] border p-4 ${
+              className={`rounded-[20px] border p-3.5 ${
                 comportamento.tipo ===
                 "alerta_adesao"
                   ? "border-amber-400/30 bg-amber-400/10"
@@ -3849,7 +3849,7 @@ function MedicamentoDetalhesContent() {
           {(med.status !==
             "descontinuado" ||
             isSOS) && (
-            <section className="space-y-3">
+            <section className="vault-deferred space-y-3">
               <SectionTitle
                 icon={
                   <Clock
@@ -3861,7 +3861,7 @@ function MedicamentoDetalhesContent() {
                 title="Rotina & Uso"
               />
 
-              <div className="rounded-[26px] border border-surface-border/60 bg-surface p-5">
+              <div className="rounded-[20px] border border-surface-border/60 bg-surface p-4">
                 {isSOS ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
@@ -4129,7 +4129,7 @@ function MedicamentoDetalhesContent() {
               trigger("vibrate");
               router.push(`/saude/medicamentos/historico?id=${id}`);
             }}
-            className="flex w-full items-center justify-between gap-4 rounded-[24px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-4 py-4 text-left shadow-sm transition-all active:scale-[0.985]"
+            className="vault-deferred flex w-full items-center justify-between gap-4 rounded-[20px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-3.5 py-3 text-left shadow-sm transition-all active:scale-[0.985]"
           >
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
@@ -4156,9 +4156,9 @@ function MedicamentoDetalhesContent() {
               isSOS) &&
             temEstoque && (
               <section
-                className={`overflow-hidden rounded-[28px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
+                className={`vault-deferred overflow-hidden rounded-[22px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
               >
-                <div className="rounded-[24px] bg-surface p-5">
+                <div className="rounded-[18px] bg-surface p-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
@@ -4355,7 +4355,7 @@ function MedicamentoDetalhesContent() {
 
           {med.status ===
             "descontinuado" && (
-            <section className="space-y-3">
+            <section className="vault-deferred space-y-3">
               <SectionTitle
                 icon={
                   <AlertCircle
@@ -4367,7 +4367,7 @@ function MedicamentoDetalhesContent() {
                 title="Suspensão"
               />
 
-              <div className="space-y-3 rounded-[26px] border border-coral/20 bg-coral/5 p-5">
+              <div className="space-y-3 rounded-[20px] border border-coral/20 bg-coral/5 p-4">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-wide text-coral">
                     Medicamento suspenso
@@ -4518,7 +4518,7 @@ function MedicamentoDetalhesContent() {
           {med.historico_dosagens &&
             med.historico_dosagens.length >
               0 && (
-              <section className="space-y-3">
+              <section className="vault-deferred space-y-3">
                 <SectionTitle
                   icon={
                     <TrendingUp
@@ -4530,7 +4530,7 @@ function MedicamentoDetalhesContent() {
                   title="Evolução da Dosagem"
                 />
 
-                <div className="rounded-[26px] border border-surface-border/60 bg-surface p-5">
+                <div className="rounded-[20px] border border-surface-border/60 bg-surface p-4">
                   <div className="relative ml-3 space-y-6 border-l-2 border-surface-border pb-1">
                     <div className="relative pl-6">
                       <div className="absolute -left-[9px] top-0 flex h-4 w-4 items-center justify-center rounded-full border-2 border-ice bg-surface">
@@ -4595,7 +4595,7 @@ function MedicamentoDetalhesContent() {
             0 ||
             typeof med.preco ===
               "number") && (
-            <section className="space-y-3">
+            <section className="vault-deferred space-y-3">
               <SectionTitle
                 icon={
                   <LineChart
@@ -4666,7 +4666,7 @@ function MedicamentoDetalhesContent() {
               REDE
               ================================================== */}
 
-          <section className="space-y-3">
+          <section className="vault-deferred space-y-3">
             <SectionTitle
               icon={
                 <Stethoscope
@@ -4949,7 +4949,7 @@ function MedicamentoDetalhesContent() {
               RECEITA
               ================================================== */}
 
-          <section className="space-y-3">
+          <section className="vault-deferred space-y-3">
             <SectionTitle
               icon={
                 <FileText
@@ -4986,7 +4986,7 @@ function MedicamentoDetalhesContent() {
               }
             />
 
-            <div className="rounded-[24px] border border-surface-border bg-surface p-4">
+            <div className="rounded-[20px] border border-surface-border bg-surface p-3.5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-ink-primary">

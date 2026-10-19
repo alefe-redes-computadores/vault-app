@@ -578,11 +578,20 @@ function TratamentoListContent() {
     search.trim().length >
       0;
 
-  const treatmentCommand = useMemo(() => ({
-    linkedMedications: listaEnriquecida.reduce((total, item) => total + item.medicamentosCount, 0),
-    activeMedications: listaEnriquecida.reduce((total, item) => total + (item.status === "ativo" ? item.medicamentosAtivosCount : 0), 0),
-    insights: listaEnriquecida.filter((item) => Boolean(item.alertaPrincipal)).length,
-  }), [listaEnriquecida]);
+  const treatmentCommand = useMemo(() => {
+    let linkedMedications = 0;
+    let activeMedications = 0;
+    let insights = 0;
+
+    // V197: o comando clínico é calculado em uma única passagem.
+    for (const item of listaEnriquecida) {
+      linkedMedications += item.medicamentosCount;
+      if (item.status === "ativo") activeMedications += item.medicamentosAtivosCount;
+      if (item.alertaPrincipal) insights += 1;
+    }
+
+    return { linkedMedications, activeMedications, insights };
+  }, [listaEnriquecida]);
 
   // ==========================================================
   // HANDLERS
@@ -693,7 +702,7 @@ function TratamentoListContent() {
                 filtroStatus ===
                 "ativo"
               }
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
                 filtroStatus ===
                 "ativo"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
@@ -722,7 +731,7 @@ function TratamentoListContent() {
                 filtroStatus ===
                 "concluido"
               }
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
                 filtroStatus ===
                 "concluido"
                   ? "border-ice bg-ice/20 text-ice"
@@ -751,7 +760,7 @@ function TratamentoListContent() {
                 filtroStatus ===
                 "suspenso"
               }
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.04em] transition-all active:scale-95 ${
                 filtroStatus ===
                 "suspenso"
                   ? "border-coral bg-coral/20 text-coral"

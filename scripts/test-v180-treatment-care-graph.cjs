@@ -20,7 +20,7 @@ assert(care.includes('encodeURIComponent(withdrawal.id!)'));
 assert(projection.includes("medIds.has(i.medicamento_id)"));
 assert(projection.includes("cycles.get(i.ciclo_id)?.processo_id===i.processo_id"));
 assert(projection.includes("treatment.user_id!==userId||treatment.person_id!==personId"));
-assert(detail.includes('rounded-[24px] border bg-surface p-4'));
+assert(detail.includes('rounded-[20px] border bg-surface p-4'));
 assert(detail.includes('border-emerald-400/15 bg-emerald-400/[0.055]'));
 assert(avatar.includes("shirtDetail"));
 assert(avatar.includes("multiplyScalar(.55)"));

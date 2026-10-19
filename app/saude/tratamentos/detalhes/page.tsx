@@ -540,6 +540,20 @@ function TratamentoContent() {
 
   const careContext=useMemo(()=>treatmentCareContext(tratamento,linkedMedicamentos,documentosDaPessoa,renovacoes,retiradas,supply.data,user?.id||"",activePersonId||""),[tratamento,linkedMedicamentos,documentosDaPessoa,renovacoes,retiradas,supply.data,user?.id,activePersonId]);
   const linkedRenovacoes=careContext.renewals;
+  const linkedMedicamentosById = useMemo(
+    () => new Map(linkedMedicamentos.flatMap((medicamento) => medicamento.id ? [[medicamento.id, medicamento] as const] : [])),
+    [linkedMedicamentos],
+  );
+  const linkedRenovacoesByMedication = useMemo(() => {
+    const index = new Map<string, typeof linkedRenovacoes>();
+    for (const renovacao of linkedRenovacoes) {
+      if (!renovacao.medicamento_id) continue;
+      const rows = index.get(renovacao.medicamento_id);
+      if (rows) rows.push(renovacao);
+      else index.set(renovacao.medicamento_id, [renovacao]);
+    }
+    return index;
+  }, [linkedRenovacoes]);
 
   // ==========================================================
   // INTELIGÊNCIA DO TRATAMENTO
@@ -733,9 +747,7 @@ function TratamentoContent() {
         continue;
       }
 
-      const historico = linkedRenovacoes.filter(
-        (renovacao) => renovacao.medicamento_id === medicamento.id,
-      );
+      const historico = linkedRenovacoesByMedication.get(medicamento.id) || [];
 
       const economia = calcularEconomia(historico);
 
@@ -754,7 +766,7 @@ function TratamentoContent() {
     }
 
     return result;
-  }, [linkedMedicamentos, linkedRenovacoes]);
+  }, [linkedMedicamentos, linkedRenovacoesByMedication]);
 
   // ==========================================================
   // SUS
@@ -1097,7 +1109,7 @@ function TratamentoContent() {
 
                           ease: [0.16, 1, 0.3, 1],
                         }}
-                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface shadow-2xl"
+                        className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-[18px] border border-surface-border/60 bg-surface shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                       >
                         <div className="px-3 pb-2 pt-3.5">
@@ -1158,12 +1170,12 @@ function TratamentoContent() {
         />
 
 
-        <section className="space-y-6 px-5 pt-6">
+        <section className="space-y-4 px-5 pt-5">
           <motion.div
             variants={fadeUp}
             initial="initial"
             animate="animate"
-            className={`relative overflow-hidden rounded-[24px] border bg-surface p-4 shadow-sm ${theme.borderClass}`}
+            className={`relative overflow-hidden rounded-[20px] border bg-surface p-4 shadow-sm ${theme.borderClass}`}
             style={{
               borderLeft: `6px solid ${theme.hex}`,
             }}
@@ -1331,7 +1343,7 @@ function TratamentoContent() {
               transition={{
                 delay: 0.02,
               }}
-              className="space-y-2 rounded-[24px] border border-amber-400/20 bg-amber-400/5 p-4"
+              className="vault-deferred space-y-2 rounded-[20px] border border-amber-400/20 bg-amber-400/5 p-3.5"
             >
               <div className="flex items-center gap-2">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
@@ -1386,7 +1398,7 @@ function TratamentoContent() {
             transition={{
               delay: 0.03,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             <SectionTitle
               icon={<History size={15} />}
@@ -1402,7 +1414,7 @@ function TratamentoContent() {
             />
 
             {timeline.length === 0 ? (
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-5 text-center">
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-sm text-ink-muted">
                   Nenhum evento clínico vinculado a este tratamento.
                 </p>
@@ -1472,7 +1484,7 @@ function TratamentoContent() {
             transition={{
               delay: 0.02,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             <SectionTitle
               icon={<Activity size={15} />}
@@ -1535,14 +1547,14 @@ function TratamentoContent() {
             transition={{
               delay: 0.04,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             <SectionTitle
               icon={<Receipt size={15} />}
               title="Histórico de Aquisições"
             />
 
-            <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
+            <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
@@ -1580,7 +1592,7 @@ function TratamentoContent() {
                 opacity: 1,
                 y: 0,
               }}
-              className="space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4"
+              className="vault-deferred space-y-2 rounded-[20px] border border-surface-border/50 bg-surface p-3.5"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -1663,7 +1675,7 @@ function TratamentoContent() {
             transition={{
               delay: 0.04,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             <SectionTitle icon={<Users size={15} />} title="Rede de Apoio" />
 
@@ -1762,7 +1774,7 @@ function TratamentoContent() {
               transition={{
                 delay: 0.05,
               }}
-              className="space-y-3"
+              className="vault-deferred space-y-3"
             >
               <SectionTitle
                 icon={<Clock size={15} />}
@@ -1778,9 +1790,9 @@ function TratamentoContent() {
 
               <div className="space-y-2">
                 {linkedRenovacoes.slice(0, 5).map((renovacao) => {
-                  const medicamento = linkedMedicamentos.find(
-                    (item) => item.id === renovacao.medicamento_id,
-                  );
+                  const medicamento = renovacao.medicamento_id
+                    ? linkedMedicamentosById.get(renovacao.medicamento_id)
+                    : undefined;
 
                   return (
                     <button
@@ -1841,7 +1853,7 @@ function TratamentoContent() {
             transition={{
               delay: 0.06,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             {/* V130: fornecimento relacional — navigation is filtered by this treatment's medications. */}
             <button type="button" onClick={() => {
@@ -1864,7 +1876,7 @@ function TratamentoContent() {
             />
 
             {medicamentosAtivos.length === 0 ? (
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-sm text-ink-muted">
                   Nenhum medicamento ativo vinculado a este tratamento.
                 </p>
@@ -1882,7 +1894,7 @@ function TratamentoContent() {
                         `/saude/medicamentos/detalhes?id=${medicamento.id}`,
                       );
                     }}
-                    className="group relative w-full cursor-pointer rounded-[24px] border border-surface-border/50 bg-surface p-4 text-left shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
+                    className="group relative w-full cursor-pointer rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all hover:border-ice/30 active:scale-[0.98]"
                     style={{
                       borderLeft: `4px solid ${getMedicationRegulatorySurface(medicamento.id ? regulatoryProfiles[medicamento.id] : undefined).rail}`,
                     }}
@@ -1949,7 +1961,7 @@ function TratamentoContent() {
               transition={{
                 delay: 0.08,
               }}
-              className="space-y-3"
+              className="vault-deferred space-y-3"
             >
               <SectionTitle
                 icon={<History size={15} />}
@@ -2013,7 +2025,7 @@ function TratamentoContent() {
             transition={{
               delay: 0.1,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             <SectionTitle
               icon={<FileText size={15} />}
@@ -2029,7 +2041,7 @@ function TratamentoContent() {
             />
 
             {linkedDocuments.length === 0 ? (
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface-raised/50 p-6 text-center">
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-sm text-ink-muted">
                   Nenhum documento ou laudo vinculado a este tratamento.
                 </p>

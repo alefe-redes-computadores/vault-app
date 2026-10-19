@@ -18,7 +18,7 @@ assert.match(today, /!item\.ignorada &&\s+isHoje &&/);
 assert.match(avatar, /V167: face planes/);
 assert.match(avatar, /fingerIndex<4/);
 assert.match(avatar, /const toe=oval/);
-assert.ok(/\.52:\.49/.test(avatar) || /\.47:\.44/.test(avatar) || /\.43:\.40/.test(avatar) || /\.32:\.30/.test(avatar), "aba frontal preservada com proporção versionada");
+assert.ok(/\.292:\.278/.test(avatar) && /\.258:\.246/.test(avatar), "aba frontal preservada com proporção versionada e contida");
 assert.match(avatar, /const underBrim=mesh/);
 assert.match(avatar, /powerPreference: "low-power"/);
 assert.match(avatar, /IntersectionObserver/);
