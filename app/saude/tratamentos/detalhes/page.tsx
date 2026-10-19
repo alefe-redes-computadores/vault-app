@@ -1163,7 +1163,7 @@ function TratamentoContent() {
             variants={fadeUp}
             initial="initial"
             animate="animate"
-            className={`relative overflow-hidden rounded-[32px] border bg-surface p-6 shadow-sm ${theme.borderClass}`}
+            className={`relative overflow-hidden rounded-[24px] border bg-surface p-4 shadow-sm ${theme.borderClass}`}
             style={{
               borderLeft: `6px solid ${theme.hex}`,
             }}
@@ -1174,15 +1174,15 @@ function TratamentoContent() {
               <IconComp size={180} />
             </div>
 
-            <div className="relative z-10 flex items-start gap-4">
+            <div className="relative z-10 flex items-start gap-3">
               <div
-                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm ${theme.bgClass} ${theme.borderClass} ${theme.textClass}`}
               >
-                <IconComp size={28} />
+                <IconComp size={22} />
               </div>
 
               <div className="min-w-0 pt-1">
-                <h2 className="font-display text-2xl font-bold leading-tight text-ink-primary">
+                <h2 className="font-display text-xl font-bold leading-tight text-ink-primary">
                   {tratamento.nome}
                 </h2>
 
@@ -1280,14 +1280,14 @@ function TratamentoContent() {
             )}
 
             {statsSus.hasSus && (
-              <div className="relative z-10 mt-3 flex items-start gap-2 rounded-xl border border-blue-400/20 bg-blue-400/10 p-2.5">
+              <div className="relative z-10 mt-3 flex items-start gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] p-2.5">
                 <Building2
                   size={16}
-                  className="mt-0.5 shrink-0 text-blue-400"
+                  className="mt-0.5 shrink-0 text-emerald-300"
                 />
 
-                <p className="text-[11px] leading-relaxed text-blue-200">
-                  <span className="font-semibold text-blue-400">
+                <p className="text-[11px] leading-relaxed text-ink-muted">
+                  <span className="font-semibold text-emerald-300">
                     Aquisição registrada via SUS:
                   </span>{" "}
                   {statsSus.isAllSus
@@ -1297,7 +1297,7 @@ function TratamentoContent() {
               </div>
             )}
 
-            <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 border-t border-surface-border/50 pt-5">
+            <div className="relative z-10 mt-4 grid grid-cols-3 gap-1.5 border-t border-surface-border/50 pt-4">
               <StatCard
                 icon={<Pill size={14} />}
                 label="Em uso"

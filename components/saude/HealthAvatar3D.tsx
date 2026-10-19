@@ -65,6 +65,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const materials = {
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .58, metalness: .012 }),
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
+      shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.55), roughness: .82 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
       hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .9 }),
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .94, transparent:true, opacity:.88 }),
@@ -146,7 +147,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     mesh(softBox(.54,.25,.35),materials.bottom,0,1.535,0);
     // Collar bones and shoulder caps soften the torso-to-arm transition in every view.
     for(const sign of [-1,1]){
-      const collar=mesh(new THREE.CapsuleGeometry(.008,.105,3,8),materials.dark,sign*.082,2.383,.174);collar.rotation.z=sign*1.08;collar.raycast=()=>{};
+      const collar=mesh(new THREE.CapsuleGeometry(.006,.082,3,8),materials.shirtDetail,sign*.067,2.389,.174);collar.rotation.z=sign*1.02;collar.raycast=()=>{};
       oval(materials.top,sign*.303,2.323,0,[.135,.142,.157]);
     }
     mesh(new THREE.TorusGeometry(.108,.012,6,24),materials.dark,0,2.43,0).rotation.x=Math.PI/2;
@@ -370,7 +371,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging,compact,constrainedDevice);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
     const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
     setMarkers(markersRef.current);
-    controller.current={style:value=>{materials.top.color.set(value.topColor);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+    controller.current={style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};
