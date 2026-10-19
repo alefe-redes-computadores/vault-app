@@ -153,6 +153,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
     mesh(shirtGeometry,materials.top,0,1.665,0);
     mesh(softBox(.54,.25,.35),materials.bottom,0,1.535,0);
+    // V186: a transição pélvica acompanha o tronco e os shorts; o corpo deixa de parecer
+    // dois blocos apoiados um sobre o outro quando observado de lado ou pelas costas.
+    const waist=mesh(taperedBox(.49,.535,.145,.34),materials.bottom,0,1.505,.002);waist.raycast=()=>{};
+    const waistSeam=mesh(new THREE.BoxGeometry(.515,.018,.355),materials.shirtDetail,0,1.565,.004);waistSeam.raycast=()=>{};
     // Collar bones and shoulder caps soften the torso-to-arm transition in every view.
     for(const sign of [-1,1]){
       const collar=mesh(new THREE.CapsuleGeometry(.006,.082,3,8),materials.shirtDetail,sign*.067,2.389,.174);collar.rotation.z=sign*1.02;collar.raycast=()=>{};
@@ -193,6 +197,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const calf=limb(.102,.079,.43,materials.skin,sign*.15,.55,.004);calf.raycast=()=>{};
       oval(materials.skin,sign*.15,.37,.01,[.083,.105,.081]).raycast=()=>{};
       const ankle=limb(.076,.086,.14,materials.skin,sign*.15,.285,.018);ankle.raycast=()=>{};
+      const ankleContour=mesh(taperedBox(.135,.16,.075,.145),materials.skin,sign*.15,.245,.026);ankleContour.raycast=()=>{};
       // Olhos em três planos: esclera baixa, íris e pupila. O formato horizontal evita a leitura de “olhos redondos colados”.
       oval(materials.white,sign*.083,2.82,.214,[.042,.019,.014]);
       oval(materials.iris,sign*.083,2.82,.228,[.017,.016,.007]);
@@ -259,11 +264,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const outsole=mesh(taperedBox(.23,.305,.015,.475),materials.dark,x,.106,.073);outsole.raycast=()=>{};
       const shoe=mesh(taperedBox(.215,.278,.115,.415),materials.sneakers,x,.192,.088);shoe.raycast=()=>{};
       shoe.rotation.x=-.035;
+      const vamp=mesh(taperedBox(.145,.235,.046,.225),materials.sneakers,x,.238,.225);vamp.rotation.x=-.16;vamp.raycast=()=>{};
       const toe=oval(materials.sneakers,x,.187,.29,[.14,.062,.148]);toe.raycast=()=>{};
       const toeTop=mesh(taperedBox(.11,.18,.021,.17),materials.white,x,.235,.268);toeTop.rotation.x=-.16;toeTop.raycast=()=>{};
       const toeGuard=mesh(new THREE.CapsuleGeometry(.014,.19,3,10),materials.white,x,.153,.423);toeGuard.rotation.z=Math.PI/2;toeGuard.raycast=()=>{};
       const tongue=mesh(softBox(.13,.12,.025,.012),materials.sneakers,x,.245,.275);tongue.rotation.x=-.22;tongue.raycast=()=>{};
       const heel=mesh(softBox(.235,.12,.055,.018),materials.dark,x,.205,-.145);heel.raycast=()=>{};
+      const heelCounter=mesh(taperedBox(.185,.215,.105,.095),materials.sneakers,x,.245,-.105);heelCounter.rotation.x=.04;heelCounter.raycast=()=>{};
       const quarter=mesh(taperedBox(.15,.205,.075,.19),materials.dark,x,.205,.12);quarter.rotation.x=-.18;quarter.raycast=()=>{};
       const collar=mesh(new THREE.TorusGeometry(.078,.012,6,18,Math.PI),materials.dark,x,.282,.12);collar.rotation.x=Math.PI/2;collar.rotation.z=Math.PI;collar.raycast=()=>{};
       for(let j=0;j<4;j++){const lace=mesh(new THREE.BoxGeometry(.082-j*.006,.006,.009),materials.white,x,.237-j*.017,.326);lace.rotation.z=(j%2?1:-1)*.12;lace.raycast=()=>{};for(const eyeletSide of [-1,1])oval(materials.white,x+eyeletSide*.052,.237-j*.017,.322,[.007,.007,.004]).raycast=()=>{};}

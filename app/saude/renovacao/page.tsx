@@ -7,7 +7,9 @@ import {
 } from "react";
 
 import {
+  usePathname,
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 
 import {
@@ -18,9 +20,9 @@ import {
   FileText,
   FileWarning,
   MessageCircle,
-  Pill,
   Receipt,
   Store,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -59,6 +61,9 @@ import {
   ListSearch,
 } from "@/components/list";
 
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { withReturnTarget } from "@/lib/navigation/return-context";
+
 import type {
   Renovacao,
 } from "@/lib/types";
@@ -79,6 +84,7 @@ type StatusFilter =
 
 type AcquisitionFilter =
   | "todos"
+  | "receita"
   | "comprado"
   | "sus"
   | "gratuito";
@@ -89,6 +95,12 @@ type RenovacaoEnriquecida =
 
     medicamentoDosagem:
       string;
+
+    medicamentoFormato?:
+      string;
+
+    medicamentoCores:
+      string[];
 
     validadeHistorica:
       string | null;
@@ -102,6 +114,12 @@ type RenovacaoEnriquecida =
     diasRestantes:
       number | null;
   };
+
+function localDateISO(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
 
 // ============================================================
 // DATAS
@@ -330,6 +348,24 @@ export default function RenovacoesPage() {
   const router =
     useRouter();
 
+  const pathname =
+    usePathname();
+
+  const searchParams =
+    useSearchParams();
+
+  const listHref =
+    `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+
+  const navigateWithReturn =
+    (href: string) =>
+      router.push(
+        withReturnTarget(
+          href,
+          listHref
+        )
+      );
+
   const [
     search,
     setSearch,
@@ -443,6 +479,12 @@ export default function RenovacoesPage() {
                 medicamento?.dosagem ||
                 "",
 
+              medicamentoFormato:
+                medicamento?.formato,
+
+              medicamentoCores:
+                medicamento?.cores || [],
+
               validadeHistorica:
                 validade.dataValidade,
 
@@ -532,8 +574,10 @@ export default function RenovacoesPage() {
     );
 
   const comprasRegistradas = useMemo(() => renovacoesEnriquecidas.filter((item) => !isPrescriptionOnly(item)), [renovacoesEnriquecidas]);
-  const totalCompras = useMemo(() => comprasRegistradas.reduce((total, item) => total + (typeof item.preco === "number" ? item.preco : 0), 0), [comprasRegistradas]);
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const comprasComValor = useMemo(() => comprasRegistradas.filter((item) => typeof item.preco === "number" && Number.isFinite(item.preco)), [comprasRegistradas]);
+  const totalCompras = useMemo(() => comprasComValor.reduce((total, item) => total + (item.preco || 0), 0), [comprasComValor]);
+  const receitasRegistradas = indicadores.total - comprasRegistradas.length;
+  const hojeISO = localDateISO();
   const datasFuturas = useMemo(() => renovacoesEnriquecidas.filter((item) => getEffectiveAcquisitionDate(item) > hojeISO).length, [renovacoesEnriquecidas, hojeISO]);
 
   // ==========================================================
@@ -657,8 +701,9 @@ export default function RenovacoesPage() {
               (
                 renovacao
               ) =>
-                renovacao.tipo_aquisicao ===
-                filtroAquisicao
+                filtroAquisicao === "receita"
+                  ? isPrescriptionOnly(renovacao)
+                  : renovacao.tipo_aquisicao === filtroAquisicao
             );
         }
 
@@ -720,8 +765,8 @@ export default function RenovacoesPage() {
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
         <ListPageHeader
-          title="Histórico de Renovações"
-          badgeLabel="RECEITAS E AQUISIÇÕES"
+          title="Receitas e aquisições"
+          badgeLabel="ACESSO A MEDICAMENTOS"
           badgeColor="text-ice"
           rightAction={
             <button
@@ -731,20 +776,20 @@ export default function RenovacoesPage() {
                   "vibrate"
                 );
 
-                router.push(
-                  "/saude/renovacao/nova-receita"
+                navigateWithReturn(
+                  "/saude/renovacao/nova"
                 );
               }}
               className="flex h-11 items-center gap-2 rounded-2xl border border-ice/30 bg-ice/10 px-3 text-[10px] font-bold uppercase tracking-wide text-ice transition-all active:scale-95"
-              aria-label="Registrar somente uma nova receita"
+              aria-label="Registrar aquisição de medicamento"
             >
-              <FileText
+              <Plus
                 size={
                   15
                 }
               />
 
-              Receita
+              Aquisição
             </button>
           }
         >
@@ -763,62 +808,25 @@ export default function RenovacoesPage() {
               RESUMO
               ================================================== */}
 
-          {indicadores.total >
-            0 && (
-            <div className="order-3 grid w-full grid-cols-4 gap-2">
-              <div className="rounded-2xl border border-surface-border/40 bg-surface-raised p-2.5 text-center">
-                <p className="font-mono text-base font-bold text-ink-primary">
-                  {
-                    indicadores.total
-                  }
-                </p>
-
-                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  Registros
-                </p>
+          {indicadores.total > 0 && (
+            <section className="order-3 w-full overflow-hidden rounded-[18px] border border-surface-border/55 bg-gradient-to-r from-white/[.025] to-surface" aria-label="Resumo de receitas e aquisições">
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-emerald-400/20 bg-emerald-400/[.07] text-emerald-300"><Receipt size={17}/></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[8px] font-bold uppercase tracking-[.16em] text-ink-faint">Histórico separado por origem</p>
+                  <p className="truncate text-sm font-semibold text-ink-primary">{receitasRegistradas} receitas · {comprasRegistradas.length} aquisições</p>
+                  <p className="mt-0.5 truncate text-[9px] text-ink-muted">{indicadores.sus} via SUS ou gratuito · {comprasComValor.length} com valor informado</p>
+                </div>
+                <div className="shrink-0 text-right"><strong className="block font-mono text-sm text-emerald-300">{formatCurrency(totalCompras)}</strong><span className="text-[8px] uppercase tracking-wide text-ink-faint">valores registrados</span></div>
               </div>
-
-              <div className="rounded-2xl border border-coral/20 bg-coral/5 p-2.5 text-center">
-                <p className="font-mono text-base font-bold text-coral">
-                  {
-                    indicadores.vencidas
-                  }
-                </p>
-
-                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  Expiradas
-                </p>
+              <div className="grid grid-cols-3 border-t border-surface-border/45 bg-void/15">
+                <div className="px-3 py-2"><strong className="block font-mono text-base text-ink-primary">{indicadores.total}</strong><span className="text-[8px] font-bold uppercase tracking-wide text-ink-faint">Eventos</span></div>
+                <div className="border-l border-surface-border/40 px-3 py-2"><strong className="block font-mono text-base text-amber-300">{indicadores.proximas}</strong><span className="text-[8px] font-bold uppercase tracking-wide text-ink-faint">Até 7 dias</span></div>
+                <div className="border-l border-surface-border/40 px-3 py-2"><strong className="block font-mono text-base text-coral">{indicadores.vencidas}</strong><span className="text-[8px] font-bold uppercase tracking-wide text-ink-faint">Expiradas</span></div>
               </div>
-
-              <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-2.5 text-center">
-                <p className="font-mono text-base font-bold text-amber-400">
-                  {
-                    indicadores.proximas
-                  }
-                </p>
-
-                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  Até 7 dias
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-2.5 text-center">
-                <p className="font-mono text-base font-bold text-emerald-400">
-                  {
-                    indicadores.sus
-                  }
-                </p>
-
-                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                  SUS / grátis
-                </p>
-              </div>
-            </div>
+              <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/nova-receita"); }} className="flex min-h-11 w-full items-center justify-center gap-2 border-t border-surface-border/45 text-xs font-bold text-ice active:bg-ice/5"><FileText size={14}/>Registrar somente uma receita</button>
+            </section>
           )}
-
-          <div className="order-4 w-full rounded-[22px] border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
-            <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Compras registradas</p><p className="mt-1 text-xs text-ink-muted">{comprasRegistradas.length} aquisições com valor informado</p></div><p className="font-mono text-lg font-bold text-ink-primary">{formatCurrency(totalCompras)}</p></div>
-          </div>
           {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-amber-400/25 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-300"><strong>Data futura: confira este registro.</strong> {datasFuturas} item(ns) não entram como gasto atual até a data informada.</div>}
 
           {/* ==================================================
@@ -885,6 +893,22 @@ export default function RenovacoesPage() {
             </button>
 
             <div className="mx-1 h-5 w-px bg-surface-border/40" />
+
+            <button
+              type="button"
+              onClick={() => {
+                trigger("vibrate");
+                setFiltroAquisicao(filtroAquisicao === "receita" ? "todos" : "receita");
+              }}
+              className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                filtroAquisicao === "receita"
+                  ? "border-violet-400 bg-violet-400/20 text-violet-300"
+                  : "border-surface-border/40 bg-surface-raised text-ink-muted"
+              }`}
+            >
+              <FileText size={10}/>
+              Só receita
+            </button>
 
             <button
               type="button"
@@ -1096,7 +1120,7 @@ export default function RenovacoesPage() {
                           "vibrate"
                         );
 
-                        router.push(
+                        navigateWithReturn(
                           `/saude/renovacao/detalhes?id=${renovacao.id}`
                         );
                       }
@@ -1105,11 +1129,12 @@ export default function RenovacoesPage() {
                       index *
                       0.025
                     }
+                    density="compact"
                     icon={
-                      <Pill
-                        size={
-                          22
-                        }
+                      <MedicationFormatIcon
+                        formato={renovacao.medicamentoFormato}
+                        cores={renovacao.medicamentoCores}
+                        size={22}
                       />
                     }
                   >
