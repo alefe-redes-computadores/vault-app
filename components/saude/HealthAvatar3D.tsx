@@ -64,6 +64,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .58, metalness: .012 }),
+      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.76), roughness: .68, transparent:true, opacity:.34 }),
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.55), roughness: .82 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
@@ -105,10 +106,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const jawGeometry=new THREE.ExtrudeGeometry(jawShape,{depth:.166,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});jawGeometry.translate(0,0,-.083);
     const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
-      const cheek=oval(materials.skin,sign*.108,2.738,.119,[.034,.046,.031]);cheek.rotation.z=sign*.11;cheek.raycast=()=>{};
+      // V184: cheek volume follows the jaw plane instead of reading as a sphere attached to the face.
+      const cheek=mesh(taperedBox(.067,.085,.094,.042),materials.skin,sign*.108,2.738,.157);cheek.rotation.z=sign*.12;cheek.rotation.x=-.08;cheek.raycast=()=>{};
+      const temple=mesh(taperedBox(.051,.063,.11,.032),materials.skin,sign*.158,2.824,.124);temple.rotation.z=sign*.08;temple.raycast=()=>{};
       oval(materials.skin,sign*.205,2.77,-.002,[.026,.058,.036]);
       oval(materials.skin,sign*.204,2.77,.024,[.011,.036,.019]);
-      oval(materials.skin,sign*.105,2.746,.165,[.052,.054,.021]).raycast=()=>{};
+      const cheekbone=mesh(new THREE.CapsuleGeometry(.009,.062,3,8),materials.skinShade,sign*.104,2.755,.205);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
       const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
     const chin=oval(materials.skin,0,2.548,.056,[.073,.038,.069]);chin.rotation.x=.08;chin.raycast=()=>{};
@@ -117,10 +120,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const brow=mesh(new THREE.CapsuleGeometry(.009,.047,4,8),materials.hair,sign*.084,2.861,.205);brow.rotation.z=sign*1.42;
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
       const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
+      const lowerLid=mesh(new THREE.CapsuleGeometry(.0035,.055,2,7),materials.skinShade,sign*.083,2.804,.239);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
     }
     const noseBridge=mesh(new THREE.CapsuleGeometry(.014,.068,4,8),materials.skin,0,2.778,.207);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
     const noseTip=oval(materials.skin,0,2.724,.239,[.038,.027,.033]);noseTip.raycast=()=>{};
-    for(const sign of [-1,1])oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
+    for(const sign of [-1,1]){
+      oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
+      oval(materials.skinShade,sign*.018,2.711,.259,[.006,.004,.003]).raycast=()=>{};
+    }
     const hairHeight=appearance.hat==="none"?2.99:2.945;
     if(appearance.hair==='short')oval(materials.hair,0,hairHeight,-.035,[.232,appearance.hat==="none"?.145:.095,.215]);
     if(appearance.hair==='fade'){
