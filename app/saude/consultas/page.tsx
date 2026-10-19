@@ -12,6 +12,7 @@ import {
 
 import {
   Building2,
+  CalendarDays,
   CheckCircle2,
   Clock,
   MapPin,
@@ -65,6 +66,8 @@ import {
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { useReturnContext } from "@/hooks/useReturnContext";
 
 import type {
   Consulta,
@@ -274,6 +277,7 @@ function getDiasRestantesLabel(
 export default function ConsultasPage() {
   const router =
     useRouter();
+  const { preserveReturn } = useReturnContext("/saude/consultas");
 
   const {
     trigger,
@@ -459,6 +463,7 @@ export default function ConsultasPage() {
   const {
     proximas,
     historico,
+    consultasAtrasadas,
   } =
     useMemo(
       () => {
@@ -472,6 +477,7 @@ export default function ConsultasPage() {
         const history:
           Consulta[] =
           [];
+        let overdue = 0;
 
         scopedConsultas.forEach(
           (
@@ -495,6 +501,8 @@ export default function ConsultasPage() {
                 "realizada" ||
               consulta.status ===
                 "cancelada";
+
+            if (isPast && consulta.status === "agendada") overdue += 1;
 
             if (
               belongsToHistory
@@ -580,6 +588,7 @@ export default function ConsultasPage() {
 
           historico:
             history,
+          consultasAtrasadas: overdue,
         };
       },
       [
@@ -896,6 +905,15 @@ export default function ConsultasPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          {activePersonId && (
+            <ClinicalListSummary
+              icon={CalendarDays}
+              eyebrow="Agenda clínica"
+              title={proximas[0] ? `Próxima · ${formatDateDisplay(proximas[0].data)}` : "Nenhuma consulta futura"}
+              detail={proximas[0]?.horario ? `Horário ${proximas[0].horario}` : "Histórico preservado no Vault"}
+              metrics={[{label:"Próximas",value:proximas.length,tone:"positive"},{label:"Histórico",value:historico.length},{label:"Revisar",value:consultasAtrasadas,tone:consultasAtrasadas?"critical":"neutral"}]}
+            />
+          )}
           {!activePersonId ? (
             <EmptyState
               icon={
@@ -998,7 +1016,7 @@ export default function ConsultasPage() {
                         );
 
                         router.push(
-                          `/saude/consultas/detalhes?id=${consulta.id}`
+                          preserveReturn(`/saude/consultas/detalhes?id=${consulta.id}`)
                         );
                       }
                     }
@@ -1006,6 +1024,7 @@ export default function ConsultasPage() {
                       index *
                       0.025
                     }
+                    density="compact"
                     icon={
                       <StatusIcon
                         size={

@@ -12,7 +12,7 @@ assert.match(scene, /appearance\.glasses==="rectangular"[\s\S]*softBox\(\.116,\.
 assert.ok(/V168: the grip wraps the device/.test(scene)||/V183: the dedicated grip replaces the generic fingers/.test(scene),"pegada dedicada preservada e versionada");
 assert.match(scene, /!holdsPhone&&fingerIndex<4/);
 assert.match(scene, /Math\.PI\/2\+phoneAngle/);
-assert.match(scene, /const elbow=oval/);
+assert.ok(/const elbow=oval/.test(scene)||(/const elbow=mesh\(softBox/.test(scene)&&/const elbowContour=/.test(scene)),"cotovelo V168 preservado ou articulação facetada V185 versionada");
 assert.match(scene, /const ankle=(?:mesh|limb)/);
 assert.match(avatar, /overscroll-contain/);
 assert.ok(/max-w-\[420px\]/.test(avatar)||/max-w-\[520px\]/.test(avatar), "palco imersivo V168/V178 mantém largura limitada");

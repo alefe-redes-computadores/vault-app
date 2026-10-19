@@ -170,7 +170,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const holdsPhone=sign===phoneArmSign;
       const sleeve=limb(.112,.1,.27,materials.top,sign*.337,2.25,0,sign*.13);sleeve.scale.z=1.08;
       const upperArm=limb(.09,.082,.36,materials.skin,sign*.39,2.005,0,sign*.13);upperArm.raycast=()=>{};
-      const elbow=oval(materials.skin,sign*.418,1.815,.002,[.086,.087,.084]);elbow.raycast=()=>{};
+      // V185: articulações facetadas preservam mobilidade visual sem o efeito de “bolinhas” entre os membros.
+      const elbow=mesh(softBox(.137,.126,.13,.047),materials.skin,sign*.418,1.815,.002);elbow.rotation.z=sign*.08;elbow.raycast=()=>{};
+      const elbowContour=mesh(new THREE.CapsuleGeometry(.005,.045,2,7),materials.skinShade,sign*.418,1.81,.071);elbowContour.rotation.z=Math.PI/2;elbowContour.raycast=()=>{};
       const forearm=limb(.081,.068,.35,materials.skin,sign*(holdsPhone?.45:.454),1.64,holdsPhone?.028:.008,sign*(holdsPhone?.045:.08));forearm.raycast=()=>{};
       const wrist=oval(materials.skin,sign*.469,1.475,.01,[.071,.057,.065]);wrist.raycast=()=>{};
       // A mão do celular usa uma única palma atrás do aparelho; a outra mantém os dedos relaxados.
@@ -186,7 +188,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       for(let knuckleIndex=0;!holdsPhone&&knuckleIndex<3;knuckleIndex+=1)oval(materials.skin,sign*(.462+knuckleIndex*.027),1.356,.087,[.017,.014,.016]).raycast=()=>{};
       const shorts=mesh(softBox(.275,.34,.315,.028),materials.bottom,sign*.15,1.305,0);shorts.raycast=()=>{};
       const thigh=limb(.116,.102,.43,materials.skin,sign*.15,1.02,0);thigh.raycast=()=>{};
-      const knee=oval(materials.skin,sign*.15,.79,.012,[.108,.105,.1]);knee.raycast=()=>{};
+      const knee=mesh(taperedBox(.162,.178,.155,.145),materials.skin,sign*.15,.79,.012);knee.raycast=()=>{};
+      const patella=mesh(softBox(.086,.098,.018,.032),materials.skinShade,sign*.15,.79,.092);patella.raycast=()=>{};
       const calf=limb(.102,.079,.43,materials.skin,sign*.15,.55,.004);calf.raycast=()=>{};
       oval(materials.skin,sign*.15,.37,.01,[.083,.105,.081]).raycast=()=>{};
       const ankle=limb(.076,.086,.14,materials.skin,sign*.15,.285,.018);ankle.raycast=()=>{};

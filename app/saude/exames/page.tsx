@@ -10,6 +10,7 @@ import {
 } from "next/navigation";
 import {
   AlertTriangle,
+  ChartNoAxesCombined,
   Building2,
   Calendar,
   CheckCircle2,
@@ -51,6 +52,8 @@ import {
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { useReturnContext } from "@/hooks/useReturnContext";
 
 import type {
   Exame,
@@ -109,6 +112,7 @@ function formatDateDisplay(
 export default function ExamesPage() {
   const router =
     useRouter();
+  const { preserveReturn } = useReturnContext("/saude/exames");
 
   const {
     trigger,
@@ -202,7 +206,7 @@ export default function ExamesPage() {
     useMemo<
       ExameComStatus[]
     >(() => {
-      return exames.map(
+      return exames.filter(exame => Boolean(activePersonId) && exame.person_id === activePersonId).map(
         (
           exame
         ) => {
@@ -240,6 +244,7 @@ export default function ExamesPage() {
       );
     }, [
       exames,
+      activePersonId,
     ]);
 
   // ==========================================================
@@ -347,6 +352,15 @@ export default function ExamesPage() {
       filtroStatus,
     ]);
 
+  const exameStats = useMemo(() => {
+    let upcoming = 0, expired = 0;
+    for (const exame of examesComStatus) {
+      if (exame.vencido) expired += 1;
+      else if (exame.proximo) upcoming += 1;
+    }
+    return { upcoming, expired };
+  }, [examesComStatus]);
+
   // ==========================================================
   // ACTIONS
   // ==========================================================
@@ -434,6 +448,7 @@ export default function ExamesPage() {
           />
 
           <ListFilters
+            activeCount={filtroStatus !== "todos" ? 1 : 0}
             onClear={
               handleClearFilters
             }
@@ -504,6 +519,15 @@ export default function ExamesPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          {activePersonId && (
+            <ClinicalListSummary
+              icon={ChartNoAxesCombined}
+              eyebrow="Acompanhamento"
+              title={examesComStatus.length ? "Validades e retornos organizados" : "Nenhum exame cadastrado"}
+              detail="Situação calculada somente pelas datas registradas"
+              metrics={[{label:"Registros",value:examesComStatus.length},{label:"Próximos",value:exameStats.upcoming,tone:"attention"},{label:"Vencidos",value:exameStats.expired,tone:exameStats.expired?"critical":"neutral"}]}
+            />
+          )}
           {!activePersonId ? (
             <EmptyState
               icon={
@@ -613,13 +637,14 @@ export default function ExamesPage() {
                       );
 
                       router.push(
-                        `/saude/exames/detalhes?id=${exame.id}`
+                        preserveReturn(`/saude/exames/detalhes?id=${exame.id}`)
                       );
                     }}
                     delay={
                       index *
                       0.025
                     }
+                    density="compact"
                     icon={
                       <FlaskConical
                         size={

@@ -12,6 +12,7 @@ import {
 import {
   Activity,
   Building2,
+  CalendarDays,
 } from "lucide-react";
 import {
   useLiveQuery,
@@ -50,6 +51,8 @@ import {
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { useReturnContext } from "@/hooks/useReturnContext";
 
 import type {
   Cirurgia,
@@ -197,6 +200,7 @@ function getDiasRestantesLabel(
 export default function CirurgiasPage() {
   const router =
     useRouter();
+  const { preserveReturn } = useReturnContext("/saude/cirurgias");
 
   const {
     trigger,
@@ -297,6 +301,7 @@ export default function CirurgiasPage() {
   const {
     proximas,
     historico,
+    cirurgiasParaRevisar,
   } =
     useMemo(() => {
       const todayISO =
@@ -307,8 +312,9 @@ export default function CirurgiasPage() {
 
       const history:
         Cirurgia[] = [];
+      let overdue = 0;
 
-      cirurgias.forEach(
+      cirurgias.filter(cirurgia => Boolean(activePersonId) && cirurgia.person_id === activePersonId).forEach(
         (
           cirurgia
         ) => {
@@ -329,6 +335,8 @@ export default function CirurgiasPage() {
               "realizada" ||
             cirurgia.status ===
               "cancelada";
+
+          if (isPast && cirurgia.status === "agendada") overdue += 1;
 
           if (
             belongsToHistory
@@ -378,9 +386,11 @@ export default function CirurgiasPage() {
 
         historico:
           history,
+        cirurgiasParaRevisar: overdue,
       };
     }, [
       cirurgias,
+      activePersonId,
     ]);
 
   const listaBase =
@@ -658,6 +668,15 @@ export default function CirurgiasPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          {activePersonId && (
+            <ClinicalListSummary
+              icon={CalendarDays}
+              eyebrow="Procedimentos"
+              title={proximas[0] ? `Próxima · ${formatDateDisplay(proximas[0].data)}` : "Nenhuma cirurgia futura"}
+              detail={proximas[0]?.procedimento || "Histórico cirúrgico preservado"}
+              metrics={[{label:"Agendadas",value:proximas.length,tone:"attention"},{label:"Histórico",value:historico.length},{label:"Revisar",value:cirurgiasParaRevisar,tone:cirurgiasParaRevisar?"critical":"neutral"}]}
+            />
+          )}
           {!activePersonId ? (
             <EmptyState
               icon={
@@ -748,13 +767,14 @@ export default function CirurgiasPage() {
                       );
 
                       router.push(
-                        `/saude/cirurgias/detalhes?id=${cirurgia.id}`
+                        preserveReturn(`/saude/cirurgias/detalhes?id=${cirurgia.id}`)
                       );
                     }}
                     delay={
                       index *
                       0.025
                     }
+                    density="compact"
                     icon={
                       <Activity
                         size={
