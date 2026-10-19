@@ -8,6 +8,8 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { triggerHaptic } from "@/lib/haptics";
 import { SusCatalogBrowser } from "@/components/saude/SusCatalogBrowser";
 import { SupplyPreparation } from "@/components/saude/SupplyPreparation";
+import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { ListPageHeader } from "@/components/list/ListPageHeader";
 import {
   catalogIndications,
   catalogSourceVersion,
@@ -26,12 +28,13 @@ import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
 import { treatmentSupplyMedicationIds, cycleDocumentContext, matchesSupplyTreatment } from "@/lib/health-supply/cycle-context";
 import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { useSearchParams } from "next/navigation";
+import { useReturnContext } from "@/hooks/useReturnContext";
 import {
-  ArrowLeft,
   FolderHeart,
   Plus,
   FileText,
   CheckCircle2,
+  PackageCheck,
 } from "lucide-react";
 import { prescriptionConfigurationReview } from "@/lib/health-supply/process-integrity";
 import { withdrawalSupplySuggestions } from "@/lib/health-supply/withdrawal-suggestions";
@@ -997,6 +1000,12 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   const [nextReason, setNextReason] = useState<SupplyCycleReason>("renovacao");
   const medId = params.get("medicamento_id"),
     withdrawal = seed || retiradas.find((r) => r.id === withdrawalId && r.person_id === personId);
+  const fallbackBack = withdrawal
+    ? `/saude/retiradas/detalhes?id=${withdrawal.id}`
+    : medId
+      ? `/saude/medicamentos/detalhes?id=${medId}`
+      : "/saude/rede";
+  const { backTarget } = useReturnContext(fallbackBack);
   const occupiedMedicationIds = new Set(data.itens.filter(i =>
     i.person_id === personId && i.user_id === user?.id &&
     data.processos.some(p => p.id === i.processo_id && p.person_id === personId && p.user_id === user?.id && p.status === "ativo")
@@ -1049,6 +1058,11 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         (withdrawal?.data || getLocalTodayISO()) <= c.fim
     ) ||
     cycles[0];
+  const processIds = new Set(processes.map((item) => item.id));
+  const processCycles = data.ciclos.filter((item) => item.person_id === personId && item.user_id === user?.id && processIds.has(item.processo_id));
+  const processDocuments = data.documentos.filter((item) => item.person_id === personId && item.user_id === user?.id && processIds.has(item.processo_id));
+  const activeProcesses = processes.filter((item) => item.status === "ativo");
+  const cyclesInProgress = processCycles.filter((item) => item.status === "preparando" || item.status === "protocolado").length;
   const run: Run = async (action, message = "Salvo") => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -1092,7 +1106,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}50`, backgroundColor: "#10151c"} : {})}}
                 key={p.id}
                 className={
-                  "inline-flex min-h-11 max-w-full items-center rounded-xl border px-2 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
+                  "inline-flex min-h-11 max-w-full shrink-0 items-center rounded-xl border px-2 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
                 }
                 onClick={() => {
                   setSeed(null); setWithdrawalId("");
@@ -1106,6 +1120,17 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               </button>
     );
   };
+  const startCreating = () => {
+    try { triggerHaptic("vibrate"); } catch {}
+    if (!creating && processes.length) setSeed(null);
+    setEditing(false);
+    setCreating(true);
+    if (creating || !processes.length) {
+      createRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      createRef.current?.querySelector<HTMLInputElement>('input:not([type="checkbox"])')?.focus({ preventScroll: true });
+      showToast("Preencha o formulário abaixo para organizar o fornecimento.", "success");
+    }
+  };
   if (!personId)
     return (
       <main className="p-5 text-ink-muted">
@@ -1113,39 +1138,26 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       </main>
     );
   return (
-    <main key={personId} className="min-h-screen bg-void px-5 pb-32 pt-4">
-      <header className="mb-5 flex items-center gap-3">
-        <Link
-          aria-label="Voltar"
-          href={
-            withdrawal
-              ? `/saude/retiradas/detalhes?id=${withdrawal.id}`
-              : medId
-              ? `/saude/medicamentos/detalhes?id=${medId}`
-              : "/saude"
-          }
-          className="rounded-xl bg-surface p-3 text-ink-primary"
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-ink-primary">
-            Saúde · fornecimento
-          </p>
-          <h1 className="font-display text-xl font-bold text-ink-primary">
-            Fornecimento e histórico
-          </h1>
-        </div>
-      </header>
-      <details className="mb-2 rounded-2xl border border-surface-border/60 bg-surface px-3 py-1">
+    <main key={personId} className="min-h-screen bg-void pb-32">
+      <ListPageHeader
+        title="Fornecimento"
+        badgeLabel="PROCESSOS E CICLOS"
+        badgeColor="text-emerald-300"
+        backUrl={backTarget}
+        rightAction={<button type="button" disabled={busy} aria-expanded={creating || !processes.length} aria-controls="supply-create-form" onClick={startCreating} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95 disabled:opacity-40"><Plus size={15}/>Novo</button>}
+      />
+      <div className="space-y-3 px-5 pt-4">
+      {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={cyclesInProgress ? `${cyclesInProgress} ciclo${cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processCycles.length},{label:"Documentos",value:processDocuments.length}]}/> : null}
+      <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Como organizar o fornecimento</summary>
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
         </p>
       </details>
-      <div className="mb-3">
-        <SusCatalogBrowser compact />
-      </div>
+      <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FileText size={16} className="text-violet-300"/>Consultar cobertura e catálogo SUS</summary>
+        <div className="pb-3 pt-2"><SusCatalogBrowser compact /></div>
+      </details>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…
@@ -1167,21 +1179,13 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
-          <div className="mb-3 flex flex-wrap gap-2" aria-label="Selecionar fornecimento">
-            {processes.filter(p => p.status === "ativo").map(renderProcess)}
+          <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Selecionar fornecimento">
+            {activeProcesses.map(renderProcess)}
+          </div>
             {processes.some(p => p.status !== "ativo") && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
               <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Arquivados · histórico ({processes.filter(p => p.status !== "ativo").length})</summary>
               <div className="flex flex-wrap gap-2">{processes.filter(p => p.status !== "ativo").map(renderProcess)}</div>
             </details>}
-            <button type="button" disabled={busy} aria-expanded={creating||!processes.length} aria-controls="supply-create-form" aria-label="Novo processo" className="inline-flex min-h-11 items-center gap-1 rounded-xl bg-surface-raised px-2 py-2 text-xs font-bold text-ink-primary disabled:opacity-40" onClick={() => {
-              try{triggerHaptic("vibrate");}catch{}
-              if(!creating&&processes.length)setSeed(null);
-              setEditing(false);setCreating(true);
-              if(creating||!processes.length){createRef.current?.scrollIntoView({block:"start",behavior:"auto"});createRef.current?.querySelector<HTMLInputElement>('input:not([type="checkbox"])')?.focus({preventScroll:true});showToast("Preencha o formulário abaixo para organizar o fornecimento.","success");}
-            }}>
-              <Plus size={14} aria-hidden="true" /> Novo
-            </button>
-          </div>
           {missingProcess && <p role="status" className="mb-4 rounded-2xl border border-amber-400/25 p-4 text-sm text-amber-200">Este processo não está disponível para a pessoa ou medicamento selecionado. Escolha um processo acima.</p>}
           {suggestions.length>0&&<details className="mb-4"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Reaproveitar dados das retiradas ({suggestions.length})</summary><section className={panel+" mb-4"} aria-label="Fornecimentos encontrados nas retiradas">
             <h2 className="text-sm font-bold text-ink-primary">Você já tem dados nas Retiradas</h2>
@@ -1219,7 +1223,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             </section>
           )}
           {process && !creating && (
-            <fieldset disabled={busy} className="space-y-4">
+            <fieldset disabled={busy} className="space-y-4 [content-visibility:auto] [contain-intrinsic-size:900px]">
               <div className={panel}>
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
@@ -1406,6 +1410,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           )}
         </>
       )}
+      </div>
     </main>
   );
 }

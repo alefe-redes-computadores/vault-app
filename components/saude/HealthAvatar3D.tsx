@@ -157,6 +157,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // dois blocos apoiados um sobre o outro quando observado de lado ou pelas costas.
     const waist=mesh(taperedBox(.49,.535,.145,.34),materials.bottom,0,1.505,.002);waist.raycast=()=>{};
     const waistSeam=mesh(new THREE.BoxGeometry(.515,.018,.355),materials.shirtDetail,0,1.565,.004);waistSeam.raycast=()=>{};
+    // V189: planos peitorais, costuras laterais e eixo dorsal dão leitura anatômica ao tronco
+    // sem uma malha densa, rig ou loop adicional de renderização.
+    for(const sign of [-1,1]){
+      const chestPlane=mesh(taperedBox(.185,.21,.175,.016),materials.shirtDetail,sign*.132,2.18,.184);chestPlane.rotation.z=sign*.075;chestPlane.raycast=()=>{};
+      const sideSeam=mesh(new THREE.CapsuleGeometry(.004,.32,2,7),materials.shirtDetail,sign*.281,1.98,.008);sideSeam.rotation.z=sign*.025;sideSeam.raycast=()=>{};
+    }
+    const backSpineSeam=mesh(new THREE.CapsuleGeometry(.004,.39,2,7),materials.shirtDetail,0,2.075,-.184);backSpineSeam.raycast=()=>{};
+    const lowerBackPlane=mesh(softBox(.31,.105,.012,.024),materials.shirtDetail,0,1.72,-.181);lowerBackPlane.raycast=()=>{};
     // Collar bones and shoulder caps soften the torso-to-arm transition in every view.
     // V188: the shoulder girdle follows the torso plane instead of two spherical pads.
     const clavicleBridge=mesh(new THREE.CapsuleGeometry(.007,.19,3,9),materials.shirtDetail,0,2.385,.176);clavicleBridge.rotation.z=Math.PI/2;clavicleBridge.raycast=()=>{};
