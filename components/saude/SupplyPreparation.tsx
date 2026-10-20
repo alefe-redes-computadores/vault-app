@@ -2,7 +2,7 @@
 import { SupplyChoiceIcon } from "./SupplyChoiceIcon";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {
@@ -59,9 +59,9 @@ export function SupplyPreparation({
     [consultation, setConsultation] = useState(cycle.consulta_id || ""),
     [personal, setPersonal] = useState(!!cycle.documentos_pessoais_conferidos),
     [local, setLocal] = useState(cycle.exigencia_local || "");
-  const items = data.itens.filter((i) => i.ciclo_id === cycle.id),
-    dossiers = items
-      .map((i) => meds.find((m) => m.id === i.medicamento_id))
+  const medsById=useMemo(()=>new Map(meds.filter(med=>med.id).map(med=>[med.id!,med])),[meds]);
+  const dossiers = useMemo(()=>data.itens.filter((i) => i.ciclo_id === cycle.id)
+      .map((i) => medsById.get(i.medicamento_id))
       .filter((m): m is Medicamento => !!m)
       .map((m) => ({
         med: m,
@@ -74,12 +74,12 @@ export function SupplyPreparation({
           getLocalTodayISO(),
           withdrawal
         ),
-      }));
-  const requirements = [
+      })),[cycle,data,documents,medsById,process,withdrawal]);
+  const requirements = useMemo(()=>[
     ...new Map(
       dossiers.flatMap((x) => x.dossier.requirements).map((r) => [r.tipo, r])
     ).values(),
-  ];
+  ],[dossiers]);
   const editable =
       cycle.status === "preparando" || cycle.status === "protocolado",
     known = dossiers.some((x) => x.dossier.detailed),

@@ -1071,7 +1071,7 @@ export default function LocaisPage() {
         <ListPageHeader
           title="Locais de Saúde"
           badgeLabel="Rede de Atendimento"
-          badgeColor="text-ice"
+          badgeColor="text-cyan-300"
           icon={
             <MapPin
               size={
@@ -1079,7 +1079,7 @@ export default function LocaisPage() {
               }
             />
           }
-          iconColor="text-ice"
+          iconColor="text-cyan-300"
         >
           <ListSearch
             value={
@@ -1140,10 +1140,10 @@ export default function LocaisPage() {
                       );
                     }
                   }
-                  className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+                  className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
                     filtroTipo ===
                     type
-                      ? "border-ice bg-ice/15 text-ice"
+                      ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-200"
                       : "border-surface-border/40 bg-surface-raised text-ink-muted"
                   }`}
                 >
@@ -1170,10 +1170,10 @@ export default function LocaisPage() {
                   );
                 }
               }
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
                 filtroStatus ===
                 "com_registros"
-                  ? "border-ice bg-ice/15 text-ice"
+                  ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted"
               }`}
             >
@@ -1196,7 +1196,7 @@ export default function LocaisPage() {
                   );
                 }
               }
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
                 filtroStatus ===
                 "sem_registros"
                   ? "border-coral bg-coral/15 text-coral"
@@ -1223,7 +1223,7 @@ export default function LocaisPage() {
           {!activePersonId &&
             locais.length >
               0 && (
-              <div className="rounded-2xl border border-ice/15 bg-ice/5 px-3.5 py-3">
+              <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 px-3.5 py-3">
                 <p className="text-[11px] leading-5 text-ink-muted">
                   Os locais continuam disponíveis porque são globais. Selecione uma pessoa para visualizar consultas, exames, cirurgias e retiradas relacionados.
                 </p>

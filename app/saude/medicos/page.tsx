@@ -884,13 +884,13 @@ export default function MedicosPage() {
               : "profissionais"
           }`}
           badgeLabel="Rede médica"
-          badgeColor="text-ice"
+          badgeColor="text-violet-300"
           icon={
             <Stethoscope
               size={14}
             />
           }
-          iconColor="text-ice"
+          iconColor="text-violet-300"
         >
           <ListSearch
             value={search}
@@ -909,7 +909,7 @@ export default function MedicosPage() {
                 key={option.value}
                 type="button"
                 onClick={() => handleSortChange(option.value)}
-                className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${sortBy === option.value ? "border-ice bg-ice/20 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}
+                className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${sortBy === option.value ? "border-violet-400/50 bg-violet-400/15 text-violet-200" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}
               >
                 Ordenar: {option.label}
               </button>
@@ -944,9 +944,9 @@ export default function MedicosPage() {
                             : tratamento.id!
                         );
                       }}
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase transition-all ${
+                      className={`min-h-9 shrink-0 rounded-xl border px-2.5 py-1 text-[9px] font-bold uppercase transition-all ${
                         selected
-                          ? "bg-ice/20"
+                          ? "bg-violet-400/15"
                           : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                       }`}
                       style={
@@ -999,10 +999,10 @@ export default function MedicosPage() {
                           : hospital.id!
                       );
                     }}
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase transition-all ${
+                    className={`min-h-9 shrink-0 rounded-xl border px-2.5 py-1 text-[9px] font-bold uppercase transition-all ${
                       filtroHospital ===
                       hospital.id
-                        ? "border-ice bg-ice/20 text-ice"
+                        ? "border-rose-400/40 bg-rose-400/15 text-rose-200"
                         : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                     }`}
                   >
@@ -1046,10 +1046,10 @@ export default function MedicosPage() {
                           : local.id!
                       );
                     }}
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase transition-all ${
+                    className={`min-h-9 shrink-0 rounded-xl border px-2.5 py-1 text-[9px] font-bold uppercase transition-all ${
                       filtroLocal ===
                       local.id
-                        ? "border-ice bg-ice/20 text-ice"
+                        ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-200"
                         : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
                     }`}
                   >

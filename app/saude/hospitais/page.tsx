@@ -455,7 +455,7 @@ export default function HospitaisPage() {
   // ==========================================================
 
   const HOSPITAL_COLOR =
-    "#38BDF8";
+    "#FB7185";
   const hospitaisComHistorico = hospitaisComCruzamento.filter(
     (hospital) => hospital.consultasCount > 0 || hospital.cirurgiasCount > 0
   ).length;
@@ -471,13 +471,13 @@ export default function HospitaisPage() {
         <ListPageHeader
           title="Hospitais"
           badgeLabel="Rede Hospitalar"
-          badgeColor="text-ice"
+          badgeColor="text-rose-300"
           icon={
             <HospitalIcon
               size={14}
             />
           }
-          iconColor="text-ice"
+          iconColor="text-rose-300"
         >
           <ListSearch
             value={search}
@@ -503,7 +503,7 @@ export default function HospitaisPage() {
           {!activePersonId &&
             hospitais.length >
               0 && (
-              <div className="rounded-2xl border border-ice/15 bg-ice/5 px-3.5 py-3">
+              <div className="rounded-2xl border border-rose-400/15 bg-rose-400/5 px-3.5 py-3">
                 <p className="text-[11px] leading-5 text-ink-muted">
                   Os hospitais continuam disponíveis porque são globais. Selecione uma pessoa para visualizar consultas, cirurgias e histórico clínico relacionados.
                 </p>
@@ -581,7 +581,7 @@ export default function HospitaisPage() {
                             `/saude/hospitais/editar?id=${hospital.id}`
                           );
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:text-ice active:scale-95"
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:text-rose-300 active:scale-95"
                         aria-label={`Editar ${hospital.nome}`}
                       >
                         <Edit3
@@ -597,7 +597,7 @@ export default function HospitaisPage() {
                         }
                       </h3>
 
-                      <span className="shrink-0 whitespace-nowrap rounded-full border border-ice/30 bg-ice/10 px-2 py-0.5 text-[9px] font-bold uppercase text-ice">
+                      <span className="shrink-0 whitespace-nowrap rounded-lg border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[9px] font-bold uppercase text-rose-200">
                         Hospital
                       </span>
                     </div>
@@ -634,7 +634,7 @@ export default function HospitaisPage() {
                       <div className="mt-2 flex items-center gap-1.5 text-[10px] text-ink-muted">
                         <Calendar
                           size={12}
-                          className="text-ice"
+                          className="text-rose-300"
                         />
 
                         Última consulta:{" "}
@@ -647,7 +647,7 @@ export default function HospitaisPage() {
                     )}
 
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-surface-border/40 pt-2">
-                      {hospital.consultasCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-ice/10 px-2 py-1 text-[10px] text-ice"><Stethoscope size={11}/>{hospital.consultasCount} consultas</span>}
+                      {hospital.consultasCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-violet-400/10 px-2 py-1 text-[10px] text-violet-200"><Stethoscope size={11}/>{hospital.consultasCount} consultas</span>}
                       {hospital.cirurgiasCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-coral/10 px-2 py-1 text-[10px] text-coral"><Syringe size={11}/>{hospital.cirurgiasCount} cirurgias</span>}
                       {hospital.medicosCadastradosCount > 0 && <span className="inline-flex items-center gap-1 rounded-md bg-emerald-400/10 px-2 py-1 text-[10px] text-emerald-300"><Activity size={11}/>{hospital.medicosCadastradosCount} profissionais</span>}
                       {hospital.consultasCount === 0 && hospital.cirurgiasCount === 0 && <span className="text-[10px] text-ink-faint">Sem histórico para a pessoa ativa</span>}

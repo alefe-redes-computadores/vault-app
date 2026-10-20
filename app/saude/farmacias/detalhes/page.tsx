@@ -344,6 +344,11 @@ function DetalhesFarmaciaContent() {
   // RELATIONAL ANALYSIS
   // ==========================================================
 
+  const medicamentosById = useMemo(
+    () => new Map(medicamentos.filter((item) => item.id).map((item) => [item.id!, item])),
+    [medicamentos]
+  );
+
   const analiseFarmacia =
     useMemo(() => {
       if (
@@ -457,14 +462,7 @@ function DetalhesFarmaciaContent() {
             (
               renovacao
             ) => {
-              const medicamento =
-                medicamentos.find(
-                  (
-                    item
-                  ) =>
-                    item.id ===
-                    renovacao.medicamento_id
-                );
+              const medicamento = medicamentosById.get(renovacao.medicamento_id);
 
               return {
                 ...renovacao,
@@ -493,6 +491,7 @@ function DetalhesFarmaciaContent() {
     }, [
       farmacia,
       medicamentos,
+      medicamentosById,
       renovacoes,
     ]);
 

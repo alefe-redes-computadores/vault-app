@@ -323,9 +323,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const stripe=mesh(new THREE.BoxGeometry(.099,.017,.009),materials.white,x,.22,.327);stripe.raycast=()=>{};
       }
     }
-    const mouth=mesh(new THREE.TorusGeometry(.044,.005,5,18,Math.PI),materials.dark,0,2.647,.228);mouth.rotation.z=Math.PI;mouth.scale.y=.62;
-    const neutralMouth=mesh(softBox(.064,.007,.004,.003),materials.dark,0,2.647,.246);
-    const lowerLip=mesh(new THREE.CapsuleGeometry(.004,.041,3,8),materials.skin,0,2.631,.244);lowerLip.rotation.z=Math.PI/2;lowerLip.raycast=()=>{};
+    // V200: o centro facial ganha filtro labial e lábio inferior afunilado. A expressão
+    // continua alterando malhas estáticas, sem introduzir animação ou trabalho por quadro.
+    const philtrum=mesh(taperedBox(.011,.019,.026,.006),materials.skinShade,0,2.68,.235);philtrum.raycast=()=>{};
+    const mouth=mesh(new THREE.TorusGeometry(.042,.0045,5,18,Math.PI),materials.dark,0,2.647,.242);mouth.rotation.z=Math.PI;mouth.scale.y=.62;
+    const neutralMouth=mesh(softBox(.061,.006,.004,.003),materials.dark,0,2.647,.247);
+    const lowerLip=mesh(taperedBox(.023,.052,.008,.006),materials.skinShade,0,2.63,.242);lowerLip.raycast=()=>{};
     const setExpression=(value:AvatarBodyContext['expression'])=>{mouth.visible=value!=="neutral";neutralMouth.visible=value==="neutral";mouth.rotation.z=value==="reflective"?0:Math.PI;mouth.position.y=value==="reflective"?2.61:2.647;lowerLip.visible=value==="neutral";};
     setExpression(expressionRef.current);
     const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});

@@ -614,7 +614,7 @@ export default function FarmaciasPage() {
                     : "com_medicamentos"
                 );
               }}
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
                 filtroStatus ===
                 "com_medicamentos"
                   ? "border-amber-400 bg-amber-400/20 text-amber-300"
@@ -638,7 +638,7 @@ export default function FarmaciasPage() {
                     : "mais_economica"
                 );
               }}
-              className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
+              className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
                 filtroStatus ===
                 "mais_economica"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
