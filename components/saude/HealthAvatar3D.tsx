@@ -111,8 +111,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // V184: cheek volume follows the jaw plane instead of reading as a sphere attached to the face.
       const cheek=mesh(taperedBox(.061,.077,.086,.043),materials.skin,sign*.106,2.738,.158);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.raycast=()=>{};
       const temple=mesh(taperedBox(.051,.063,.11,.032),materials.skin,sign*.158,2.824,.124);temple.rotation.z=sign*.08;temple.raycast=()=>{};
-      oval(materials.skin,sign*.205,2.77,-.002,[.026,.058,.036]);
-      oval(materials.skin,sign*.204,2.77,.024,[.011,.036,.019]);
+      // V198: a orelha deixa de ser uma esfera achatada. O plano afunilado acompanha
+      // têmpora e mandíbula com a mesma contagem de malhas e sem custo por quadro.
+      const outerEar=mesh(taperedBox(.038,.048,.091,.044),materials.skin,sign*.202,2.77,.004);outerEar.rotation.z=-sign*.07;outerEar.raycast=()=>{};
+      const earRim=mesh(taperedBox(.013,.019,.054,.021),materials.skinShade,sign*.205,2.77,.036);earRim.rotation.z=-sign*.06;earRim.raycast=()=>{};
       const cheekbone=mesh(new THREE.CapsuleGeometry(.009,.062,3,8),materials.skinShade,sign*.104,2.755,.205);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
       const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }

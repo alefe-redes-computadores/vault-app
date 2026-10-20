@@ -1150,7 +1150,7 @@ export default function DocumentsPage() {
                 onClick={
                   openNewDocument
                 }
-                className="flex h-11 shrink-0 items-center gap-2 rounded-full border border-ice/20 bg-ice/10 px-4 text-sm font-semibold text-ice transition-all active:scale-95"
+                className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ice/20 bg-ice/10 px-4 text-sm font-semibold text-ice transition-all active:scale-95"
               >
                 <Plus
                   size={
@@ -1172,16 +1172,16 @@ export default function DocumentsPage() {
             {/* VAULT_DOCUMENT_TOOLBAR_V80 */}
             <div className="mt-3 flex items-center gap-2">
               <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nome, número ou nota..." />
-              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
+              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
                 <SlidersHorizontal size={16} />
                 {activeFilterCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1 text-[9px] font-bold text-void">{activeFilterCount}</span>}
               </button>
-              <button type="button" onClick={openGallery} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label="Abrir galeria"><Images size={16} /></button>
-              <button type="button" onClick={toggleViewMode} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label={viewMode === "list" ? "Usar visualização em grade" : "Usar visualização em lista"} aria-pressed={viewMode === "grid"}>
+              <button type="button" onClick={openGallery} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label="Abrir galeria"><Images size={16} /></button>
+              <button type="button" onClick={toggleViewMode} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label={viewMode === "list" ? "Usar visualização em grade" : "Usar visualização em lista"} aria-pressed={viewMode === "grid"}>
                 {viewMode === "list" ? <Grid3X3 size={16} /> : <LayoutList size={16} />}
               </button>
               {filteredDocs.length > 0 && (
-                <ExportCardButton cards={getExportCards()} title="Meus Documentos" variant="secondary" size="sm" label="" className="h-10 w-10 shrink-0 rounded-full p-0" />
+                <ExportCardButton cards={getExportCards()} title="Meus Documentos" variant="secondary" size="sm" label="" className="h-10 w-10 shrink-0 rounded-xl p-0" />
               )}
             </div>
 
@@ -1699,7 +1699,7 @@ export default function DocumentsPage() {
                   }
                   initial="hidden"
                   animate="show"
-                  className="space-y-3"
+                  className="vault-deferred-lg space-y-3"
                 >
                   {filteredDocs.map(
                     (
@@ -1712,6 +1712,7 @@ export default function DocumentsPage() {
                         variants={
                           cardVariants
                         }
+                        className="[content-visibility:auto] [contain-intrinsic-size:132px]"
                         ref={(
                           element
                         ) => {
@@ -1756,7 +1757,7 @@ export default function DocumentsPage() {
                   }
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                  className="vault-deferred-lg grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
                 >
                   {filteredDocs.map(
                     (
@@ -1790,6 +1791,7 @@ export default function DocumentsPage() {
                           variants={
                             cardVariants
                           }
+                          style={{ contentVisibility: "auto", containIntrinsicSize: "220px" }}
                           ref={(
                             element
                           ) => {

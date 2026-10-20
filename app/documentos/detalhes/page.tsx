@@ -1888,7 +1888,7 @@ export default function DocumentDetailPage() {
               delay:
                 0.03,
             }}
-            className="relative overflow-hidden rounded-[26px] border border-surface-border/40 bg-surface/95 p-5 shadow-sm"
+            className="relative overflow-hidden rounded-[20px] border border-surface-border/40 bg-surface/95 p-4 shadow-sm"
           >
             <div
               className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-[0.1] blur-3xl"
@@ -2050,7 +2050,7 @@ export default function DocumentDetailPage() {
                 delay:
                   0.06,
               }}
-              className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
+              className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm"
             >
               <SectionTitle
                 icon={
@@ -2119,7 +2119,7 @@ export default function DocumentDetailPage() {
               delay:
                 0.09,
             }}
-            className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
+            className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
@@ -2269,7 +2269,7 @@ export default function DocumentDetailPage() {
                 delay:
                   0.12,
               }}
-              className="rounded-[24px] border border-surface-border/40 bg-surface/90 p-4 shadow-sm"
+              className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm"
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted">
@@ -2308,7 +2308,7 @@ export default function DocumentDetailPage() {
               delay:
                 0.15,
             }}
-            className="rounded-[24px] border border-surface-border/40 bg-surface/75 p-4 shadow-sm"
+            className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/75 p-3.5 shadow-sm"
           >
             <SectionTitle
               icon={

@@ -7,8 +7,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Eye,
-  EyeOff,
   Landmark,
   Loader2,
   Trash2,
@@ -31,6 +29,7 @@ import {
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
+import { VaultPrivacyToggle } from "@/components/list/VaultPrivacyToggle";
 
 import { getBankCode, getBankDisplayName, getBankLogoUrl, maskAccount } from "@/lib/utils/card-helper";
 
@@ -246,37 +245,7 @@ export default function ContasPage() {
             />
           }
           iconColor="text-ice"
-          rightAction={
-            <button
-              type="button"
-              onClick={
-                handleTogglePrivacy
-              }
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
-                isPrivate
-                  ? "border-ice bg-ice/10 text-ice"
-                  : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ice"
-              }`}
-              aria-label={
-                isPrivate
-                  ? "Desativar modo de privacidade"
-                  : "Ativar modo de privacidade"
-              }
-              aria-pressed={
-                isPrivate
-              }
-            >
-              {isPrivate ? (
-                <EyeOff
-                  size={18}
-                />
-              ) : (
-                <Eye
-                  size={18}
-                />
-              )}
-            </button>
-          }
+          rightAction={<VaultPrivacyToggle isPrivate={isPrivate} onToggle={handleTogglePrivacy} subject="os dados bancários" />}
         >
           <ListSearch
             value={
@@ -351,6 +320,7 @@ export default function ContasPage() {
                           0.025,
                         0.25
                       )}
+                      density="compact"
                       icon={
                         logoUrl ? (
                           <img
@@ -392,7 +362,7 @@ export default function ContasPage() {
                             disabled={
                               isDeleting
                             }
-                            className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:border-coral/30 hover:text-coral active:scale-95 disabled:opacity-50"
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:border-coral/30 hover:text-coral active:scale-95 disabled:opacity-50"
                             aria-label="Excluir conta"
                           >
                             <Trash2
@@ -419,8 +389,8 @@ export default function ContasPage() {
                       </p>
 
                       <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-ink-muted">
-                        {bankCode && <span className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1">Banco {bankCode}</span>}
-                        <span className="rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1">{typeLabel}</span>
+                        {bankCode && <span className="rounded-lg border border-surface-border/50 bg-surface-raised px-2.5 py-1">Banco {bankCode}</span>}
+                        <span className="rounded-lg border border-surface-border/50 bg-surface-raised px-2.5 py-1">{typeLabel}</span>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-surface-border/35 pt-3">
                         <div><p className="text-[9px] uppercase tracking-wider text-ink-faint">Agência</p><p className="mt-1 text-xs font-semibold text-ink-primary">{isPrivate ? "••••" : item.agency || "Não informada"}</p></div>

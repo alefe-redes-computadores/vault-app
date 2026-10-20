@@ -9,8 +9,6 @@ import {
 import { useRouter } from "next/navigation";
 import {
   Clock,
-  Eye,
-  EyeOff,
   KeyRound,
   Loader2,
   Lock,
@@ -39,6 +37,7 @@ import {
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
+import { VaultPrivacyToggle } from "@/components/list/VaultPrivacyToggle";
 
 import type {
   Credential,
@@ -425,37 +424,7 @@ export default function PasswordsPage() {
             />
           }
           iconColor="text-ice"
-          rightAction={
-            <button
-              type="button"
-              onClick={
-                handleTogglePrivacy
-              }
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
-                isPrivate
-                  ? "border-ice bg-ice/10 text-ice"
-                  : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ice"
-              }`}
-              aria-label={
-                isPrivate
-                  ? "Desativar modo privacidade"
-                  : "Ativar modo privacidade"
-              }
-              aria-pressed={
-                isPrivate
-              }
-            >
-              {isPrivate ? (
-                <EyeOff
-                  size={18}
-                />
-              ) : (
-                <Eye
-                  size={18}
-                />
-              )}
-            </button>
-          }
+          rightAction={<VaultPrivacyToggle isPrivate={isPrivate} onToggle={handleTogglePrivacy} subject="as credenciais" />}
         >
           <ListSearch
             value={
@@ -492,7 +461,7 @@ export default function PasswordsPage() {
                         category.id
                       )
                     }
-                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-4 py-2 text-xs font-medium transition-all active:scale-95 ${
+                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-2 text-[11px] font-medium transition-all active:scale-95 ${
                       isSelected
                         ? category.id ===
                           "fracas"

@@ -884,7 +884,7 @@ function AccountDetailsContent() {
         {/* =====================================================
             CONTEÚDO
             ===================================================== */}
-        <section className="space-y-6 px-5 pt-6">
+        <section className="space-y-4 px-5 pt-5">
           {/* Cartão visual da conta */}
           <motion.div
             variants={
@@ -899,7 +899,7 @@ function AccountDetailsContent() {
             />
 
             <div
-              className={`relative flex aspect-[1.58/1] w-full flex-col justify-between overflow-hidden rounded-3xl border bg-gradient-to-br p-6 shadow-2xl ${accountStyle}`}
+              className={`relative flex aspect-[1.58/1] w-full flex-col justify-between overflow-hidden rounded-[22px] border bg-gradient-to-br p-5 shadow-xl ${accountStyle}`}
             >
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
 
@@ -1071,7 +1071,7 @@ function AccountDetailsContent() {
             transition={{
               delay: 0.14,
             }}
-            className="space-y-3"
+            className="vault-deferred space-y-3"
           >
             <SectionTitle
               icon={
@@ -1115,7 +1115,7 @@ function AccountDetailsContent() {
               transition={{
                 delay: 0.18,
               }}
-              className="space-y-3"
+              className="vault-deferred space-y-3"
             >
               <SectionTitle
                 icon={
@@ -1243,7 +1243,7 @@ function AccountDetailsContent() {
               transition={{
                 delay: 0.22,
               }}
-              className="space-y-3"
+              className="vault-deferred space-y-3"
             >
               <SectionTitle
                 icon={
@@ -1256,7 +1256,7 @@ function AccountDetailsContent() {
                 title="Anotações"
               />
 
-              <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5 shadow-sm">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-primary">
                   {
                     account.notes

@@ -71,13 +71,15 @@ export function CredentialCard({
 
   return (
     <motion.article
-      className="group relative overflow-hidden rounded-[24px] border bg-surface shadow-md transition-all hover:bg-surface-raised"
+      className="group relative overflow-hidden rounded-[20px] border bg-surface shadow-sm transition-all hover:bg-surface-raised"
       style={{
         borderColor: `${color}40`,
         borderLeft: `6px solid ${color}`,
+        contentVisibility: "auto",
+        containIntrinsicSize: "112px",
       }}
     >
-      <div className="flex items-start gap-3.5 p-4 pl-5">
+      <div className="flex items-start gap-3 p-3.5 pl-4">
         <button
           type="button"
           onClick={onClick}
@@ -85,7 +87,7 @@ export function CredentialCard({
           aria-label={`Abrir ${credential.title}`}
         >
           <div
-            className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border shadow-inner"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border shadow-inner"
             style={{
               backgroundColor:
                 `${color}15`,
@@ -94,7 +96,7 @@ export function CredentialCard({
               color,
             }}
           >
-            <KeyRound size={22} />
+            <KeyRound size={19} />
             {iconUrl && <img src={iconUrl} alt="" className="absolute inset-0 h-full w-full bg-surface object-contain p-2.5" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
           </div>
 
@@ -106,7 +108,7 @@ export function CredentialCard({
                   : credential.title}
               </h3>
 
-              <span className="shrink-0 whitespace-nowrap rounded-full border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold uppercase text-ink-muted">
+              <span className="shrink-0 whitespace-nowrap rounded-lg border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[9px] font-semibold uppercase text-ink-muted">
                 {
                   credential.category
                 }

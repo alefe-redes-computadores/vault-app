@@ -249,11 +249,11 @@ export default function FavoritesPage() {
                     0.22,
                 }}
               >
-                <div className="mx-auto flex max-w-xl flex-col items-center rounded-[26px] border border-surface-border/40 bg-surface px-6 py-9 text-center">
+                <div className="mx-auto flex max-w-xl flex-col items-center rounded-[20px] border border-surface-border/40 bg-surface px-5 py-8 text-center">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-ice/15 bg-ice/5 text-ice"><Heart size={25}/></div>
                   <h2 className="mt-5 text-lg font-bold text-ink-primary">{selectedCategory ? "Nada nesta categoria" : "Sua coleção começa aqui"}</h2>
                   <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-muted">{selectedCategory ? "Não há favoritos deste tipo para a pessoa ativa. Você pode voltar a ver todas as categorias." : "Marque documentos com a estrela para reuni-los aqui sem duplicar arquivos."}</p>
-                  <button type="button" onClick={() => { trigger("vibrate"); selectedCategory ? setSelectedCategory(null) : router.push("/documentos"); }} className="mt-5 rounded-full bg-ice px-5 py-3 text-sm font-bold text-void transition active:scale-95">{selectedCategory ? "Ver todos" : "Explorar documentos"}</button>
+                  <button type="button" onClick={() => { trigger("vibrate"); selectedCategory ? setSelectedCategory(null) : router.push("/documentos"); }} className="mt-5 rounded-xl bg-ice px-5 py-3 text-sm font-bold text-void transition active:scale-95">{selectedCategory ? "Ver todos" : "Explorar documentos"}</button>
                 </div>
               </motion.div>
             ) : (
@@ -287,41 +287,16 @@ export default function FavoritesPage() {
                     isLoadingMore
                   }
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {favorites.map(
                       (
-                        document,
-                        index
+                        document
                       ) => (
-                        <motion.div
+                        <div
                           key={
                             document.id
                           }
-                          initial={{
-                            opacity:
-                              0,
-
-                            y:
-                              10,
-                          }}
-                          animate={{
-                            opacity:
-                              1,
-
-                            y:
-                              0,
-                          }}
-                          transition={{
-                            duration:
-                              0.22,
-
-                            delay:
-                              Math.min(
-                                index *
-                                  0.04,
-                                0.4
-                              ),
-                          }}
+                          className="[content-visibility:auto] [contain-intrinsic-size:132px]"
                         >
                           <DocumentCard
                             document={
@@ -331,7 +306,7 @@ export default function FavoritesPage() {
                               handleFavoriteToggle
                             }
                           />
-                        </motion.div>
+                        </div>
                       )
                     )}
                   </div>

@@ -886,9 +886,9 @@ function CredentialDetailsContent() {
         {/* =====================================================
             CONTEÚDO
             ===================================================== */}
-        <section className="space-y-4 px-5 pt-6">
+        <section className="space-y-4 px-5 pt-5">
           {/* Segurança */}
-          <div className="rounded-[28px] border border-ice/15 bg-ice/5 p-4">
+          <div className="rounded-[20px] border border-ice/15 bg-ice/5 p-3.5">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
                 <ShieldCheck
@@ -954,7 +954,7 @@ function CredentialDetailsContent() {
           )}
 
           {/* Senha */}
-          <div className="space-y-3 rounded-[28px] border border-surface-border/50 bg-surface p-4">
+          <div className="space-y-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
             <SectionTitle
               icon={
                 <ShieldCheck
@@ -1073,7 +1073,7 @@ function CredentialDetailsContent() {
 
           {/* Notas */}
           {credential.notes && (
-            <div className="space-y-3">
+            <div className="vault-deferred space-y-3">
               <SectionTitle
                 icon={
                   <KeyRound
@@ -1083,7 +1083,7 @@ function CredentialDetailsContent() {
                 title="Anotações"
               />
 
-              <div className="rounded-[28px] border border-surface-border/50 bg-surface p-4">
+              <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-primary">
                   {
                     credential.notes

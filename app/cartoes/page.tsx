@@ -9,8 +9,6 @@ import {
 import { useRouter } from "next/navigation";
 import {
   CreditCard,
-  Eye,
-  EyeOff,
   Landmark,
   Loader2,
 
@@ -39,6 +37,7 @@ import {
   ListPageHeader,
   ListSearch,
 } from "@/components/list";
+import { VaultPrivacyToggle } from "@/components/list/VaultPrivacyToggle";
 
 const CARD_COLOR =
   "#38BDF8";
@@ -330,37 +329,7 @@ export default function CartoesPage() {
             />
           }
           iconColor="text-ice"
-          rightAction={
-            <button
-              type="button"
-              onClick={
-                handleTogglePrivacy
-              }
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
-                isPrivate
-                  ? "border-ice bg-ice/10 text-ice"
-                  : "border-surface-border/50 bg-surface-raised text-ink-muted hover:text-ice"
-              }`}
-              aria-label={
-                isPrivate
-                  ? "Desativar modo privacidade"
-                  : "Ativar modo privacidade"
-              }
-              aria-pressed={
-                isPrivate
-              }
-            >
-              {isPrivate ? (
-                <EyeOff
-                  size={18}
-                />
-              ) : (
-                <Eye
-                  size={18}
-                />
-              )}
-            </button>
-          }
+          rightAction={<VaultPrivacyToggle isPrivate={isPrivate} onToggle={handleTogglePrivacy} subject="os cartões" />}
         >
           <ListSearch
             value={
@@ -471,8 +440,10 @@ export default function CartoesPage() {
                         style={{
                           animationDelay:
                             `${animationDelay}ms`,
+                          contentVisibility: "auto",
+                          containIntrinsicSize: "118px",
                         }}
-                        className="animate-in fade-in slide-in-from-bottom-2 overflow-hidden rounded-[24px] border border-surface-border/50 bg-surface shadow-sm duration-300 fill-mode-both"
+                        className="animate-in fade-in slide-in-from-bottom-2 overflow-hidden rounded-[20px] border border-surface-border/50 bg-surface shadow-sm duration-300 fill-mode-both"
                       >
                         <div className="flex items-center gap-3 p-4">
                           <button

@@ -145,6 +145,7 @@ export default function DiagnosticoPage() {
         : queueHealth.total > 0
           ? `${queueHealth.total} item(ns) aguardam envio ou nova tentativa.`
           : "Não há alterações aguardando envio neste dispositivo.";
+  const recoveryStep = !isOnline ? 0 : failed > 0 ? 1 : queueHealth.total > 0 ? 2 : 3;
 
   const runDoseAudit = useCallback(async (): Promise<DoseAudit | null> => {
     if (!user?.id || !isOnline) return null;
@@ -312,7 +313,7 @@ export default function DiagnosticoPage() {
     <PageTransition>
       <main className="min-h-[100dvh] bg-void px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] text-ink-primary">
         <header className="sticky top-0 z-20 -mx-4 flex items-center gap-3 border-b border-surface-border/40 bg-void/90 px-4 header-safe-top pb-3 backdrop-blur-xl">
-          <button onClick={() => router.replace("/mais")} aria-label="Voltar para Mais" className="rounded-full border border-surface-border p-3">
+          <button onClick={() => router.replace("/mais")} aria-label="Voltar para Mais" className="rounded-xl border border-surface-border p-3">
             <ArrowLeft size={18} />
           </button>
           <div><p className="font-mono text-[11px] uppercase tracking-[.25em] text-ice">Vault</p><h1 className="text-xl font-semibold">Saúde da sincronização</h1></div>
@@ -320,7 +321,7 @@ export default function DiagnosticoPage() {
 
         {!isOnline && <div className="mt-5 flex gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4"><WifiOff className="shrink-0 text-amber-400" /><p className="text-sm text-ink-muted">Sem rede. Seus dados permanecem no aparelho e a fila será retomada quando a conexão voltar.</p></div>}
 
-        <section aria-live="polite" className={`mt-4 overflow-hidden rounded-[24px] border bg-gradient-to-br from-surface to-void ${failed>0||syncRuntime.phase==='error'?'border-amber-400/25':'border-emerald-300/20'}`}>
+        <section aria-live="polite" className={`mt-4 overflow-hidden rounded-[20px] border bg-gradient-to-br from-surface to-void ${failed>0||syncRuntime.phase==='error'?'border-amber-400/25':'border-emerald-300/20'}`}>
           <div className="flex items-start gap-3 p-4">
             <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${failed>0||syncRuntime.phase==='error'?'bg-amber-400/10 text-amber-300':'bg-emerald-300/10 text-emerald-300'}`}>{syncBusy?<Loader2 className="animate-spin" size={20}/>:failed>0||syncRuntime.phase==='error'?<TriangleAlert size={20}/>:<ShieldCheck size={20}/>}</span>
             <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">{syncHeadline}</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{syncDescription}</p>{queue[0]?<p className="mt-1 text-[9px] text-ink-faint">Item mais antigo {ageLabel(queue[0].created_at)}.</p>:null}</div>
@@ -328,12 +329,19 @@ export default function DiagnosticoPage() {
           <div className="grid grid-cols-3 border-y border-surface-border/60 bg-black/10">
             {([ ["Para enviar", queueHealth.ready], ["Em espera", deferred], ["Revisar", failed] ] as const).map(([label,value])=><div key={label} className="border-r border-surface-border/60 px-2 py-2.5 text-center last:border-r-0"><strong className={label==='Revisar'&&value>0?'text-amber-300':'text-ink-primary'}>{value}</strong><p className="mt-0.5 text-[9px] text-ink-muted">{label}</p></div>)}
           </div>
-          <div className="p-3"><button disabled={!isOnline||syncBusy} onClick={()=>void syncNow()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ice px-4 text-sm font-semibold text-void disabled:opacity-40">{syncBusy?<Loader2 className="animate-spin" size={17}/>:<RefreshCw size={17}/>} {syncBusy?'Sincronizando…':'Conferir e sincronizar'}</button>{failed>0?<button disabled={!isOnline||syncBusy} onClick={()=>void resetFailedItems()} className="mt-2 min-h-11 w-full rounded-xl border border-amber-400/25 px-3 text-xs font-semibold text-amber-300 disabled:opacity-40">Liberar {failed} {failed===1?'falha':'falhas'} para nova tentativa</button>:null}</div>
+          <div className="p-3">
+            {failed>0?<button disabled={!isOnline||syncBusy} onClick={()=>void resetFailedItems()} className="mb-2 min-h-12 w-full rounded-xl bg-amber-400 px-3 text-sm font-bold text-void disabled:opacity-40">1 · Liberar {failed} {failed===1?'falha':'falhas'} para nova tentativa</button>:null}
+            <button disabled={!isOnline||syncBusy||failed>0} onClick={()=>void syncNow()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-ice/30 bg-ice/10 px-4 text-sm font-semibold text-ice disabled:opacity-40">{syncBusy?<Loader2 className="animate-spin" size={17}/>:<RefreshCw size={17}/>} {syncBusy?'Sincronizando…':failed>0?'2 · Sincronizar após liberar':'Conferir e sincronizar'}</button>
+          </div>
         </section>
         <p className="mt-2 px-1 text-[10px] leading-relaxed text-ink-muted">Esta tela nunca descarta itens. Toda nova tentativa passa pela fila oficial e mantém o funcionamento offline.</p>
 
+        <div aria-label="Etapas da recuperação" className="mt-3 grid grid-cols-3 overflow-hidden rounded-xl border border-surface-border/60 bg-surface text-center">
+          {(["Liberar", "Sincronizar", "Validar"] as const).map((label,index)=>{const step=index+1;const active=recoveryStep===step;const complete=recoveryStep>step;return <div key={label} className={`border-r border-surface-border/50 px-1.5 py-2.5 last:border-r-0 ${active?'bg-ice/[0.07] text-ice':complete?'text-emerald-300':'text-ink-muted'}`}><span className="font-mono text-[9px] font-bold">{complete?'✓':step}</span><p className="mt-0.5 text-[9px] font-semibold">{label}</p></div>})}
+        </div>
+
         {failedItems.length > 0 && (
-          <section className="mt-4 rounded-[20px] border border-coral/25 bg-coral/[0.05] p-3.5">
+          <section className="vault-deferred mt-4 rounded-[20px] border border-coral/25 bg-coral/[0.05] p-3.5">
             <div className="flex items-center gap-2 text-coral">
               <TriangleAlert size={16} />
               <h2 className="text-sm font-semibold">Motivo da falha</h2>
@@ -351,17 +359,17 @@ export default function DiagnosticoPage() {
           </section>
         )}
 
-        <section className="mt-4 rounded-[22px] border border-surface-border bg-surface p-3.5">
+        <section className="vault-deferred mt-4 rounded-[20px] border border-surface-border bg-surface p-3.5">
           <h2 className="font-semibold">Fila por área</h2>
           {Object.keys(byTable).length === 0 ? <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400"><CheckCircle2 size={18} />Fila limpa</div> : <div className="mt-3 grid gap-2">{Object.entries(byTable).map(([table, state]) => <div key={table} className="flex items-center justify-between rounded-xl bg-void p-3 text-sm"><span>{table}</span><div className="flex items-center gap-2">{state.failed > 0 && <span className="rounded-full bg-coral/10 px-2 py-0.5 text-[10px] text-coral">{state.failed} falha</span>}<strong>{state.total}</strong></div></div>)}</div>}
         </section>
 
-        <section className="mt-3 rounded-[22px] border border-surface-border bg-surface p-3.5">
+        <section className="vault-deferred mt-3 rounded-[20px] border border-surface-border bg-surface p-3.5">
           <div className="flex items-center justify-between"><div><h2 className="font-semibold">Cobertura local × nuvem</h2><p className="text-xs text-ink-muted">Contagem é uma triagem; a reconciliação abaixo compara IDs.</p></div><button disabled={!isOnline || checking} onClick={() => void runCheck()} aria-label="Verificar contagens" className="rounded-xl border border-surface-border p-3">{checking ? <Loader2 className="animate-spin" size={17} /> : <Database size={17} />}</button></div>
           <div className="mt-3 grid gap-2">{checks.map((check) => <div key={check.key} className="rounded-xl bg-void p-3"><div className="flex items-center gap-2"><Smartphone size={14} /><span className="min-w-0 flex-1 text-sm">{check.label}</span><span className="font-mono text-sm">{check.local ?? "—"}</span><Cloud size={14} /><span className="font-mono text-sm">{check.remote ?? "—"}</span></div>{check.error && <p className="mt-1 flex gap-1 text-xs text-coral"><TriangleAlert size={13} />{check.error}</p>}</div>)}</div>
         </section>
 
-        <section className="mt-3 rounded-[22px] border border-ice/20 bg-surface p-3.5">
+        <section className="vault-deferred mt-3 rounded-[20px] border border-ice/20 bg-surface p-3.5">
           <div className="flex items-start gap-3"><div className="rounded-2xl bg-ice/10 p-3 text-ice"><ShieldCheck size={20} /></div><div className="min-w-0 flex-1"><h2 className="font-semibold">Reconciliação de doses</h2><p className="mt-1 text-xs leading-relaxed text-ink-muted">Compara os IDs e o conteúdo. Nada é apagado ou sobrescrito automaticamente.</p></div></div>
           <button disabled={!isOnline || auditingDoses || repairingDoses} onClick={() => void runDoseAudit()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-ice/30 p-3 text-sm font-semibold text-ice disabled:opacity-40">{auditingDoses ? <Loader2 className="animate-spin" size={17} /> : <RefreshCw size={17} />}Comparar registros</button>
           {doseAudit && <div className="mt-4"><div className="grid grid-cols-2 gap-2">{([ ["Só no aparelho", doseAudit.localOnly.length, "text-amber-300"], ["Só na nuvem", doseAudit.remoteOnly.length, "text-ice"], ["Divergentes", doseAudit.divergent.length, "text-coral"], ["Locais inválidos", doseAudit.invalidLocal.length, "text-coral"] ] as const).map(([label, value, tone]) => <div key={label} className="rounded-2xl bg-void p-3"><strong className={`text-xl ${tone}`}>{value}</strong><p className="mt-1 text-[11px] text-ink-muted">{label}</p></div>)}</div>
