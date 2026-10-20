@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { BankInstitutionPicker } from "@/components/cofre/BankInstitutionPicker";
 
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 
@@ -604,20 +605,10 @@ function EditAccountContent() {
               required
             />
 
-            <Input
-              label="Nome do Banco"
-              value={
-                formData.bank_name
-              }
-              onChange={(event) =>
-                handleChange(
-                  "bank_name",
-                  event.target.value
-                )
-              }
-              error={
-                errors.bank_name
-              }
+            <BankInstitutionPicker
+              value={formData.bank_name}
+              onChange={(name) => handleChange("bank_name", name)}
+              error={errors.bank_name}
               required
             />
           </motion.div>

@@ -72,7 +72,7 @@ function applyPersonFilter(
   includeLegacyWithoutPerson: boolean
 ): Credential[] {
   if (!personId) {
-    return credentials;
+    return [];
   }
 
   return credentials.filter(
@@ -206,10 +206,10 @@ export function usePaginatedCredentials({
     setIsLoadingMore,
   ] = useState(false);
 
-  const filteredCredentials =
+  const queriedCredentials =
     useLiveQuery(
       async () => {
-        if (!user?.id) {
+        if (!user?.id || !personId) {
           return [];
         }
 
@@ -257,7 +257,8 @@ export function usePaginatedCredentials({
         category,
         searchQuery,
       ]
-    ) ?? [];
+    );
+  const filteredCredentials = personId ? applyPersonFilter(queriedCredentials ?? [], personId, includeLegacyWithoutPerson) : [];
 
   const totalCount =
     filteredCredentials.length;

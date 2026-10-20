@@ -56,6 +56,27 @@ const TABLES = [
   ["health_reminders", "health_reminders", "Lembretes"],
   ["health_goals", "health_goals", "Metas"],
   ["documents", "documents", "Documentos"],
+  ["vaults", "vaults", "Cofres"],
+  ["vaultMembers", "vault_members", "Compartilhamentos"],
+  ["credentials", "credentials", "Senhas"],
+  ["bankCards", "cards", "Contas e cartões"],
+  ["medicos", "medicos", "Médicos"],
+  ["farmacias", "farmacias", "Farmácias"],
+  ["hospitais", "hospitais", "Hospitais"],
+  ["locais", "locais", "Locais de saúde"],
+  ["exames", "exames", "Exames"],
+  ["consultas", "consultas", "Consultas"],
+  ["cirurgias", "cirurgias", "Cirurgias"],
+  ["cids", "cids", "CIDs"],
+  ["instituicoes", "instituicoes", "Instituições"],
+  ["renovacoes", "renovacoes", "Renovações"],
+  ["retiradas", "retiradas", "Retiradas"],
+  ["fornecimentos", "fornecimentos", "Fornecimentos"],
+  ["fornecimento_ciclos", "fornecimento_ciclos", "Ciclos de fornecimento"],
+  ["fornecimento_itens", "fornecimento_itens", "Itens fornecidos"],
+  ["fornecimento_documentos", "fornecimento_documentos", "Documentos do fornecimento"],
+  ["anexos_clinicos", "anexos_clinicos", "Anexos clínicos"],
+  ["health_devices", "health_devices", "Dispositivos"],
 ] as const;
 
 const DOSE_FIELDS =
@@ -102,6 +123,7 @@ export default function DiagnosticoPage() {
   const queue = (useLiveQuery(() => db.syncQueue.orderBy("created_at").toArray(), []) ?? []) as SyncQueueItem[];
   const [checks, setChecks] = useState<TableCheck[]>([]);
   const [checking, setChecking] = useState(false);
+  const [lastCoverageCheck, setLastCoverageCheck] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [doseAudit, setDoseAudit] = useState<DoseAudit | null>(null);
   const [auditingDoses, setAuditingDoses] = useState(false);
@@ -222,40 +244,46 @@ export default function DiagnosticoPage() {
     }
   }, [user?.id, isOnline, syncing, trigger, processQueue, showToast]);
 
+  // V201: auditoria é EXPLICITAMENTE manual e limita concorrência a quatro consultas.
+  // Sem observadores ou polling sobre contagens remotas: não criar query storm.
   const runCheck = useCallback(async () => {
-    if (!user?.id || !isOnline) return;
+    if (!user?.id || !isOnline || checking) return;
     setChecking(true);
-    const results: TableCheck[] = [];
-    for (const [localKey, remoteKey, label] of TABLES) {
-      try {
-        const local = await (db as any)[localKey]
-          .toCollection()
-          .filter((row: any) => row.user_id === user.id)
-          .count();
-        const remoteResult = await supabase
-          .from(remoteKey)
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        results.push({
-          key: localKey,
-          label,
-          local,
-          remote: remoteResult.error ? null : remoteResult.count ?? 0,
-          error: remoteResult.error?.message,
-        });
-      } catch (error) {
-        results.push({
-          key: localKey,
-          label,
-          local: null,
-          remote: null,
-          error: error instanceof Error ? error.message : "Falha na leitura",
-        });
+    setChecks([]);
+    setLastCoverageCheck(null);
+    try {
+      const checkOne = async ([localKey, remoteKey, label]: (typeof TABLES)[number]): Promise<TableCheck> => {
+        let local: number | null = null;
+        let remote: number | null = null;
+        const problems: string[] = [];
+        try {
+          // Todas as leituras permanecem restritas ao usuário autenticado.
+          const table = (db as unknown as Record<string, any>)[localKey];
+          if (!table) throw new Error("Tabela local não disponível");
+          local = await table.toCollection().filter((row: {user_id?: string}) => row.user_id === user.id).count();
+        } catch (error) {
+          problems.push(`Aparelho: ${error instanceof Error ? error.message : "falha na leitura"}`);
+        }
+        try {
+          const response = await supabase.from(remoteKey).select("id", {count: "exact", head: true}).eq("user_id", user.id);
+          if (response.error) throw response.error;
+          remote = response.count ?? 0;
+        } catch (error) {
+          problems.push(`Nuvem: ${error instanceof Error ? error.message : "falha na leitura"}`);
+        }
+        return {key: localKey, label, local, remote, error: problems.join(" · ") || undefined};
+      };
+      const results: TableCheck[] = [];
+      for (let index = 0; index < TABLES.length; index += 4) {
+        const batch = await Promise.all(TABLES.slice(index,index+4).map(checkOne));
+        results.push(...batch);
+        setChecks([...results]);
       }
+      setLastCoverageCheck(new Date().toISOString());
+    } finally {
+      setChecking(false);
     }
-    setChecks(results);
-    setChecking(false);
-  }, [user?.id, isOnline]);
+  }, [user?.id, isOnline, checking]);
 
   const repairLocalDoses = useCallback(async () => {
     if (!user?.id || !doseAudit?.localOnly.length || repairingDoses) return;
@@ -365,7 +393,11 @@ export default function DiagnosticoPage() {
         </section>
 
         <section className="vault-deferred mt-3 rounded-[20px] border border-surface-border bg-surface p-3.5">
-          <div className="flex items-center justify-between"><div><h2 className="font-semibold">Cobertura local × nuvem</h2><p className="text-xs text-ink-muted">Contagem é uma triagem; a reconciliação abaixo compara IDs.</p></div><button disabled={!isOnline || checking} onClick={() => void runCheck()} aria-label="Verificar contagens" className="rounded-xl border border-surface-border p-3">{checking ? <Loader2 className="animate-spin" size={17} /> : <Database size={17} />}</button></div>
+          <div className="flex items-center justify-between"><div><h2 className="font-semibold">Cobertura local × nuvem</h2><p className="text-xs text-ink-muted">Comparação manual de todas as áreas do Cofre e da saúde. Contagens não alteram nem restauram registros.</p></div><button disabled={!isOnline || checking} onClick={() => void runCheck()} aria-label="Comparar todas as áreas locais e da nuvem" className="rounded-xl border border-surface-border p-3">{checking ? <Loader2 className="animate-spin" size={17} /> : <Database size={17} />}</button></div>
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.045] px-3 py-2 text-[11px] text-ink-muted">
+            <span>{checking ? `Conferindo ${checks.length} de ${TABLES.length} áreas…` : lastCoverageCheck ? `${checks.length} áreas verificadas · leitura pontual` : `${TABLES.length} áreas · toque no ícone para comparar`}</span>
+            <span className="shrink-0 text-emerald-300">{checking ? "Verificando" : "Sob demanda"}</span>
+          </div>
           <div className="mt-3 grid gap-2">{checks.map((check) => <div key={check.key} className="rounded-xl bg-void p-3"><div className="flex items-center gap-2"><Smartphone size={14} /><span className="min-w-0 flex-1 text-sm">{check.label}</span><span className="font-mono text-sm">{check.local ?? "—"}</span><Cloud size={14} /><span className="font-mono text-sm">{check.remote ?? "—"}</span></div>{check.error && <p className="mt-1 flex gap-1 text-xs text-coral"><TriangleAlert size={13} />{check.error}</p>}</div>)}</div>
         </section>
 

@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { BankInstitutionPicker } from "@/components/cofre/BankInstitutionPicker";
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 
 type CardFormType =
@@ -681,15 +682,9 @@ function EditCardContent() {
               required
             />
 
-            <Input
-              label="Nome do Banco"
+            <BankInstitutionPicker
               value={formData.bank_name}
-              onChange={(event) =>
-                handleChange(
-                  "bank_name",
-                  event.target.value
-                )
-              }
+              onChange={(name) => handleChange("bank_name", name)}
               error={errors.bank_name}
               required
             />

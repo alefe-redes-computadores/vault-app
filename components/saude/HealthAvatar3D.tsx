@@ -147,6 +147,19 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const curls:[number,number,number][]=[[-.15,3.015,-.02],[-.08,3.045,-.035],[0,3.055,-.04],[.08,3.045,-.035],[.15,3.015,-.02],[-.18,2.96,-.02],[.18,2.96,-.02]];
       for(const [x,y,z] of curls)oval(materials.hair,x,appearance.hat==='none'?y:y-.055,z,[.075,.072,.075]);
     }
+    // V201: linha frontal suave e estática (sem RAF, geometria criada uma só vez por cena).
+    // Sob boné, a aba já define o contorno, portanto não duplicar a borda.
+    if (appearance.hat === 'none' && (appearance.hair === 'short' || appearance.hair === 'fade')) {
+      const hairlineShape = new THREE.Shape();
+      hairlineShape.moveTo(-.155, 2.946);
+      hairlineShape.quadraticCurveTo(-.078, 2.985, 0, 2.965);
+      hairlineShape.quadraticCurveTo(.078, 2.985, .155, 2.946);
+      hairlineShape.lineTo(.141, 2.925);
+      hairlineShape.quadraticCurveTo(0, 2.95, -.141, 2.925);
+      hairlineShape.closePath();
+      const frontalHairline = mesh(new THREE.ShapeGeometry(hairlineShape), materials.hair, 0, 0, .202);
+      frontalHairline.raycast = () => {};
+    }
     if(appearance.facialHair==='stubble'){
       const stubble=mesh(new THREE.CylinderGeometry(.145,.074,.135,10),materials.facialHair,0,2.62,.035);stubble.scale.set(1.01,1,.92);stubble.raycast=()=>{};
     }else if(appearance.facialHair==='goatee'){

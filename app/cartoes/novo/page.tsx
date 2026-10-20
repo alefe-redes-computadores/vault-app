@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { PageTransition } from "@/components/PageTransition";
+import { BankInstitutionPicker } from "@/components/cofre/BankInstitutionPicker";
 
 import { useSubmitAction } from "@/hooks/useSubmitAction";
 import { useCards } from "@/hooks/useCards";
@@ -443,22 +444,10 @@ export default function NewCardPage() {
               required
             />
 
-            <Input
-              label="Nome do Banco (ex: Nubank, Itaú, Bradesco)"
-              value={
-                formData.bank_name
-              }
-              onChange={(
-                event
-              ) =>
-                handleChange(
-                  "bank_name",
-                  event.target.value
-                )
-              }
-              error={
-                errors.bank_name
-              }
+            <BankInstitutionPicker
+              value={formData.bank_name}
+              onChange={(name) => handleChange("bank_name", name)}
+              error={errors.bank_name}
               required
             />
           </motion.div>

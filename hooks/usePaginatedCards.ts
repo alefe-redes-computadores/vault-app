@@ -76,10 +76,10 @@ export function usePaginatedCards({
     setIsLoadingMore,
   ] = useState(false);
 
-  const filteredCards =
+  const queriedCards =
     useLiveQuery(
       async () => {
-        if (!user?.id) {
+        if (!user?.id || !personId) {
           return [];
         }
 
@@ -154,7 +154,8 @@ export function usePaginatedCards({
         personId,
         includeLegacyWithoutPerson,
       ]
-    ) ?? [];
+    );
+  const filteredCards = personId ? applyPersonFilter(queriedCards ?? [], personId, includeLegacyWithoutPerson) : [];
 
   const totalCount =
     filteredCards.length;
@@ -316,7 +317,7 @@ function applyPersonFilter(
   includeLegacyWithoutPerson: boolean
 ): BankCard[] {
   if (!personId) {
-    return cards;
+    return [];
   }
 
   return cards.filter(
