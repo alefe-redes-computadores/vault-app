@@ -12,9 +12,10 @@ import { avatarAttentionColor, shortestAvatarAngle } from "@/lib/health-profile/
 import {avatarCameraFrame,avatarStyleGeometryKey,type AvatarFraming} from "@/lib/health-profile/avatar-framing";
 import type { AvatarStyle } from "@/lib/health-profile/avatar-style";
 
-type Controller = {style:(value:AvatarStyle)=>void;framing:(value:AvatarFraming)=>void; markers:(markers:AvatarSurgeryMarker[])=>void; attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void; nudge:(delta:number)=>void;expression:(value:AvatarBodyContext["expression"])=>void;weight:(visible:boolean)=>void };
+type Controller = {preview:()=>void;viewport:(compact:boolean)=>void;style:(value:AvatarStyle)=>void;framing:(value:AvatarFraming)=>void; markers:(markers:AvatarSurgeryMarker[])=>void; attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void; nudge:(delta:number)=>void;expression:(value:AvatarBodyContext["expression"])=>void;weight:(visible:boolean)=>void };
 export default function HealthAvatar3D({ framing="body",onFramingChange,skin, appearance, devices, onUnavailable, attention=0, onDeviceSelect, onBrainSelect, onEmptyTap, controlsContainer, compact=false, body, onBodySelect }: { framing?:AvatarFraming;onFramingChange?:(value:AvatarFraming)=>void;skin: string; appearance: AvatarStyle; devices: HealthDevice[]; attention?:number; onDeviceSelect?:(id:string)=>void; onBrainSelect?:()=>void; onEmptyTap?:()=>void; compact?:boolean;body?:AvatarBodyContext;onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void; controlsContainer?:HTMLElement|null; onUnavailable: () => void }) {
   const host = useRef<HTMLDivElement>(null), controller = useRef<Controller | null>(null);
+  const compactRef = useRef(compact);
   const [zoom, setZoom] = useState(100), [direction, setDirection] = useState("front");
   const zoomId = useId();
   const appearanceRef=useRef(appearance),framingRef=useRef(framing);
@@ -33,6 +34,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
   const layoutForView=useMemo(()=>avatarLayout(devices),[devices]);
   const { description, slots } = layoutForView;
   const visualSignature=useMemo(()=>avatarBodyVisualSignature(skin,devices)+avatarStyleGeometryKey(appearance),[skin,devices,appearance]);
+  // V202: the compact preview is its own canonical presentation, not a copy
+  // of the editor camera. Reuse the WebGL renderer and never start a render loop.
+  useEffect(()=>{
+    compactRef.current=compact;
+    controller.current?.viewport(compact);
+    if(compact){
+      setZoom(100);
+      setDirection('front');
+      controller.current?.preview();
+    }
+  },[compact,visualSignature]);
   useEffect(() => {
     setZoom(100); setDirection("front");
     const appearance=appearanceRef.current;
@@ -45,7 +57,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const navigatorWithMemory=navigator as Navigator&{deviceMemory?:number};
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const constrainedDevice=avatarConstrainedDevice({hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigatorWithMemory.deviceMemory,reducedMotion});
-    renderer.setPixelRatio(avatarRenderRatio(displayRatio,false,compact,constrainedDevice));
+    renderer.setPixelRatio(avatarRenderRatio(displayRatio,false,compactRef.current,constrainedDevice));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
     element.appendChild(renderer.domElement);
@@ -109,13 +121,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
       // V184: cheek volume follows the jaw plane instead of reading as a sphere attached to the face.
-      const cheek=mesh(taperedBox(.061,.077,.086,.043),materials.skin,sign*.106,2.738,.158);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.raycast=()=>{};
+      const cheek=mesh(taperedBox(.055,.068,.074,.034),materials.skin,sign*.104,2.738,.147);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.raycast=()=>{};
       const temple=mesh(taperedBox(.051,.063,.11,.032),materials.skin,sign*.158,2.824,.124);temple.rotation.z=sign*.08;temple.raycast=()=>{};
       // V198: a orelha deixa de ser uma esfera achatada. O plano afunilado acompanha
       // têmpora e mandíbula com a mesma contagem de malhas e sem custo por quadro.
       const outerEar=mesh(taperedBox(.038,.048,.091,.044),materials.skin,sign*.202,2.77,.004);outerEar.rotation.z=-sign*.07;outerEar.raycast=()=>{};
       const earRim=mesh(taperedBox(.013,.019,.054,.021),materials.skinShade,sign*.205,2.77,.036);earRim.rotation.z=-sign*.06;earRim.raycast=()=>{};
-      const cheekbone=mesh(new THREE.CapsuleGeometry(.009,.062,3,8),materials.skinShade,sign*.104,2.755,.205);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
+      const cheekbone=mesh(new THREE.CapsuleGeometry(.006,.053,3,8),materials.skinShade,sign*.101,2.752,.197);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
       const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
     const chin=oval(materials.skin,0,2.548,.056,[.073,.038,.069]);chin.rotation.x=.08;chin.raycast=()=>{};
@@ -125,14 +137,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const brow=mesh(softBox(.064,.012,.012,.005),materials.hair,sign*.084,2.861,.205);brow.rotation.z=-sign*.10;brow.raycast=()=>{};
       // V192: planos supraorbitais conectam sobrancelha, têmpora e ponte nasal;
       // o rosto mantém expressão e acessórios sem voltar ao aspecto circular.
-      const browPlane=mesh(taperedBox(.055,.071,.018,.022),materials.skinShade,sign*.083,2.878,.188);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
+      const browPlane=mesh(taperedBox(.047,.057,.016,.017),materials.skinShade,sign*.083,2.875,.184);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
       oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
       const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
       const lowerLid=mesh(new THREE.CapsuleGeometry(.0035,.055,2,7),materials.skinShade,sign*.083,2.804,.239);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
     }
-    const noseBridge=mesh(taperedBox(.024,.032,.082,.032),materials.skin,0,2.778,.213);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
+    const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
-    const noseTip=oval(materials.skin,0,2.724,.239,[.034,.022,.029]);noseTip.raycast=()=>{};
+    const noseTip=oval(materials.skin,0,2.727,.231,[.027,.018,.023]);noseTip.raycast=()=>{};
     for(const sign of [-1,1]){
       oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
       oval(materials.skinShade,sign*.018,2.711,.259,[.006,.004,.003]).raycast=()=>{};
@@ -161,13 +173,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       frontalHairline.raycast = () => {};
     }
     if(appearance.facialHair==='stubble'){
-      const stubble=mesh(new THREE.CylinderGeometry(.145,.074,.135,10),materials.facialHair,0,2.62,.035);stubble.scale.set(1.01,1,.92);stubble.raycast=()=>{};
+      const stubble=mesh(new THREE.CylinderGeometry(.124,.072,.10,12),materials.facialHair,0,2.62,.042);stubble.scale.set(1.01,1,.92);stubble.raycast=()=>{};
     }else if(appearance.facialHair==='goatee'){
       oval(materials.facialHair,0,2.603,.197,[.055,.065,.018]).raycast=()=>{};
       const moustache=mesh(new THREE.CapsuleGeometry(.011,.075,3,8),materials.facialHair,0,2.686,.209);moustache.rotation.z=Math.PI/2;moustache.raycast=()=>{};
     }else if(appearance.facialHair==='beard'){
-      const beard=mesh(new THREE.CylinderGeometry(.15,.082,.17,10),materials.facialHair,0,2.605,.035);beard.raycast=()=>{};
-      oval(materials.facialHair,0,2.56,.085,[.09,.07,.07]).raycast=()=>{};
+      const beard=mesh(new THREE.CylinderGeometry(.128,.077,.12,12),materials.facialHair,0,2.61,.045);beard.raycast=()=>{};
+      oval(materials.facialHair,0,2.574,.085,[.078,.042,.054]).raycast=()=>{};
       const moustache=mesh(new THREE.CapsuleGeometry(.012,.09,3,8),materials.facialHair,0,2.688,.21);moustache.rotation.z=Math.PI/2;moustache.raycast=()=>{};
     }
     const neck=limb(.082,.108,.22,materials.skin,0,2.45,0);neck.scale.z=.9;
@@ -248,13 +260,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       oval(materials.dark,sign*.083,2.82,.235,[.007,.009,.004]);
       oval(materials.white,sign*.079,2.827,.239,[.0025,.0025,.002]);
     }
-    oval(materials.skin,0,2.76,.23,[.035,.055,.04]);
+    const noseContour=oval(materials.skin,0,2.76,.212,[.027,.045,.026]);noseContour.raycast=()=>{};
     // V155: cosmetic accessories follow head/body geometry, not medical-device records.
     // They do not receive raycast actions and never alter clinical markers.
     if (appearance.hat !== "none") {
       const crown=mesh(new THREE.SphereGeometry(.246,28,16,0,Math.PI*2,0,Math.PI/2),materials.cap,0,2.98,-.01,[1,.75,.93]);
       crown.raycast=()=>{};
-      const crownFront=mesh(softBox(.292,.122,.018,.04),materials.cap,0,3.035,.172);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
+      const crownFront=mesh(softBox(.266,.09,.016,.029),materials.cap,0,3.031,.174);crownFront.rotation.x=-.11;crownFront.raycast=()=>{};
       const capButton=mesh(new THREE.SphereGeometry(.018,10,6),materials.white,0,3.165,-.012);capButton.raycast=()=>{};
       const crownSide=mesh(new THREE.CylinderGeometry(.225,.244,.12,18,1,true),materials.cap,0,3.012,-.008);crownSide.raycast=()=>{};
       // V197: copa e aba continuam legíveis de frente, mas ficam contidas na largura
@@ -451,10 +463,21 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       if(cameraTransition){const progress=Math.min(1,(now-cameraTransition.start)/260),ease=1-Math.pow(1-progress,3);camera.position.y=cameraTransition.fromY+(cameraTransition.toY-cameraTransition.fromY)*ease;camera.position.z=cameraTransition.fromDistance+(cameraTransition.toDistance-cameraTransition.fromDistance)*ease;camera.lookAt(0,camera.position.y,0);if(progress>=1)cameraTransition=null;}
       renderer.render(scene,camera);if(transition||cameraTransition)draw();
     });};
-    const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging,compact,constrainedDevice);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
+    const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging,compactRef.current,constrainedDevice);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
     const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
     setMarkers(markersRef.current);
-    controller.current={style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+    controller.current={preview:()=>{
+      // Snap back to the full-body/front presentation before revealing the card.
+      // Do not animate a face/shoes camera transition underneath compact UI.
+      transition=null;cameraTransition=null;model.rotation.y=0;camera.zoom=1;
+      camera.updateProjectionMatrix();const standard=avatarCameraFrame('body');
+      camera.position.set(0,standard.height,standard.distance);
+      camera.lookAt(0,standard.height,0);draw();
+    },viewport:small=>{
+      const ratio=avatarRenderRatio(displayRatio,false,small,constrainedDevice);
+      if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}
+      draw();
+    },style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};
