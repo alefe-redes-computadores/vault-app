@@ -617,7 +617,7 @@ function EditarRetiradaContent() {
                   {
                     label
                   }
-                  <HealthRelationPicker title="Selecionar vínculo" kind={label === "Médico" ? "doctor" : label === "Farmácia" ? "pharmacy" : "place"}
+                  <HealthRelationPicker title="Selecionar vínculo" kind={label === "Médico" ? "doctor" : label === "Farmácia" ? "pharmacy" : label === "Hospital" ? "hospital" : "place"}
                     value={
                       value
                     }

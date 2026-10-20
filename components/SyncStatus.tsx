@@ -89,37 +89,19 @@ export function SyncStatus({
       null
     );
 
-  const pendingCount =
-    useLiveQuery(
-      () =>
-        db.syncQueue
-          .filter(
-            (
-              item
-            ) =>
-              item.failed !==
-              true
-          )
-          .count(),
-      []
-    ) ??
-    0;
-
-  const failedCount =
-    useLiveQuery(
-      () =>
-        db.syncQueue
-          .filter(
-            (
-              item
-            ) =>
-              item.failed ===
-              true
-          )
-          .count(),
-      []
-    ) ??
-    0;
+  // V199: uma única leitura reativa alimenta os dois estados da fila.
+  const queueSummary = useLiveQuery(async () => {
+    const items = await db.syncQueue.toArray();
+    let pending = 0;
+    let failed = 0;
+    for (const item of items) {
+      if (item.failed === true) failed += 1;
+      else pending += 1;
+    }
+    return { pending, failed };
+  }, []) ?? { pending: 0, failed: 0 };
+  const pendingCount = queueSummary.pending;
+  const failedCount = queueSummary.failed;
 
   useEffect(
     () => {

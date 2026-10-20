@@ -8,6 +8,11 @@ import {
 } from "@/lib/notifications";
 import { nextHealthReminderOccurrence, reminderRunsOnWeekday } from "./domain";
 import type { HealthReminderRule } from "./types";
+import {
+  reconcileVaultNotificationSet,
+  VAULT_NOTIFICATION_FINGERPRINT,
+  vaultNotificationFingerprint,
+} from "@/lib/notification-reconciliation";
 
 const DAYS_AHEAD = 21;
 const MAX_PENDING = 60;
@@ -75,15 +80,8 @@ export async function reconcileHealthReminderNotifications(
     return { native: false, permission: "unavailable", scheduled: 0 };
   }
 
-  const pending = await LocalNotifications.getPending();
-  const ours = pending.notifications
-    .filter((notification) =>
-      (notification.extra as { vaultHealthReminder?: boolean } | undefined)?.vaultHealthReminder
-    )
-    .map((notification) => ({ id: notification.id }));
-  if (ours.length > 0) await LocalNotifications.cancel({ notifications: ours });
-
   const active = rules.filter((rule) => rule.status === "active");
+  const owns = (notification: { extra?: Record<string, unknown> }) => notification.extra?.vaultHealthReminder === true;
 
   /*
    * V36: a preferência local é a autoridade para este aparelho.
@@ -91,11 +89,13 @@ export async function reconcileHealthReminderNotifications(
    * realmente significa silêncio sem apagar as regras sincronizadas.
    */
   if (!isNotificationPreferenceEnabled() || !isVaultNotificationCategoryEnabled("lembretes_saude")) {
+    await reconcileVaultNotificationSet([], owns);
     return { native: true, permission: await getHealthReminderPermission(), scheduled: 0 };
   }
 
   const permission = await getHealthReminderPermission();
   if (permission !== "granted" || active.length === 0) {
+    await reconcileVaultNotificationSet([], owns);
     return { native: true, permission, scheduled: 0 };
   }
 
@@ -125,9 +125,17 @@ export async function reconcileHealthReminderNotifications(
         personId: rule.person_id,
         targetRoute: rule.target_route,
         type: "health_reminder",
+        [VAULT_NOTIFICATION_FINGERPRINT]: vaultNotificationFingerprint([
+          rule.id,
+          rule.person_id,
+          rule.title,
+          rule.body,
+          rule.target_route,
+          at.getTime(),
+        ]),
       },
     }));
 
-  if (notifications.length > 0) await LocalNotifications.schedule({ notifications });
+  await reconcileVaultNotificationSet(notifications, owns);
   return { native: true, permission, scheduled: notifications.length };
 }

@@ -73,6 +73,7 @@ import {
 import {
   SelectionModal,
 } from "@/components/SelectionModal";
+import { TreatmentRelationOption } from "@/components/saude/TreatmentRelationOption";
 import {
   BottomSheet,
 } from "@/components/ui/BottomSheet";
@@ -2251,51 +2252,12 @@ export default function NovaCirurgiaPage() {
           }
           title="Vincular Tratamentos"
           placeholder="Buscar tratamento..."
-          renderItem={(
-            item
-          ) => {
-            const IconComp =
-              getTratamentoIcon(
-                item.nome
-              );
-
-            const isSelected =
-              Boolean(
-                item.id &&
-                  tratamentosSelecionados.includes(
-                    item.id
-                  )
-              );
-
-            return (
-              <div className="flex w-full items-center gap-2">
-                <IconComp
-                  size={
-                    16
-                  }
-                  className="text-violet-400"
-                />
-
-                <span
-                  className={`text-sm font-medium ${
-                    isSelected
-                      ? "text-violet-400"
-                      : "text-ink-primary"
-                  }`}
-                >
-                  {
-                    item.nome
-                  }
-                </span>
-
-                {isSelected && (
-                  <span className="ml-auto text-[10px] text-emerald-400">
-                    ✓
-                  </span>
-                )}
-              </div>
-            );
-          }}
+          renderItem={(item) => (
+            <TreatmentRelationOption
+              treatment={item}
+              selected={Boolean(item.id && tratamentosSelecionados.includes(item.id))}
+            />
+          )}
           getItemId={(
             item
           ) =>

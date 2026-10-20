@@ -2,7 +2,7 @@
 
 import { Children, isValidElement, useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, MapPin, Stethoscope, Store, Link2 } from "lucide-react";
+import { ChevronDown, Check, MapPin, Stethoscope, Store, Link2, Building2 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
@@ -26,7 +26,7 @@ type Props = {
   medications?: Medicamento[];
   medication?: Medicamento;
   compact?: boolean;
-  kind?: "doctor" | "place" | "pharmacy";
+  kind?: "doctor" | "place" | "pharmacy" | "hospital";
 };
 
 function textOf(node: ReactNode): string {
@@ -57,8 +57,8 @@ export function HealthRelationPicker({ children, value, defaultValue = "", onVal
     const [doctors,pharmacies,places,hospitals,treatments]=await Promise.all([
       kind==="doctor"?db.medicos.where("user_id").equals(uid).toArray():Promise.resolve([]),
       kind==="pharmacy"?db.farmacias.where("user_id").equals(uid).toArray():Promise.resolve([]),
-      kind!=="pharmacy"?db.locais.where("user_id").equals(uid).toArray():Promise.resolve([]),
-      kind==="doctor"?db.hospitais.where("user_id").equals(uid).toArray():Promise.resolve([]),
+      kind==="doctor"||kind==="place"?db.locais.where("user_id").equals(uid).toArray():Promise.resolve([]),
+      kind==="doctor"||kind==="hospital"?db.hospitais.where("user_id").equals(uid).toArray():Promise.resolve([]),
       kind==="doctor"&&activePersonId?db.tratamentos.where("person_id").equals(activePersonId).toArray():Promise.resolve([])
     ]);
     return {uid,pid:activePersonId,kind,metadata:buildRelationMetadata(kind,uid,activePersonId,{doctors,pharmacies,places,hospitals,treatments}),error:false};
@@ -77,11 +77,11 @@ export function HealthRelationPicker({ children, value, defaultValue = "", onVal
   useEffect(() => { setOpen(false); }, [activePersonId, user?.id]);
   const selectedId = String(value ?? localValue);
   const selected = choices.find(item => item.id === selectedId);
-  const Icon = kind === "doctor" ? Stethoscope : kind === "place" ? MapPin : kind === "pharmacy" ? Store : Link2;
+  const Icon = kind === "doctor" ? Stethoscope : kind === "hospital" ? Building2 : kind === "place" ? MapPin : kind === "pharmacy" ? Store : Link2;
   const icon = (choice: Choice) => {
     if(renderIcon)return renderIcon(choice.id);
     const medication = medications?.find(item => item.id === choice.id) || (choice.id ? relatedMedication : undefined);
-    return medication ? <MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={24} /> : <Icon size={20} style={metadata[choice.id]?.color?{color:metadata[choice.id].color}:undefined} className={kind === "doctor" ? "text-violet-300" : kind === "place" ? "text-amber-300" : kind === "pharmacy" ? "text-emerald-400" : "text-ink-muted"} />;
+    return medication ? <MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={24} /> : <Icon size={20} style={metadata[choice.id]?.color?{color:metadata[choice.id].color}:undefined} className={kind === "doctor" ? "text-violet-300" : kind === "hospital" ? "text-sky-300" : kind === "place" ? "text-amber-300" : kind === "pharmacy" ? "text-emerald-400" : "text-ink-muted"} />;
   };
   return <>
     <select className="sr-only" tabIndex={-1} aria-hidden="true" value={selectedId} disabled={disabled} required={required} onChange={event => onValueChange(event.target.value)} onInvalid={event => { event.preventDefault(); setOpen(true); }}>{children}</select>
@@ -97,6 +97,6 @@ export function HealthRelationPicker({ children, value, defaultValue = "", onVal
       const first = nodes[0], last = nodes[nodes.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-    }}><SelectionModal<Choice> isOpen={open} onClose={() => setOpen(false)} title={title} placeholder="Buscar no cadastro…" items={choices.filter(item => !item.disabled && (!required || item.id !== ""))} getItemId={item => item.id} getItemLabel={item => [item.label,metadata[item.id]?.detail||"",(item.label+" "+(metadata[item.id]?.detail||"")).normalize("NFD").replace(/[\u0300-\u036f]/g,"")].join(" ")} onSelect={item => { setLocalValue(item.id); onValueChange(item.id); }} renderItem={item => <div className="flex items-center gap-3"><span style={metadata[item.id]?.color?{borderColor:metadata[item.id].color,color:metadata[item.id].color}:undefined} className={"flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border "+(kind==="doctor"?"border-violet-400/25 bg-violet-400/10":kind==="pharmacy"?"border-emerald-400/25 bg-emerald-400/10":kind==="place"?"border-cyan-400/25 bg-cyan-400/10":"border-surface-border bg-surface")}>{icon(item)}</span><span className="min-w-0 flex-1"><span className="block whitespace-pre-wrap break-words text-sm text-ink-primary">{item.label}</span>{metadata[item.id]&&<span className="mt-1 block whitespace-pre-wrap break-words text-[11px] leading-relaxed text-ink-muted">{metadata[item.id].detail}</span>}</span>{item.id === selectedId ? <Check size={17} className="shrink-0 text-emerald-400" /> : null}</div>} /></div>, document.body) : null}
+    }}><SelectionModal<Choice> isOpen={open} onClose={() => setOpen(false)} title={title} placeholder="Buscar no cadastro…" items={choices.filter(item => !item.disabled && (!required || item.id !== ""))} getItemId={item => item.id} getItemLabel={item => [item.label,metadata[item.id]?.detail||"",(item.label+" "+(metadata[item.id]?.detail||"")).normalize("NFD").replace(/[\u0300-\u036f]/g,"")].join(" ")} onSelect={item => { setLocalValue(item.id); onValueChange(item.id); }} renderItem={item => <div className="flex items-center gap-3"><span style={metadata[item.id]?.color?{borderColor:metadata[item.id].color,color:metadata[item.id].color}:undefined} className={"flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border "+(kind==="doctor"?"border-violet-400/25 bg-violet-400/10":kind==="hospital"?"border-sky-400/25 bg-sky-400/10":kind==="pharmacy"?"border-emerald-400/25 bg-emerald-400/10":kind==="place"?"border-cyan-400/25 bg-cyan-400/10":"border-surface-border bg-surface")}>{icon(item)}</span><span className="min-w-0 flex-1"><span className="block whitespace-pre-wrap break-words text-sm text-ink-primary">{item.label}</span>{metadata[item.id]&&<span className="mt-1 block whitespace-pre-wrap break-words text-[11px] leading-relaxed text-ink-muted">{metadata[item.id].detail}</span>}</span>{item.id === selectedId ? <Check size={17} className="shrink-0 text-emerald-400" /> : null}</div>} /></div>, document.body) : null}
   </>;
 }

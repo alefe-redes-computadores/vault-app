@@ -58,6 +58,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { SelectionModal } from "@/components/SelectionModal";
+import { TreatmentRelationOption } from "@/components/saude/TreatmentRelationOption";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
 import type {
@@ -2571,45 +2572,12 @@ function EditarExameContent() {
           items={tratamentos}
           title="Vincular Tratamentos"
           placeholder="Buscar tratamento..."
-          renderItem={(item) => {
-            const Icon =
-              getTratamentoIcon(
-                item.nome
-              );
-
-            const isSelected =
-              Boolean(
-                item.id &&
-                  tratamentosSelecionados.includes(
-                    item.id
-                  )
-              );
-
-            return (
-              <div className="flex w-full items-center gap-2">
-                <Icon
-                  size={16}
-                  className="text-violet-400"
-                />
-
-                <span
-                  className={`text-sm font-medium ${
-                    isSelected
-                      ? "text-violet-400"
-                      : "text-ink-primary"
-                  }`}
-                >
-                  {item.nome}
-                </span>
-
-                {isSelected && (
-                  <span className="ml-auto text-[10px] text-emerald-400">
-                    Selecionado
-                  </span>
-                )}
-              </div>
-            );
-          }}
+          renderItem={(item) => (
+            <TreatmentRelationOption
+              treatment={item}
+              selected={Boolean(item.id && tratamentosSelecionados.includes(item.id))}
+            />
+          )}
           getItemId={(item) =>
             item.id!
           }

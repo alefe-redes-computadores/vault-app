@@ -278,10 +278,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const frameGeometry = rectangular ? new THREE.ExtrudeGeometry(outline,{depth:.009,bevelEnabled:false,curveSegments:3}) : new THREE.TorusGeometry(.070,.009,7,24);
         const ring=mesh(frameGeometry,materials.glasses,x,y,z);
         ring.raycast=()=>{};
-        const temple=mesh(new THREE.BoxGeometry(.009,.009,.14),materials.glasses,side*.166,y,.193);
-        temple.raycast=()=>{};
+        // V199: hastes afuniladas acompanham a lateral do crânio e chegam à nova
+        // orelha planar; continuam sendo uma malha estática por lado.
+        const temple=mesh(taperedBox(.011,.008,.012,.148),materials.glasses,side*.166,y-.003,.19);
+        temple.rotation.y=side*.075;temple.rotation.x=-.035;temple.raycast=()=>{};
       }
-      const bridge=mesh(new THREE.BoxGeometry(.044,.01,.012),materials.glasses,0,2.831,.263);bridge.raycast=()=>{};
+      const bridge=mesh(taperedBox(.022,.018,.01,.014),materials.glasses,0,2.831,.263);bridge.raycast=()=>{};
       const lensMaterial=new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false});
       for(const side of [-1,1]){
         const lens=appearance.glasses==="rectangular"

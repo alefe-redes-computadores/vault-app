@@ -267,7 +267,7 @@ function ProcessForm({
       ].map(({ key, label, rows }) => (
         <label key={key} className="block text-xs text-ink-muted">
           {label}
-          <HealthRelationPicker title={label} kind={key === "medico_id" ? "doctor" : key === "farmacia_id" ? "pharmacy" : "place"}
+          <HealthRelationPicker title={label} kind={key === "medico_id" ? "doctor" : key === "farmacia_id" ? "pharmacy" : key === "hospital_id" ? "hospital" : "place"}
             className={input}
             value={String(values[key as keyof typeof values] || "")}
             onValueChange={(e) =>

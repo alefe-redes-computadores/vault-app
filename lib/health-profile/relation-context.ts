@@ -1,6 +1,6 @@
 import type { Medico,Farmacia,LocalSaude,Hospital,Tratamento } from "@/lib/types";
 export type RelationMetadata={detail:string;color?:string};
-export function buildRelationMetadata(kind:"doctor"|"place"|"pharmacy",uid:string,pid:string|null,rows:{doctors:Medico[];pharmacies:Farmacia[];places:LocalSaude[];hospitals:Hospital[];treatments:Tratamento[]}){
+export function buildRelationMetadata(kind:"doctor"|"place"|"pharmacy"|"hospital",uid:string,pid:string|null,rows:{doctors:Medico[];pharmacies:Farmacia[];places:LocalSaude[];hospitals:Hospital[];treatments:Tratamento[]}){
  const output:Record<string,RelationMetadata>={};
  const treatments=rows.treatments.filter(t=>t.user_id===uid&&t.person_id===pid&&t.status==="ativo");
  const places=rows.places.filter(p=>p.user_id===uid),hospitals=rows.hospitals.filter(h=>h.user_id===uid);
@@ -12,5 +12,6 @@ export function buildRelationMetadata(kind:"doctor"|"place"|"pharmacy",uid:strin
  }
  if(kind==="pharmacy")for(const pharmacy of rows.pharmacies.filter(p=>p.user_id===uid&&p.id))output[pharmacy.id!]={detail:[pharmacy.endereco,pharmacy.telefone].filter(Boolean).join(" · ")||"Endereço não informado"};
  if(kind==="place")for(const place of places.filter(p=>p.id))output[place.id!]={detail:place.endereco||"Endereço não informado"};
+ if(kind==="hospital")for(const hospital of hospitals.filter(h=>h.id))output[hospital.id!]={detail:[hospital.endereco,hospital.telefone].filter(Boolean).join(" · ")||"Endereço não informado"};
  return output;
 }

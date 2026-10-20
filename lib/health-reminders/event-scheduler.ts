@@ -8,6 +8,11 @@ import {
   isNotificationPreferenceEnabled,
   VAULT_NOTIFICATION_CHANNEL_ID,
 } from "@/lib/notifications";
+import {
+  reconcileVaultNotificationSet,
+  VAULT_NOTIFICATION_FINGERPRINT,
+  vaultNotificationFingerprint,
+} from "@/lib/notification-reconciliation";
 
 const MAX_EVENT_PENDING = 60;
 // VAULT_EVENT_MULTI_REMINDER_V52
@@ -82,22 +87,17 @@ export async function reconcileHealthEventNotifications(
 ): Promise<number> {
   if (!isVaultNative()) return 0;
 
-  const pending = await LocalNotifications.getPending();
-  const ours = pending.notifications
-    .filter((notification) => {
-      const extra = notification.extra as Record<string, unknown> | undefined;
-      return extra?.[EVENT_MARKER] === true;
-    })
-    .map((notification) => ({ id: notification.id }));
-
-  if (ours.length > 0) {
-    await LocalNotifications.cancel({ notifications: ours });
+  const owns = (notification: { extra?: Record<string, unknown> }) => notification.extra?.[EVENT_MARKER] === true;
+  if (!isNotificationPreferenceEnabled()) {
+    await reconcileVaultNotificationSet([], owns);
+    return 0;
   }
 
-  if (!isNotificationPreferenceEnabled()) return 0;
-
   const permission = await LocalNotifications.checkPermissions();
-  if (permission.display !== "granted") return 0;
+  if (permission.display !== "granted") {
+    await reconcileVaultNotificationSet([], owns);
+    return 0;
+  }
 
   await ensureVaultNotificationChannel();
 
@@ -143,6 +143,16 @@ export async function reconcileHealthEventNotifications(
           personId: event.personId,
           targetRoute: event.targetRoute,
           offsetMinutes,
+          [VAULT_NOTIFICATION_FINGERPRINT]: vaultNotificationFingerprint([
+            event.kind,
+            event.id,
+            event.userId,
+            event.personId,
+            event.title,
+            event.targetRoute,
+            notifyAt.getTime(),
+            offsetMinutes,
+          ]),
         },
       }));
     })
@@ -153,9 +163,7 @@ export async function reconcileHealthEventNotifications(
     })
     .slice(0, MAX_EVENT_PENDING);
 
-  if (notifications.length > 0) {
-    await LocalNotifications.schedule({ notifications });
-  }
+  await reconcileVaultNotificationSet(notifications, owns);
 
   return notifications.length;
 }

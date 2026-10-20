@@ -679,7 +679,7 @@ function NovaRetiradaContent() {
 
               <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 Hospital
-                <HealthRelationPicker title="Selecionar hospital" kind="place"
+                <HealthRelationPicker title="Selecionar hospital" kind="hospital"
                   value={
                     hospitalId
                   }
