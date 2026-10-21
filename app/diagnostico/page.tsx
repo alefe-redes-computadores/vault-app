@@ -260,7 +260,9 @@ export default function DiagnosticoPage() {
           // Todas as leituras permanecem restritas ao usuário autenticado.
           const table = (db as unknown as Record<string, any>)[localKey];
           if (!table) throw new Error("Tabela local não disponível");
-          local = await table.toCollection().filter((row: {user_id?: string}) => row.user_id === user.id).count();
+          local = table.schema.indexes.some((index: {name: string}) => index.name === "user_id")
+            ? await table.where("user_id").equals(user.id).count()
+            : await table.toCollection().filter((row: {user_id?: string}) => row.user_id === user.id).count();
         } catch (error) {
           problems.push(`Aparelho: ${error instanceof Error ? error.message : "falha na leitura"}`);
         }

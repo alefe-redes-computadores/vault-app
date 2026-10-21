@@ -39,12 +39,17 @@ function hash(value: string): number {
   return Math.abs(result % 2147483000) + 1;
 }
 
-function parseEventDate(date: string, time?: string | null): Date | null {
+function parseEventDate(
+  date: string,
+  time?: string | null,
+  allowDateOnly = false
+): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) return null;
-  if (!time || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time.trim())) return null;
+  const resolvedTime = time?.trim() || (allowDateOnly ? "09:00" : "");
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(resolvedTime)) return null;
 
   const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
+  const [hour, minute] = resolvedTime.split(":").map(Number);
   const result = new Date(year, month - 1, day, hour, minute, 0, 0);
 
   if (
@@ -78,6 +83,10 @@ function labelFor(kind: HealthEventNotificationInput["kind"]): string {
 
 function bodyFor(event: HealthEventNotificationInput, offsetMinutes: number): string {
   const label = labelFor(event.kind);
+  if (event.kind === "retirada" && !event.time) {
+    if (offsetMinutes >= 1440) return `${label} prevista para amanhã. ${event.title}`;
+    return `${label} prevista para hoje. ${event.title}`;
+  }
   if (offsetMinutes === 0) return `${label} agora às ${event.time}. ${event.title}`;
   return `${label} em ${formatReminderOffset(offsetMinutes).replace(" antes", "")}. ${event.title}`;
 }
@@ -114,7 +123,7 @@ export async function reconcileHealthEventNotifications(
       return isVaultNotificationCategoryEnabled("retiradas");
     })
     .flatMap((event) => {
-      const at = parseEventDate(event.date, event.time);
+      const at = parseEventDate(event.date, event.time, event.kind === "retirada");
       if (!at || at <= now) return [];
 
       const offsets = getVaultNotificationBrainSettings().eventOffsets[event.kind];
@@ -127,7 +136,9 @@ export async function reconcileHealthEventNotifications(
 
       return candidates.map(({ offsetMinutes, at: notifyAt }) => ({
         id: hash(`health-event:v52:${event.kind}:${event.id}:${offsetMinutes}`),
-        title: `${labelFor(event.kind)} · ${event.time}`,
+        title: event.time
+          ? `${labelFor(event.kind)} · ${event.time}`
+          : labelFor(event.kind),
         body: bodyFor(event, offsetMinutes),
         channelId: VAULT_NOTIFICATION_CHANNEL_ID,
         schedule: {

@@ -1,3 +1,4 @@
+import { withdrawalHistory } from "@/lib/withdrawal-reschedule";
 import {loadSupplyWithdrawal} from "@/lib/health-supply/resolve-withdrawal";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/retiradas.ts
@@ -39,6 +40,8 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
   if(ex&&(ex.person_id!==r.person_id||ex.user_id!==r.user_id)){
     throw new Error("Retirada automática não pertence à renovação informada.");
   }
+
+  if (ex && (ex.status !== "agendada" || ex.reagendamentos?.length)) return;
 
   const target=r.tipo_aquisicao==="sus"
     ? (r.data_proxima_retirada?.trim()||r.data_retorno_sus?.trim()||"")
@@ -106,6 +109,7 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
     quantidade_retirada:ex?.quantidade_retirada??null,
     exige_nova_receita:r.exige_nova_receita??false,
     observacoes:ex?.observacoes??null,
+    reagendamentos:ex?.reagendamentos || [],
     realizada_em:ex?.realizada_em??null,
     created_at:ex?.created_at||t,
     updated_at:t,
@@ -323,11 +327,27 @@ export const retiradasRepository={
       synced:false
     };
 
+    const proposed = changes.reagendamentos?.[changes.reagendamentos.length - 1];
+    const reason = proposed?.data_anterior === current.data && proposed?.nova_data === next.data ? proposed.motivo : null;
+    next.reagendamentos = withdrawalHistory(current, next, next.updated_at!, reason);
+
     await db.transaction(
       "rw",
-      [db.retiradas,db.syncQueue],
+      [db.retiradas,db.medicamentos,db.syncQueue],
       async()=>{
+        const latest = await db.retiradas.get(id);
+        if (!latest || latest.updated_at !== current.updated_at || latest.data !== current.data || latest.status !== current.status) {
+          throw new Error("A retirada foi atualizada. Reabra para revisar o reagendamento.");
+        }
         await db.retiradas.put(next);
+        if (current.tipo === "sus" && next.tipo === "sus" && current.medicamento_id === next.medicamento_id && next.status === "agendada" && next.data !== current.data) {
+          const freshMedication = await db.medicamentos.get(next.medicamento_id);
+          if (freshMedication?.person_id === personId && freshMedication.user_id === userId && freshMedication.data_retorno_sus === current.data) {
+            const mirrored = {...freshMedication, data_retorno_sus: next.data, updated_at: next.updated_at, synced: false};
+            await db.medicamentos.put(mirrored);
+            await enfileirarOperacao("medicamentos", "update", mirrored, {dispatchSync:false});
+          }
+        }
 
         await enfileirarOperacao(
           "retiradas",
@@ -339,6 +359,43 @@ export const retiradasRepository={
     );
 
     solicitarProcessamentoSync();
+  },
+
+  async rescheduleMany(personId: string, selected: Array<{id: string; data: string; updated_at?: string}>, targetDate: string, reason: string) {
+    const userId = await uid();
+    const target = date(targetDate, "Data da retirada");
+    const parsed = new Date(`${target}T12:00:00Z`);
+    if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== target) throw new Error("Data da retirada inválida.");
+    if (!selected.length || new Set(selected.map(row => row.id)).size !== selected.length) throw new Error("Selecione retiradas distintas.");
+    const timestamp = now();
+    let changed = 0;
+    await db.transaction("rw", [db.retiradas, db.medicamentos, db.syncQueue], async () => {
+      const rows: Retirada[] = [];
+      for (const expected of selected) {
+        const row = await db.retiradas.get(expected.id);
+        if (!row || row.user_id !== userId || row.person_id !== personId || row.status !== "agendada" || row.renovacao_realizada_id) throw new Error("Uma retirada não está mais disponível para reagendamento. Revise a seleção.");
+        if (row.data !== expected.data || row.updated_at !== expected.updated_at) throw new Error("Uma retirada foi atualizada. Reabra o planejamento.");
+        const medication = await db.medicamentos.get(row.medicamento_id);
+        if (!medication || medication.user_id !== userId || medication.person_id !== personId) throw new Error("Medicamento não encontrado para a pessoa ativa.");
+        rows.push(row);
+      }
+      for (const row of rows) {
+        if (row.data === target) continue;
+        const next = {...row, data: target, updated_at: timestamp, synced: false};
+        next.reagendamentos = withdrawalHistory(row, next, timestamp, reason);
+        await db.retiradas.put(next);
+        await enfileirarOperacao("retiradas", "update", next, {dispatchSync:false});
+        const medication = await db.medicamentos.get(row.medicamento_id);
+        if (row.tipo === "sus" && medication?.data_retorno_sus === row.data) {
+          const mirrored = {...medication, data_retorno_sus: target, updated_at: timestamp, synced: false};
+          await db.medicamentos.put(mirrored);
+          await enfileirarOperacao("medicamentos", "update", mirrored, {dispatchSync:false});
+        }
+        changed++;
+      }
+    });
+    if (changed) solicitarProcessamentoSync();
+    return changed;
   },
 
   async delete(id:string,personId:string){

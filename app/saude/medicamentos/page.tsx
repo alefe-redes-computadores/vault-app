@@ -1,6 +1,7 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 
+import { medicationAccessAction } from "@/lib/medication-access-action";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -981,6 +982,13 @@ export default function MedicamentosListPage() {
               ? null
               : "Tomar";
 
+      const accessAction = insight
+        ? medicationAccessAction(insight, med.id!, "/saude/medicamentos", {
+            tipoUso: med.tipo_uso,
+            tipoAquisicao: med.tipo_aquisicao,
+          })
+        : null;
+
       // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
         <ListCard
@@ -1139,7 +1147,7 @@ export default function MedicamentosListPage() {
               </div>
 
               <div className="flex min-w-[6.75rem] shrink-0 flex-col items-stretch gap-1.5">
-                {insight?.deveRenovar && (
+                {accessAction && (
                   <button
                     type="button"
                     className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${
@@ -1148,8 +1156,8 @@ export default function MedicamentosListPage() {
                         ? "border-coral/25 bg-coral/[0.08] text-coral"
                         : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
                     }`}
-                    title={`${insight.mensagem} · Adicionar nova receita`}
-                    aria-label={`Adicionar nova receita para ${med.nome}`}
+                    title={insight.mensagem}
+                    aria-label={`${accessAction.description} para ${med.nome}`}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1159,9 +1167,7 @@ export default function MedicamentosListPage() {
                       );
 
                       router.push(
-                        `/saude/renovacao/nova-receita?medicamento_id=${med.id}&return_to=${encodeURIComponent(
-                          "/saude/medicamentos"
-                        )}`
+                        accessAction.href
                       );
                     }}
                   >
@@ -1169,7 +1175,7 @@ export default function MedicamentosListPage() {
                       size={11}
                     />
 
-                    Receita
+                    {accessAction.label}
                   </button>
                 )}
 

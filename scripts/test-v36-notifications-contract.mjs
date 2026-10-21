@@ -22,7 +22,8 @@ ok(
 ok(
   events.includes("vaultHealthEvent") &&
     events.includes('kind: "consulta" | "exame" | "retirada"') &&
-    events.includes("if (!time") &&
+    events.includes('allowDateOnly ? "09:00"') &&
+    events.includes('event.kind === "retirada" && !event.time') &&
     events.includes("MAX_EVENT_PENDING"),
   "scheduler de eventos clínicos incompleto"
 );

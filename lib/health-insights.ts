@@ -1247,7 +1247,7 @@ export interface RenovacaoInsight {
     | null;
 }
 
-export function sugerirRenovacao(
+function sugerirRenovacaoBase(
   medicamento: Medicamento
 ): RenovacaoInsight {
   if (
@@ -9553,3 +9553,17 @@ export function gerarInsightsSaude(
 
   return Array.from(unique.values()).sort(compareHealthPriority);
 } 
+
+// Planejamento de acesso não define a exigência regulatória do medicamento.
+export function sugerirRenovacao(medicamento: Medicamento): RenovacaoInsight {
+  const insight = sugerirRenovacaoBase(medicamento);
+  const sos = medicamento.tipo_uso === "sos" || medicamento.tipo_uso === "esporadico";
+  const automatico = !medicamento.lembrete_receita_modo || medicamento.lembrete_receita_modo === "automatico";
+  if (sos && automatico && !medicamento.tratamento_ids?.length && insight.motivo === "receita" && typeof medicamento.estoque_quantidade === "number" && medicamento.estoque_quantidade > 0) {
+    const retirada = medicamento.tipo_aquisicao === "sus" ? getDaysUntil(medicamento.data_retorno_sus || "") : null;
+    if (retirada !== null && retirada <= 7) return {...insight, motivo: "sus", urgencia: "media", mensagem: `Confira o planejamento da retirada de "${medicamento.nome}" e os documentos exigidos pelo serviço.`};
+    return {...insight, deveRenovar: false, motivo: "nenhum", urgencia: "nenhuma", mensagem: ""};
+  }
+  if (sos && insight.motivo === "estoque") return {...insight, urgencia: "media", mensagem: `Sem saldo registrado de "${medicamento.nome}". Confira se deseja planejar uma reposição conforme sua necessidade.`};
+  return insight;
+}

@@ -213,11 +213,12 @@ export function usePaginatedCredentials({
           return [];
         }
 
-        let items =
-          await db.credentials
-            .where("user_id")
-            .equals(user.id)
-            .toArray();
+        let items = includeLegacyWithoutPerson
+          ? await db.credentials.where("user_id").equals(user.id).toArray()
+          : await db.credentials
+              .where("[user_id+person_id]")
+              .equals([user.id, personId])
+              .toArray();
 
         items =
           applyPersonFilter(
@@ -258,7 +259,7 @@ export function usePaginatedCredentials({
         searchQuery,
       ]
     );
-  const filteredCredentials = personId ? applyPersonFilter(queriedCredentials ?? [], personId, includeLegacyWithoutPerson) : [];
+  const filteredCredentials = personId ? applyPersonFilter(queriedCredentials ?? [], personId, includeLegacyWithoutPerson).filter(row => row.user_id === user?.id) : [];
 
   const totalCount =
     filteredCredentials.length;

@@ -68,6 +68,13 @@ export function useRetiradas(medicamentoId?: string) {
     [activePersonId]
   );
 
+  const rescheduleRetiradas = useCallback(
+    async (selected: Array<{id: string; data: string; updated_at?: string}>, date: string, reason: string) => {
+      if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
+      return retiradasRepository.rescheduleMany(activePersonId, selected, date, reason);
+    }, [activePersonId]
+  );
+
   const deleteRetirada = useCallback(
     async (id: string) => {
       if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
@@ -78,6 +85,7 @@ export function useRetiradas(medicamentoId?: string) {
 
   return {
     linkReceipt,
+    rescheduleRetiradas,
     retiradas: retiradas ?? [],
     getRetirada,
     getRetiradasByDate,

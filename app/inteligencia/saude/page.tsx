@@ -22,7 +22,7 @@ import {
 
 import { PageTransition } from "@/components/PageTransition";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import type { HealthInsight } from "@/lib/health-insights";
 import { useReturnContext } from "@/hooks/useReturnContext";
 import {

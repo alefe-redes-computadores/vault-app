@@ -88,6 +88,7 @@ import { HealthConnectRuntime } from "@/components/saude/HealthConnectRuntime";
 import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
 
 import { resolveMedicationStockReview } from "@/lib/medication-availability";
+import { HealthIntelligenceProvider } from "@/contexts/HealthIntelligenceContext";
 
 // ============================================================
 // NOTIFICATION ACTION DATA
@@ -1242,6 +1243,7 @@ export function Providers({
 
   return (
       <ErrorBoundary>
+      <HealthIntelligenceProvider>
       {notificationReconcilersReady && (
         <>
           <HealthReminderReconciler />
@@ -1270,6 +1272,7 @@ export function Providers({
             <BottomNav />
           </Suspense>
         </div>
+      </HealthIntelligenceProvider>
       </ErrorBoundary>
   );
 }

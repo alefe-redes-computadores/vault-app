@@ -96,6 +96,9 @@ export default function ContasPage() {
 
     personId:
       activePersonId,
+
+    includeLegacyWithoutPerson:
+      false,
   });
 
   useEffect(() => {

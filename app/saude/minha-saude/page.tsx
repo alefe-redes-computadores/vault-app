@@ -20,7 +20,7 @@ import { useHealthProfile } from "@/hooks/useHealthProfile";
 import {avatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
 import { surgeryBodyLabel } from "@/lib/surgery-body";
 import {AvatarBodyEvidence} from "@/components/saude/AvatarBodyEvidence";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";

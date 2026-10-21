@@ -1,5 +1,6 @@
 // app/saude/retiradas/page.tsx
 "use client";
+import { WithdrawalBatchPlanner } from "@/components/saude/WithdrawalBatchPlanner";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {withdrawalSourceNote} from "@/lib/health-supply/overview";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -129,7 +130,7 @@ export default function RetiradasPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { trigger } = useHapticFeedback();
-  const { retiradas } = useRetiradas();
+  const { retiradas, rescheduleRetiradas, activePersonId } = useRetiradas();
   const { medicamentos = [] } = useMedicamentos();
   const { farmacias = [] } = useFarmacias();
   const regulatoryProfiles =
@@ -350,6 +351,7 @@ export default function RetiradasPage() {
         </ListPageHeader>
 
         <section className="space-y-4 px-5 pt-4">
+          {activePersonId ? <WithdrawalBatchPlanner key={activePersonId} rows={filtered.filter(row => row.person_id === activePersonId)} onSave={rescheduleRetiradas}/> : null}
           {(counts.atrasadas > 0 || counts.hoje > 0) ? <div className="grid grid-cols-2 gap-2">
             <button type="button" disabled={!counts.hoje} onClick={() => { trigger("vibrate"); setStatus("hoje"); }} className="min-h-12 rounded-2xl border border-amber-400/20 bg-amber-400/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-amber-200">Hoje · {counts.hoje}</strong><span className="text-[9px] text-ink-muted">Abrir agenda atual</span></button>
             <button type="button" disabled={!counts.atrasadas} onClick={() => { trigger("vibrate"); setStatus("atrasada"); }} className="min-h-12 rounded-2xl border border-coral/20 bg-coral/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-coral">Atrasadas · {counts.atrasadas}</strong><span className="text-[9px] text-ink-muted">Revisar pendências</span></button>

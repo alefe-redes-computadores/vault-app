@@ -67,6 +67,7 @@ import {
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
 import { useHealthReminders } from "@/hooks/useHealthReminders";
@@ -221,6 +222,7 @@ export default function HojePage() {
 
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
 
   const hoje =
@@ -494,213 +496,68 @@ export default function HojePage() {
     dataSelecionada
   );
 
-  const tratamentos =
-    useLiveQuery(
-      async () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
+  // V206: a agenda reads only the active account/person and selected day.
+  // The owner keys carried in the result also prevent a completed query from
+  // the previous profile being rendered while Dexie refreshes the live query.
+  const activeTodayData = useLiveQuery(async () => {
+    if (!user?.id || !activePersonId) return null;
 
-        return db.tratamentos
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ]
-    ) || [];
+    const owner = [user.id, activePersonId] as [string, string];
+    const day = [user.id, activePersonId, dataSelecionada] as [string, string, string];
+    const [
+      tratamentos,
+      renovacoes,
+      medicos,
+      farmacias,
+      hospitais,
+      consultasHoje,
+      cirurgiasHoje,
+      examesHoje,
+      registrosHoje,
+    ] = await Promise.all([
+      db.tratamentos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.renovacoes.where("[user_id+person_id]").equals(owner).toArray(),
+      db.medicos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.farmacias.where("[user_id+person_id]").equals(owner).toArray(),
+      db.hospitais.where("[user_id+person_id]").equals(owner).toArray(),
+      db.consultas.where("[user_id+person_id+data]").equals(day).toArray(),
+      db.cirurgias.where("[user_id+person_id+data]").equals(day).toArray(),
+      db.exames.where("[user_id+person_id+data]").equals(day).toArray(),
+      db.registros_saude.where("[user_id+person_id+data]").equals(day).toArray(),
+    ]);
 
-  const renovacoes =
-    useLiveQuery(
-      async () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
+    return {
+      userId: user.id,
+      personId: activePersonId,
+      date: dataSelecionada,
+      tratamentos,
+      renovacoes,
+      medicos,
+      farmacias,
+      hospitais,
+      consultasHoje,
+      cirurgiasHoje,
+      examesHoje,
+      registrosHoje,
+    };
+  }, [user?.id, activePersonId, dataSelecionada]);
 
-        return db.renovacoes
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ]
-    ) || [];
-
-  const medicos = useLiveQuery(
-    () => db.medicos.toArray(),
-    []
-  ) || [];
-
-  const farmacias = useLiveQuery(
-    () => db.farmacias.toArray(),
-    []
-  ) || [];
-
-  const hospitais = useLiveQuery(
-    () => db.hospitais.toArray(),
-    []
-  ) || [];
-
-  const rawConsultas =
-    useLiveQuery(
-      () => db.consultas.toArray(),
-      []
-    ) || [];
-
-  const consultas =
-    useMemo(
-      () =>
-        activePersonId
-          ? rawConsultas.filter(
-              (
-                consulta:
-                  any
-              ) =>
-                consulta.person_id ===
-                activePersonId
-            )
-          : [],
-      [
-        rawConsultas,
-        activePersonId,
-      ]
-    );
-
-  const rawCirurgias =
-    useLiveQuery(
-      () => db.cirurgias.toArray(),
-      []
-    ) || [];
-
-  const cirurgias =
-    useMemo(
-      () =>
-        activePersonId
-          ? rawCirurgias.filter(
-              (
-                cirurgia:
-                  any
-              ) =>
-                cirurgia.person_id ===
-                activePersonId
-            )
-          : [],
-      [
-        rawCirurgias,
-        activePersonId,
-      ]
-    );
-
-  const rawExames =
-    useLiveQuery(
-      () => db.exames.toArray(),
-      []
-    ) || [];
-
-  const exames =
-    useMemo(
-      () =>
-        activePersonId
-          ? rawExames.filter(
-              (
-                exame:
-                  any
-              ) =>
-                exame.person_id ===
-                activePersonId
-            )
-          : [],
-      [
-        rawExames,
-        activePersonId,
-      ]
-    );
-
-  const rawRegistrosSaude =
-    useLiveQuery(
-      () => db.table("registros_saude").toArray(),
-      []
-    ) || [];
-
-  const registrosHoje =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return rawRegistrosSaude.filter(
-          (
-            registro:
-              any
-          ) =>
-            registro.person_id ===
-              activePersonId &&
-            registro.data ===
-              dataSelecionada
-        );
-      },
-      [
-        rawRegistrosSaude,
-        activePersonId,
-        dataSelecionada,
-      ]
-    );
-
-  const consultasHoje = useMemo(
-    () =>
-      consultas.filter(
-        (c: any) =>
-          c.data ===
-          dataSelecionada
-      ),
-    [
-      consultas,
-      dataSelecionada,
-    ]
+  const todayDataReady = Boolean(
+    user?.id &&
+    activePersonId &&
+    activeTodayData?.userId === user.id &&
+    activeTodayData.personId === activePersonId &&
+    activeTodayData.date === dataSelecionada
   );
-
-  const cirurgiasHoje = useMemo(
-    () =>
-      cirurgias.filter(
-        (c: any) =>
-          c.data ===
-          dataSelecionada
-      ),
-    [
-      cirurgias,
-      dataSelecionada,
-    ]
-  );
-
-  const examesHoje = useMemo(
-    () =>
-      exames.filter(
-        (e: any) =>
-          e.data ===
-          dataSelecionada
-      ),
-    [
-      exames,
-      dataSelecionada,
-    ]
-  );
+  const tratamentos = todayDataReady ? activeTodayData!.tratamentos : [];
+  const renovacoes = todayDataReady ? activeTodayData!.renovacoes : [];
+  const medicos = todayDataReady ? activeTodayData!.medicos : [];
+  const farmacias = todayDataReady ? activeTodayData!.farmacias : [];
+  const hospitais = todayDataReady ? activeTodayData!.hospitais : [];
+  const consultasHoje = todayDataReady ? activeTodayData!.consultasHoje : [];
+  const cirurgiasHoje = todayDataReady ? activeTodayData!.cirurgiasHoje : [];
+  const examesHoje = todayDataReady ? activeTodayData!.examesHoje : [];
+  const registrosHoje = todayDataReady ? activeTodayData!.registrosHoje : [];
 
   const renovacoesReceitaHoje =
     useMemo(
@@ -935,17 +792,25 @@ export default function HojePage() {
     }
   }, [searchParams, router]);
 
+  const doseHistoryData = useLiveQuery(async () => {
+    if (!user?.id || !activePersonId) return null;
+    return {
+      userId: user.id,
+      personId: activePersonId,
+      rows: await db.doseLogs
+        .where("[user_id+person_id]")
+        .equals([user.id, activePersonId])
+        .toArray(),
+    };
+  }, [user?.id, activePersonId]);
+
   const historicoDosesCompleto =
-    useLiveQuery(
-      () =>
-        activePersonId
-          ? db.doseLogs
-              .where("person_id")
-              .equals(activePersonId)
-              .toArray()
-          : [],
-      [activePersonId]
-    ) || [];
+    user?.id &&
+    activePersonId &&
+    doseHistoryData?.userId === user.id &&
+    doseHistoryData.personId === activePersonId
+      ? doseHistoryData.rows
+      : [];
 
   const retroReviewSummary =
     useMemo(

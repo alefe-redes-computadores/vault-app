@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { isVaultNative } from "@/lib/native-runtime";
 import {
   ensureVaultNotificationChannel,

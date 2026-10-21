@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),Module=require('node:modul
 require('fake-indexeddb/auto');
 const Dexie=require('dexie').default,db=new Dexie('vault-v138-isolated-context');
 const tables=['persons','medicamentos','doseLogs','renovacoes','tratamentos','registros_saude','consultas','exames','cirurgias','cids','documents','retiradas','fornecimentos','fornecimento_ciclos','fornecimento_itens','fornecimento_documentos'];
-db.version(1).stores(Object.fromEntries(tables.map(name=>[name,'id,person_id,user_id'])));
+db.version(1).stores(Object.fromEntries(tables.map(name=>[name,'id,person_id,user_id,[user_id+person_id]'])));
 const cache=new Map();
 const hookState={user:{id:"u"},person:"p",loaded:null};
 function load(file){

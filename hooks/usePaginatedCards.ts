@@ -83,11 +83,12 @@ export function usePaginatedCards({
           return [];
         }
 
-        let items =
-          await db.bankCards
-            .where("user_id")
-            .equals(user.id)
-            .toArray();
+        let items = includeLegacyWithoutPerson
+          ? await db.bankCards.where("user_id").equals(user.id).toArray()
+          : await db.bankCards
+              .where("[user_id+person_id]")
+              .equals([user.id, personId])
+              .toArray();
 
         items =
           applyPersonFilter(
@@ -155,7 +156,7 @@ export function usePaginatedCards({
         includeLegacyWithoutPerson,
       ]
     );
-  const filteredCards = personId ? applyPersonFilter(queriedCards ?? [], personId, includeLegacyWithoutPerson) : [];
+  const filteredCards = personId ? applyPersonFilter(queriedCards ?? [], personId, includeLegacyWithoutPerson).filter(row => row.user_id === user?.id) : [];
 
   const totalCount =
     filteredCards.length;

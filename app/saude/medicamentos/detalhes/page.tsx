@@ -1,6 +1,7 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
+import { medicationAccessAction } from "@/lib/medication-access-action";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -1721,6 +1722,16 @@ function MedicamentoDetalhesContent() {
     sugerirRenovacao(
       med
     );
+
+  const accessAction = medicationAccessAction(
+    alertaInteligente,
+    med.id!,
+    `/saude/medicamentos/detalhes?id=${med.id}`,
+    {
+      tipoUso: med.tipo_uso,
+      tipoAquisicao: med.tipo_aquisicao,
+    }
+  );
 
   const diasAteRenovacao =
     med.proxima_renovacao
@@ -3617,7 +3628,7 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           <AnimatePresence>
-            {alertaInteligente.deveRenovar &&
+            {accessAction &&
               med.status !==
                 "descontinuado" && (
                 <motion.div
@@ -3721,15 +3732,7 @@ function MedicamentoDetalhesContent() {
 
                       <button
                         type="button"
-                        onClick={
-                          () =>
-                            router.push(
-                              alertaInteligente.motivo ===
-                                "receita"
-                                ? `/saude/documentos/novo?medicamento_id=${id}`
-                                : `/saude/renovacao/nova?medicamento_id=${id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`
-                            )
-                        }
+                        onClick={() => router.push(accessAction.href)}
                         className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold transition-transform active:scale-95 ${
                           alertaInteligente.urgencia ===
                           "alta"
@@ -3737,13 +3740,7 @@ function MedicamentoDetalhesContent() {
                             : "bg-amber-400 text-void"
                         }`}
                       >
-                        {alertaInteligente.motivo ===
-                        "receita"
-                          ? "Adicionar nova receita"
-                          : alertaInteligente.motivo ===
-                              "sus"
-                            ? "Registrar retirada"
-                            : "Registrar aquisição"}
+                        {accessAction.cta}
                       </button>
                     </div>
                   </div>

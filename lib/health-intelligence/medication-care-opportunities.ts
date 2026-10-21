@@ -15,6 +15,9 @@ import {
   sugerirRenovacao,
 } from "@/lib/health-insights";
 
+import { getLocalTodayISO } from "@/lib/health-utils";
+import { medicationAccessAction } from "@/lib/medication-access-action";
+
 export type MedicationCareOpportunityLevel =
   | "urgent"
   | "attention"
@@ -66,6 +69,12 @@ export interface MedicationCareOpportunity {
   renewalHref:
     string;
 
+  actionHref:
+    string;
+
+  actionLabel:
+    string;
+
   treatmentHref:
     string | null;
 
@@ -108,11 +117,7 @@ function getNextScheduledWithdrawal(
   retiradas:
     Retirada[]
 ): Retirada | null {
-  const today =
-    new Date()
-      .toLocaleDateString(
-        "en-CA"
-      );
+  const today = getLocalTodayISO();
 
   return (
     retiradas
@@ -521,6 +526,27 @@ export function buildMedicationCareOpportunities({
         retiradas
       );
 
+    const actionInsight = insight.deveRenovar
+      ? insight
+      : {
+          ...insight,
+          deveRenovar: true,
+          motivo: "estoque" as const,
+          urgencia: estoqueZerado ? "alta" as const : "media" as const,
+        };
+
+    const accessAction = medicationAccessAction(
+      actionInsight,
+      medicamento.id,
+      "/",
+      {
+        tipoUso: medicamento.tipo_uso,
+        tipoAquisicao: medicamento.tipo_aquisicao,
+      }
+    );
+
+    if (!accessAction) continue;
+
     const medRenewals =
       getMedicationRenewals(
         medicamento.id,
@@ -635,9 +661,13 @@ export function buildMedicationCareOpportunities({
         )}`,
 
       renewalHref:
-        `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(
-          medicamento.id
-        )}&return_to=${encodeURIComponent("/")}`,
+        accessAction.href,
+
+      actionHref:
+        accessAction.href,
+
+      actionLabel:
+        accessAction.cta,
 
       treatmentHref:
         treatmentId

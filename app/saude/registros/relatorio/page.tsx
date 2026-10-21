@@ -6,7 +6,7 @@ import { Activity, ArrowLeft, CalendarDays, FileDown, HeartPulse, Info, Pill, Pr
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { buildClinicalReport, type ClinicalReportPeriod } from "@/lib/clinical-report";
 import { useReturnContext } from "@/hooks/useReturnContext";
 

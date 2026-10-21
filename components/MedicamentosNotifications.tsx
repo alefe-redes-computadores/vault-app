@@ -15,6 +15,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
+import { medicationAccessAction } from "@/lib/medication-access-action";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -25,6 +26,22 @@ export function MedicamentosNotifications() {
 
   const { alertas } = useMemo(() => {
     const itensAlerta: any[] = [];
+    const alertIndex = new Map<string, number>();
+    const rank = { pendente: 3, hoje: 2, proxima: 1 } as const;
+    const addAlert = (item: any) => {
+      const index = alertIndex.get(item.id);
+      if (index === undefined) {
+        alertIndex.set(item.id, itensAlerta.length);
+        itensAlerta.push(item);
+        return;
+      }
+      const current = itensAlerta[index];
+      if (rank[item.urgencia as keyof typeof rank] > rank[current.urgencia as keyof typeof rank]) {
+        itensAlerta[index] = item;
+      } else if (!current.descricao.includes(item.descricao)) {
+        current.descricao = `${current.descricao} · ${item.descricao}`;
+      }
+    };
 
     medicamentos.forEach((med: any) => {
       // 1. Planejamento de renovação
@@ -39,25 +56,30 @@ export function MedicamentosNotifications() {
           med
         );
 
-      if (
-        renovacaoInsight.deveRenovar &&
-        renovacaoInsight.motivo ===
-          "receita"
-      ) {
+      if (renovacaoInsight.deveRenovar) {
         const dias =
           renovacaoInsight.diasAteRenovacao;
+
+        const action = medicationAccessAction(
+          renovacaoInsight,
+          med.id,
+          "/",
+          { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao }
+        );
 
         const dataPlanejada =
           med.lembrete_receita_modo ===
             "data_personalizada" &&
           med.lembrete_receita_data
             ? med.lembrete_receita_data
-            : med.proxima_renovacao ||
+            : renovacaoInsight.motivo === "sus"
+              ? med.data_retorno_sus || ""
+              : med.proxima_renovacao ||
               "";
 
-        itensAlerta.push({
+        if (action) addAlert({
           id: med.id,
-          tipo: "renovacao",
+          tipo: action.kind,
           urgencia:
             renovacaoInsight.urgencia ===
               "alta"
@@ -65,8 +87,9 @@ export function MedicamentosNotifications() {
               : dias === 0
                 ? "hoje"
                 : "proxima",
-          titulo:
-            dias === 0
+          titulo: renovacaoInsight.motivo === "sus"
+            ? "Planejar Retirada"
+            : dias === 0
               ? "Planejar Receita Hoje"
               : dias !== null &&
                   dias < 0
@@ -77,6 +100,8 @@ export function MedicamentosNotifications() {
             med.nome,
           data:
             dataPlanejada,
+          href: action.href,
+          actionLabel: action.label,
         });
       }
 
@@ -85,18 +110,32 @@ export function MedicamentosNotifications() {
       // é confiável, priorizamos dias/doses; caso contrário preservamos
       // somente o saldo conhecido, sem inventar conversão clínica.
       const stock = getClinicalStockSnapshot(med);
+      const sos = med.tipo_uso === "sos" || med.tipo_uso === "esporadico";
+      const publicSupply = med.tipo_aquisicao === "sus";
+      const stockAction = medicationAccessAction(
+        {
+          ...renovacaoInsight,
+          deveRenovar: true,
+          motivo: publicSupply ? "sus" : "estoque",
+        },
+        med.id,
+        "/",
+        { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao }
+      );
 
       if (stock.state === "empty" || stock.state === "negative") {
-        itensAlerta.push({
+        if (stockAction) addAlert({
           id: med.id,
           tipo: "estoque",
-          urgencia: "pendente",
+          urgencia: sos && stock.state !== "negative" ? "proxima" : "pendente",
           titulo: "Sem Estoque",
           descricao:
             stock.state === "negative"
               ? `${med.nome} está com saldo negativo e precisa de conferência`
               : `${med.nome} acabou`,
-          data: "Imediato",
+          data: sos ? "Revisar necessidade" : "Revisar reposição",
+          href: stockAction.href,
+          actionLabel: stockAction.label,
         });
       } else if (
         stock.state === "available" &&
@@ -112,13 +151,15 @@ export function MedicamentosNotifications() {
             ? `${stock.daysRemaining} dia${stock.daysRemaining === 1 ? "" : "s"}`
             : `${stock.dosesRemaining} dose${stock.dosesRemaining === 1 ? "" : "s"}`;
 
-        itensAlerta.push({
+        if (stockAction) addAlert({
           id: med.id,
           tipo: "estoque",
           urgencia: "hoje",
           titulo: "Estoque Baixo",
           descricao: `${med.nome}: cerca de ${restante} restante`,
-          data: "Comprar em breve",
+          data: sos ? "Conforme necessidade" : publicSupply ? "Planejar retirada" : "Planejar reposição",
+          href: stockAction.href,
+          actionLabel: stockAction.label,
         });
       }
     });
@@ -163,7 +204,7 @@ export function MedicamentosNotifications() {
       <div className="flex items-center gap-2 px-1">
         <Pill size={16} className="text-ink-primary" />
         <h3 className="font-display text-sm font-semibold text-ink-primary">
-          Farmácia e Receitas
+          Acesso e medicamentos
         </h3>
       </div>
 
@@ -180,7 +221,7 @@ export function MedicamentosNotifications() {
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={() => {
                 trigger("vibrate");
-                router.push(`/saude/medicamentos/detalhes?id=${alerta.id}`);
+                router.push(alerta.href || `/saude/medicamentos/detalhes?id=${alerta.id}`);
               }}
               className={`group w-[85%] max-w-[320px] shrink-0 snap-start flex items-center justify-between gap-3 rounded-[24px] border p-3.5 shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
             >
@@ -215,6 +256,9 @@ export function MedicamentosNotifications() {
                   <p className="truncate font-medium text-sm mt-0.5">
                     {alerta.descricao}
                   </p>
+                  <span className="mt-1 inline-block text-[9px] font-bold uppercase tracking-wide opacity-75">
+                    {alerta.actionLabel}
+                  </span>
                 </div>
               </div>
 

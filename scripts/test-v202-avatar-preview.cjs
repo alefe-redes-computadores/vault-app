@@ -19,7 +19,7 @@ assert(scene.includes("cameraTransition=null;model.rotation.y=0;camera.zoom=1"),
 assert(scene.includes("avatarCameraFrame('body')"),'preview must restore canonical full-body camera');
 assert(scene.includes("controller.current?.viewport(compact)"),'GPU render ratio not updated at size changes');
 assert(scene.includes('compactRef.current,constrainedDevice'),'WebGL budget should follow current mode');
-assert(scene.includes("const noseContour=oval(materials.skin"),'facial refinement did not apply');
+assert(scene.includes("const noseContour=mesh(taperedBox(")&&scene.includes("reduz o nariz bulboso"),'planar facial refinement did not apply');
 assert(scene.includes('const beard=mesh(new THREE.CylinderGeometry(.128,.077,.12,12)'),'oversized facial hair was not reduced');
 assert(!scene.includes('requestAnimationFrame(animate)'),'perpetual render loop reintroduced');
 assert(scene.includes('renderer.forceContextLoss()'),'WebGL cleanup removed');

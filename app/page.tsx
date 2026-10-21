@@ -50,7 +50,7 @@ import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useRetiradas } from "@/hooks/useRetiradas";
 
@@ -2975,7 +2975,7 @@ export default function HomePage() {
                       trigger("vibrate");
 
                       router.push(
-                        primaryMedicationCareOpportunity.renewalHref
+                        primaryMedicationCareOpportunity.actionHref
                       );
                     }}
                     className={`rounded-xl px-3 py-2.5 text-[10px] font-bold transition-all active:scale-[0.98] ${
@@ -2985,7 +2985,7 @@ export default function HomePage() {
                         : "bg-ice text-void"
                     }`}
                   >
-                    Registrar aquisição
+                    {primaryMedicationCareOpportunity.actionLabel}
                   </button>
 
                   <button

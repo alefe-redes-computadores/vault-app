@@ -48,6 +48,10 @@ export async function loadHealthInsightContext(
     );
   }
 
+  if (!userId?.trim()) {
+    throw new Error("Conta do contexto clínico não identificada.");
+  }
+
   const [
     medicamentos,
     doseLogs,
@@ -68,65 +72,64 @@ export async function loadHealthInsightContext(
     if (person?.user_id !== userId) throw new Error("Pessoa não pertence à conta atual.");
   }
 
+    const owner = [userId, safePersonId] as [string, string];
+
     return Promise.all([
       db.medicamentos
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.doseLogs
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.renovacoes
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.tratamentos
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.registros_saude
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.consultas
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.exames
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.cirurgias
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.cids
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
       db.documents
-        .where("person_id")
-        .equals(safePersonId)
+        .where("[user_id+person_id]")
+        .equals(owner)
         .toArray(),
 
-      db.retiradas
-        .where("person_id")
-        .equals(safePersonId)
-        .toArray(),
-      db.fornecimentos.where("person_id").equals(safePersonId).toArray(),
-      db.fornecimento_ciclos.where("person_id").equals(safePersonId).toArray(),
-      db.fornecimento_itens.where("person_id").equals(safePersonId).toArray(),
-      db.fornecimento_documentos.where("person_id").equals(safePersonId).toArray(),
+      db.retiradas.where("[user_id+person_id]").equals(owner).toArray(),
+      db.fornecimentos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.fornecimento_ciclos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.fornecimento_itens.where("[user_id+person_id]").equals(owner).toArray(),
+      db.fornecimento_documentos.where("[user_id+person_id]").equals(owner).toArray(),
     ]);
     });
 

@@ -1075,6 +1075,15 @@ function DetalhesRetiradaContent() {
                 </label>
               </div>
 
+              <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Motivos frequentes de reagendamento">
+                {["Ainda tenho estoque", "Aguardando receita", "Indisponível no serviço"].map((reason) => (
+                  <button key={reason} type="button" disabled={processing} aria-pressed={rescheduleReason === reason}
+                    onClick={() => setRescheduleReason(reason)}
+                    className={`min-h-11 rounded-xl border px-3 text-xs ${rescheduleReason === reason ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-surface-border text-ink-muted"}`}>{reason}</button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">Escolha a data em que pretende retirar. Solicitar a receita é uma etapa separada; reagendar não registra recebimento nem altera o estoque.</p>
+
               <label className="mt-4 block">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                   Motivo

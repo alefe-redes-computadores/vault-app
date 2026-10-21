@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
 import type { HealthInsightEntityType } from "@/lib/health-intelligence/contextual";

@@ -10,7 +10,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { EmptyState } from "@/components/EmptyState";
 import { ListFilters, ListPageHeader, ListSearch } from "@/components/list";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useReturnContext } from "@/hooks/useReturnContext";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { withReturnTarget } from "@/lib/navigation/return-context";

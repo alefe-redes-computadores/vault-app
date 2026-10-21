@@ -1375,6 +1375,59 @@ class VaultDB extends Dexie {
     this.version(41).stores({health_profiles:"id, user_id, &person_id, synced, updated_at",health_devices:"id, user_id, person_id, active, synced, updated_at"});
     // V113: phone-local permissions and import ledger; clinical records keep the canonical sync queue.
     this.version(42).stores({health_connect_connections:"id, user_id, person_id",health_connect_imports:"id, user_id, person_id, record_id"});
+
+    // V205: hot paths that always operate inside the active account/person context.
+    // Additive indexes only: records and sync payloads remain untouched.
+    this.version(43).stores({
+      documents:
+        'id, user_id, person_id, [user_id+person_id], category_id, is_favorite, synced, updated_at, vault_id, hospital_id, medico_id, entidade_tipo, entidade_id, [entidade_tipo+entidade_id]',
+      medicamentos:
+        'id, user_id, person_id, [user_id+person_id], document_id, medico_id, farmacia_id, hospital_id, local_id, status, synced, updated_at, *tratamento_ids',
+      credentials:
+        'id, user_id, person_id, [user_id+person_id], vault_id, category, synced, updated_at',
+      bankCards:
+        'id, user_id, person_id, [user_id+person_id], type, synced, updated_at',
+    });
+
+    // V206: indexed Today-page reads scoped to account, person and day.
+    this.version(44).stores({
+      tratamentos:
+        'id, user_id, person_id, [user_id+person_id], nome, status, synced, updated_at, *cid_ids',
+      renovacoes:
+        'id, user_id, person_id, [user_id+person_id], medicamento_id, medico_id, farmacia_id, hospital_id, local_id, document_id, data, tipo_aquisicao, data_proxima_retirada, exige_nova_receita, synced, updated_at',
+      medicos:
+        'id, user_id, person_id, [user_id+person_id], nome, especialidade, synced, updated_at, *hospital_ids, *tratamento_ids',
+      farmacias:
+        'id, user_id, person_id, [user_id+person_id], nome, synced, updated_at',
+      hospitais:
+        'id, user_id, person_id, [user_id+person_id], nome, tipo, synced, updated_at, *medico_ids, *tratamento_ids',
+      consultas:
+        'id, user_id, person_id, [user_id+person_id], [user_id+person_id+data], medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
+      cirurgias:
+        'id, user_id, person_id, [user_id+person_id], [user_id+person_id+data], medico_id, hospital_id, local_id, document_id, status, data, synced, updated_at',
+      exames:
+        'id, user_id, person_id, [user_id+person_id], [user_id+person_id+data], medico_id, local_id, document_id, data, synced, updated_at, *tratamento_ids',
+      registros_saude:
+        'id, user_id, person_id, [user_id+person_id], [user_id+person_id+data], data, categoria, tipo, registro_chave, [person_id+data], [person_id+registro_chave], synced, updated_at',
+      doseLogs:
+        'id, user_id, person_id, [user_id+person_id], [user_id+person_id+data], medicamento_id, data, horario, synced, updated_at',
+    });
+
+    // V207: remaining Brain context sources join the account/person hot path.
+    this.version(45).stores({
+      cids:
+        'id, user_id, person_id, [user_id+person_id], codigo, medico_id, hospital_id, local_id, synced, updated_at',
+      retiradas:
+        'id, user_id, person_id, [user_id+person_id], medicamento_id, renovacao_origem_id, renovacao_realizada_id, data, status, fornecimento_id, fornecimento_ciclo_id, synced, updated_at',
+      fornecimentos:
+        'id, user_id, person_id, [user_id+person_id], status, synced, updated_at',
+      fornecimento_ciclos:
+        'id, user_id, person_id, [user_id+person_id], processo_id, status, synced, updated_at',
+      fornecimento_itens:
+        'id, user_id, person_id, [user_id+person_id], processo_id, ciclo_id, medicamento_id, [ciclo_id+medicamento_id], synced, updated_at',
+      fornecimento_documentos:
+        'id, user_id, person_id, [user_id+person_id], processo_id, ciclo_id, document_id, retirada_id, synced, updated_at',
+    });
   }
 }
 

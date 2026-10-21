@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { db } from "@/lib/db";
 import { brainV5Counters, rankBrainV5, type BrainV5Alert, type BrainV5Feedback, type BrainV5State } from "@/lib/health-intelligence/brain-v5";
 import { brainV5AlertLedgerRepository as repo } from "@/lib/repositories/brainV5AlertLedger";

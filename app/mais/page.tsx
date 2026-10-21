@@ -76,6 +76,7 @@ import {
   enableEruda,
   isErudaPreferenceEnabled,
 } from "@/lib/diagnostics/eruda";
+import { summarizePersonalVault } from "@/lib/personal-vault-overview";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -252,20 +253,48 @@ export default function MaisPage() {
   const pendingQueueCount =
     useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
 
-  const allMedicamentos =
-    (useLiveQuery(
-      () => db.medicamentos.toArray(),
-      []
-    ) as Medicamento[]) ?? [];
+  const activeVaultData = useLiveQuery(async () => {
+    if (!user?.id || !activePersonId) {
+      return {
+        userId: "", personId: "",
+        medicamentos: [] as Medicamento[],
+        documents: [] as Document[],
+        overview: summarizePersonalVault("", "", [], [], []),
+      };
+    }
 
-  const allDocuments =
-    (useLiveQuery(
-      () => db.documents.toArray(),
-      []
-    ) as Document[]) ?? [];
+    const owner = [user.id, activePersonId] as [string, string];
+    const [medicamentos, documents, credentials, bankCards] = await Promise.all([
+      db.medicamentos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.documents.where("[user_id+person_id]").equals(owner).toArray(),
+      db.credentials.where("[user_id+person_id]").equals(owner).toArray(),
+      db.bankCards.where("[user_id+person_id]").equals(owner).toArray(),
+    ]);
+
+    return {
+      userId: user.id, personId: activePersonId,
+      medicamentos,
+      documents,
+      overview: summarizePersonalVault(
+        user.id,
+        activePersonId,
+        credentials,
+        bankCards,
+        documents
+      ),
+    };
+  }, [user?.id, activePersonId]);
+
+  const vaultDataReady = Boolean(user?.id && activePersonId && activeVaultData?.userId === user.id && activeVaultData?.personId === activePersonId);
+  const allMedicamentos = vaultDataReady ? activeVaultData!.medicamentos : [];
+  const allDocuments = vaultDataReady ? activeVaultData!.documents : [];
+  const vaultOverview = (vaultDataReady ? activeVaultData!.overview : null) ??
+    summarizePersonalVault("", "", [], [], []);
 
   const totalLocalItems =
     useLiveQuery(async () => {
+      if (!user?.id) return 0;
+
       let count = 0;
 
       const tables = [
@@ -280,14 +309,17 @@ export default function MaisPage() {
 
       for (const table of tables) {
         try {
-          count += await (db as any)[table].count();
+          count += await (db as any)[table]
+            .where("user_id")
+            .equals(user.id)
+            .count();
         } catch {
           // Ignora tabelas inexistentes por segurança.
         }
       }
 
       return count;
-    }, []) ?? 0;
+    }, [user?.id]) ?? 0;
 
   // ============================================================
   // LOGOUT
@@ -438,6 +470,12 @@ export default function MaisPage() {
       return;
     }
 
+    if (!activePersonId) {
+      showError("Selecione uma pessoa antes de sincronizar.");
+      trigger("error");
+      return;
+    }
+
     if (!isOnline) {
       showError("Sem conexão com a internet");
       trigger("error");
@@ -465,10 +503,6 @@ export default function MaisPage() {
         `Sincronizado com sucesso! (${totalLocalItems} registros gerenciados)`,
         5000
       );
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
     } catch (error: any) {
       console.error(
         "Erro na sincronização:",
@@ -495,6 +529,7 @@ export default function MaisPage() {
     showError,
     processQueue,
     totalLocalItems,
+    activePersonId,
   ]);
 
   // ============================================================
@@ -578,6 +613,12 @@ export default function MaisPage() {
         "Os lembretes com ações estão disponíveis no aplicativo Android (APK).",
         5000
       );
+      return;
+    }
+
+    if (!isNotificationsEnabled && (!user?.id || !activePersonId || !vaultDataReady)) {
+      showError("Selecione uma pessoa antes de ativar os lembretes.");
+      trigger("error");
       return;
     }
 
@@ -839,7 +880,7 @@ export default function MaisPage() {
       id: "senhas",
       icon: KeyRound,
       label: "Senhas",
-      description: "Credenciais",
+      description: `${vaultOverview.credentials} ${vaultOverview.credentials === 1 ? "credencial" : "credenciais"}`,
       tone: "border-amber-400/20 bg-amber-400/10 text-amber-300",
       onClick: () => {
         trigger("vibrate");
@@ -850,7 +891,7 @@ export default function MaisPage() {
       id: "cartoes",
       icon: CreditCard,
       label: "Cartões",
-      description: "Crédito e débito",
+      description: `${vaultOverview.cards} ${vaultOverview.cards === 1 ? "cartão" : "cartões"}`,
       tone: "border-sky-400/20 bg-sky-400/10 text-sky-300",
       onClick: () => {
         trigger("vibrate");
@@ -861,7 +902,7 @@ export default function MaisPage() {
       id: "contas",
       icon: Landmark,
       label: "Contas bancárias",
-      description: "Agência e conta",
+      description: `${vaultOverview.accounts} ${vaultOverview.accounts === 1 ? "conta" : "contas"}`,
       tone: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
       onClick: () => {
         trigger("vibrate");
@@ -894,7 +935,7 @@ export default function MaisPage() {
       id: "favoritos",
       icon: Star,
       label: "Favoritos",
-      description: "Documentos salvos",
+      description: `${vaultOverview.favoriteDocuments} ${vaultOverview.favoriteDocuments === 1 ? "documento favorito" : "documentos favoritos"}`,
       tone: "border-fuchsia-400/20 bg-fuchsia-400/10 text-fuchsia-300",
       onClick: () => {
         trigger("vibrate");
@@ -993,7 +1034,7 @@ export default function MaisPage() {
               </h2>
 
               <span className="text-[10px] text-ink-faint">
-                {quickAccessItems.length} atalhos
+                {vaultOverview.total} itens desta pessoa
               </span>
             </div>
 

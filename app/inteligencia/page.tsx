@@ -9,7 +9,7 @@ import { AlertTriangle, BrainCircuit, ChevronLeft, ChevronRight, CircleCheck, Cr
 import { PageTransition } from "@/components/PageTransition";
 import { VaultInsightSheet } from "@/components/vault-intelligence/VaultInsightSheet";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
-import { useHealthIntelligence } from "@/hooks/useHealthIntelligence";
+import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import type { HealthInsight } from "@/lib/health-insights";
 import { useVaultIntelligence } from "@/hooks/useVaultIntelligence";
 import type { VaultGeneralInsight, VaultInsightKind } from "@/lib/vault-intelligence/types";
