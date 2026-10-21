@@ -1,5 +1,4 @@
 "use client";
-import { indexSupplyMedicationIds } from "@/lib/health-supply/presentation";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { Suspense, useState, useRef, useEffect, useMemo } from "react";
@@ -69,12 +68,13 @@ import type {
 } from "@/lib/types";
 import { estimatedCycleEnd, supplyChecklist } from "@/lib/health-supply/rules";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { buildSupplyRelationshipIndex } from "@/lib/health-supply/relationship-index";
 const input =
   "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const button =
   "min-h-11 rounded-xl bg-surface-raised px-3 py-3 text-xs font-bold text-ink-primary disabled:opacity-40";
 const panel = "rounded-[24px] border border-surface-border/60 bg-surface p-4";
-const originTone:Record<SupplyProcess["origem"],string>={comprado:"border-sky-400/20 bg-sky-400/10 text-sky-300",municipal:"border-emerald-400/20 bg-emerald-400/10 text-emerald-300",estadual_ceaf:"border-violet-400/20 bg-violet-400/10 text-violet-300",farmacia_popular:"border-amber-400/20 bg-amber-400/10 text-amber-300",outro:"border-slate-400/20 bg-slate-400/10 text-slate-300"};
+const originTone:Record<SupplyProcess["origem"],string>={comprado:"border-rose-400/20 bg-rose-400/10 text-rose-300",municipal:"border-emerald-400/20 bg-emerald-400/10 text-emerald-300",estadual_ceaf:"border-violet-400/20 bg-violet-400/10 text-violet-300",farmacia_popular:"border-amber-400/20 bg-amber-400/10 text-amber-300",outro:"border-surface-border bg-surface-raised text-ink-muted"};
 const fmt = (v: string | null) =>
   v ? v.split("-").reverse().join("/") : "Não confirmado";
 type Run = (action: () => Promise<unknown>, message?: string) => Promise<void>;
@@ -148,7 +148,7 @@ function ProcessForm({
       onInvalid={()=>{try{triggerHaptic("error");}catch{}}}
       className="space-y-3"
     >
-      {seed&&!initial&&<p role="status" className="rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-3 text-xs leading-relaxed text-cyan-200">Dados reaproveitados da retirada de {fmt(seed.data)}. Confira os vínculos e escolha a origem do fornecimento. Quantidade, periodicidade e autorização não são presumidas.</p>}
+      {seed&&!initial&&<p role="status" className="rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-xs leading-relaxed text-amber-200">Dados reaproveitados da retirada de {fmt(seed.data)}. Confira os vínculos e escolha a origem do fornecimento. Quantidade, periodicidade e autorização não são presumidas.</p>}
       {!initial ? <div className="space-y-2">
         <HealthRelationPicker title="Reaproveitar tratamento existente" renderIcon={value=>{const t=existingTreatments.find(x=>x.id===value);const Icon=getVaultTreatmentIcon(t?.nome||"");return <Icon size={20} style={{color:t?.cor || "#8b5cf6"}}/>;}} value={treatmentId} onValueChange={id=>{setTreatmentId(id);const t=existingTreatments.find(t=>t.id===id&&t.person_id===personId&&t.user_id===user?.id);if(t){const ids=treatmentSupplyMedicationIds(t,meds,personId,user!.id,withdrawals);select(ids);set(v=>({...v,titulo:v.titulo||`${t.nome} · fornecimento`}));}}} className={input}>
           <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status!=='concluido').map(t=><option key={t.id} value={t.id}>{t.nome}{t.status === "suspenso" ? " · tratamento suspenso (SOS permitido)" : ""}</option>)}
@@ -449,8 +449,8 @@ function ItemEditor({
         <p className="mt-2 text-[11px] text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
         <button type="button" className={button+" mt-2"} disabled={monthlyReference===null} onClick={()=>{if(monthlyReference!==null)setQuantity(String(monthlyReference));}}>Usar referência {monthlyReference!==null?monthlyReference.toLocaleString('pt-BR'):''}</button>
       </details>
-      {med && isDropMedication && <details className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.04] p-3">
-        <summary className="min-h-11 cursor-pointer py-2 text-xs font-bold text-sky-300">Frascos · volume e gotas por mês</summary>
+      {med && isDropMedication && <details className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-3">
+        <summary className="min-h-11 cursor-pointer py-2 text-xs font-bold text-emerald-300">Frascos · volume e gotas por mês</summary>
         <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Confirme no rótulo o volume de CADA frasco e o fator de gotas/ml. O Vault não presume 20 gotas/ml nem que o frasco tenha 20 ml.</p>
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[11px] text-ink-muted">Frascos recebidos<input className={input} type="number" min="1" step="1" value={bottleCount} onChange={e=>setBottleCount(e.target.value)}/></label>
@@ -458,9 +458,9 @@ function ItemEditor({
           <label className="text-[11px] text-ink-muted">ml por frasco<input className={input} type="number" min="0.1" step="any" placeholder="Conferir no rótulo" value={bottleMl} onChange={e=>setBottleMl(e.target.value)}/></label>
           <label className="text-[11px] text-ink-muted">Gotas por ml<input className={input} type="number" min="1" step="any" placeholder="Fator cadastrado/rótulo" value={bottleDrops} onChange={e=>setBottleDrops(e.target.value)}/></label>
         </div>
-        {bottleReference ? <div className="mt-3 rounded-xl border border-sky-400/15 bg-surface-raised p-3 text-xs text-ink-primary">
+        {bottleReference ? <div className="mt-3 rounded-xl border border-emerald-400/15 bg-surface-raised p-3 text-xs text-ink-primary">
           <p>{bottleReference.totalMl.toLocaleString("pt-BR")} ml no total · {bottleReference.totalDrops.toLocaleString("pt-BR")} gotas estimadas</p>
-          <p className="mt-1 font-bold text-sky-300">Referência mensal: {bottleReference.monthlyMl.toLocaleString("pt-BR")} ml · {bottleReference.monthlyDrops.toLocaleString("pt-BR")} gotas</p>
+          <p className="mt-1 font-bold text-emerald-300">Referência mensal: {bottleReference.monthlyMl.toLocaleString("pt-BR")} ml · {bottleReference.monthlyDrops.toLocaleString("pt-BR")} gotas</p>
           {isDropMedication && <button type="button" className={button+" mt-2"} onClick={()=>setQuantity(String(bottleReference.monthlyDrops))}>Usar referência mensal em gotas</button>}
           <p className="mt-2 text-[10px] text-ink-muted">Estimativa de quantidade, não prescrição, dose ou agendamento da retirada.</p>
         </div> : <p className="mt-2 text-[11px] text-amber-300">Informe volume e fator de conversão confirmados para calcular.</p>}
@@ -1006,22 +1006,29 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       ? `/saude/medicamentos/detalhes?id=${medId}`
       : "/saude/rede";
   const { backTarget } = useReturnContext(fallbackBack);
-  const occupiedMedicationIds = new Set(data.itens.filter(i =>
-    i.person_id === personId && i.user_id === user?.id &&
-    data.processos.some(p => p.id === i.processo_id && p.person_id === personId && p.user_id === user?.id && p.status === "ativo")
-  ).map(i => i.medicamento_id));
-  const availableMedications = medicamentos.filter(m => m.id && !occupiedMedicationIds.has(m.id) && canTrackSupplyMedication(m, retiradas, personId || "", user?.id || ""));
+  const relationalIndex = useMemo(() => buildSupplyRelationshipIndex({
+    personId: personId || "",
+    userId: user?.id || "",
+    data,
+    medications: medicamentos,
+    documents,
+    withdrawals: retiradas,
+    pharmacies: farmacias,
+    places: locais,
+  }), [personId, user?.id, data, medicamentos, documents, retiradas, farmacias, locais]);
+  const occupiedMedicationIds = relationalIndex.activeMedicationIds;
+  const availableMedications = useMemo(
+    () => medicamentos.filter(m => m.id && !occupiedMedicationIds.has(m.id) && canTrackSupplyMedication(m, retiradas, personId || "", user?.id || "")),
+    [medicamentos, occupiedMedicationIds, retiradas, personId, user?.id]
+  );
   // V131 SUPPLY DOSSIER: immutable acquisition snapshots, never a prescription or a SUS withdrawal.
   const acquisitionSummary = (medicationIds: Set<string>) => {
     const acquisitions = purchaseHistory(renovacoes, personId || "", process?.user_id || "", medicationIds);
     const total = acquisitions.reduce((sum, r) => sum + (r.preco || 0), 0);
     return { count: acquisitions.length, total };
   };
-  const processes = data.processos.filter(
-    (p) => p.person_id === personId && p.user_id === user?.id && (
-      !medId || data.itens.some(
-        (i) => i.processo_id === p.id && i.medicamento_id === medId
-      ))
+  const processes = relationalIndex.processes.filter(
+    (p) => !medId || relationalIndex.medicationIdsByProcess.get(p.id)?.has(medId)
   );
   // V128 active-first: archived processes remain accessible in history.
   processes.sort((a,b) => Number(b.status === "ativo") - Number(a.status === "ativo") ||
@@ -1040,8 +1047,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   }, [requestedProcessId, requestedCycleId, medId, params]);
   const process = resolveProcessSelection(processes, requestChanged ? requestedProcessId || "" : selected);
   const missingProcess = !!(requestChanged ? requestedProcessId : selected) && !process;
-  const cycles = data.ciclos
-    .filter((c) => c.processo_id === process?.id && c.person_id === personId && c.user_id === process?.user_id)
+  const cycles = (relationalIndex.cyclesByProcess.get(process?.id || "") || [])
+    .slice()
     .sort(
       (a, b) =>
         b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)
@@ -1059,8 +1066,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     ) ||
     cycles[0];
   const processIds = new Set(processes.map((item) => item.id));
-  const processCycles = data.ciclos.filter((item) => item.person_id === personId && item.user_id === user?.id && processIds.has(item.processo_id));
-  const processDocuments = data.documentos.filter((item) => item.person_id === personId && item.user_id === user?.id && processIds.has(item.processo_id));
+  const processCycles = relationalIndex.cycles.filter((item) => processIds.has(item.processo_id));
+  const processDocuments = relationalIndex.documentLinks.filter((item) => processIds.has(item.processo_id));
   const activeProcesses = processes.filter((item) => item.status === "ativo");
   const cyclesInProgress = processCycles.filter((item) => item.status === "preparando" || item.status === "protocolado").length;
   const run: Run = async (action, message = "Salvo") => {
@@ -1083,7 +1090,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       setBusy(false);
     }
   };
-  const processMedicationIds=useMemo(()=>indexSupplyMedicationIds(personId||"",user?.id||"",data.processos,data.itens),[personId,user?.id,data.processos,data.itens]);
+  const processMedicationIds=relationalIndex.medicationIdsByProcess;
   const treatmentProcessGroups=useMemo(()=>tratamentos.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id).map(t=>({
     t,
     linked:processes.filter(p=>p.user_id===user?.id&&matchesSupplyTreatment(t,medicamentos,processMedicationIds.get(p.id)||new Set<string>(),personId||"",p.user_id)),
@@ -1168,14 +1175,14 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       ) : (
         <>
           {/* V156: a treatment is not a funding source; each process retains its own origin. */}
-          <p className="mb-2 rounded-xl border border-sky-400/10 bg-sky-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode incluir medicamentos comprados e fornecidos pelo SUS. Selecione a origem real de cada processo; compartilhar tratamento não torna a compra uma retirada SUS.</p>
+          <p className="mb-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode incluir medicamentos comprados e fornecidos pelo SUS. Selecione a origem real de cada processo; compartilhar tratamento não torna a compra uma retirada SUS.</p>
           {/* Mixed origins remain accessible without duplicating one-process navigation. */}
           {treatmentProcessGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({treatmentProcessGroups.length})</summary><div className="mt-2 space-y-2">{treatmentProcessGroups.map(({t,linked,purchased})=>{
             const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:"#8b5cf6";
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
               <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
               <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
-              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-wider text-sky-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-sky-400/15 bg-sky-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 truncate">{m.nome} · {m.dosagem}</span><span className="text-sky-300">Compra ›</span></Link>)}</div>:null}
+              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-wider text-rose-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 truncate">{m.nome} · {m.dosagem}</span><span className="text-rose-300">Compra ›</span></Link>)}</div>:null}
               <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
@@ -1194,7 +1201,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               try{triggerHaptic("vibrate");}catch{}
               if(existing){setSelected(existing.id);setCycleId("");setCreating(false);setEditing(false);setSeed(record);showToast("Fornecimento existente selecionado.","success");}
               else{setSeed({...record,medicamento_nome:medication.nome});setCreating(true);setEditing(false);}
-            }}><MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={26}/><span className="min-w-0 flex-1"><span className="block text-xs font-bold text-ink-primary">{medication.nome} · {medication.dosagem}</span><span className="mt-1 block text-[10px] text-ink-muted">Retirada de {fmt(record.data)} · {existing?"Já organizado":"Dados disponíveis para completar"}</span><span className="mt-1 block text-[10px] text-ink-muted">{farmacias.find(f=>f.id===record.farmacia_id&&f.user_id===record.user_id)?.nome || locais.find(l=>l.id===record.local_id&&l.user_id===record.user_id)?.nome || "Local não informado"}</span><span className="mt-1 block text-[10px] font-semibold text-cyan-300">{existing?"Abrir fornecimento":"Reaproveitar cadastro"}</span></span></button>)}</div>
+            }}><MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={26}/><span className="min-w-0 flex-1"><span className="block text-xs font-bold text-ink-primary">{medication.nome} · {medication.dosagem}</span><span className="mt-1 block text-[10px] text-ink-muted">Retirada de {fmt(record.data)} · {existing?"Já organizado":"Dados disponíveis para completar"}</span><span className="mt-1 block text-[10px] text-ink-muted">{relationalIndex.pharmacyById.get(record.farmacia_id || "")?.nome || relationalIndex.placeById.get(record.local_id || "")?.nome || "Local não informado"}</span><span className="mt-1 block text-[10px] font-semibold text-amber-300">{existing?"Abrir fornecimento":"Reaproveitar cadastro"}</span></span></button>)}</div>
           </section></details>}
           {(creating || !processes.length) && (
             <section ref={createRef} id="supply-create-form" className={panel + " mb-4 scroll-mt-24"}>
@@ -1229,14 +1236,13 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 {(() => {
                   const ids = processMedicationIds.get(process.id)||new Set<string>();
                   const related = tratamentos.filter(t => matchesSupplyTreatment(t, medicamentos, ids, personId, process.user_id));
-                  const linkedMeds = medicamentos.filter(m => m.person_id === personId && m.user_id === process.user_id && m.id && ids.has(m.id));
-                  const pharmacy = farmacias.find(f => f.id === process.farmacia_id && f.user_id === process.user_id);
-                  const place = locais.find(l => l.id === process.local_id && l.user_id === process.user_id);
+                  const linkedMeds = [...ids].flatMap(id => { const medication = relationalIndex.medicationById.get(id); return medication ? [medication] : []; });
+                  const pharmacy = relationalIndex.pharmacyById.get(process.farmacia_id || "");
+                  const place = relationalIndex.placeById.get(process.local_id || "");
                   const purchases = acquisitionSummary(ids);
-                  const processWithdrawals = retiradas.filter(r => r.person_id === personId &&
-                    r.user_id === process.user_id && r.fornecimento_id === process.id).sort((a,b) => b.data.localeCompare(a.data));
-                  const processDocs = data.documentos.filter(d => d.processo_id === process.id && d.person_id === personId && d.user_id === process.user_id);
-                  const processCycles = data.ciclos.filter(c => c.processo_id === process.id && c.person_id === personId && c.user_id === process.user_id);
+                  const processWithdrawals = (relationalIndex.withdrawalsByProcess.get(process.id) || []).slice().sort((a,b) => b.data.localeCompare(a.data));
+                  const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
+                  const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
                   return <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{SUPPLY_ORIGIN_LABELS[process.origem]}</span>
@@ -1271,9 +1277,9 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     {processDocs.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Documentos vinculados · LME e receitas</p>
                       {processDocs.slice(0, 8).map(link => {
-                        const doc = documents.find(d => d.id === link.document_id && d.person_id === personId && d.user_id === process.user_id);
-                        return doc ? <Link key={link.id} href={`/saude/documentos/detalhes?id=${encodeURIComponent(doc.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-sky-400/15 bg-sky-400/5 p-3 text-xs">
-                          <span className="min-w-0"><span className="block truncate font-semibold text-ink-primary">{doc.title}</span><span className="block text-[10px] text-ink-muted">{link.tipo.toUpperCase()} · {link.estado}</span></span><span className="shrink-0 text-sky-300">Ver ›</span>
+                        const doc = relationalIndex.documentById.get(link.document_id);
+                        return doc ? <Link key={link.id} href={`/saude/documentos/detalhes?id=${encodeURIComponent(doc.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-violet-400/15 bg-violet-400/5 p-3 text-xs">
+                          <span className="min-w-0"><span className="block truncate font-semibold text-ink-primary">{doc.title}</span><span className="block text-[10px] text-ink-muted">{link.tipo.toUpperCase()} · {link.estado}</span></span><span className="shrink-0 text-violet-300">Ver ›</span>
                         </Link> : <p key={link.id} className="rounded-xl border border-amber-400/20 p-3 text-xs text-amber-200">{link.tipo.toUpperCase()} · documento vinculado indisponível</p>;
                       })}
                       {processDocs.length > 8 && <p className="text-[11px] text-ink-muted">Mais {processDocs.length - 8} documento(s) nos ciclos.</p>}
@@ -1286,14 +1292,14 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       {purchaseHistory(renovacoes, personId, process.user_id, ids).slice(0, 5).map(r => <Link key={r.id} href={`/saude/renovacao/detalhes?id=${encodeURIComponent(r.id || "")}`} className="mt-2 block rounded-xl bg-surface-raised p-3 text-xs text-ink-primary">
                         <span className="block font-semibold">{r.medicamento_nome || linkedMeds.find(m => m.id === r.medicamento_id)?.nome || "Medicamento"} · {r.medicamento_dosagem || "Dosagem não registrada"}</span>
                         <span className="mt-1 block text-ink-muted">{fmt(r.data_aquisicao || r.data)} · {r.preco!.toLocaleString("pt-BR", {style:"currency",currency:"BRL"})} no total · {r.quantidade || "Quantidade não informada"}</span>
-                        <span className="mt-1 block text-amber-200">{farmacias.find(f => f.id === r.farmacia_id && f.user_id === process.user_id)?.nome || "Farmácia não informada"} · Ver aquisição ›</span>
+                        <span className="mt-1 block text-amber-200">{relationalIndex.pharmacyById.get(r.farmacia_id || "")?.nome || "Farmácia não informada"} · Ver aquisição ›</span>
                       </Link>)}
                       <p className="mt-1 text-[10px] text-ink-muted">Valores históricos dos medicamentos, inclusive fora deste processo. Não representam custo do SUS nem custo específico deste processo.</p>
                     </div>}
                     {/* V133 CONTEXTUAL LINKS: deep links use real records; index links remain clearly general. */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <Link className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-3 text-center font-semibold text-emerald-300" href="/saude/retiradas">Todas as retiradas ↗</Link>
-                      <Link className="rounded-xl border border-sky-400/20 bg-sky-400/5 px-3 py-3 text-center font-semibold text-sky-300" href="/saude/documentos">Todos os documentos ↗</Link>
+                      <Link className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-3 py-3 text-center font-semibold text-violet-300" href="/saude/documentos">Todos os documentos ↗</Link>
                       <Link className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-3 py-3 text-center font-semibold text-violet-300" href="/saude/medicamentos">Medicamentos ↗</Link>
                       <Link className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-3 text-center font-semibold text-amber-300" href="/saude/renovacao">Aquisições ↗</Link>
                     </div>

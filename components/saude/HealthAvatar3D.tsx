@@ -136,6 +136,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // gives the face a readable mood without a facial animation loop.
     const expressionBrows: Array<{object:THREE.Mesh;sign:number}> = [];
     const expressionLids: Array<{object:THREE.Mesh;sign:number}> = [];
+    const expressionEyes: Array<{object:THREE.Mesh;restY:number}> = [];
     // Brows, eye highlights and clothing seams provide depth without remote assets.
     for(const sign of [-1,1]) {
       // V193: refina volumes existentes, sem novos draw calls ou acessórios flutuantes.
@@ -268,7 +269,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // Olhos em três planos: esclera baixa, íris e pupila. O formato horizontal evita a leitura de “olhos redondos colados”.
       oval(materials.white,sign*.083,2.82,.214,[.042,.019,.014]);
       oval(materials.iris,sign*.083,2.82,.228,[.017,.016,.007]);
-      oval(materials.dark,sign*.083,2.82,.235,[.007,.009,.004]);
+      const pupil=oval(materials.dark,sign*.083,2.82,.235,[.007,.009,.004]);
+      expressionEyes.push({object:pupil,restY:pupil.position.y});
       oval(materials.white,sign*.079,2.827,.239,[.0025,.0025,.002]);
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
@@ -386,6 +388,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       for(const {object,sign} of expressionLids){
         object.rotation.z=sign*(value==="happy"?.045:.025);
         object.scale.y=value==="reflective"?.72:value==="happy"?.84:1;
+      }
+      for(const {object,restY} of expressionEyes){
+        object.position.y=restY+(value==="happy"?.002:value==="reflective"?-.004:0);
+        object.scale.y=value==="reflective"?.88:1;
       }
     };
     setExpression(expressionRef.current);
@@ -539,15 +545,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     else if(event.key==='Home'){event.preventDefault();controller.current?.rotate(0);controller.current?.zoom(100);setDirection('front');setZoom(100);onFramingChange?.('body');}
     else if(event.key==='+'||event.key==='-'||event.key==='='){event.preventDefault();const value=avatarZoom(zoom+(event.key==='-'?-5:5));setZoom(value);controller.current?.zoom(value);}
   };
-  const controls=<div className="pt-1">{attention>0&&<p className="rounded-lg bg-violet-400/[0.05] px-2 py-2 text-center text-[10px] leading-relaxed text-slate-400">O núcleo Brain acompanha a prioridade dos registros; não representa diagnóstico.</p>}
+  const controls=<div className="pt-1">{attention>0&&<p className="rounded-lg bg-violet-400/[0.05] px-2 py-2 text-center text-[10px] leading-relaxed text-ink-muted">O núcleo Brain acompanha a prioridade dos registros; não representa diagnóstico.</p>}
     <p className="sr-only">No teclado, as setas giram, mais e menos ajustam o zoom e Home restaura a frente.</p>
-    <div aria-label="Vista do avatar 3D" className="mt-2 grid grid-cols-4 gap-1 rounded-xl bg-black/15 p-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-lg border px-1 text-[10px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/45 bg-violet-400/15 font-semibold text-violet-200':'border-transparent text-slate-400'}`}>{title}</button>)}</div>
-    <label htmlFor={zoomId} className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-3 text-[11px] text-slate-300"><span>Zoom</span><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=avatarZoom(Number(e.target.value));setZoom(value);controller.current?.zoom(value);}} className="min-h-8 w-full accent-violet-400"/><span className="w-9 text-right tabular-nums">{zoom}%</span></label>
-    {slots.length>0?<details className="mt-2 rounded-xl border border-slate-400/15 px-2"><summary className="flex min-h-11 cursor-pointer items-center text-[10px] font-semibold text-slate-300">Aparelhos representados · {slots.length}<span className="ml-auto">›</span></summary><ul aria-label="Aparelhos representados" className="space-y-1 border-t border-slate-400/10 py-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-lg bg-slate-900/30 px-2 text-xs text-slate-200">{onDeviceSelect?<button type="button" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)} className="min-h-11 w-full text-left font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{device.name} <span aria-hidden="true">›</span><span className="mt-0.5 block text-[9px] font-normal text-slate-400">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></button>:<strong>{device.name}</strong>}</li>)}</ul></details>:null}</div>;
+    <div aria-label="Vista do avatar 3D" className="mt-2 grid grid-cols-4 gap-1 rounded-xl bg-black/15 p-1">{([['front','Frente',0],['left','Esquerda',-Math.PI/2],['back','Costas',Math.PI],['right','Direita',Math.PI/2]] as const).map(([id,title,angle])=><button type="button" key={id} aria-pressed={direction===id} onClick={()=>{controller.current?.rotate(angle);setDirection(id);}} className={`min-h-11 rounded-lg border px-1 text-[10px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${direction===id?'border-violet-300/45 bg-violet-400/15 font-semibold text-violet-200':'border-transparent text-ink-muted'}`}>{title}</button>)}</div>
+    <label htmlFor={zoomId} className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-3 text-[11px] text-ink-secondary"><span>Zoom</span><input id={zoomId} aria-label="Zoom do avatar" type="range" min="80" max="130" value={zoom} onChange={e=>{const value=avatarZoom(Number(e.target.value));setZoom(value);controller.current?.zoom(value);}} className="min-h-8 w-full accent-violet-400"/><span className="w-9 text-right tabular-nums">{zoom}%</span></label>
+    {slots.length>0?<details className="mt-2 rounded-xl border border-surface-border px-2"><summary className="flex min-h-11 cursor-pointer items-center text-[10px] font-semibold text-ink-secondary">Aparelhos representados · {slots.length}<span className="ml-auto">›</span></summary><ul aria-label="Aparelhos representados" className="space-y-1 border-t border-surface-border py-2">{slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-lg bg-surface-raised px-2 text-xs text-ink-primary">{onDeviceSelect?<button type="button" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)} className="min-h-11 w-full text-left font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{device.name} <span aria-hidden="true">›</span><span className="mt-0.5 block text-[9px] font-normal text-ink-muted">{kind==='watch'?'Relógio':'Anel'} · lado {side==='right'?'direito':'esquerdo'}{count>1?` · +${count-1} nesta posição`:''}</span></button>:<strong>{device.name}</strong>}</li>)}</ul></details>:null}</div>;
   return <div className="mx-auto w-full max-w-[440px]">
     {!compact&&onFramingChange?<div className="mb-2 grid grid-cols-3 gap-2" role="group" aria-label="Enquadramento do avatar">{([['body','Corpo inteiro'],['face','Rosto'],['shoes','Tênis']] as const).map(([id,label])=><button type="button" key={id} aria-pressed={framing===id} onClick={()=>onFramingChange(id)} className={`min-h-11 rounded-xl border px-2 text-[11px] font-semibold ${framing===id?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>:null}
     <div ref={host} style={{height:compact?"clamp(210px, 29dvh, 250px)":"clamp(330px, 52dvh, 470px)"}} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Acessórios pessoais são cosméticos, separados dos aparelhos de saúde. Celular ilustrativo.`} className="w-full cursor-grab overflow-hidden rounded-2xl border border-emerald-300/10 bg-[radial-gradient(circle_at_50%_18%,rgba(110,231,183,.09),transparent_44%),linear-gradient(180deg,rgba(110,231,183,.035),rgba(2,6,12,.2)_65%)] shadow-[inset_0_-32px_70px_rgba(0,0,0,.28)] active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
-    {compact?null:<p className="py-1.5 text-center text-[10px] text-slate-400">Arraste para girar · toque no corpo, Brain ou aparelho para explorar</p>}
+    {compact?null:<p className="py-1.5 text-center text-[10px] text-ink-muted">Arraste para girar · toque no corpo, Brain ou aparelho para explorar</p>}
     {controlsContainer===undefined?controls:controlsContainer?createPortal(controls,controlsContainer):null}
   </div>;
 }
