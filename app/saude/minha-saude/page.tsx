@@ -69,6 +69,7 @@ import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsigh
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { HealthInsight } from "@/lib/health-insights";
 import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
+import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -125,25 +126,15 @@ function HealthDashboard({
   }, [panel]);
   const lock = useRef(false),
     today = getLocalTodayISO();
-  const records = useMemo(
-    () =>
-      registros.filter(
-        (r) =>
-          r.person_id === personId &&
-          r.user_id === person?.user_id &&
-          r.data <= today &&
-          Object.prototype.hasOwnProperty.call(METRICS, r.tipo)
-      ).sort((a,b) => `${b.data}T${b.horario || "00:00"}`.localeCompare(`${a.data}T${a.horario || "00:00"}`)),
-    [registros, today, personId, person?.user_id]
-  );
-  const latest = (type: HealthMetric) => records.find((r) => r.tipo === type);
+  const dashboardIndex = useMemo(() => buildHealthDashboardIndex({ records: registros, devices, personId: personId || "", userId: person?.user_id || "", today }), [registros, devices, personId, person?.user_id, today]);
+  const { records, latestByMetric, deviceById, activeDevices: active, archivedDevices } = dashboardIndex;
+  const latest = (type: HealthMetric) => latestByMetric.get(type);
   const weightContext=useMemo(()=>avatarWeightContext(records,personId||"",person?.user_id||"",today),[records,personId,person?.user_id,today]);
   const bodyContext=useMemo(()=>avatarBodyContext(registros,intelligence.context?.cirurgias||[],devices,personId||"",person?.user_id||"",today),[registros,intelligence.context?.cirurgias,devices,personId,person?.user_id,today]);
   const avatarContext=useMemo(()=>avatarInsightContext(intelligence.insights),[intelligence.insights]);
   const weight = weightContext.latest,
     index = bmi(weight?.valor_numerico, profile?.height_cm),
     age = ageOn(profile?.birth_date, today);
-  const active = useMemo(()=>devices.filter((d)=>d.active),[devices]);
   const daySummary=useMemo(()=>summarizeHealthDay(records,historyDate),[records,historyDate]);
   const adjacentDays=useMemo(()=>adjacentHealthDays(records,historyDate,today),[records,historyDate,today]);
   const dayGroups=useMemo(()=>filter?new Map([[filter,daySummary.groups.get(filter)||[]]]):daySummary.groups,[daySummary,filter]);
@@ -162,7 +153,7 @@ function HealthDashboard({
     lock.current = true;
     setBusy(true);
     try {
-      const d = devices.find((d) => d.id === archive);
+      const d = deviceById.get(archive);
       await healthProfileRepository.setDeviceActive(
         personId,
         archive,
@@ -409,14 +400,12 @@ function HealthDashboard({
                   suas medidas.
                 </p>
               )}
-              {devices.some((d) => !d.active) && (
+              {archivedDevices.length > 0 && (
                 <details className="text-xs text-ink-muted">
                   <summary className="cursor-pointer py-2">
                     Aparelhos arquivados
                   </summary>
-                  {devices
-                    .filter((d) => !d.active)
-                    .map((d) => (
+                  {archivedDevices.map((d) => (
                       <button
                         key={d.id}
                         type="button"
@@ -438,7 +427,7 @@ function HealthDashboard({
                 <HealthDeviceEditor
                   key={editDevice || "new"}
                   personId={personId}
-                  device={devices.find((d) => d.id === editDevice)}
+                  device={deviceById.get(editDevice || "")}
                   onClose={() => setPanel(null)}
                 />
                 {editDevice && (
@@ -447,7 +436,7 @@ function HealthDashboard({
                     onClick={() => setArchive(editDevice)}
                     className="w-full rounded-xl border border-surface-border p-3 text-xs text-ink-muted"
                   >
-                    {devices.find((d) => d.id === editDevice)?.active
+                    {deviceById.get(editDevice)?.active
                       ? "Arquivar aparelho, preservando histórico"
                       : "Reativar aparelho"}
                   </button>
@@ -489,7 +478,7 @@ function HealthDashboard({
               type="button"
               aria-expanded={panel === "water"}
               onClick={() => open(panel === "water" ? null : "water")}
-              className="flex w-full items-center gap-3 rounded-[22px] border border-cyan-400/15 bg-surface p-4 text-left"
+              className="flex w-full items-center gap-3 rounded-[22px] border border-ice/20 bg-surface p-4 text-left"
             >
               <Droplets size={22} className="text-cyan-300" />
               <div className="flex-1">
@@ -521,16 +510,16 @@ function HealthDashboard({
               <button
                 type="button"
                 onClick={() => goFromHealth("/saude/rede")}
-                className="col-span-2 flex items-center gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.055] p-4 text-left"
+                className="col-span-2 flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.045] p-4 text-left"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
                   <Network size={19} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-semibold">Minha rede de saúde</span>
                   <span className="mt-0.5 block text-[10px] text-ink-muted">Profissionais, locais e cuidado contínuo</span>
                 </span>
-                <ChevronRight size={16} className="text-cyan-300" />
+                <ChevronRight size={16} className="text-emerald-300" />
               </button>
             </div>
             <section className="rounded-[24px] border border-surface-border bg-surface p-4">
@@ -591,7 +580,7 @@ function HealthDashboard({
                       <ChevronDown size={16} className="shrink-0 transition-transform group-open:rotate-180" />
                     </summary>
                     {group.map((r) => {
-                  const d = devices.find((d) => d.id === r.device_id);
+                  const d = deviceById.get(r.device_id || "");
                   return (
                     <button
                       type="button"
@@ -655,7 +644,7 @@ function HealthDashboard({
         title="Atualizar aparelho"
         message="Os registros e seus vínculos serão preservados."
         confirmLabel={
-          devices.find((d) => d.id === archive)?.active
+          deviceById.get(archive || "")?.active
             ? "Arquivar"
             : "Reativar"
         }
