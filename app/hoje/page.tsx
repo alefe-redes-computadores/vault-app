@@ -76,6 +76,7 @@ import { VersiculoDia } from "@/components/VersiculoDia";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
+import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -616,14 +617,7 @@ export default function HojePage() {
 
   const retiradasHoje =
     useMemo(
-      () =>
-        retiradas.filter(
-          (
-            retirada
-          ) =>
-            retirada.data ===
-            dataSelecionada
-        ),
+      () => withdrawalsForAgendaDate(retiradas, dataSelecionada, getLocalTodayISO()),
       [
         retiradas,
         dataSelecionada,
@@ -3506,6 +3500,9 @@ export default function HojePage() {
                       item.status === "cancelada" ||
                       item.status === "nao_realizada";
 
+                    const retiradaAtrasada = isRetirada &&
+                      isOverdueWithdrawal(item, getLocalTodayISO());
+
                     const getIcon = () => {
                       if (isConsulta) {
                         return (
@@ -3580,7 +3577,9 @@ export default function HojePage() {
                         }
 
                         if (isRetirada) {
-                          return "Retirada de medicamento";
+                          return retiradaAtrasada
+                            ? "Retirada pendente"
+                            : "Retirada de medicamento";
                         }
 
                         return "Realização de exame";
@@ -3628,6 +3627,8 @@ export default function HojePage() {
                                     ? "bg-ice/10 text-ice"
                                     : isCirurgia
                                     ? "bg-coral/10 text-coral"
+                                    : retiradaAtrasada
+                                      ? "bg-amber-400/15 text-amber-300"
                                     : isRetirada
                                       ? "bg-ice/10 text-ice"
                                       : "bg-emerald-400/10 text-emerald-400"
@@ -3638,7 +3639,9 @@ export default function HojePage() {
                                     ? "Concluído"
                                     : compromissoCancelado
                                       ? "Encerrado"
-                                      : dataSelecionadaLabel
+                                      : retiradaAtrasada
+                                        ? `Atrasada · ${withdrawalDaysOverdue(item.data, getLocalTodayISO())}d`
+                                        : dataSelecionadaLabel
                                 }
                               </span>
                             </div>

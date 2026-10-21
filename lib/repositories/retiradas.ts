@@ -191,36 +191,39 @@ export async function detachOrDeleteRetiradaFromRenovacao(r:Renovacao){
 }
 
 export const retiradasRepository={
-  async getAll(personId:string){
+  async getAll(userId:string,personId:string){
+    const owner=req(userId,"Usuário");
     const pid=req(personId,"Pessoa");
     return db.retiradas
-      .where("person_id")
-      .equals(pid)
+      .where("[user_id+person_id]")
+      .equals([owner,pid])
       .sortBy("data");
   },
 
-  async getById(id:string,personId:string){
+  async getById(id:string,userId:string,personId:string){
     const r=await db.retiradas.get(req(id,"Retirada"));
-    return r?.person_id===req(personId,"Pessoa")?r:undefined;
+    return r?.user_id===req(userId,"Usuário")&&r.person_id===req(personId,"Pessoa")?r:undefined;
   },
 
-  async getByDate(personId:string,data:string){
+  async getByDate(userId:string,personId:string,data:string){
+    const owner=req(userId,"Usuário");
     const pid=req(personId,"Pessoa");
     const d=date(data,"Data");
     return db.retiradas
-      .where("person_id")
-      .equals(pid)
+      .where("[user_id+person_id]")
+      .equals([owner,pid])
       .filter(r=>r.data===d)
       .toArray();
   },
 
-  async getByMedicamento(personId:string,medicamentoId:string){
+  async getByMedicamento(userId:string,personId:string,medicamentoId:string){
+    const owner=req(userId,"Usuário");
     const pid=req(personId,"Pessoa");
     const mid=req(medicamentoId,"Medicamento");
 
     return db.retiradas
-      .where("person_id")
-      .equals(pid)
+      .where("[user_id+person_id]")
+      .equals([owner,pid])
       .filter(r=>r.medicamento_id===mid)
       .toArray();
   },
@@ -290,7 +293,7 @@ export const retiradasRepository={
 
   async update(id:string,personId:string,changes:RetiradaUpdateInput){
     const userId=await uid();
-    const current=await this.getById(id,personId);
+    const current=await this.getById(id,userId,personId);
 
     if(!current||current.user_id!==userId){
       throw new Error("Retirada não encontrada para a pessoa ativa.");
@@ -400,7 +403,7 @@ export const retiradasRepository={
 
   async delete(id:string,personId:string){
     const userId=await uid();
-    const current=await this.getById(id,personId);
+    const current=await this.getById(id,userId,personId);
 
     if(!current?.id||current.user_id!==userId){
       throw new Error("Retirada não encontrada para a pessoa ativa.");

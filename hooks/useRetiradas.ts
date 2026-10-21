@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { retiradasRepository } from "@/lib/repositories/retiradas";
 import { useActivePersonId } from "./useActivePersonId";
+import { useAuth } from "./useAuth";
 import type {
   RetiradaCreateInput,
   RetiradaUpdateInput,
@@ -12,16 +13,17 @@ import type {
 
 export function useRetiradas(medicamentoId?: string) {
   const { activePersonId } = useActivePersonId();
+  const { user } = useAuth();
 
   const retiradas = useLiveQuery(
     async () => {
-      if (!activePersonId) return [];
+      if (!activePersonId || !user?.id) return [];
 
       return medicamentoId
-        ? retiradasRepository.getByMedicamento(activePersonId, medicamentoId)
-        : retiradasRepository.getAll(activePersonId);
+        ? retiradasRepository.getByMedicamento(user.id, activePersonId, medicamentoId)
+        : retiradasRepository.getAll(user.id, activePersonId);
     },
-    [activePersonId, medicamentoId],
+    [user?.id, activePersonId, medicamentoId],
     []
   );
 
@@ -38,18 +40,18 @@ export function useRetiradas(medicamentoId?: string) {
   );
   const getRetirada = useCallback(
     async (id: string) => {
-      if (!activePersonId) return undefined;
-      return retiradasRepository.getById(id, activePersonId);
+      if (!activePersonId || !user?.id) return undefined;
+      return retiradasRepository.getById(id, user.id, activePersonId);
     },
-    [activePersonId]
+    [user?.id, activePersonId]
   );
 
   const getRetiradasByDate = useCallback(
     async (data: string) => {
-      if (!activePersonId) return [];
-      return retiradasRepository.getByDate(activePersonId, data);
+      if (!activePersonId || !user?.id) return [];
+      return retiradasRepository.getByDate(user.id, activePersonId, data);
     },
-    [activePersonId]
+    [user?.id, activePersonId]
   );
 
   const addRetirada = useCallback(

@@ -3,6 +3,7 @@ import { buildLifestyleInsights } from "./health-intelligence/lifestyle-insights
 import { buildDeviceTrendInsights } from "./health-intelligence/device-trend-insights";
 import type {SupplyData} from "./health-supply/types";
 import {buildSupplyInsights} from "./health-intelligence/supply-insights";
+import { isOpenWithdrawal } from "./withdrawal-agenda";
 // lib/health-insights.ts
 import { buildBehaviorInsights } from "./health-intelligence/behavior-insights";
 import { compareHealthPriority } from "./health-intelligence/priority";
@@ -9422,7 +9423,7 @@ export function gerarInsightsSaude(
     if (dias > 7) return;
 
     const status = normalizeText(item.status || "");
-    if (status === "realizada" || status === "cancelada") return;
+    if (status === "realizada" || status === "cancelada" || status === "nao_realizada" || status === "nao realizada") return;
 
     const atrasado = dias < 0;
     const hojeAgenda = dias === 0;
@@ -9485,7 +9486,7 @@ export function gerarInsightsSaude(
     })
   );
 
-  contexto.retiradas.forEach((item) =>
+  contexto.retiradas.filter(isOpenWithdrawal).forEach((item) =>
     addAgendaInsight({
       tipo: "retirada",
       id: item.id,

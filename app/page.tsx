@@ -53,6 +53,7 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { isOverdueWithdrawal, openWithdrawalsDueBy, withdrawalDaysOverdue } from "@/lib/withdrawal-agenda";
 
 import { useHapticFeedback } from "@/lib/haptics";
 import { db } from "@/lib/db";
@@ -843,21 +844,17 @@ export default function HomePage() {
 
   const retiradasHoje =
     useMemo(
-      () =>
-        retiradas.filter(
-          (
-            retirada
-          ) =>
-            retirada.data ===
-              hoje &&
-            retirada.status ===
-              "agendada"
-        ),
+      () => openWithdrawalsDueBy(retiradas, hoje),
       [
         retiradas,
         hoje,
       ]
     );
+
+  const retiradasAtrasadas = useMemo(
+    () => retiradasHoje.filter((retirada) => isOverdueWithdrawal(retirada, hoje)),
+    [retiradasHoje, hoje]
+  );
 
   const totalCompromissosHoje =
     consultasHoje.length +
@@ -1446,7 +1443,7 @@ export default function HomePage() {
         ) {
           return {
             eyebrow:
-              "Agenda de hoje",
+              retiradasAtrasadas.length > 0 ? "Pendências da agenda" : "Agenda de hoje",
 
             title:
               totalCompromissosHoje ===
@@ -1455,7 +1452,9 @@ export default function HomePage() {
                 : `Você tem ${totalCompromissosHoje} compromissos`,
 
             description:
-              "Sua agenda de saúde está organizada logo abaixo.",
+              retiradasAtrasadas.length > 0
+                ? `${retiradasAtrasadas.length} retirada(s) vencida(s) continuam aberta(s) até você concluir, reagendar ou encerrar.`
+                : "Sua agenda de saúde está organizada logo abaixo.",
 
             color:
               "#38BDF8",
@@ -1503,6 +1502,7 @@ export default function HomePage() {
       [
         dosesPendentesAtrasadas.length,
         primaryMedicationCareOpportunity,
+        retiradasAtrasadas.length,
         totalCompromissosHoje,
         unifiedAlerts.length,
       ]
@@ -2657,12 +2657,14 @@ export default function HomePage() {
                     />
 
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      Próximos de hoje
+                      {retiradasAtrasadas.length > 0 ? "Pendentes e próximos" : "Próximos de hoje"}
                     </h2>
                   </div>
 
                   <p className="mt-0.5 text-[10px] text-ink-muted">
-                    Sua agenda de saúde do dia
+                    {retiradasAtrasadas.length > 0
+                      ? "Compromissos abertos não somem na virada do dia"
+                      : "Sua agenda de saúde do dia"}
                   </p>
                 </div>
 
@@ -2858,17 +2860,19 @@ export default function HomePage() {
                         </p>
 
                         <p className="truncate text-[10px] text-ink-muted">
-                          {retirada.tipo ===
-                          "sus"
-                            ? "Retirada programada no SUS"
-                            : "Retirada programada"}
+                          {isOverdueWithdrawal(retirada, hoje)
+                            ? `Pendente há ${withdrawalDaysOverdue(retirada.data, hoje)} dia(s) · revise ou reagende`
+                            : retirada.tipo === "sus"
+                              ? "Retirada programada no SUS"
+                              : "Retirada programada"}
                         </p>
                         <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview}/>
                       </div>
 
                       <span className="shrink-0 font-mono text-[11px] font-semibold text-ice">
-                        {retirada.horario ||
-                          "Hoje"}
+                        {isOverdueWithdrawal(retirada, hoje)
+                          ? "Atrasada"
+                          : retirada.horario || "Hoje"}
                       </span>
                     </button>
                   )
