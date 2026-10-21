@@ -10,6 +10,7 @@ const ok = (value, message) => {
 const pull = read("lib/sync/pull.ts");
 const recovery = read("app/recuperacao/page.tsx");
 const timeline = read("app/saude/timeline/page.tsx");
+const timelineProjection = read("lib/health-intelligence/clinical-timeline-projection.ts");
 const diagnostics = read("lib/sync/diagnostics.ts");
 const gate = read("scripts/test-v63-release-gate.mjs");
 
@@ -47,7 +48,7 @@ ok(
 );
 
 ok(
-  timeline.includes('if (period === 3650) return true;') &&
+  timelineProjection.includes('period !== 3650') &&
     timeline.includes('"Todo histórico"'),
   "Timeline trata Todo histórico como recorte sem limite"
 );

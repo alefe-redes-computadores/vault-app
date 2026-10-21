@@ -12,7 +12,7 @@ export function SupplyCycleSummary({process,cycle,data,documents,medications,wit
  if(!summary)return null;
  const rows=[
   {view:'medications' as const,title:'Medicamentos',Icon:Pill,tone:'text-emerald-300',text:`${summary.medicationCount} vinculado(s)`,detail:summary.unavailableMedications?`${summary.unavailableMedications} cadastro(s) indisponível(is)`:summary.medicationCount?'Consultar doses e quantidades':'Selecionar medicamentos existentes'},
-  {view:'documents' as const,title:'Documentos',Icon:FileText,tone:'text-sky-300',text:`${summary.documentCount} vínculo(s)`,detail:summary.unavailableDocuments?`${summary.unavailableDocuments} arquivo(s) indisponível(is)`:summary.documentCount?'Consultar arquivos e entrega':'Vincular arquivo existente, quando exigido'},
+  {view:'documents' as const,title:'Documentos',Icon:FileText,tone:'text-violet-300',text:`${summary.documentCount} vínculo(s)`,detail:summary.unavailableDocuments?`${summary.unavailableDocuments} arquivo(s) indisponível(is)`:summary.documentCount?'Consultar arquivos e entrega':'Vincular arquivo existente, quando exigido'},
   {view:'withdrawals' as const,title:'Retiradas',Icon:CalendarDays,tone:'text-amber-300',text:`${summary.withdrawalCount} vinculada(s)`,detail:summary.scheduledCount?`${summary.scheduledCount} agendada(s)`:summary.withdrawalCount?'Consultar registros':'Selecione um registro em Vincular outra retirada'},
  ];
  return <section aria-label="Situação salva do ciclo" className="space-y-2">

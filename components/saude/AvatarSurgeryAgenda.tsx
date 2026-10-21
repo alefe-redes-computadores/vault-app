@@ -17,15 +17,15 @@ function SurgeryGroup({ title, rows, status, today }: {
       {rows.slice(0, 3).map((surgery, index) => {
         const content = <>
           <span className="block break-words font-medium">{surgery.procedimento || 'Procedimento registrado'}</span>
-          {surgeryBodyLabel(surgery) ? <span className="mt-1 block text-sky-200">{surgeryBodyLabel(surgery)}</span> : null}
+          {surgeryBodyLabel(surgery) ? <span className="mt-1 block text-rose-200">{surgeryBodyLabel(surgery)}</span> : null}
           <span className="mt-1 block text-ink-muted">
             {formatDate(surgery.data)}{surgeryTime(surgery.horario) ? ` às ${surgeryTime(surgery.horario)}` : ''}
             {' · '}{surgery.status === 'agendada' && surgery.data === today ? 'agendada para hoje' : status}
           </span>
         </>;
         return <li key={surgery.id || `${surgery.data}-${index}`}>
-          {surgery.id ? <Link className="block min-h-11 rounded-xl border border-surface-border p-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300" href={`/saude/cirurgias/detalhes?id=${encodeURIComponent(surgery.id)}`}>
-            {content}<span className="mt-2 block text-sky-300">Abrir registro ›</span>
+          {surgery.id ? <Link className="block min-h-11 rounded-xl border border-surface-border p-3 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-300" href={`/saude/cirurgias/detalhes?id=${encodeURIComponent(surgery.id)}`}>
+            {content}<span className="mt-2 block text-rose-300">Abrir registro ›</span>
           </Link> : <div className="rounded-xl border border-surface-border p-3 text-xs">{content}</div>}
         </li>;
       })}
@@ -38,7 +38,7 @@ export function AvatarSurgeryAgenda({ context, markerKey, onShowAll }: { context
   const marker = context.surgeryMarkers.find(item => item.key === markerKey);
   const { upcoming, unconfirmed, completed, total } = markerKey ? surgeriesForMarker(context.surgeryAgenda, marker) : context.surgeryAgenda;
   return <div className="mt-3 space-y-4">
-    {markerKey ? <div className="rounded-xl border border-sky-400/25 bg-sky-400/5 p-3"><h3 className="text-sm font-semibold text-sky-200">{marker?.label || 'Marcação indisponível'}</h3><p className="mt-1 text-xs text-ink-muted">{marker ? 'Registros vinculados a esta região informada. A marca é esquemática.' : 'O registro pode ter sido alterado ou removido. Consulte todas as regiões.'}</p>{onShowAll ? <button type="button" onClick={onShowAll} className="mt-2 min-h-11 text-xs text-sky-300">Ver todas as regiões ›</button> : null}</div> : null}
+    {markerKey ? <div className="rounded-xl border border-rose-400/25 bg-rose-400/5 p-3"><h3 className="text-sm font-semibold text-rose-200">{marker?.label || 'Marcação indisponível'}</h3><p className="mt-1 text-xs text-ink-muted">{marker ? 'Registros vinculados a esta região informada. A marca é esquemática.' : 'O registro pode ter sido alterado ou removido. Consulte todas as regiões.'}</p>{onShowAll ? <button type="button" onClick={onShowAll} className="mt-2 min-h-11 text-xs text-rose-300">Ver todas as regiões ›</button> : null}</div> : null}
     <p className="text-xs leading-relaxed text-ink-muted">Um agendamento não confirma cirurgia realizada nem uso de tala. Abra o registro para conferir ou atualizar o status.</p>
     {unconfirmed.length ? <section className="space-y-2 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
       <p className="text-xs leading-relaxed text-amber-200">A data agendada já passou em {unconfirmed.length} {unconfirmed.length === 1 ? 'registro' : 'registros'}. O status continua agendada; confira o que aconteceu.</p>
@@ -48,6 +48,6 @@ export function AvatarSurgeryAgenda({ context, markerKey, onShowAll }: { context
     <SurgeryGroup title="Realizadas nos últimos 90 dias" rows={completed} status="realizada" today={context.today} />
     {!total ? <p className="text-xs text-ink-muted">Nenhuma cirurgia agendada ou realizada nos últimos 90 dias neste contexto. O histórico completo continua em Cirurgias.</p> : null}
     <p className="text-[11px] leading-relaxed text-ink-muted">A representação de tala depende do equipamento ativo e do lado informado. Uma cirurgia marcada como realizada não informa, sozinha, a recuperação atual.</p>
-    <Link className="block min-h-11 rounded-xl bg-sky-400/10 p-3 text-xs text-sky-300" href="/saude/cirurgias">Ver todas as cirurgias ›</Link>
+    <Link className="block min-h-11 rounded-xl bg-rose-400/10 p-3 text-xs text-rose-300" href="/saude/cirurgias">Ver todas as cirurgias ›</Link>
   </div>;
 }

@@ -29,7 +29,7 @@ const categoryMeta: Record<ClinicalEvent["category"], { label: string; tone: str
   humor: { label: "Humor", tone: "border-fuchsia-400/25 bg-fuchsia-400/10 text-fuchsia-300", icon: HeartPulse },
   hidratacao: { label: "Hidratação", tone: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300", icon: Droplets },
   dose: { label: "Dose", tone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300", icon: Pill },
-  outro: { label: "Registro", tone: "border-sky-400/25 bg-sky-400/[0.08] text-sky-200", icon: ClipboardList },
+  outro: { label: "Registro", tone: "border-surface-border bg-surface-raised text-ink-muted", icon: ClipboardList },
 };
 
 export default function RegistrosSaudePage() {
@@ -47,7 +47,7 @@ export default function RegistrosSaudePage() {
   const eventSearchIndex = useMemo(() => createLocalSearchIndex(month.events, event => [event.title,event.subtitle,event.category,event.date,event.time,event.medication?.nome,event.medication?.dosagem]), [month.events]);
   const visibleEvents = useMemo(() => filterLocalSearchIndex(eventSearchIndex,search).filter(event => filter === "todos" || event.category === filter), [eventSearchIndex, filter, search]);
   const visibleIds = useMemo(() => new Set(visibleEvents.map(item => item.id)), [visibleEvents]);
-  const stats = useMemo(() => ({ records: month.events.filter(e => e.kind === "record").length, doses: month.events.filter(e => e.category === "dose").length, alerts: month.events.filter(e => { if(!e.record)return false;const insight=analisarRegistroSaude(e.record.nome,e.record.valor_medicao,e.record.intensidade,e.record.observacoes);return Boolean(insight&&insight.status!=="normal"); }).length, days: new Set(month.events.map(e => e.date)).size }), [month.events]);
+  const stats = useMemo(() => { let records=0,doses=0,alerts=0;const days=new Set<string>();for(const event of month.events){days.add(event.date);if(event.kind==="record")records+=1;if(event.category==="dose")doses+=1;if(event.record){const insight=analisarRegistroSaude(event.record.nome,event.record.valor_medicao,event.record.intensidade,event.record.observacoes);if(insight&&insight.status!=="normal")alerts+=1;}}return {records,doses,alerts,days:days.size}; }, [month.events]);
   if (isLoading || dosesLoading) return <CardListSkeleton />;
   const selectFilter = (next: ViewFilter) => { trigger("vibrate"); setFilter(next); };
   return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
