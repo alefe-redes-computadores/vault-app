@@ -372,15 +372,15 @@ export default function HealthIntelligenceLabPage() {
 
         <section className="mx-auto mt-4 max-w-2xl">
           <div className="flex items-center gap-2">
-            <Activity size={17} className="text-sky-300" />
+            <Activity size={17} className="text-violet-300" />
             <h2 className="font-bold">Saúde da inteligência</h2>
           </div>
-          <button type="button" onClick={() => setBrainHealthExpanded((value) => !value)} className="mt-3 flex w-full items-center justify-between rounded-[22px] border border-sky-400/15 bg-sky-400/[0.03] p-4 text-left">
+          <button type="button" onClick={() => setBrainHealthExpanded((value) => !value)} className="mt-3 flex w-full items-center justify-between rounded-[22px] border border-violet-400/15 bg-violet-400/[0.03] p-4 text-left">
             <div><p className="text-sm font-semibold">{statusLabel}</p><p className="mt-0.5 text-[10px] text-ink-muted">{brainHealth.timelineEvents} eventos · {brainHealth.shadowSignals} sinais · {brainHealth.replayPoints} replays</p></div>
-            <ChevronRight size={17} className={`text-sky-300 transition-transform ${brainHealthExpanded ? "rotate-90" : ""}`} />
+            <ChevronRight size={17} className={`text-violet-300 transition-transform ${brainHealthExpanded ? "rotate-90" : ""}`} />
           </button>
           {brainHealthExpanded && (
-            <div className="mt-2 rounded-[22px] border border-sky-400/10 bg-sky-400/[0.02] p-4">
+            <div className="mt-2 rounded-[22px] border border-violet-400/10 bg-violet-400/[0.02] p-4">
               <p className="text-[10px] text-ink-muted">Mede dados e funcionamento do motor, não sua saúde.</p>
               {brainHealth.notes.map((note) => <p key={note} className="mt-2 text-xs text-ink-muted">• {note}</p>)}
             </div>

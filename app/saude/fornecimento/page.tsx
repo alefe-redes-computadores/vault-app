@@ -24,7 +24,7 @@ import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { isSupplyMedicationEligible, canTrackSupplyMedication } from "@/lib/health-supply/medication-eligibility";
 import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
 import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
-import { treatmentSupplyMedicationIds, cycleDocumentContext, matchesSupplyTreatment } from "@/lib/health-supply/cycle-context";
+import { treatmentSupplyMedicationIds, cycleDocumentContext } from "@/lib/health-supply/cycle-context";
 import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { useSearchParams } from "next/navigation";
 import { useReturnContext } from "@/hooks/useReturnContext";
@@ -68,7 +68,7 @@ import type {
 } from "@/lib/types";
 import { estimatedCycleEnd, supplyChecklist } from "@/lib/health-supply/rules";
 import { getLocalTodayISO } from "@/lib/health-utils";
-import { buildSupplyRelationshipIndex } from "@/lib/health-supply/relationship-index";
+import { buildSupplyProcessView, buildSupplyRelationshipIndex } from "@/lib/health-supply/relationship-index";
 const input =
   "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const button =
@@ -1015,7 +1015,9 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     withdrawals: retiradas,
     pharmacies: farmacias,
     places: locais,
-  }), [personId, user?.id, data, medicamentos, documents, retiradas, farmacias, locais]);
+    treatments: tratamentos,
+    renewals: renovacoes,
+  }), [personId, user?.id, data, medicamentos, documents, retiradas, farmacias, locais, tratamentos, renovacoes]);
   const occupiedMedicationIds = relationalIndex.activeMedicationIds;
   const availableMedications = useMemo(
     () => medicamentos.filter(m => m.id && !occupiedMedicationIds.has(m.id) && canTrackSupplyMedication(m, retiradas, personId || "", user?.id || "")),
@@ -1027,12 +1029,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     const total = acquisitions.reduce((sum, r) => sum + (r.preco || 0), 0);
     return { count: acquisitions.length, total };
   };
-  const processes = relationalIndex.processes.filter(
+  const processes = useMemo(() => relationalIndex.processes.filter(
     (p) => !medId || relationalIndex.medicationIdsByProcess.get(p.id)?.has(medId)
-  );
-  // V128 active-first: archived processes remain accessible in history.
-  processes.sort((a,b) => Number(b.status === "ativo") - Number(a.status === "ativo") ||
-    (b.updated_at || "").localeCompare(a.updated_at || ""));
+  ).sort((a,b) => Number(b.status === "ativo") - Number(a.status === "ativo") ||
+    (b.updated_at || "").localeCompare(a.updated_at || "")), [relationalIndex, medId]);
   // V132 VERIFIED RELATIONS: stale selections cannot bypass person or medication filters.
   // V136 PROCESS ROUTING: URL selection only within person- and medication-scoped processes.
   const requestedProcessId = params.get("id");
@@ -1065,11 +1065,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         (withdrawal?.data || getLocalTodayISO()) <= c.fim
     ) ||
     cycles[0];
-  const processIds = new Set(processes.map((item) => item.id));
-  const processCycles = relationalIndex.cycles.filter((item) => processIds.has(item.processo_id));
-  const processDocuments = relationalIndex.documentLinks.filter((item) => processIds.has(item.processo_id));
-  const activeProcesses = processes.filter((item) => item.status === "ativo");
-  const cyclesInProgress = processCycles.filter((item) => item.status === "preparando" || item.status === "protocolado").length;
+  const processView = useMemo(() => buildSupplyProcessView(relationalIndex, processes), [relationalIndex, processes]);
   const run: Run = async (action, message = "Salvo") => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -1091,16 +1087,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     }
   };
   const processMedicationIds=relationalIndex.medicationIdsByProcess;
-  const treatmentProcessGroups=useMemo(()=>tratamentos.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id).map(t=>({
-    t,
-    linked:processes.filter(p=>p.user_id===user?.id&&matchesSupplyTreatment(t,medicamentos,processMedicationIds.get(p.id)||new Set<string>(),personId||"",p.user_id)),
-    purchased:medicamentos.filter(m=>m.id&&m.person_id===personId&&m.user_id===user?.id&&
-      (t.medicamento_ids?.includes(m.id)||m.tratamento_ids?.includes(t.id!))&&
-      (m.tipo_aquisicao==='comprado'||renovacoes.some(r=>r.medicamento_id===m.id&&r.person_id===personId&&r.user_id===user?.id&&r.tipo_aquisicao==='comprado')))
-  })).filter(group=>group.linked.length>1||group.purchased.length>0),[tratamentos,medicamentos,processes,processMedicationIds,personId,user?.id,renovacoes]);
   const renderProcess = (p: SupplyProcess) => {
-    const ids = processMedicationIds.get(p.id)||new Set<string>();
-    const treatment = tratamentos.find(t => matchesSupplyTreatment(t, medicamentos, ids, personId || "", p.user_id));
+    const treatment = relationalIndex.treatmentsByProcess.get(p.id)?.[0];
     const theme = getClinicalTheme(treatment?.nome || p.titulo);
     const Icon = getVaultTreatmentIcon(treatment?.nome || p.titulo);
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
@@ -1154,7 +1142,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         rightAction={<button type="button" disabled={busy} aria-expanded={creating || !processes.length} aria-controls="supply-create-form" onClick={startCreating} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95 disabled:opacity-40"><Plus size={15}/>Novo</button>}
       />
       <div className="space-y-3 px-5 pt-4">
-      {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={cyclesInProgress ? `${cyclesInProgress} ciclo${cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processCycles.length},{label:"Documentos",value:processDocuments.length}]}/> : null}
+      {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={processView.cyclesInProgress ? `${processView.cyclesInProgress} ciclo${processView.cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:processView.activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processView.cycles},{label:"Documentos",value:processView.documents}]}/> : null}
       <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Como organizar o fornecimento</summary>
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
@@ -1177,7 +1165,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           {/* V156: a treatment is not a funding source; each process retains its own origin. */}
           <p className="mb-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode incluir medicamentos comprados e fornecidos pelo SUS. Selecione a origem real de cada processo; compartilhar tratamento não torna a compra uma retirada SUS.</p>
           {/* Mixed origins remain accessible without duplicating one-process navigation. */}
-          {treatmentProcessGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({treatmentProcessGroups.length})</summary><div className="mt-2 space-y-2">{treatmentProcessGroups.map(({t,linked,purchased})=>{
+          {processView.treatmentGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({processView.treatmentGroups.length})</summary><div className="mt-2 space-y-2">{processView.treatmentGroups.map(({treatment:t,linked,purchased})=>{
             const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:"#8b5cf6";
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
               <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
@@ -1187,11 +1175,11 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             </section>;
           })}</div></details>}
           <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Selecionar fornecimento">
-            {activeProcesses.map(renderProcess)}
+            {processView.activeProcesses.map(renderProcess)}
           </div>
-            {processes.some(p => p.status !== "ativo") && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
-              <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Arquivados · histórico ({processes.filter(p => p.status !== "ativo").length})</summary>
-              <div className="flex flex-wrap gap-2">{processes.filter(p => p.status !== "ativo").map(renderProcess)}</div>
+            {processView.archivedProcesses.length > 0 && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
+              <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Arquivados · histórico ({processView.archivedProcesses.length})</summary>
+              <div className="flex flex-wrap gap-2">{processView.archivedProcesses.map(renderProcess)}</div>
             </details>}
           {missingProcess && <p role="status" className="mb-4 rounded-2xl border border-amber-400/25 p-4 text-sm text-amber-200">Este processo não está disponível para a pessoa ou medicamento selecionado. Escolha um processo acima.</p>}
           {suggestions.length>0&&<details className="mb-4"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Reaproveitar dados das retiradas ({suggestions.length})</summary><section className={panel+" mb-4"} aria-label="Fornecimentos encontrados nas retiradas">
@@ -1235,7 +1223,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
                   const ids = processMedicationIds.get(process.id)||new Set<string>();
-                  const related = tratamentos.filter(t => matchesSupplyTreatment(t, medicamentos, ids, personId, process.user_id));
+                  const related = relationalIndex.treatmentsByProcess.get(process.id) || [];
                   const linkedMeds = [...ids].flatMap(id => { const medication = relationalIndex.medicationById.get(id); return medication ? [medication] : []; });
                   const pharmacy = relationalIndex.pharmacyById.get(process.farmacia_id || "");
                   const place = relationalIndex.placeById.get(process.local_id || "");

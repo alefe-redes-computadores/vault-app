@@ -3,6 +3,7 @@ const av=fs.readFileSync('components/saude/HealthAvatar.tsx','utf8');
 const three=fs.readFileSync('components/saude/HealthAvatar3D.tsx','utf8');
 const health=fs.readFileSync('app/saude/minha-saude/page.tsx','utf8');
 const supply=fs.readFileSync('app/saude/fornecimento/page.tsx','utf8');
+const supplyIndex=fs.readFileSync('lib/health-supply/relationship-index.ts','utf8');
 assert(av.includes('onEmptyTap={toggleExpanded}'),'3D not interactive');
 assert(!av.includes('Ampliar avatar</button>'),'redundant button still exists');
 assert(!av.includes('Ocultar avatar</button>'),'redundant hide button');
@@ -15,6 +16,6 @@ assert(supply.includes('{med && isDropMedication && <details'),'bottle calculato
 assert(supply.includes('SUPPLY_ORIGIN_LABELS[p.origem]'),'origin label missing');
 assert(supply.includes('Um tratamento pode incluir medicamentos comprados'),'mixed-treatment explanation absent');
 assert(supply.includes('canTrackSupplyMedication'),'V155 SOS + withdrawal logic absent');
-assert(supply.includes('purchased:medicamentos.filter'),'purchase treatment grouping absent');
+assert(supply.includes('processView.treatmentGroups')&&supplyIndex.includes('purchasedMedicationsByTreatment')&&supplyIndex.includes('renewal.tipo_aquisicao === "comprado"'),'purchase treatment grouping absent');
 assert(av.includes('AvatarStyleEditor'),'accessory customization removed');
 console.log('V156 UI+relation contracts approved');

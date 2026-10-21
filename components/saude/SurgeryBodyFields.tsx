@@ -30,13 +30,13 @@ export function SurgeryBodyFields({ value, onChange }: { value: SurgeryBody; onC
     document.addEventListener('keydown', keyboard);
     return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', keyboard); document.body.style.overflow = overflow; if (trigger.current?.isConnected) trigger.current.focus({ preventScroll: true }); };
   }, [selecting]);
-  return <fieldset className="space-y-3 rounded-[24px] border border-sky-400/20 bg-surface p-4">
-    <legend className="px-2 text-xs font-medium text-sky-300">Localização no corpo · opcional</legend>
+  return <fieldset className="space-y-3 rounded-[24px] border border-rose-400/20 bg-surface p-4">
+    <legend className="px-2 text-xs font-medium text-rose-300">Localização no corpo · opcional</legend>
     <div className="flex items-center gap-2">
       <div className="min-w-0 flex-1">
         <p id={labelId} className="mb-2 text-xs text-ink-muted">Região do corpo</p>
-        <button ref={trigger} type="button" aria-labelledby={`${labelId} ${labelId}-value`} aria-haspopup="dialog" aria-expanded={selecting} onClick={() => setSelecting(true)} className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
-          <MapPin size={16} className="shrink-0 text-sky-300" />
+        <button ref={trigger} type="button" aria-labelledby={`${labelId} ${labelId}-value`} aria-haspopup="dialog" aria-expanded={selecting} onClick={() => setSelecting(true)} className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-300">
+          <MapPin size={16} className="shrink-0 text-rose-300" />
           <span id={`${labelId}-value`} className="min-w-0 flex-1 truncate">{value.regiao_corporal ? SURGERY_REGIONS[value.regiao_corporal] : 'Não informada'}</span>
           <ChevronDown size={16} className="shrink-0 text-ink-muted" />
         </button>
@@ -44,9 +44,9 @@ export function SurgeryBodyFields({ value, onChange }: { value: SurgeryBody; onC
       {value.regiao_corporal ? <button type="button" aria-label="Limpar localização da cirurgia" onClick={() => onChange({ regiao_corporal: null, lateralidade: null })} className="mt-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-surface-border text-ink-muted"><X size={16}/></button> : null}
     </div>
     {value.regiao_corporal ? <div role="group" aria-label="Lado da cirurgia" className="grid grid-cols-2 gap-2">
-      {SIDES.map(([side, label]) => <button type="button" key={side} aria-pressed={value.lateralidade === side} onClick={() => onChange({ ...value, lateralidade: value.lateralidade === side ? null : side })} className={"min-h-11 rounded-xl border px-3 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 " + (value.lateralidade === side ? 'border-sky-400/40 bg-sky-400/10 text-sky-200' : 'border-surface-border text-ink-muted')}>{label}</button>)}
+      {SIDES.map(([side, label]) => <button type="button" key={side} aria-pressed={value.lateralidade === side} onClick={() => onChange({ ...value, lateralidade: value.lateralidade === side ? null : side })} className={"min-h-11 rounded-xl border px-3 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-300 " + (value.lateralidade === side ? 'border-rose-400/40 bg-rose-400/10 text-rose-200' : 'border-surface-border text-ink-muted')}>{label}</button>)}
     </div> : null}
     <p className="text-[11px] leading-relaxed text-ink-muted">Informe conforme o agendamento ou documento. Isso identifica o procedimento no Avatar; equipamentos em uso continuam no cadastro próprio.</p>
-    {selecting ? createPortal(<div ref={selectorHost}><SelectionModal isOpen onClose={close} onSelect={region => onChange({ regiao_corporal: region.id, lateralidade: value.regiao_corporal === region.id ? value.lateralidade ?? null : null })} items={REGIONS} title="Região da cirurgia" placeholder="Buscar região..." getItemId={item => item.id} getItemLabel={item => item.label} renderItem={item => <span className={value.regiao_corporal === item.id ? 'text-sky-300' : 'text-ink-primary'}>{item.label}{value.regiao_corporal === item.id ? ' ✓' : ''}</span>} /></div>, document.body) : null}
+    {selecting ? createPortal(<div ref={selectorHost}><SelectionModal isOpen onClose={close} onSelect={region => onChange({ regiao_corporal: region.id, lateralidade: value.regiao_corporal === region.id ? value.lateralidade ?? null : null })} items={REGIONS} title="Região da cirurgia" placeholder="Buscar região..." getItemId={item => item.id} getItemLabel={item => item.label} renderItem={item => <span className={value.regiao_corporal === item.id ? 'text-rose-300' : 'text-ink-primary'}>{item.label}{value.regiao_corporal === item.id ? ' ✓' : ''}</span>} /></div>, document.body) : null}
   </fieldset>;
 }
