@@ -7,6 +7,7 @@ import {
   Suspense,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -18,13 +19,20 @@ import {
 import {
   ArrowLeft,
   Calendar,
+  Camera,
   CheckCircle2,
   FileText,
   Loader2,
   Pill,
   Save,
   Stethoscope,
+  Upload,
+  X,
 } from "lucide-react";
+
+import {
+  useAuth,
+} from "@/hooks/useAuth";
 
 import {
   useMedicamentos,
@@ -55,6 +63,11 @@ import {
 } from "@/lib/health-utils";
 
 import {
+  deleteFile,
+  uploadFile,
+} from "@/lib/supabase/storage";
+
+import {
   PageTransition,
 } from "@/components/PageTransition";
 
@@ -82,6 +95,11 @@ function NovaReceitaContent() {
     activePersonId,
   } =
     useActivePersonId();
+
+  const {
+    user,
+  } =
+    useAuth();
 
   const {
     medicamentos = [],
@@ -195,6 +213,19 @@ function NovaReceitaContent() {
       false
     );
 
+  const [
+    localFile,
+    setLocalFile,
+  ] = useState<File | null>(null);
+
+  const [
+    attachmentName,
+    setAttachmentName,
+  ] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
   const selectedMedicamento =
     useMemo(
       () =>
@@ -250,6 +281,18 @@ function NovaReceitaContent() {
     ]
   );
 
+  const selectAttachment = (file: File, nameOverride?: string) => {
+    trigger("vibrate");
+    setLocalFile(file);
+    setAttachmentName(nameOverride || file.name);
+  };
+
+  const handleAttachment = (event: React.ChangeEvent<HTMLInputElement>, camera = false) => {
+    const file = event.target.files?.[0];
+    if (file) selectAttachment(file, camera ? `receita_${Date.now()}.jpg` : undefined);
+    event.target.value = "";
+  };
+
   const handleSave =
     async () => {
       if (
@@ -282,7 +325,16 @@ function NovaReceitaContent() {
         true
       );
 
+      let uploadedStorageUrl: string | undefined;
+
       try {
+        if (localFile) {
+          if (!user) throw new Error("É necessário estar autenticado para enviar a receita.");
+          const uploaded = await uploadFile(user.id, localFile, "receitas");
+          if (uploaded.error || !uploaded.url) throw new Error("Não foi possível enviar o anexo da receita.");
+          uploadedStorageUrl = uploaded.url;
+        }
+
         await addRenovacao(
           {
             medicamento_id:
@@ -317,6 +369,9 @@ function NovaReceitaContent() {
             data_aquisicao:
               undefined,
 
+            anexo_url:
+              uploadedStorageUrl,
+
             observacoes:
               observacoes.trim() ||
               undefined,
@@ -341,6 +396,13 @@ function NovaReceitaContent() {
       } catch (
         error
       ) {
+        if (uploadedStorageUrl) {
+          try {
+            await deleteFile(uploadedStorageUrl);
+          } catch (cleanupError) {
+            console.error("[NovaReceita] Falha ao limpar anexo órfão:", cleanupError);
+          }
+        }
         console.error(
           "[NovaReceita] Falha ao registrar receita:",
           error
@@ -510,6 +572,21 @@ function NovaReceitaContent() {
 
             <div>
               <label className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-ink-primary">
+                <Calendar size={13} className="text-violet-300" />
+                Planejar próxima revisão da receita
+              </label>
+              <CustomDatePicker
+                value={proximaRenovacao}
+                onChange={setProximaRenovacao}
+                className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-violet-400/50"
+              />
+              <p className="mt-1.5 text-[10px] leading-4 text-ink-muted">
+                O Vault sugere pela validade cadastrada, mas você pode usar o dia real em que pretende solicitar a próxima receita.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-ink-primary">
                 <Stethoscope
                   size={
                     13
@@ -559,6 +636,16 @@ function NovaReceitaContent() {
                 )}
               </HealthRelationPicker>
             </div>
+          </div>
+
+          <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div><p className="text-xs font-semibold text-ink-primary">Anexo da receita</p><p className="mt-1 text-[10px] text-ink-muted">Foto ou PDF fica ligado a este registro, sem criar aquisição.</p></div>
+              {attachmentName ? <button type="button" onClick={() => { setLocalFile(null); setAttachmentName(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-400/20 text-rose-300" aria-label="Remover anexo"><X size={16}/></button> : null}
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(event) => handleAttachment(event)} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => handleAttachment(event, true)} />
+            {attachmentName ? <div className="mt-3 truncate rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-xs font-semibold text-emerald-200">{attachmentName}</div> : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] text-xs font-semibold text-violet-200"><Upload size={15}/>Escolher arquivo</button><button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] text-xs font-semibold text-emerald-200"><Camera size={15}/>Fotografar</button></div>}
           </div>
 
           {selectedMedicamento && (

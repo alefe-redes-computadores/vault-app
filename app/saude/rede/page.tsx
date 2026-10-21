@@ -128,18 +128,16 @@ import {
   getDaysUntil,
 } from "@/lib/health-utils";
 
+import {
+  buildCareNetworkIndex,
+  buildCareNetworkStats,
+} from "@/lib/health-network/care-network-index";
+
 import type {
-  Cid,
-  Cirurgia,
-  Consulta,
-  Exame,
   Farmacia,
   Hospital,
   LocalSaude,
   Medico,
-  Medicamento,
-  Renovacao,
-  Retirada,
   Tratamento,
 } from "@/lib/types";
 
@@ -525,645 +523,60 @@ export default function RedeSaudePage() {
   };
 
   // ==========================================================
-  // PERSON SCOPE
-  //
-  // A Rede é uma tela agregadora.
-  //
-  // Mesmo que os hooks person-owned já filtrem pela pessoa
-  // ativa, mantemos uma segunda barreira explícita.
+  // REDE DE CUIDADO — PROJEÇÃO RELACIONAL ÚNICA
   // ==========================================================
 
-  const filteredMedicamentos =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return medicamentos.filter(
-          (
-            medicamento:
-              Medicamento
-          ) =>
-            medicamento.person_id ===
-            activePersonId
-        );
-      },
-      [
+  const networkIndex = useMemo(
+    () =>
+      buildCareNetworkIndex({
+        activePersonId,
         medicamentos,
-        activePersonId,
-      ]
-    );
-
-  const filteredTratamentos =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return tratamentos.filter(
-          (
-            tratamento:
-              Tratamento
-          ) =>
-            tratamento.person_id ===
-            activePersonId
-        );
-      },
-      [
         tratamentos,
-        activePersonId,
-      ]
-    );
-
-  const filteredConsultas =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return consultas.filter(
-          (
-            consulta:
-              Consulta
-          ) =>
-            consulta.person_id ===
-            activePersonId
-        );
-      },
-      [
         consultas,
-        activePersonId,
-      ]
-    );
-
-  const filteredExames =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return exames.filter(
-          (
-            exame:
-              Exame
-          ) =>
-            exame.person_id ===
-            activePersonId
-        );
-      },
-      [
         exames,
-        activePersonId,
-      ]
-    );
-
-  const filteredCirurgias =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return cirurgias.filter(
-          (
-            cirurgia:
-              Cirurgia
-          ) =>
-            cirurgia.person_id ===
-            activePersonId
-        );
-      },
-      [
         cirurgias,
-        activePersonId,
-      ]
-    );
-
-  const filteredRenovacoes =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return renovacoes.filter(
-          (
-            renovacao:
-              Renovacao
-          ) =>
-            renovacao.person_id ===
-            activePersonId
-        );
-      },
-      [
         renovacoes,
-        activePersonId,
-      ]
-    );
-
-  const filteredRegistros =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return registros.filter(
-          (
-            registro
-          ) =>
-            registro.person_id ===
-            activePersonId
-        );
-      },
-      [
         registros,
-        activePersonId,
-      ]
-    );
-
-  const filteredCids =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return cids.filter(
-          (
-            cid:
-              Cid
-          ) =>
-            cid.person_id ===
-            activePersonId
-        );
-      },
-      [
         cids,
-        activePersonId,
-      ]
-    );
-
-  const filteredRetiradas =
-    useMemo(
-      () => {
-        if (!activePersonId) return [];
-        return retiradas.filter((retirada: Retirada) => retirada.person_id === activePersonId);
-      },
-      [retiradas, activePersonId]
-    );
-
-  // ==========================================================
-  // MÉDICOS VINCULADOS
-  // ==========================================================
-
-  const filteredMedicos =
-    useMemo(
-      () => {
-        const linked =
-          new Set<string>();
-
-        for (
-          const consulta of
-          filteredConsultas
-        ) {
-          if (
-            consulta.medico_id
-          ) {
-            linked.add(
-              consulta.medico_id
-            );
-          }
-        }
-
-        for (
-          const cirurgia of
-          filteredCirurgias
-        ) {
-          if (
-            cirurgia.medico_id
-          ) {
-            linked.add(
-              cirurgia.medico_id
-            );
-          }
-        }
-
-        for (
-          const exame of
-          filteredExames
-        ) {
-          if (
-            exame.medico_id
-          ) {
-            linked.add(
-              exame.medico_id
-            );
-          }
-        }
-
-        for (
-          const renovacao of
-          filteredRenovacoes
-        ) {
-          if (
-            renovacao.medico_id
-          ) {
-            linked.add(
-              renovacao.medico_id
-            );
-          }
-        }
-
-        for (
-          const cid of
-          filteredCids
-        ) {
-          if (
-            cid.medico_id
-          ) {
-            linked.add(
-              cid.medico_id
-            );
-          }
-        }
-
-        for (
-          const medicamento of
-          filteredMedicamentos
-        ) {
-          if (
-            medicamento.medico_id
-          ) {
-            linked.add(
-              medicamento.medico_id
-            );
-          }
-        }
-
-        for (
-          const tratamento of
-          filteredTratamentos
-        ) {
-          for (
-            const medicoId of
-            tratamento.medico_ids ||
-            []
-          ) {
-            linked.add(
-              medicoId
-            );
-          }
-        }
-
-        return medicos.filter(
-          (
-            medico:
-              Medico
-          ) =>
-            Boolean(
-              medico.id &&
-                linked.has(
-                  medico.id
-                )
-            )
-        );
-      },
-      [
+        retiradas,
         medicos,
-        filteredConsultas,
-        filteredCirurgias,
-        filteredExames,
-        filteredRenovacoes,
-        filteredCids,
-        filteredMedicamentos,
-        filteredTratamentos,
-      ]
-    );
-
-  // ==========================================================
-  // FARMÁCIAS VINCULADAS
-  // ==========================================================
-
-  const filteredFarmacias =
-    useMemo(
-      () => {
-        const linked =
-          new Set<string>();
-
-        for (
-          const medicamento of
-          filteredMedicamentos
-        ) {
-          if (
-            medicamento.farmacia_id
-          ) {
-            linked.add(
-              medicamento.farmacia_id
-            );
-          }
-        }
-
-        for (
-          const renovacao of
-          filteredRenovacoes
-        ) {
-          if (
-            renovacao.farmacia_id
-          ) {
-            linked.add(
-              renovacao.farmacia_id
-            );
-          }
-        }
-
-        return farmacias.filter(
-          (
-            farmacia:
-              Farmacia
-          ) =>
-            Boolean(
-              farmacia.id &&
-                linked.has(
-                  farmacia.id
-                )
-            )
-        );
-      },
-      [
         farmacias,
-        filteredMedicamentos,
-        filteredRenovacoes,
-      ]
-    );
-
-  // ==========================================================
-  // HOSPITAIS VINCULADOS
-  //
-  // Hospital e Local são entidades globais diferentes.
-  // local_id nunca é tratado como hospital_id.
-  // ==========================================================
-
-  const filteredHospitais =
-    useMemo(
-      () => {
-        const linked =
-          new Set<string>();
-
-        for (
-          const consulta of
-          filteredConsultas
-        ) {
-          if (
-            consulta.hospital_id
-          ) {
-            linked.add(
-              consulta.hospital_id
-            );
-          }
-        }
-
-        for (
-          const cirurgia of
-          filteredCirurgias
-        ) {
-          if (
-            cirurgia.hospital_id
-          ) {
-            linked.add(
-              cirurgia.hospital_id
-            );
-          }
-        }
-
-        for (
-          const medicamento of
-          filteredMedicamentos
-        ) {
-          if (
-            medicamento.hospital_id
-          ) {
-            linked.add(
-              medicamento.hospital_id
-            );
-          }
-        }
-
-        for (
-          const renovacao of
-          filteredRenovacoes
-        ) {
-          if (
-            renovacao.hospital_id
-          ) {
-            linked.add(
-              renovacao.hospital_id
-            );
-          }
-        }
-
-        for (
-          const tratamento of
-          filteredTratamentos
-        ) {
-          for (
-            const hospitalId of
-            tratamento.hospital_ids ||
-            []
-          ) {
-            linked.add(
-              hospitalId
-            );
-          }
-        }
-
-        for (
-          const cid of
-          filteredCids
-        ) {
-          if (
-            cid.hospital_id
-          ) {
-            linked.add(
-              cid.hospital_id
-            );
-          }
-        }
-
-        return hospitais.filter(
-          (
-            hospital:
-              Hospital
-          ) =>
-            Boolean(
-              hospital.id &&
-                linked.has(
-                  hospital.id
-                )
-            )
-        );
-      },
-      [
         hospitais,
-        filteredConsultas,
-        filteredCirurgias,
-        filteredMedicamentos,
-        filteredRenovacoes,
-        filteredTratamentos,
-        filteredCids,
-      ]
-    );
-
-  // ==========================================================
-  // LOCAIS VINCULADOS
-  //
-  // Local é global, mas entra na Rede desta pessoa quando
-  // aparece no histórico clínico dela.
-  // ==========================================================
-
-  const filteredLocais =
-    useMemo(
-      () => {
-        const linked =
-          new Set<string>();
-
-        for (
-          const consulta of
-          filteredConsultas
-        ) {
-          if (
-            consulta.local_id
-          ) {
-            linked.add(
-              consulta.local_id
-            );
-          }
-        }
-
-        for (
-          const exame of
-          filteredExames
-        ) {
-          if (
-            exame.local_id
-          ) {
-            linked.add(
-              exame.local_id
-            );
-          }
-        }
-
-        for (
-          const cirurgia of
-          filteredCirurgias
-        ) {
-          if (
-            cirurgia.local_id
-          ) {
-            linked.add(
-              cirurgia.local_id
-            );
-          }
-        }
-
-        for (
-          const renovacao of
-          filteredRenovacoes
-        ) {
-          if (
-            renovacao.local_id
-          ) {
-            linked.add(
-              renovacao.local_id
-            );
-          }
-        }
-
-        for (
-          const medicamento of
-          filteredMedicamentos
-        ) {
-          if (
-            medicamento.local_id
-          ) {
-            linked.add(
-              medicamento.local_id
-            );
-          }
-        }
-
-        for (
-          const tratamento of
-          filteredTratamentos
-        ) {
-          for (
-            const localId of
-            tratamento.local_ids ||
-            []
-          ) {
-            linked.add(
-              localId
-            );
-          }
-        }
-
-        for (
-          const cid of
-          filteredCids
-        ) {
-          if (
-            cid.local_id
-          ) {
-            linked.add(
-              cid.local_id
-            );
-          }
-        }
-
-        return locais.filter(
-          (
-            local:
-              LocalSaude
-          ) =>
-            Boolean(
-              local.id &&
-                linked.has(
-                  local.id
-                )
-            )
-        );
-      },
-      [
         locais,
-        filteredConsultas,
-        filteredExames,
-        filteredCirurgias,
-        filteredRenovacoes,
-        filteredMedicamentos,
-        filteredTratamentos,
-        filteredCids,
-      ]
-    );
+      }),
+    [
+      activePersonId,
+      medicamentos,
+      tratamentos,
+      consultas,
+      exames,
+      cirurgias,
+      renovacoes,
+      registros,
+      cids,
+      retiradas,
+      medicos,
+      farmacias,
+      hospitais,
+      locais,
+    ]
+  );
+
+  const {
+    medicamentos: filteredMedicamentos,
+    tratamentos: filteredTratamentos,
+    consultas: filteredConsultas,
+    exames: filteredExames,
+    cirurgias: filteredCirurgias,
+    renovacoes: filteredRenovacoes,
+    registros: filteredRegistros,
+    cids: filteredCids,
+    medicos: filteredMedicos,
+    farmacias: filteredFarmacias,
+    hospitais: filteredHospitais,
+    locais: filteredLocais,
+  } = networkIndex;
+  const filteredRetiradas = networkIndex.retiradas;
 
   // ==========================================================
   // ALERTAS
@@ -1415,110 +828,10 @@ export default function RedeSaudePage() {
   // STATS
   // ==========================================================
 
-  const stats =
-    useMemo(
-      () => {
-        const consultasProximas =
-          filteredConsultas.filter(
-            (
-              consulta
-            ) => {
-              if (
-                consulta.status !==
-                "agendada"
-              ) {
-                return false;
-              }
-
-              const dias =
-                getDaysUntil(
-                  consulta.data
-                );
-
-              return (
-                dias !==
-                  null &&
-                dias >=
-                  0 &&
-                dias <=
-                  30
-              );
-            }
-          ).length;
-
-        return {
-          medicamentos:
-            filteredMedicamentos.length,
-
-          medicamentosAtivos:
-            filteredMedicamentos.filter(
-              (
-                medicamento
-              ) =>
-                medicamento.status ===
-                "ativo"
-            ).length,
-
-          tratamentos:
-            filteredTratamentos.length,
-
-          tratamentosAtivos:
-            filteredTratamentos.filter(
-              (
-                tratamento
-              ) =>
-                tratamento.status ===
-                "ativo"
-            ).length,
-
-          registros:
-            filteredRegistros.length,
-
-          renovacoes:
-            filteredRenovacoes.length,
-
-          retiradas:
-            filteredRetiradas.length,
-
-          consultas:
-            filteredConsultas.length,
-
-          consultasProximas,
-
-          exames:
-            filteredExames.length,
-
-          cirurgias:
-            filteredCirurgias.length,
-
-          medicos:
-            filteredMedicos.length,
-
-          farmacias:
-            filteredFarmacias.length,
-
-          hospitais:
-            filteredHospitais.length,
-
-          locais:
-            filteredLocais.length,
-        };
-      },
-      [
-        filteredMedicamentos,
-        filteredTratamentos,
-        filteredRegistros,
-        filteredRenovacoes,
-        filteredRetiradas,
-        filteredConsultas,
-        filteredExames,
-        filteredCirurgias,
-        filteredMedicos,
-        filteredFarmacias,
-        filteredHospitais,
-        filteredLocais,
-      ]
-    );
+  const stats = useMemo(
+    () => buildCareNetworkStats(networkIndex, getDaysUntil),
+    [networkIndex]
+  );
 
   // ==========================================================
   // SEARCH

@@ -8,7 +8,7 @@ assert.match(action(insight('receita'),'m','/').href,/nova-receita/);
 assert.match(action(insight('sus'),'m','/').href,/retiradas\/nova/);
 assert.match(action(insight('estoque'),'m','/',{tipoAquisicao:'sus'}).href,/retiradas\/nova/);
 assert.match(action(insight('estoque'),'m','/',{tipoAquisicao:'gratuito'}).href,/renovacao\/nova/,'gratuito is not automatically SUS');
-assert.match(action(insight('estoque'),'m','/',{tipoUso:'sos'}).href,/medicamentos\/detalhes/);
+assert.match(action(insight('estoque'),'m','/',{tipoUso:'sos'}).href,/retiradas\/nova/,'V214: SOS stock planning uses a future commitment without inflating stock');
 assert.match(action(insight('estoque'),'m','/',{tipoUso:'continuo'}).href,/renovacao\/nova/);
 assert.equal(action({...insight('estoque'),deveRenovar:false},'m','/'),null);
 

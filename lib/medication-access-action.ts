@@ -59,6 +59,15 @@ export function medicationAccessAction(
     context.tipoUso === "sos" || context.tipoUso === "esporadico";
 
   if (asNeeded) {
+    if (insight.motivo === "estoque") {
+      return {
+        kind: "withdrawal",
+        label: "Reposição",
+        cta: "Planejar reposição",
+        description: "Agendar a compra ou retirada sem antecipar entrada no estoque",
+        href: `/saude/retiradas/nova?${query}`,
+      };
+    }
     return {
       kind: "review",
       label: "Revisar",

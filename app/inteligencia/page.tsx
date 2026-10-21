@@ -18,9 +18,9 @@ import { useReturnContext } from "@/hooks/useReturnContext";
 const kindMeta: Record<VaultInsightKind, { label: string; classes: string }> = {
   attention: { label: "Atenção", classes: "border-amber-400/25 bg-amber-400/10 text-amber-300" },
   security: { label: "Proteção", classes: "border-violet-400/25 bg-violet-400/10 text-violet-300" },
-  data_quality: { label: "Qualidade", classes: "border-sky-400/25 bg-sky-400/10 text-sky-300" },
+  data_quality: { label: "Qualidade", classes: "border-rose-400/25 bg-rose-400/10 text-rose-300" },
   organization: { label: "Organização", classes: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" },
-  financial: { label: "Financeiro", classes: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300" },
+  financial: { label: "Financeiro", classes: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" },
 };
 
 export default function VaultIntelligencePage() {
@@ -60,10 +60,10 @@ export default function VaultIntelligencePage() {
   const coverage = intelligence.coverage;
   const counters = [
     { label: "Senhas", value: coverage?.credentials || 0, icon: KeyRound, tone: "text-violet-300" },
-    { label: "Cartões", value: coverage?.cards || 0, icon: CreditCard, tone: "text-sky-300" },
+    { label: "Cartões", value: coverage?.cards || 0, icon: CreditCard, tone: "text-rose-300" },
     { label: "Contas", value: coverage?.accounts || 0, icon: Landmark, tone: "text-amber-300" },
     { label: "Documentos", value: coverage?.documents || 0, icon: FileText, tone: "text-emerald-300" },
-    { label: "Compras", value: coverage?.acquisitions || 0, icon: WalletCards, tone: "text-cyan-300" },
+    { label: "Compras", value: coverage?.acquisitions || 0, icon: WalletCards, tone: "text-orange-300" },
   ];
 
   return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-5 header-safe-top text-ink-primary">

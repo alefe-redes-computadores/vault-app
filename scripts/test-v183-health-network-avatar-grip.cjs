@@ -2,12 +2,13 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 
 const network=fs.readFileSync("app/saude/rede/page.tsx","utf8");
+const networkIndex=fs.readFileSync("lib/health-network/care-network-index.ts","utf8");
 const avatar=fs.readFileSync("components/saude/HealthAvatar3D.tsx","utf8");
 
 assert(network.includes("const filteredRetiradas ="));
-assert(network.includes("retirada.person_id === activePersonId"));
-assert(network.includes("filteredRetiradas.length"));
-assert(!network.includes("retiradas.length"));
+assert(network.includes("buildCareNetworkIndex"));
+assert(networkIndex.includes("const retiradas = owned(input.retiradas)"));
+assert(networkIndex.includes("retiradas: index.retiradas.length"));
 assert(network.includes('useReturnContext("/")')&&network.includes("preserveReturn(path)"));
 assert(network.includes("Atenções da rotina")&&network.includes("alertsOpen"));
 assert(network.includes('min-h-[72px]')&&!network.includes('min-h-[150px]'));

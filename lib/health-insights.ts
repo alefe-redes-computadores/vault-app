@@ -9560,7 +9560,13 @@ export function sugerirRenovacao(medicamento: Medicamento): RenovacaoInsight {
   const insight = sugerirRenovacaoBase(medicamento);
   const sos = medicamento.tipo_uso === "sos" || medicamento.tipo_uso === "esporadico";
   const automatico = !medicamento.lembrete_receita_modo || medicamento.lembrete_receita_modo === "automatico";
-  if (sos && automatico && !medicamento.tratamento_ids?.length && insight.motivo === "receita" && typeof medicamento.estoque_quantidade === "number" && medicamento.estoque_quantidade > 0) {
+  const stockKnown = typeof medicamento.estoque_quantidade === "number" && Number.isFinite(medicamento.estoque_quantidade);
+  // V214: em uso SOS, falta de estoque é um problema de reposição — não prova
+  // falta de receita. A lista não pode transformar os dois estados no mesmo CTA.
+  if (sos && stockKnown && medicamento.estoque_quantidade! <= 0) {
+    return {...insight, deveRenovar: true, motivo: "estoque", urgencia: "media", mensagem: `Sem saldo registrado de "${medicamento.nome}". Planeje uma reposição sem registrar entrada antes de receber.`};
+  }
+  if (sos && automatico && insight.motivo === "receita" && stockKnown && medicamento.estoque_quantidade! > 0) {
     const retirada = medicamento.tipo_aquisicao === "sus" ? getDaysUntil(medicamento.data_retorno_sus || "") : null;
     if (retirada !== null && retirada <= 7) return {...insight, motivo: "sus", urgencia: "media", mensagem: `Confira o planejamento da retirada de "${medicamento.nome}" e os documentos exigidos pelo serviço.`};
     return {...insight, deveRenovar: false, motivo: "nenhum", urgencia: "nenhuma", mensagem: ""};

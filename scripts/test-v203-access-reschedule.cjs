@@ -19,7 +19,7 @@ const ex={};new Function('exports','sugerirRenovacaoBase','getDaysUntil',compile
 const sos={tipo_uso:'sos',estoque_quantidade:61,nome:'Teste'};
 assert.equal(ex.sugerirRenovacao(sos).deveRenovar,false,'stocked automatic SOS has no recurring renewal');
 assert.equal(ex.sugerirRenovacao({...sos,lembrete_receita_modo:'data_personalizada'}).deveRenovar,true,'explicit reminder preserved');
-assert.equal(ex.sugerirRenovacao({...sos,tratamento_ids:['t']}).deveRenovar,true,'treatment context preserved');
+assert.equal(ex.sugerirRenovacao({...sos,tratamento_ids:['t']}).deveRenovar,false,'V214: treatment link alone does not create an automatic SOS prescription alert');
 assert.equal(ex.sugerirRenovacao({...sos,tipo_aquisicao:'sus',data_retorno_sus:'due'}).motivo,'sus');
 base={...base,motivo:'estoque'};assert.equal(ex.sugerirRenovacao({...sos,estoque_quantidade:0}).urgencia,'media');
 assert.equal(ex.sugerirRenovacao({...sos,tipo_uso:'continuo'}).urgencia,'alta','continuous stock priority unchanged');

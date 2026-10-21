@@ -99,10 +99,16 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:3});geometry.translate(0,0,-depth/2);return geometry;
     };
     const taperedBox=(backWidth:number,frontWidth:number,height:number,depth:number)=>{
-      const bw=backWidth/2,fw=frontWidth/2,h=height/2,d=depth/2;
-      const vertices=new Float32Array([-bw,-h,-d,bw,-h,-d,bw,h,-d,-bw,h,-d,-fw,-h,d,fw,-h,d,fw,h,d,-fw,h,d]);
-      const indices=[0,1,2,0,2,3,4,6,5,4,7,6,0,4,5,0,5,1,3,2,6,3,6,7,0,3,7,0,7,4,1,5,6,1,6,2];
-      const geometry=new THREE.BufferGeometry();geometry.setAttribute("position",new THREE.BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();return geometry;
+      // V214: start from Three's stable indexed geometry. Some Android WebGL
+      // drivers stretched the hand-written attribute buffer into long rails.
+      const width=Math.max(backWidth,frontWidth);
+      const geometry=new THREE.BoxGeometry(width,height,depth,1,1,1);
+      const positions=geometry.getAttribute("position") as THREE.BufferAttribute;
+      for(let index=0;index<positions.count;index+=1){
+        const faceWidth=positions.getZ(index)<0?backWidth:frontWidth;
+        positions.setX(index,positions.getX(index)*(faceWidth/width));
+      }
+      positions.needsUpdate=true;geometry.computeVertexNormals();return geometry;
     };
     const sphereGeometry=new THREE.SphereGeometry(1,24,16);
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
@@ -137,15 +143,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const expressionBrows: Array<{object:THREE.Mesh;sign:number}> = [];
     const expressionLids: Array<{object:THREE.Mesh;sign:number}> = [];
     const expressionEyes: Array<{object:THREE.Mesh;restY:number}> = [];
-    // Brows, eye highlights and clothing seams provide depth without remote assets.
+    // V214: planos orbitais afunilados integram as sobrancelhas ao rosto.
+    // O brilho do olho existe em uma única camada, evitando o olhar duplicado.
     for(const sign of [-1,1]) {
       // V193: refina volumes existentes, sem novos draw calls ou acessórios flutuantes.
       const brow=mesh(softBox(.064,.012,.012,.005),materials.hair,sign*.084,2.861,.205);brow.rotation.z=-sign*.10;brow.raycast=()=>{};
       expressionBrows.push({object:brow,sign});
       // V192: planos supraorbitais conectam sobrancelha, têmpora e ponte nasal;
       // o rosto mantém expressão e acessórios sem voltar ao aspecto circular.
-      const browPlane=mesh(taperedBox(.047,.057,.016,.017),materials.skinShade,sign*.083,2.875,.184);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
-      oval(materials.white,sign*.081,2.826,.237,[.004,.004,.003]);
+      const browPlane=mesh(taperedBox(.041,.061,.016,.017),materials.skinShade,sign*.083,2.875,.184);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
       const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
       expressionLids.push({object:upperLid,sign});
       const lowerLid=mesh(new THREE.CapsuleGeometry(.0035,.055,2,7),materials.skinShade,sign*.083,2.804,.239);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
@@ -452,11 +458,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const targetMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});
       const target=mesh(new THREE.BoxGeometry(slot.kind==="watch"?.32:.16,slot.kind==="watch"?.26:.14,.08),targetMaterial,x,slot.kind==="watch"?watchY:1.43,.15);target.userData.action="device";target.userData.deviceId=slot.device.id;
       const metal=new THREE.MeshStandardMaterial({color:avatarColor(slot.device.color,"#94a3b8"),metalness:.45,roughness:.32});
-      const ring=mesh(new THREE.TorusGeometry(slot.kind==="watch"?.108:.042,slot.kind==="watch"?.026:.012,8,24),metal,x,slot.kind==="watch"?watchY:1.43,.008);ring.rotation.x=Math.PI/2;
       if(slot.kind==="watch"){
         const reference=watchModelByName(slot.device.name), shape=reference?.shape || 'round';
         const width=shape==='band'?.105:shape==='ultra'?.185:.16, height=shape==='band'?.21:.17;
         const titanium=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#b9b8b3':avatarColor(slot.device.color,'#94a3b8'),metalness:.65,roughness:.3});
+        const strap=mesh(softBox(.115,.285,.042,.026),metal,x,watchY,.047);strap.raycast=()=>{};
         if(shape==='round'){
           const caseMesh=mesh(new THREE.CylinderGeometry(.086,.086,.055,24),titanium,x,watchY,.098);caseMesh.rotation.x=Math.PI/2;
         }else{
@@ -470,6 +476,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const hand=mesh(new THREE.BoxGeometry(.038,.009,.006),materials.white,x+.016,watchY,.139);hand.rotation.z=-.4;
         const crown=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#fb923c':'#94a3b8',metalness:.45,roughness:.3});
         mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,watchY,.103);
+      }else{
+        const ring=mesh(new THREE.TorusGeometry(.042,.012,8,24),metal,x,1.43,.008);ring.rotation.x=Math.PI/2;
       }
     }
     const phoneX=layout.phoneSide==="right"?-.486:.486;
@@ -483,10 +491,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const phoneSideContact=mesh(new THREE.CapsuleGeometry(.014,.13,3,7),materials.skin,phoneX+gripSign*.083,1.382,.105);phoneSideContact.rotation.z=phoneAngle;phoneSideContact.raycast=()=>{};
     // V183: the dedicated grip replaces the generic fingers on this hand, avoiding an eight-finger overlap.
     for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
-      const finger=mesh(new THREE.CapsuleGeometry(.0125,.073-fingerIndex*.003,3,6),materials.skin,phoneX+gripSign*.071,1.323+fingerIndex*.042,.119);
+      const finger=mesh(new THREE.CapsuleGeometry(.0125,.073-fingerIndex*.003,3,6),materials.skin,phoneX+gripSign*.071,1.323+fingerIndex*.042,.101);
       finger.rotation.z=Math.PI/2+phoneAngle;finger.rotation.y=gripSign*.12;finger.raycast=()=>{};
     }
-    const phoneThumb=mesh(new THREE.CapsuleGeometry(.017,.092,3,7),materials.skin,phoneX-gripSign*.043,1.406,.126);phoneThumb.rotation.z=gripSign*.55+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
+    const phoneThumb=mesh(new THREE.CapsuleGeometry(.017,.092,3,7),materials.skin,phoneX-gripSign*.043,1.406,.116);phoneThumb.rotation.z=gripSign*.55+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
     const gripKnuckle=mesh(new THREE.CapsuleGeometry(.004,.098,2,7),materials.skinShade,phoneX+gripSign*.075,1.388,.133);gripKnuckle.rotation.z=phoneAngle;gripKnuckle.raycast=()=>{};
     const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
