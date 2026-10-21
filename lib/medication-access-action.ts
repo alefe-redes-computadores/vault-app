@@ -1,4 +1,26 @@
 import type { RenovacaoInsight } from "./health-insights";
+import type { Retirada } from "./types";
+
+/** Apenas compromissos em aberto; nunca cria outro para resolver o mesmo evento. */
+export function scheduledWithdrawalForMedication(rows: Retirada[], medicationId: string): Retirada | null {
+  let earliest: Retirada | null = null;
+  for (const row of rows) {
+    if (!row.id || row.medicamento_id !== medicationId || row.status !== "agendada") continue;
+    if (!earliest || row.data < earliest.data || (row.data === earliest.data && (row.horario || "23:59") < (earliest.horario || "23:59"))) earliest = row;
+  }
+  return earliest;
+}
+
+/** Index active commitments once for lists and dashboards. Overdue stays active. */
+export function indexScheduledWithdrawals(rows: Retirada[]): Map<string, Retirada> {
+  const result = new Map<string, Retirada>();
+  for (const row of rows) {
+    if (!row.id || !row.medicamento_id || row.status !== "agendada") continue;
+    const current = result.get(row.medicamento_id);
+    if (!current || row.data < current.data || (row.data === current.data && (row.horario || "23:59") < (current.horario || "23:59"))) result.set(row.medicamento_id, row);
+  }
+  return result;
+}
 
 export type MedicationAccessActionKind =
   | "prescription"
@@ -9,6 +31,7 @@ export type MedicationAccessActionKind =
 interface MedicationAccessContext {
   tipoUso?: string | null;
   tipoAquisicao?: string | null;
+  scheduledWithdrawalId?: string | null;
 }
 
 export interface MedicationAccessAction {
@@ -30,6 +53,16 @@ export function medicationAccessAction(
   const medication = encodeURIComponent(medicationId);
   const back = encodeURIComponent(returnTo);
   const query = `medicamento_id=${medication}&return_to=${back}`;
+
+  if (context.scheduledWithdrawalId && (insight.motivo === "sus" || insight.motivo === "estoque")) {
+    return {
+      kind: "withdrawal",
+      label: "Retirada",
+      cta: "Ver retirada pendente",
+      description: "Abrir o compromisso existente para concluir ou reagendar",
+      href: `/saude/retiradas/detalhes?id=${encodeURIComponent(context.scheduledWithdrawalId)}&return_to=${back}`,
+    };
+  }
 
   if (insight.motivo === "receita") {
     return {

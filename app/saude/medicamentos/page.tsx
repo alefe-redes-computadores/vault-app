@@ -1,7 +1,8 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 
-import { medicationAccessAction } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
+import { useRetiradas } from "@/hooks/useRetiradas";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -217,6 +218,8 @@ const SectionTitle = ({
 // ============================================================
 
 export default function MedicamentosListPage() {
+  const { retiradas } = useRetiradas();
+  const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
   const router =
     useRouter();
 
@@ -986,6 +989,7 @@ export default function MedicamentosListPage() {
         ? medicationAccessAction(insight, med.id!, "/saude/medicamentos", {
             tipoUso: med.tipo_uso,
             tipoAquisicao: med.tipo_aquisicao,
+            scheduledWithdrawalId: scheduledWithdrawals.get(med.id!)?.id,
           })
         : null;
 

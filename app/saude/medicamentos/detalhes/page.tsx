@@ -1,7 +1,8 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
-import { medicationAccessAction } from "@/lib/medication-access-action";
+import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
+import { useRetiradas } from "@/hooks/useRetiradas";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -763,6 +764,7 @@ function MedicamentoDetalhesContent() {
       id ||
         undefined
     );
+  const { retiradas } = useRetiradas(id || undefined);
 
   // ==========================================================
   // ESTADO
@@ -1730,6 +1732,7 @@ function MedicamentoDetalhesContent() {
     {
       tipoUso: med.tipo_uso,
       tipoAquisicao: med.tipo_aquisicao,
+      scheduledWithdrawalId: scheduledWithdrawalForMedication(retiradas, med.id!)?.id,
     }
   );
 

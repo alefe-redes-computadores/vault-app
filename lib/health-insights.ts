@@ -9566,6 +9566,24 @@ export function sugerirRenovacao(medicamento: Medicamento): RenovacaoInsight {
   if (sos && stockKnown && medicamento.estoque_quantidade! <= 0) {
     return {...insight, deveRenovar: true, motivo: "estoque", urgencia: "media", mensagem: `Sem saldo registrado de "${medicamento.nome}". Planeje uma reposição sem registrar entrada antes de receber.`};
   }
+  // V215: a data operacional antiga não invalida uma prescrição recém-registrada.
+  // Apenas uma receita com data válida e referência de validade ainda vigente
+  // pode converter o CTA. Sem data/tipo confiável, preservamos o alerta original.
+  if (insight.deveRenovar && insight.motivo === "receita" && automatico && medicamento.data_receita && medicamento.tipo_receita) {
+    const validade = analisarValidadeReceita(medicamento.data_receita, medicamento.tipo_receita);
+    const dataFutura = getDaysUntil(medicamento.data_receita);
+    if (dataFutura !== null && dataFutura <= 0 && validade.diasRestantes !== null && validade.diasRestantes >= 0) {
+      if (stockKnown && medicamento.estoque_quantidade! <= 0) {
+        return {...insight, motivo: "estoque", mensagem: `A receita de "${medicamento.nome}" está registrada; o estoque está zerado. Planeje a aquisição ou retirada, sem registrar entrada antes de receber.`};
+      }
+      if (insight.diasRestantesEstoque !== null && insight.diasRestantesEstoque <= 10) {
+        return {...insight, motivo: "estoque", mensagem: `A receita de "${medicamento.nome}" está registrada; o estoque pode precisar de reposição em breve.`};
+      }
+      if (stockKnown && medicamento.estoque_quantidade! > 0) {
+        return {...insight, deveRenovar: false, motivo: "nenhum", urgencia: "nenhuma", mensagem: ""};
+      }
+    }
+  }
   if (sos && automatico && insight.motivo === "receita" && stockKnown && medicamento.estoque_quantidade! > 0) {
     const retirada = medicamento.tipo_aquisicao === "sus" ? getDaysUntil(medicamento.data_retorno_sus || "") : null;
     if (retirada !== null && retirada <= 7) return {...insight, motivo: "sus", urgencia: "media", mensagem: `Confira o planejamento da retirada de "${medicamento.nome}" e os documentos exigidos pelo serviço.`};

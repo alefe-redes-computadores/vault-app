@@ -45,6 +45,7 @@ import {
 import {
   useRenovacoes,
 } from "@/hooks/useRenovacoes";
+import { useDocumentActions } from "@/hooks/useDocuments";
 
 import {
   useActivePersonId,
@@ -115,6 +116,7 @@ function NovaReceitaContent() {
     addRenovacao,
   } =
     useRenovacoes();
+  const { createDocument, deleteDocument } = useDocumentActions();
 
   const medicamentoIdParam =
     searchParams.get(
@@ -326,6 +328,7 @@ function NovaReceitaContent() {
       );
 
       let uploadedStorageUrl: string | undefined;
+      let createdDocumentId: string | undefined;
 
       try {
         if (localFile) {
@@ -335,14 +338,37 @@ function NovaReceitaContent() {
           uploadedStorageUrl = uploaded.url;
         }
 
+        // A receita é um documento de saúde próprio, ligado ao medicamento.
+        // A renovação aponta para ele, sem reaproveitar a receita anterior.
+        createdDocumentId = await createDocument({
+          category_id: "saude",
+          type: "receita",
+          title: `Receita — ${selectedMedicamento.nome}`,
+          description: observacoes.trim() || undefined,
+          metadata: {
+            prescription_date: dataReceita,
+            ...(proximaRenovacao ? { renewal_date: proximaRenovacao } : {}),
+            medicamento_id: selectedMedicamento.id,
+          },
+          attachments: uploadedStorageUrl && localFile ? [{
+            id: crypto.randomUUID(),
+            url: uploadedStorageUrl,
+            name: attachmentName || localFile.name,
+            type: localFile.type.startsWith("image/") ? "image" : "pdf",
+            uploaded_at: new Date().toISOString(),
+          }] : [],
+          is_favorite: false,
+          medico_id: medicoId || undefined,
+          entidade_tipo: "medicamento",
+          entidade_id: selectedMedicamento.id,
+        });
+
         await addRenovacao(
           {
             medicamento_id:
               selectedMedicamento.id,
 
-            document_id:
-              selectedMedicamento.document_id ||
-              undefined,
+            document_id: createdDocumentId,
 
             medico_id:
               medicoId ||
@@ -396,7 +422,13 @@ function NovaReceitaContent() {
       } catch (
         error
       ) {
-        if (uploadedStorageUrl) {
+        if (createdDocumentId) {
+          try {
+            await deleteDocument(createdDocumentId);
+          } catch (cleanupError) {
+            console.error("[NovaReceita] Falha ao limpar documento órfão:", cleanupError);
+          }
+        } else if (uploadedStorageUrl) {
           try {
             await deleteFile(uploadedStorageUrl);
           } catch (cleanupError) {

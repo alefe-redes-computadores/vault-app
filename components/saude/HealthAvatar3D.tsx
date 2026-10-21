@@ -470,10 +470,16 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
           outline.moveTo(-w+r,-h);outline.lineTo(w-r,-h);outline.quadraticCurveTo(w,-h,w,-h+r);outline.lineTo(w,h-r);outline.quadraticCurveTo(w,h,w-r,h);outline.lineTo(-w+r,h);outline.quadraticCurveTo(-w,h,-w,h-r);outline.lineTo(-w,-h+r);outline.quadraticCurveTo(-w,-h,-w+r,-h);
           mesh(new THREE.ExtrudeGeometry(outline,{depth:.035,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.004,bevelThickness:.004}),titanium,x,watchY,.075);
         }
-        const roundFace=shape==='round'||shape==='ultra';
+        // Ultra has a rectangular display; only round cases receive a dial.
+        const roundFace=shape==='round';
         mesh(roundFace?new THREE.CircleGeometry(.068,24):new THREE.PlaneGeometry(width*.75,height*.75),materials.dark,x,watchY,.133);
-        mesh(new THREE.BoxGeometry(.009,.046,.006),materials.white,x,watchY+.02,.139);
-        const hand=mesh(new THREE.BoxGeometry(.038,.009,.006),materials.white,x+.016,watchY,.139);hand.rotation.z=-.4;
+        if(roundFace){
+          mesh(new THREE.BoxGeometry(.009,.046,.006),materials.white,x,watchY+.02,.139);
+          const hand=mesh(new THREE.BoxGeometry(.038,.009,.006),materials.white,x+.016,watchY,.139);hand.rotation.z=-.4;
+        }else{
+          mesh(new THREE.BoxGeometry(width*.36,.012,.006),materials.white,x,watchY+.018,.139);
+          mesh(new THREE.BoxGeometry(width*.22,.009,.006),materials.white,x,watchY-.013,.139);
+        }
         const crown=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#fb923c':'#94a3b8',metalness:.45,roughness:.3});
         mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,watchY,.103);
       }else{

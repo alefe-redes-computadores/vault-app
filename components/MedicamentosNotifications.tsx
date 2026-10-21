@@ -15,7 +15,8 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
-import { medicationAccessAction } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
+import { useRetiradas } from "@/hooks/useRetiradas";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -23,6 +24,8 @@ export function MedicamentosNotifications() {
 
   // ✅ Agora usa o hook que filtra por activePersonId
   const { medicamentos } = useMedicamentos();
+  const { retiradas } = useRetiradas();
+  const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
 
   const { alertas } = useMemo(() => {
     const itensAlerta: any[] = [];
@@ -64,7 +67,7 @@ export function MedicamentosNotifications() {
           renovacaoInsight,
           med.id,
           "/",
-          { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao }
+          { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawals.get(med.id)?.id }
         );
 
         const dataPlanejada =
@@ -120,7 +123,7 @@ export function MedicamentosNotifications() {
         },
         med.id,
         "/",
-        { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao }
+        { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawals.get(med.id)?.id }
       );
 
       if (stock.state === "empty" || stock.state === "negative") {
@@ -175,7 +178,7 @@ export function MedicamentosNotifications() {
     });
 
     return { alertas: itensAlerta };
-  }, [medicamentos]);
+  }, [medicamentos, scheduledWithdrawals]);
 
   if (alertas.length === 0) return null;
 

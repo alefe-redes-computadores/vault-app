@@ -16,7 +16,7 @@ import {
 } from "@/lib/health-insights";
 
 import { getLocalTodayISO } from "@/lib/health-utils";
-import { medicationAccessAction } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -108,59 +108,6 @@ function getEffectiveRenewalDate(
     renovacao.data?.trim() ||
     renovacao.created_at?.trim() ||
     ""
-  );
-}
-
-function getNextScheduledWithdrawal(
-  medicamentoId:
-    string,
-  retiradas:
-    Retirada[]
-): Retirada | null {
-  const today = getLocalTodayISO();
-
-  return (
-    retiradas
-      .filter(
-        (
-          retirada
-        ) =>
-          retirada.medicamento_id ===
-            medicamentoId &&
-          retirada.status ===
-            "agendada" &&
-          retirada.data >=
-            today
-      )
-      .sort(
-        (
-          first,
-          second
-        ) => {
-          const date =
-            first.data.localeCompare(
-              second.data
-            );
-
-          if (
-            date !==
-            0
-          ) {
-            return date;
-          }
-
-          return String(
-            first.horario ||
-              "23:59"
-          ).localeCompare(
-            String(
-              second.horario ||
-                "23:59"
-            )
-          );
-        }
-      )[0] ??
-    null
   );
 }
 
@@ -422,9 +369,12 @@ function buildMessage({
   ) {
     const when =
       scheduledWithdrawal.data;
+    const today = getLocalTodayISO();
 
     parts.push(
-      `Existe uma retirada agendada para ${when}. O Vault considera esse compromisso no contexto de continuidade.`
+      when < today
+        ? `A retirada de ${when} continua pendente. Abra o compromisso existente para concluir, reagendar ou encerrar; uma receita nova não confirma recebimento.`
+        : `Existe uma retirada agendada para ${when}. O Vault considera esse compromisso no contexto de continuidade.`
     );
   } else if (
     renewalCount === 0
@@ -451,6 +401,7 @@ export function buildMedicationCareOpportunities({
   const opportunities:
     MedicationCareOpportunity[] =
     [];
+  const scheduledWithdrawals = indexScheduledWithdrawals(retiradas);
 
   for (
     const medicamento of
@@ -520,11 +471,7 @@ export function buildMedicationCareOpportunities({
         tratamentos
       );
 
-    const scheduledWithdrawal =
-      getNextScheduledWithdrawal(
-        medicamento.id,
-        retiradas
-      );
+    const scheduledWithdrawal = scheduledWithdrawals.get(medicamento.id) ?? null;
 
     const actionInsight = insight.deveRenovar
       ? insight
@@ -542,6 +489,7 @@ export function buildMedicationCareOpportunities({
       {
         tipoUso: medicamento.tipo_uso,
         tipoAquisicao: medicamento.tipo_aquisicao,
+        scheduledWithdrawalId: scheduledWithdrawal?.id,
       }
     );
 
