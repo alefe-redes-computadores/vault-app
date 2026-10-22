@@ -38,7 +38,7 @@ import { ListFilters } from "@/components/list/ListFilters";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
-import { getLocalTodayISO } from "@/lib/health-utils";
+import { useLocalDay } from "@/hooks/useLocalDay";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { Retirada, RetiradaStatus } from "@/lib/types";
 
@@ -120,12 +120,13 @@ function statusMeta(status: RetiradaStatus) {
 
   return {
     label: "Agendada",
-    className: "border-ice/25 bg-ice/10 text-ice",
+    className: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
   };
 }
 
 export default function RetiradasPage() {
  const supplyOverview=useSupplyOverview();
+  const sourceNotesById = useMemo(() => new Map((supplyOverview?.renewals || []).filter(r => r.id).map(r => [r.id!, r])), [supplyOverview?.renewals]);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -136,7 +137,7 @@ export default function RetiradasPage() {
   const regulatoryProfiles =
     useMedicationRegulatoryProfiles(medicamentos);
 
-  const hoje = getLocalTodayISO();
+  const hoje = useLocalDay();
   const currentMonth = hoje.slice(0, 7);
   const listHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
   const navigateWithReturn = (href: string) => router.push(withReturnTarget(href, listHref));
@@ -214,7 +215,7 @@ export default function RetiradasPage() {
           med?.dosagem,
           pharmacy?.nome,
           retirada.observacoes,
-          withdrawalSourceNote(retirada,supplyOverview?.renewals||[]),
+          withdrawalSourceNote(retirada,supplyOverview?.renewals||[],sourceNotesById),
           retirada.data,
         ]
           .filter(Boolean)
@@ -228,6 +229,7 @@ export default function RetiradasPage() {
     medicationMap,
     pharmacyMap,
     supplyOverview,
+    sourceNotesById,
     hoje,
   ]);
 
@@ -388,7 +390,7 @@ export default function RetiradasPage() {
                     className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left active:bg-surface-raised/45"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-ice/20 bg-ice/10 text-ice">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
                         <Calendar size={17} />
                       </div>
                       <div className="min-w-0">
@@ -539,7 +541,7 @@ export default function RetiradasPage() {
                                           }`}
                                         >
                                           <div className="flex min-w-0 flex-1 items-start gap-3">
-                                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-ice/15 bg-ice/5 text-ice">
+                                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-emerald-400/15 bg-emerald-400/5 text-emerald-300">
                                               {retirada.status === "realizada" ? (
                                                 <CheckCircle2
                                                   size={14}
@@ -557,7 +559,7 @@ export default function RetiradasPage() {
                                             </div>
 
                                             <div className="min-w-0 flex-1">
-                                              <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview}/>
+                                              <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview} sourceNotesById={sourceNotesById}/>
                                               <div className="flex flex-wrap items-center gap-1.5">
                                                 <p className="text-[11px] font-semibold text-ink-primary">
                                                   Retirada
@@ -565,7 +567,7 @@ export default function RetiradasPage() {
                                                 {retirada.data === hoje &&
                                                   retirada.status ===
                                                     "agendada" && (
-                                                  <span className="rounded-full bg-ice/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-ice">
+                                                  <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-300">
                                                     Hoje
                                                   </span>
                                                 )}

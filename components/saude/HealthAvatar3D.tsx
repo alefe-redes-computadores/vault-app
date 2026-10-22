@@ -302,8 +302,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       brim.rotation.x=appearance.hat==="baseball"?-.19:-.085;
       brim.raycast=()=>{};
       const underBrim=mesh(taperedBox(.232,appearance.hat==="flat"?.272:.258,.004,.143),materials.dark,0,2.975,.2);underBrim.rotation.x=brim.rotation.x;underBrim.raycast=()=>{};
-      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.274:.26,.003,.006),materials.shirtDetail,0,2.969,.257);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
-      const brimStitch=mesh(new THREE.TorusGeometry(.104,.0014,4,24,Math.PI),materials.white,0,2.985,.224);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
+      // A costura acompanha a aba acima dos óculos, sem duas barras de alto contraste diante dos olhos.
+      const brimEdge=mesh(new THREE.BoxGeometry(appearance.hat==="flat"?.24:.23,.003,.006),materials.capShade,0,3.002,.253);brimEdge.rotation.x=brim.rotation.x;brimEdge.raycast=()=>{};
+      const brimStitch=mesh(new THREE.TorusGeometry(.085,.0014,4,24,Math.PI),materials.capShade,0,3.016,.204);brimStitch.rotation.x=Math.PI/2;brimStitch.rotation.z=Math.PI;brimStitch.raycast=()=>{};
       const seam=mesh(new THREE.TorusGeometry(.239,.003,4,30,Math.PI),materials.white,0,2.984,-.012);
       seam.rotation.x=Math.PI/2;seam.raycast=()=>{};
       if(appearance.hatBrand==="nike" || appearance.hatBrand==="new-era") {

@@ -18,9 +18,7 @@ import {
   validarHealthInsightContext,
 } from "@/lib/health-insights";
 
-import {
-  getLocalTodayISO,
-} from "@/lib/health-utils";
+import { useLocalDay } from "@/hooks/useLocalDay";
 
 import {
   loadHealthInsightContext,
@@ -70,8 +68,7 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
 
   const { user } = useAuth();
 
-  const hoje =
-    getLocalTodayISO();
+  const hoje = useLocalDay();
 
   /*
    * useLiveQuery observa todas as consultas Dexie executadas

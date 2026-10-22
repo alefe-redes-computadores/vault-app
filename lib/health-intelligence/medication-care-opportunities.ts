@@ -125,66 +125,27 @@ function indexMedicationRenewals(renovacoes: Renovacao[]): Map<string, Renovacao
   return byMedication;
 }
 
-function isTreatmentLinked(
-  tratamento:
-    Tratamento,
-  ids:
-    string[]
-): boolean {
-  const tratamentoId =
-    tratamento.id;
-
-  return (
-    typeof tratamentoId ===
-      "string" &&
-    tratamentoId.length >
-      0 &&
-    ids.includes(
-      tratamentoId
-    )
-  );
+function indexTreatments(tratamentos: Tratamento[]) {
+  const indexed = new Map<string, { treatment: Tratamento; order: number }>();
+  tratamentos.forEach((treatment, order) => {
+    if (treatment.id && !indexed.has(treatment.id)) indexed.set(treatment.id, { treatment, order });
+  });
+  return indexed;
 }
 
 function getActiveTreatment(
-  medicamento:
-    Medicamento,
-  tratamentos:
-    Tratamento[]
+  medicamento: Medicamento,
+  indexed: Map<string, { treatment: Tratamento; order: number }>
 ): Tratamento | null {
-  const ids =
-    medicamento.tratamento_ids ||
-    [];
-
-  if (
-    ids.length ===
-    0
-  ) {
-    return null;
+  let active: { treatment: Tratamento; order: number } | undefined;
+  let fallback: { treatment: Tratamento; order: number } | undefined;
+  for (const id of medicamento.tratamento_ids || []) {
+    const entry = indexed.get(id);
+    if (!entry) continue;
+    if (!fallback || entry.order < fallback.order) fallback = entry;
+    if (entry.treatment.status === "ativo" && (!active || entry.order < active.order)) active = entry;
   }
-
-  return (
-    tratamentos.find(
-      (
-        tratamento
-      ) =>
-        isTreatmentLinked(
-          tratamento,
-          ids
-        ) &&
-        tratamento.status ===
-          "ativo"
-    ) ??
-    tratamentos.find(
-      (
-        tratamento
-      ) =>
-        isTreatmentLinked(
-          tratamento,
-          ids
-        )
-    ) ??
-    null
-  );
+  return active?.treatment ?? fallback?.treatment ?? null;
 }
 
 function scoreOpportunity({
@@ -388,6 +349,7 @@ export function buildMedicationCareOpportunities({
     [];
   const scheduledWithdrawals = indexScheduledWithdrawals(retiradas);
   const renewalsByMedication = indexMedicationRenewals(renovacoes);
+  const treatmentsById = indexTreatments(tratamentos);
   const today = getLocalTodayISO();
 
   for (
@@ -453,7 +415,7 @@ export function buildMedicationCareOpportunities({
     const treatment =
       getActiveTreatment(
         medicamento,
-        tratamentos
+        treatmentsById
       );
 
     const actionInsight = overdueWithdrawal

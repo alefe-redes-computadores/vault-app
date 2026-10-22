@@ -22,7 +22,7 @@ assert.equal(withdrawalDueState({ ...pending, data: "21/10/2026" }, "2026-10-22"
 assert.match(medicationAccessAction({ deveRenovar: true, motivo: "sus" }, "m1", "/", { scheduledWithdrawalId: pending.id }).href, /id=old/);
 const notifications = read("components/MedicamentosNotifications.tsx");
 assert.match(notifications, /withdrawalDueState\(pendingWithdrawal, today\)/);
-assert.match(notifications, /visibilitychange/);
+assert.match(notifications, /useLocalDay\(\)/);
 assert.match(notifications, /scheduledWithdrawals, today/);
 assert.match(notifications, /Retirada atrasada/);
 assert.match(notifications, /current\.tipo !== "withdrawal"/);

@@ -13,7 +13,7 @@ assert(hydration.includes("right.created_at||right.id"), "desfazer deve resolver
 assert(hydration.includes("Dias sem registro não são tratados como consumo zero"), "ausência continua sem virar consumo zero");
 assert(hydration.includes("O Vault não recomenda nem presume uma meta"), "meta continua manual e não clínica");
 assert(avatar.includes('appearance.hat==="flat"?.258:.246'), "aba frontal deve respeitar a largura da cabeça sem cobrir o rosto");
-assert(avatar.includes("materials.shirtDetail,0,2.969,.257"), "borda da aba deve permanecer contida sem formar faixa flutuante");
+assert(avatar.includes("materials.capShade,0,3.002,.253"), "borda da aba deve permanecer contida sem formar faixa flutuante");
 assert(avatar.includes("brimStitch"), "acabamento de costura do boné deve ser preservado");
 
 console.log("VAULT V181 — HYDRATION COMMAND + AVATAR CAP CONTRACT OK");

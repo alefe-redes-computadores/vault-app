@@ -129,6 +129,7 @@ const withdrawal = {
   id: "r",
   medicamento_id: "m",
   data: "2026-10-09",
+  tipo: "sus",
   status: "agendada",
   renovacao_origem_id: "a",
   observacoes: "Anotação própria",

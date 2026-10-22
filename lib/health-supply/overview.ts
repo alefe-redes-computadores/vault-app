@@ -9,18 +9,18 @@ import {
 import { supplyDossier } from "./knowledge";
 export function withdrawalSourceNote(
   withdrawal: Retirada,
-  renewals: Renovacao[]
+  renewals: Renovacao[],
+  byId?: Map<string, Renovacao>
 ) {
+  const source = withdrawal.renovacao_origem_id
+    ? byId ? byId.get(withdrawal.renovacao_origem_id) : renewals.find((r) => r.id === withdrawal.renovacao_origem_id)
+    : undefined;
   return (
-    renewals
-      .find(
-        (r) =>
-          r.id === withdrawal.renovacao_origem_id &&
-          r.person_id === withdrawal.person_id &&
-          r.user_id === withdrawal.user_id &&
-          r.medicamento_id === withdrawal.medicamento_id
-      )
-      ?.observacoes?.trim() || null
+    source?.person_id === withdrawal.person_id &&
+    source.user_id === withdrawal.user_id &&
+    source.medicamento_id === withdrawal.medicamento_id
+      ? source.observacoes?.trim() || null
+      : null
   );
 }
 export function preparationStart(end: string, days: number) {
@@ -56,7 +56,8 @@ export function withdrawalPreparation(
     med.id !== r.medicamento_id ||
     med.person_id !== r.person_id ||
     med.user_id !== r.user_id ||
-    r.status !== "agendada"
+    r.status !== "agendada" ||
+    r.tipo !== "sus"
   )
     return empty;
   const association =

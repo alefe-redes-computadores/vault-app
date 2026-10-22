@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,7 +17,7 @@ import { sugerirRenovacao } from "@/lib/health-insights";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { indexScheduledWithdrawals, medicationAccessAction, medicationAccessAlertTitle, withdrawalDueState } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
-import { getLocalTodayISO } from "@/lib/health-utils";
+import { useLocalDay } from "@/hooks/useLocalDay";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -27,20 +27,7 @@ export function MedicamentosNotifications() {
   const { medicamentos } = useMedicamentos();
   const { retiradas } = useRetiradas();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
-  const [today, setToday] = useState(() => getLocalTodayISO());
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const refresh = () => {
-      setToday(getLocalTodayISO());
-      const now = new Date();
-      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      timer = setTimeout(refresh, Math.max(1000, next.getTime() - now.getTime() + 100));
-    };
-    const onVisibility = () => { if (!document.hidden) { clearTimeout(timer); refresh(); } };
-    refresh();
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", onVisibility); };
-  }, []);
+  const today = useLocalDay();
 
   const { alertas } = useMemo(() => {
     const itensAlerta: any[] = [];

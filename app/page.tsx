@@ -53,6 +53,7 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { useLocalDay } from "@/hooks/useLocalDay";
 import { isOverdueWithdrawal, openWithdrawalsDueBy, withdrawalDaysOverdue } from "@/lib/withdrawal-agenda";
 
 import { useHapticFeedback } from "@/lib/haptics";
@@ -62,7 +63,6 @@ import {
   addDaysToLocalDate,
   alertLevelColor,
   getDocumentAlerts,
-  getLocalTodayISO,
   type AlertLevel,
 } from "@/lib/health-utils";
 
@@ -451,6 +451,7 @@ function AlertRow({
 
 export default function HomePage() {
  const supplyOverview=useSupplyOverview();
+ const sourceNotesById=useMemo(() => new Map((supplyOverview?.renewals||[]).filter(r=>r.id).map(r=>[r.id!,r])),[supplyOverview?.renewals]);
   const router = useRouter();
 
   const {
@@ -477,8 +478,7 @@ export default function HomePage() {
   // Ledger-only: não executa uma segunda análise clínica na Home.
   const brainV5Pulse = useBrainV5Pulse();
 
-  const hoje =
-    getLocalTodayISO();
+  const hoje = useLocalDay();
 
   const ontem =
     addDaysToLocalDate(
@@ -2866,7 +2866,7 @@ export default function HomePage() {
                               ? "Retirada programada no SUS"
                               : "Retirada programada"}
                         </p>
-                        <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview}/>
+                        <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview} sourceNotesById={sourceNotesById}/>
                       </div>
 
                       <span className="shrink-0 font-mono text-[11px] font-semibold text-ice">

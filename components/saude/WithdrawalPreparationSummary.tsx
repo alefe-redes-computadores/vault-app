@@ -7,6 +7,7 @@ import {
   withdrawalSourceNote,
 } from "@/lib/health-supply/overview";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import type { Renovacao } from "@/lib/types";
 export function WithdrawalPreparationSummary({
   withdrawalId,
   compact = false,
@@ -27,16 +28,19 @@ export function WithdrawalPreparationView({
   withdrawalId,
   compact = false,
   overview,
+  sourceNotesById,
 }: {
   withdrawalId: string;
   compact?: boolean;
   overview: ReturnType<typeof useSupplyOverview>;
+  sourceNotesById?: Map<string, Renovacao>;
 }) {
   if (!overview) return null;
   const r = overview.withdrawals.find((x) => x.id === withdrawalId);
   if (!r) return null;
-  const source = withdrawalSourceNote(r, overview.renewals),
+  const source = withdrawalSourceNote(r, overview.renewals, sourceNotesById),
     own = r.observacoes?.trim();
+  const isPublicSupply = r.tipo === "sus";
   const prep = withdrawalPreparation(
     r,
     overview.meds.find((m) => m.id === r.medicamento_id),
@@ -47,7 +51,7 @@ export function WithdrawalPreparationView({
   if (compact)
     return (
       <span className="mt-2 block space-y-1 text-[10px] leading-relaxed">
-        {r.status === "agendada" ? (
+        {r.status === "agendada" && isPublicSupply ? (
           <span
             className={`block ${
               prep.tone === "important"
@@ -68,6 +72,7 @@ export function WithdrawalPreparationView({
         ) : null}
       </span>
     );
+  if (!isPublicSupply) return null;
   return (
     <section className="space-y-3 rounded-[24px] border border-surface-border/60 bg-surface p-4">
       <h2 className="flex items-center gap-2 text-sm font-bold text-ink-primary">

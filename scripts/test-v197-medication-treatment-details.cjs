@@ -32,7 +32,7 @@ assert(medicationDetail.includes("estoqueStatus"));
 
 assert(avatar.includes("V197: copa e aba continuam legíveis de frente"));
 assert(avatar.includes('appearance.hat==="flat"?.258:.246'));
-assert(avatar.includes("new THREE.TorusGeometry(.104,.0014,4,24,Math.PI)"));
+assert(avatar.includes("new THREE.TorusGeometry(.085,.0014,4,24,Math.PI)"));
 assert(!avatar.includes("requestAnimationFrame(animate)"));
 
 console.log("VAULT V197 — MEDICATION + TREATMENT DETAILS + AVATAR CAP CONTRACT OK");
