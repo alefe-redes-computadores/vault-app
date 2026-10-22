@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +15,9 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
-import { indexScheduledWithdrawals, medicationAccessAction, medicationAccessAlertTitle } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawals, medicationAccessAction, medicationAccessAlertTitle, withdrawalDueState } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { getLocalTodayISO } from "@/lib/health-utils";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -26,6 +27,20 @@ export function MedicamentosNotifications() {
   const { medicamentos } = useMedicamentos();
   const { retiradas } = useRetiradas();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
+  const [today, setToday] = useState(() => getLocalTodayISO());
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      setToday(getLocalTodayISO());
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      timer = setTimeout(refresh, Math.max(1000, next.getTime() - now.getTime() + 100));
+    };
+    const onVisibility = () => { if (!document.hidden) { clearTimeout(timer); refresh(); } };
+    refresh();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", onVisibility); };
+  }, []);
 
   const { alertas } = useMemo(() => {
     const itensAlerta: any[] = [];
@@ -39,14 +54,28 @@ export function MedicamentosNotifications() {
         return;
       }
       const current = itensAlerta[index];
-      if (rank[item.urgencia as keyof typeof rank] > rank[current.urgencia as keyof typeof rank]) {
+      if (rank[item.urgencia as keyof typeof rank] > rank[current.urgencia as keyof typeof rank] ||
+          (rank[item.urgencia as keyof typeof rank] === rank[current.urgencia as keyof typeof rank] && item.tipo === "withdrawal" && current.tipo !== "withdrawal")) {
         itensAlerta[index] = item;
-      } else if (!current.descricao.includes(item.descricao)) {
-        current.descricao = `${current.descricao} · ${item.descricao}`;
       }
     };
 
     medicamentos.forEach((med: any) => {
+      const pendingWithdrawal = scheduledWithdrawals.get(med.id);
+      const withdrawalState = withdrawalDueState(pendingWithdrawal, today);
+      if (pendingWithdrawal && (withdrawalState === "overdue" || withdrawalState === "today")) {
+        const overdue = withdrawalState === "overdue";
+        addAlert({
+          id: med.id,
+          tipo: "withdrawal",
+          urgencia: overdue ? "pendente" : "hoje",
+          titulo: overdue ? "Retirada atrasada" : "Retirada hoje",
+          descricao: `${med.nome}: compromisso ${overdue ? "não concluído" : "agendado"}. Concluir, reagendar ou encerrar.`,
+          data: pendingWithdrawal.data,
+          href: `/saude/retiradas/detalhes?id=${encodeURIComponent(pendingWithdrawal.id!)}&return_to=${encodeURIComponent("/")}`,
+          actionLabel: "Abrir retirada",
+        });
+      }
       // 1. Planejamento de renovação
       //
       // proxima_renovacao é uma data operacional. Ela NÃO
@@ -70,7 +99,6 @@ export function MedicamentosNotifications() {
           { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawals.get(med.id)?.id }
         );
 
-        const pendingWithdrawal = scheduledWithdrawals.get(med.id);
         const dataPlanejada = action?.kind === "prescription" && med.lembrete_receita_modo ===
             "data_personalizada" &&
           med.lembrete_receita_data
@@ -172,7 +200,7 @@ export function MedicamentosNotifications() {
     });
 
     return { alertas: itensAlerta };
-  }, [medicamentos, scheduledWithdrawals]);
+  }, [medicamentos, scheduledWithdrawals, today]);
 
   if (alertas.length === 0) return null;
 
@@ -221,7 +249,7 @@ export function MedicamentosNotifications() {
                 trigger("vibrate");
                 router.push(alerta.href || `/saude/medicamentos/detalhes?id=${alerta.id}`);
               }}
-              className={`group w-[85%] max-w-[320px] shrink-0 snap-start flex items-center justify-between gap-3 rounded-[24px] border p-3.5 text-left shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
+              className={`group w-[78%] max-w-[300px] shrink-0 snap-start flex items-center justify-between gap-2.5 rounded-[20px] border p-3 text-left shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <div

@@ -291,22 +291,17 @@ export default function RetiradasPage() {
       });
   }, [filtered, medicationMap]);
 
-  const counts = useMemo(
-    () => ({
-      total: retiradas.length,
-      hoje: retiradas.filter(
-        (r) => r.data === hoje && r.status === "agendada"
-      ).length,
-      agendadas: retiradas.filter((r) => r.status === "agendada").length,
-      atrasadas: retiradas.filter(
-        (r) =>
-          r.status === "agendada" &&
-          r.data < hoje
-      ).length,
-      realizadas: retiradas.filter((r) => r.status === "realizada").length,
-    }),
-    [retiradas, hoje]
-  );
+  const counts = useMemo(() => {
+    const result = { total: retiradas.length, hoje: 0, agendadas: 0, atrasadas: 0, realizadas: 0 };
+    for (const retirada of retiradas) {
+      if (retirada.status === "realizada") result.realizadas += 1;
+      if (retirada.status !== "agendada") continue;
+      result.agendadas += 1;
+      if (retirada.data === hoje) result.hoje += 1;
+      else if (retirada.data < hoje) result.atrasadas += 1;
+    }
+    return result;
+  }, [retiradas, hoje]);
 
   useEffect(() => {
     if (!grouped.length) return;

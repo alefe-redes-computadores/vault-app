@@ -22,6 +22,12 @@ export function indexScheduledWithdrawals(rows: Retirada[]): Map<string, Retirad
   return result;
 }
 
+/** A retirada em aberto permanece visível após a data, sem virar recebimento. */
+export function withdrawalDueState(row: Retirada | null | undefined, today: string): "overdue" | "today" | "future" | null {
+  if (!row || row.status !== "agendada" || !/^\d{4}-\d{2}-\d{2}$/.test(row.data)) return null;
+  return row.data < today ? "overdue" : row.data === today ? "today" : "future";
+}
+
 export type MedicationAccessActionKind =
   | "prescription"
   | "withdrawal"

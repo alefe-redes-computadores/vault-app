@@ -494,8 +494,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const gripSign=Math.sign(phoneX)||1;
     const phoneAngle=layout.phoneSide==="right"?-.10:.10;
     const phone=mesh(softBox(.17,.3,.035,.015),materials.dark,phoneX,1.39,.095);phone.rotation.z=phoneAngle;
-    const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.089);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
-    const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.114);screen.rotation.z=phoneAngle;screen.userData.action="brain";
+    // A moldura acompanha a face do aparelho. Atrás da caixa ela desaparecia;
+    // o visor fica à frente e a palma continua atrás, sem dedos sobre a tela.
+    const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.119);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
+    const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.128);screen.rotation.z=phoneAngle;screen.userData.action="brain";
     // The thenar pad and side contact make the device rest inside the hand instead of floating beside it.
     const phoneGripPad=mesh(taperedBox(.075,.095,.145,.052),materials.skin,phoneX-gripSign*.054,1.376,.065);phoneGripPad.rotation.z=phoneAngle+gripSign*.08;phoneGripPad.raycast=()=>{};
     const phoneSideContact=mesh(new THREE.CapsuleGeometry(.014,.13,3,7),materials.skin,phoneX+gripSign*.095,1.382,.084);phoneSideContact.rotation.z=phoneAngle;phoneSideContact.raycast=()=>{};

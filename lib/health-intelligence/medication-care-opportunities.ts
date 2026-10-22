@@ -16,7 +16,7 @@ import {
 } from "@/lib/health-insights";
 
 import { getLocalTodayISO } from "@/lib/health-utils";
-import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -388,6 +388,7 @@ export function buildMedicationCareOpportunities({
     [];
   const scheduledWithdrawals = indexScheduledWithdrawals(retiradas);
   const renewalsByMedication = indexMedicationRenewals(renovacoes);
+  const today = getLocalTodayISO();
 
   for (
     const medicamento of
@@ -444,12 +445,10 @@ export function buildMedicationCareOpportunities({
         dosesRemaining <= 5
       );
 
-    if (
-      !insight.deveRenovar &&
-      !hasStockSignal
-    ) {
-      continue;
-    }
+    const scheduledWithdrawal = scheduledWithdrawals.get(medicamento.id) ?? null;
+    const overdueWithdrawal = withdrawalDueState(scheduledWithdrawal, today) === "overdue";
+
+    if (!insight.deveRenovar && !hasStockSignal && !overdueWithdrawal) continue;
 
     const treatment =
       getActiveTreatment(
@@ -457,9 +456,9 @@ export function buildMedicationCareOpportunities({
         tratamentos
       );
 
-    const scheduledWithdrawal = scheduledWithdrawals.get(medicamento.id) ?? null;
-
-    const actionInsight = insight.deveRenovar
+    const actionInsight = overdueWithdrawal
+      ? { ...insight, deveRenovar: true, motivo: "sus" as const, urgencia: "alta" as const }
+      : insight.deveRenovar
       ? insight
       : {
           ...insight,
@@ -500,7 +499,7 @@ export function buildMedicationCareOpportunities({
         estoqueZerado,
 
         urgency:
-          insight.urgencia,
+          overdueWithdrawal ? "alta" : insight.urgencia,
 
         hasTreatment:
           Boolean(
@@ -517,7 +516,9 @@ export function buildMedicationCareOpportunities({
       );
 
     const title =
-      estoqueZerado
+      overdueWithdrawal
+        ? `${medicamento.nome} tem retirada pendente`
+        : estoqueZerado
         ? `${medicamento.nome} está sem estoque registrado`
         : level === "urgent"
           ? `${medicamento.nome} precisa de revisão`
