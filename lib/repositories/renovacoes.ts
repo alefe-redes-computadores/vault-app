@@ -1061,6 +1061,17 @@ export const renovacoesRepository = {
             data_receita:
               dataPrescricao,
 
+            // O registro da receita conclui a solicitação personalizada anterior,
+            // inclusive se o usuário conseguiu a prescrição antes do dia planejado.
+            // A próxima revisão permanece em proxima_renovacao.
+            ...(somenteReceita &&
+            medicamento.lembrete_receita_modo === "data_personalizada"
+              ? {
+                  lembrete_receita_modo: "automatico" as const,
+                  lembrete_receita_data: undefined,
+                }
+              : {}),
+
             ...(data.document_id !==
             undefined
               ? {

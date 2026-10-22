@@ -111,33 +111,18 @@ function getEffectiveRenewalDate(
   );
 }
 
-function getMedicationRenewals(
-  medicamentoId:
-    string,
-  renovacoes:
-    Renovacao[]
-): Renovacao[] {
-  return renovacoes
-    .filter(
-      (
-        renovacao
-      ) =>
-        renovacao.medicamento_id ===
-        medicamentoId
-    )
-    .sort(
-      (
-        first,
-        second
-      ) =>
-        getEffectiveRenewalDate(
-          second
-        ).localeCompare(
-          getEffectiveRenewalDate(
-            first
-          )
-        )
-    );
+function indexMedicationRenewals(renovacoes: Renovacao[]): Map<string, Renovacao[]> {
+  const byMedication = new Map<string, Renovacao[]>();
+  for (const renewal of renovacoes) {
+    if (!renewal.medicamento_id) continue;
+    const bucket = byMedication.get(renewal.medicamento_id);
+    if (bucket) bucket.push(renewal);
+    else byMedication.set(renewal.medicamento_id, [renewal]);
+  }
+  for (const bucket of byMedication.values()) {
+    bucket.sort((first, second) => getEffectiveRenewalDate(second).localeCompare(getEffectiveRenewalDate(first)));
+  }
+  return byMedication;
 }
 
 function isTreatmentLinked(
@@ -402,6 +387,7 @@ export function buildMedicationCareOpportunities({
     MedicationCareOpportunity[] =
     [];
   const scheduledWithdrawals = indexScheduledWithdrawals(retiradas);
+  const renewalsByMedication = indexMedicationRenewals(renovacoes);
 
   for (
     const medicamento of
@@ -495,11 +481,7 @@ export function buildMedicationCareOpportunities({
 
     if (!accessAction) continue;
 
-    const medRenewals =
-      getMedicationRenewals(
-        medicamento.id,
-        renovacoes
-      );
+    const medRenewals = renewalsByMedication.get(medicamento.id) ?? [];
 
     const latestRenewal =
       medRenewals[0];

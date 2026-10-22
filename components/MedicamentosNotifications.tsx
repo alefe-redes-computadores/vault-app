@@ -15,7 +15,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { sugerirRenovacao } from "@/lib/health-insights";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
-import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawals, medicationAccessAction, medicationAccessAlertTitle } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 
 export function MedicamentosNotifications() {
@@ -70,15 +70,16 @@ export function MedicamentosNotifications() {
           { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawals.get(med.id)?.id }
         );
 
-        const dataPlanejada =
-          med.lembrete_receita_modo ===
+        const pendingWithdrawal = scheduledWithdrawals.get(med.id);
+        const dataPlanejada = action?.kind === "prescription" && med.lembrete_receita_modo ===
             "data_personalizada" &&
           med.lembrete_receita_data
             ? med.lembrete_receita_data
-            : renovacaoInsight.motivo === "sus"
-              ? med.data_retorno_sus || ""
-              : med.proxima_renovacao ||
-              "";
+            : action?.kind === "prescription"
+              ? med.proxima_renovacao || ""
+              : action?.kind === "withdrawal"
+                ? pendingWithdrawal?.data || (med.tipo_aquisicao === "sus" ? med.data_retorno_sus || "" : "")
+                : "";
 
         if (action) addAlert({
           id: med.id,
@@ -90,14 +91,7 @@ export function MedicamentosNotifications() {
               : dias === 0
                 ? "hoje"
                 : "proxima",
-          titulo: renovacaoInsight.motivo === "sus"
-            ? "Planejar Retirada"
-            : dias === 0
-              ? "Planejar Receita Hoje"
-              : dias !== null &&
-                  dias < 0
-                ? "Renovação Pendente"
-                : "Planejar Nova Receita",
+          titulo: medicationAccessAlertTitle(action, dias),
           descricao:
             renovacaoInsight.mensagem ||
             med.nome,
@@ -131,7 +125,7 @@ export function MedicamentosNotifications() {
           id: med.id,
           tipo: "estoque",
           urgencia: sos && stock.state !== "negative" ? "proxima" : "pendente",
-          titulo: "Sem Estoque",
+          titulo: stockAction.cta === "Ver retirada pendente" ? "Retirada pendente" : "Sem estoque",
           descricao:
             stock.state === "negative"
               ? `${med.nome} está com saldo negativo e precisa de conferência`
@@ -158,7 +152,7 @@ export function MedicamentosNotifications() {
           id: med.id,
           tipo: "estoque",
           urgencia: "hoje",
-          titulo: "Estoque Baixo",
+          titulo: stockAction.cta === "Ver retirada pendente" ? "Retirada pendente" : "Estoque baixo",
           descricao: `${med.nome}: cerca de ${restante} restante`,
           data: sos ? "Conforme necessidade" : publicSupply ? "Planejar retirada" : "Planejar reposição",
           href: stockAction.href,
@@ -217,7 +211,8 @@ export function MedicamentosNotifications() {
       >
         <AnimatePresence>
           {alertas.map((alerta, index) => (
-            <motion.div
+            <motion.button
+              type="button"
               key={`${alerta.tipo}-${alerta.id}-${index}`}
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -226,7 +221,7 @@ export function MedicamentosNotifications() {
                 trigger("vibrate");
                 router.push(alerta.href || `/saude/medicamentos/detalhes?id=${alerta.id}`);
               }}
-              className={`group w-[85%] max-w-[320px] shrink-0 snap-start flex items-center justify-between gap-3 rounded-[24px] border p-3.5 shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
+              className={`group w-[85%] max-w-[320px] shrink-0 snap-start flex items-center justify-between gap-3 rounded-[24px] border p-3.5 text-left shadow-sm transition-all active:scale-[0.98] cursor-pointer ${getUrgencyColor(alerta.urgencia)}`}
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <div
@@ -252,9 +247,9 @@ export function MedicamentosNotifications() {
                     <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
                       {alerta.titulo}
                     </span>
-                    <span className="font-mono text-[10px] opacity-70">
+                    {alerta.data && <span className="font-mono text-[10px] opacity-70">
                       {formatDateDisplay(alerta.data)}
-                    </span>
+                    </span>}
                   </div>
                   <p className="truncate font-medium text-sm mt-0.5">
                     {alerta.descricao}
@@ -269,7 +264,7 @@ export function MedicamentosNotifications() {
                 size={16}
                 className="shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
               />
-            </motion.div>
+            </motion.button>
           ))}
         </AnimatePresence>
         <div className="w-2 shrink-0" />

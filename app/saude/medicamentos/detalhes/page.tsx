@@ -148,9 +148,9 @@ import {
 } from "@/lib/health-utils";
 
 import {
+  analisarValidadeReceita,
   analisarComportamentoUso,
   analisarMelhorFarmacia,
-  isReceitaVencidaSegura,
   sugerirRenovacao,
 } from "@/lib/health-insights";
 
@@ -1708,17 +1708,10 @@ function MedicamentoDetalhesContent() {
       ? estoqueInfo.dosesRestantes
       : null;
 
-  const isVencida =
-    med.proxima_renovacao
-      ? isReceitaVencidaSegura(
-          med.proxima_renovacao
-        )
-      : false;
-
-  const possuiDataRenovacao =
-    Boolean(
-      med.proxima_renovacao
-    );
+  const validadeReceitaAtual = analisarValidadeReceita(
+    med.data_receita,
+    med.tipo_receita || "comum"
+  );
 
   const alertaInteligente =
     sugerirRenovacao(
@@ -5012,27 +5005,21 @@ function MedicamentoDetalhesContent() {
                   )}
                 </div>
 
-                {!possuiDataRenovacao ? (
+                {!med.data_receita ? (
                   <span className="rounded-full bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase text-ink-muted">
-                    Sem data
+                    Sem emissão
                   </span>
-                ) : isVencida ? (
-                  <span
-                    className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase ${
-                      alertaInteligente.motivo ===
-                      "receita"
-                        ? "bg-coral text-void"
-                        : "bg-surface-raised text-ink-muted"
-                    }`}
-                  >
-                    {alertaInteligente.motivo ===
-                    "receita"
-                      ? "Ação necessária"
-                      : "Validade encerrada"}
+                ) : !validadeReceitaAtual.dataValidade ? (
+                  <span className="rounded-full bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase text-ink-muted">
+                    Sem prazo calculado
                   </span>
+                ) : validadeReceitaAtual.vencida ? (
+                  <span className="rounded-full bg-coral/10 px-2 py-1 text-[9px] font-bold uppercase text-coral">Referência vencida</span>
+                ) : validadeReceitaAtual.status === "vence_hoje" ? (
+                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-bold uppercase text-amber-300">Vence hoje</span>
                 ) : (
                   <span className="rounded-full bg-emerald-500 px-2 py-1 text-[9px] font-bold uppercase text-void">
-                    Dentro da data
+                    Referência vigente
                   </span>
                 )}
               </div>
@@ -5052,18 +5039,29 @@ function MedicamentoDetalhesContent() {
 
                 <div>
                   <p className="text-[9px] font-bold uppercase text-ink-muted">
-                    Próxima renovação
+                    Validade de referência
                   </p>
 
                   <p className="mt-0.5 text-sm font-bold text-ink-primary">
                     {formatDate(
-                      med.proxima_renovacao
+                      validadeReceitaAtual.dataValidade
                     )}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 border-t border-surface-border/50 pt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface-raised/60 px-3 py-2.5">
+                <div>
+                  <p className="text-[9px] font-bold uppercase text-ink-muted">Próxima solicitação planejada</p>
+                  <p className="mt-0.5 text-xs font-semibold text-ink-primary">
+                    {formatDate(med.lembrete_receita_modo === "data_personalizada" && med.lembrete_receita_data
+                      ? med.lembrete_receita_data : med.proxima_renovacao)}
+                  </p>
+                </div>
+                <button type="button" onClick={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&mode=plan&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)} className="min-h-9 rounded-xl border border-violet-400/20 bg-violet-400/[0.06] px-3 text-[10px] font-semibold text-violet-200">Ajustar data</button>
+              </div>
+
+              <div className="mt-4 space-y-2 border-t border-surface-border/50 pt-3">
                 {documento?.attachments &&
                 documento.attachments.length >
                   0 ? (
@@ -5102,6 +5100,13 @@ function MedicamentoDetalhesContent() {
                     Vincular receita
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
+                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 text-xs font-bold text-emerald-200"
+                >
+                  <FileText size={14} /> Registrar receita recebida
+                </button>
               </div>
             </div>
           </section>

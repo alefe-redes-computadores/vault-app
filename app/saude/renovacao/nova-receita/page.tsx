@@ -60,7 +60,9 @@ import {
 } from "@/lib/health-insights";
 
 import {
+  formatLocalDateISO,
   getLocalTodayISO,
+  parseLocalDate,
 } from "@/lib/health-utils";
 
 import {
@@ -104,6 +106,7 @@ function NovaReceitaContent() {
 
   const {
     medicamentos = [],
+    updateMedicamento,
   } =
     useMedicamentos();
 
@@ -123,6 +126,8 @@ function NovaReceitaContent() {
       "medicamento_id"
     ) ||
     "";
+  const [planOnly, setPlanOnly] = useState(searchParams.get("mode") === "plan");
+  const [plannedDate, setPlannedDate] = useState("");
 
   const rawReturnTo =
     searchParams.get(
@@ -283,6 +288,12 @@ function NovaReceitaContent() {
     ]
   );
 
+  useEffect(() => {
+    setPlannedDate(selectedMedicamento?.lembrete_receita_modo === "data_personalizada"
+      ? selectedMedicamento.lembrete_receita_data || ""
+      : "");
+  }, [selectedMedicamento?.id]);
+
   const selectAttachment = (file: File, nameOverride?: string) => {
     trigger("vibrate");
     setLocalFile(file);
@@ -323,6 +334,12 @@ function NovaReceitaContent() {
         return;
       }
 
+      const parsedPlanDate = parseLocalDate(plannedDate);
+      if (planOnly && (!/^\d{4}-\d{2}-\d{2}$/.test(plannedDate) || !parsedPlanDate || formatLocalDateISO(parsedPlanDate) !== plannedDate || plannedDate < getLocalTodayISO())) {
+        trigger("error");
+        return;
+      }
+
       setSaving(
         true
       );
@@ -331,6 +348,15 @@ function NovaReceitaContent() {
       let createdDocumentId: string | undefined;
 
       try {
+        if (planOnly) {
+          await updateMedicamento(selectedMedicamento.id, {
+            lembrete_receita_modo: "data_personalizada",
+            lembrete_receita_data: plannedDate,
+          });
+          trigger("success");
+          router.replace(returnTo);
+          return;
+        }
         if (localFile) {
           if (!user) throw new Error("É necessário estar autenticado para enviar a receita.");
           const uploaded = await uploadFile(user.id, localFile, "receitas");
@@ -491,7 +517,7 @@ function NovaReceitaContent() {
               </div>
 
               <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
-                Renovar somente a receita
+                {planOnly ? "Planejar próxima receita" : "Registrar receita recebida"}
               </h1>
             </div>
           </div>
@@ -510,14 +536,21 @@ function NovaReceitaContent() {
 
               <div>
                 <p className="text-sm font-semibold text-ink-primary">
-                  Só a nova prescrição
+                  {planOnly ? "Ainda não tenho a receita" : "Já tenho a nova prescrição"}
                 </p>
 
                 <p className="mt-1 text-[11px] leading-5 text-ink-muted">
-                  Use quando a receita foi renovada, mas você ainda não comprou nem retirou o medicamento. O estoque e a aquisição atual não serão alterados.
+                  {planOnly
+                    ? "Escolha quando pretende solicitar a receita. Nenhuma receita ou documento será criado agora; estoque e retiradas continuam iguais."
+                    : "Registre a receita que já recebeu. O anexo vai para Documentos de saúde; nenhuma compra ou retirada será confirmada."}
                 </p>
               </div>
             </div>
+          </div>
+
+          <div role="group" aria-label="Etapa da receita" className="grid grid-cols-2 gap-2 rounded-2xl border border-surface-border/50 bg-surface p-1.5">
+            <button type="button" aria-pressed={planOnly} onClick={() => setPlanOnly(true)} className={`min-h-11 rounded-xl px-2 text-xs font-semibold ${planOnly ? "bg-violet-400/15 text-violet-200" : "text-ink-muted"}`}>Vou solicitar</button>
+            <button type="button" aria-pressed={!planOnly} onClick={() => setPlanOnly(false)} className={`min-h-11 rounded-xl px-2 text-xs font-semibold ${!planOnly ? "bg-emerald-400/15 text-emerald-200" : "text-ink-muted"}`}>Já recebi</button>
           </div>
 
           <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4">
@@ -572,6 +605,8 @@ function NovaReceitaContent() {
                 )}
               </HealthRelationPicker>
             </div>
+
+            {!planOnly && <>
 
             <div>
               <label className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-ink-primary">
@@ -668,7 +703,16 @@ function NovaReceitaContent() {
                 )}
               </HealthRelationPicker>
             </div>
+            </>}
           </div>
+
+          {planOnly ? (
+            <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/[0.05] p-4">
+              <label className="mb-2 block text-xs font-semibold text-ink-primary">Dia em que vou solicitar a receita</label>
+              <CustomDatePicker value={plannedDate} onChange={setPlannedDate} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary" />
+              <p className="mt-2 text-[11px] leading-5 text-ink-muted">Até esse dia, o Vault não tratará o planejamento como receita recebida. Se mudar de ideia, ajuste a data aqui.</p>
+            </div>
+          ) : <>
 
           <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
             <div className="flex items-center justify-between gap-3">
@@ -747,6 +791,7 @@ function NovaReceitaContent() {
               4
             }
           />
+          </>}
 
           <Button
             size="lg"
@@ -757,7 +802,8 @@ function NovaReceitaContent() {
             disabled={
               saving ||
               !activePersonId ||
-              !selectedMedicamento
+              !selectedMedicamento ||
+              (planOnly && !plannedDate)
             }
             className="flex items-center justify-center gap-2 shadow-lg shadow-ice/10"
           >
@@ -778,7 +824,7 @@ function NovaReceitaContent() {
 
             {saving
               ? "Salvando..."
-              : "Registrar nova receita"}
+              : planOnly ? "Salvar planejamento" : "Registrar nova receita"}
           </Button>
         </section>
       </main>

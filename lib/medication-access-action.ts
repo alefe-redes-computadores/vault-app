@@ -42,6 +42,14 @@ export interface MedicationAccessAction {
   href: string;
 }
 
+/** Copy follows the actual next action, never an unrelated renewal date. */
+export function medicationAccessAlertTitle(action: MedicationAccessAction, days: number | null): string {
+  if (action.kind === "prescription") return days === 0 ? "Solicitar receita hoje" : days !== null && days < 0 ? "Receita pendente" : "Planejar receita";
+  if (action.kind === "withdrawal") return action.cta === "Ver retirada pendente" ? "Retirada pendente" : action.label === "Reposição" ? "Planejar reposição" : "Planejar retirada";
+  if (action.kind === "acquisition") return "Registrar aquisição";
+  return "Revisar necessidade";
+}
+
 export function medicationAccessAction(
   insight: RenovacaoInsight,
   medicationId: string,
@@ -70,7 +78,7 @@ export function medicationAccessAction(
       label: "Receita",
       cta: "Planejar receita",
       description: "Planejar uma nova receita",
-      href: `/saude/renovacao/nova-receita?${query}`,
+      href: `/saude/renovacao/nova-receita?${query}&mode=plan`,
     };
   }
 
