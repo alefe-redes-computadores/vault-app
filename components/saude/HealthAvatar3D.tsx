@@ -504,10 +504,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const phoneSideContact=mesh(new THREE.CapsuleGeometry(.014,.13,3,7),materials.skin,phoneX+gripSign*.095,1.382,.084);phoneSideContact.rotation.z=phoneAngle;phoneSideContact.raycast=()=>{};
     // V183: the dedicated grip replaces the generic fingers on this hand, avoiding an eight-finger overlap.
     for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
-      const finger=mesh(new THREE.CapsuleGeometry(.011,.046-fingerIndex*.002,3,6),materials.skin,phoneX+gripSign*.104,1.323+fingerIndex*.042,.087);
+      const finger=mesh(new THREE.CapsuleGeometry(.009,.033-fingerIndex*.002,3,6),materials.skin,phoneX+gripSign*.102,1.323+fingerIndex*.042,.08);
       finger.rotation.z=Math.PI/2+phoneAngle;finger.rotation.y=gripSign*.12;finger.raycast=()=>{};
     }
-    const phoneThumb=mesh(new THREE.CapsuleGeometry(.015,.073,3,7),materials.skin,phoneX-gripSign*.103,1.406,.092);phoneThumb.rotation.z=gripSign*.55+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
+    const phoneThumb=mesh(new THREE.CapsuleGeometry(.013,.056,3,7),materials.skin,phoneX-gripSign*.102,1.406,.075);phoneThumb.rotation.z=gripSign*.55+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
     const gripKnuckle=mesh(new THREE.CapsuleGeometry(.004,.098,2,7),materials.skinShade,phoneX+gripSign*.101,1.388,.092);gripKnuckle.rotation.z=phoneAngle;gripKnuckle.raycast=()=>{};
     const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;

@@ -2963,7 +2963,9 @@ export default function HomePage() {
 
                     {primaryMedicationCareOpportunity.latestRenewalDate && (
                       <p className="mt-2 font-mono text-[9px] text-ink-faint">
-                        Último registro de renovação:{" "}
+                        {primaryMedicationCareOpportunity.latestRenewalKind === "receita"
+                          ? "Última receita registrada: "
+                          : "Última aquisição registrada: "}
                         {
                           primaryMedicationCareOpportunity.latestRenewalDate
                         }

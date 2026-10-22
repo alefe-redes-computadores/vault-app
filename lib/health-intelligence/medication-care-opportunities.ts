@@ -17,6 +17,7 @@ import {
 
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
+import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -53,6 +54,9 @@ export interface MedicationCareOpportunity {
 
   latestRenewalDate:
     string | null;
+
+  latestRenewalKind:
+    "receita" | "aquisicao" | null;
 
   renewalCount:
     number;
@@ -103,12 +107,7 @@ function getEffectiveRenewalDate(
   renovacao:
     Renovacao
 ): string {
-  return (
-    renovacao.data_aquisicao?.trim() ||
-    renovacao.data?.trim() ||
-    renovacao.created_at?.trim() ||
-    ""
-  );
+  return renewalEventDate(renovacao);
 }
 
 function indexMedicationRenewals(renovacoes: Renovacao[]): Map<string, Renovacao[]> {
@@ -172,6 +171,7 @@ function scoreOpportunity({
 
   renewalCount:
     number;
+
 }): number {
   let score = 0;
 
@@ -244,6 +244,7 @@ function buildMessage({
   dosesRemaining,
   estoqueZerado,
   renewalCount,
+  prescriptionCount,
   insightMessage,
   scheduledWithdrawal,
 }: {
@@ -263,6 +264,9 @@ function buildMessage({
     boolean;
 
   renewalCount:
+    number;
+
+  prescriptionCount:
     number;
 
   insightMessage:
@@ -328,6 +332,10 @@ function buildMessage({
     parts.push(
       "Não encontrei renovação nem retirada futura registrada para este medicamento."
     );
+  } else if (prescriptionCount > 0 && prescriptionCount === renewalCount) {
+    parts.push("Há receita registrada, mas nenhuma aquisição registrada neste histórico. Confira a disponibilidade antes de registrar uma compra ou retirada.");
+  } else if (prescriptionCount > 0) {
+    parts.push("O histórico contém receitas e aquisições. Uma receita nova não confirma reposição do estoque.");
   } else {
     parts.push(
       "Existe histórico de renovação registrado. Confira se o registro mais recente já representa sua situação atual."
@@ -453,6 +461,10 @@ export function buildMedicationCareOpportunities({
             latestRenewal
           ) || null
         : null;
+    const latestRenewalKind = latestRenewal
+      ? isPrescriptionOnly(latestRenewal) ? "receita" as const : "aquisicao" as const
+      : null;
+    const prescriptionCount = medRenewals.filter(isPrescriptionOnly).length;
 
     const score =
       scoreOpportunity({
@@ -521,6 +533,8 @@ export function buildMedicationCareOpportunities({
           renewalCount:
             medRenewals.length,
 
+          prescriptionCount,
+
           insightMessage:
             insight.mensagem,
 
@@ -540,6 +554,7 @@ export function buildMedicationCareOpportunities({
         medicamento.cores,
 
       latestRenewalDate,
+      latestRenewalKind,
 
       renewalCount:
         medRenewals.length,

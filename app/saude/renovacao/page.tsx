@@ -65,6 +65,8 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
+import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
+import { useLocalDay } from "@/hooks/useLocalDay";
 
 import type {
   Renovacao,
@@ -117,12 +119,6 @@ type RenovacaoEnriquecida =
       number | null;
   };
 
-function localDateISO(): string {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-}
-
 // ============================================================
 // DATAS
 // ============================================================
@@ -153,17 +149,6 @@ function formatDateDisplay(
 // ============================================================
 // PREÇO / AQUISIÇÃO
 // ============================================================
-
-function isPrescriptionOnly(
-  renovacao: Renovacao
-): boolean {
-  return (
-    !renovacao.tipo_aquisicao &&
-    !renovacao.data_aquisicao &&
-    renovacao.quantidade == null &&
-    renovacao.preco == null
-  );
-}
 
 function getAcquisitionLabel(
   renovacao: Renovacao
@@ -209,10 +194,7 @@ function getAcquisitionLabel(
 function getEffectiveAcquisitionDate(
   renovacao: Renovacao
 ): string {
-  return (
-    renovacao.data_aquisicao?.trim() ||
-    renovacao.data
-  );
+  return renewalEventDate(renovacao);
 }
 
 function getEventDateLabel(
@@ -258,7 +240,8 @@ function getAcquisitionTypeLabel(
 
 function isWithinLastDays(
   isoDate: string,
-  days: number
+  days: number,
+  todayISO: string
 ): boolean {
   const match =
     /^(\d{4})-(\d{2})-(\d{2})$/.exec(
@@ -302,8 +285,8 @@ function isWithinLastDays(
     return false;
   }
 
-  const hoje =
-    new Date();
+  const [todayYear, todayMonth, todayDay] = todayISO.split("-").map(Number);
+  const hoje = new Date(todayYear, todayMonth - 1, todayDay);
 
   hoje.setHours(
     0,
@@ -342,6 +325,7 @@ function isWithinLastDays(
 // ============================================================
 
 export default function RenovacoesPage() {
+  const hojeISO = useLocalDay();
   const {
     trigger,
   } =
@@ -503,6 +487,7 @@ export default function RenovacoesPage() {
       [
         renovacoes,
         medicamentoMap,
+        hojeISO,
       ]
     );
 
@@ -579,7 +564,6 @@ export default function RenovacoesPage() {
   const comprasComValor = useMemo(() => comprasRegistradas.filter((item) => typeof item.preco === "number" && Number.isFinite(item.preco)), [comprasRegistradas]);
   const totalCompras = useMemo(() => comprasComValor.reduce((total, item) => total + (item.preco || 0), 0), [comprasComValor]);
   const receitasRegistradas = indicadores.total - comprasRegistradas.length;
-  const hojeISO = localDateISO();
   const datasFuturas = useMemo(() => renovacoesEnriquecidas.filter((item) => getEffectiveAcquisitionDate(item) > hojeISO).length, [renovacoesEnriquecidas, hojeISO]);
 
   const renewalSearchIndex = useMemo(() => createLocalSearchIndex(renovacoesEnriquecidas, (item) => [
@@ -613,7 +597,8 @@ export default function RenovacoesPage() {
                   getEffectiveAcquisitionDate(
                     renovacao
                   ),
-                  30
+                  30,
+                  hojeISO
                 )
             );
         }
@@ -631,7 +616,8 @@ export default function RenovacoesPage() {
                   getEffectiveAcquisitionDate(
                     renovacao
                   ),
-                  60
+                  60,
+                  hojeISO
                 )
             );
         }
@@ -695,6 +681,7 @@ export default function RenovacoesPage() {
         filtroPeriodo,
         filtroStatus,
         filtroAquisicao,
+        hojeISO,
       ]
     );
 

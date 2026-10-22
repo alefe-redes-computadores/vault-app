@@ -17,13 +17,14 @@ export function healthReadingValue(r:RegistroSaude):string|null {
 export function latestAvatarReadings(records:RegistroSaude[],devices:HealthDevice[],pid:string,uid:string,today:string) {
  const latest=new Map<HealthMetric,{record:RegistroSaude;value:string;source:string;device?:HealthDevice}>();
  if(!pid||!uid||!validDate(today))return latest;
+ const ownedDevices=new Map(devices.filter(d=>d.person_id===pid&&d.user_id===uid).map(d=>[d.id,d]));
  const own=records.filter(r=>r.person_id===pid&&r.user_id===uid&&validDate(r.data)&&r.data<=today)
   .sort((a,b)=>`${b.data}T${b.horario||'00:00'}`.localeCompare(`${a.data}T${a.horario||'00:00'}`)||(b.id||'').localeCompare(a.id||''));
  for(const r of own){
   if(!Object.hasOwn(METRICS,r.tipo))continue;const type=r.tipo as HealthMetric;
   if(latest.has(type)||r.unidade_medida?.trim().toLowerCase()!==METRICS[type].unit.toLowerCase())continue;
   const value=healthReadingValue(r);if(value===null)continue;
-  const device=devices.find(d=>d.id===r.device_id&&d.person_id===pid&&d.user_id===uid);
+  const device=r.device_id?ownedDevices.get(r.device_id):undefined;
   latest.set(type,{record:r,value,source:healthReadingSource(r.source),device});
  }
  return latest;

@@ -1,0 +1,36 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const ts = require("typescript");
+const read = (file) => fs.readFileSync(path.resolve(__dirname, "..", file), "utf8");
+const source = read("lib/health-supply/renewal-event.ts");
+const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const box = { exports: {} };
+new Function("exports", "module", "require", compiled)(box.exports, box, () => ({}));
+const { isPrescriptionOnly, renewalEventDate, renewalEventKind } = box.exports;
+const recipe = { data: "2026-10-22", tipo_aquisicao: null, quantidade: null, preco: null };
+assert.equal(isPrescriptionOnly(recipe), true);
+assert.equal(renewalEventKind(recipe), "receita");
+assert.equal(renewalEventDate(recipe), recipe.data);
+assert.equal(isPrescriptionOnly({ ...recipe, data_aquisicao: "2026-10-23" }), false);
+assert.equal(isPrescriptionOnly({ ...recipe, quantidade: 0 }), false);
+assert.equal(isPrescriptionOnly({ ...recipe, preco: 0 }), false);
+assert.equal(renewalEventDate({ ...recipe, data_aquisicao: " 2026-10-23 " }), "2026-10-23");
+for (const page of ["app/saude/renovacao/page.tsx", "app/saude/renovacao/detalhes/page.tsx"]) {
+  assert.match(read(page), /health-supply\/renewal-event/);
+  assert.doesNotMatch(read(page), /function isPrescriptionOnly\(/);
+}
+const list = read("app/saude/renovacao/page.tsx");
+assert.match(list, /const hojeISO = useLocalDay\(\)/);
+assert.match(list, /medicamentoMap,\s*hojeISO,/);
+assert.match(list, /filtroAquisicao,\s*hojeISO,/);
+assert.match(read("app/page.tsx"), /latestRenewalKind === "receita"/);
+const brain = read("lib/health-intelligence/medication-care-opportunities.ts");
+assert.match(brain, /prescriptionCount = medRenewals\.filter\(isPrescriptionOnly\)\.length/);
+assert.match(brain, /receita nova não confirma reposição do estoque/);
+const readings = read("lib/health-profile/avatar-readings.ts");
+assert.match(readings, /const ownedDevices=new Map\(/);
+assert.doesNotMatch(readings, /devices\.find\(/);
+const avatar = read("components/saude/HealthAvatar3D.tsx");
+assert.match(avatar, /phoneThumb=mesh\(new THREE\.CapsuleGeometry\(\.013,\.056/);
+console.log("V220: receita versus aquisição, dia reativo, cérebro e Avatar OK");

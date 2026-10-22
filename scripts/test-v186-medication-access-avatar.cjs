@@ -10,7 +10,7 @@ assert(access.includes('density="compact"'), "history cards must use compact den
 assert(access.includes("withReturnTarget"), "create/detail flows need contextual return");
 assert(access.includes('filtroAquisicao === "receita"'), "prescription-only events must be filterable");
 assert(access.includes("comprasComValor"), "financial summary must distinguish missing prices from zero");
-assert(access.includes("localDateISO()"), "future-date warning must follow local day");
+assert(access.includes("const hojeISO = useLocalDay()"), "future-date warning must follow local day");
 assert(!access.includes('title="Histórico de Renovações"'));
 
 for (const marker of ["V186: a transição pélvica", "const waist=", "const waistSeam=", "const ankleContour=", "const vamp=", "const heelCounter="]) {

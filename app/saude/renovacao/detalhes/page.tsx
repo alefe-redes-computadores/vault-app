@@ -3,6 +3,7 @@
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
+import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
 
 import {
   Suspense,
@@ -148,17 +149,6 @@ function formatDateDisplay(
   }
 
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
-
-function isPrescriptionOnly(
-  renovacao: Renovacao
-): boolean {
-  return (
-    !renovacao.tipo_aquisicao &&
-    !renovacao.data_aquisicao &&
-    renovacao.quantidade == null &&
-    renovacao.preco == null
-  );
 }
 
 function getPriceLabel(
