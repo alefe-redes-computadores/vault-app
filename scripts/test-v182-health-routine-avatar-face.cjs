@@ -23,8 +23,8 @@ assert(ui.includes("presentation.paused")&&ui.includes("showPaused"));
 assert(ui.includes("ConfirmationModal")&&!ui.includes("window.confirm"));
 assert(ui.includes("Os registros de saúde existentes não serão alterados"));
 assert(scene.includes("iris: new THREE.MeshStandardMaterial"));
-assert(scene.includes("Olhos em três planos"));
-assert(scene.includes("[.042,.019,.014]")&&scene.includes("[.007,.009,.004]"));
+assert(scene.includes("V221: olhos de baixo relevo"));
+assert(scene.includes("[.036,.012,.009]")&&scene.includes("[.005,.006,.0025]"));
 assert(scene.includes("renderer.forceContextLoss()"));
 
 console.log("VAULT V182 — HEALTH ROUTINE + AVATAR FACE CONTRACT OK");

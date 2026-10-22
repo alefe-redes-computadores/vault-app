@@ -13,3 +13,20 @@ export function renewalEventDate(event: Renovacao): string {
 export function renewalEventKind(event: Renovacao): "receita" | "aquisicao" {
   return isPrescriptionOnly(event) ? "receita" : "aquisicao";
 }
+
+/** V221: uma data de aquisicao futura e planejamento, nao compra realizada. */
+export function isFutureAcquisition(event: Renovacao, todayISO: string): boolean {
+  if (isPrescriptionOnly(event)) return false;
+  const raw = renewalEventDate(event);
+  // Datas legadas sem formato ISO continuam visiveis, mas nao sao reinterpretadas.
+  const match = /^(\d{4}-\d{2}-\d{2})(?:$|T|\s)/.exec(raw);
+  return Boolean(match && /^\d{4}-\d{2}-\d{2}$/.test(todayISO) && match[1] > todayISO);
+}
+
+/** Total REALIZADO; nao considera receita, compra futura, SUS nem valor invalido. */
+export function realizedAcquisitionExpense(event: Renovacao, todayISO: string): number {
+  if (isPrescriptionOnly(event) || isFutureAcquisition(event, todayISO)) return 0;
+  if (event.tipo_aquisicao === "sus" || event.tipo_aquisicao === "gratuito") return 0;
+  const total = event.preco;
+  return typeof total === "number" && Number.isFinite(total) && total > 0 ? total : 0;
+}

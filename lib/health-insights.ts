@@ -4,6 +4,7 @@ import { buildDeviceTrendInsights } from "./health-intelligence/device-trend-ins
 import type {SupplyData} from "./health-supply/types";
 import {buildSupplyInsights} from "./health-intelligence/supply-insights";
 import { isOpenWithdrawal } from "./withdrawal-agenda";
+import { isFutureAcquisition } from "./health-supply/renewal-event";
 // lib/health-insights.ts
 import { buildBehaviorInsights } from "./health-intelligence/behavior-insights";
 import { compareHealthPriority } from "./health-intelligence/priority";
@@ -3832,21 +3833,15 @@ export function analisarReceitaArquivada(
     return null;
   }
 
-  const temRenovacaoPosterior =
-    renovacoesDoMedicamento.some(
-      (renovacao) => {
-        const dataRenovacao =
-          parseLocalDate(
-            renovacao.data
-          );
-
-        return Boolean(
-          dataRenovacao &&
-            dataRenovacao >
-              dataBase
-        );
-      }
-    );
+  // V221: compra/retirada posterior nao renova a receita clinica.
+  // A data da prescricao atual pode ser mais recente sem haver compra associada.
+  const receitaAtual = parseLocalDate(medicamentoAlvo?.data_receita);
+  const temRenovacaoPosterior = Boolean(receitaAtual && receitaAtual > dataBase) ||
+    renovacoesDoMedicamento.some((renovacao) => {
+      if (!isRenovacaoSomenteReceita(renovacao)) return false;
+      const dataRenovacao = parseLocalDate(renovacao.data);
+      return Boolean(dataRenovacao && dataRenovacao > dataBase);
+    });
 
   if (
     temRenovacaoPosterior
@@ -7216,6 +7211,7 @@ export function analisarIntervaloRenovacoes(
           isRenovacaoAquisicaoReal(
             renovacao
           ) &&
+          !isFutureAcquisition(renovacao, getLocalTodayISO()) &&
           Boolean(
             renovacao.data_aquisicao ||
             renovacao.data

@@ -84,6 +84,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .94, transparent:true, opacity:.88 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
+      // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
+      eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .85 }),
+      watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .48, metalness: .015 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
@@ -154,7 +157,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const browPlane=mesh(taperedBox(.041,.061,.016,.017),materials.skinShade,sign*.083,2.875,.184);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
       const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
       expressionLids.push({object:upperLid,sign});
-      const lowerLid=mesh(new THREE.CapsuleGeometry(.0035,.055,2,7),materials.skinShade,sign*.083,2.804,.239);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
+      const lowerLid=mesh(new THREE.CapsuleGeometry(.003,.051,2,7),materials.skinShade,sign*.083,2.807,.226);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
     }
     const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
@@ -272,12 +275,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       oval(materials.skin,sign*.16,.37,.01,[.083,.105,.081]).raycast=()=>{};
       const ankle=limb(.076,.086,.14,materials.skin,sign*.16,.285,.018,stance);ankle.raycast=()=>{};
       const ankleContour=mesh(taperedBox(.135,.16,.075,.145),materials.skin,sign*.16,.245,.026);ankleContour.rotation.z=stance;ankleContour.raycast=()=>{};
-      // Olhos em três planos: esclera baixa, íris e pupila. O formato horizontal evita a leitura de “olhos redondos colados”.
-      oval(materials.white,sign*.083,2.82,.214,[.042,.019,.014]);
-      oval(materials.iris,sign*.083,2.82,.228,[.017,.016,.007]);
-      const pupil=oval(materials.dark,sign*.083,2.82,.235,[.007,.009,.004]);
+      // V221: olhos de baixo relevo, integrados às pálpebras. Nenhuma esfera salta
+      // da frente do rosto. Íris/pupila reutilizam a expressividade V208.
+      const sclera=oval(materials.eyeWhite,sign*.083,2.82,.215,[.036,.012,.009]);sclera.raycast=()=>{};
+      oval(materials.iris,sign*.083,2.819,.224,[.012,.011,.004]).raycast=()=>{};
+      const pupil=oval(materials.dark,sign*.083,2.819,.229,[.005,.006,.0025]);pupil.raycast=()=>{};
       expressionEyes.push({object:pupil,restY:pupil.position.y});
-      oval(materials.white,sign*.079,2.827,.239,[.0025,.0025,.002]);
+      oval(materials.eyeWhite,sign*.079,2.824,.232,[.0014,.0014,.0012]).raycast=()=>{};
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
     // Isso reduz o nariz bulboso visto de frente e ainda economiza segmentos esféricos.
@@ -442,7 +446,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const brainPanel=mesh(softBox(.27,.24,.025,.018),brainPanelMaterial,0,2.14,.229);brainPanel.userData.action="brain";
     const signalMaterial=new THREE.MeshStandardMaterial({color:avatarAttentionColor(attentionRef.current),emissive:avatarAttentionColor(attentionRef.current),emissiveIntensity:.35,metalness:.3,roughness:.4});
     const signalRing=new THREE.Group();model.add(signalRing);
-    for(const [x,y,w,h] of [[0,2.278,.31,.01],[0,2.002,.31,.01],[-.15,2.14,.01,.266],[.15,2.14,.01,.266]]){const rail=mesh(softBox(w,h,.012,.002),signalMaterial,x,y,.249);rail.userData.action="brain";signalRing.add(rail);}
+    // V221 R3: Android WebGL pode esticar as duas faixas laterais de alta proporcao
+    // do Brain ate o topo da cena. Mantemos apenas os marcadores horizontais
+    // estaveis, em BoxGeometry, sem alterar sinais clinicos ou render loop.
+    for(const y of [2.278,2.002]){
+      const rail=mesh(new THREE.BoxGeometry(.31,.01,.012),signalMaterial,0,y,.249);
+      rail.userData.action="brain";
+      signalRing.add(rail);
+    }
     const brainGlyph=new THREE.Group();model.add(brainGlyph);
     for(const [x,y,w,h] of [[-.052,2.198,.073,.018],[.052,2.198,.073,.018],[-.069,2.145,.052,.018],[.069,2.145,.052,.018],[-.052,2.092,.073,.018],[.052,2.092,.073,.018],[0,2.145,.014,.146]]){
       const segment=mesh(softBox(w,h,.014,.004),signalMaterial,x,y,.249);segment.userData.action="brain";brainGlyph.add(segment);
@@ -478,12 +489,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const roundFace=shape==='round';
         const faceDepth=roundFace?.181:.177;
         mesh(roundFace?new THREE.CircleGeometry(.068,24):new THREE.PlaneGeometry(width*.75,height*.75),materials.dark,x,watchY,faceDepth);
+        // V221: marcador visual local, abstrato e de baixo contraste.
+        // Nao exibe horario, frequencia cardiaca ou medida sem dados reais.
         if(roundFace){
-          mesh(new THREE.BoxGeometry(.009,.046,.006),materials.white,x,watchY+.02,faceDepth+.006);
-          const hand=mesh(new THREE.BoxGeometry(.038,.009,.006),materials.white,x+.016,watchY,faceDepth+.006);hand.rotation.z=-.4;
+          const dial=mesh(new THREE.RingGeometry(.018,.025,20),materials.watchAccent,x,watchY,faceDepth+.006);dial.raycast=()=>{};
         }else{
-          mesh(new THREE.BoxGeometry(width*.36,.012,.006),materials.white,x,watchY+.018,faceDepth+.006);
-          mesh(new THREE.BoxGeometry(width*.22,.009,.006),materials.white,x,watchY-.013,faceDepth+.006);
+          const dial=mesh(new THREE.RingGeometry(.015,.022,20),materials.watchAccent,x,watchY+.011,faceDepth+.006);dial.raycast=()=>{};
+          const statusDot=mesh(new THREE.CircleGeometry(.005,12),materials.watchAccent,x+.022,watchY-.025,faceDepth+.006);statusDot.raycast=()=>{};
         }
         const crown=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#fb923c':'#94a3b8',metalness:.45,roughness:.3});
         mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,watchY,.155);

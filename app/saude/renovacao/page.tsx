@@ -65,7 +65,7 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
-import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
+import { isPrescriptionOnly, renewalEventDate, isFutureAcquisition, realizedAcquisitionExpense } from "@/lib/health-supply/renewal-event";
 import { useLocalDay } from "@/hooks/useLocalDay";
 
 import type {
@@ -561,10 +561,10 @@ export default function RenovacoesPage() {
     );
 
   const comprasRegistradas = useMemo(() => renovacoesEnriquecidas.filter((item) => !isPrescriptionOnly(item)), [renovacoesEnriquecidas]);
-  const comprasComValor = useMemo(() => comprasRegistradas.filter((item) => typeof item.preco === "number" && Number.isFinite(item.preco)), [comprasRegistradas]);
-  const totalCompras = useMemo(() => comprasComValor.reduce((total, item) => total + (item.preco || 0), 0), [comprasComValor]);
+  const comprasComValor = useMemo(() => comprasRegistradas.filter((item) => realizedAcquisitionExpense(item, hojeISO) > 0), [comprasRegistradas, hojeISO]);
+  const totalCompras = useMemo(() => comprasComValor.reduce((total, item) => total + realizedAcquisitionExpense(item, hojeISO), 0), [comprasComValor, hojeISO]);
   const receitasRegistradas = indicadores.total - comprasRegistradas.length;
-  const datasFuturas = useMemo(() => renovacoesEnriquecidas.filter((item) => getEffectiveAcquisitionDate(item) > hojeISO).length, [renovacoesEnriquecidas, hojeISO]);
+  const datasFuturas = useMemo(() => comprasRegistradas.filter((item) => isFutureAcquisition(item, hojeISO)).length, [comprasRegistradas, hojeISO]);
 
   const renewalSearchIndex = useMemo(() => createLocalSearchIndex(renovacoesEnriquecidas, (item) => [
     item.medicamentoNome,
@@ -1059,10 +1059,9 @@ export default function RenovacoesPage() {
                     ? "#EF4444"
                     : theme.hex;
 
-                const acquisitionLabel =
-                  getAcquisitionLabel(
-                    renovacao
-                  );
+                const acquisitionLabel = isFutureAcquisition(renovacao, hojeISO)
+                  ? "Aquisição prevista"
+                  : getAcquisitionLabel(renovacao);
 
                 return (
                   <ListCard

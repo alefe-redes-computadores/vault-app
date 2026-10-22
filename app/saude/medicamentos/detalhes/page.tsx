@@ -2,6 +2,7 @@
 "use client";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
+import { isPrescriptionOnly, isFutureAcquisition, realizedAcquisitionExpense, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
@@ -2219,18 +2220,11 @@ function MedicamentoDetalhesContent() {
   // retornos condicionais.
   // ==========================================================
 
-  const comprasPagas =
-    renovacoes.filter(
-      (item) =>
-        item.tipo_aquisicao !==
-          "sus" &&
-        item.tipo_aquisicao !==
-          "gratuito" &&
-        typeof item.preco ===
-          "number" &&
-        item.preco >
-          0
-    );
+  const diaFinanceiro = getLocalTodayISO();
+  // V221: somente aquisicoes efetivadas e pagas; nao contar receitas nem agendamentos.
+  const comprasPagas = renovacoes.filter((item) =>
+    realizedAcquisitionExpense(item, diaFinanceiro) > 0
+  );
 
   const rankingFarmacias =
     analisarMelhorFarmacia(
@@ -2273,13 +2267,9 @@ function MedicamentoDetalhesContent() {
   // RENOVAÇÕES
   // ==========================================================
 
-  const ultimaRenovacao =
-    renovacoes.length >
-    0
-      ? renovacoes[
-          0
-        ]
-      : null;
+  const ultimaRenovacao = renovacoes.find((item) =>
+    !isPrescriptionOnly(item) && !isFutureAcquisition(item, diaFinanceiro)
+  ) ?? null;
 
   const ultimaRenovacaoSemCusto =
     ultimaRenovacao
@@ -5125,7 +5115,7 @@ function MedicamentoDetalhesContent() {
                   </p>
 
                   <h2 className="mt-0.5 text-sm font-semibold text-ink-primary">
-                    Aquisições & Renovações
+                    Receitas e aquisições
                   </h2>
                 </div>
 
@@ -5187,17 +5177,16 @@ function MedicamentoDetalhesContent() {
                             )
                           : null;
 
-                      const semCusto =
-                        renovacao.tipo_aquisicao ===
-                          "gratuito" ||
-                        renovacao.tipo_aquisicao ===
-                          "sus";
+                      const somenteReceita = isPrescriptionOnly(renovacao);
+                      const aquisicaoFutura = isFutureAcquisition(renovacao, diaFinanceiro);
+                      const semCusto = !somenteReceita && !aquisicaoFutura &&
+                        (renovacao.tipo_aquisicao === "gratuito" || renovacao.tipo_aquisicao === "sus");
 
                       return (
                         <motion.button
                           type="button"
                           onClick={() => renovacao.id && router.push(`/saude/renovacao/detalhes?id=${renovacao.id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`)}
-                          aria-label={`Abrir aquisição de ${formatDate(renovacao.data || renovacao.created_at)}`}
+                          aria-label={`Abrir ${somenteReceita ? "receita" : aquisicaoFutura ? "aquisição prevista" : "aquisição"} de ${formatDate(renovacao.data || renovacao.created_at)}`}
                           key={
                             renovacao.id ||
                             index
@@ -5242,8 +5231,7 @@ function MedicamentoDetalhesContent() {
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-ink-primary">
                                   {formatDate(
-                                    renovacao.data ||
-                                      renovacao.created_at
+                                    somenteReceita ? (renovacao.data || renovacao.created_at) : renewalEventDate(renovacao)
                                   )}
                                 </p>
 
@@ -5256,7 +5244,15 @@ function MedicamentoDetalhesContent() {
                                     </span>
                                   )}
 
-                                  {semCusto ? (
+                                  {somenteReceita ? (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase text-violet-300">
+                                      <FileText size={9} /> Receita
+                                    </span>
+                                  ) : aquisicaoFutura ? (
+                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-300">
+                                      <Clock size={9} /> Aquisição prevista
+                                    </span>
+                                  ) : semCusto ? (
                                     <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-emerald-400">
                                       <Gift
                                         size={
@@ -5281,7 +5277,7 @@ function MedicamentoDetalhesContent() {
                                     </span>
                                   )}
 
-                                  {typeof renovacao.quantidade ===
+                                  {!somenteReceita && typeof renovacao.quantidade ===
                                     "number" && (
                                     <span className="rounded-full bg-surface-raised px-1.5 py-0.5 text-[8px] font-bold text-ink-muted">
                                       Qtd.{" "}
@@ -5330,14 +5326,15 @@ function MedicamentoDetalhesContent() {
                                   : "bg-ice/10 text-ice"
                               }`}
                             >
-                              {semCusto
-                                ? "R$ 0,00"
-                                : typeof renovacao.preco ===
-                                    "number"
-                                  ? `R$ ${renovacao.preco.toFixed(
-                                      2
-                                    )}`
-                                  : "—"}
+                              {somenteReceita
+                                ? "Receita"
+                                : aquisicaoFutura
+                                  ? "Prevista"
+                                  : semCusto
+                                    ? "R$ 0,00"
+                                    : typeof renovacao.preco === "number" && Number.isFinite(renovacao.preco)
+                                      ? `R$ ${renovacao.preco.toFixed(2)}`
+                                      : "—"}
                             </p>
                           </div>
                         </motion.button>
