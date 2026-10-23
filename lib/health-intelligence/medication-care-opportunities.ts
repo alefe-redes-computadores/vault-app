@@ -20,6 +20,7 @@ import { decideMedicationAlerts } from "@/lib/health-intelligence/medication-ale
 import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { summarizeMedicationContinuity, continuityEvidenceMessage } from "@/lib/health-intelligence/medication-continuity";
+import { decideMedicationCarePath, type MedicationCareStage } from "@/lib/health-intelligence/medication-care-decision";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -90,6 +91,10 @@ export interface MedicationCareOpportunity {
 
   score:
     number;
+
+  careStage: MedicationCareStage;
+  careStageLabel: string;
+  evidence: string[];
 }
 
 interface MedicationCareInput {
@@ -454,19 +459,6 @@ export function buildMedicationCareOpportunities({
           urgencia: estoqueZerado ? "alta" as const : "media" as const,
         };
 
-    const accessAction = medicationAccessAction(
-      actionInsight,
-      medicamento.id,
-      "/",
-      {
-        tipoUso: medicamento.tipo_uso,
-        tipoAquisicao: medicamento.tipo_aquisicao,
-        scheduledWithdrawalId: scheduledWithdrawal?.id,
-      }
-    );
-
-    if (!accessAction) continue;
-
     const medRenewals = (renewalsByMedication.get(medicamento.id) ?? []).filter(event =>
       event.user_id === medicamento.user_id &&
       (!event.person_id || !medicamento.person_id || event.person_id === medicamento.person_id) &&
@@ -482,6 +474,19 @@ export function buildMedicationCareOpportunities({
       ? isPrescriptionOnly(latestRenewal) ? "receita" as const : "aquisicao" as const
       : null;
     const prescriptionCount = medRenewals.filter(isPrescriptionOnly).length;
+    const careDecision = decideMedicationCarePath({
+      medication: medicamento,
+      renewals: medRenewals,
+      withdrawal: scheduledWithdrawal,
+      today,
+      needsPrescription: visibleRenewalSignal,
+      needsStock: visibleStockSignal,
+    });
+    const accessAction = medicationAccessAction(
+      actionInsight, medicamento.id, "/",
+      { tipoUso: medicamento.tipo_uso, tipoAquisicao: medicamento.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawal?.id }
+    );
+    if (!accessAction) continue;
 
     const score =
       scoreOpportunity({
@@ -537,7 +542,9 @@ export function buildMedicationCareOpportunities({
 
       title,
 
-      message: overdueWithdrawal && decision.isAsNeeded ? decision.explanation :
+      message: careDecision.stage === "acquisition_needed" || careDecision.stage === "acquisition_planned"
+        ? careDecision.explanation
+        : overdueWithdrawal && decision.isAsNeeded ? decision.explanation :
         buildMessage({
           medicamento,
 
@@ -593,11 +600,9 @@ export function buildMedicationCareOpportunities({
       renewalHref:
         accessAction.href,
 
-      actionHref:
-        accessAction.href,
+      actionHref: careDecision.actionHref,
 
-      actionLabel:
-        accessAction.cta,
+      actionLabel: careDecision.actionLabel,
 
       treatmentHref:
         treatmentId
@@ -607,6 +612,9 @@ export function buildMedicationCareOpportunities({
           : null,
 
       score: overdueWithdrawal ? Math.max(score, 90) : score,
+      careStage: careDecision.stage,
+      careStageLabel: careDecision.label,
+      evidence: careDecision.evidence,
     });
   }
 

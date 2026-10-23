@@ -1,33 +1,11 @@
 import type { HealthInsight } from "@/lib/health-insights";
-
-const SEVERITY_RANK: Record<string, number> = {
-  critica: 0,
-  importante: 1,
-  atencao: 2,
-  informativa: 3,
-};
-
-const URGENCY_RANK: Record<string, number> = {
-  alta: 0,
-  media: 1,
-  baixa: 2,
-  nenhuma: 3,
-};
-
-const CONFIDENCE_RANK: Record<string, number> = {
-  alta: 0,
-  media: 1,
-  baixa: 2,
-};
-
-function score(map: Record<string, number>, value: unknown): number {
-  return map[String(value ?? "")] ?? 99;
-}
+import { brainDecisionLane, compareBrainSignals } from "@/lib/health-intelligence/brain-next";
 
 function isEligibleForBehavioralPush(insight: HealthInsight): boolean {
   if (insight.categoria === "agenda") return false;
   if (insight.kind !== "alert" && insight.kind !== "pattern") return false;
-  return insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante";
+  return brainDecisionLane(insight) === "now" &&
+    (insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante");
 }
 
 // VAULT_INSIGHT_NOTIFICATION_POLICY_V57
@@ -40,18 +18,7 @@ export function rankHealthInsightNotificationCandidates(
 
   return [...insights]
     .filter(isEligibleForBehavioralPush)
-    .sort((a, b) => {
-      const severity = score(SEVERITY_RANK, a.gravidadeSeguranca) - score(SEVERITY_RANK, b.gravidadeSeguranca);
-      if (severity !== 0) return severity;
-
-      const urgency = score(URGENCY_RANK, a.urgencia) - score(URGENCY_RANK, b.urgencia);
-      if (urgency !== 0) return urgency;
-
-      const confidence = score(CONFIDENCE_RANK, a.confianca) - score(CONFIDENCE_RANK, b.confianca);
-      if (confidence !== 0) return confidence;
-
-      return (b.amostra ?? 0) - (a.amostra ?? 0);
-    })
+    .sort(compareBrainSignals)
     .slice(0, safeLimit);
 }
 

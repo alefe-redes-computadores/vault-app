@@ -11,6 +11,7 @@ ok(fs.existsSync(memoryPath), "insight-memory existe");
 
 const memory = read(memoryPath);
 const policy = read("lib/health-intelligence/notification-policy.ts");
+const brainNext = read("lib/health-intelligence/brain-next.ts");
 const reconciler = read("components/InsightNotificationReconciler.tsx");
 const longitudinal = read("lib/health-intelligence/longitudinal-insights.ts");
 
@@ -24,7 +25,7 @@ ok(/catch\s*\{[\s\S]*?return null;[\s\S]*?\}/.test(memory) && /localStorage\.set
 
 ok(/export function rankHealthInsightNotificationCandidates\s*\(/.test(policy), "policy ranqueia múltiplos candidatos");
 ok(/categoria === ["']agenda["']/.test(policy) && /return false/.test(policy), "agenda excluída do push comportamental");
-ok(/gravidadeSeguranca/.test(policy) && /urgencia/.test(policy) && /confianca/.test(policy) && /amostra/.test(policy), "ranking usa gravidade, urgência, confiança e amostra");
+ok(/compareBrainSignals/.test(policy) && /gravidadeSeguranca/.test(brainNext) && /urgencia/.test(brainNext) && /confianca/.test(brainNext) && /amostra/.test(brainNext) && /dataQualityPenalty/.test(brainNext), "ranking usa gravidade, urgência, confiança, amostra e qualidade de dados");
 ok(/export function selectHealthInsightNotificationCandidate\s*\(/.test(policy), "compatibilidade antiga preservada");
 ok(/export function getHealthInsightNotificationRoute\s*\(/.test(policy), "helper de rota contextual existe");
 ok(

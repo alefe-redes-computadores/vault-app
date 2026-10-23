@@ -1,7 +1,7 @@
 "use client";
 
 import {AlertTriangle, CheckCircle2, Database, ExternalLink, FileSearch, ShieldAlert, ShieldCheck, X} from "lucide-react";
-import {brainV5Presentation, brainV5RequiresAttention} from "@/lib/health-intelligence/brain-v5";
+import {brainV5Lane, brainV5Presentation, brainV5RequiresAttention} from "@/lib/health-intelligence/brain-v5";
 import type {BrainV5Alert, BrainV5Feedback} from "@/lib/health-intelligence/brain-v5";
 import {useDialogGuard} from "@/hooks/useDialogGuard";
 
@@ -30,6 +30,10 @@ export function BrainV5DetailSheet({alert, familyLabel, stateLabel, onClose, onC
   const presentation = brainV5Presentation(alert);
   const urgent = brainV5RequiresAttention(alert);
   const PriorityIcon = urgent ? ShieldAlert : CheckCircle2;
+  const lane = brainV5Lane(alert);
+  const laneLabel = {now:"Agora",next:"Próximos dias",follow_up:"Acompanhar",review_data:"Revisar dados"}[lane];
+  const evidenceLabel = {strong:"Forte",moderate:"Moderada",limited:"Limitada"}[alert.evidence_quality ?? "limited"];
+  const actionLabel = {direct:"Ação disponível",guided:"Ação orientada",observe:"Somente acompanhar"}[alert.actionability ?? "observe"];
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -46,6 +50,7 @@ export function BrainV5DetailSheet({alert, familyLabel, stateLabel, onClose, onC
         </header>
 
         <div className="space-y-3 px-4 pt-4 sm:px-5">
+          <section aria-label="Como o Brain priorizou" className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-surface-border/60 bg-surface-border/50 text-[9px] text-ink-muted"><span className="bg-surface p-3">Momento<strong className="mt-1 block text-ink-primary">{laneLabel}</strong></span><span className="bg-surface p-3">Evidência<strong className="mt-1 block text-ink-primary">{evidenceLabel}</strong></span><span className="bg-surface p-3">Utilidade<strong className="mt-1 block text-ink-primary">{actionLabel}</strong></span></section>
           <section className={`rounded-2xl border p-4 ${urgent ? "border-rose-400/20 bg-rose-400/[.035]" : "border-surface-border/60 bg-black/10"}`}>
             <p className="text-sm leading-relaxed text-ink-primary">{alert.snapshot.mensagem}</p>
             {urgent?<p className="mt-2 flex items-center gap-2 text-[10px] font-semibold text-rose-200"><ShieldAlert size={13}/>Risco potencial identificado nos registros — não confirma um evento clínico.</p>:null}

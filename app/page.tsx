@@ -3024,6 +3024,17 @@ export default function HomePage() {
                       }
                     </p>
 
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                        {primaryMedicationCareOpportunity.careStageLabel}
+                      </span>
+                      {primaryMedicationCareOpportunity.plannedAcquisitionCount ? (
+                        <span className="rounded-full border border-violet-400/20 bg-violet-400/8 px-2 py-1 font-mono text-[8px] text-violet-300">
+                          Futuro · não altera estoque
+                        </span>
+                      ) : null}
+                    </div>
+
                     {primaryMedicationCareOpportunity.latestRenewalDate && (
                       <p className="mt-2 font-mono text-[9px] text-ink-faint">
                         {primaryMedicationCareOpportunity.latestRenewalKind === "receita"

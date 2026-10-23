@@ -19,7 +19,8 @@ assert(!details.includes('? "Adicionar nova receita"'));
 const home=read('app/page.tsx'),care=read('lib/health-intelligence/medication-care-opportunities.ts');
 assert(home.includes('primaryMedicationCareOpportunity.actionHref'));
 assert(home.includes('primaryMedicationCareOpportunity.actionLabel'));
-assert(care.includes('actionLabel:')&&care.includes('accessAction.cta'));
+assert(care.includes('actionLabel:')&&care.includes('careDecision.actionLabel'));
+assert(care.includes('medicationAccessAction('),'legacy access routing remains available as compatibility input');
 assert(care.includes('const today = getLocalTodayISO()'));
 
 const alerts=read('components/MedicamentosNotifications.tsx');

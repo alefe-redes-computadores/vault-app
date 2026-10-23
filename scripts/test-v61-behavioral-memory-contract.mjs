@@ -28,6 +28,9 @@ const memory = read(
 const policy = read(
   "lib/health-intelligence/notification-policy.ts"
 );
+const brainNext = read(
+  "lib/health-intelligence/brain-next.ts"
+);
 
 const reconciler = read(
   "components/InsightNotificationReconciler.tsx"
@@ -71,18 +74,18 @@ ok(
 );
 
 ok(
-  policy.includes(
+  policy.includes("compareBrainSignals") && brainNext.includes(
     "gravidadeSeguranca"
   ) &&
-    policy.includes(
+    brainNext.includes(
       "urgencia"
     ) &&
-    policy.includes(
+    brainNext.includes(
       "confianca"
     ) &&
-    policy.includes(
+    brainNext.includes(
       "amostra"
-    ),
+    ) && brainNext.includes("dataQualityPenalty") && brainNext.includes("actionability"),
   "ranking considera gravidade, urgência, confiança e amostra"
 );
 
