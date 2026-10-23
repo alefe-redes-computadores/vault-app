@@ -21,6 +21,50 @@ export interface MedicationCareDecision {
   plannedAcquisition: boolean;
 }
 
+export type MedicationCareTone = "critical" | "attention" | "planning" | "stable";
+
+/**
+ * Canonical presentation shared by list/detail surfaces. Keeping this next to the
+ * decision prevents a correct care stage from receiving a contradictory colour or
+ * urgency label in another screen.
+ */
+export function medicationCarePresentation(
+  decision: Pick<MedicationCareDecision, "stage">,
+  urgency?: "alta" | "media" | "baixa" | "nenhuma" | null,
+): { tone: MedicationCareTone; actionClass: string; badgeClass: string } {
+  const critical = decision.stage === "withdrawal_overdue" || urgency === "alta";
+  const planning = decision.stage === "withdrawal_planned" || decision.stage === "acquisition_planned";
+  const stable = decision.stage === "stable";
+  const tone: MedicationCareTone = critical ? "critical" : stable ? "stable" : planning ? "planning" : "attention";
+  if (tone === "critical") return {
+    tone,
+    actionClass: "border-coral/25 bg-coral/[0.08] text-coral",
+    badgeClass: "border-coral/20 bg-coral/[0.06] text-coral",
+  };
+  if (tone === "planning") return {
+    tone,
+    actionClass: "border-ice/25 bg-ice/[0.08] text-ice",
+    badgeClass: "border-ice/20 bg-ice/[0.06] text-ice",
+  };
+  if (tone === "stable") return {
+    tone,
+    actionClass: "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400",
+    badgeClass: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400",
+  };
+  return {
+    tone,
+    actionClass: "border-amber-400/25 bg-amber-400/[0.08] text-amber-400",
+    badgeClass: "border-amber-400/20 bg-amber-400/[0.06] text-amber-400",
+  };
+}
+
+export function plannedPrescriptionAgendaState(plannedDate: string | null | undefined, selectedDate: string, today: string) {
+  const day = plannedDate?.slice(0, 10) ?? "";
+  const valid = validDay(day) && validDay(selectedDate) && validDay(today);
+  const overdue = valid && selectedDate === today && day < today;
+  return { visible: valid && (day === selectedDate || overdue), overdue, day };
+}
+
 const validDay = (value?: string | null) => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value.slice(0, 10)));
 
 /**

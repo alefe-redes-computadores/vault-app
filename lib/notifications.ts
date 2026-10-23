@@ -681,12 +681,12 @@ export async function scheduleMedicationRenewalNotification(
           id,
 
           title:
-            "Planejamento de medicamento",
+            "Renovação de receita",
 
           body:
             medico.trim()
-              ? `${nome} - Dr(a). ${medico.trim()}`
-              : nome,
+              ? `${nome} · Dr(a). ${medico.trim()} · abra o Vault para registrar ou reagendar`
+              : `${nome} · abra o Vault para registrar ou reagendar`,
 
           schedule: {
             at:

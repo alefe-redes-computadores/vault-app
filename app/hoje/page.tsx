@@ -79,7 +79,7 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
-import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
+import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/health-intelligence/medication-care-decision";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -580,31 +580,22 @@ export default function HojePage() {
         }
 
         return medicamentos
-          .filter(
-            (
-              medicamento
-            ) =>
-              medicamento.id &&
-              String(
-                medicamento.proxima_renovacao ||
-                ""
-              ).slice(
-                0,
-                10
-              ) ===
-                dataSelecionada &&
-              decideMedicationCarePath({
+          .flatMap((medicamento) => {
+              if (!medicamento.id) return [];
+              const agenda = plannedPrescriptionAgendaState(
+                medicamento.proxima_renovacao,
+                dataSelecionada,
+                getLocalTodayISO(),
+              );
+              if (!agenda.visible) return [];
+              const decision = decideMedicationCarePath({
                 medication: medicamento,
                 renewals: renewalsByMedication.get(medicamento.id!) ?? [],
                 today: getLocalTodayISO(),
                 needsPrescription: true,
                 needsStock: false,
-              }).stage === "prescription_needed"
-          )
-          .map(
-            (
-              medicamento
-            ) => ({
+              });
+              if (decision.stage === "prescription_needed") return [{
               id:
                 `renovacao-receita-${medicamento.id}-${dataSelecionada}`,
 
@@ -621,9 +612,14 @@ export default function HojePage() {
                 `Renovar receita de ${medicamento.nome}`,
 
               descricao:
-                "Data planejada para renovação da receita",
-            })
-          );
+                agenda.overdue
+                  ? `Planejada para ${agenda.day.split("-").reverse().join("/")} · continua pendente até registrar ou reagendar`
+                  : "Data planejada para renovação da receita",
+              atrasada: agenda.overdue,
+              actionHref: decision.actionHref,
+              }];
+              return [];
+          });
       },
       [
         medicamentos,
@@ -3455,13 +3451,13 @@ export default function HojePage() {
                               "vibrate"
                             );
 
-                            router.push(
-                              `/saude/medicamentos/detalhes?id=${evento.medicamentoId}`
-                            );
+                            router.push(evento.actionHref);
                           }
                         }
                         className={`w-full rounded-[22px] border p-3.5 text-left transition-all ${
-                          isRetirada
+                          evento.atrasada
+                            ? "border-coral/25 bg-coral/[0.055]"
+                            : isRetirada
                             ? "border-ice/25 bg-ice/[0.055]"
                             : "border-amber-400/25 bg-amber-400/[0.055]"
                         }`}
@@ -3469,7 +3465,9 @@ export default function HojePage() {
                         <div className="flex items-center gap-3">
                           <div
                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                              isRetirada
+                              evento.atrasada
+                                ? "bg-coral/15 text-coral"
+                                : isRetirada
                                 ? "bg-ice/15 text-ice"
                                 : "bg-amber-400/15 text-amber-400"
                             }`}
@@ -3491,12 +3489,14 @@ export default function HojePage() {
 
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide ${
-                                  isRetirada
+                                  evento.atrasada
+                                    ? "bg-coral/10 text-coral"
+                                    : isRetirada
                                     ? "bg-ice/10 text-ice"
                                     : "bg-amber-400/10 text-amber-400"
                                 }`}
                               >
-                                Receita
+                                {evento.atrasada ? "Pendente" : "Receita"}
                               </span>
                             </div>
 

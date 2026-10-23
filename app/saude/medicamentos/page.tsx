@@ -4,7 +4,7 @@
 import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
-import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
+import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -1015,6 +1015,7 @@ export default function MedicamentosListPage() {
       const careAction = careDecision.stage !== "stable"
         ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
         : accessAction;
+      const carePresentation = medicationCarePresentation(careDecision, insight?.urgencia);
 
       // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
@@ -1160,7 +1161,7 @@ export default function MedicamentosListPage() {
                   )}
 
                   {careDecision.stage !== "stable" && (
-                    <span className="inline-flex min-h-6 max-w-full items-center rounded-lg border border-violet-400/20 bg-violet-400/[0.06] px-2 py-1 text-[9px] font-semibold text-violet-300">
+                    <span className={`inline-flex min-h-6 max-w-full items-center rounded-lg border px-2 py-1 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
                       {careDecision.label}
                     </span>
                   )}
@@ -1183,12 +1184,7 @@ export default function MedicamentosListPage() {
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${
-                      insight.urgencia ===
-                      "alta"
-                        ? "border-coral/25 bg-coral/[0.08] text-coral"
-                        : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
-                    }`}
+                    className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${carePresentation.actionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
