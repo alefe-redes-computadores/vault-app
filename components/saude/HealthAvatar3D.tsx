@@ -172,6 +172,35 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const curls:[number,number,number][]=[[-.15,3.015,-.02],[-.08,3.045,-.035],[0,3.055,-.04],[.08,3.045,-.035],[.15,3.015,-.02],[-.18,2.96,-.02],[.18,2.96,-.02]];
       for(const [x,y,z] of curls)oval(materials.hair,x,appearance.hat==='none'?y:y-.055,z,[.075,.072,.075]);
     }
+    // V239: cabelos diversos usam volumes estáticos de baixo custo. Nenhum estilo
+    // implica gênero ou condição clínica e todos continuam compatíveis com boné.
+    if(appearance.hair==='coily'){
+      const coils:[number,number,number][]=[[-.17,2.99,-.03],[-.11,3.045,-.04],[-.04,3.065,-.045],[.04,3.065,-.045],[.11,3.045,-.04],[.17,2.99,-.03],[-.19,2.925,-.025],[.19,2.925,-.025]];
+      for(const [x,y,z] of coils)oval(materials.hair,x,appearance.hat==='none'?y:y-.065,z,[.063,.066,.065]);
+    }
+    if(appearance.hair==='wavy'||appearance.hair==='long'||appearance.hair==='bob'){
+      const length=appearance.hair==='long'?.47:appearance.hair==='bob'?.27:.34;
+      const topY=appearance.hat==='none'?2.982:2.925;
+      oval(materials.hair,0,topY,-.055,[.235,.135,.22]);
+      for(const sign of [-1,1]){
+        const side=mesh(new THREE.CapsuleGeometry(.068,length,5,10),materials.hair,sign*.19,2.79-length*.28,-.055);
+        side.rotation.z=sign*(appearance.hair==='wavy'?.12:.035);side.raycast=()=>{};
+        if(appearance.hair==='wavy') oval(materials.hair,sign*.205,2.66,-.045,[.072,.105,.075]).raycast=()=>{};
+      }
+      if(appearance.hair==='long'){const back=mesh(softBox(.34,.42,.075,.11),materials.hair,0,2.68,-.19);back.raycast=()=>{};}
+    }
+    if(appearance.hair==='bun'){
+      oval(materials.hair,0,appearance.hat==='none'?2.995:2.94,-.045,[.225,.13,.205]);
+      oval(materials.hair,0,appearance.hat==='none'?3.13:3.06,-.09,[.105,.10,.10]).raycast=()=>{};
+    }
+    if(appearance.hair==='ponytail'){
+      oval(materials.hair,0,appearance.hat==='none'?2.99:2.93,-.045,[.225,.13,.205]);
+      const tail=mesh(new THREE.CapsuleGeometry(.065,.34,5,10),materials.hair,.16,2.73,-.205);tail.rotation.z=-.22;tail.raycast=()=>{};
+    }
+    if(appearance.hair==='braids'){
+      oval(materials.hair,0,appearance.hat==='none'?2.985:2.925,-.05,[.225,.125,.205]);
+      for(const sign of [-1,1])for(let segment=0;segment<3;segment+=1){const braid=mesh(new THREE.CapsuleGeometry(.025,.13,3,7),materials.hair,sign*(.155+segment*.016),2.76-segment*.13,-.13);braid.rotation.z=-sign*.10;braid.raycast=()=>{};}
+    }
     // V201: linha frontal suave e estática (sem RAF, geometria criada uma só vez por cena).
     // Sob boné, a aba já define o contorno, portanto não duplicar a borda.
     if (appearance.hat === 'none' && (appearance.hair === 'short' || appearance.hair === 'fade')) {
@@ -194,6 +223,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const beard=mesh(new THREE.CylinderGeometry(.128,.077,.12,12),materials.facialHair,0,2.61,.045);beard.raycast=()=>{};
       oval(materials.facialHair,0,2.574,.085,[.078,.042,.054]).raycast=()=>{};
       const moustache=mesh(new THREE.CapsuleGeometry(.012,.09,3,8),materials.facialHair,0,2.688,.21);moustache.rotation.z=Math.PI/2;moustache.raycast=()=>{};
+    }
+    if(appearance.earrings!=='none'){
+      for(const sign of [-1,1]){
+        if(appearance.earrings==='stud') oval(materials.white,sign*.211,2.735,.055,[.012,.012,.009]).raycast=()=>{};
+        else if(appearance.earrings==='hoop'){const hoop=mesh(new THREE.TorusGeometry(.025,.005,5,12),materials.white,sign*.215,2.71,.055);hoop.rotation.y=sign*.18;hoop.raycast=()=>{};}
+      }
     }
     const neck=limb(.082,.108,.22,materials.skin,0,2.45,-.006);neck.scale.z=.9;
     const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();

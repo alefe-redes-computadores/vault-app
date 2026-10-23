@@ -3,14 +3,16 @@ export type AvatarHat = 'none' | 'baseball' | 'flat';
 export type AvatarHatBrand = 'none' | 'nike' | 'new-era' | 'generic';
 export type AvatarGlasses = 'none' | 'rectangular' | 'round';
 export type AvatarSneakers = 'classic' | 'runner' | 'high-top';
-export type AvatarHair = 'short' | 'fade' | 'curly' | 'bald';
+export type AvatarHair = 'short' | 'fade' | 'curly' | 'coily' | 'wavy' | 'long' | 'bob' | 'bun' | 'ponytail' | 'braids' | 'bald';
 export type AvatarFacialHair = 'none' | 'stubble' | 'goatee' | 'beard';
+export type AvatarEarrings = 'none' | 'stud' | 'hoop';
 export type AvatarStyle = {
   topColor: string;
   bottomColor: string;
   hair: AvatarHair;
   hairColor: string;
   facialHair: AvatarFacialHair;
+  earrings: AvatarEarrings;
   hat: AvatarHat;
   hatBrand: AvatarHatBrand;
   hatColor: string;
@@ -24,7 +26,7 @@ export const AVATAR_STYLE_COLORS = [
 ] as const;
 export const DEFAULT_AVATAR_STYLE: AvatarStyle = {
   topColor: '#31465b', bottomColor: '#243447',
-  hair: 'short', hairColor: '#17212b', facialHair: 'none',
+  hair: 'short', hairColor: '#17212b', facialHair: 'none', earrings: 'none',
   hat: 'none', hatBrand: 'none', hatColor: '#111827',
   glasses: 'none', glassesColor: '#111827',
   sneakers: 'classic', sneakersColor: '#111827',
@@ -33,8 +35,9 @@ const hatValues = ['none', 'baseball', 'flat'] as const;
 const brandValues = ['none', 'nike', 'new-era', 'generic'] as const;
 const glassesValues = ['none', 'rectangular', 'round'] as const;
 const sneakerValues = ['classic', 'runner', 'high-top'] as const;
-const hairValues = ['short', 'fade', 'curly', 'bald'] as const;
+const hairValues = ['short', 'fade', 'curly', 'coily', 'wavy', 'long', 'bob', 'bun', 'ponytail', 'braids', 'bald'] as const;
 const facialHairValues = ['none', 'stubble', 'goatee', 'beard'] as const;
+const earringValues = ['none', 'stud', 'hoop'] as const;
 function oneOf<T extends string>(value: unknown, choices: readonly T[], fallback: T): T {
   return typeof value === 'string' && (choices as readonly string[]).includes(value) ? value as T : fallback;
 }
@@ -50,6 +53,7 @@ export function normalizeAvatarStyle(value: unknown): AvatarStyle {
     hair: oneOf(data.hair, hairValues, DEFAULT_AVATAR_STYLE.hair),
     hairColor: color(data.hairColor, DEFAULT_AVATAR_STYLE.hairColor),
     facialHair: oneOf(data.facialHair, facialHairValues, DEFAULT_AVATAR_STYLE.facialHair),
+    earrings: oneOf(data.earrings, earringValues, DEFAULT_AVATAR_STYLE.earrings),
     hat: oneOf(data.hat, hatValues, DEFAULT_AVATAR_STYLE.hat),
     hatBrand: oneOf(data.hatBrand, brandValues, DEFAULT_AVATAR_STYLE.hatBrand),
     hatColor: color(data.hatColor, DEFAULT_AVATAR_STYLE.hatColor),
@@ -62,5 +66,6 @@ export function normalizeAvatarStyle(value: unknown): AvatarStyle {
 export function avatarStyleLabel(style: AvatarStyle): string {
   const hat = style.hat === 'none' ? 'Sem boné' : style.hatBrand === 'nike' ? 'Boné Nike' : style.hatBrand === 'new-era' ? 'Boné New Era' : 'Boné';
   const glasses = style.glasses === 'none' ? 'sem óculos' : style.glasses === 'round' ? 'óculos redondos' : 'óculos retangulares';
-  return `${hat}, ${glasses}, tênis ${style.sneakers === 'classic' ? 'clássico' : style.sneakers === 'runner' ? 'esportivo' : 'cano alto'}`;
+  const hair: Record<AvatarHair,string> = {short:'curto',fade:'degradê',curly:'cacheado',coily:'crespo',wavy:'ondulado',long:'longo',bob:'bob',bun:'coque',ponytail:'rabo de cavalo',braids:'tranças',bald:'raspado'};
+  return `Cabelo ${hair[style.hair]}, ${hat}, ${glasses}, tênis ${style.sneakers === 'classic' ? 'clássico' : style.sneakers === 'runner' ? 'esportivo' : 'cano alto'}`;
 }

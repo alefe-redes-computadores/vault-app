@@ -8,11 +8,11 @@ const editor = read("components/saude/AvatarStyleEditor.tsx");
 const scene = read("components/saude/HealthAvatar3D.tsx");
 const fallback = read("components/saude/HealthBody.tsx");
 
-for (const field of ["hair: AvatarHair", "hairColor: string", "facialHair: AvatarFacialHair"]) assert.match(style, new RegExp(field));
-assert.match(style, /hairValues = \['short', 'fade', 'curly', 'bald'\]/);
+for (const field of ["hair: AvatarHair", "hairColor: string", "facialHair: AvatarFacialHair", "earrings: AvatarEarrings"]) assert.match(style, new RegExp(field));
+assert.match(style, /hairValues = \['short', 'fade', 'curly',[^\]]*'braids', 'bald'\]/);
 assert.match(style, /facialHairValues = \['none', 'stubble', 'goatee', 'beard'\]/);
 assert.match(style, /hairColor: color\(data\.hairColor/);
-assert.match(framing, /style\.hair,style\.facialHair/);
+assert.match(framing, /style\.hair,style\.facialHair,style\.earrings/);
 
 assert.match(editor, /\['face','Rosto',UserRound\]/);
 assert.match(editor, /Cor do cabelo e barba/);

@@ -63,6 +63,11 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         {appearance.hair==='short'?<path d="M69 28 Q66 13 80 10 Q103 3 112 21 L112 30 Q103 21 94 21 Q82 24 69 28Z" fill={appearance.hairColor}/>:null}
         {appearance.hair==='fade'?<><path d="M70 27 Q72 12 90 10 Q108 11 111 27 Q100 20 90 21 Q80 20 70 27Z" fill={appearance.hairColor}/><path d="M69 24 L72 36 M111 24 L108 36" stroke={appearance.hairColor} strokeWidth="3"/></>:null}
         {appearance.hair==='curly'?<g fill={appearance.hairColor}>{[72,79,86,93,100,107].map((x,index)=><circle key={x} cx={x} cy={index%2?13:16} r="7"/>)}<circle cx="69" cy="23" r="6"/><circle cx="111" cy="23" r="6"/></g>:null}
+        {appearance.hair==='coily'?<g fill={appearance.hairColor}>{[69,76,83,90,97,104,111].map((x,index)=><circle key={x} cx={x} cy={index%2?12:16} r="6.2"/>)}<circle cx="68" cy="24" r="5.5"/><circle cx="112" cy="24" r="5.5"/></g>:null}
+        {(appearance.hair==='wavy'||appearance.hair==='long'||appearance.hair==='bob')?<g fill={appearance.hairColor}><path d="M68 29 Q66 7 90 6 Q114 7 112 30 Q105 20 90 20 Q75 20 68 29Z"/><path d={appearance.hair==='long'?"M68 24 Q62 48 68 79 L78 74 L75 31Z M112 24 Q118 48 112 79 L102 74 L105 31Z":appearance.hair==='bob'?"M68 24 Q64 42 69 55 L78 52 L75 30Z M112 24 Q116 42 111 55 L102 52 L105 30Z":"M68 24 Q61 43 70 65 Q77 58 74 31Z M112 24 Q119 43 110 65 Q103 58 106 31Z"}/></g>:null}
+        {appearance.hair==='bun'?<g fill={appearance.hairColor}><ellipse cx="90" cy="18" rx="22" ry="14"/><circle cx="90" cy="3" r="10"/></g>:null}
+        {appearance.hair==='ponytail'?<g fill={appearance.hairColor}><ellipse cx="90" cy="18" rx="22" ry="14"/><path d="M108 17 Q127 22 119 59 Q111 48 111 28Z"/></g>:null}
+        {appearance.hair==='braids'?<g fill={appearance.hairColor}><ellipse cx="90" cy="18" rx="22" ry="14"/><path d="M72 24 Q66 48 72 78 M77 25 Q71 49 77 79 M108 24 Q114 48 108 78 M103 25 Q109 49 103 79" fill="none" stroke={appearance.hairColor} strokeWidth="4.2" strokeLinecap="round"/></g>:null}
         {appearance.hat!=='none'&&<g aria-label="Boné decorativo">
           <path d="M65 28 Q65 1 90 3 Q115 1 115 28 L108 30 Q89 22 70 30Z" fill={appearance.hatColor} stroke="#f8fafc" strokeOpacity=".13" strokeWidth=".9"/>
           <path d={appearance.hat==='flat'?"M64 26 L117 26 L137 30 L137 35 Q96 37 63 31Z":"M65 27 Q99 21 121 28 Q135 30 122 35 Q96 39 63 31Z"} fill={appearance.hatColor} stroke="#e2e8f0" strokeOpacity=".3" strokeWidth=".9" />
@@ -74,6 +79,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
           {appearance.glasses==='round'?<><ellipse cx="81" cy="37" rx="8.2" ry="7.2"/><ellipse cx="99" cy="37" rx="8.2" ry="7.2"/></>:<><rect x="73" y="32" width="16" height="10.5" rx="2.5"/><rect x="91" y="32" width="16" height="10.5" rx="2.5"/></>}
           <path d="M89 36 Q90 34 91 36 M73 34 L68 32 M107 34 L112 32" fill="none" />
         </g>}
+        {appearance.earrings==='stud'?<g fill="#e2e8f0"><circle cx="68" cy="42" r="1.6"/><circle cx="112" cy="42" r="1.6"/></g>:appearance.earrings==='hoop'?<g fill="none" stroke="#e2e8f0" strokeWidth="1.3"><circle cx="67" cy="44" r="3.5"/><circle cx="113" cy="44" r="3.5"/></g>:null}
         <path d="M74 17 Q88 9 101 15" fill="none" stroke="#526273" strokeOpacity=".32" strokeWidth="2.5" strokeLinecap="round" />
         <path d="M79 33 Q82 31 85 33 M96 33 Q99 31 102 33" fill="none" stroke={faceDetail} strokeOpacity=".75" strokeWidth="1.5" strokeLinecap="round" />
         <path d="M80 37 h3 M97 37 h3" stroke="#231f1e" strokeWidth="2" strokeLinecap="round" />

@@ -5,6 +5,8 @@
 O Avatar é uma representação escolhida pela própria pessoa — não um personagem médico genérico. A configuração visual é **cosmética**, personalizável e separada de evidências clínicas. O desenho inicial é intencionalmente estilizado, não uma reconstrução anatômica 3D fiel nem um diagnóstico.
 
 - A pessoa escolhe boné (com/sem marca, Nike, New Era, cores e modelo), óculos (inclusive armação de grau) e tênis (modelo e cor). Representações de marca são apenas opções textuais de estilo; não são produtos oficiais nem acessórios conectados.
+- Cabelo, barba e brincos são escolhas independentes e abertas a qualquer pessoa. O VAULT não cria modelos “masculino” e “feminino”, não infere gênero por nome, foto ou registros e não usa aparência como dado clínico.
+- No primeiro acesso, a personalização inicial é opcional. A pessoa pode escolher cabelo e cor antes de entrar; falha ou indisponibilidade do armazenamento cosmético nunca pode impedir a criação do perfil principal.
 - O estilo nunca significa diagnóstico, tratamento, alteração de peso ou estado de saúde. O indicador do Brain, peso, humor, equipamentos de saúde e marcadores de cirurgias devem obedecer aos registros reais e suas limitações.
 - A personalização atual é salva em preferência local protegida por chave de **conta e pessoa** (`avatarPreferenceKey`); não integra a sincronização clínica. A interface deve dizer claramente que o estilo não está ainda sincronizado entre aparelhos. Nunca inferir ou falsificar sincronização sem contrato de banco e migração.
 - Suportar 3D, ilustração, fallback WebGL, modo compacto, controle de rotação/zoom e preferências antigas. Não misturar boné/óculos/tênis com relógio, anel ou equipamento médico.
