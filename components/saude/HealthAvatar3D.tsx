@@ -291,9 +291,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // V205: a faixa inferior assenta a copa sobre a cabeça e os painéis frontais
       // quebram a leitura de meia esfera. São peças estáticas, sem custo por quadro.
       const capBand=mesh(new THREE.CylinderGeometry(.232,.238,.034,22,1,true),materials.capShade,0,2.967,-.006);capBand.raycast=()=>{};
-      for(const sign of [-1,1]){
-        const crownPanel=mesh(taperedBox(.058,.042,.105,.009),materials.capShade,sign*.052,3.076,.201);crownPanel.rotation.z=-sign*.13;crownPanel.raycast=()=>{};
-      }
+      // V232 FACE SAFETY: retira duas placas frontais finas que podem projetar
+      // artefatos verticais no rosto no WebGL móvel; copa/aba são preservadas.
       // V197: copa e aba continuam legíveis de frente, mas ficam contidas na largura
       // do rosto para não formar as antigas faixas flutuantes sobre os óculos.
       const brim=mesh(taperedBox(appearance.hat==="flat"?.258:.246,appearance.hat==="flat"?.292:.278,.017,.158),materials.cap,0,2.987,.198);
@@ -326,7 +325,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const hole = new THREE.Path();
         hole.moveTo(-.058,-.029); hole.lineTo(-.058,.029); hole.lineTo(.058,.029); hole.lineTo(.058,-.029); hole.closePath();
         outline.holes.push(hole);
-        const frameGeometry = rectangular ? new THREE.ExtrudeGeometry(outline,{depth:.009,bevelEnabled:false,curveSegments:3}) : new THREE.TorusGeometry(.070,.009,7,24);
+        // V232 FACE SAFETY: aro plano com recorte, sem extrusão de alta razão de aspecto.
+        const frameGeometry = rectangular ? new THREE.ShapeGeometry(outline,4) : new THREE.TorusGeometry(.070,.009,7,24);
         const ring=mesh(frameGeometry,materials.glasses,x,y,z);
         ring.raycast=()=>{};
         // V199: hastes afuniladas acompanham a lateral do crânio e chegam à nova
@@ -440,15 +440,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const brainPanel=mesh(softBox(.27,.24,.025,.018),brainPanelMaterial,0,2.14,.229);brainPanel.userData.action="brain";
     const signalMaterial=new THREE.MeshStandardMaterial({color:avatarAttentionColor(attentionRef.current),emissive:avatarAttentionColor(attentionRef.current),emissiveIntensity:.35,metalness:.3,roughness:.4});
     const signalRing=new THREE.Group();model.add(signalRing);
-    // V221 R3: Android WebGL pode esticar as duas faixas laterais de alta proporcao
-    // do Brain ate o topo da cena. Mantemos apenas os marcadores horizontais
-    // estaveis, em BoxGeometry, sem alterar sinais clinicos ou render loop.
-    // V222: faixa curta integrada ao painel, sem peças alongadas de alta proporção.
-    for(const y of [2.265,2.015]){
-      const rail=mesh(new THREE.BoxGeometry(.22,.007,.012),signalMaterial,0,y,.249);
-      rail.userData.action="brain";
-      signalRing.add(rail);
-    }
+    // V232 FACE SAFETY: sem rails adicionais. Painel, LEDs e glifo preservados.
     // Três LEDs geométricos discretos: indicador abstrato, nunca dado clínico inventado.
     const brainLedGeometry=new THREE.SphereGeometry(.008,8,6);
     for(const x of [-.042,0,.042]){
