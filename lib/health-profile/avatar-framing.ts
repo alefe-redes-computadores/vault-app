@@ -7,4 +7,4 @@ export function avatarCameraFrame(frame:AvatarFraming){
   return {height:1.55,distance:6};
 }
 /** Material colors update in place. Only structural accessory choices rebuild geometry. */
-export function avatarStyleGeometryKey(style:AvatarStyle){return JSON.stringify([style.hair,style.facialHair,style.earrings,style.brows,style.lips,style.hat,style.hatBrand,style.glasses,style.sneakers]);}
+export function avatarStyleGeometryKey(style:AvatarStyle){return JSON.stringify([style.hair,style.facialHair,style.earrings,style.brows,style.lips,style.topStyle,style.hat,style.hatBrand,style.glasses,style.sneakers]);}

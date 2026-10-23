@@ -194,11 +194,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     if(appearance.hair==='bun'){
       oval(materials.hair,0,appearance.hat==='none'?2.995:2.94,-.045,[.225,.13,.205]);
-      oval(materials.hair,0,appearance.hat==='none'?3.13:3.06,-.09,[.105,.10,.10]).raycast=()=>{};
+      // Com boné, o coque desce para a nuca em vez de atravessar a copa.
+      oval(materials.hair,0,appearance.hat==='none'?3.13:2.82,appearance.hat==='none'?-.09:-.205,[.105,.10,.10]).raycast=()=>{};
     }
     if(appearance.hair==='ponytail'){
       oval(materials.hair,0,appearance.hat==='none'?2.99:2.93,-.045,[.225,.13,.205]);
-      const tail=mesh(new THREE.CapsuleGeometry(.065,.34,5,10),materials.hair,.16,2.73,-.205);tail.rotation.z=-.22;tail.raycast=()=>{};
+      const tail=mesh(new THREE.CapsuleGeometry(.065,.34,5,10),materials.hair,.16,appearance.hat==='none'?2.73:2.67,-.205);tail.rotation.z=-.22;tail.raycast=()=>{};
     }
     if(appearance.hair==='braids'){
       oval(materials.hair,0,appearance.hat==='none'?2.985:2.925,-.05,[.225,.125,.205]);
@@ -237,6 +238,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();
     const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
     mesh(shirtGeometry,materials.top,0,1.665,0);
+    if(appearance.topStyle==='hoodie'){
+      const hood=mesh(new THREE.TorusGeometry(.145,.035,7,20,Math.PI*1.45),materials.top,0,2.43,-.08);hood.rotation.x=Math.PI/2;hood.rotation.z=-Math.PI*.225;hood.raycast=()=>{};
+      for(const sign of [-1,1]){const cord=mesh(new THREE.CapsuleGeometry(.004,.18,2,6),materials.shirtDetail,sign*.055,2.27,.19);cord.raycast=()=>{};}
+    }
     mesh(softBox(.54,.25,.35),materials.bottom,0,1.535,0);
     // V186: a transição pélvica acompanha o tronco e os shorts; o corpo deixa de parecer
     // dois blocos apoiados um sobre o outro quando observado de lado ou pelas costas.
@@ -274,7 +279,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const holdsPhone=sign===phoneArmSign;
       // V195: postura assimétrica discreta integra ombro, antebraço e pegada sem
       // adicionar malhas, rig ou animação contínua ao renderer sob demanda.
-      const sleeve=limb(.112,.1,.27,materials.top,sign*.337,2.25,0,sign*(holdsPhone?.10:.14));sleeve.scale.z=1.08;
+      const sleeveMaterial=appearance.topStyle==='tank'?materials.skin:materials.top;
+      const sleeve=limb(appearance.topStyle==='tank'?.095:.112,appearance.topStyle==='tank'?.09:.1,appearance.topStyle==='tank'?.16:.27,sleeveMaterial,sign*.337,appearance.topStyle==='tank'?2.29:2.25,0,sign*(holdsPhone?.10:.14));sleeve.scale.z=1.08;
       const upperArm=limb(.09,.082,.36,materials.skin,sign*(holdsPhone?.382:.39),2.005,holdsPhone?.012:0,sign*(holdsPhone?.09:.13));upperArm.raycast=()=>{};
       // V185: articulações facetadas preservam mobilidade visual sem o efeito de “bolinhas” entre os membros.
       const elbow=mesh(softBox(.137,.126,.13,.047),materials.skin,sign*.418,1.815,.002);elbow.rotation.z=sign*.08;elbow.raycast=()=>{};
@@ -505,7 +511,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
 
     // V225: bounded attention brightness; lower idle emission, no new geometry
     // or animation loop. Context changes still trigger only the existing draw().
-    const setAttention=(rank:number)=>{const level=Number.isFinite(rank)?Math.max(0,Math.min(3,Math.floor(rank))):0;const color=avatarAttentionColor(level);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalMaterial.emissiveIntensity=level===0?.14:.25+.09*level;signalRing.visible=level>0;};
+    const setAttention=(rank:number)=>{const level=Number.isFinite(rank)?Math.max(0,Math.min(4,Math.floor(rank))):0;const color=avatarAttentionColor(level);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalMaterial.emissiveIntensity=level===0?.14:Math.min(.61,.25+.09*level);signalRing.visible=level>0;};
     setAttention(attentionRef.current);
     const backBadge=mesh(softBox(.22,.18,.018,.015),brainPanelMaterial,0,2.16,-.229);backBadge.rotation.y=Math.PI;backBadge.userData.action="brain";
     const braces=avatarBraceSlots(devices);

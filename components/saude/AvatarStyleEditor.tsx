@@ -6,6 +6,7 @@ import { AVATAR_STYLE_COLORS, DEFAULT_AVATAR_STYLE, avatarStyleLabel, normalizeA
 type Key = keyof AvatarStyle;
 type Option = { value: string; label: string };
 const sections: { key: Key; title: string; options: Option[] }[] = [
+  { key: 'topStyle', title: 'Parte de cima', options: [{value:'tee',label:'Camiseta'},{value:'hoodie',label:'Moletom'},{value:'tank',label:'Regata'}] },
   { key: 'hair', title: 'Cabelo', options: [{value:'short',label:'Curto'},{value:'fade',label:'Degradê'},{value:'curly',label:'Cacheado'},{value:'coily',label:'Crespo'},{value:'wavy',label:'Ondulado'},{value:'long',label:'Longo'},{value:'bob',label:'Bob'},{value:'bun',label:'Coque'},{value:'ponytail',label:'Rabo de cavalo'},{value:'braids',label:'Tranças'},{value:'bald',label:'Raspado'}] },
   { key: 'facialHair', title: 'Barba', options: [{value:'none',label:'Sem barba'},{value:'stubble',label:'Rala'},{value:'goatee',label:'Cavanhaque'},{value:'beard',label:'Cheia'}] },
   { key: 'earrings', title: 'Brincos', options: [{value:'none',label:'Sem brincos'},{value:'stud',label:'Ponto de luz'},{value:'hoop',label:'Argola'}] },
@@ -39,6 +40,7 @@ export function AvatarStyleEditor({value,onChange,onPreview,name,onNameChange}:{
     </div>
     {category==='outfit'?<div className="mb-4 rounded-xl border border-surface-border/70 bg-surface-raised/30 p-3">
       <p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><Palette size={15}/> Cores da roupa</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">{sections.find(section=>section.key==='topStyle')?.options.map(item=><button key={item.value} type="button" aria-pressed={value.topStyle===item.value} onClick={()=>change('topStyle',item.value)} className={`min-h-11 rounded-xl border px-2 text-xs font-semibold ${value.topStyle===item.value?'border-emerald-300/40 bg-emerald-400/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>{item.label}</button>)}</div>
       <ColorSelector label="Camiseta" value={value.topColor} onChange={color=>change('topColor',color)}/>
       <ColorSelector label="Parte de baixo" value={value.bottomColor} onChange={color=>change('bottomColor',color)}/>
     </div>:null}

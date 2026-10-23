@@ -73,3 +73,10 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - A primeira personalização mostra uma prévia imediata e oferece cabelo, óculos, brincos, sobrancelhas e lábios sem rotular o corpo como masculino ou feminino.
 - Sobrancelhas e lábios são escolhas cosméticas independentes. Nunca devem virar evidência clínica, inferência de gênero ou dado de diagnóstico.
 - Preferências antigas continuam válidas por normalização; novos campos ausentes recebem valores seguros sem bloquear o primeiro acesso.
+
+## Continuidade V241 — looks, roupa e encaixe
+
+- Looks iniciais são atalhos editáveis, nunca inferências sobre gênero. A pessoa pode combinar cabelo, rosto, acessórios e roupa livremente.
+- Camiseta, moletom e regata são escolhas cosméticas compartilhadas pelo 3D e pela ilustração de contingência.
+- Coque e rabo de cavalo se reposicionam quando há boné para evitar interseção visual. A prévia do primeiro acesso usa etapas compactas e carregamento sob demanda.
+- O sinal do Brain preserva os quatro níveis de prioridade e aparece em uma única superfície explicativa. Ele descreve necessidade de revisão, nunca diagnóstico.
