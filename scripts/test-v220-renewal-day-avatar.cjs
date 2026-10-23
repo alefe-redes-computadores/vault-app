@@ -32,5 +32,7 @@ const readings = read("lib/health-profile/avatar-readings.ts");
 assert.match(readings, /const ownedDevices=new Map\(/);
 assert.doesNotMatch(readings, /devices\.find\(/);
 const avatar = read("components/saude/HealthAvatar3D.tsx");
-assert.match(avatar, /phoneThumb=mesh\(new THREE\.CapsuleGeometry\(\.013,\.056/);
+assert.match(avatar, /phoneThumb=mesh\(new THREE\.CapsuleGeometry\(\.012,\.050/);
+assert.match(avatar, /phoneGripPad=mesh\(taperedBox\(\.075,\.095,\.145,\.052\)/);
+assert.doesNotMatch(avatar, /phoneThumb=mesh\(new THREE\.CapsuleGeometry\(\.013,\.056/);
 console.log("V220: receita versus aquisição, dia reativo, cérebro e Avatar OK");

@@ -6,6 +6,7 @@ import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPr
 import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, isFutureAcquisition, realizedAcquisitionExpense, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -1752,6 +1753,15 @@ function MedicamentoDetalhesContent() {
   const hoje =
     getLocalTodayISO();
 
+  const careDecision = decideMedicationCarePath({
+    medication: med,
+    renewals: renovacoes,
+    withdrawal: scheduledWithdrawalForMedication(retiradas, med.id!) ?? null,
+    today: hoje,
+    needsPrescription: Boolean(alertaInteligente.deveRenovar && alertaInteligente.motivo === "receita"),
+    needsStock: saldoRegistrado !== null && saldoRegistrado <= 5,
+  });
+
   const seteDiasAtras =
     getDateDaysAgoISO(
       6
@@ -3235,6 +3245,26 @@ function MedicamentoDetalhesContent() {
               HERO
               ================================================== */}
 
+          {careDecision.stage !== "stable" && (
+            <section className="rounded-[20px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[0.08] via-surface to-surface p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300">
+                  <Activity size={17}/>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-violet-300">Linha de cuidado</p>
+                  <h2 className="mt-1 text-sm font-bold text-ink-primary">{careDecision.label}</h2>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{careDecision.explanation}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {careDecision.evidence.slice(0,3).map(item=><span key={item} className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 text-[8px] text-ink-muted">{item}</span>)}
+                  </div>
+                </div>
+              </div>
+              <button type="button" onClick={()=>router.push(careDecision.actionHref)} className="mt-3 min-h-10 w-full rounded-xl bg-violet-300 px-3 text-[10px] font-bold text-void active:scale-[0.98]">
+                {careDecision.actionLabel}
+              </button>
+            </section>
+          )}
           <HealthSupplyEntry medicamentoId={med.id!}/>
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
           {med.id && activePersonId === med.person_id && (

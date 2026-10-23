@@ -79,6 +79,7 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
+import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -571,6 +572,13 @@ export default function HojePage() {
           return [];
         }
 
+        const renewalsByMedication = new Map<string, typeof renovacoes>();
+        for (const renewal of renovacoes) {
+          const rows = renewalsByMedication.get(renewal.medicamento_id);
+          if (rows) rows.push(renewal);
+          else renewalsByMedication.set(renewal.medicamento_id, [renewal]);
+        }
+
         return medicamentos
           .filter(
             (
@@ -584,7 +592,14 @@ export default function HojePage() {
                 0,
                 10
               ) ===
-                dataSelecionada
+                dataSelecionada &&
+              decideMedicationCarePath({
+                medication: medicamento,
+                renewals: renewalsByMedication.get(medicamento.id!) ?? [],
+                today: getLocalTodayISO(),
+                needsPrescription: true,
+                needsStock: false,
+              }).stage === "prescription_needed"
           )
           .map(
             (
@@ -612,6 +627,7 @@ export default function HojePage() {
       },
       [
         medicamentos,
+        renovacoes,
         activePersonId,
         dataSelecionada,
       ]

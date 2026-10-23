@@ -3,6 +3,8 @@
 
 import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -219,7 +221,17 @@ const SectionTitle = ({
 
 export default function MedicamentosListPage() {
   const { retiradas } = useRetiradas();
+  const { renovacoes = [] } = useRenovacoes();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
+  const renewalsByMedication = useMemo(() => {
+    const index = new Map<string, typeof renovacoes>();
+    for (const renewal of renovacoes) {
+      const rows = index.get(renewal.medicamento_id);
+      if (rows) rows.push(renewal);
+      else index.set(renewal.medicamento_id, [renewal]);
+    }
+    return index;
+  }, [renovacoes]);
   const router =
     useRouter();
 
@@ -992,6 +1004,17 @@ export default function MedicamentosListPage() {
             scheduledWithdrawalId: scheduledWithdrawals.get(med.id!)?.id,
           })
         : null;
+      const careDecision = decideMedicationCarePath({
+        medication: med,
+        renewals: renewalsByMedication.get(med.id!) ?? [],
+        withdrawal: scheduledWithdrawals.get(med.id!) ?? null,
+        today: hojeString,
+        needsPrescription: Boolean(insight?.deveRenovar && insight.motivo === "receita"),
+        needsStock: isEstoqueZerado || isEstoqueCritico,
+      });
+      const careAction = careDecision.stage !== "stable"
+        ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
+        : accessAction;
 
       // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
@@ -1136,6 +1159,12 @@ export default function MedicamentosListPage() {
                     </span>
                   )}
 
+                  {careDecision.stage !== "stable" && (
+                    <span className="inline-flex min-h-6 max-w-full items-center rounded-lg border border-violet-400/20 bg-violet-400/[0.06] px-2 py-1 text-[9px] font-semibold text-violet-300">
+                      {careDecision.label}
+                    </span>
+                  )}
+
                   {textoDose && (
                     <span className="inline-flex min-h-6 max-w-full items-center whitespace-normal break-words rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 py-1 text-[9px] font-semibold text-ink-muted">
                       Dose&nbsp;
@@ -1151,7 +1180,7 @@ export default function MedicamentosListPage() {
               </div>
 
               <div className="flex min-w-[6.75rem] shrink-0 flex-col items-stretch gap-1.5">
-                {accessAction && (
+                {careAction && (
                   <button
                     type="button"
                     className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${
@@ -1160,8 +1189,8 @@ export default function MedicamentosListPage() {
                         ? "border-coral/25 bg-coral/[0.08] text-coral"
                         : "border-amber-400/25 bg-amber-400/[0.08] text-amber-400"
                     }`}
-                    title={insight.mensagem}
-                    aria-label={`${accessAction.description} para ${med.nome}`}
+                    title={careAction.description}
+                    aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1171,7 +1200,7 @@ export default function MedicamentosListPage() {
                       );
 
                       router.push(
-                        accessAction.href
+                        careAction.href
                       );
                     }}
                   >
@@ -1179,7 +1208,7 @@ export default function MedicamentosListPage() {
                       size={11}
                     />
 
-                    {accessAction.label}
+                    {careAction.label}
                   </button>
                 )}
 

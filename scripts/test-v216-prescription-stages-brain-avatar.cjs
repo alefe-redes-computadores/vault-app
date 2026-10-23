@@ -23,6 +23,6 @@ const brain = read("lib/health-intelligence/medication-care-opportunities.ts");
 assert.match(brain, /const renewalsByMedication = indexMedicationRenewals\(renovacoes\)/);
 assert.match(brain, /renewalsByMedication.get\(medicamento.id\)/);
 const avatar = read("components/saude/HealthAvatar3D.tsx");
-assert.match(avatar, /phoneX\+gripSign\*\.102/);
-assert.match(avatar, /phoneX-gripSign\*\.102/);
+assert.match(avatar, /phoneX\+gripSign\*\.104/);
+assert.match(avatar, /phoneX-gripSign\*\.099/);
 console.log("V216 prescription stages, one-pass renewal index, phone grip contracts passed");

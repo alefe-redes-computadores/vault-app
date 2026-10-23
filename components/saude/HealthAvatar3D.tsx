@@ -496,13 +496,17 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const roundFace=shape==='round';
         const faceDepth=roundFace?.181:.177;
         mesh(roundFace?new THREE.CircleGeometry(.068,24):new THREE.PlaneGeometry(width*.75,height*.75),materials.dark,x,watchY,faceDepth);
-        // V221: marcador visual local, abstrato e de baixo contraste.
-        // Nao exibe horario, frequencia cardiaca ou medida sem dados reais.
+        // V238: mostrador neutro com proporção de relógio real. Os ponteiros
+        // são apenas representação visual e não afirmam horário ou medida.
         if(roundFace){
-          const dial=mesh(new THREE.RingGeometry(.018,.025,20),materials.watchAccent,x,watchY,faceDepth+.006);dial.raycast=()=>{};
+          const dial=mesh(new THREE.RingGeometry(.052,.057,28),materials.watchAccent,x,watchY,faceDepth+.006);dial.raycast=()=>{};
+          const hour=mesh(new THREE.BoxGeometry(.006,.034,.003),materials.white,x-.008,watchY+.009,faceDepth+.009);hour.rotation.z=-.52;hour.raycast=()=>{};
+          const minute=mesh(new THREE.BoxGeometry(.005,.047,.003),materials.watchAccent,x+.011,watchY+.012,faceDepth+.01);minute.rotation.z=.68;minute.raycast=()=>{};
+          oval(materials.white,x,watchY,faceDepth+.012,[.006,.006,.002]).raycast=()=>{};
         }else{
-          const dial=mesh(new THREE.RingGeometry(.015,.022,20),materials.watchAccent,x,watchY+.011,faceDepth+.006);dial.raycast=()=>{};
-          const statusDot=mesh(new THREE.CircleGeometry(.005,12),materials.watchAccent,x+.022,watchY-.025,faceDepth+.006);statusDot.raycast=()=>{};
+          const hour=mesh(new THREE.BoxGeometry(.005,.032,.003),materials.white,x-.007,watchY+.007,faceDepth+.008);hour.rotation.z=-.45;hour.raycast=()=>{};
+          const minute=mesh(new THREE.BoxGeometry(.004,.043,.003),materials.watchAccent,x+.009,watchY+.011,faceDepth+.009);minute.rotation.z=.62;minute.raycast=()=>{};
+          const statusDot=mesh(new THREE.CircleGeometry(.0045,12),materials.watchAccent,x+.028,watchY-.029,faceDepth+.008);statusDot.raycast=()=>{};
         }
         const crown=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#fb923c':'#94a3b8',metalness:.45,roughness:.3});
         mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,watchY,.155);
@@ -518,15 +522,18 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // o visor fica à frente e a palma continua atrás, sem dedos sobre a tela.
     const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.119);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.128);screen.rotation.z=phoneAngle;screen.userData.action="brain";
+    const speaker=mesh(new THREE.CapsuleGeometry(.003,.025,2,6),materials.white,phoneX,1.493,.132);speaker.rotation.z=Math.PI/2+phoneAngle;speaker.raycast=()=>{};
+    const screenDot=mesh(new THREE.CircleGeometry(.004,10),materials.watchAccent,phoneX+.035,1.493,.133);screenDot.raycast=()=>{};
     // The thenar pad and side contact make the device rest inside the hand instead of floating beside it.
     const phoneGripPad=mesh(taperedBox(.075,.095,.145,.052),materials.skin,phoneX-gripSign*.054,1.376,.065);phoneGripPad.rotation.z=phoneAngle+gripSign*.08;phoneGripPad.raycast=()=>{};
     const phoneSideContact=mesh(new THREE.CapsuleGeometry(.014,.13,3,7),materials.skin,phoneX+gripSign*.095,1.382,.084);phoneSideContact.rotation.z=phoneAngle;phoneSideContact.raycast=()=>{};
     // V183: the dedicated grip replaces the generic fingers on this hand, avoiding an eight-finger overlap.
     for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
-      const finger=mesh(new THREE.CapsuleGeometry(.009,.033-fingerIndex*.002,3,6),materials.skin,phoneX+gripSign*.102,1.323+fingerIndex*.042,.08);
+      // A ponta fica atrás da moldura: a mão segura o aparelho sem cobrir o visor.
+      const finger=mesh(new THREE.CapsuleGeometry(.009,.030-fingerIndex*.0015,3,6),materials.skin,phoneX+gripSign*.104,1.326+fingerIndex*.041,.066);
       finger.rotation.z=Math.PI/2+phoneAngle;finger.rotation.y=gripSign*.12;finger.raycast=()=>{};
     }
-    const phoneThumb=mesh(new THREE.CapsuleGeometry(.013,.056,3,7),materials.skin,phoneX-gripSign*.102,1.406,.075);phoneThumb.rotation.z=gripSign*.55+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
+    const phoneThumb=mesh(new THREE.CapsuleGeometry(.012,.050,3,7),materials.skin,phoneX-gripSign*.099,1.408,.07);phoneThumb.rotation.z=gripSign*.48+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
     const gripKnuckle=mesh(new THREE.CapsuleGeometry(.004,.098,2,7),materials.skinShade,phoneX+gripSign*.101,1.388,.092);gripKnuckle.rotation.z=phoneAngle;gripKnuckle.raycast=()=>{};
     const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;

@@ -85,8 +85,8 @@ assert.match(avatar, /taperedBox\(\.041,\.061,\.016,\.017\)/);
 assert.doesNotMatch(avatar, /sign\*\.081,2\.826,\.237/);
 assert.match(avatar, /return new THREE.BoxGeometry\(Math.max\(backWidth,frontWidth\),height,depth\)/);
 assert.doesNotMatch(avatar, /positions\.setX\(/);
-// V216 keeps the dedicated grip while moving fingers behind the screen edge.
-assert.match(avatar, /phoneX\+gripSign\*\.102,1\.323\+fingerIndex\*\.042,\.08/);
+// V238 keeps the dedicated grip while moving the smaller fingers behind the screen edge.
+assert.match(avatar, /phoneX\+gripSign\*\.104,1\.326\+fingerIndex\*\.041,\.066/);
 assert.doesNotMatch(brain, /(sky|cyan)-400/);
 assert.match(brain, /data_quality:.*rose-400/);
 assert.match(brain, /financial:.*emerald-400/);

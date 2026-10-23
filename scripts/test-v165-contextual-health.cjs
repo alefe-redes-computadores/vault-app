@@ -26,7 +26,7 @@ assert.match(avatar, /phone|telefone/i);
 
 // Receita e ação possuem coluna própria: a ação não volta à faixa flexível.
 assert.match(medicine, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
-assert.match(medicine, /min-w-\[6\.75rem\][\s\S]*accessAction[\s\S]*quickDoseLabel/);
+assert.match(medicine, /min-w-\[6\.75rem\][\s\S]*careAction[\s\S]*quickDoseLabel/);
 
 // Uma dose futura é pendência, não tomada: não movimenta estoque ao agendar.
 assert.match(quickDose, /willScheduleAdHoc/);
