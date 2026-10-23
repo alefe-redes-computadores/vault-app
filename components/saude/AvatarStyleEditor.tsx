@@ -9,6 +9,8 @@ const sections: { key: Key; title: string; options: Option[] }[] = [
   { key: 'hair', title: 'Cabelo', options: [{value:'short',label:'Curto'},{value:'fade',label:'Degradê'},{value:'curly',label:'Cacheado'},{value:'coily',label:'Crespo'},{value:'wavy',label:'Ondulado'},{value:'long',label:'Longo'},{value:'bob',label:'Bob'},{value:'bun',label:'Coque'},{value:'ponytail',label:'Rabo de cavalo'},{value:'braids',label:'Tranças'},{value:'bald',label:'Raspado'}] },
   { key: 'facialHair', title: 'Barba', options: [{value:'none',label:'Sem barba'},{value:'stubble',label:'Rala'},{value:'goatee',label:'Cavanhaque'},{value:'beard',label:'Cheia'}] },
   { key: 'earrings', title: 'Brincos', options: [{value:'none',label:'Sem brincos'},{value:'stud',label:'Ponto de luz'},{value:'hoop',label:'Argola'}] },
+  { key: 'brows', title: 'Sobrancelhas', options: [{value:'soft',label:'Suaves'},{value:'defined',label:'Definidas'},{value:'full',label:'Cheias'}] },
+  { key: 'lips', title: 'Lábios', options: [{value:'natural',label:'Natural'},{value:'rose',label:'Rosé'},{value:'berry',label:'Ameixa'}] },
   { key: 'hat', title: 'Modelo do boné', options: [{value:'none',label:'Sem boné'},{value:'baseball',label:'Curvo'},{value:'flat',label:'Aba reta'}] },
   { key: 'hatBrand', title: 'Estilo da marca', options: [{value:'none',label:'Sem marca'},{value:'nike',label:'Nike'},{value:'new-era',label:'New Era'},{value:'generic',label:'Genérico'}] },
   { key: 'glasses', title: 'Óculos de grau', options: [{value:'none',label:'Sem óculos'},{value:'rectangular',label:'Retangular'},{value:'round',label:'Redondo'}] },
@@ -41,7 +43,7 @@ export function AvatarStyleEditor({value,onChange,onPreview,name,onNameChange}:{
       <ColorSelector label="Parte de baixo" value={value.bottomColor} onChange={color=>change('bottomColor',color)}/>
     </div>:null}
     {category==='face'?<div className="mb-4 rounded-xl border border-surface-border/70 bg-surface-raised/30 p-3">
-      {sections.filter(section=>section.key==='hair'||section.key==='facialHair'||section.key==='earrings').map(section=><div key={section.key} className="mb-4 last:mb-0">
+      {sections.filter(section=>section.key==='hair'||section.key==='facialHair'||section.key==='earrings'||section.key==='brows'||section.key==='lips').map(section=><div key={section.key} className="mb-4 last:mb-0">
         <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink-primary"><UserRound size={15}/> {section.title}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{section.options.map(item=><button key={item.value} type="button" aria-pressed={value[section.key]===item.value} onClick={()=>change(section.key,item.value)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${value[section.key]===item.value?'border-emerald-300/40 bg-emerald-400/10 text-emerald-200':'border-surface-border bg-surface-raised text-ink-muted'}`}>{item.label}</button>)}</div>
         {section.key==='hair'&&value.hair!=='bald'?<ColorSelector label="Cor do cabelo e barba" value={value.hairColor} onChange={color=>change('hairColor',color)}/>:null}

@@ -6,6 +6,8 @@ export type AvatarSneakers = 'classic' | 'runner' | 'high-top';
 export type AvatarHair = 'short' | 'fade' | 'curly' | 'coily' | 'wavy' | 'long' | 'bob' | 'bun' | 'ponytail' | 'braids' | 'bald';
 export type AvatarFacialHair = 'none' | 'stubble' | 'goatee' | 'beard';
 export type AvatarEarrings = 'none' | 'stud' | 'hoop';
+export type AvatarBrows = 'soft' | 'defined' | 'full';
+export type AvatarLips = 'natural' | 'rose' | 'berry';
 export type AvatarStyle = {
   topColor: string;
   bottomColor: string;
@@ -13,6 +15,8 @@ export type AvatarStyle = {
   hairColor: string;
   facialHair: AvatarFacialHair;
   earrings: AvatarEarrings;
+  brows: AvatarBrows;
+  lips: AvatarLips;
   hat: AvatarHat;
   hatBrand: AvatarHatBrand;
   hatColor: string;
@@ -26,7 +30,7 @@ export const AVATAR_STYLE_COLORS = [
 ] as const;
 export const DEFAULT_AVATAR_STYLE: AvatarStyle = {
   topColor: '#31465b', bottomColor: '#243447',
-  hair: 'short', hairColor: '#17212b', facialHair: 'none', earrings: 'none',
+  hair: 'short', hairColor: '#17212b', facialHair: 'none', earrings: 'none', brows: 'soft', lips: 'natural',
   hat: 'none', hatBrand: 'none', hatColor: '#111827',
   glasses: 'none', glassesColor: '#111827',
   sneakers: 'classic', sneakersColor: '#111827',
@@ -38,6 +42,8 @@ const sneakerValues = ['classic', 'runner', 'high-top'] as const;
 const hairValues = ['short', 'fade', 'curly', 'coily', 'wavy', 'long', 'bob', 'bun', 'ponytail', 'braids', 'bald'] as const;
 const facialHairValues = ['none', 'stubble', 'goatee', 'beard'] as const;
 const earringValues = ['none', 'stud', 'hoop'] as const;
+const browValues = ['soft', 'defined', 'full'] as const;
+const lipValues = ['natural', 'rose', 'berry'] as const;
 function oneOf<T extends string>(value: unknown, choices: readonly T[], fallback: T): T {
   return typeof value === 'string' && (choices as readonly string[]).includes(value) ? value as T : fallback;
 }
@@ -54,6 +60,8 @@ export function normalizeAvatarStyle(value: unknown): AvatarStyle {
     hairColor: color(data.hairColor, DEFAULT_AVATAR_STYLE.hairColor),
     facialHair: oneOf(data.facialHair, facialHairValues, DEFAULT_AVATAR_STYLE.facialHair),
     earrings: oneOf(data.earrings, earringValues, DEFAULT_AVATAR_STYLE.earrings),
+    brows: oneOf(data.brows, browValues, DEFAULT_AVATAR_STYLE.brows),
+    lips: oneOf(data.lips, lipValues, DEFAULT_AVATAR_STYLE.lips),
     hat: oneOf(data.hat, hatValues, DEFAULT_AVATAR_STYLE.hat),
     hatBrand: oneOf(data.hatBrand, brandValues, DEFAULT_AVATAR_STYLE.hatBrand),
     hatColor: color(data.hatColor, DEFAULT_AVATAR_STYLE.hatColor),

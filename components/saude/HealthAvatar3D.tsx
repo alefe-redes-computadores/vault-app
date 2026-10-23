@@ -82,6 +82,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
       hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .9 }),
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .94, transparent:true, opacity:.88 }),
+      lips: new THREE.MeshStandardMaterial({ color: appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':'#6b3e35', roughness: .72, transparent:true, opacity:appearance.lips==='natural'?.48:.82 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
@@ -146,7 +147,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // O brilho do olho existe em uma única camada, evitando o olhar duplicado.
     for(const sign of [-1,1]) {
       // V193: refina volumes existentes, sem novos draw calls ou acessórios flutuantes.
-      const brow=mesh(softBox(.064,.012,.012,.005),materials.hair,sign*.084,2.861,.205);brow.rotation.z=-sign*.10;brow.raycast=()=>{};
+      const browWidth=appearance.brows==='full'?.078:appearance.brows==='defined'?.069:.061;
+      const browHeight=appearance.brows==='full'?.017:appearance.brows==='defined'?.013:.009;
+      const brow=mesh(softBox(browWidth,browHeight,.012,.005),materials.hair,sign*.084,2.861,.205);brow.rotation.z=-sign*(appearance.brows==='defined'?.15:.10);brow.raycast=()=>{};
       expressionBrows.push({object:brow,sign});
       // V192: planos supraorbitais conectam sobrancelha, têmpora e ponte nasal;
       // o rosto mantém expressão e acessórios sem voltar ao aspecto circular.
@@ -419,6 +422,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const mouth=mesh(new THREE.TorusGeometry(.042,.0045,5,18,Math.PI),materials.dark,0,2.647,.242);mouth.rotation.z=Math.PI;mouth.scale.y=.62;
     const neutralMouth=mesh(softBox(.061,.006,.004,.003),materials.dark,0,2.647,.247);
     const lowerLip=mesh(taperedBox(.023,.052,.008,.006),materials.skinShade,0,2.63,.242);lowerLip.raycast=()=>{};
+    const lipTint=mesh(softBox(.072,.009,.004,.004),materials.lips,0,2.646,.251);lipTint.raycast=()=>{};
     const setExpression=(value:AvatarBodyContext['expression'])=>{
       mouth.visible=value!=="neutral";neutralMouth.visible=value==="neutral";
       mouth.rotation.z=value==="reflective"?0:Math.PI;mouth.position.y=value==="reflective"?2.61:2.647;
@@ -599,7 +603,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const ratio=avatarAdaptiveRatio(displayRatio,element.clientWidth,element.clientHeight,false,small,constrainedDevice);
       if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}
       draw();
-    },style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.capShade.color.set(value.hatColor).multiplyScalar(.58);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
+    },style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.lips.color.set(value.lips==='berry'?'#71324d':value.lips==='rose'?'#a85e6d':'#6b3e35');materials.lips.opacity=value.lips==='natural'?.48:.82;materials.cap.color.set(value.hatColor);materials.capShade.color.set(value.hatColor).multiplyScalar(.58);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};

@@ -81,7 +81,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         </g>}
         {appearance.earrings==='stud'?<g fill="#e2e8f0"><circle cx="68" cy="42" r="1.6"/><circle cx="112" cy="42" r="1.6"/></g>:appearance.earrings==='hoop'?<g fill="none" stroke="#e2e8f0" strokeWidth="1.3"><circle cx="67" cy="44" r="3.5"/><circle cx="113" cy="44" r="3.5"/></g>:null}
         <path d="M74 17 Q88 9 101 15" fill="none" stroke="#526273" strokeOpacity=".32" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M79 33 Q82 31 85 33 M96 33 Q99 31 102 33" fill="none" stroke={faceDetail} strokeOpacity=".75" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M79 33 Q82 31 85 33 M96 33 Q99 31 102 33" fill="none" stroke={appearance.hairColor} strokeOpacity={appearance.brows==='soft'?.65:.9} strokeWidth={appearance.brows==='full'?2.4:appearance.brows==='defined'?1.8:1.3} strokeLinecap="round" />
         <path d="M80 37 h3 M97 37 h3" stroke="#231f1e" strokeWidth="2" strokeLinecap="round" />
         <circle cx="81" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
         <circle cx="98" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
@@ -90,7 +90,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         {appearance.facialHair==='stubble'?<path d="M75 46 Q76 59 90 62 Q104 59 106 46 Q101 58 90 59 Q79 58 75 46Z" fill={appearance.hairColor} opacity=".32"/>:null}
         {appearance.facialHair==='goatee'?<><path d="M85 51 Q90 55 96 51 L95 61 Q90 65 85 61Z" fill={appearance.hairColor} opacity=".9"/><path d="M84 47 Q90 44 97 47" stroke={appearance.hairColor} strokeWidth="2"/></>:null}
         {appearance.facialHair==='beard'?<><path d="M73 43 Q74 60 90 66 Q106 60 108 43 Q103 56 90 61 Q77 56 73 43Z" fill={appearance.hairColor} opacity=".92"/><path d="M83 47 Q90 43 98 47" stroke={appearance.hairColor} strokeWidth="2.4"/></>:null}
-        <path d={expression==='happy'?"M84 49 Q90 53 97 49":expression==='reflective'?"M84 49 Q90 45 97 49":"M84 49 L97 49"} fill="none" stroke={faceDetail} strokeOpacity=".78" strokeWidth="1.2" strokeLinecap="round" />
+        <path d={expression==='happy'?"M84 49 Q90 53 97 49":expression==='reflective'?"M84 49 Q90 45 97 49":"M84 49 L97 49"} fill="none" stroke={appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':faceDetail} strokeOpacity={appearance.lips==='natural'?.72:.95} strokeWidth={appearance.lips==='natural'?1.2:1.7} strokeLinecap="round" />
 
         {/* V122: cheek light, hair texture and a more defined jaw. */}
         <path d="M73 32 Q70 44 78 50 M107 32 Q110 44 102 50" fill="none" stroke={avatarShade(color, 1.35)} strokeOpacity=".28" strokeWidth="2" strokeLinecap="round" />

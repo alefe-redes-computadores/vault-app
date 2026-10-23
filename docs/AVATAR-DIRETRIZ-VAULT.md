@@ -67,3 +67,9 @@ Esta diretriz é parte do código versionado e independe da memória da conta do
 - A base de inspeção e a luz de recorte dão profundidade sem animação contínua. A cena preserva renderização sob demanda, pausa fora da tela e preferência de GPU de baixo consumo.
 - A forma visual usa planos, linhas e bordas discretas. Cards e controles devem formar hierarquia, não uma coleção de bolhas arredondadas.
 - A tela expandida ocupa o viewport móvel inteiro, mantém saída visível e respeita foco, rotação, zoom e fallback para ilustração.
+
+## Continuidade V240 — identidade inclusiva com prévia
+
+- A primeira personalização mostra uma prévia imediata e oferece cabelo, óculos, brincos, sobrancelhas e lábios sem rotular o corpo como masculino ou feminino.
+- Sobrancelhas e lábios são escolhas cosméticas independentes. Nunca devem virar evidência clínica, inferência de gênero ou dado de diagnóstico.
+- Preferências antigas continuam válidas por normalização; novos campos ausentes recebem valores seguros sem bloquear o primeiro acesso.
