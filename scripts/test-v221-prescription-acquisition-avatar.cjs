@@ -51,7 +51,7 @@ assert.match(full,/if \(!isRenovacaoSomenteReceita\(renovacao\)\) return false/)
 assert.match(avatar,/V221: olhos de baixo relevo/);
 assert.match(avatar,/materials\.eyeWhite/);
 assert.match(avatar,/materials\.watchAccent/);
-assert.match(avatar,/V221 R3: Android WebGL pode esticar/);
+assert.match(avatar,/expressionLidScaleY\.get\(object\)/);
 assert.doesNotMatch(avatar,/\[-\.15,2\.14,\.01,\.266\]/);
 assert.doesNotMatch(avatar,/\[\.15,2\.14,\.01,\.266\]/);
 assert.doesNotMatch(avatar,/const hand=mesh\(new THREE\.BoxGeometry\(\.038,\.009/);

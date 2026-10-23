@@ -46,7 +46,7 @@ export function HealthDocsBanner() {
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="relative mb-4 rounded-[22px] border border-ice/20 bg-gradient-to-r from-ice/5 to-surface p-4 shadow-sm"
       >
-        <div className="flex items-center gap-3 pr-8">
+        <div className="flex flex-wrap items-center gap-3 pr-12 sm:flex-nowrap">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
             <FileHeart size={18} />
           </div>
@@ -59,8 +59,9 @@ export function HealthDocsBanner() {
             </p>
           </div>
           <button
+            type="button"
             onClick={handleNavigate}
-            className="flex shrink-0 items-center gap-1 rounded-full bg-ice/20 px-3 py-1.5 text-xs font-medium text-ice transition-all active:scale-95"
+            className="flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs font-semibold text-emerald-200 transition-all active:scale-95"
           >
             Acessar
             <ChevronRight size={14} />
@@ -68,8 +69,9 @@ export function HealthDocsBanner() {
         </div>
 
         <button
+          type="button"
           onClick={handleDismiss}
-          className="absolute right-3 top-3 rounded-full p-1 text-ink-muted/50 transition-colors hover:text-ink-muted"
+          className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-ink-muted/70 transition-colors hover:bg-surface-raised hover:text-ink-primary"
           aria-label="Fechar"
         >
           <X size={16} />

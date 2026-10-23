@@ -162,6 +162,8 @@ export async function pullAllData(
       "🔄 [Pull] Iniciando sincronização da nuvem para o dispositivo..."
     );
     beginPullDiagnostics();
+    // V234: falha no pull de doses não deve virar falso sucesso global.
+    const criticalPullErrors: string[] = [];
 
     const {
       data:
@@ -292,6 +294,7 @@ export async function pullAllData(
             // Erro retornado pela consulta também é falha da tabela,
             // mesmo quando não lança exception.
             tableOk = false;
+            if (remoteTable === "dose_logs") criticalPullErrors.push(error.message || "Consulta de doses falhou");
             console.error(
               `❌ [Pull] Erro ao buscar ${remoteTable}:`,
               error
@@ -397,6 +400,7 @@ export async function pullAllData(
                 );
 
           tableOk = false;
+          if (remoteTable === "dose_logs") criticalPullErrors.push(message);
           console.error(
             `❌ [Pull] Erro ao processar ${remoteTable}: ${message}`
           );
@@ -1130,15 +1134,21 @@ export async function pullAllData(
         "doseLogs",
       localTable:
         db.doseLogs,
-      query:
-        async () =>
-          await supabase
-            .from("dose_logs")
-            .select("*")
-            .eq(
-              "user_id",
-              userId
-            ),
+      // V234: completa todas as páginas; nenhuma dose pode sumir no limite REST.
+      query: async () => {
+        const rows: RemoteRow[] = [];
+        const size = 400;
+        for (let offset = 0; offset < 100000; offset += size) {
+          const result = await supabase.from("dose_logs").select("*")
+            .eq("user_id", userId).order("id", { ascending: true })
+            .range(offset, offset + size - 1);
+          if (result.error) return { data: null, error: result.error };
+          const batch = (result.data || []) as RemoteRow[];
+          rows.push(...batch);
+          if (batch.length < size) return { data: rows, error: null };
+        }
+        return { data: null, error: { message: "Histórico de doses excedeu o limite seguro de leitura." } };
+      },
       }),
 
       () => processTable({
@@ -1681,6 +1691,9 @@ export async function pullAllData(
     // ==========================================================
     // FINALIZAÇÃO
     // ==========================================================
+    if (criticalPullErrors.length > 0) {
+      throw new Error(`Falha na importação das doses: ${criticalPullErrors.join(" · ")}`);
+    }
 
     if (
       typeof window !==

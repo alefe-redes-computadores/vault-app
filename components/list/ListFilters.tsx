@@ -1,7 +1,7 @@
 // components/list/ListFilters.tsx
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 
 interface ListFiltersProps {
@@ -16,17 +16,29 @@ interface ListFiltersProps {
 
 export function ListFilters({ children, showIcon = true, onClear, clearLabel = "Limpar", className = "", activeCount = 0, title = "Filtros" }: ListFiltersProps) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previous; };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("keydown", onEscape);
+      document.body.style.overflow = previous;
+      // Devolver o foco após fechar o bottom sheet, inclusive por Escape.
+      if (triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
+    };
   }, [open]);
 
   return (
     <div className={`shrink-0 ${className}`}>
-      <button type="button" onClick={() => setOpen(true)} aria-expanded={open} className={`relative flex h-10 w-10 items-center justify-center rounded-full border transition-all active:scale-95 ${activeCount > 0 ? "border-ice/40 bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-ice/30 hover:text-ice"}`} aria-label="Abrir filtros">
+      <button ref={triggerRef} type="button" onClick={() => setOpen(true)} aria-expanded={open} className={`relative flex h-10 w-10 items-center justify-center rounded-full border transition-all active:scale-95 ${activeCount > 0 ? "border-ice/40 bg-ice/12 text-ice" : "border-surface-border/50 bg-surface-raised text-ink-muted hover:border-ice/30 hover:text-ice"}`} aria-label="Abrir filtros">
         {showIcon && <SlidersHorizontal size={17} />}
         {activeCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1 font-mono text-[9px] font-bold text-void">{activeCount}</span>}
       </button>
@@ -34,7 +46,7 @@ export function ListFilters({ children, showIcon = true, onClear, clearLabel = "
       {open && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
           <button type="button" className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={() => setOpen(false)} aria-label="Fechar filtros" />
-          <div className="relative z-10 w-full max-w-lg rounded-t-[28px] border border-b-0 border-surface-border/60 bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl">
+          <div className="relative z-10 w-full max-w-lg max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top,0px)))] overflow-y-auto overscroll-contain rounded-t-[28px] border border-b-0 border-surface-border/60 bg-surface px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-surface-border" />
             <div className="flex items-center justify-between gap-3">
               <div><p className="text-sm font-semibold text-ink-primary">{title}</p><p className="text-[10px] text-ink-muted">Escolha os critérios e aplique</p></div>

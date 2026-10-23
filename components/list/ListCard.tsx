@@ -2,7 +2,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 
 export interface ListCardProps {
@@ -58,15 +58,16 @@ export function ListCard({
   navigationLabel = "Ver detalhes",
 }: ListCardProps) {
   const isCompact = density === "compact";
+  const reducedMotion = useReducedMotion();
 
   return (
     <motion.article
       key={id}
-      initial={{ opacity: 0, y: 8 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.18,
-        delay: Math.min(delay, 0.2),
+        duration: reducedMotion ? 0 : 0.18,
+        delay: reducedMotion ? 0 : Math.min(delay, 0.2),
       }}
       className={`
         group relative

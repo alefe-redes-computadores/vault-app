@@ -139,7 +139,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // gives the face a readable mood without a facial animation loop.
     const expressionBrows: Array<{object:THREE.Mesh;sign:number}> = [];
     const expressionLids: Array<{object:THREE.Mesh;sign:number}> = [];
+    const expressionLidScaleY = new WeakMap<THREE.Mesh,number>();
     const expressionEyes: Array<{object:THREE.Mesh;restY:number}> = [];
+    const expressionEyeScaleY = new WeakMap<THREE.Mesh,number>();
     // V214: planos orbitais afunilados integram as sobrancelhas ao rosto.
     // O brilho do olho existe em uma única camada, evitando o olhar duplicado.
     for(const sign of [-1,1]) {
@@ -150,7 +152,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // o rosto mantém expressão e acessórios sem voltar ao aspecto circular.
       const browPlane=mesh(taperedBox(.041,.061,.016,.017),materials.skinShade,sign*.083,2.875,.184);browPlane.rotation.z=sign*.08;browPlane.raycast=()=>{};
       const upperLid=oval(materials.skin,sign*.083,2.843,.224,[.041,.012,.014]);upperLid.rotation.z=sign*.025;upperLid.raycast=()=>{};
-      expressionLids.push({object:upperLid,sign});
+      expressionLids.push({object:upperLid,sign}); expressionLidScaleY.set(upperLid,upperLid.scale.y);
       const lowerLid=mesh(new THREE.CapsuleGeometry(.003,.051,2,7),materials.skinShade,sign*.083,2.807,.226);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
     }
     const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
@@ -274,7 +276,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const sclera=oval(materials.eyeWhite,sign*.083,2.82,.215,[.036,.012,.009]);sclera.raycast=()=>{};
       oval(materials.iris,sign*.083,2.819,.224,[.012,.011,.004]).raycast=()=>{};
       const pupil=oval(materials.dark,sign*.083,2.819,.229,[.005,.006,.0025]);pupil.raycast=()=>{};
-      expressionEyes.push({object:pupil,restY:pupil.position.y});
+      expressionEyes.push({object:pupil,restY:pupil.position.y}); expressionEyeScaleY.set(pupil,pupil.scale.y);
       oval(materials.eyeWhite,sign*.079,2.824,.232,[.0014,.0014,.0012]).raycast=()=>{};
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
@@ -390,13 +392,16 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         object.rotation.z=value==="happy"?-sign*.17:value==="reflective"?sign*.04:-sign*.10;
         object.position.y=value==="happy"?2.868:value==="reflective"?2.854:2.861;
       }
+      // V234: a escala é relativa à malha original (.012). Substituir por 1
+      // criava duas hastes gigantes atravessando olhos, boné e tronco.
       for(const {object,sign} of expressionLids){
         object.rotation.z=sign*(value==="happy"?.045:.025);
-        object.scale.y=value==="reflective"?.72:value==="happy"?.84:1;
+        object.scale.y=(expressionLidScaleY.get(object) ?? object.scale.y)*(value==="reflective"?.72:value==="happy"?.84:1);
       }
+      // V234: preserva o tamanho microscópico da pupila (.006) em todas as expressões.
       for(const {object,restY} of expressionEyes){
         object.position.y=restY+(value==="happy"?.002:value==="reflective"?-.004:0);
-        object.scale.y=value==="reflective"?.88:1;
+        object.scale.y=(expressionEyeScaleY.get(object) ?? object.scale.y)*(value==="reflective"?.88:1);
       }
     };
     setExpression(expressionRef.current);

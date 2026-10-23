@@ -32,7 +32,7 @@ assert(credentialHook.includes('.where("[user_id+person_id]")'));
 assert(read('app/contas/page.tsx').includes('includeLegacyWithoutPerson:'));
 
 const avatar=read('components/saude/HealthAvatar3D.tsx');
-for(const marker of ['V205: a faixa inferior','const capBand=','const crownPanel=','const earHook=','const nosePad=','const gripKnuckle=']) assert(avatar.includes(marker),`avatar marker missing: ${marker}`);
+for(const marker of ['V205: a faixa inferior','const capBand=','const brim=','const earHook=','const nosePad=','const gripKnuckle=']) assert(avatar.includes(marker),`avatar marker missing: ${marker}`);
 assert(!avatar.includes('requestAnimationFrame(animate)'));
 
 for(const file of ['app/mais/page.tsx','components/saude/HealthAvatar3D.tsx','hooks/usePaginatedCards.ts','hooks/usePaginatedCredentials.ts']){

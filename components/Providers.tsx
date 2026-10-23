@@ -66,6 +66,7 @@ import {
 import {
   pullAllData,
 } from "@/lib/sync/pull";
+import { refreshRecentCloudDoses } from "@/lib/sync/recent-dose-refresh";
 
 import {
   runVaultPullSingleFlight,
@@ -588,6 +589,41 @@ export function Providers({
     },
     [isOnline, user, isPullDone, processQueue]
   );
+
+  // ==========================================================
+  // V234: atualização oportunista, não uma rotina manual ou polling pesado.
+  // Apenas doses dos últimos 14 dias; 1 consulta por volta ao app (>90 s),
+  // e no máximo uma conferência a cada 10 min enquanto permanece aberto.
+  // ==========================================================
+  useEffect(() => {
+    if (!user?.id || !isOnline || !isPullDone) return;
+    const userId = user.id;
+    let alive = true;
+    let lastAttempt = Date.now(); // boot completo já fez pull; evitar duplicidade.
+    const refresh = () => {
+      if (!alive || document.visibilityState !== "visible" || !navigator.onLine) return;
+      if (Date.now() - lastAttempt < 90_000) return;
+      lastAttempt = Date.now();
+      void refreshRecentCloudDoses(userId).catch((cause: unknown) => {
+        if (!alive) return;
+        const message = cause instanceof Error ? cause.message : "Não foi possível atualizar doses entre dispositivos.";
+        console.warn("[Vault V234] Atualização de doses falhou:", message);
+        setVaultSyncRuntime({ phase: "error", error: message });
+      });
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(refresh, 10 * 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user?.id, isOnline, isPullDone]);
 
   // ==========================================================
   // SENTRY USER

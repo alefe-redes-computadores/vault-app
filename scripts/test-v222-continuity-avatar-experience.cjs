@@ -52,7 +52,7 @@ assert.match(brain,/!isPrescriptionOnly\(event\) \|\| renewalEventDate\(event\)\
 assert.match(brain,/continuityEvidenceMessage\(continuity\)/);
 const avatar=read('components/saude/HealthAvatar3D.tsx');
 assert.match(avatar,/avatarAdaptiveRatio\(/);
-assert.match(avatar,/V221 R3: Android WebGL pode esticar/);
+assert.match(avatar,/expressionLidScaleY\.get\(object\)/);
 assert.doesNotMatch(avatar,/requestAnimationFrame\(animate\)/);
 assert.match(avatar,/renderer\.forceContextLoss\(\)/);
 const supply=read('components/saude/HealthSupplyEntry.tsx');

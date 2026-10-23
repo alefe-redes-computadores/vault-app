@@ -157,7 +157,7 @@ export default function DiagnosticoPage() {
         ? "Sincronização precisa de revisão"
         : queueHealth.total > 0
           ? "Alterações protegidas no aparelho"
-          : "Tudo sincronizado";
+          : "Fila local vazia";
   const syncDescription = !isOnline
     ? "A fila está preservada e será retomada quando a conexão voltar."
     : syncBusy
@@ -166,7 +166,7 @@ export default function DiagnosticoPage() {
         ? `${failed} item(ns) chegaram ao limite de tentativas. Os dados não foram descartados.`
         : queueHealth.total > 0
           ? `${queueHealth.total} item(ns) aguardam envio ou nova tentativa.`
-          : "Não há alterações aguardando envio neste dispositivo.";
+          : "Este dispositivo não tem envios pendentes. Registros de outro aparelho dependem da confirmação de envio e atualização na nuvem.";
   const recoveryStep = !isOnline ? 0 : failed > 0 ? 1 : queueHealth.total > 0 ? 2 : 3;
 
   const runDoseAudit = useCallback(async (): Promise<DoseAudit | null> => {

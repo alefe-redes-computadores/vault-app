@@ -39,6 +39,7 @@ for (const [file, anchors] of Object.entries(required)) {
   assert.equal(diagnostics.filter(item => item.category === ts.DiagnosticCategory.Error).length, 0, `Syntax: ${file}`);
 }
 const avatar = read('components/saude/HealthAvatar3D.tsx');
-assert.ok(avatar.includes('new THREE.BoxGeometry(.22,.007,.012)'));
+assert.ok(!avatar.includes('new THREE.BoxGeometry(.22,.007,.012)'), 'V232: trilhos decorativos verticais antigos foram removidos');
+assert.ok(avatar.includes('new THREE.ShapeGeometry(outline,4)'), 'armação plana V232 preservada');
 assert.ok(!avatar.includes('new THREE.BoxGeometry(.007,2.'));
 console.log('VAULT V229: finite course boundaries, prescription attachment, planned dose integration, explicit confirmation, Brain and Avatar contract OK');

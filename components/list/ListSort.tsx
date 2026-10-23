@@ -1,7 +1,7 @@
 // components/list/ListSort.tsx
 "use client";
 
-import { useState, ReactNode } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -36,12 +36,27 @@ export function ListSort({
   onChange,
   placeholder,
   className = "",
-  maxWidth = "60px",
+  maxWidth = "104px",
   disabled = false,
   renderOption,
 }: ListSortProps) {
   const { trigger } = useHapticFeedback();
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setIsOpen(false); }
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("keydown", onEscape);
+      document.body.style.overflow = previous;
+      if (triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
+    };
+  }, [isOpen]);
 
   const currentOption = options.find((opt) => opt.value === value);
   const displayLabel = placeholder || currentOption?.label || "Ordenar";
@@ -55,6 +70,7 @@ export function ListSort({
   return (
     <div className={`shrink-0 ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => {
           if (disabled) return;
