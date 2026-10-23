@@ -2905,7 +2905,7 @@ export function QuickDoseModal({
                   fill="currentColor"
                 />
 
-                Confirmar Tomada
+                Registrar tomada agora
               </>
             )}
           </button>

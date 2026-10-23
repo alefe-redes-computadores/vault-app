@@ -1,6 +1,7 @@
 // lib/notifications.ts
 
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
+import { decideMedicationAlerts } from "@/lib/health-intelligence/medication-alert-policy";
 import {
   isVaultAndroid,
   isVaultNative,
@@ -611,12 +612,8 @@ export async function scheduleMedicationRenewalNotification(
   medico: string,
   daysBefore: number = 7
 ): Promise<void> {
-  if (
-    !isNativePlatform()
-  ) {
+  if (!isNativePlatform()) return;
   if (!isVaultNotificationCategoryEnabled("renovacoes")) return;
-    return;
-  }
 
   const safeMedicamentoId =
     medicamentoId.trim();
@@ -796,7 +793,8 @@ export async function reconcilePersistentNotifications(
             medicamento
           ) =>
             medicamento.status !==
-            "descontinuado"
+            "descontinuado" &&
+            decideMedicationAlerts({medication:medicamento,today:new Date().toLocaleDateString("sv-SE")}).showPrescription
         )
         .map(
           (
@@ -966,13 +964,15 @@ export async function reconcilePersistentNotifications(
          * está vencida ou próxima do vencimento.
          */
         const renewalDate =
-          medicamento.proxima_renovacao?.trim();
+          (medicamento.lembrete_receita_modo === "data_personalizada" && medicamento.lembrete_receita_data
+            ? medicamento.lembrete_receita_data : medicamento.proxima_renovacao)?.trim();
 
         if (
           !id ||
           !renewalDate ||
           medicamento.status ===
-            "descontinuado"
+            "descontinuado" ||
+          !decideMedicationAlerts({medication:medicamento,today:new Date().toLocaleDateString("sv-SE")}).showPrescription
         ) {
           return [];
         }
@@ -983,7 +983,8 @@ export async function reconcilePersistentNotifications(
             medicamento.nome,
             renewalDate,
             medicamento.medico ||
-              ""
+              "",
+            medicamento.lembrete_receita_modo === "data_personalizada" ? 0 : 7
           ),
         ];
       }

@@ -3,6 +3,8 @@
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
+import { DoseMonthOverview } from "@/components/saude/DoseMonthOverview";
+import { eligibleGroupDoseKeys } from "@/lib/dose-schedule-groups";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
@@ -696,6 +698,8 @@ export default function HojePage() {
   // Mutex síncrono: dois toques antes do próximo render não podem
   // iniciar dois lotes e disputar o mesmo estoque.
   const batchOperationLock = useRef(false);
+  // V223: a troca de conta/pessoa invalida o lote ainda em revisão.
+  const batchOwnerRef = useRef(`${user?.id || ""}:${activePersonId || ""}`);
   const [batchTargetKeys,setBatchTargetKeys]=useState<string[] | null>(null);
 
   const [loteConfirmado, setLoteConfirmado] =
@@ -705,6 +709,15 @@ export default function HojePage() {
   // Slot programado e instante real da tomada são conceitos distintos.
   const [isBatchTimeModalOpen, setIsBatchTimeModalOpen] =
     useState(false);
+
+  useEffect(() => {
+    const key = `${user?.id || ""}:${activePersonId || ""}`;
+    if (batchOwnerRef.current === key) return;
+    batchOwnerRef.current = key;
+    setBatchTargetKeys(null);
+    setLoteConfirmado([]);
+    if (!batchOperationLock.current) setIsBatchTimeModalOpen(false);
+  }, [user?.id, activePersonId]);
 
   const [batchCustomTime, setBatchCustomTime] =
     useState("");
@@ -1721,7 +1734,7 @@ export default function HojePage() {
           // agora → atrasadas → próximas → SOS/extra → concluído.
           agora: { label: "Agora", sub: "No horário ou muito próximo dele", icon: Clock, items: [] },
           atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle, items: [] },
-          depois: { label: "Depois", sub: "Próximas doses de hoje", icon: ChevronRight, items: [] },
+          depois: { label: "Depois", sub: "Programadas para depois · ainda não estão atrasadas", icon: ChevronRight, items: [] },
           avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap, items: [] },
           concluidas: { label: "Tomadas", sub: "Doses com tomada registrada hoje", icon: CheckCircle2, items: [] },
           ignoradas: { label: "Ignoradas", sub: "Não contam como tomadas", icon: XCircle, items: [] },
@@ -1738,9 +1751,9 @@ export default function HojePage() {
         grupos[periodo.key]?.items.push(dose);
         return;
       }
-      if (dose.isAvulsa) { grupos.avulsas.items.push(dose); return; }
       if (dose.tomada) { grupos.concluidas.items.push(dose); return; }
       if (dose.ignorada) { grupos.ignoradas.items.push(dose); return; }
+      if (dose.isAvulsa && dose.doseKind !== "planned") { grupos.avulsas.items.push(dose); return; }
       const temporalBucket = classifyClinicalSchedule({
         eventDate: dataSelecionada,
         scheduledTime: dose.horario,
@@ -1755,7 +1768,7 @@ export default function HojePage() {
     });
     for (const grupo of Object.values(grupos)) grupo.items.sort((a,b)=>a.horario.localeCompare(b.horario));
     return Object.entries(grupos).filter(([, grupo]) => grupo.items.length > 0);
-  }, [dosesParaExibir, horaAtual, isHoje]);
+  }, [dosesParaExibir, horaAtual, isHoje, hoje, dataSelecionada]);
 
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
@@ -2278,6 +2291,20 @@ export default function HojePage() {
     }
   };
 
+  // V223: a group opens the existing temporal review, never writes dose logs
+  // directly. The repository remains the sole stock/sync authority.
+  const handleRevisarHorario = (items: DoseItemExt[]) => {
+    if (!isHoje || !user?.id || !activePersonId || processandoTodos ||
+        processandoDoseId || batchOperationLock.current) return;
+    const keys = eligibleGroupDoseKeys(items);
+    if (keys.length < 2) return;
+    setBatchTargetKeys(keys);
+    const hhmm = `${String(agora.getHours()).padStart(2, "0")}:${String(agora.getMinutes()).padStart(2, "0")}`;
+    setBatchCustomTime(hhmm);
+    trigger("vibrate");
+    setIsBatchTimeModalOpen(true);
+  };
+
   const handleTomarTodos = () => {
     setBatchTargetKeys(null);
     if (
@@ -2362,10 +2389,16 @@ export default function HojePage() {
     const confirmadas: DoseItemExt[] = [];
     let falhas = 0;
     const snapshotLote = [...dosesComEstoqueNoLote];
+    const ownerAtStart = batchOwnerRef.current;
+    let interrompidoPorTrocaDePessoa = false;
 
     // Serial de propósito: protege duas doses do mesmo medicamento
     // contra disputa de leitura/gravação do saldo.
     for (const dose of snapshotLote) {
+      if (batchOwnerRef.current !== ownerAtStart) {
+        interrompidoPorTrocaDePessoa = true;
+        break;
+      }
       if (!dose.medicamentoId) continue;
 
       try {
@@ -2402,7 +2435,8 @@ export default function HojePage() {
       }
     }
 
-    setLoteConfirmado(confirmadas);
+    // Never expose undo operations for an old person after a profile switch.
+    setLoteConfirmado(batchOwnerRef.current === ownerAtStart ? confirmadas : []);
     setProcessandoTodos(false);
     batchOperationLock.current = false;
 
@@ -2418,10 +2452,12 @@ export default function HojePage() {
             : "agora";
 
       showToast(
-        falhas > 0
-          ? `${confirmadas.length} doses registradas ${descricao}; ${falhas} falharam`
-          : `${confirmadas.length} doses registradas ${descricao}`,
-        falhas > 0 ? "info" : "success"
+        interrompidoPorTrocaDePessoa
+          ? `${confirmadas.length} registradas antes da troca de pessoa; lote interrompido por segurança`
+          : falhas > 0
+            ? `${confirmadas.length} doses registradas ${descricao}; ${falhas} falharam`
+            : `${confirmadas.length} doses registradas ${descricao}`,
+        falhas > 0 || interrompidoPorTrocaDePessoa ? "info" : "success"
       );
     } else {
       trigger("error");
@@ -2938,6 +2974,7 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-5 px-4 pt-4">
+          {user?.id && activePersonId && isHoje && <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} />}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
@@ -2964,6 +3001,20 @@ export default function HojePage() {
                 {processandoTodos ? "Registrando..." : "Tomar todas"}
               </button>
             </motion.div>
+          )}
+
+          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
+          {isHoje && !retroReviewMode && (
+            <section aria-label="Diário rápido do dia" className="rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 text-[10px] text-ink-muted">Seus relatos ajudam o Brain. Nada é presumido quando você não registra.</p></div>
+                <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="min-h-10 shrink-0 rounded-xl px-2 text-[10px] font-semibold text-violet-300">Resumo</button>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
+              </div>
+            </section>
           )}
 
           {isHoje && medicamentosSemHorario.length > 0 && (
@@ -3908,7 +3959,7 @@ export default function HojePage() {
                             !item.ignorada &&
                             item.horario <
                               horaAtual &&
-                            !item.isAvulsa;
+                            (!item.isAvulsa || item.doseKind === "planned");
 
                           const isProximo =
                             isHoje &&
@@ -3916,7 +3967,7 @@ export default function HojePage() {
                             !item.ignorada &&
                             item.horario >=
                               horaAtual &&
-                            !item.isAvulsa;
+                            (!item.isAvulsa || item.doseKind === "planned");
 
                           const isPrevistoFuturo =
                             isFuturo &&
@@ -4528,7 +4579,7 @@ export default function HojePage() {
                                           }
                                           className="inline-flex items-center gap-1 rounded-full border border-surface-border/50 bg-surface-raised px-2.5 py-1 text-[9px] font-medium text-ink-muted transition-all hover:bg-ink-muted/10 active:scale-95 disabled:opacity-50"
                                         >
-                                          {item.isAvulsa ? (
+                                          {item.isAvulsa && item.doseKind !== "planned" ? (
                                             <>
                                               <Trash2
                                                 size={
@@ -4555,7 +4606,7 @@ export default function HojePage() {
                               </div>
                             </motion.div>
                           );
-                        }} disabled={Boolean(processandoTodos || processandoDoseId)} onTakeGroup={isHoje ? slots => { if(processandoTodos || processandoDoseId)return;setBatchTargetKeys(slots.map(d=>`${d.medicamentoId}-${d.horario}`));setBatchCustomTime(horaAtual);setIsBatchTimeModalOpen(true); } : undefined} />
+                        }} disabled={Boolean(processandoTodos || processandoDoseId)} onTakeGroup={isHoje ? handleRevisarHorario : undefined} />
                     </div>
                   </div>
                 );
@@ -4609,7 +4660,7 @@ export default function HojePage() {
                       Como registrar estas {dosesElegiveisLote.length} doses?
                     </h3>
                     <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                      O horário programado continua como referência. O horário real é salvo separadamente para o histórico e para a inteligência do Vault.
+                      O horário programado continua como referência. O horário real é salvo separadamente para o histórico e para a inteligência do Vault. Se a dose for antecipada, use "Tomei agora" ou informe o horário real; o Vault não altera a programação original.
                     </p>
                   </div>
                 </div>
@@ -4623,7 +4674,7 @@ export default function HojePage() {
                 <div className="mt-4 space-y-2">
                   <button
                     type="button"
-                    disabled={processandoTodos}
+                    disabled={processandoTodos || dosesComEstoqueNoLote.length===0}
                     onClick={() => void executarTomadaEmLote("now")}
                     className="flex min-h-[58px] w-full items-center justify-between rounded-xl bg-emerald-400 px-4 py-3 text-left text-void transition-all active:scale-[0.99] disabled:opacity-50"
                   >
@@ -4642,7 +4693,7 @@ export default function HojePage() {
 
                   <button
                     type="button"
-                    disabled={processandoTodos}
+                    disabled={processandoTodos || dosesComEstoqueNoLote.length===0 || dosesComEstoqueNoLote.some(dose => new Date(`${dataSelecionada}T${dose.horario}:00`).getTime() > Date.now())}
                     onClick={() => void executarTomadaEmLote("scheduled")}
                     className="flex min-h-[58px] w-full items-center justify-between rounded-xl border border-ice/20 bg-ice/5 px-4 py-3 text-left text-ink-primary transition-all active:scale-[0.99] disabled:opacity-50"
                   >

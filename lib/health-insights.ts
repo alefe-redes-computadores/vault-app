@@ -1,5 +1,7 @@
 import { buildMedicationAvailabilityInsights } from "./health-intelligence/medication-availability-insights";
 import { buildLifestyleInsights } from "./health-intelligence/lifestyle-insights";
+import { buildSymptomTrendObservations } from "./health-intelligence/health-factor-observations";
+import { buildCareContinuityInsights } from "./health-network/care-continuity";
 import { buildDeviceTrendInsights } from "./health-intelligence/device-trend-insights";
 import type {SupplyData} from "./health-supply/types";
 import {buildSupplyInsights} from "./health-intelligence/supply-insights";
@@ -25,6 +27,8 @@ import {
 import { buildHydrationInsights } from "@/lib/health-intelligence/hydration-insights";
 
 import { buildLongitudinalHealthInsights } from "@/lib/health-intelligence/longitudinal-insights";
+import { buildRecordedDoseRoutineInsights } from "@/lib/health-intelligence/dose-routine-insights";
+import { buildTemporaryCourseInsights } from "@/lib/health-intelligence/temporary-course-insights";
 
 import { buildMedicationSafetyInsights } from "@/lib/health-intelligence/medication-safety";
 
@@ -134,6 +138,8 @@ export type PersonScoped<
  */
 export interface HealthInsightContext {
   personId: string;
+  /** Authenticated owner of this person-scoped snapshot, used for explicit care links. */
+  userId?: string;
   fornecimento?: SupplyData;
 
   /**
@@ -9502,10 +9508,17 @@ export function gerarInsightsSaude(
 
   // Comparações longitudinais auditáveis; associação temporal não implica causalidade.
   insights.push(...buildLongitudinalHealthInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude }));
+  // V226: explicit ignored scheduled DoseLogs only; absence is never nonadherence.
+  insights.push(...buildRecordedDoseRoutineInsights({ ...contexto, medicamentos, doseLogs, hoje: contexto.hoje || getLocalTodayISO() }));
+  insights.push(...buildTemporaryCourseInsights({ ...contexto, medicamentos, doseLogs, hoje: contexto.hoje || getLocalTodayISO() }));
 
   // VAULT_BRAIN_V101: módulos independentes preservam a API canônica.
   insights.push(...buildBehaviorInsights(contexto));
   insights.push(...buildLifestyleInsights({ ...contexto, medicamentos, doseLogs, registrosSaude, hoje: contexto.hoje || getLocalTodayISO() }));
+  // V228: two weeks of explicitly recorded symptoms; missing days are not zero.
+  insights.push(...buildSymptomTrendObservations({ ...contexto, registrosSaude, hoje: contexto.hoje || getLocalTodayISO() }));
+  // V227: explicit relation + upcoming consultation, never missing-data inference.
+  insights.push(...buildCareContinuityInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude, hoje: contexto.hoje || getLocalTodayISO() }));
   // Tendências de medidas por semanas completas; só descreve mudança no histórico, sem faixa clínica.
   insights.push(...buildDeviceTrendInsights({ ...contexto, medicamentos, doseLogs, registrosSaude, hoje: contexto.hoje || getLocalTodayISO() }));
 

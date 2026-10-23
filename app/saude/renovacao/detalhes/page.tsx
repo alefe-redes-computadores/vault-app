@@ -711,7 +711,7 @@ function DetalhesRenovacaoContent() {
         "editar-renovacao",
 
       label:
-        "Editar Renovação",
+        isPrescriptionOnly(renovacao) ? "Editar receita" : "Editar aquisição",
 
       icon:
         Edit3,

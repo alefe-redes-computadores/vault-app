@@ -733,8 +733,14 @@ export default function NovoRegistroSaudePage() {
   useEffect(() => {
     if (notificationPresetApplied.current) return;
     const requested = new URLSearchParams(window.location.search).get("preset");
-    if (requested !== "medicao" && requested !== "sintoma" && requested !== "humor") return;
-    const preset = TIPOS_PREDEFINIDOS.find((item) => item.categoria === requested);
+    // V224: fast diary links choose an existing preset, not a new record type.
+    // Unknown URL parameters never alter the form or create a record.
+    if (!["medicao", "sintoma", "humor", "dor", "ansiedade", "apatia"].includes(requested || "")) return;
+    const preset = TIPOS_PREDEFINIDOS.find((item) =>
+      requested === "dor" || requested === "ansiedade" || requested === "apatia"
+        ? item.categoria === "sintoma" && item.tipo === requested
+        : item.categoria === requested
+    );
     if (!preset) return;
     notificationPresetApplied.current = true;
     setCategoria(preset.categoria);
@@ -743,6 +749,17 @@ export default function NovoRegistroSaudePage() {
     setValorMedicao("");
     setIntensidade(preset.categoria === "sintoma" ? 5 : undefined);
   }, []);
+
+  // V224: only attach a treatment after resolving it in the selected person's
+  // existing local list. URL strings alone never become clinical relations.
+  useEffect(() => {
+    const requestedTreatment = new URLSearchParams(window.location.search).get("tratamento_id");
+    if (!requestedTreatment || !activePersonId) return;
+    if (!tratamentos.some((item) => item.id === requestedTreatment && item.person_id === activePersonId)) return;
+    setTratamentosSelecionados((current) =>
+      current.includes(requestedTreatment) ? current : [...current, requestedTreatment]
+    );
+  }, [activePersonId, tratamentos]);
 
   // ==========================================================
   // DERIVADOS

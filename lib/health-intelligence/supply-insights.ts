@@ -15,6 +15,46 @@ export function buildSupplyInsights(
     today = context.hoje || getLocalTodayISO();
   if (!data || !validSupplyDate(today)) return [];
   const result: HealthInsight[] = [];
+  // V222: índices efêmeros por pessoa/conta para evitar buscas globais por insight.
+  // Não são cache persistente nem alteram qualquer evento clínico.
+  const ownerKey = (userId: string, id: string) => `${userId}\u001f${id}`;
+  const activeProcesses = data.processos.filter(p => p.person_id === context.personId && p.status === "ativo");
+  const processById = new Map(activeProcesses.map(p => [ownerKey(p.user_id, p.id), p]));
+  const processesByMedication = new Map<string, typeof data.processos>();
+  const itemsByCycle = new Map<string, typeof data.itens>();
+  for (const item of data.itens) {
+    if (item.person_id !== context.personId) continue;
+    const process = processById.get(ownerKey(item.user_id, item.processo_id));
+    if (process) {
+      const medicationKey = ownerKey(item.user_id, item.medicamento_id);
+      const bucket = processesByMedication.get(medicationKey) || [];
+      if (!bucket.some(existing => existing.id === process.id)) bucket.push(process);
+      processesByMedication.set(medicationKey, bucket);
+    }
+    const cycleKey = ownerKey(item.user_id, item.ciclo_id);
+    const cycleBucket = itemsByCycle.get(cycleKey) || [];
+    cycleBucket.push(item);
+    itemsByCycle.set(cycleKey, cycleBucket);
+  }
+  const cyclesByProcess = new Map<string, typeof data.ciclos>();
+  for (const cycle of data.ciclos) {
+    if (cycle.person_id !== context.personId) continue;
+    const key = ownerKey(cycle.user_id, cycle.processo_id);
+    const bucket = cyclesByProcess.get(key) || [];
+    bucket.push(cycle);
+    cyclesByProcess.set(key, bucket);
+  }
+  const withdrawalByMedication = new Map<string, typeof context.retiradas>();
+  for (const row of context.retiradas) {
+    if (row.person_id !== context.personId || row.status !== "agendada") continue;
+    const key = ownerKey(row.user_id, row.medicamento_id);
+    const bucket = withdrawalByMedication.get(key) || [];
+    bucket.push(row);
+    withdrawalByMedication.set(key, bucket);
+  }
+  const medicationById = new Map(context.medicamentos
+    .filter(m => m.person_id === context.personId && Boolean(m.id))
+    .map(m => [ownerKey(m.user_id, m.id!), m]));
   for (const med of context.medicamentos) {
     if (
       !med.id ||
@@ -22,27 +62,10 @@ export function buildSupplyInsights(
       !(isSupplyMedicationEligible(med) || hasRecordedSupplyWithdrawal(med,context.retiradas,context.personId || "",med.user_id))
     )
       continue;
-    const processes = data.processos.filter(
-      (p) =>
-        p.person_id === context.personId &&
-        p.user_id === med.user_id &&
-        p.status === "ativo" &&
-        data.itens.some(
-          (i) =>
-            i.processo_id === p.id &&
-            i.medicamento_id === med.id &&
-            i.person_id === context.personId &&
-            i.user_id === med.user_id
-        )
-    );
+    const processes = processesByMedication.get(ownerKey(med.user_id, med.id)) || [];
     for (const p of processes) {
-      const cycles = data.ciclos.filter(
-        (c) =>
-          c.processo_id === p.id &&
-          c.person_id === context.personId &&
-          c.user_id === med.user_id
-      );
-      const withdrawal = context.retiradas
+      const cycles = cyclesByProcess.get(ownerKey(med.user_id, p.id)) || [];
+      const withdrawal = (withdrawalByMedication.get(ownerKey(med.user_id, med.id)) || [])
         .filter(
           (r) =>
             r.person_id === context.personId &&
@@ -73,8 +96,8 @@ export function buildSupplyInsights(
               b.created_at.localeCompare(a.created_at) ||
               b.id.localeCompare(a.id)
           )[0];
-      if (!cycle || !data.itens.some(i => i.ciclo_id === cycle.id && i.processo_id === p.id &&
-        i.medicamento_id === med.id && i.person_id === context.personId && i.user_id === med.user_id)) continue;
+      if (!cycle || !(itemsByCycle.get(ownerKey(med.user_id, cycle.id)) || []).some(i =>
+        i.processo_id === p.id && i.medicamento_id === med.id)) continue;
       if(prescriptionConfigurationReview(med,p.receita_cada_retirada))result.push({
         id:`supply-prescription-review-${p.id}-${med.id}`,kind:"data_quality",categoria:"dados",
         titulo:`${med.nome}: confira a exigência de receita`,
@@ -210,10 +233,8 @@ export function buildSupplyInsights(
       });
     }
   }
-  for (const p of data.processos.filter(
-    (p) => p.person_id === context.personId && p.status === "ativo"
-  )) {
-    for (const cycle of data.ciclos.filter(
+  for (const p of activeProcesses) {
+    for (const cycle of (cyclesByProcess.get(ownerKey(p.user_id, p.id)) || []).filter(
       (c) =>
         c.processo_id === p.id &&
         c.person_id === p.person_id &&
@@ -221,35 +242,15 @@ export function buildSupplyInsights(
         c.status === "preparando" &&
         validSupplyDate(c.preparar_ate)
     )) {
-      const med = context.medicamentos.find(
-        (m) =>
-          m.person_id === p.person_id &&
-          m.user_id === p.user_id &&
-          (isSupplyMedicationEligible(m) || hasRecordedSupplyWithdrawal(m,context.retiradas,context.personId || "",p.user_id)) &&
-          data.itens.some(
-            (i) =>
-              i.ciclo_id === cycle.id &&
-              i.medicamento_id === m.id &&
-              i.user_id === p.user_id &&
-              i.person_id === p.person_id
-          )
-      );
+      const cycleItems = (itemsByCycle.get(ownerKey(p.user_id, cycle.id)) || [])
+        .filter(i => i.processo_id === p.id);
+      const med = cycleItems
+        .map(i => medicationById.get(ownerKey(p.user_id, i.medicamento_id)))
+        .find((m) => m && (isSupplyMedicationEligible(m) ||
+          hasRecordedSupplyWithdrawal(m, context.retiradas, context.personId || "", p.user_id)));
       if (!med) continue;
-      const dossiers = data.itens
-        .filter(
-          (i) =>
-            i.ciclo_id === cycle.id &&
-            i.user_id === p.user_id &&
-            i.person_id === p.person_id
-        )
-        .map((i) =>
-          context.medicamentos.find(
-            (m) =>
-              m.id === i.medicamento_id &&
-              m.user_id === p.user_id &&
-              m.person_id === p.person_id
-          )
-        )
+      const dossiers = cycleItems
+        .map((i) => medicationById.get(ownerKey(p.user_id, i.medicamento_id)))
         .filter((m): m is typeof med => !!m)
         .map((m) =>
           supplyDossier(p, cycle, m, data, context.documentos, today)

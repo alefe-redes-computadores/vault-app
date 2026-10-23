@@ -49,10 +49,12 @@ import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
 import { useLocais } from "@/hooks/useLocais";
 import { useDoseLogs } from "@/hooks/useDoseLogs";
+import { doseLogsRepository } from "@/lib/repositories/doseLogs";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useRetiradas } from "@/hooks/useRetiradas";
+import { MEDICATION_ALERT_PREF_EVENT } from "@/lib/health-intelligence/medication-alert-policy";
 import { useLocalDay } from "@/hooks/useLocalDay";
 import { isOverdueWithdrawal, openWithdrawalsDueBy, withdrawalDaysOverdue } from "@/lib/withdrawal-agenda";
 
@@ -674,6 +676,19 @@ export default function HomePage() {
       ontem
     );
 
+  // Um agendamento explícito não desaparece da Home depois de "ontem".
+  // A consulta é reativa e restrita à pessoa/conta; só inclui dias anteriores
+  // aos slots que os hooks de hoje e ontem já carregam.
+  const plannedEarlier = useLiveQuery(
+    () => activePersonId && user?.id
+      ? db.doseLogs.where("person_id").equals(activePersonId).filter(log =>
+          log.user_id === user.id && log.dose_kind === "planned" &&
+          log.data < ontem && !log.tomado_em && !log.ignorado_em).toArray()
+      : [],
+    [activePersonId, user?.id, ontem],
+    []
+  );
+
   // ==========================================================
   // ENTIDADES CLÍNICAS PERSON-SCOPED
   // ==========================================================
@@ -873,6 +888,7 @@ export default function HomePage() {
       () => {
         const lista:
           PendingDose[] = [];
+        const medicationById = new Map(medicamentosAtivos.filter(med => med.id && med.person_id === activePersonId && med.user_id === user?.id).map(med => [med.id!, med]));
 
         const appendPendingSlots =
           ({
@@ -1003,12 +1019,47 @@ export default function HomePage() {
             true,
         });
 
+        for (const log of plannedEarlier) {
+          if (!log.id || !log.medicamento_id ||
+              lista.some(entry => entry.medicamentoId === log.medicamento_id && entry.data === log.data && entry.horario === log.horario)) continue;
+          const med = medicationById.get(log.medicamento_id);
+          if (!med || med.person_id !== activePersonId || med.user_id !== user?.id) continue;
+          lista.push({ stockUnavailable: hasKnownEmptyMedicationStock(med),
+            medicamentoId: med.id!, nome: med.nome, formato: med.formato,
+            cores: med.cores, data: log.data, horario: log.horario, diaLabel: "Anterior" });
+        }
+
+        // Doses SOS agendadas só entram nas pendências depois do horário.
+        // O DoseLog existente é resolvido pelo mesmo slot, sem criar outro
+        // registro nem consumir estoque antes da confirmação.
+        for (const [data, logs, diaLabel] of [
+          [ontem, doseLogsOntem, "Ontem"],
+          [hoje, doseLogs, "Hoje"],
+        ] as const) {
+          for (const log of logs) {
+            if (log.dose_kind !== "planned" || log.tomado_em || log.ignorado_em ||
+                !log.id || !log.medicamento_id || log.data !== data ||
+                (data === hoje && log.horario > horaAtual) ||
+                lista.some((entry) => entry.medicamentoId === log.medicamento_id && entry.data === data && entry.horario === log.horario)) continue;
+            const med = medicationById.get(log.medicamento_id);
+            if (!med || med.person_id !== activePersonId) continue;
+            lista.push({
+              stockUnavailable: hasKnownEmptyMedicationStock(med),
+              medicamentoId: med.id!, nome: med.nome, formato: med.formato,
+              cores: med.cores, data, horario: log.horario, diaLabel,
+            });
+          }
+        }
+
         return lista;
       },
       [
         medicamentosAtivos,
+        activePersonId,
         doseLogs,
         doseLogsOntem,
+        plannedEarlier,
+        user?.id,
         horaAtual,
         hoje,
         ontem,
@@ -1343,6 +1394,13 @@ export default function HomePage() {
   const rawLongitudinalHighlights =
     healthIntelligence.highlights;
 
+  // V228: atualizar cards quando o usuário personaliza alertas de um SOS.
+  const [medAlertRevision,setMedAlertRevision] = useState(0);
+  useEffect(() => {
+    const updated=()=>setMedAlertRevision(value=>value+1);
+    window.addEventListener(MEDICATION_ALERT_PREF_EVENT,updated);
+    return ()=>window.removeEventListener(MEDICATION_ALERT_PREF_EVENT,updated);
+  },[]);
   const medicationCareOpportunities =
     useMemo(
       () =>
@@ -1364,6 +1422,7 @@ export default function HomePage() {
         tratamentos,
         renovacoes,
         retiradas,
+        medAlertRevision,
       ]
     );
 
@@ -1707,15 +1766,19 @@ export default function HomePage() {
           dose.data ===
           hoje;
 
-        const marcarEm =
-          isToday
-            ? marcarDoseHojeEm
-            : marcarDoseOntemEm;
-
-        const ignorar =
-          isToday
-            ? ignorarDoseHoje
-            : ignorarDoseOntem;
+        const isYesterday = dose.data === ontem;
+        const marcarEm = isToday ? marcarDoseHojeEm : isYesterday ? marcarDoseOntemEm :
+          (medicamentoId: string, horario: string, tomadoEm: string, quantidade?: number, requireRegisteredStock = false) => {
+            if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
+            return doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId,
+              data: dose.data, horario, status: "taken", tomadoEm, quantidade, requireRegisteredStock });
+          };
+        const ignorar = isToday ? ignorarDoseHoje : isYesterday ? ignorarDoseOntem :
+          (medicamentoId: string, horario: string, quantidade?: number, motivo?: string, _semEstoque?: boolean) => {
+            if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
+            return doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId,
+              data: dose.data, horario, status: "ignored", quantidade, motivo });
+          };
 
         switch (
           resolution.kind

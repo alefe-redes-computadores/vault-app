@@ -136,6 +136,7 @@ export async function loadHealthInsightContext(
   return {
     personId:
       safePersonId,
+    userId,
 
     hoje,
     fornecimento:{processos:scopeToPerson(processos,safePersonId,userId),ciclos:scopeToPerson(ciclos,safePersonId,userId),itens:scopeToPerson(itens,safePersonId,userId),documentos:scopeToPerson(vinculos,safePersonId,userId)},

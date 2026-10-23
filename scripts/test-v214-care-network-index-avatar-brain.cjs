@@ -83,7 +83,8 @@ assert.doesNotMatch(page, /const filteredMedicamentos\s*=\s*useMemo/);
 assert.match(avatar, /V214: planos orbitais afunilados/);
 assert.match(avatar, /taperedBox\(\.041,\.061,\.016,\.017\)/);
 assert.doesNotMatch(avatar, /sign\*\.081,2\.826,\.237/);
-assert.match(avatar, /start from Three's stable indexed geometry/);
+assert.match(avatar, /return new THREE.BoxGeometry\(Math.max\(backWidth,frontWidth\),height,depth\)/);
+assert.doesNotMatch(avatar, /positions\.setX\(/);
 // V216 keeps the dedicated grip while moving fingers behind the screen edge.
 assert.match(avatar, /phoneX\+gripSign\*\.102,1\.323\+fingerIndex\*\.042,\.08/);
 assert.doesNotMatch(brain, /(sky|cyan)-400/);

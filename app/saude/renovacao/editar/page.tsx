@@ -21,6 +21,7 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
+  Camera,
   DollarSign,
   Eraser,
   ExternalLink,
@@ -33,7 +34,12 @@ import {
   Store,
   Stethoscope,
   Trash2,
+  Upload,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useDocumentActions } from "@/hooks/useDocuments";
+import { uploadFile, deleteFile } from "@/lib/supabase/storage";
+import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
 
 import {
   useHapticFeedback,
@@ -384,6 +390,12 @@ function EditarRenovacaoContent() {
     activePersonId,
   } =
     useActivePersonId();
+  const { user } = useAuth();
+  const { createDocument, deleteDocument } = useDocumentActions();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [newAttachment, setNewAttachment] = useState<File | null>(null);
+  const [removeAttachment, setRemoveAttachment] = useState(false);
 
   const {
     getRenovacao,
@@ -587,6 +599,7 @@ function EditarRenovacaoContent() {
     useState(
       ""
     );
+  const somenteReceita = Boolean(renovacao && isPrescriptionOnly(renovacao));
 
   // ==========================================================
   // MODAIS
@@ -677,7 +690,7 @@ function EditarRenovacaoContent() {
     getClinicalTheme(
       selectedMedicamento
         ?.nome ||
-        "Editar Renovação"
+        "Editar receita"
     );
 
   const dataRenovacaoISO =
@@ -844,6 +857,8 @@ function EditarRenovacaoContent() {
               data.anexo_url ||
                 ""
             );
+            setNewAttachment(null);
+            setRemoveAttachment(false);
 
             setErrors(
               {}
@@ -1045,6 +1060,7 @@ function EditarRenovacaoContent() {
               : "comprado";
 
           if (
+            !somenteReceita &&
             tipoOriginal !==
             tipoAquisicao
           ) {
@@ -1095,6 +1111,27 @@ function EditarRenovacaoContent() {
                 : null
               : null;
 
+          let uploadedStorageUrl: string | undefined;
+          let createdDocumentId: string | undefined;
+          try {
+            if (newAttachment) {
+              if (!user) throw new Error("Entre na conta para anexar a receita.");
+              const uploaded = await uploadFile(user.id, newAttachment, "receitas");
+              if (uploaded.error || !uploaded.url) throw new Error("Não foi possível enviar o anexo.");
+              uploadedStorageUrl = uploaded.url;
+              createdDocumentId = await createDocument({
+                category_id: "saude",
+                type: "receita",
+                title: `Receita — ${selectedMedicamento?.nome || renovacao.medicamento_nome || "Medicamento"}`,
+                description: observacoes.trim() || undefined,
+                metadata: { prescription_date: dataISO, medicamento_id: medicamentoId },
+                attachments: [{ id: crypto.randomUUID(), url: uploadedStorageUrl, name: newAttachment.name, type: newAttachment.type.startsWith("image/") ? "image" : "pdf", uploaded_at: new Date().toISOString() }],
+                is_favorite: false,
+                medico_id: medicoId || undefined,
+                entidade_tipo: "medicamento",
+                entidade_id: medicamentoId,
+              });
+            }
           await updateRenovacao(
             id,
             {
@@ -1125,23 +1162,23 @@ function EditarRenovacaoContent() {
                * Aquisição permanece a mesma do registro original.
                */
               tipo_aquisicao:
-                tipoAquisicao,
+                somenteReceita ? undefined : renovacao.tipo_aquisicao,
 
               data:
                 dataISO,
 
               preco:
-                precoNumerico,
+                somenteReceita ? undefined : precoNumerico,
 
               data_proxima_retirada:
-                retornoISO,
+                somenteReceita ? undefined : retornoISO,
 
               /*
                * Fora do fluxo SUS, o campo deixa de ter
                * significado para este evento.
                */
               exige_nova_receita:
-                tipoAquisicao ===
+                somenteReceita ? undefined : tipoAquisicao ===
                   "sus"
                   ? exigeNovaReceita
                   : false,
@@ -1151,17 +1188,26 @@ function EditarRenovacaoContent() {
                 null,
 
               anexo_url:
-                anexoUrl.trim() ||
+                uploadedStorageUrl || anexoUrl.trim() ||
                 null,
+              document_id: createdDocumentId || (removeAttachment ? null : undefined),
             }
           );
+          } catch (error) {
+            if (createdDocumentId) {
+              try { await deleteDocument(createdDocumentId); } catch (cleanupError) { console.error("[EditarReceita] Documento órfão:", cleanupError); }
+            } else if (uploadedStorageUrl) {
+              try { await deleteFile(uploadedStorageUrl); } catch (cleanupError) { console.error("[EditarReceita] Anexo órfão:", cleanupError); }
+            }
+            throw error;
+          }
         },
         {
           successMessage:
-            "Renovação atualizada com sucesso",
+            somenteReceita ? "Receita atualizada com sucesso" : "Aquisição atualizada com sucesso",
 
           errorMessage:
-            "Erro ao atualizar renovação",
+            "Erro ao atualizar o registro",
 
           goBackOnSuccess:
             true,
@@ -1312,7 +1358,7 @@ function EditarRenovacaoContent() {
 
               <div className="min-w-0">
                 <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
-                  Editar Renovação
+                  {somenteReceita ? "Editar receita" : "Editar aquisição"}
                 </h1>
               </div>
             </div>
@@ -1331,7 +1377,7 @@ function EditarRenovacaoContent() {
                 }
               }
               className="flex h-10 w-10 items-center justify-center rounded-full border border-coral/20 bg-coral/10 text-coral transition-all active:scale-95"
-              aria-label="Excluir renovação"
+              aria-label={somenteReceita ? "Excluir receita" : "Excluir aquisição"}
             >
               <Trash2
                 size={
@@ -1378,7 +1424,7 @@ function EditarRenovacaoContent() {
                 <p
                   className={`font-mono text-xs font-bold uppercase tracking-wider ${theme.textClass}`}
                 >
-                  {tipoAquisicao ===
+                  {somenteReceita ? "RECEITA" : tipoAquisicao ===
                   "sus"
                     ? "RETIRADA SUS"
                     : "AQUISIÇÃO"}
@@ -1433,11 +1479,13 @@ function EditarRenovacaoContent() {
 
               <div className="rounded-2xl border border-surface-border/40 bg-surface-raised p-3.5">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-                  Forma de aquisição registrada
+                  {somenteReceita ? "Tipo do registro" : "Forma de aquisição registrada"}
                 </p>
 
                 <div className="mt-1 flex items-center gap-2">
-                  {tipoAquisicao ===
+                  {somenteReceita ? (
+                    <FileText size={15} className="text-violet-300" />
+                  ) : tipoAquisicao ===
                   "sus" ? (
                     <Receipt
                       size={
@@ -1455,7 +1503,7 @@ function EditarRenovacaoContent() {
                   )}
 
                   <p className="font-semibold text-ink-primary">
-                    {tipoAquisicao ===
+                    {somenteReceita ? "Somente receita · sem aquisição" : tipoAquisicao ===
                     "sus"
                       ? "SUS / Governo"
                       : "Particular"}
@@ -1465,7 +1513,7 @@ function EditarRenovacaoContent() {
             </div>
 
             <p className="mt-3 text-[11px] leading-relaxed text-ink-muted">
-              Medicamento e forma de aquisição identificam o evento histórico e não são alterados nesta edição.
+              {somenteReceita ? "Esta edição preserva a receita como prescrição, sem movimentar estoque ou registrar compra." : "Medicamento e forma de aquisição identificam o evento histórico e não são alterados nesta edição."}
             </p>
           </motion.div>
 
@@ -2240,7 +2288,7 @@ function EditarRenovacaoContent() {
               ANEXO
               ================================================== */}
 
-          {anexoUrl && (
+          {(
             <motion.div
               variants={
                 fadeUp
@@ -2258,7 +2306,7 @@ function EditarRenovacaoContent() {
                   Anexo
                 </label>
 
-                <button
+                {anexoUrl && <button
                   type="button"
                   onClick={
                     () => {
@@ -2269,6 +2317,7 @@ function EditarRenovacaoContent() {
                       setAnexoUrl(
                         ""
                       );
+                      setRemoveAttachment(true);
                     }
                   }
                   className="flex shrink-0 items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
@@ -2280,10 +2329,10 @@ function EditarRenovacaoContent() {
                   />
 
                   Remover vínculo
-                </button>
+                </button>}
               </div>
 
-              <a
+              {anexoUrl && <a
                 href={
                   anexoUrl
                 }
@@ -2306,7 +2355,15 @@ function EditarRenovacaoContent() {
                     14
                   }
                 />
-              </a>
+              </a>}
+
+              <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setNewAttachment(file); setRemoveAttachment(false); } event.target.value = ""; }} />
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) { setNewAttachment(file); setRemoveAttachment(false); } event.target.value = ""; }} />
+              {newAttachment && <p className="mt-2 truncate rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200">Novo anexo: {newAttachment.name}</p>}
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-violet-400/25 bg-violet-400/10 px-2 text-xs font-semibold text-violet-200"><Upload size={15} /> {anexoUrl || newAttachment ? "Trocar arquivo" : "Escolher arquivo"}</button>
+                <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-2 text-xs font-semibold text-emerald-200"><Camera size={15} /> Fotografar</button>
+              </div>
 
               <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
                 Remover o vínculo não exclui automaticamente o arquivo físico do armazenamento.

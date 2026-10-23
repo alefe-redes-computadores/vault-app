@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import * as THREE from "three";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarColor, avatarLayout, avatarTapEligible } from "@/lib/health-profile/avatar";
-import { avatarConstrainedDevice, avatarRenderRatio, avatarZoom } from "@/lib/health-profile/avatar-preference";
+import { avatarAdaptiveRatio, avatarConstrainedDevice, avatarZoom } from "@/lib/health-profile/avatar-preference";
 import {avatarBodyVisualSignature,avatarBraceSlots,type AvatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
 import { SURGERY_MARKER_COLORS, type AvatarSurgeryMarker } from "@/lib/health-profile/avatar-surgery-markers";
 import { watchModelByName } from "@/lib/health-profile/device-catalog";
@@ -57,7 +57,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const navigatorWithMemory=navigator as Navigator&{deviceMemory?:number};
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const constrainedDevice=avatarConstrainedDevice({hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigatorWithMemory.deviceMemory,reducedMotion});
-    renderer.setPixelRatio(avatarRenderRatio(displayRatio,false,compactRef.current,constrainedDevice));
+    renderer.setPixelRatio(avatarAdaptiveRatio(displayRatio,element.clientWidth,element.clientHeight,false,compactRef.current,constrainedDevice));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
     element.appendChild(renderer.domElement);
@@ -102,16 +102,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:3});geometry.translate(0,0,-depth/2);return geometry;
     };
     const taperedBox=(backWidth:number,frontWidth:number,height:number,depth:number)=>{
-      // V214: start from Three's stable indexed geometry. Some Android WebGL
-      // drivers stretched the hand-written attribute buffer into long rails.
-      const width=Math.max(backWidth,frontWidth);
-      const geometry=new THREE.BoxGeometry(width,height,depth,1,1,1);
-      const positions=geometry.getAttribute("position") as THREE.BufferAttribute;
-      for(let index=0;index<positions.count;index+=1){
-        const faceWidth=positions.getZ(index)<0?backWidth:frontWidth;
-        positions.setX(index,positions.getX(index)*(faceWidth/width));
-      }
-      positions.needsUpdate=true;geometry.computeVertexNormals();return geometry;
+      // V230: Android WebGL ainda pode projetar vértices alterados manualmente
+      // como faixas atravessando o rosto. A peça usa só BoxGeometry nativa;
+      // não há BufferAttribute reescrito nem custo adicional por quadro.
+      return new THREE.BoxGeometry(Math.max(backWidth,frontWidth),height,depth);
     };
     const sphereGeometry=new THREE.SphereGeometry(1,24,16);
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
@@ -449,17 +443,33 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // V221 R3: Android WebGL pode esticar as duas faixas laterais de alta proporcao
     // do Brain ate o topo da cena. Mantemos apenas os marcadores horizontais
     // estaveis, em BoxGeometry, sem alterar sinais clinicos ou render loop.
-    for(const y of [2.278,2.002]){
-      const rail=mesh(new THREE.BoxGeometry(.31,.01,.012),signalMaterial,0,y,.249);
+    // V222: faixa curta integrada ao painel, sem peças alongadas de alta proporção.
+    for(const y of [2.265,2.015]){
+      const rail=mesh(new THREE.BoxGeometry(.22,.007,.012),signalMaterial,0,y,.249);
       rail.userData.action="brain";
       signalRing.add(rail);
+    }
+    // Três LEDs geométricos discretos: indicador abstrato, nunca dado clínico inventado.
+    const brainLedGeometry=new THREE.SphereGeometry(.008,8,6);
+    for(const x of [-.042,0,.042]){
+      const led=mesh(brainLedGeometry,signalMaterial,x,2.265,.261);
+      led.userData.action="brain";
+      signalRing.add(led);
+    }
+    // V223: sinais circulares discretos no painel Brain. A cor continua
+    // vindo da prioridade real dos registros; nenhuma leitura é inventada.
+    for(const x of [-.102,.102]){
+      const dot=mesh(new THREE.SphereGeometry(.011,8,6),signalMaterial,x,2.14,.255);
+      dot.userData.action="brain";signalRing.add(dot);
     }
     const brainGlyph=new THREE.Group();model.add(brainGlyph);
     for(const [x,y,w,h] of [[-.052,2.198,.073,.018],[.052,2.198,.073,.018],[-.069,2.145,.052,.018],[.069,2.145,.052,.018],[-.052,2.092,.073,.018],[.052,2.092,.073,.018],[0,2.145,.014,.146]]){
       const segment=mesh(softBox(w,h,.014,.004),signalMaterial,x,y,.249);segment.userData.action="brain";brainGlyph.add(segment);
     }
 
-    const setAttention=(rank:number)=>{const color=avatarAttentionColor(rank);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalRing.visible=rank>0;};
+    // V225: bounded attention brightness; lower idle emission, no new geometry
+    // or animation loop. Context changes still trigger only the existing draw().
+    const setAttention=(rank:number)=>{const level=Number.isFinite(rank)?Math.max(0,Math.min(3,Math.floor(rank))):0;const color=avatarAttentionColor(level);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalMaterial.emissiveIntensity=level===0?.14:.25+.09*level;signalRing.visible=level>0;};
     setAttention(attentionRef.current);
     const backBadge=mesh(softBox(.22,.18,.018,.015),brainPanelMaterial,0,2.16,-.229);backBadge.rotation.y=Math.PI;backBadge.userData.action="brain";
     const braces=avatarBraceSlots(devices);
@@ -536,8 +546,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       if(cameraTransition){const progress=Math.min(1,(now-cameraTransition.start)/260),ease=1-Math.pow(1-progress,3);camera.position.y=cameraTransition.fromY+(cameraTransition.toY-cameraTransition.fromY)*ease;camera.position.z=cameraTransition.fromDistance+(cameraTransition.toDistance-cameraTransition.fromDistance)*ease;camera.lookAt(0,camera.position.y,0);if(progress>=1)cameraTransition=null;}
       renderer.render(scene,camera);if(transition||cameraTransition)draw();
     });};
-    const setDragging=(dragging:boolean)=>{const ratio=avatarRenderRatio(displayRatio,dragging,compactRef.current,constrainedDevice);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
-    const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
+    const setDragging=(dragging:boolean)=>{const ratio=avatarAdaptiveRatio(displayRatio,element.clientWidth,element.clientHeight,dragging,compactRef.current,constrainedDevice);if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}};
+    const resize=()=>{const width=element.clientWidth;if(!width)return;const height=element.clientHeight||340;const ratio=avatarAdaptiveRatio(displayRatio,width,height,false,compactRef.current,constrainedDevice);if(renderer.getPixelRatio()!==ratio)renderer.setPixelRatio(ratio);renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();draw();};
     setMarkers(markersRef.current);
     controller.current={preview:()=>{
       // Snap back to the full-body/front presentation before revealing the card.
@@ -547,7 +557,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       camera.position.set(0,standard.height,standard.distance);
       camera.lookAt(0,standard.height,0);draw();
     },viewport:small=>{
-      const ratio=avatarRenderRatio(displayRatio,false,small,constrainedDevice);
+      const ratio=avatarAdaptiveRatio(displayRatio,element.clientWidth,element.clientHeight,false,small,constrainedDevice);
       if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}
       draw();
     },style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.cap.color.set(value.hatColor);materials.capShade.color.set(value.hatColor).multiplyScalar(.58);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
@@ -555,7 +565,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};
     const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(element);
-    const visibilityObserver=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??false;if(visible)draw();});visibilityObserver.observe(element);
+    // V223: cancel pending GPU work as soon as the avatar leaves the viewport.
+    const visibilityObserver=new IntersectionObserver(entries=>{
+      visible=entries[0]?.isIntersecting??false;
+      if(!visible&&frame){cancelAnimationFrame(frame);frame=0;}
+      if(visible)draw();
+    });visibilityObserver.observe(element);
     const visibility=()=>{if(!document.hidden)draw();};document.addEventListener("visibilitychange",visibility);
     let pointer:{id:number;x:number;y:number;angle:number;moved:boolean;rotating:boolean}|null=null;
     const raycaster=new THREE.Raycaster();

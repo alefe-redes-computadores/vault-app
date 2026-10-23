@@ -1,5 +1,8 @@
 // app/saude/medicamentos/editar/page.tsx
 "use client";
+import { doseLogsRepository } from "@/lib/repositories/doseLogs";
+import { TEMPORARY_COURSE_PREFIX } from "@/lib/health-supply/temporary-course";
+import { TemporaryCourseFields, emptyTemporaryCourseDraft, readTemporaryCourseDraft, type TemporaryCourseDraft } from "@/components/saude/TemporaryCourseFields";
 
 import {
   buildMedicationRegulatoryContext,
@@ -1714,6 +1717,8 @@ function EditarMedicamentoContent() {
     >(
       "continuo"
     );
+  const [temporaryCourse, setTemporaryCourse] = useState<TemporaryCourseDraft>(emptyTemporaryCourseDraft);
+  const [hasExistingTemporaryCourse, setHasExistingTemporaryCourse] = useState(false);
 
   const [
     vezesAoDia,
@@ -2460,6 +2465,19 @@ function EditarMedicamentoContent() {
               item.tipo_uso ||
                 "continuo"
             );
+            if (activePersonId) {
+              const courseLogs = (await doseLogsRepository.getAll(activePersonId)).filter(log =>
+                log.medicamento_id === id && log.user_id === user?.id && log.motivo?.startsWith(TEMPORARY_COURSE_PREFIX));
+              if (cancelled) return;
+              const todayISO = getLocalTodayISO();
+              const futureLogs = courseLogs.filter(log => !log.tomado_em && !log.ignorado_em &&
+                `${log.data}T${log.horario}` > `${todayISO}T${new Date().toTimeString().slice(0,5)}`);
+              const note = futureLogs.at(-1)?.motivo || courseLogs.at(-1)?.motivo || "";
+              const currentCourseLogs = courseLogs.filter(log => log.motivo === note);
+              const match = /^Tratamento temporário · (\d{4}-\d{2}-\d{2}) · (\d+) dia\(s\)$/.exec(note);
+              setHasExistingTemporaryCourse(futureLogs.length > 0);
+              setTemporaryCourse(match ? { enabled: futureLogs.length > 0, start: match[1], days: match[2], times: [...new Set(currentCourseLogs.map(log => log.horario))].sort() } : emptyTemporaryCourseDraft);
+            }
 
             setMedicoNome(
               item.medico ||
@@ -3927,6 +3945,8 @@ function EditarMedicamentoContent() {
 
           const safePersonId =
             activePersonId;
+          const course = tipoUso === "continuo" ? null : readTemporaryCourseDraft(temporaryCourse);
+          if (temporaryCourse.enabled && tipoUso === "continuo") throw new Error("Selecione uso eventual para o tratamento com prazo definido.");
 
           const horariosFiltrados =
             tipoUso ===
@@ -4472,6 +4492,10 @@ function EditarMedicamentoContent() {
               id,
               updatePayload
             );
+            if (course || hasExistingTemporaryCourse) {
+              await doseLogsRepository.replaceTemporaryCourse({ personId: safePersonId, medicamentoId: id, course });
+              setHasExistingTemporaryCourse(Boolean(course));
+            }
 
             const finalUrl =
               finalAttachment
@@ -6868,6 +6892,7 @@ function EditarMedicamentoContent() {
                   {tipoUso !==
                     "continuo" && (
                     <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-5">
+                      <TemporaryCourseFields value={temporaryCourse} onChange={next => { setTemporaryCourse(next); markChanged(); }} existing={hasExistingTemporaryCourse} />
                       <p className="text-xs leading-relaxed text-ink-muted">
                         Como este medicamento é de uso eventual, não há horários diários obrigatórios. Cada tomada será registrada individualmente no histórico
                         {estoqueAtivo

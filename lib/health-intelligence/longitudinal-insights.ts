@@ -1,4 +1,6 @@
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
+import { buildCareRhythmInsights } from "@/lib/health-intelligence/care-rhythm";
+import { compareRecordedDoseWindows } from "@/lib/health-intelligence/recorded-dose-trend";
 
 type WindowStats = {
   count: number;
@@ -13,11 +15,12 @@ type DatedDose = HealthInsightContext["doseLogs"][number];
 const DAY = 86_400_000;
 
 function localDate(value?: string | null): Date | null {
-  if (!value) return null;
+  if (!value || !/^\d{4}-\d{2}-\d{2}(?:$|T|\s)/.test(value)) return null;
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);
   if (!year || !month || !day) return null;
   const parsed = new Date(year, month - 1, day);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return Number.isNaN(parsed.getTime()) || parsed.getFullYear() !== year ||
+    parsed.getMonth() + 1 !== month || parsed.getDate() !== day ? null : parsed;
 }
 
 function dayDiff(from: Date, to: Date): number {
@@ -53,7 +56,7 @@ function stats(records: DatedRecord[], today: Date, start: number, end: number):
   const selected = records.filter((item) => inWindow(localDate(item.data), today, start, end));
   const values = selected
     .map((item) => item.intensidade)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 10);
   return {
     count: selected.length,
     days: new Set(selected.map((item) => item.data).filter(Boolean)).size,
@@ -119,12 +122,15 @@ function isTaken(dose: DatedDose): boolean {
 
 function buildWindowPatterns(context: HealthInsightContext, today: Date, windowDays: 7 | 30): HealthInsight[] {
   const symptomRecords = context.registrosSaude.filter(
-    (item) => item.categoria === "sintoma" || typeof item.intensidade === "number"
+    (item) => item.categoria === "sintoma"
   );
   const groups = new Map<string, DatedRecord[]>();
   symptomRecords.forEach((record) => {
     const key = recordKey(record);
-    groups.set(key, [...(groups.get(key) || []), record]);
+    // V224: append in place to avoid O(n²) copies for a long symptom history.
+    const existing = groups.get(key);
+    if (existing) existing.push(record);
+    else groups.set(key, [record]);
   });
 
   const insights: HealthInsight[] = [];
@@ -133,8 +139,11 @@ function buildWindowPatterns(context: HealthInsightContext, today: Date, windowD
     const previous = stats(records, today, windowDays, windowDays * 2 - 1);
     if (current.count < 2 || current.days < 2) continue;
 
-    const deltaCount = percentChange(current.count, previous.count);
-    const deltaAverage = current.average !== null && previous.average !== null
+    // No historical baseline = no "worsened" or "improved" conclusion.
+    // Older sparse data should not be interpreted as zero symptoms.
+    const comparable = previous.count >= 2 && previous.days >= 2;
+    const deltaCount = comparable ? percentChange(current.count, previous.count) : null;
+    const deltaAverage = comparable && current.average !== null && previous.average !== null
       ? Number((current.average - previous.average).toFixed(1))
       : null;
     const worsening = (deltaAverage !== null && deltaAverage >= 1) || (deltaCount !== null && deltaCount >= 50 && current.count >= 3);
@@ -145,12 +154,13 @@ function buildWindowPatterns(context: HealthInsightContext, today: Date, windowD
     const label = recordLabel(records[0]);
     const state = worsening ? "aumentou" : improving ? "diminuiu" : "persistiu";
     const conf = confidence(current.count + previous.count, current.days + previous.days, windowDays * 2);
+    const links = enrichments(records, context);
     insights.push({
       id: `longitudinal-${windowDays}-${normalize(key)}`,
       kind: "pattern",
       categoria: "sintomas",
       titulo: `${label}: o padrão ${state} no período`,
-      mensagem: `Nos ${windowDays} dias atuais houve ${current.count} registro(s) em ${current.days} dia(s), comparados com ${previous.count} registro(s) em ${previous.days} dia(s) na janela anterior equivalente. É uma leitura do histórico registrado, não um diagnóstico.`,
+      mensagem: `Nos ${windowDays} dias atuais houve ${current.count} registro(s) em ${current.days} dia(s). ${comparable ? `Na janela anterior, houve ${previous.count} registro(s) em ${previous.days} dia(s).` : "O período anterior não tem registros suficientes para afirmar aumento ou diminuição."} É uma leitura do histórico registrado, não um diagnóstico.`,
       urgencia: worsening ? "media" : "baixa",
       confianca: conf,
       amostra: current.count + previous.count,
@@ -162,9 +172,9 @@ function buildWindowPatterns(context: HealthInsightContext, today: Date, windowD
         `Janela anterior: ${previous.count} registro(s) em ${previous.days}/${windowDays} dias`,
         ...(current.average !== null ? [`Intensidade média atual: ${current.average.toFixed(1)}/10`] : []),
         ...(previous.average !== null ? [`Intensidade média anterior: ${previous.average.toFixed(1)}/10`] : []),
-        ...enrichments(records, context),
+        ...links,
       ],
-      fontesInternas: ["Registros de Saúde", ...(enrichments(records, context).some((item) => item.startsWith("Tratamento")) ? ["Tratamentos vinculados"] : []), ...(enrichments(records, context).some((item) => item.startsWith("CID")) ? ["CIDs vinculados"] : [])],
+      fontesInternas: ["Registros de Saúde", ...(links.some((item) => item.startsWith("Tratamento")) ? ["Tratamentos vinculados"] : []), ...(links.some((item) => item.startsWith("CID")) ? ["CIDs vinculados"] : [])],
       comparacao: {
         janelaAtual: `${windowDays} dias atuais`,
         janelaAnterior: `${windowDays} dias anteriores`,
@@ -182,7 +192,7 @@ function buildWindowPatterns(context: HealthInsightContext, today: Date, windowD
 
 function buildTemporalAssociations(context: HealthInsightContext, today: Date): HealthInsight[] {
   const symptoms = context.registrosSaude.filter(
-    (item) => (item.categoria === "sintoma" || typeof item.intensidade === "number") && inWindow(localDate(item.data), today, 0, 29)
+    (item) => item.categoria === "sintoma" && inWindow(localDate(item.data), today, 0, 29)
   );
   const doses = context.doseLogs.filter(
     (item) => (item.dose_kind === "sos" || item.dose_kind === "extra") && isTaken(item) && inWindow(localDate(item.data), today, 0, 29)
@@ -225,6 +235,46 @@ function buildTemporalAssociations(context: HealthInsightContext, today: Date): 
   }];
 }
 
+/** V223: compare explicit scheduled dose decisions, not presumed missed doses.
+ * A missing log is unknown, and cannot become a missed dose or stock movement.
+ */
+function buildRecordedDoseTrendInsight(context: HealthInsightContext, today: Date): HealthInsight[] {
+  // Require one unambiguous owner for this person, rather than merging accounts.
+  const owners = [...new Set(context.medicamentos
+    .filter(med => med.person_id === context.personId)
+    .map(med => med.user_id).filter(Boolean))];
+  if (owners.length !== 1) return [];
+  const reference = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const trend = compareRecordedDoseWindows(context.doseLogs, owners[0], context.personId, reference);
+  if (!trend) return [];
+  const rising=trend.direction === "increase";
+  return [{
+    id:"longitudinal-doses-confirmadas-14",
+    kind:"pattern",categoria:"rotina",
+    titulo:rising?"Tomadas registradas mais frequentes no histórico":"Registros de doses ignoradas aumentaram",
+    mensagem:`Entre os horários com decisão registrada (tomada ou ignorada), ${trend.current.takenPercent}% foram tomados nos últimos 14 dias e ${trend.previous.takenPercent}% nos 14 dias anteriores. Ausência de registro não comprova uma dose esquecida. Esta comparação não mede adesão total nem recomenda alterar o tratamento.`,
+    urgencia:rising?"baixa":"media",
+    confianca:trend.confidence,amostra:trend.sample,periodoDias:28,
+    entidadeTipo:"linha_cuidado",link:"/hoje",
+    evidencias:[
+      `Últimos 14 dias: ${trend.current.taken} tomadas e ${trend.current.skipped} ignoradas registradas`,
+      `14 dias anteriores: ${trend.previous.taken} tomadas e ${trend.previous.skipped} ignoradas registradas`,
+      `Diferença: ${trend.deltaPoints} pontos percentuais entre decisões registradas`,
+      "Doses SOS, extras, planejadas, sem confirmação e eventos ambíguos foram excluídos",
+    ],
+    fontesInternas:["Histórico de doses programadas", "Pessoa ativa"],
+    comparacao:{
+      janelaAtual:"Últimos 14 dias",janelaAnterior:"14 dias anteriores",
+      valorAtual:trend.current.takenPercent,valorAnterior:trend.previous.takenPercent,
+      variacaoPercentual:trend.previous.takenPercent===0?null:Math.round(trend.deltaPoints/trend.previous.takenPercent*100),
+      tendencia:rising?"aumento":"queda",
+    },
+    coberturaDias:{observados:trend.current.observedDays+trend.previous.observedDays,total:28},
+    acaoSegura:"Revise apenas os registros conhecidos e converse com o profissional responsável se tiver dúvidas; não mude doses por esta comparação.",
+    limitacaoSeguranca:"Comparação descritiva de registros explícitos, sem confirmação das doses não registradas e sem inferência causal.",
+  }];
+}
+
 export function buildLongitudinalHealthInsights(context: HealthInsightContext): HealthInsight[] {
   const today = localDate(context.hoje) || new Date();
   const scoped: HealthInsightContext = {
@@ -246,6 +296,9 @@ export function buildLongitudinalHealthInsights(context: HealthInsightContext): 
     ...buildWindowPatterns(scoped, today, 7),
     ...buildWindowPatterns(scoped, today, 30),
     ...buildTemporalAssociations(scoped, today),
+    ...buildRecordedDoseTrendInsight(scoped, today),
+    // V225 R2: observed habits never override scheduled-dose evidence.
+    ...buildCareRhythmInsights(scoped),
   ];
 
   const bySubject = new Map<string, HealthInsight>();

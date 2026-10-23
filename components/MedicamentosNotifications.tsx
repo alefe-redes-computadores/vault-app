@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { decideMedicationAlerts, MEDICATION_ALERT_PREF_EVENT } from "@/lib/health-intelligence/medication-alert-policy";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,6 +28,11 @@ export function MedicamentosNotifications() {
   const { medicamentos } = useMedicamentos();
   const { retiradas } = useRetiradas();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
+  const [prefsRevision, setPrefsRevision] = useState(0);
+  useEffect(() => { const changed = () => setPrefsRevision(n => n+1);
+    window.addEventListener(MEDICATION_ALERT_PREF_EVENT, changed);
+    return () => window.removeEventListener(MEDICATION_ALERT_PREF_EVENT, changed);
+  }, []);
   const today = useLocalDay();
 
   const { alertas } = useMemo(() => {
@@ -48,7 +54,9 @@ export function MedicamentosNotifications() {
     };
 
     medicamentos.forEach((med: any) => {
-      const pendingWithdrawal = scheduledWithdrawals.get(med.id);
+      const rawWithdrawal = scheduledWithdrawals.get(med.id);
+      const decision = decideMedicationAlerts({medication:med,withdrawals:rawWithdrawal?[rawWithdrawal]:[],today});
+      const pendingWithdrawal = decision.withdrawal;
       const withdrawalState = withdrawalDueState(pendingWithdrawal, today);
       if (pendingWithdrawal && (withdrawalState === "overdue" || withdrawalState === "today")) {
         const overdue = withdrawalState === "overdue";
@@ -75,7 +83,9 @@ export function MedicamentosNotifications() {
           med
         );
 
-      if (renovacaoInsight.deveRenovar) {
+      // V228: one operational priority per medication; an existing withdrawal
+      // takes precedence over a duplicate request for recipe/replenishment.
+      if (renovacaoInsight.deveRenovar && decision.showPrescription && !decision.withdrawal) {
         const dias =
           renovacaoInsight.diasAteRenovacao;
 
@@ -135,7 +145,7 @@ export function MedicamentosNotifications() {
         { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawals.get(med.id)?.id }
       );
 
-      if (stock.state === "empty" || stock.state === "negative") {
+      if (decision.showStock && (stock.state === "empty" || stock.state === "negative")) {
         if (stockAction) addAlert({
           id: med.id,
           tipo: "estoque",
@@ -150,6 +160,7 @@ export function MedicamentosNotifications() {
           actionLabel: stockAction.label,
         });
       } else if (
+        decision.showStock &&
         stock.state === "available" &&
         (
           (stock.daysRemaining !== null && stock.daysRemaining <= 3) ||
@@ -187,7 +198,7 @@ export function MedicamentosNotifications() {
     });
 
     return { alertas: itensAlerta };
-  }, [medicamentos, scheduledWithdrawals, today]);
+  }, [medicamentos, scheduledWithdrawals, today, prefsRevision]);
 
   if (alertas.length === 0) return null;
 

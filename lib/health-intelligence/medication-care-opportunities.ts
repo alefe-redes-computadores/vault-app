@@ -16,8 +16,10 @@ import {
 } from "@/lib/health-insights";
 
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { decideMedicationAlerts } from "@/lib/health-intelligence/medication-alert-policy";
 import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
+import { summarizeMedicationContinuity, continuityEvidenceMessage } from "@/lib/health-intelligence/medication-continuity";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -60,6 +62,10 @@ export interface MedicationCareOpportunity {
 
   renewalCount:
     number;
+
+  /** Planejamento separado do histórico já registrado, sem movimentar estoque. */
+  plannedAcquisitionCount?: number;
+  plannedAcquisitionDate?: string | null;
 
   stockDays:
     number | null;
@@ -245,6 +251,7 @@ function buildMessage({
   estoqueZerado,
   renewalCount,
   prescriptionCount,
+  continuityMessage,
   insightMessage,
   scheduledWithdrawal,
 }: {
@@ -268,6 +275,9 @@ function buildMessage({
 
   prescriptionCount:
     number;
+
+  continuityMessage:
+    string | null;
 
   insightMessage:
     string;
@@ -314,6 +324,8 @@ function buildMessage({
     );
   }
 
+  if (continuityMessage) parts.push(continuityMessage);
+
   if (
     scheduledWithdrawal
   ) {
@@ -332,8 +344,8 @@ function buildMessage({
     parts.push(
       "Não encontrei renovação nem retirada futura registrada para este medicamento."
     );
-  } else if (prescriptionCount > 0 && prescriptionCount === renewalCount) {
-    parts.push("Há receita registrada, mas nenhuma aquisição registrada neste histórico. Confira a disponibilidade antes de registrar uma compra ou retirada.");
+  } else if (continuityMessage) {
+    // V222: mensagem canônica já descreve receita isolada / compra planejada.
   } else if (prescriptionCount > 0) {
     parts.push("O histórico contém receitas e aquisições. Uma receita nova não confirma reposição do estoque.");
   } else {
@@ -415,10 +427,15 @@ export function buildMedicationCareOpportunities({
         dosesRemaining <= 5
       );
 
-    const scheduledWithdrawal = scheduledWithdrawals.get(medicamento.id) ?? null;
-    const overdueWithdrawal = withdrawalDueState(scheduledWithdrawal, today) === "overdue";
+    const candidateWithdrawal = scheduledWithdrawals.get(medicamento.id) ?? null;
+    const decision = decideMedicationAlerts({medication:medicamento,withdrawals:candidateWithdrawal?[candidateWithdrawal]:[],today});
+    const scheduledWithdrawal = decision.withdrawal;
+    const overdueWithdrawal = decision.withdrawalOverdue;
+    const dueWithdrawal = Boolean(scheduledWithdrawal && scheduledWithdrawal.data === today);
+    const visibleStockSignal = hasStockSignal && decision.showStock;
+    const visibleRenewalSignal = insight.deveRenovar && decision.showPrescription && !decision.withdrawal;
 
-    if (!insight.deveRenovar && !hasStockSignal && !overdueWithdrawal) continue;
+    if (!visibleRenewalSignal && !visibleStockSignal && !overdueWithdrawal && !dueWithdrawal) continue;
 
     const treatment =
       getActiveTreatment(
@@ -428,7 +445,7 @@ export function buildMedicationCareOpportunities({
 
     const actionInsight = overdueWithdrawal
       ? { ...insight, deveRenovar: true, motivo: "sus" as const, urgencia: "alta" as const }
-      : insight.deveRenovar
+      : visibleRenewalSignal
       ? insight
       : {
           ...insight,
@@ -450,17 +467,17 @@ export function buildMedicationCareOpportunities({
 
     if (!accessAction) continue;
 
-    const medRenewals = renewalsByMedication.get(medicamento.id) ?? [];
+    const medRenewals = (renewalsByMedication.get(medicamento.id) ?? []).filter(event =>
+      event.user_id === medicamento.user_id &&
+      (!event.person_id || !medicamento.person_id || event.person_id === medicamento.person_id) &&
+      (!isPrescriptionOnly(event) || renewalEventDate(event).slice(0, 10) <= today)
+    );
 
-    const latestRenewal =
-      medRenewals[0];
-
-    const latestRenewalDate =
-      latestRenewal
-        ? getEffectiveRenewalDate(
-            latestRenewal
-          ) || null
-        : null;
+    // V222: um agendamento futuro não vira última compra nem estoque confirmado.
+    // Escopo por usuário/pessoa também é aplicado ao resumo de continuidade.
+    const continuity = summarizeMedicationContinuity(medicamento, medRenewals, today);
+    const latestRenewal = continuity.latestRecorded;
+    const latestRenewalDate = latestRenewal ? getEffectiveRenewalDate(latestRenewal) || null : null;
     const latestRenewalKind = latestRenewal
       ? isPrescriptionOnly(latestRenewal) ? "receita" as const : "aquisicao" as const
       : null;
@@ -468,9 +485,9 @@ export function buildMedicationCareOpportunities({
 
     const score =
       scoreOpportunity({
-        stockDays,
+        stockDays: decision.showStock ? stockDays : null,
 
-        estoqueZerado,
+        estoqueZerado: decision.showStock && estoqueZerado,
 
         urgency:
           overdueWithdrawal ? "alta" : insight.urgencia,
@@ -484,15 +501,17 @@ export function buildMedicationCareOpportunities({
           medRenewals.length,
       });
 
-    const level =
-      resolveLevel(
-        score
-      );
+    // Retirada atrasada com estoque SOS positivo é pendência logística, não urgência clínica.
+    const level = overdueWithdrawal && decision.isAsNeeded && (decision.count ?? 0) > 0
+      ? "attention"
+      : overdueWithdrawal ? "urgent" : resolveLevel(score);
 
     const title =
       overdueWithdrawal
-        ? `${medicamento.nome} tem retirada pendente`
-        : estoqueZerado
+        ? `${medicamento.nome}: retirada atrasada`
+        : dueWithdrawal
+        ? `${medicamento.nome}: retirada hoje`
+        : decision.showStock && estoqueZerado
         ? `${medicamento.nome} está sem estoque registrado`
         : level === "urgent"
           ? `${medicamento.nome} precisa de revisão`
@@ -518,7 +537,7 @@ export function buildMedicationCareOpportunities({
 
       title,
 
-      message:
+      message: overdueWithdrawal && decision.isAsNeeded ? decision.explanation :
         buildMessage({
           medicamento,
 
@@ -534,6 +553,7 @@ export function buildMedicationCareOpportunities({
             medRenewals.length,
 
           prescriptionCount,
+          continuityMessage: continuityEvidenceMessage(continuity),
 
           insightMessage:
             insight.mensagem,
@@ -558,6 +578,8 @@ export function buildMedicationCareOpportunities({
 
       renewalCount:
         medRenewals.length,
+      plannedAcquisitionCount: continuity.plannedAcquisitions,
+      plannedAcquisitionDate: continuity.nextPlanned ? renewalEventDate(continuity.nextPlanned).slice(0, 10) : null,
 
       stockDays,
 
@@ -584,7 +606,7 @@ export function buildMedicationCareOpportunities({
             )}`
           : null,
 
-      score,
+      score: overdueWithdrawal ? Math.max(score, 90) : score,
     });
   }
 

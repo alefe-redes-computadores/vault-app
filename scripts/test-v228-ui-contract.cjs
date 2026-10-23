@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const component=read('components/saude/TreatmentCareLinks.tsx');
+assert.match(component,/Aquisições vinculadas/);assert.match(component,/Documentos relacionados|Documentos vinculados/);
+assert.match(component,/\/saude\/renovacao\/detalhes\?id=/);assert.match(component,/\/saude\/documentos\/detalhes\?id=/);
+assert.match(component,/context\.medications/);assert.match(component,/onNavigate/);
+const avatar=read('components/saude/CareContinuityAvatarSummary.tsx');
+const panel=read('components/saude/AvatarWeekCoverage.tsx');
+assert.match(avatar,/<AvatarWeekCoverage context=\{context\} onNavigate=\{onNavigate\}/);
+assert.match(panel,/sem informação, não ausência de sintomas/);assert.doesNotMatch(panel,/db\.|supabase\.|useLiveQuery\(/);
+const notifications=read('components/DoseNotificationReconciler.tsx');
+assert.match(notifications,/createDoseNotificationPipeline/);assert.doesNotMatch(notifications,/Promise\.allSettled\(\[/);
+const gate=read('scripts/test-v63-release-gate.mjs');
+assert.match(gate,/test-v227-care-network-avatar\.cjs/);
+assert.match(gate,/test-v228-stability\.cjs/);
+assert.match(gate,/test-v228-ui-contract\.cjs/);
+console.log('VAULT V228: treatment cards, acquisitions/documents navigation, Avatar coverage, single notification pipeline and cumulative gates OK');

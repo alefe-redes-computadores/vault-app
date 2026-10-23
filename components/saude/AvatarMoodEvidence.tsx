@@ -5,6 +5,9 @@ const formatDate = (value: string) => value.split('-').reverse().join('/');
 
 export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) {
   const { moods, moodEvidence: evidence } = context;
+  // V224: only actual reported days count toward facial expression evidence.
+  const coverageDays = Math.max(0, Math.min(7, evidence.days));
+  const coveragePercent = Math.round((coverageDays / 7) * 100);
   const title = evidence.reason === 'positive' ? 'Rosto feliz' : evidence.reason === 'negative' ? 'Rosto reflexivo' : 'Expressão neutra';
   const explanation = evidence.reason === 'positive'
     ? `${evidence.positive} de ${evidence.days} dias com humor Bem ou Muito bem.`
@@ -19,6 +22,10 @@ export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) 
       <h3 className="text-sm font-semibold text-violet-200">{title}</h3>
       <p className="mt-1 text-xs leading-relaxed text-ink-primary">{explanation}</p>
       <p className="mt-2 text-[11px] text-ink-muted">{evidence.days} de 7 dias com relato{evidence.from ? ` · ${formatDate(evidence.from)} a ${formatDate(evidence.to)}` : ''}</p>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Cobertura de humor declarado nos últimos sete dias" aria-valuemin={0} aria-valuemax={7} aria-valuenow={coverageDays}>
+        <div className="h-full rounded-full bg-violet-400" style={{width:`${coveragePercent}%`}}/>
+      </div>
+      <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Dias sem registro continuam desconhecidos — não são interpretados como humor neutro. O rosto não substitui o diário nem descreve seu estado atual.</p>
     </div>
     {moods.length ? <>
       <p className="text-xs leading-relaxed text-ink-muted">Último relato: {MOOD_CHOICES[readMoodContext(moods[0].contexto)!]} em {formatDate(moods[0].data)}. A expressão resume seus relatos; não mede como você está agora.</p>
@@ -32,8 +39,12 @@ export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) 
     </> : <p className="text-xs text-ink-muted">Ainda não há humor declarado nesse formato. A expressão permanece neutra.</p>}
     <details className="rounded-xl border border-surface-border p-3">
       <summary className="min-h-11 cursor-pointer content-center text-xs text-ink-muted">Como esse rosto foi escolhido</summary>
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">O resumo da rotina cruza registros datados de sono, caminhada, humor e doses em uma seção separada. A expressão do Avatar continua dependendo exclusivamente dos seus relatos de humor. Não há medição automática de emoção.</p>
       <p className="mt-2 text-xs leading-relaxed text-ink-muted">Usamos o último humor explicitamente informado em cada dia, nos últimos 7 dias. São necessários ao menos 3 dias e predominância de dois terços. Dias sem relato não contam como neutros. Diagnósticos, remédios e a intensidade não escolhem a expressão. Humor informado não elimina outros alertas.</p>
     </details>
-    <Link className="block min-h-11 rounded-xl bg-violet-400/10 p-3 text-xs text-violet-300" href="/saude/registros/novo?preset=humor">Registrar como me senti ›</Link>
+    <div className="grid grid-cols-2 gap-2">
+      <Link className="flex min-h-11 items-center justify-center rounded-xl bg-violet-400/10 px-2 text-center text-[11px] font-semibold text-violet-300" href="/saude/registros/novo?preset=humor">Registrar humor ›</Link>
+      <Link className="flex min-h-11 items-center justify-center rounded-xl border border-surface-border px-2 text-center text-[11px] font-semibold text-ink-primary" href="/saude/registros/relatorio">Resumo para consulta ›</Link>
+    </div>
   </div>;
 }

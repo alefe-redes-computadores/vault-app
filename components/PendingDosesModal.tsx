@@ -54,7 +54,8 @@ export type PendingDose = {
 
   diaLabel:
     | "Hoje"
-    | "Ontem";
+    | "Ontem"
+    | "Anterior";
 };
 
 export type PendingDoseResolution = { requireRegisteredStock?: boolean } & (
@@ -217,7 +218,7 @@ export function PendingDosesModal({
     const available: PendingDose[] = [], unavailable: PendingDose[] = [], yesterday: PendingDose[] = [], today: PendingDose[] = [];
     for (const dose of doses) {
       (dose.stockUnavailable ? unavailable : available).push(dose);
-      (dose.diaLabel === "Ontem" ? yesterday : today).push(dose);
+      (dose.diaLabel === "Hoje" ? today : yesterday).push(dose);
     }
     return {
       availableDoses: available,
@@ -638,7 +639,7 @@ export function PendingDosesModal({
 
         {!selectedDose && doses.length > 0 && <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-surface-border/60 bg-void/25" aria-label="Resumo das doses pendentes">
           <div className="px-3 py-2"><strong className="block font-mono text-base text-ink-primary">{doses.length}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Revisar</span></div>
-          <div className="border-x border-surface-border/50 px-3 py-2"><strong className="block font-mono text-base text-coral">{dosesOntem}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Ontem</span></div>
+          <div className="border-x border-surface-border/50 px-3 py-2"><strong className="block font-mono text-base text-coral">{dosesOntem}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Anteriores</span></div>
           <div className="px-3 py-2"><strong className={`block font-mono text-base ${unavailableDoses.length ? "text-amber-300" : "text-emerald-300"}`}>{unavailableDoses.length}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Sem saldo</span></div>
         </div>}
 
@@ -680,10 +681,7 @@ export function PendingDosesModal({
                   </div>
 
                   <p className="mt-1 font-mono text-[10px] text-ink-muted">
-                    Programada para{" "}
-                    {
-                      selectedDose.horario
-                    }
+                    Programada para {selectedDose.data.split("-").reverse().join("/")} às {selectedDose.horario}
                   </p>
                 </div>
               </div>
@@ -714,25 +712,26 @@ export function PendingDosesModal({
                         "scheduled",
                     })
                 }
-                className="flex w-full items-center gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
               >
                 <CheckCircle2
                   size={
                     18
                   }
-                  className="shrink-0 text-emerald-400"
+                  className="shrink-0 text-ink-secondary"
                 />
 
                 <span>
                   <span className="block text-sm font-semibold text-ink-primary">
-                    Tomei às{" "}
+                    Tomei no horário programado ({" "}
                     {
                       selectedDose.horario
                     }
+                    )
                   </span>
 
                   <span className="mt-0.5 block text-[10px] text-ink-muted">
-                    Só esqueci de registrar.
+                    Use apenas se tomou naquele horário e esqueceu de registrar.
                   </span>
                 </span>
               </button>
@@ -751,13 +750,13 @@ export function PendingDosesModal({
                           "now",
                       })
                   }
-                  className="flex w-full items-center gap-3 rounded-2xl border border-ice/25 bg-ice/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-2xl border border-emerald-400/35 bg-emerald-400/15 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
                 >
                   <Timer
                     size={
                       18
                     }
-                    className="shrink-0 text-ice"
+                    className="shrink-0 text-emerald-300"
                   />
 
                   <span>
@@ -769,7 +768,7 @@ export function PendingDosesModal({
                     </span>
 
                     <span className="mt-0.5 block text-[10px] text-ink-muted">
-                      Registrar como tomada atrasada.
+                      Grava a hora real de agora; a hora programada permanece no histórico.
                     </span>
                   </span>
                 </button>

@@ -52,7 +52,7 @@ import { useBiometricPreference } from "@/hooks/useBiometricPreference";
 import { useNotificationPreference } from "@/hooks/useNotificationPreference";
 import {
   requestNotificationPermission,
-  scheduleDoseNotifications,
+  reconcileScheduledDoseNotifications,
 } from "@/lib/dose-notifications";
 
 import {
@@ -77,6 +77,7 @@ import {
   isErudaPreferenceEnabled,
 } from "@/lib/diagnostics/eruda";
 import { summarizePersonalVault } from "@/lib/personal-vault-overview";
+import { NativeDoseAgendaInspection } from "@/components/saude/NativeDoseAgendaInspection";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -671,7 +672,8 @@ export default function MaisPage() {
           ) =>
             Boolean(
               medicamento.id &&
-              medicamento.person_id &&
+              medicamento.person_id === activePersonId &&
+              medicamento.user_id === user?.id &&
               medicamento.status !==
                 "descontinuado" &&
               medicamento.estoque_horarios &&
@@ -680,31 +682,16 @@ export default function MaisPage() {
             )
         );
 
-      const results =
-        await Promise.allSettled(
-          medicamentosAgendaveis.map(
-            (
-              medicamento
-            ) =>
-              scheduleDoseNotifications({
-                id:
-                  medicamento.id!,
-
-                person_id:
-                  medicamento.person_id,
-
-                nome:
-                  medicamento.nome,
-
-                dosagem:
-                  medicamento.dosagem,
-
-                estoque_horarios:
-                  medicamento.estoque_horarios ||
-                  [],
-              })
-          )
-        );
+      // VAULT_V226_SINGLE_FLIGHT_ENABLE: one owned-person read and one native agenda.
+      const ownedMeds = allMedicamentos.filter(
+        (medicamento) => medicamento.person_id === activePersonId && medicamento.user_id === user?.id
+      );
+      const recordedLogs = await db.doseLogs.where("person_id").equals(activePersonId!).toArray();
+      await reconcileScheduledDoseNotifications({
+        personId: activePersonId!,
+        medicamentos: ownedMeds,
+        logs: recordedLogs.filter((log) => log.user_id === user?.id),
+      });
 
       /*
        * Além das doses, restaura vencimentos de documentos e
@@ -715,31 +702,7 @@ export default function MaisPage() {
         allMedicamentos
       );
 
-      const failures =
-        results.filter(
-          (
-            result
-          ) =>
-            result.status ===
-            "rejected"
-        ).length;
-
-      if (
-        failures > 0
-      ) {
-        console.error(
-          "[Mais] Alguns lembretes não foram reagendados:",
-          failures
-        );
-
-        showToast(
-          "Lembretes ativados, mas alguns medicamentos precisam ser revisados.",
-          "info",
-          5000
-        );
-
-        return;
-      }
+      // V226: native reconciliation failures are handled by the existing catch.
 
       showToast(
         medicamentosAgendaveis.length ===
@@ -998,6 +961,8 @@ export default function MaisPage() {
                 <button type="button" onClick={handleBiometricToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.035] p-3 text-left active:scale-[0.985]"><Fingerprint size={18} className={isBiometricEnabled ? "text-violet-300" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Biometria</p><p className="truncate text-[9px] text-ink-muted">{isBiometricEnabled ? "Ativa" : "Inativa"}</p></div></button>
                 <button type="button" onClick={handleNotificationsToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-left active:scale-[0.985]"><Bell size={18} className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Lembretes</p><p className="truncate text-[9px] text-ink-muted">{!isNativeApp ? "Somente APK" : isNotificationsEnabled ? "Ativos" : "Inativos"}</p></div></button>
               </div>
+              {isNativeApp && isNotificationsEnabled ? <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Lembretes no mesmo horário são agrupados; cada tomada continua individual no prontuário.</p> : null}
+              {isNativeApp && isNotificationsEnabled && activePersonId ? <NativeDoseAgendaInspection key={activePersonId} personId={activePersonId} /> : null}
             </div>
 
             <div>

@@ -6,7 +6,8 @@ export function treatmentCareContext(treatment:Tratamento|null,medications:Medic
   const empty={medications:[] as Medicamento[],documents:[] as Document[],renewals:[] as Renovacao[],withdrawals:[] as Retirada[],processes:[] as SupplyData['processos']};
   if(!treatment?.id||!userId||!personId||treatment.user_id!==userId||treatment.person_id!==personId)return empty;
   const owned=(row:{user_id:string;person_id?:string|null})=>row.user_id===userId&&row.person_id===personId;
-  const meds=medications.filter(m=>m.id&&owned(m)&&m.tratamento_ids?.includes(treatment.id!));
+  // V228: vínculos explícitos em qualquer direção; mesma regra do dossiê V227.
+  const meds=medications.filter(m=>m.id&&owned(m)&&(m.tratamento_ids?.includes(treatment.id!)||treatment.medicamento_ids?.includes(m.id!)));
   const medIds=new Set(meds.map(m=>m.id!));
   const acquisitions=renewals.filter(r=>owned(r)&&medIds.has(r.medicamento_id));
   const docs=documents.filter(d=>d.id&&owned(d)&&d.category_id==='saude');

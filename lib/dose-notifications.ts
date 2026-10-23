@@ -1,6 +1,11 @@
 // lib/dose-notifications.ts
 
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
+import {
+  reconcileVaultNotificationSet,
+  VAULT_NOTIFICATION_FINGERPRINT,
+  vaultNotificationFingerprint,
+} from "@/lib/notification-reconciliation";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import {
   isVaultNative,
@@ -348,6 +353,9 @@ export async function cancelDoseNotifications(
           );
         }
         if (stockExtra?.type === "dose_stock_review" && Array.isArray(stockExtra.medicamentoIds) && stockExtra.medicamentoIds.includes(medicamentoId)) ids.add(notification.id);
+        // A previous grouped alarm still contains this medicine: drop its stale
+        // snapshot. The global reconciler recreates the remaining group's slot.
+        if (stockExtra?.type === "dose_reminder_group" && Array.isArray(stockExtra.medicamentoIds) && stockExtra.medicamentoIds.includes(medicamentoId)) ids.add(notification.id);
       }
     );
 
@@ -433,7 +441,7 @@ export async function cancelAllDoseNotifications(
           notification.extra;
 
         const doseType = (extra as Record<string, unknown> | undefined)?.type;
-        if (doseType === "dose_reminder" || doseType === "dose_planned") {
+        if (doseType === "dose_reminder" || doseType === "dose_planned" || doseType === "dose_reminder_group") {
           ids.add(
             notification.id
           );
@@ -495,7 +503,7 @@ function scheduledDateAtV51(data: string, horario: string): Date | null {
   const h=/^(\d{2}):(\d{2})$/.exec(horario);
   if(!d || !h) return null;
   const result=new Date(+d[1],+d[2]-1,+d[3],+h[1],+h[2],0,0);
-  return Number.isNaN(result.getTime()) ? null : result;
+  return result.getFullYear()===+d[1] && result.getMonth()===+d[2]-1 && result.getDate()===+d[3] && result.getHours()===+h[1] && result.getMinutes()===+h[2] ? result : null;
 }
 
 function scheduledDoseResolvedV51(logs: DoseLog[], personId: string, medicamentoId: string, data: string, horario: string): boolean {
@@ -506,6 +514,14 @@ function scheduledDoseResolvedV51(logs: DoseLog[], personId: string, medicamento
     log.horario===horario &&
     Boolean(log.tomado_em || log.ignorado_em)
   );
+}
+
+// VAULT_V226_INCREMENTAL_NATIVE_REMINDERS
+// Own every generation of scheduled reminders, including legacy payloads.
+// This predicate is deliberately separate from overdue and event schedulers.
+function ownsScheduledDoseReminderV226(notification: {extra?: Record<string,unknown>}): boolean {
+  const extra = notification.extra;
+  return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group" || extra?.type==="dose_planned" || extra?.type==="dose_stock_review";
 }
 
 type ScheduledDoseInput = { personId: string; medicamentos: Medicamento[]; logs: DoseLog[]; now?: Date };
@@ -520,21 +536,18 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
   const personId=input.personId.trim();
   if(!personId) return 0;
 
-  const pending=await LocalNotifications.getPending();
-  const oldDoseIds=pending.notifications
-    .filter((notification) => {
-      const extra=notification.extra as Record<string,unknown>|undefined;
-      return extra?.type==="dose_reminder" || extra?.type==="dose_reminder_group" || extra?.type==="dose_planned" || extra?.type==="dose_stock_review";
-    })
-    .map((notification)=>({id:notification.id}));
+  // V226: no longer cancels every pending alarm before comparing the new agenda.
+  // The shared reconciliation coordinator serializes native read/write operations.
 
-  // Remove tanto a agenda recorrente legada quanto os slots V51 e reconstrói
-  // a janela a partir do estado clínico atual do DoseLog.
-  if(oldDoseIds.length>0) await LocalNotifications.cancel({notifications:oldDoseIds});
-
-  if(!isNotificationPreferenceEnabled() || !isVaultNotificationCategoryEnabled("doses")) return 0;
+  if(!isNotificationPreferenceEnabled() || !isVaultNotificationCategoryEnabled("doses")) {
+    await reconcileVaultNotificationSet([], ownsScheduledDoseReminderV226);
+    return 0;
+  }
   const permission=await LocalNotifications.checkPermissions();
-  if(permission.display!=="granted") return 0;
+  if(permission.display!=="granted") {
+    await reconcileVaultNotificationSet([], ownsScheduledDoseReminderV226);
+    return 0;
+  }
   await ensureVaultNotificationChannel();
   await registerNotificationActions();
 
@@ -638,9 +651,9 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
     grouped.set(key,current);
   }
 
-  const orderedGroups=Array.from(grouped.values()).sort(
-    (a,b)=>a[0].at.getTime()-b[0].at.getTime()
-  );
+  const orderedGroups=Array.from(grouped.values())
+    .map((group)=>group.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")||a.medicamentoId.localeCompare(b.medicamentoId)))
+    .sort((a,b)=>a[0].at.getTime()-b[0].at.getTime());
 
   for(const group of orderedGroups){
     if(notifications.length>=MAX_SCHEDULED_DOSE_PENDING_V51) break;
@@ -698,6 +711,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
     group.push(slot); stockGroups.set(key, group);
   }
   for (const group of stockGroups.values()) {
+    group.sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR")||a.medicamentoId.localeCompare(b.medicamentoId));
     const first = group[0];
     const medicamentoIds = group.map(slot => slot.medicamentoId).sort();
     notifications.push({
@@ -712,8 +726,23 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
   }
   notifications.sort((a, b) => (a.schedule as { at: Date }).at.getTime() - (b.schedule as { at: Date }).at.getTime());
   notifications.splice(MAX_SCHEDULED_DOSE_PENDING_V51);
-  if(notifications.length>0){
-    await LocalNotifications.schedule({notifications: notifications as unknown as Parameters<typeof LocalNotifications.schedule>[0]["notifications"]});
+  // V226: same ID and same clinical payload -> keep the OS alarm unchanged.
+  // Fingerprints include the actual target time and descriptive text; changes to
+  // medication name, dose, ownership or planned status schedule a replacement.
+  for (const item of notifications) {
+    const extra = item.extra as Record<string, unknown>;
+    const at = (item.schedule as {at: Date}).at;
+    extra[VAULT_NOTIFICATION_FINGERPRINT] = vaultNotificationFingerprint([
+      "v226", item.id as number, personId,
+      item.title as string, item.body as string,
+      at.getTime(), extra.type as string,
+      typeof extra.medicamentoId === "string" ? extra.medicamentoId : "",
+      Array.isArray(extra.medicamentoIds) ? extra.medicamentoIds.join(",") : "",
+    ]);
   }
-  return notifications.length;
+  const result = await reconcileVaultNotificationSet(
+    notifications as unknown as Parameters<typeof LocalNotifications.schedule>[0]["notifications"],
+    ownsScheduledDoseReminderV226
+  );
+  return result.desired;
 }

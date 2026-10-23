@@ -24,6 +24,7 @@ import type {
   DoseLog,
   Medicamento,
 } from "@/lib/types";
+import { temporaryCourseSlots, temporaryCourseNote, TEMPORARY_COURSE_PREFIX, type TemporaryCourse } from "@/lib/health-supply/temporary-course";
 
 // ============================================================
 // TIPOS
@@ -1298,6 +1299,63 @@ export const doseLogsRepository = {
   // Diferente de setStatus(), esta operação SEMPRE cria um
   // novo evento independente.
   // ==========================================================
+
+  async replaceTemporaryCourse({ personId, medicamentoId, course }: {
+    personId: string; medicamentoId: string; course: TemporaryCourse | null;
+  }): Promise<{ scheduled: number; cancelled: number }> {
+    const safePersonId = requirePersonId(personId);
+    const safeMedicamentoId = requireMedicamentoId(medicamentoId);
+    const user = await requireAuthenticatedUser();
+    const now = new Date();
+    const localNow = `${getLocalTodayISO()}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const desired = course ? temporaryCourseSlots(course).filter(slot => `${slot.date}T${slot.time}` > localNow) : [];
+    const reason = course ? temporaryCourseNote(course) : "";
+    return db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
+      const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
+      if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso eventual para um tratamento de duração definida.");
+      const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
+        .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id);
+      const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
+        !row.tomado_em && !row.ignorado_em && `${row.data}T${row.horario}` > localNow);
+      const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
+      // Uma tomada/ignorada já registrada no mesmo slot satisfaz o plano.
+      // Reconciliar nunca recria esse DoseLog nem consome estoque outra vez.
+      const settledBySlot = new Set(rows.filter(row => row.tomado_em || row.ignorado_em)
+        .map(row => `${row.data}T${row.horario}`));
+      const desiredKeys = new Set(desired.map(slot => `${slot.date}T${slot.time}`));
+      for (const key of desiredKeys) {
+        if (rows.some(row => `${row.data}T${row.horario}` === key && !oldBySlot.has(key) && !settledBySlot.has(key)))
+          throw new Error(`Já existe uma dose nesse horário (${key}). Revise antes de alterar o período.`);
+      }
+      let cancelled = 0, scheduled = 0;
+      for (const row of oldPending) {
+        const key = `${row.data}T${row.horario}`;
+        if (desiredKeys.has(key)) {
+          if (row.motivo !== reason) {
+            await db.doseLogs.update(row.id!, { motivo: reason, updated_at: new Date().toISOString(), synced: false });
+            const updated = await db.doseLogs.get(row.id!);
+            if (updated) await enfileirarOperacao("doseLogs", "update", updated);
+          }
+          continue;
+        }
+        await db.doseLogs.delete(row.id!);
+        await enfileirarOperacao("doseLogs", "delete", { id: row.id!, person_id: safePersonId, user_id: user.id });
+        cancelled++;
+      }
+      for (const slot of desired) {
+        if (oldBySlot.has(`${slot.date}T${slot.time}`) || settledBySlot.has(`${slot.date}T${slot.time}`)) continue;
+        const timestamp = new Date().toISOString();
+        const log: DoseLog = { id: crypto.randomUUID(), user_id: user.id, person_id: safePersonId,
+          medicamento_id: safeMedicamentoId, data: slot.date, horario: slot.time,
+          quantidade: resolveDoseQuantity(medication, undefined), dose_kind: "planned", motivo: reason,
+          tomado_em: undefined, ignorado_em: undefined, created_at: timestamp, updated_at: timestamp, synced: false };
+        await db.doseLogs.add(log);
+        await enfileirarOperacao("doseLogs", "add", log);
+        scheduled++;
+      }
+      return { scheduled, cancelled };
+    });
+  },
 
   async agendarDoseAvulsa({
     personId,

@@ -6,6 +6,9 @@ import {useRetiradas} from "@/hooks/useRetiradas";
 import {useHealthSupply} from "@/hooks/useHealthSupply";
 import {treatmentCareContext} from "@/lib/treatment-care-context";
 import {TreatmentCareLinks} from "@/components/saude/TreatmentCareLinks";
+import {TreatmentSymptomTimeline} from "@/components/saude/TreatmentSymptomTimeline";
+import {TreatmentVisitBrief} from "@/components/saude/TreatmentVisitBrief";
+import {buildTreatmentCareDossier} from "@/lib/health-network/care-continuity";
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -97,7 +100,7 @@ import {
 
 import type { HealthTimelineEvent, PersonScoped } from "@/lib/health-insights";
 
-import { formatCurrency, getClinicalTheme } from "@/lib/health-utils";
+import { formatCurrency, getClinicalTheme, getLocalTodayISO } from "@/lib/health-utils";
 
 import {
   DetailInfoRow,
@@ -539,6 +542,11 @@ function TratamentoContent() {
   // ==========================================================
 
   const careContext=useMemo(()=>treatmentCareContext(tratamento,linkedMedicamentos,documentosDaPessoa,renovacoes,retiradas,supply.data,user?.id||"",activePersonId||""),[tratamento,linkedMedicamentos,documentosDaPessoa,renovacoes,retiradas,supply.data,user?.id,activePersonId]);
+  // V227 — account/person scoped clinical visit projection, never inferred by names.
+  const careDossier=useMemo(()=>buildTreatmentCareDossier({
+    personId:activePersonId||"",userId:user?.id||"",today:getLocalTodayISO(),treatment:tratamento,
+    medications:linkedMedicamentos,records:registros,consultations:consultas,exams:exames,surgeries:cirurgias,documents:documentosDaPessoa,
+  }),[activePersonId,user?.id,tratamento,linkedMedicamentos,registros,consultas,exames,cirurgias,documentosDaPessoa]);
   const linkedRenovacoes=careContext.renewals;
   const linkedMedicamentosById = useMemo(
     () => new Map(linkedMedicamentos.flatMap((medicamento) => medicamento.id ? [[medicamento.id, medicamento] as const] : [])),
@@ -1334,6 +1342,9 @@ function TratamentoContent() {
           </motion.div>
 
           <TreatmentCareLinks context={careContext} color={theme.hex} onNavigate={href=>router.push(href)} loading={supply.loading}/>
+
+          <TreatmentVisitBrief dossier={careDossier} color={theme.hex} onNavigate={href=>router.push(href)}/>
+          <TreatmentSymptomTimeline dossier={careDossier} onNavigate={href=>router.push(href)}/>
 
           {tratamentoInsight && tratamentoInsight.alertas.length > 0 && (
             <motion.div

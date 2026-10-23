@@ -1,4 +1,5 @@
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
+import { getMedicationAlertPrefs } from "@/lib/health-intelligence/medication-alert-policy";
 // lib/repositories/medicamentos.ts
 
 import {
@@ -190,18 +191,18 @@ async function reconcileMedicationNotifications(
     }
 
     const renewalDate =
-      current
-        .proxima_renovacao
-        ?.trim();
+      (current.lembrete_receita_modo === "data_personalizada" && current.lembrete_receita_data
+        ? current.lembrete_receita_data : current.proxima_renovacao)?.trim();
 
     if (
-      renewalDate
+      renewalDate && getMedicationAlertPrefs(current).prescription
     ) {
       await scheduleMedicationRenewalNotification(
         current.id!,
         current.nome,
         renewalDate,
-        current.medico || ""
+        current.medico || "",
+        current.lembrete_receita_modo === "data_personalizada" ? 0 : 7
       );
     }
   } catch (

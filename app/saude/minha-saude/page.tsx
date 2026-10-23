@@ -34,6 +34,7 @@ import { avatarPreferenceKey } from "@/lib/health-profile/avatar-preference";
 import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
 import { AvatarReadings } from "@/components/saude/AvatarReadings";
 import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
+import { HealthTrendsExplorer } from "@/components/saude/HealthTrendsExplorer";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
 import {
   HealthDeviceIcon,
@@ -69,7 +70,10 @@ import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsigh
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { HealthInsight } from "@/lib/health-insights";
 import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
+import { CareContinuityAvatarSummary } from "@/components/saude/CareContinuityAvatarSummary";
+import { TemporaryCourseAvatarSummary } from "@/components/saude/TemporaryCourseAvatarSummary";
 import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
+import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -132,6 +136,8 @@ function HealthDashboard({
   const weightContext=useMemo(()=>avatarWeightContext(records,personId||"",person?.user_id||"",today),[records,personId,person?.user_id,today]);
   const bodyContext=useMemo(()=>avatarBodyContext(registros,intelligence.context?.cirurgias||[],devices,personId||"",person?.user_id||"",today),[registros,intelligence.context?.cirurgias,devices,personId,person?.user_id,today]);
   const avatarContext=useMemo(()=>avatarInsightContext(intelligence.insights),[intelligence.insights]);
+  // V225: share the Brain's person-owned snapshot, not new Dexie/live queries.
+  const careRhythm=useMemo(()=>intelligence.context && personId && intelligence.context.personId===personId ? buildCareRhythm(intelligence.context,7,today) : null,[intelligence.context,personId,today]);
   const weight = weightContext.latest,
     index = bmi(weight?.valor_numerico, profile?.height_cm),
     age = ageOn(profile?.birth_date, today);
@@ -315,10 +321,14 @@ function HealthDashboard({
                 </div>
                 <div className="flex flex-wrap gap-2 border-t border-surface-border/60 pt-2" aria-label="Outros registros representados no avatar">
                   <button type="button" onClick={()=>selectBody('mood')} className="min-h-11 rounded-xl border border-violet-400/20 px-3 text-xs text-violet-300">Humor</button>
+                  <button type="button" onClick={()=>goFromHealth('/saude/registros/relatorio')} className="min-h-11 rounded-xl border border-emerald-400/20 bg-emerald-400/[.04] px-3 text-xs font-semibold text-emerald-200">Resumo para consulta</button>
                   {bodyContext.surgeryAgenda.total>0?<button type="button" onClick={()=>selectBody('surgery')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Cirurgias</button>:null}
                   {bodyContext.supports.length>0?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Equipamentos</button>:null}
                 </div>
               </details>
+              {careRhythm && (careRhythm.sleep.days>0 || careRhythm.walk.days>0 || careRhythm.mood.declaredDays>0) && <button type="button" onClick={()=>goFromHealth('/saude/registros/relatorio')} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-violet-400/15 bg-violet-400/[.04] px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" aria-label="Ver relatório de sono, caminhada e humor no período">
+                <span className="min-w-0"><strong className="block text-[11px] text-violet-200">Rotina documentada · últimos 7 dias</strong><span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">Sono {careRhythm.sleep.days} dia(s) · caminhada {careRhythm.walk.days} · humor {careRhythm.mood.declaredDays}</span></span><ChevronRight size={16} className="shrink-0 text-violet-300"/>
+              </button>}
               <details className="mt-2 text-[11px] leading-relaxed text-ink-muted"><summary className="min-h-11 cursor-pointer py-3">Sobre o perfil e o IMC</summary><p className="pb-3">O avatar representa suas escolhas e os registros disponíveis. O IMC não mede composição corporal. {age !== null && age < 20 ? "A avaliação de crianças e adolescentes utiliza idade e crescimento." : "Interprete com seu histórico e avaliação profissional."} <a href="https://www.cdc.gov/bmi/about/" target="_blank" rel="noreferrer" className="underline">Fonte: CDC</a></p></details>
               {!profile && (
                 <button
@@ -362,6 +372,9 @@ function HealthDashboard({
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
+            <CareContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
+            <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
+            <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div><h2 className="font-semibold">Minha rede de dados</h2><p className="mt-0.5 text-[10px] text-ink-muted">{active.length} {active.length===1?'aparelho ativo':'aparelhos ativos'}</p></div>

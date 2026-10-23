@@ -1,0 +1,62 @@
+#!/usr/bin/env node
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const Module=require('node:module');
+const root=path.resolve(__dirname,'..');
+const ts=require('typescript');
+const filename=path.join(root,'lib/health-network/care-continuity.ts');
+const source=fs.readFileSync(filename,'utf8');
+const compiled=ts.transpileModule(source,{fileName:filename,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+assert.equal(compiled.diagnostics?.filter(x=>x.category===ts.DiagnosticCategory.Error).length||0,0);
+const moduleUnderTest=new Module(filename,module);moduleUnderTest.filename=filename;moduleUnderTest.paths=Module._nodeModulePaths(path.dirname(filename));
+moduleUnderTest.require=id=>{throw Error('Unexpected runtime import: '+id)};
+moduleUnderTest._compile(compiled.outputText,filename);
+const {buildTreatmentCareDossier,buildCareContinuityOverview,buildCareContinuityInsights}=moduleUnderTest.exports;
+const today='2026-10-22', userId='u1', personId='p1';
+const owner={user_id:userId,person_id:personId};
+const med=(id,opts={})=>({id,nome:id,dosagem:'30 mg',status:'ativo',tratamento_ids:['t1'],...owner,...opts});
+const rec=(id,date,opts={})=>({id,data:date,categoria:'sintoma',tipo:'dor',nome:'Dor relatada',intensidade:5,horario:'12:00',...owner,...opts});
+const tr={id:'t1',nome:'Cuidado contínuo',status:'ativo',created_at:today,updated_at:today,synced:true,...owner};
+const consulta={id:'c1',data:'2026-10-29',horario:'10:00',status:'agendada',especialidade:'Clínica',medico:'Equipe',tratamento_ids:['t1'],...owner};
+const input={personId,userId,today,treatment:tr,medications:[med('m1'),med('m1'),med('other',{person_id:'p2'}),med('orphan',{tratamento_ids:[]})],
+ records:[rec('r1','2026-10-18',{tratamento_ids:['t1']}),rec('r2','2026-10-20',{medicamento_id:'m1'}),rec('r2','2026-10-20',{medicamento_id:'m1'}),rec('bad','2026-02-30',{tratamento_ids:['t1']}),rec('future','2026-11-02',{tratamento_ids:['t1']}),rec('other','2026-10-20',{person_id:'p2',tratamento_ids:['t1']}),rec('wrong','2026-10-20',{medicamento_id:'m1',tratamento_ids:['t2']})],
+ consultations:[consulta,{...consulta,id:'foreign',person_id:'p2'}],exams:[{id:'e1',nome:'Exame documentado',tratamento_ids:['t1'],...owner}],surgeries:[],
+ documents:[{id:'d1',type:'prontuario',category_id:'saude',title:'Prontuário',metadata:{tratamento_id:'t1'},...owner},{id:'d2',type:'laudo',category_id:'saude',title:'De outra pessoa',metadata:{tratamento_id:'t1'},user_id:'other',person_id:personId},
+ {id:'d3',type:'receita',category_id:'saude',title:'Sem vínculo',metadata:{},...owner}],};
+const dossier=buildTreatmentCareDossier(input);
+assert.ok(dossier);assert.deepEqual(dossier.medications.map(m=>m.id),['m1']);
+assert.deepEqual(dossier.records.map(x=>[x.record.id,x.through]),[['r1','treatment'],['r2','medication'],['bad','treatment'],['future','treatment']]);
+assert.equal(dossier.daysWithSymptoms,2);assert.equal(dossier.symptoms.length,2);
+assert.equal(dossier.upcoming.length,1);assert.equal(dossier.documents.length,1);assert.equal(dossier.exams.length,1);
+assert.ok(!dossier.synopsis.includes('De outra pessoa'));assert.ok(!dossier.synopsis.includes('Sem vínculo'));
+assert.match(dossier.synopsis,/Somente vínculos explícitos/);assert.match(dossier.synopsis,/2026/);
+assert.equal(buildTreatmentCareDossier({...input,userId:'u2'}),null);
+assert.equal(buildTreatmentCareDossier({...input,personId:'p2'}),null);
+assert.equal(buildTreatmentCareDossier({...input,today:'2026-02-31'}),null);
+assert.equal(buildTreatmentCareDossier({...input,treatment:null}),null);
+const flat={personId,userId,hoje:today,tratamentos:[tr,{...tr,id:'t2',user_id:'u2',nome:'Outra conta'}],medicamentos:input.medications,registrosSaude:input.records,consultas:input.consultations,exames:input.exams,cirurgias:[],documentos:input.documents};
+const overview=buildCareContinuityOverview(flat);
+assert.equal(overview.total,1);assert.equal(overview.appointments,1);assert.equal(overview.documented,1);
+const insights=buildCareContinuityInsights(flat);
+assert.equal(insights.length,1);assert.equal(insights[0].kind,'observation');assert.equal(insights[0].confianca,'media');
+assert.ok(insights[0].relacoesContextuais?.some(x=>x.tipo==='consulta'&&x.id==='c1'));
+assert.equal(buildCareContinuityInsights({...flat,registrosSaude:input.records.filter(x=>x.id==='r1')}).length,0,'requires two recorded symptom days');
+assert.equal(buildCareContinuityInsights({...flat,consultas:[]}).length,0,'no invented appointment');
+assert.equal(buildCareContinuityInsights({...flat,userId:undefined}).length,0,'account scope is mandatory');
+assert.equal(buildCareContinuityInsights({...flat,hoje:'2026-10-01'}).length,0,'future reports not counted');
+const view=fs.readFileSync(path.join(root,'components/saude/TreatmentVisitBrief.tsx'),'utf8');
+const avatar=fs.readFileSync(path.join(root,'components/saude/CareContinuityAvatarSummary.tsx'),'utf8');
+const treatmentPage=fs.readFileSync(path.join(root,'app/saude/tratamentos/detalhes/page.tsx'),'utf8');
+const healthPage=fs.readFileSync(path.join(root,'app/saude/minha-saude/page.tsx'),'utf8');
+const brain=fs.readFileSync(path.join(root,'lib/health-insights.ts'),'utf8');
+const gate=fs.readFileSync(path.join(root,'scripts/test-v63-release-gate.mjs'),'utf8');
+assert.match(view,/navigator\.clipboard\.writeText/);assert.match(view,/Copiar resumo para consulta/);
+assert.match(avatar,/buildCareContinuityOverview/);assert.match(avatar,/Nenhum compartilhamento automático/);
+assert.match(treatmentPage,/consultations:consultas,exams:exames,surgeries:cirurgias,documents:documentosDaPessoa/,'V227: explicitly map names from the page to the dossier contract');
+assert.match(treatmentPage,/<TreatmentVisitBrief dossier=\{careDossier\}/);
+assert.match(healthPage,/<CareContinuityAvatarSummary context=\{intelligence\.context\}/);
+assert.match(brain,/insights\.push\(\.\.\.buildCareContinuityInsights\(/);
+assert.match(gate,/test-v227-care-network-avatar\.cjs/);
+console.log('VAULT V227 QA: scoped explicit clinical links, dedupe, date validation, consultation readiness, Brain, Avatar and release contract OK');

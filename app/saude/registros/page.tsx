@@ -55,6 +55,23 @@ export default function RegistrosSaudePage() {
       <div className="flex w-full items-center gap-2 print:hidden"><button type="button" aria-label="Mês anterior" onClick={() => setMonthKey(shiftClinicalMonth(monthKey,-1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised"><ChevronLeft size={17}/></button><button type="button" onClick={() => setMonthKey(currentClinicalMonth())} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface text-sm font-semibold capitalize"><CalendarDays size={15} className="text-ink-muted"/>{month.label}</button><button type="button" aria-label="Próximo mês" disabled={monthKey >= currentClinicalMonth()} onClick={() => setMonthKey(shiftClinicalMonth(monthKey,1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised disabled:opacity-30"><ChevronRight size={17}/></button></div>
     </ListPageHeader>
     <section className="space-y-4 px-5 pt-4">
+      {/* V224: one-tap diary shortcuts reuse the existing offline-first record repository. */}
+      <div className="flex flex-wrap items-center gap-2 print:hidden" aria-label="Registrar rapidamente">
+        {([[
+          "Humor", "humor", "border-fuchsia-400/25 bg-fuchsia-400/[.06] text-fuchsia-200"
+        ],[
+          "Sintoma", "sintoma", "border-violet-400/25 bg-violet-400/[.06] text-violet-200"
+        ],[
+          "Ansiedade", "ansiedade", "border-amber-400/25 bg-amber-400/[.06] text-amber-200"
+        ],[
+          "Fadiga", "apatia", "border-surface-border bg-surface-raised text-ink-primary"
+        ]] as const).map(([label,preset,tone]) =>
+          <button key={preset} type="button" onClick={() => router.push(preserveReturn(`/saude/registros/novo?preset=${preset}`))}
+            className={`min-h-11 rounded-xl border px-3 text-[11px] font-semibold transition-all active:scale-[.98] ${tone}`}>
+            + {label}
+          </button>
+        )}
+      </div>
       <div><ClinicalListSummary icon={ClipboardList} eyebrow="Resumo do período" title={stats.days ? `${stats.days} dias documentados` : "Sem eventos neste mês"} detail="Cobertura descritiva dos dados registrados; não mede adesão clínica." metrics={[{label:"Registros",value:stats.records},{label:"Doses",value:stats.doses,tone:"positive"},{label:"Destaques",value:stats.alerts,tone:stats.alerts?"attention":"neutral"}]}/><div className="mt-2 grid grid-cols-2 gap-2 print:hidden"><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/evolucao"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><BarChart3 size={15} className="text-violet-300"/>Ver evolução</button><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/relatorio"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><FileDown size={15} className="text-emerald-300"/>Resumo clínico</button></div></div>
       <div className="flex min-w-0 items-center gap-2 print:hidden">
         <ListSearch value={search} onChange={setSearch} placeholder="Buscar na linha clínica" />

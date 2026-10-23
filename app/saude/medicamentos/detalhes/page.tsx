@@ -1,6 +1,8 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
+import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
+import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
 import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, isFutureAcquisition, realizedAcquisitionExpense, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
@@ -3234,6 +3236,10 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           <HealthSupplyEntry medicamentoId={med.id!}/>
+          {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
+          {med.id && activePersonId === med.person_id && (
+            <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
+          )}
           <section className="relative overflow-hidden rounded-[20px] border border-surface-border/70 bg-surface shadow-lg">
             <div
               className="absolute bottom-0 left-0 top-0 w-1.5"

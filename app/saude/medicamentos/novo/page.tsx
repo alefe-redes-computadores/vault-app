@@ -112,6 +112,8 @@ import {
 import {
   medicamentosRepository,
 } from "@/lib/repositories/medicamentos";
+import { doseLogsRepository } from "@/lib/repositories/doseLogs";
+import { TemporaryCourseFields, emptyTemporaryCourseDraft, readTemporaryCourseDraft, type TemporaryCourseDraft } from "@/components/saude/TemporaryCourseFields";
 
 import {
   supabaseMedicationCatalogProvider,
@@ -1711,6 +1713,7 @@ export default function NovoMedicamentoPage() {
     >(
       "continuo"
     );
+  const [temporaryCourse, setTemporaryCourse] = useState<TemporaryCourseDraft>(emptyTemporaryCourseDraft);
 
   const [
     vezesAoDia,
@@ -3176,6 +3179,8 @@ export default function NovoMedicamentoPage() {
 
           const personId =
             activePersonId;
+          const course = readTemporaryCourseDraft(temporaryCourse);
+          if (course && tipoUso === "continuo") throw new Error("Selecione uso eventual para o tratamento com prazo definido.");
 
           const today =
             getLocalTodayISO();
@@ -3331,6 +3336,7 @@ export default function NovoMedicamentoPage() {
 
           let medicamentoId:
             string | undefined;
+          let temporaryScheduled = false;
 
           try {
             // ==================================================
@@ -3577,6 +3583,11 @@ export default function NovoMedicamentoPage() {
                   gotasPorMlNumerico,
               });
 
+            if (course && medicamentoId) {
+              await doseLogsRepository.replaceTemporaryCourse({ personId, medicamentoId, course });
+              temporaryScheduled = true;
+            }
+
             // ==================================================
             // 4. RENOVAÇÃO / AQUISIÇÃO INICIAL
             // ==================================================
@@ -3651,6 +3662,10 @@ export default function NovoMedicamentoPage() {
           } catch (
             error
           ) {
+            if (temporaryScheduled && medicamentoId) {
+              try { await doseLogsRepository.replaceTemporaryCourse({ personId, medicamentoId, course: null }); }
+              catch (rollbackError) { console.error("[NovoMedicamento] Falha ao cancelar agendamentos temporários:", rollbackError); }
+            }
             if (
               medicamentoId
             ) {
@@ -5762,9 +5777,10 @@ export default function NovoMedicamentoPage() {
 
                   {tipoUso !==
                     "continuo" && (
-                    <p className="rounded-xl bg-surface-raised p-3 text-center text-xs text-ink-muted">
-                      O app não emitirá alarmes diários, mas você poderá registrar doses avulsas para acompanhar o uso e o estoque.
-                    </p>
+                    <div className="space-y-3">
+                      <TemporaryCourseFields value={temporaryCourse} onChange={setTemporaryCourse} />
+                      <p className="rounded-xl bg-surface-raised p-3 text-center text-xs text-ink-muted">Sem prazo informado, o app não cria uma rotina automática. Com o período acima, agenda somente as doses futuras explicitadas.</p>
+                    </div>
                   )}
                 </div>
               </motion.div>

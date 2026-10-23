@@ -33,7 +33,8 @@ export function runVaultPullSingleFlight(
   if (current) return current;
 
   const completedAt = lastCompletedAt.get(userId) ?? 0;
-  if (Date.now() - completedAt < RECENT_PULL_WINDOW_MS) {
+  // V228: uma solicitação urgente explícita nunca some no cooldown de um pull anterior.
+  if (!urgent && Date.now() - completedAt < RECENT_PULL_WINDOW_MS) {
     return Promise.resolve();
   }
 

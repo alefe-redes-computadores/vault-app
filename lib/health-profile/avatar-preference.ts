@@ -26,6 +26,23 @@ export function avatarRenderRatio(
   return Math.min(ratio, ceiling);
 }
 
+/** V222: canvas area also limits GPU workload on large or rotated screens.
+ * Keeps the old caps for normal phone previews and never increases DPR.
+ */
+export function avatarAdaptiveRatio(
+  deviceRatio: number,
+  width: number,
+  height: number,
+  dragging: boolean,
+  compact = false,
+  constrainedDevice = false,
+): number {
+  const capped = avatarRenderRatio(deviceRatio, dragging, compact, constrainedDevice);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return capped;
+  const pixels = dragging ? 450_000 : compact ? 700_000 : constrainedDevice ? 850_000 : 1_200_000;
+  return Math.min(capped, Math.max(0.65, Math.sqrt(pixels / (width * height))));
+}
+
 export function avatarConstrainedDevice(capabilities: {
   hardwareConcurrency?: number;
   deviceMemory?: number;

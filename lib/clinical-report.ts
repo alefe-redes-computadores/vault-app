@@ -1,4 +1,5 @@
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
+import { buildCareRhythm, type CareRhythmSummary } from "@/lib/health-intelligence/care-rhythm";
 
 export type ClinicalReportPeriod = 7 | 30 | 90;
 
@@ -25,11 +26,15 @@ export type ClinicalReport = {
   symptoms: Array<{ label: string; occurrences: number; days: number; averageIntensity: number | null }>;
   medications: Array<{ id: string; name: string; dosage?: string; scheduledTaken: number; sosTaken: number; extraTaken: number; ignored: number }>;
   activeTreatments: Array<{ id: string; name: string; startedAt?: string }>;
+  /** Multi-domain summary of actual entries, not inferred clinical changes. */
+  rhythm: CareRhythmSummary;
   insights: HealthInsight[];
   dataQuality: {
     discardedRecords: number;
     inconsistencies: string[];
     comparable: boolean;
+    /** Explicit local sync flags only. Undefined does not mean pending. */
+    pendingSync: { records: number; doses: number };
   };
 };
 
@@ -40,11 +45,13 @@ function normalize(value: unknown): string {
 }
 
 function parseDate(value?: string): Date | null {
-  if (!value) return null;
+  if (!value || !/^\d{4}-\d{2}-\d{2}(?:$|T|\s)/.test(value)) return null;
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);
   if (!year || !month || !day) return null;
   const result = new Date(year, month - 1, day);
-  return Number.isNaN(result.getTime()) ? null : result;
+  // V224: JavaScript converts 2026-02-30 to March without error. Never do that
+  // in a clinical report or silently count a mistyped day in the wrong period.
+  return Number.isNaN(result.getTime()) || iso(result) !== value.slice(0, 10) ? null : result;
 }
 
 function iso(date: Date): string {
@@ -76,7 +83,9 @@ function isHydration(record: HealthInsightContext["registrosSaude"][number]): bo
 }
 
 function isSymptom(record: HealthInsightContext["registrosSaude"][number]): boolean {
-  return record.categoria === "sintoma" || typeof record.intensidade === "number";
+  // Mood uses a distinct declared scale. A numeric intensity alone does not
+  // reclassify a mood or measurement as a symptom.
+  return record.categoria === "sintoma";
 }
 
 function isTaken(dose: HealthInsightContext["doseLogs"][number]): boolean {
@@ -84,8 +93,9 @@ function isTaken(dose: HealthInsightContext["doseLogs"][number]): boolean {
 }
 
 function calculateWindow(context: HealthInsightContext, start: Date, end: Date) {
-  const records = context.registrosSaude.filter((item) => within(item.data, start, end));
-  const doses = context.doseLogs.filter((item) => within(item.data, start, end));
+  // V224: report selectors never merge another person's locally cached events.
+  const records = context.registrosSaude.filter((item) => item.person_id === context.personId && within(item.data, start, end));
+  const doses = context.doseLogs.filter((item) => item.person_id === context.personId && within(item.data, start, end));
   return {
     records,
     doses,
@@ -102,6 +112,12 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
   const previousStart = shift(previousEnd, -(periodDays - 1));
   const current = calculateWindow(context, currentStart, today);
   const previous = calculateWindow(context, previousStart, previousEnd);
+  // V225: pure selector; uses the same already-loaded person-scoped snapshot.
+  const rhythm = buildCareRhythm(context, periodDays, todayValue || context.hoje);
+  // V224: comparable periods need some observations on both sides;
+  // one isolated entry cannot establish a reliable percentage trend.
+  const minimumCoveredDays = Math.max(3, Math.ceil(periodDays * 0.2));
+  const comparable = current.coverage >= minimumCoveredDays && previous.coverage >= minimumCoveredDays;
 
   const symptomGroups = new Map<string, typeof current.symptoms>();
   for (const record of current.symptoms) {
@@ -118,7 +134,7 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
     };
   }).sort((a, b) => b.occurrences - a.occurrences);
 
-  const medicationById = new Map(context.medicamentos.map((item) => [item.id, item]));
+  const medicationById = new Map(context.medicamentos.filter((item) => item.person_id === context.personId).map((item) => [item.id, item]));
   const medicationGroups = new Map<string, typeof current.doses>();
   for (const dose of current.doses) medicationGroups.set(dose.medicamento_id, [...(medicationGroups.get(dose.medicamento_id) || []), dose]);
   const medications = Array.from(medicationGroups.entries()).map(([id, doses]) => {
@@ -143,8 +159,8 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
     (!item.periodoDias || item.periodoDias <= periodDays)
   ).slice(0, 6);
   const discardedRecords = [
-    ...context.registrosSaude.map((item) => item.data),
-    ...context.doseLogs.map((item) => item.data),
+    ...context.registrosSaude.filter((item) => item.person_id === context.personId).map((item) => item.data),
+    ...context.doseLogs.filter((item) => item.person_id === context.personId).map((item) => item.data),
   ].filter((value) => Boolean(value) && !parseDate(value)).length;
   const inconsistencies = allInsights
     .filter((item) => item.kind === "data_quality")
@@ -168,18 +184,25 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
       ignored: current.doses.filter((item) => Boolean(item.ignorado_em)).length,
     },
     comparison: {
-      recordsDelta: percentDelta(current.records.length, previous.records.length),
-      symptomDelta: percentDelta(current.symptoms.length, previous.symptoms.length),
-      sosExtraDelta: percentDelta(sosTaken + extraTaken, previous.sosExtra),
+      recordsDelta: comparable ? percentDelta(current.records.length, previous.records.length) : null,
+      symptomDelta: comparable ? percentDelta(current.symptoms.length, previous.symptoms.length) : null,
+      sosExtraDelta: comparable ? percentDelta(sosTaken + extraTaken, previous.sosExtra) : null,
     },
     symptoms,
     medications,
-    activeTreatments: context.tratamentos.filter((item) => item.status === "ativo").map((item) => ({ id: item.id || item.nome, name: item.nome, startedAt: item.data_inicio })),
+    rhythm,
+    activeTreatments: context.tratamentos.filter((item) => item.person_id === context.personId && item.status === "ativo").map((item) => ({ id: item.id || item.nome, name: item.nome, startedAt: item.data_inicio })),
     insights: compatibleInsights,
     dataQuality: {
       discardedRecords,
       inconsistencies,
-      comparable: previous.coverage > 0,
+      comparable,
+      // Existing offline-first repository/sync engine owns these flags.
+      // The report only discloses them; it does not force remote reads or writes.
+      pendingSync: {
+        records: current.records.filter((item) => item.synced === false).length,
+        doses: current.doses.filter((item) => item.synced === false).length,
+      },
     },
   };
 }
