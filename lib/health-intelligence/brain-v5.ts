@@ -104,7 +104,12 @@ export function brainV5Journeys(items:BrainV5Alert[]):BrainV5Journey[]{
   return [...groups].map(([key,signals])=>{
     const ranked=rankBrainV5(signals),primary=ranked[0];
     return {key,label:primary.snapshot.titulo,primary,supporting:ranked.slice(1),total:ranked.length,lane:brainV5Lane(primary),requires_attention:ranked.some(brainV5RequiresAttention)};
-  }).sort((a,b)=>rankBrainV5([a.primary,b.primary])[0]===a.primary?-1:1);
+  }).sort((a,b)=>{
+    const ranked=rankBrainV5([a.primary,b.primary]);
+    if(ranked[0]===a.primary&&ranked[1]===b.primary)return -1;
+    if(ranked[0]===b.primary&&ranked[1]===a.primary)return 1;
+    return a.key.localeCompare(b.key);
+  });
 }
 export function brainV5DecisionBrief(items:BrainV5Alert[]){
   const journeys=brainV5Journeys(items),open=journeys.map(x=>x.primary).filter(x=>!brainV5IsSnoozed(x));

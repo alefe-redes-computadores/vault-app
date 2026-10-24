@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { db } from "@/lib/db";
 import { brainV5Counters,brainV5DecisionBrief,brainV5IsSnoozed,brainV5Journeys,rankBrainV5,type BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
+import {buildBrainPortfolio} from "@/lib/health-intelligence/brain-portfolio";
 export function useBrainV5Pulse(){
  const {user}=useAuth(); const {activePersonId}=useActivePersonId();
  const settings=useLiveQuery(()=>user?.id?db.settings.where("user_id").equals(user.id).first():undefined,[user?.id]) as ({brain_v5_alert_ledger?:BrainV5Alert[]}|undefined);
@@ -12,5 +13,6 @@ export function useBrainV5Pulse(){
  const ranked=useMemo(()=>rankBrainV5(records.filter(x=>x.state!=="resolved"&&!brainV5IsSnoozed(x))),[records]);
  const brief=useMemo(()=>brainV5DecisionBrief(records),[records]);
  const journeys=useMemo(()=>brainV5Journeys(records),[records]);
- return {counters:brainV5Counters(records),brief,journeys,top:ranked[0]??null,isLoading:Boolean(user?.id&&settings===undefined)};
+ const portfolio=useMemo(()=>buildBrainPortfolio(records),[records]);
+ return {counters:brainV5Counters(records),brief,portfolio,journeys,top:portfolio.focus[0]?.journey.primary??ranked[0]??null,isLoading:Boolean(user?.id&&settings===undefined)};
 }

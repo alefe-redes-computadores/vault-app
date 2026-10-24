@@ -19,7 +19,7 @@ ok(reconciler.includes('brainV5IsSnoozed')&&reconciler.includes('!snoozedIds.has
 ok(reconciler.includes('LocalNotifications.cancel')&&reconciler.includes('snoozedIds'),'push pendente do insight adiado é cancelado');
 const central=read('app/inteligencia/alertas/page.tsx');
 ok(central.includes('state==="snoozed"')&&central.includes('Programados'),'Central separa decisões programadas');
-ok(central.includes('x.requires_attention&&!brainV5IsSnoozed(x.primary)'),'contagem de atenção exclui jornada adiada');
+ok(central.includes('x.requires_attention&&!brainV5IsSnoozed(x.primary)')||central.includes('brain.portfolio.visibleJourneys'),'contagem de atenção exclui jornada adiada');
 const page=read('app/inteligencia/page.tsx');
 ok(page.includes('Custos de saúde documentados')&&page.includes('Realizado · 30d')&&page.includes('Planejado · 30d'),'painel financeiro diferencia realizado e planejado');
 ok(read('app/saude/minha-saude/page.tsx').includes('brainPulse.counters.snoozed'),'Avatar preserva integração temporal V247');

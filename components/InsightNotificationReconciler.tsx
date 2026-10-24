@@ -7,7 +7,7 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/db";
-import { brainV5IsSnoozed, type BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
+import { brainV5IsSnoozed, brainV5Journeys, type BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { isVaultNative } from "@/lib/native-runtime";
 import {
@@ -48,8 +48,12 @@ export function InsightNotificationReconciler() {
     if (!isNotificationPreferenceEnabled()) return;
     if (!isVaultNotificationCategoryEnabled("insights")) return;
 
-    const snoozedIds=new Set((settings?.brain_v5_alert_ledger||[]).filter(item=>item.person_id===activePersonId&&brainV5IsSnoozed(item)).map(item=>item.insight_id));
-    const candidates=rankHealthInsightNotificationCandidates(insights).filter(candidate=>!snoozedIds.has(candidate.id));
+    const ledger=(settings?.brain_v5_alert_ledger||[]).filter(item=>item.person_id===activePersonId);
+    const snoozedIds=new Set(ledger.filter(item=>brainV5IsSnoozed(item)).map(item=>item.insight_id));
+    // One notification candidate per care journey. Related signals stay inside
+    // the detail sheet instead of becoming repeated pushes about the same item.
+    const journeyPrimaryIds=new Set(brainV5Journeys(ledger).filter(item=>!brainV5IsSnoozed(item.primary)).map(item=>item.primary.insight_id));
+    const candidates=rankHealthInsightNotificationCandidates(insights).filter(candidate=>!snoozedIds.has(candidate.id)&&(!ledger.length||journeyPrimaryIds.has(candidate.id)));
     if(snoozedIds.size)void LocalNotifications.cancel({notifications:[...snoozedIds].map(id=>({id:stableId(`${activePersonId}:${id}`)}))}).catch(()=>undefined);
     const eligible = candidates.map(
       (candidate) => ({

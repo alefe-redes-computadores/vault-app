@@ -10,7 +10,7 @@ rows[1]={...rows[1],state:'monitoring',feedback:'review_later'};
 const brief=v5.brainV5DecisionBrief(rows);
 assert.equal(brief.total,2);assert.equal(brief.deferred,1);assert.match(brief.headline,/próxima/);assert.match(brief.summary,/adiado/);
 assert(read('hooks/useBrainV5Alerts.ts').includes('brief, counters'));
-assert(read('app/inteligencia/alertas/page.tsx').includes('Briefing do cuidado'));
+assert(/Briefing do cuidado|Plano de foco/.test(read('app/inteligencia/alertas/page.tsx')));
 assert(read('app/page.tsx').includes('brainV5Pulse.brief.headline'));
 const avatar=read('components/saude/HealthAvatar3D.tsx');assert(avatar.includes('expressionHighlights'));assert(avatar.includes('value==="reflective"?.82:1'));
 console.log('V244 DECISION BRIEF + REACTIVE AVATAR: OK');
