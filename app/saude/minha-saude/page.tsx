@@ -74,6 +74,7 @@ import { CareContinuityAvatarSummary } from "@/components/saude/CareContinuityAv
 import { TemporaryCourseAvatarSummary } from "@/components/saude/TemporaryCourseAvatarSummary";
 import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
+import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -94,6 +95,7 @@ function HealthDashboard({
   const [bodyMarkerKey,setBodyMarkerKey]=useState<string|null>(null);
   const selectBody=(part:AvatarBodyPart|null,markerKey?:string)=>{setBodyMarkerKey(markerKey||null);setBodyPart(part);};
   const intelligence = useHealthIntelligence({ includeAudit: false });
+  const brainPulse = useBrainV5Pulse();
   const { personId, person, profile, devices, loading, error } = data;
   const [panel, setPanel] = useState<
       "profile" | "device" | "water" | HealthMetric | null
@@ -278,7 +280,7 @@ function HealthDashboard({
               {/* V156 compact health identity: model at left, evidence to the right. */}
               <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-start gap-3">
                 <div className="min-w-0 overflow-hidden rounded-lg bg-emerald-300/[0.025]">
-                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error?0:avatarContext.rank} expanded />
+                  <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{if(brainPulse.top){goFromHealth(`/inteligencia/alertas?insight=${encodeURIComponent(brainPulse.top.insight_id)}`);return;}const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error||brainPulse.isLoading||!brainPulse.top?0:avatarContext.rank} expanded />
                 </div>
                 <div className="min-w-0 flex-1 space-y-3 self-center">
                   <div>
@@ -350,6 +352,7 @@ function HealthDashboard({
                       ? "Analisando os registros disponíveis…"
                       : intelligence.error ? "Não foi possível atualizar a análise. Seus registros continuam disponíveis." : avatarContext.primary?.titulo || "Sem destaque prioritário nos registros disponíveis."}
                   </p>
+                  {!brainPulse.isLoading&&brainPulse.counters.snoozed>0?<p className="mt-1 text-[9px] text-amber-300">{brainPulse.counters.snoozed} acompanhamento(s) programado(s) fora das prioridades atuais</p>:null}
                 </div>
               </div>
               {brainSummaryOpen && (!intelligence.error && avatarContext.items.length > 0 ? (

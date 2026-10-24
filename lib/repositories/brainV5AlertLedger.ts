@@ -32,7 +32,7 @@ async function updateLedger(userId: string, transform: (current: BrainV5Alert[])
   if (changed) solicitarProcessamentoSync();
   return result;
 }
-type Patch = Partial<Pick<BrainV5Alert, "state" | "feedback" | "feedback_updated_at" | "last_seen_at" | "resolved_at">>;
+type Patch = Partial<Pick<BrainV5Alert, "state" | "feedback" | "feedback_updated_at" | "last_seen_at" | "resolved_at" | "snoozed_until">>;
 const mutate = (userId: string, personId: string, key: string, patch: Patch) => updateLedger(userId, (all) => {
   const now = new Date().toISOString();
   return all.map((item) => item.person_id === personId && item.key === key
@@ -53,10 +53,15 @@ export const brainV5AlertLedgerRepository = {
   markSeen(userId: string, personId: string, key: string) { return mutate(userId, personId, key, { last_seen_at: new Date().toISOString() }); },
   markSeenMany(userId: string, personId: string, keys: readonly string[]) { return mutateMany(userId, personId, keys, { last_seen_at: new Date().toISOString() }); },
   feedback(userId: string, personId: string, key: string, feedback: BrainV5Feedback) {
-    return mutate(userId, personId, key, { feedback, feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" : "acknowledged" });
+    return mutate(userId, personId, key, { feedback, feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" : "acknowledged", snoozed_until: undefined });
   },
   feedbackMany(userId: string, personId: string, keys: readonly string[], feedback: BrainV5Feedback) {
-    return mutateMany(userId, personId, keys, { feedback, feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" : "acknowledged" });
+    return mutateMany(userId, personId, keys, { feedback, feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" : "acknowledged", snoozed_until: feedback === "review_later" ? undefined : undefined });
+  },
+  snoozeMany(userId: string, personId: string, keys: readonly string[], until: string) {
+    const date = new Date(until);
+    if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) throw new Error("Escolha uma data futura para revisar.");
+    return mutateMany(userId, personId, keys, { feedback: "review_later", feedback_updated_at: new Date().toISOString(), state: "monitoring", snoozed_until: date.toISOString() });
   },
   feedbackForInsight(userId: string, personId: string, insight: HealthInsight, feedback: BrainV5Feedback) {
     return updateLedger(userId, (all) => {
@@ -64,13 +69,13 @@ export const brainV5AlertLedgerRepository = {
       const previous = all.filter((item) => item.person_id === personId && item.key === key);
       const entry = reconcileBrainV5(personId, [insight], previous)[0];
       return [...all.filter((item) => item.key !== key), { ...entry, feedback,
-        feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" as const : "acknowledged" as const }];
+        feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" as const : "acknowledged" as const, snoozed_until: undefined }];
     });
   },
   state(userId: string, personId: string, key: string, state: BrainV5State) {
-    return mutate(userId, personId, key, { state, resolved_at: state === "resolved" ? new Date().toISOString() : undefined });
+    return mutate(userId, personId, key, { state, resolved_at: state === "resolved" ? new Date().toISOString() : undefined, snoozed_until: undefined });
   },
   stateMany(userId: string, personId: string, keys: readonly string[], state: BrainV5State) {
-    return mutateMany(userId, personId, keys, { state, resolved_at: state === "resolved" ? new Date().toISOString() : undefined });
+    return mutateMany(userId, personId, keys, { state, resolved_at: state === "resolved" ? new Date().toISOString() : undefined, snoozed_until: undefined });
   },
 };

@@ -36,6 +36,7 @@ export function useBrainV5Alerts() {
   const feedbackMany = useCallback((keys: readonly string[], value: BrainV5Feedback) => user?.id && activePersonId ? perform(() => repo.feedbackMany(user.id, activePersonId, keys, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const stateMany = useCallback((keys: readonly string[], value: BrainV5State) => user?.id && activePersonId ? perform(() => repo.stateMany(user.id, activePersonId, keys, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const seenMany = useCallback((keys: readonly string[]) => user?.id && activePersonId ? perform(() => repo.markSeenMany(user.id, activePersonId, keys)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
-  return { records: scoped, ranked, journeys, brief, counters: brainV5Counters(scoped), feedback, feedbackMany, state, stateMany, seen, seenMany, error: error || health.error,
+  const snoozeMany = useCallback((keys: readonly string[], until: string) => user?.id && activePersonId ? perform(() => repo.snoozeMany(user.id, activePersonId, keys, until)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
+  return { records: scoped, ranked, journeys, brief, counters: brainV5Counters(scoped), feedback, feedbackMany, state, stateMany, seen, seenMany, snoozeMany, error: error || health.error,
     isLoading: health.isLoading || Boolean(user?.id && settings === undefined) };
 }

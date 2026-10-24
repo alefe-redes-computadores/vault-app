@@ -327,6 +327,7 @@ export async function pullAllData(
           let ignoredPending = 0;
           let ignoredUnsynced = 0;
           let ignoredNewerLocal = 0;
+          let ignoredUnchanged = 0;
           let imported = 0;
 
           for (let index = 0; index < rows.length; index += 1) {
@@ -365,6 +366,18 @@ export async function pullAllData(
                 ignoredNewerLocal += 1;
                 continue;
               }
+
+              // V247: a leitura remota pode ser completa, mas não precisa
+              // invalidar dezenas de consultas Dexie quando a versão é igual.
+              // Mantemos o pull restaurável e reduzimos somente escrita/render.
+              if (
+                Number.isFinite(localUpdatedAt) &&
+                Number.isFinite(remoteUpdatedAt) &&
+                localUpdatedAt === remoteUpdatedAt
+              ) {
+                ignoredUnchanged += 1;
+                continue;
+              }
             }
 
             const mapped = mapRemote
@@ -383,10 +396,10 @@ export async function pullAllData(
           }
 
           const ignored =
-            ignoredPending + ignoredUnsynced + ignoredNewerLocal;
+            ignoredPending + ignoredUnsynced + ignoredNewerLocal + ignoredUnchanged;
 
           console.log(
-            `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados em lote, ${ignored} preservados (${ignoredPending} com fila pendente, ${ignoredUnsynced} não sincronizados, ${ignoredNewerLocal} locais mais recentes)`
+            `✅ [Pull] ${remoteTable}: ${imported} importados/atualizados em lote, ${ignored} preservados (${ignoredPending} com fila pendente, ${ignoredUnsynced} não sincronizados, ${ignoredNewerLocal} locais mais recentes, ${ignoredUnchanged} sem alteração)`
           );
         } catch (
           error: unknown

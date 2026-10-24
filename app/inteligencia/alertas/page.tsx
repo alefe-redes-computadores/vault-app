@@ -82,6 +82,7 @@ export default function BrainV5Central(){
     onContext={href => router.push(preserveReturn(href))}
     onSelectRelated={item => setSelectedKey(item.key)}
     onFeedback={value => void brain.feedbackMany(selectedJourneyKeys, value)}
+    onSnooze={days => { const until=new Date();until.setDate(until.getDate()+days);void brain.snoozeMany(selectedJourneyKeys,until.toISOString());setSelectedKey(null); }}
     onToggleResolved={() => void brain.stateMany(selectedJourneyKeys, selected.state === "resolved" ? "active" : "resolved")}
   />}
  </main></PageTransition>;

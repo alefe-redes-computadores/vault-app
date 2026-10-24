@@ -10,6 +10,8 @@ export type BrainV5Alert = {
   key:string; person_id:string; insight_id:string; family:BrainV5Family;
   state:BrainV5State; feedback?:BrainV5Feedback; feedback_updated_at?:string; feedback_reset_at?:string;
   first_detected_at:string; last_detected_at:string; last_seen_at?:string; resolved_at?:string;
+  /** User-selected date to bring this journey back to the decision surface. */
+  snoozed_until?:string;
   occurrences:number; episode:number; severity_rank:number; material_fingerprint:string;
   schema_version?: 1; lane?: BrainDecisionLane; domain?: BrainDomain;
   actionability?: BrainActionability; evidence_quality?: BrainEvidenceQuality;
@@ -58,7 +60,9 @@ export function reconcileBrainV5(personId:string,current:HealthInsight[],previou
   for(const i of current){
     const key=brainV5Key(personId,i), old=map.get(key), semantics=brainSignalSemantics(i), rank=semantics.factors.total, fp=fingerprint(i); active.add(key);
     const material=!old||previousFingerprint(old)!==fp, resurfaced=old?.state==="resolved", escalated=!!old&&((sev[i.gravidadeSeguranca||"informativa"]||0)>(sev[old.snapshot.gravidade_seguranca||"informativa"]||0)||(sev[i.urgencia]||0)>(sev[old.snapshot.urgencia]||0));
-    map.set(key,{key,person_id:personId,insight_id:i.id,family:brainV5Family(i),schema_version:1,lane:semantics.lane,domain:semantics.domain,actionability:semantics.actionability,evidence_quality:semantics.evidenceQuality,priority_factors:semantics.factors,state:resurfaced||((old?.feedback==="dismissed")&&escalated)?"active":old?.state||"active",feedback:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback,feedback_reset_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?now:old?.feedback_reset_at,feedback_updated_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback_updated_at,first_detected_at:old?.first_detected_at||now,last_detected_at:material||resurfaced?now:old?.last_detected_at||now,last_seen_at:resurfaced?undefined:old?.last_seen_at,resolved_at:resurfaced||escalated?undefined:old?.resolved_at,occurrences:old?(material||resurfaced?(old.occurrences||1)+1:(old.occurrences||1)):1,episode:old?(resurfaced?(old.episode||1)+1:(old.episode||1)):1,severity_rank:rank,material_fingerprint:fp,snapshot:snap(i)});
+    const snoozeExpired=Boolean(old?.snoozed_until&&old.snoozed_until<=now);
+    const wake=resurfaced||escalated||snoozeExpired;
+    map.set(key,{key,person_id:personId,insight_id:i.id,family:brainV5Family(i),schema_version:1,lane:semantics.lane,domain:semantics.domain,actionability:semantics.actionability,evidence_quality:semantics.evidenceQuality,priority_factors:semantics.factors,state:wake?"active":old?.state||"active",feedback:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback,feedback_reset_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?now:old?.feedback_reset_at,feedback_updated_at:(resurfaced||escalated)&&old?.feedback==="dismissed"?undefined:old?.feedback_updated_at,first_detected_at:old?.first_detected_at||now,last_detected_at:material||resurfaced?now:old?.last_detected_at||now,last_seen_at:resurfaced?undefined:old?.last_seen_at,resolved_at:resurfaced||escalated?undefined:old?.resolved_at,snoozed_until:wake?undefined:old?.snoozed_until,occurrences:old?(material||resurfaced?(old.occurrences||1)+1:(old.occurrences||1)):1,episode:old?(resurfaced?(old.episode||1)+1:(old.episode||1)):1,severity_rank:rank,material_fingerprint:fp,snapshot:snap(i)});
   }
   for(const [key,x] of map) if(options.complete !== false && !active.has(key)&&x.state!=="resolved") map.set(key,{...x,state:"resolved",resolved_at:now});
   // Retention applies to resolved history; an old active alert must not disappear.
@@ -78,9 +82,11 @@ export function brainV5PriorityScore(x:BrainV5Alert){
 export function brainV5PriorityReason(x:BrainV5Alert){
   const lane={now:"ação prioritária",next:"próxima ação",follow_up:"acompanhamento",review_data:"qualidade dos dados"}[brainV5Lane(x)];
   const quality={strong:"evidência forte",moderate:"evidência moderada",limited:"evidência limitada"}[x.evidence_quality??"limited"];
-  const memory=x.state==="monitoring"||x.feedback==="review_later"?"adiado por você":x.state==="acknowledged"?"já revisado":!x.last_seen_at?"novo":"ativo";
+  const memory=brainV5IsSnoozed(x)?`adiado até ${formatSnoozeDate(x.snoozed_until!)}`:x.state==="monitoring"||x.feedback==="review_later"?"adiado por você":x.state==="acknowledged"?"já revisado":!x.last_seen_at?"novo":"ativo";
   return `${lane} · ${quality} · ${memory}`;
 }
+export function brainV5IsSnoozed(x:BrainV5Alert,now=new Date().toISOString()){return Boolean(x.snoozed_until&&x.snoozed_until>now);}
+export function formatSnoozeDate(iso:string){const date=new Date(iso);return Number.isFinite(date.getTime())?date.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}):"data escolhida";}
 export function rankBrainV5(items:BrainV5Alert[]){const lp:Record<BrainDecisionLane,number>={now:4,next:3,follow_up:2,review_data:1};return [...items].sort((a,b)=>lp[brainV5Lane(b)]-lp[brainV5Lane(a)]||statePriority[b.state]-statePriority[a.state]||brainV5PriorityScore(b)-brainV5PriorityScore(a)||b.last_detected_at.localeCompare(a.last_detected_at)||a.key.localeCompare(b.key));}
 export function brainV5JourneyKey(item:BrainV5Alert){
   const type=item.snapshot.entidade_tipo||"global";
@@ -101,17 +107,19 @@ export function brainV5Journeys(items:BrainV5Alert[]):BrainV5Journey[]{
   }).sort((a,b)=>rankBrainV5([a.primary,b.primary])[0]===a.primary?-1:1);
 }
 export function brainV5DecisionBrief(items:BrainV5Alert[]){
-  const journeys=brainV5Journeys(items),open=journeys.map(x=>x.primary);
+  const journeys=brainV5Journeys(items),open=journeys.map(x=>x.primary).filter(x=>!brainV5IsSnoozed(x));
   const lanes:Record<BrainDecisionLane,number>={now:0,next:0,follow_up:0,review_data:0};
   for(const item of open)lanes[brainV5Lane(item)]++;
-  const deferred=open.filter(x=>x.state==="monitoring"||x.feedback==="review_later").length;
+  // Legacy ledgers used monitoring/review_later without a date. Preserve that
+  // memory while newer entries carry an explicit return deadline.
+  const deferred=journeys.filter(x=>brainV5IsSnoozed(x.primary)||x.primary.state==="monitoring"||x.primary.feedback==="review_later").length;
   const headline=lanes.now?`${lanes.now} sinal(is) para revisar agora`:lanes.next?`${lanes.next} próxima(s) ação(ões) organizada(s)`:open.length?"Acompanhamento sem urgência comprovada":"Nenhuma ação aberta";
   const details=[lanes.next?`${lanes.next} nos próximos dias`:"",deferred?`${deferred} adiado(s) por você`:"",lanes.review_data?`${lanes.review_data} pede(m) mais dados`:""].filter(Boolean);
   const supporting=journeys.reduce((sum,item)=>sum+item.supporting.length,0);
   if(supporting)details.push(`${supporting} sinal(is) relacionado(s) agrupado(s)`);
   return {headline,summary:details.join(" · ")||"O histórico permanece acompanhado.",primary:open[0]??null,lanes,deferred,total:open.length,signals:open.length+supporting,supporting};
 }
-export function brainV5Counters(items:BrainV5Alert[]){const a=items.filter(x=>x.state!=="resolved");return {active:a.length,new:a.filter(x=>!x.last_seen_at).length,monitoring:a.filter(x=>x.state==="monitoring").length,resolved:items.filter(x=>x.state==="resolved").length,attention:a.filter(brainV5RequiresAttention).length};}
+export function brainV5Counters(items:BrainV5Alert[]){const a=items.filter(x=>x.state!=="resolved"),visible=a.filter(x=>!brainV5IsSnoozed(x));return {active:visible.length,new:visible.filter(x=>!x.last_seen_at).length,monitoring:a.filter(x=>x.state==="monitoring").length,snoozed:a.filter(x=>brainV5IsSnoozed(x)).length,resolved:items.filter(x=>x.state==="resolved").length,attention:visible.filter(brainV5RequiresAttention).length};}
 
 // A cor usa gravidade explícita; confiança/amostra nunca pintam o cartão de vermelho.
 export function brainV5Presentation(x: BrainV5Alert) {
