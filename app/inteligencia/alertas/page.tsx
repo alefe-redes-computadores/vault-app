@@ -29,12 +29,15 @@ export default function BrainV5Central(){
  const [shown,setShown]=useState(8);
  useEffect(()=>setShown(8),[q,lane,family,state,severity,period]);
  const selected=useMemo(()=>brain.records.find(x=>x.key===selectedKey)??null,[brain.records,selectedKey]);
+ const selectedJourney=useMemo(()=>selected?brain.journeys.find(item=>item.key===brainV5JourneyKey(selected))??null:null,[brain.journeys,selected]);
+ const selectedJourneyKeys=useMemo(()=>selectedJourney?[selectedJourney.primary,...selectedJourney.supporting].map(item=>item.key):selected?[selected.key]:[],[selectedJourney,selected]);
+ const selectedRelated=useMemo(()=>selectedJourney?[selectedJourney.primary,...selectedJourney.supporting].filter(item=>item.key!==selected?.key):[],[selectedJourney,selected]);
  useEffect(()=>{if(typeof window==="undefined"||brain.isLoading)return;const id=new URLSearchParams(window.location.search).get("insight");if(!id)return;const hit=brain.records.find(x=>x.insight_id===id);if(hit&&openedInsight.current!==hit.key){openedInsight.current=hit.key;setSelectedKey(hit.key);void brain.seen(hit.key);}},[brain.isLoading,brain.records,brain.seen]);
  const searchIndex=useMemo(()=>createLocalSearchIndex(brain.ranked,x=>[x.snapshot.titulo,x.snapshot.mensagem,x.snapshot.categoria,...x.snapshot.evidencias,...x.snapshot.fontes_internas]),[brain.ranked]);
  const list=useMemo(()=>{const filtered=filterLocalSearchIndex(searchIndex,q).filter(x=>{if(state==="open"&&x.state==="resolved")return false;if(state!=="all"&&state!=="open"&&x.state!==state)return false;if(lane!=="all"&&brainV5Lane(x)!==lane)return false;if(family!=="all"&&x.family!==family)return false;if(severity==="attention"&&!brainV5RequiresAttention(x))return false;if(period!=="all"&&ageDays(x.last_detected_at)>Number(period))return false;return true;});const seen=new Set<string>();return filtered.filter(item=>{const key=brainV5JourneyKey(item);if(seen.has(key))return false;seen.add(key);return true;});},[searchIndex,q,lane,family,state,severity,period]);
  const journeySize=useMemo(()=>new Map(brain.journeys.map(item=>[item.key,item.total])),[brain.journeys]);
  const laneCounts=useMemo(()=>{const counts:Record<BrainDecisionLane,number>={now:0,next:0,follow_up:0,review_data:0};for(const item of brain.records)if(item.state!=="resolved")counts[brainV5Lane(item)]++;return counts;},[brain.records]);
- const open=(x:BrainV5Alert)=>{setSelectedKey(x.key);void brain.seen(x.key);};
+ const open=(x:BrainV5Alert)=>{const journey=brain.journeys.find(item=>item.key===brainV5JourneyKey(x));setSelectedKey(x.key);void brain.seenMany(journey?[journey.primary,...journey.supporting].map(item=>item.key):[x.key]);};
  const activeFilterCount=(lane!=="all"?1:0)+(family!=="all"?1:0)+(state!=="open"?1:0)+(severity!=="all"?1:0)+(period!=="all"?1:0);
  const clearFilters=()=>{setLane("all");setFamily("all");setState("open");setSeverity("all");setPeriod("all");};
  // V97 compatibilidade: severity_rank>=700 era o limiar antigo; agora a gravidade é explícita.
@@ -72,12 +75,14 @@ export default function BrainV5Central(){
   {list.length>shown&&<button type="button" onClick={()=>setShown(value=>value+8)} className="mx-auto mt-3 block w-full max-w-2xl rounded-2xl border border-violet-400/25 bg-violet-400/5 p-3 text-xs font-semibold text-violet-300">Mostrar mais {Math.min(8,list.length-shown)} · {shown} de {list.length}</button>}
   {selected && <BrainV5DetailSheet
     alert={selected}
+    related={selectedRelated}
     familyLabel={meta[selected.family].label}
     stateLabel={stateLabel[selected.state]}
     onClose={() => setSelectedKey(null)}
     onContext={href => router.push(preserveReturn(href))}
-    onFeedback={value => void brain.feedback(selected.key, value)}
-    onToggleResolved={() => void brain.state(selected.key, selected.state === "resolved" ? "active" : "resolved")}
+    onSelectRelated={item => setSelectedKey(item.key)}
+    onFeedback={value => void brain.feedbackMany(selectedJourneyKeys, value)}
+    onToggleResolved={() => void brain.stateMany(selectedJourneyKeys, selected.state === "resolved" ? "active" : "resolved")}
   />}
  </main></PageTransition>;
 }

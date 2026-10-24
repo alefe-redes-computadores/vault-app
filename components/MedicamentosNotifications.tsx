@@ -19,6 +19,8 @@ import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-sto
 import { indexScheduledWithdrawals, medicationAccessAction, medicationAccessAlertTitle, withdrawalDueState } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useLocalDay } from "@/hooks/useLocalDay";
+import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
 
 export function MedicamentosNotifications() {
   const { trigger } = useHapticFeedback();
@@ -27,7 +29,16 @@ export function MedicamentosNotifications() {
   // ✅ Agora usa o hook que filtra por activePersonId
   const { medicamentos } = useMedicamentos();
   const { retiradas } = useRetiradas();
+  const { renovacoes = [] } = useRenovacoes();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
+  const renewalsByMedication = useMemo(() => {
+    const index = new Map<string, typeof renovacoes>();
+    for (const renewal of renovacoes) {
+      const rows = index.get(renewal.medicamento_id);
+      if (rows) rows.push(renewal); else index.set(renewal.medicamento_id, [renewal]);
+    }
+    return index;
+  }, [renovacoes]);
   const [prefsRevision, setPrefsRevision] = useState(0);
   useEffect(() => { const changed = () => setPrefsRevision(n => n+1);
     window.addEventListener(MEDICATION_ALERT_PREF_EVENT, changed);
@@ -82,10 +93,21 @@ export function MedicamentosNotifications() {
         sugerirRenovacao(
           med
         );
+      const stock = getClinicalStockSnapshot(med);
+      const careDecision = decideMedicationCarePath({
+        medication: med,
+        renewals: renewalsByMedication.get(med.id) ?? [],
+        withdrawal: pendingWithdrawal ?? null,
+        today,
+        needsPrescription: Boolean(renovacaoInsight.deveRenovar && renovacaoInsight.motivo === "receita"),
+        needsStock: stock.state === "empty" || stock.state === "negative" ||
+          (stock.state === "available" && ((stock.daysRemaining !== null && stock.daysRemaining <= 3) ||
+            (stock.daysRemaining === null && stock.dosesRemaining !== null && stock.dosesRemaining <= 3))),
+      });
 
       // V228: one operational priority per medication; an existing withdrawal
       // takes precedence over a duplicate request for recipe/replenishment.
-      if (renovacaoInsight.deveRenovar && decision.showPrescription && !decision.withdrawal) {
+      if (renovacaoInsight.deveRenovar && decision.showPrescription && !decision.withdrawal && careDecision.stage === "prescription_needed") {
         const dias =
           renovacaoInsight.diasAteRenovacao;
 
@@ -131,7 +153,6 @@ export function MedicamentosNotifications() {
       // Ausência de saldo NÃO significa zero. Quando a estimativa por dose
       // é confiável, priorizamos dias/doses; caso contrário preservamos
       // somente o saldo conhecido, sem inventar conversão clínica.
-      const stock = getClinicalStockSnapshot(med);
       const sos = med.tipo_uso === "sos" || med.tipo_uso === "esporadico";
       const publicSupply = med.tipo_aquisicao === "sus";
       const stockAction = medicationAccessAction(
@@ -145,22 +166,23 @@ export function MedicamentosNotifications() {
         { tipoUso: med.tipo_uso, tipoAquisicao: med.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawals.get(med.id)?.id }
       );
 
-      if (decision.showStock && (stock.state === "empty" || stock.state === "negative")) {
+      const stockPlanAlreadyExists = careDecision.stage === "acquisition_planned" || careDecision.stage === "withdrawal_planned";
+      if (decision.showStock && !stockPlanAlreadyExists && (stock.state === "empty" || stock.state === "negative")) {
         if (stockAction) addAlert({
           id: med.id,
           tipo: "estoque",
           urgencia: sos && stock.state !== "negative" ? "proxima" : "pendente",
-          titulo: stockAction.cta === "Ver retirada pendente" ? "Retirada pendente" : "Sem estoque",
+          titulo: careDecision.stage === "acquisition_needed" ? "Receita pronta · falta adquirir" : stockAction.cta === "Ver retirada pendente" ? "Retirada pendente" : "Sem estoque",
           descricao:
             stock.state === "negative"
               ? `${med.nome} está com saldo negativo e precisa de conferência`
               : `${med.nome} acabou`,
           data: sos ? "Revisar necessidade" : "Revisar reposição",
-          href: stockAction.href,
-          actionLabel: stockAction.label,
+          href: careDecision.stage === "acquisition_needed" ? careDecision.actionHref : stockAction.href,
+          actionLabel: careDecision.stage === "acquisition_needed" ? careDecision.actionLabel : stockAction.label,
         });
       } else if (
-        decision.showStock &&
+        decision.showStock && !stockPlanAlreadyExists &&
         stock.state === "available" &&
         (
           (stock.daysRemaining !== null && stock.daysRemaining <= 3) ||
@@ -198,7 +220,7 @@ export function MedicamentosNotifications() {
     });
 
     return { alertas: itensAlerta };
-  }, [medicamentos, scheduledWithdrawals, today, prefsRevision]);
+  }, [medicamentos, scheduledWithdrawals, today, renewalsByMedication, prefsRevision]);
 
   if (alertas.length === 0) return null;
 

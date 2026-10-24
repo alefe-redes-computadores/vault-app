@@ -38,15 +38,25 @@ const mutate = (userId: string, personId: string, key: string, patch: Patch) => 
   return all.map((item) => item.person_id === personId && item.key === key
     ? { ...item, ...patch, last_seen_at: patch.last_seen_at ?? item.last_seen_at ?? now } : item);
 });
+const mutateMany = (userId: string, personId: string, keys: readonly string[], patch: Patch) => updateLedger(userId, (all) => {
+  const now = new Date().toISOString(), owned = new Set(keys);
+  return all.map((item) => item.person_id === personId && owned.has(item.key)
+    ? { ...item, ...patch, last_seen_at: patch.last_seen_at ?? item.last_seen_at ?? now } : item);
+});
 export const brainV5AlertLedgerRepository = {
   async getAll(userId: string) { const settings = await get(userId); return settings?.brain_v5_alert_ledger || []; },
   reconcile(userId: string, personId: string, insights: HealthInsight[]) {
     return updateLedger(userId, (current) => reconcileBrainV5(personId, insights, current));
   },
   mutate,
+  mutateMany,
   markSeen(userId: string, personId: string, key: string) { return mutate(userId, personId, key, { last_seen_at: new Date().toISOString() }); },
+  markSeenMany(userId: string, personId: string, keys: readonly string[]) { return mutateMany(userId, personId, keys, { last_seen_at: new Date().toISOString() }); },
   feedback(userId: string, personId: string, key: string, feedback: BrainV5Feedback) {
     return mutate(userId, personId, key, { feedback, feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" : "acknowledged" });
+  },
+  feedbackMany(userId: string, personId: string, keys: readonly string[], feedback: BrainV5Feedback) {
+    return mutateMany(userId, personId, keys, { feedback, feedback_updated_at: new Date().toISOString(), state: feedback === "review_later" ? "monitoring" : "acknowledged" });
   },
   feedbackForInsight(userId: string, personId: string, insight: HealthInsight, feedback: BrainV5Feedback) {
     return updateLedger(userId, (all) => {
@@ -59,5 +69,8 @@ export const brainV5AlertLedgerRepository = {
   },
   state(userId: string, personId: string, key: string, state: BrainV5State) {
     return mutate(userId, personId, key, { state, resolved_at: state === "resolved" ? new Date().toISOString() : undefined });
+  },
+  stateMany(userId: string, personId: string, keys: readonly string[], state: BrainV5State) {
+    return mutateMany(userId, personId, keys, { state, resolved_at: state === "resolved" ? new Date().toISOString() : undefined });
   },
 };

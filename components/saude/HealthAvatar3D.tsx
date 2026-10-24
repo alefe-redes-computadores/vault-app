@@ -498,12 +498,14 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const brainPanel=mesh(softBox(.27,.24,.025,.018),brainPanelMaterial,0,2.14,.229);brainPanel.userData.action="brain";
     const signalMaterial=new THREE.MeshStandardMaterial({color:avatarAttentionColor(attentionRef.current),emissive:avatarAttentionColor(attentionRef.current),emissiveIntensity:.35,metalness:.3,roughness:.4});
     const signalRing=new THREE.Group();model.add(signalRing);
+    const brainLeds:THREE.Mesh[]=[];
     // V232 FACE SAFETY: sem rails adicionais. Painel, LEDs e glifo preservados.
     // Três LEDs geométricos discretos: indicador abstrato, nunca dado clínico inventado.
     const brainLedGeometry=new THREE.SphereGeometry(.008,8,6);
     for(const x of [-.042,0,.042]){
       const led=mesh(brainLedGeometry,signalMaterial,x,2.265,.261);
       led.userData.action="brain";
+      brainLeds.push(led);
       signalRing.add(led);
     }
     // V223: sinais circulares discretos no painel Brain. A cor continua
@@ -519,7 +521,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
 
     // V225: bounded attention brightness; lower idle emission, no new geometry
     // or animation loop. Context changes still trigger only the existing draw().
-    const setAttention=(rank:number)=>{const level=Number.isFinite(rank)?Math.max(0,Math.min(4,Math.floor(rank))):0;const color=avatarAttentionColor(level);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalMaterial.emissiveIntensity=level===0?.14:Math.min(.61,.25+.09*level);signalRing.visible=level>0;};
+    const setAttention=(rank:number)=>{const level=Number.isFinite(rank)?Math.max(0,Math.min(4,Math.floor(rank))):0;const color=avatarAttentionColor(level);signalMaterial.color.set(color);signalMaterial.emissive.set(color);signalMaterial.emissiveIntensity=level===0?.14:Math.min(.61,.25+.09*level);signalRing.visible=level>0;const visibleLeds=Math.min(3,Math.max(1,level));brainLeds.forEach((led,index)=>{led.visible=index<visibleLeds;});};
     setAttention(attentionRef.current);
     const backBadge=mesh(softBox(.22,.18,.018,.015),brainPanelMaterial,0,2.16,-.229);backBadge.rotation.y=Math.PI;backBadge.userData.action="brain";
     const braces=avatarBraceSlots(devices);
