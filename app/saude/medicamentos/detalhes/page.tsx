@@ -6,7 +6,7 @@ import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPr
 import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, isFutureAcquisition, realizedAcquisitionExpense, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
-import { decideMedicationCarePath } from "@/lib/health-intelligence/medication-care-decision";
+import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -1761,6 +1761,7 @@ function MedicamentoDetalhesContent() {
     needsPrescription: Boolean(alertaInteligente.deveRenovar && alertaInteligente.motivo === "receita"),
     needsStock: saldoRegistrado !== null && saldoRegistrado <= 5,
   });
+  const carePresentation = medicationCarePresentation(careDecision, alertaInteligente.urgencia);
 
   const seteDiasAtras =
     getDateDaysAgoISO(
@@ -3246,13 +3247,13 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           {careDecision.stage !== "stable" && (
-            <section className="rounded-[20px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[0.08] via-surface to-surface p-4">
+            <section className="rounded-[20px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${carePresentation.badgeClass}`}>
                   <Activity size={17}/>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-violet-300">Linha de cuidado</p>
+                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
                   <h2 className="mt-1 text-sm font-bold text-ink-primary">{careDecision.label}</h2>
                   <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{careDecision.explanation}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -3260,7 +3261,7 @@ function MedicamentoDetalhesContent() {
                   </div>
                 </div>
               </div>
-              <button type="button" onClick={()=>router.push(careDecision.actionHref)} className="mt-3 min-h-10 w-full rounded-xl bg-violet-300 px-3 text-[10px] font-bold text-void active:scale-[0.98]">
+              <button type="button" onClick={()=>router.push(careDecision.actionHref)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${carePresentation.actionClass}`}>
                 {careDecision.actionLabel}
               </button>
             </section>

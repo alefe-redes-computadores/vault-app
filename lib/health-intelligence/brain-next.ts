@@ -33,10 +33,28 @@ function boundedCoverage(insight: HealthInsight): number | null {
   return Math.max(0, Math.min(1, coverage.observados / coverage.total));
 }
 
+function meaningfulUnique(values: readonly string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values ?? []) {
+    const clean = value.trim().replace(/\s+/g, " ");
+    const key = clean.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+    if (!clean || seen.has(key)) continue;
+    seen.add(key);
+    result.push(clean);
+  }
+  return result;
+}
+
+export function brainMeaningfulEvidence(insight: Pick<HealthInsight, "evidencias" | "fontesInternas">) {
+  return { evidence: meaningfulUnique(insight.evidencias), sources: meaningfulUnique(insight.fontesInternas) };
+}
+
 export function brainEvidenceQuality(insight: HealthInsight): BrainEvidenceQuality {
   const coverage = boundedCoverage(insight);
-  const evidenceCount = new Set(insight.evidencias ?? []).size;
-  const sourceCount = new Set(insight.fontesInternas ?? []).size;
+  const meaningful = brainMeaningfulEvidence(insight);
+  const evidenceCount = meaningful.evidence.length;
+  const sourceCount = meaningful.sources.length;
   if (insight.kind === "data_quality" || insight.confianca === "baixa" || (coverage !== null && coverage < .25)) return "limited";
   if (insight.confianca === "alta" && evidenceCount > 0 && sourceCount > 0 && (coverage === null || coverage >= .5)) return "strong";
   return "moderate";

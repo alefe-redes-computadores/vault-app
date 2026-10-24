@@ -87,6 +87,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
       eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .85 }),
+      eyeHighlight: new THREE.MeshBasicMaterial({ color: "#f8fafc", transparent: true, opacity: .62, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .48, metalness: .015 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
@@ -321,7 +322,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       oval(materials.iris,sign*.083,2.819,.224,[.012,.011,.004]).raycast=()=>{};
       const pupil=oval(materials.dark,sign*.083,2.819,.229,[.005,.006,.0025]);pupil.raycast=()=>{};
       expressionEyes.push({object:pupil,restY:pupil.position.y}); expressionEyeScaleY.set(pupil,pupil.scale.y);
-      oval(materials.eyeWhite,sign*.079,2.824,.232,[.0014,.0014,.0012]).raycast=()=>{};
+      // V243: ponto de luz corneano discreto; material próprio evita que o reflexo pareça outra haste.
+      oval(materials.eyeHighlight,sign*.079,2.824,.232,[.0018,.0018,.0012]).raycast=()=>{};
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
     // Isso reduz o nariz bulboso visto de frente e ainda economiza segmentos esféricos.

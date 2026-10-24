@@ -1,7 +1,7 @@
 "use client";
 
 import {AlertTriangle, CheckCircle2, Database, ExternalLink, FileSearch, ShieldAlert, ShieldCheck, X} from "lucide-react";
-import {brainV5Lane, brainV5Presentation, brainV5RequiresAttention} from "@/lib/health-intelligence/brain-v5";
+import {brainV5Lane, brainV5Presentation, brainV5PriorityReason, brainV5RequiresAttention} from "@/lib/health-intelligence/brain-v5";
 import type {BrainV5Alert, BrainV5Feedback} from "@/lib/health-intelligence/brain-v5";
 import {useDialogGuard} from "@/hooks/useDialogGuard";
 
@@ -51,6 +51,7 @@ export function BrainV5DetailSheet({alert, familyLabel, stateLabel, onClose, onC
 
         <div className="space-y-3 px-4 pt-4 sm:px-5">
           <section aria-label="Como o Brain priorizou" className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-surface-border/60 bg-surface-border/50 text-[9px] text-ink-muted"><span className="bg-surface p-3">Momento<strong className="mt-1 block text-ink-primary">{laneLabel}</strong></span><span className="bg-surface p-3">Evidência<strong className="mt-1 block text-ink-primary">{evidenceLabel}</strong></span><span className="bg-surface p-3">Utilidade<strong className="mt-1 block text-ink-primary">{actionLabel}</strong></span></section>
+          <p className="rounded-xl border border-surface-border/50 bg-black/10 px-3 py-2 text-[10px] leading-relaxed text-ink-muted"><strong className="text-ink-primary">Por que está nesta posição:</strong> {brainV5PriorityReason(alert)}. Sua resposta altera a ordem sem apagar a evidência.</p>
           <section className={`rounded-2xl border p-4 ${urgent ? "border-rose-400/20 bg-rose-400/[.035]" : "border-surface-border/60 bg-black/10"}`}>
             <p className="text-sm leading-relaxed text-ink-primary">{alert.snapshot.mensagem}</p>
             {urgent?<p className="mt-2 flex items-center gap-2 text-[10px] font-semibold text-rose-200"><ShieldAlert size={13}/>Risco potencial identificado nos registros — não confirma um evento clínico.</p>:null}
