@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Activity, BarChart3, ChevronDown } from "lucide-react";
 import type { RegistroSaude } from "@/lib/types";
 import { buildHealthFactorTrend, FACTOR_LABELS, type HealthFactor } from "@/lib/health-intelligence/health-factor-trends";
+import { buildCautiousAssociations } from "@/lib/health-intelligence/cautious-associations";
 
 const FACTORS:HealthFactor[]=["sono","caminhada","humor","sintoma"];
 const SHORT_DATE=(date:string)=>date.slice(8)+"/"+date.slice(5,7);
@@ -13,6 +14,7 @@ export function HealthTrendsExplorer({records,userId,personId,today}:{records:Re
  const [primary,setPrimary]=useState<HealthFactor>("sono"),[secondary,setSecondary]=useState<HealthFactor>("sintoma");
  const first=useMemo(()=>buildHealthFactorTrend({records,userId,personId,today,factor:primary,days:period}),[records,userId,personId,today,primary,period]);
  const second=useMemo(()=>buildHealthFactorTrend({records,userId,personId,today,factor:secondary,days:period}),[records,userId,personId,today,secondary,period]);
+ const associations=useMemo(()=>buildCautiousAssociations({records,userId,personId,today,days:period}),[records,userId,personId,today,period]);
  return <section id="vault-trends-explorer" aria-label="Comparar fatores de saúde registrados" className="overflow-hidden rounded-2xl border border-surface-border/70 bg-surface">
   <button type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} className="flex min-h-12 w-full items-center gap-3 px-3 py-3 text-left"><BarChart3 size={17} className="shrink-0 text-violet-300"/><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Explorar tendências</strong><span className="block text-[10px] text-ink-muted">Compare registros de sono, caminhada, humor e sintomas</span></span><ChevronDown size={15} className={`text-ink-muted transition-transform ${open?"rotate-180":""}`}/></button>
   {open&&<div className="space-y-3 border-t border-surface-border/60 p-3">
@@ -21,6 +23,7 @@ export function HealthTrendsExplorer({records,userId,personId,today}:{records:Re
    <FactorStrip index={2} value={secondary} onChange={setSecondary} trend={second}/>
    {primary===secondary&&<p className="text-[10px] text-amber-300">Você selecionou o mesmo fator nas duas faixas. Escolha outro para comparar.</p>}
    <p className="text-[10px] leading-relaxed text-ink-muted">Cada barra representa somente um dia com dado válido. Altura relativa ao maior registro mostrado em cada gráfico; não é escala clínica. Ausência de registro não significa zero. Gráficos lado a lado não demonstram correlação nem causa.</p>
+   {associations.length>0&&<div className="rounded-xl border border-violet-300/15 bg-violet-300/[.04] p-3"><p className="text-[10px] font-semibold text-violet-200">Associações temporais descritivas</p><div className="mt-2 space-y-2">{associations.map(item=><div key={item.id}><p className="text-[10px] text-ink-primary">{item.message}</p><p className="text-[9px] text-ink-muted">Sinal {item.strength} · coeficiente {item.coefficient.toLocaleString("pt-BR")} · não demonstra causa nem efeito de tratamento.</p></div>)}</div></div>}
   </div>}
  </section>;
 }

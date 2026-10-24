@@ -234,6 +234,8 @@ export function buildSupplyInsights(
     }
   }
   for (const p of activeProcesses) {
+    // Private purchase planning must not generate SUS document/withdrawal alerts.
+    if (p.origem === "comprado") continue;
     for (const cycle of (cyclesByProcess.get(ownerKey(p.user_id, p.id)) || []).filter(
       (c) =>
         c.processo_id === p.id &&

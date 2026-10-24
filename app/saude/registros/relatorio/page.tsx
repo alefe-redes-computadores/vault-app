@@ -12,6 +12,9 @@ import { CareRhythmPanel } from "@/components/saude/CareRhythmPanel";
 import { buildConsultationBrief, formatConsultationBrief } from "@/lib/health-intelligence/consultation-brief";
 import { useReturnContext } from "@/hooks/useReturnContext";
 import { buildCareForecast, daysSinceLastCompletedConsultation } from "@/lib/health-intelligence/care-forecast";
+import { buildPlannedRealizedSummary } from "@/lib/health-intelligence/planned-realized";
+import { buildCautiousAssociations } from "@/lib/health-intelligence/cautious-associations";
+import { ReportShareComposer } from "@/components/saude/ReportShareComposer";
 
 const periods: ClinicalReportPeriod[] = [7, 30, 90];
 const displayDate = (value: string) => { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; };
@@ -28,6 +31,8 @@ export default function ClinicalReportPage() {
   const selectedDays = period === "since_consultation" ? (sinceConsultation || 30) : period;
   const report = useMemo(() => intelligence.context ? buildClinicalReport(intelligence.context, intelligence.insights, selectedDays) : null, [intelligence.context, intelligence.insights, selectedDays]);
   const forecast = useMemo(() => intelligence.context ? buildCareForecast(intelligence.context) : null, [intelligence.context]);
+  const planReality = useMemo(() => intelligence.context ? buildPlannedRealizedSummary(intelligence.context, selectedDays) : null, [intelligence.context, selectedDays]);
+  const associations = useMemo(() => intelligence.context ? buildCautiousAssociations({records:intelligence.context.registrosSaude,userId:intelligence.context.userId||"",personId:intelligence.context.personId||"",today:intelligence.context.hoje||new Date().toISOString().slice(0,10),days:selectedDays<=30?30:90}) : [], [intelligence.context, selectedDays]);
   const consultation = useMemo(() => report ? buildConsultationBrief(report) : null, [report]);
   const copyConsultation = async () => {
     if (!consultation || typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
@@ -50,6 +55,10 @@ export default function ClinicalReportPage() {
       <div className="rounded-[26px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.09] to-surface p-4 print:border-gray-300 print:bg-white"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300 print:text-gray-700">{period==="since_consultation"?"Desde a última consulta":"Período analisado"}</p><h2 className="mt-1 text-lg font-semibold text-ink-primary print:text-black">{displayDate(report.current.start)} a {displayDate(report.current.end)}</h2><p className="mt-1 text-[11px] text-ink-muted print:text-gray-600">{report.coverage.currentDays} de {selectedDays} dias possuem dados. Ausência de registro não é interpretada como zero.</p></div><FileDown size={22} className="text-emerald-300"/></div></div>
 
       <section className="rounded-[24px] border border-surface-border bg-surface p-4 print:border-gray-300 print:bg-white"><SectionTitle icon={Activity} title="Visão geral"/><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4"><Metric label="Registros clínicos" value={report.totals.records}/><Metric label="Sintomas" value={report.totals.symptoms}/><Metric label="Doses programadas tomadas" value={report.totals.scheduledTaken}/><Metric label="SOS / extras tomadas" value={report.totals.sosTaken + report.totals.extraTaken}/><Metric label="Medições" value={report.totals.measurements}/><Metric label="Hidratação" value={report.totals.hydrationRecords}/><Metric label="Doses ignoradas" value={report.totals.ignored}/><Metric label="Tratamentos ativos" value={report.activeTreatments.length}/></div></section>
+
+      {planReality&&<section className="rounded-[24px] border border-surface-border bg-surface p-4 print:border-gray-300 print:bg-white"><SectionTitle icon={ClipboardCheck} title="Planejado × realizado"/><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4"><Metric label="Eventos planejados salvos" value={planReality.planned}/><Metric label="Tomadas confirmadas" value={planReality.taken}/><Metric label="Ignoradas explicitamente" value={planReality.ignored}/><Metric label="Sem desfecho registrado" value={planReality.unresolvedPast}/></div><p className="mt-3 text-[10px] text-ink-muted">{planReality.note}</p>{planReality.documentedOutcomeRate!==null&&<p className="mt-1 text-[10px] font-semibold text-emerald-300">Entre os desfechos informados: {planReality.documentedOutcomeRate}% foram registrados como tomados.</p>}</section>}
+
+      {associations.length>0&&<section className="rounded-[24px] border border-violet-300/20 bg-violet-300/[.035] p-4 print:border-gray-300 print:bg-white"><SectionTitle icon={Activity} title="Associações temporais cautelosas"/><p className="mt-1 text-[10px] text-ink-muted">Somente dias que possuem os dois dados são comparados; são necessários pelo menos cinco dias pareados.</p><div className="mt-3 space-y-2">{associations.map(item=><div key={item.id} className="rounded-xl border border-surface-border bg-surface-raised p-3"><p className="text-[11px] font-medium text-ink-primary">{item.message}</p><p className="mt-1 text-[9px] text-ink-muted">{item.pairedDays} dias pareados · sinal {item.strength} · coeficiente {item.coefficient.toLocaleString("pt-BR")}. Associação temporal não prova causalidade.</p></div>)}</div></section>}
 
       <section className="rounded-[24px] border border-surface-border bg-surface p-4 print:border-gray-300 print:bg-white"><SectionTitle icon={CalendarDays} title="Comparação equivalente"/><p className="mt-1 text-[10px] text-ink-muted print:text-gray-600">Comparação com {displayDate(report.previous.start)} a {displayDate(report.previous.end)}. Variação reflete registros disponíveis, não mudança clínica confirmada.</p><div className="mt-3 grid grid-cols-3 gap-2"><Comparison label="Registros" value={report.comparison.recordsDelta}/><Comparison label="Sintomas" value={report.comparison.symptomDelta}/><Comparison label="SOS/extra" value={report.comparison.sosExtraDelta}/></div><p className="mt-3 text-[9px] text-ink-faint print:text-gray-600">Cobertura: {report.coverage.currentDays}/{selectedDays} dias no período atual · {report.coverage.previousDays}/{selectedDays} no anterior.</p>{!report.dataQuality.comparable && <p className="mt-1 text-[9px] font-medium text-amber-300 print:text-gray-700">Uma das janelas não possui cobertura mínima; “Sem base” substitui um percentual artificial.</p>}</section>
 
@@ -76,6 +85,7 @@ export default function ClinicalReportPage() {
         <ul className="mt-1 space-y-1.5">{consultation.questions.map((line,index) => <li key={`question-${index}`} className="text-[11px] leading-relaxed text-ink-primary print:text-black">• {line}</li>)}</ul>
         <p className="mt-3 text-[10px] text-ink-muted print:text-gray-600">{consultation.limitations.join(" ")}</p>
       </section>}
+      <ReportShareComposer report={report}/>
 
       {/* V225: timeline of recorded sleep, movement, symptoms and mood. */}
       <CareRhythmPanel summary={report.rhythm} />

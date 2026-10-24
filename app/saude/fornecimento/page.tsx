@@ -26,6 +26,7 @@ import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
 import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
 import { treatmentSupplyMedicationIds, cycleDocumentContext } from "@/lib/health-supply/cycle-context";
 import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
+import { medicationSupplyRoute } from "@/lib/health-supply/route-authority";
 import { useSearchParams } from "next/navigation";
 import { useReturnContext } from "@/hooks/useReturnContext";
 import {
@@ -571,7 +572,7 @@ function CyclePanel({
   return (
     <div className="space-y-4">
       <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-emerald-200">Ciclo registrado no aplicativo · etapa: {cycle.status}. Cadastro salvo não significa autorização confirmada.</p>
-      <div role="tablist" aria-label="Tarefa do ciclo" className="grid grid-cols-2 gap-2">{([['overview','Resumo'],['withdrawals','Retiradas'],['documents','Documentos'],['medications','Medicamentos']] as const).map(([key,label],index)=><button key={key} type="button" role="tab" tabIndex={cycleView===key?0:-1} onKeyDown={event=>{const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;if(next!==null){event.preventDefault();setCycleView((['overview','withdrawals','documents','medications'] as const)[next]);event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();}}} id={`tab-${cycle.id}-${key}`} aria-selected={cycleView===key} aria-controls={`pane-${cycle.id}-${key}`} onClick={()=>setCycleView(key)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${cycleView===key?'border-violet-400/40 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>
+      <div role="tablist" aria-label="Tarefa do ciclo" className="grid grid-cols-2 gap-2">{([['overview','Resumo'],['withdrawals',process.origem==='comprado'?'Aquisições':'Retiradas'],['documents',process.origem==='comprado'?'Receitas':'Documentos'],['medications','Medicamentos']] as const).map(([key,label],index)=><button key={key} type="button" role="tab" tabIndex={cycleView===key?0:-1} onKeyDown={event=>{const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;if(next!==null){event.preventDefault();setCycleView((['overview','withdrawals','documents','medications'] as const)[next]);event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();}}} id={`tab-${cycle.id}-${key}`} aria-selected={cycleView===key} aria-controls={`pane-${cycle.id}-${key}`} onClick={()=>setCycleView(key)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${cycleView===key?'border-violet-400/40 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>
       {process.origem === 'estadual_ceaf' && cycleView==='overview' ? <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
         <p className="text-sm font-semibold text-ink-primary">LME e período autorizado</p>
         <p className="mt-2 text-xs text-ink-muted">{documentContext.lmeDelivered ? 'LME marcada como entregue neste ciclo.' : documentContext.lmeLinked ? 'LME vinculada; confirme a entrega quando ocorrer.' : 'Vincule a LME já existente abaixo, sem cadastrar o arquivo novamente.'}</p>
@@ -945,7 +946,7 @@ function CyclePanel({
           ))}
         </div>
       </div>
-      {!withdrawal && cycleView==='withdrawals' ? <p id={`pane-${cycle.id}-withdrawals`} role="tabpanel" aria-labelledby={`tab-${cycle.id}-withdrawals`} className="rounded-xl border border-surface-border p-4 text-xs text-ink-muted">Selecione uma retirada existente em Vincular outra retirada, acima. Datas diferentes podem pertencer ao mesmo ciclo.</p>:null}
+      {!withdrawal && cycleView==='withdrawals' ? process.origem==='comprado'?<div id={`pane-${cycle.id}-withdrawals`} role="tabpanel" aria-labelledby={`tab-${cycle.id}-withdrawals`} className="rounded-xl border border-rose-400/20 bg-rose-400/[.035] p-4"><p className="text-xs text-ink-muted">Compras particulares são registradas como aquisições, com data, quantidade, preço e farmácia. Não crie retirada SUS para este processo.</p>{items.map(item=><Link key={item.id} href={`/saude/renovacao/nova?medicamento_id=${encodeURIComponent(item.medicamento_id)}&return_to=${encodeURIComponent(returnRoute)}`} className="mt-2 flex min-h-11 items-center justify-between rounded-xl bg-surface-raised px-3 text-xs font-semibold text-rose-200">Registrar compra · {meds.find(m=>m.id===item.medicamento_id)?.nome||"Medicamento"}<span>›</span></Link>)}</div>:<p id={`pane-${cycle.id}-withdrawals`} role="tabpanel" aria-labelledby={`tab-${cycle.id}-withdrawals`} className="rounded-xl border border-surface-border p-4 text-xs text-ink-muted">Selecione uma retirada existente em Vincular outra retirada, acima. Datas diferentes podem pertencer ao mesmo ciclo.</p>:null}
       {withdrawal && (
         <div hidden={cycleView!=='withdrawals'} role="tabpanel" id={`pane-${cycle.id}-withdrawals`} aria-labelledby={`tab-${cycle.id}-withdrawals`} className={panel}>
           <h2 className="text-sm font-bold text-ink-primary">
@@ -1092,12 +1093,15 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     const theme = getClinicalTheme(treatment?.nome || p.titulo);
     const Icon = getVaultTreatmentIcon(treatment?.nome || p.titulo);
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
+    const ids=processMedicationIds.get(p.id)||new Set<string>();
+    const hasPrivateRoute=[...ids].some(id=>medicationSupplyRoute(id,data,renovacoes,personId||"",p.user_id).hasPrivatePurchase);
+    const routeLabel=p.origem!=="comprado"&&hasPrivateRoute?`${SUPPLY_ORIGIN_LABELS[p.origem]} + comprado`:SUPPLY_ORIGIN_LABELS[p.origem];
     return (
               <button
                 type="button"
                 disabled={busy}
                 aria-pressed={process?.id === p.id}
-                aria-label={`${p.titulo} · ${SUPPLY_ORIGIN_LABELS[p.origem]} · ${p.status=== "ativo"?"Em andamento":"Histórico"}`}
+                aria-label={`${p.titulo} · ${routeLabel} · ${p.status=== "ativo"?"Em andamento":"Histórico"}`}
                 style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}50`, backgroundColor: "#10151c"} : {})}}
                 key={p.id}
                 className={
@@ -1111,7 +1115,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   setCreating(false);
                 }}
               >
-                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="truncate text-ink-primary">{p.titulo}</span><span className="shrink-0 text-[9px] font-normal text-ink-muted">{SUPPLY_ORIGIN_LABELS[p.origem]}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="truncate text-ink-primary">{p.titulo}</span><span className={`shrink-0 text-[9px] font-normal ${hasPrivateRoute&&p.origem!=="comprado"?"text-amber-300":"text-ink-muted"}`}>{routeLabel}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
               </button>
     );
   };
@@ -1228,12 +1232,15 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const pharmacy = relationalIndex.pharmacyById.get(process.farmacia_id || "");
                   const place = relationalIndex.placeById.get(process.local_id || "");
                   const purchases = acquisitionSummary(ids);
+                  const hasPrivateInProcess=[...ids].some(id=>medicationSupplyRoute(id,data,renovacoes,personId,process.user_id).hasPrivatePurchase);
+                  const processRouteLabel=process.origem!=="comprado"&&hasPrivateInProcess?`${SUPPLY_ORIGIN_LABELS[process.origem]} + comprado`:SUPPLY_ORIGIN_LABELS[process.origem];
                   const processWithdrawals = (relationalIndex.withdrawalsByProcess.get(process.id) || []).slice().sort((a,b) => b.data.localeCompare(a.data));
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
                   return <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{SUPPLY_ORIGIN_LABELS[process.origem]}</span>
+                      <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{processRouteLabel}</span>
+                      {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Rotas independentes</span>}
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
@@ -1247,10 +1254,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     </div>}
                     <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Medicamentos vinculados</p>
-                      {linkedMeds.map(m => <Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id || "")}`} className="flex min-h-11 items-center gap-3 rounded-xl border border-surface-border/60 bg-surface-raised px-3 py-2">
+                      {linkedMeds.map(m => {const route=medicationSupplyRoute(m.id||"",data,renovacoes,personId,process.user_id);return <Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id || "")}`} className={`flex min-h-11 items-center gap-3 rounded-xl border bg-surface-raised px-3 py-2 ${route.mode==='hybrid'?'border-amber-300/25':'border-surface-border/60'}`}>
                         <MedicationFormatIcon formato={m.formato} cores={m.cores} size={26}/>
-                        <span className="min-w-0 flex-1 text-xs font-semibold text-ink-primary">{m.nome} · {m.dosagem}</span><span className="text-ink-muted">›</span>
-                      </Link>)}
+                        <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">{m.nome} · {m.dosagem}</span><span className={`mt-1 block text-[9px] ${route.mode==='hybrid'?'text-amber-300':'text-ink-muted'}`}>{route.labels.length?route.labels.join(" + "):"Origem ainda não organizada"}{route.mode==='hybrid'?" · rotas independentes":""}</span></span><span className="text-ink-muted">›</span>
+                      </Link>})}
                     </div>
                     {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="inline-flex min-h-11 items-center rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="inline-flex min-h-11 items-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
                     <p className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-surface-border/60 px-3 py-2 text-[11px] text-ink-muted" aria-label="Resumo relacional do fornecimento"><span><strong className="text-ink-primary">{processCycles.length}</strong> {processCycles.length===1?"ciclo":"ciclos"}</span><span><strong className="text-ink-primary">{processWithdrawals.length}</strong> {processWithdrawals.length===1?"retirada":"retiradas"}</span><span><strong className="text-ink-primary">{processDocs.length}</strong> {processDocs.length===1?"documento vinculado":"documentos vinculados"}</span></p>
@@ -1273,7 +1280,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       {processDocs.length > 8 && <p className="text-[11px] text-ink-muted">Mais {processDocs.length - 8} documento(s) nos ciclos.</p>}
                     </div>}
                     {purchases.count > 0 && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-3">
-                      <p className="text-xs font-bold text-amber-200">Histórico de aquisições dos medicamentos vinculados</p>
+                      <p className="text-xs font-bold text-amber-200">Compras particulares registradas</p>
                       <p className="mt-1 text-sm font-bold text-ink-primary">{purchases.total.toLocaleString("pt-BR", {style:"currency",currency:"BRL"})} <span className="text-xs font-normal text-ink-muted">em {purchases.count} registro(s) com valor</span></p>
                       <p className="mt-1 text-[11px] text-ink-muted">Compare somente apresentações equivalentes. Preço total não é preço unitário.</p>
                       <p className="mt-2 text-[11px] text-ink-muted">Confirme se embalagens e unidades são equivalentes. Os registros atuais não guardam unidade e apresentação suficientes para um ranking confiável.</p>
@@ -1282,7 +1289,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                         <span className="mt-1 block text-ink-muted">{fmt(r.data_aquisicao || r.data)} · {r.preco!.toLocaleString("pt-BR", {style:"currency",currency:"BRL"})} no total · {r.quantidade || "Quantidade não informada"}</span>
                         <span className="mt-1 block text-amber-200">{relationalIndex.pharmacyById.get(r.farmacia_id || "")?.nome || "Farmácia não informada"} · Ver aquisição ›</span>
                       </Link>)}
-                      <p className="mt-1 text-[10px] text-ink-muted">Valores históricos dos medicamentos, inclusive fora deste processo. Não representam custo do SUS nem custo específico deste processo.</p>
+                      <p className="mt-1 text-[10px] text-ink-muted">Estas compras são uma rota separada, inclusive quando o medicamento também está vinculado a um processo SUS. Não representam custo do SUS, retirada gratuita nem custo específico deste processo.</p>
                     </div>}
                     {/* V133 CONTEXTUAL LINKS: deep links use real records; index links remain clearly general. */}
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1377,7 +1384,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 </p>
                 </details>
               </div>
-              {cycle && <details className={panel}>
+              {cycle && process.origem!=="comprado" && <details className={panel}>
                 <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Vincular outra retirada / selecionar registro</summary>
                 <HealthRelationPicker title="Retirada relacionada ao ciclo" renderIcon={value=><SupplyChoiceIcon group="withdrawal" value={value}/>} value={withdrawal?.id || ""} className={input}
                   onValueChange={id => { setSeed(null); setWithdrawalId(id); setCycleId(cycle.id); }}>
