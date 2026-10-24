@@ -77,6 +77,8 @@ import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { AvatarAssociationSummary } from "@/components/saude/AvatarAssociationSummary";
 import { AvatarCareReadiness } from "@/components/saude/AvatarCareReadiness";
+import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCoverage";
+import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -140,6 +142,7 @@ function HealthDashboard({
   const weightContext=useMemo(()=>avatarWeightContext(records,personId||"",person?.user_id||"",today),[records,personId,person?.user_id,today]);
   const bodyContext=useMemo(()=>avatarBodyContext(registros,intelligence.context?.cirurgias||[],devices,personId||"",person?.user_id||"",today),[registros,intelligence.context?.cirurgias,devices,personId,person?.user_id,today]);
   const avatarContext=useMemo(()=>avatarInsightContext(intelligence.insights),[intelligence.insights]);
+  const safetyCoverage=useMemo(()=>intelligence.context?buildMedicationSafetyCoverage(intelligence.context):null,[intelligence.context]);
   // V225: share the Brain's person-owned snapshot, not new Dexie/live queries.
   const careRhythm=useMemo(()=>intelligence.context && personId && intelligence.context.personId===personId ? buildCareRhythm(intelligence.context,7,today) : null,[intelligence.context,personId,today]);
   const weight = weightContext.latest,
@@ -381,6 +384,7 @@ function HealthDashboard({
             <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarAssociationSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarCareReadiness context={intelligence.context} onNavigate={goFromHealth}/>
+            {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}
             <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">

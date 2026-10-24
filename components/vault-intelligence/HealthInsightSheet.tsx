@@ -4,6 +4,7 @@ import { AlertTriangle, BrainCircuit, ChevronRight, Database, ExternalLink, Info
 import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
 import { useDialogGuard } from "@/hooks/useDialogGuard";
+import { summarizeRegulatorySources } from "@/lib/health-intelligence/regulatory-evidence";
 
 type Props = {
   insight: HealthInsight | null;
@@ -23,6 +24,7 @@ export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral
   const evidence = insight.evidencias || [];
   const sources = insight.fontesInternas || [];
   const externalSources = insight.fontesExternas || [];
+  const regulatory = summarizeRegulatorySources(externalSources);
   const coverage = insight.coberturaDias;
   const priority=healthPriorityPresentation(insight);
   const urgent=insight.urgencia==="alta"||insight.gravidadeSeguranca==="critica"||insight.gravidadeSeguranca==="importante";
@@ -45,7 +47,7 @@ export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral
           {coverage && <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/[0.05] p-3"><div className="flex items-center gap-2 text-sky-300"><Database size={14} /><b className="text-[10px]">Cobertura observada</b></div><p className="mt-1 text-[10px] text-ink-muted">{coverage.observados} de {coverage.total} dias com evidência considerada.</p></div>}
           {evidence.length > 0 && <div className="mt-5"><p className="font-mono text-[9px] font-bold uppercase text-ink-faint">Por que o Vault mostrou isso?</p><div className="mt-2 space-y-2">{evidence.slice(0, 6).map((item, index) => <div key={`${item}-${index}`} className="rounded-2xl bg-void/30 px-3 py-2.5 text-[10px] leading-relaxed text-ink-muted">{item}</div>)}</div></div>}
           {sources.length > 0 && <div className="mt-4 rounded-2xl border border-surface-border bg-void/20 p-3"><div className="flex items-center gap-2"><ShieldCheck size={14} className="text-ice" /><b className="text-[10px]">Fontes internas</b></div><p className="mt-1 text-[10px] text-ink-muted">{sources.join(" · ")}</p></div>}
-          {externalSources.length>0?<details className="mt-3 rounded-xl border border-surface-border bg-void/20 p-3"><summary className="min-h-11 cursor-pointer content-center text-[10px] font-semibold text-ink-primary">Fontes regulatórias · {externalSources.length}</summary><ul className="mt-2 space-y-2">{externalSources.map(source=><li key={source.url}><a href={source.url} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-[10px] text-ice"><span className="min-w-0 flex-1"><strong className="block truncate">{source.autoridade}</strong><span className="mt-0.5 block text-ink-muted">{source.titulo}</span></span><ExternalLink size={13} className="shrink-0"/></a></li>)}</ul></details>:null}
+          {regulatory.sources.length>0?<details className="mt-3 rounded-xl border border-surface-border bg-void/20 p-3"><summary className="min-h-11 cursor-pointer content-center text-[10px] font-semibold text-ink-primary">Fontes regulatórias · {regulatory.current} atuais{regulatory.reviewDue?` · ${regulatory.reviewDue} a revisar`:""}</summary><ul className="mt-2 space-y-2">{regulatory.sources.map(({source,freshness})=><li key={source.url}><a href={source.url} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-2 rounded-lg border border-surface-border px-3 py-2 text-[10px] text-ice"><span className="min-w-0 flex-1"><strong className="block truncate">{source.autoridade}</strong><span className="mt-0.5 block text-ink-muted">{source.titulo}</span><span className={`mt-1 block text-[8px] ${freshness==="current"?"text-emerald-300":"text-amber-300"}`}>Revisada em {source.revisadoEm.split("-").reverse().join("/")} · {freshness==="current"?"vigência de revisão atual":"revisão editorial necessária"}</span></span><ExternalLink size={13} className="shrink-0"/></a></li>)}</ul></details>:null}
           {!urgent&&insight.acaoSegura?<div className="mt-4 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-3"><p className="font-mono text-[8px] uppercase text-emerald-300">Próximo passo seguro</p><p className="mt-1 text-[11px] text-ink-muted">{insight.acaoSegura}</p></div>:null}
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             {insight.link && <button type="button" onClick={() => onNavigate(insight.link!)} className="flex w-full items-center justify-between rounded-xl bg-ice px-4 py-3 text-sm font-bold text-void">Abrir contexto<ChevronRight size={17} /></button>}

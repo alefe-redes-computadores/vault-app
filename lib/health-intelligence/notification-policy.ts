@@ -1,9 +1,20 @@
 import type { HealthInsight } from "@/lib/health-insights";
 import { brainDecisionLane, compareBrainSignals } from "@/lib/health-intelligence/brain-next";
+import { hasCurrentRegulatorySource } from "@/lib/health-intelligence/regulatory-evidence";
+
+const normalize = (value: unknown) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+function isPharmacologicalInteraction(insight: HealthInsight): boolean {
+  const text = normalize(`${insight.titulo} ${insight.mensagem}`);
+  return /interacao|seroton|combinacao|depressores|opioide/.test(text) && Boolean(insight.entidadeIds && insight.entidadeIds.length > 1);
+}
 
 function isEligibleForBehavioralPush(insight: HealthInsight): boolean {
   if (insight.categoria === "agenda") return false;
   if (insight.kind !== "alert" && insight.kind !== "pattern") return false;
+  // A multi-medication pharmacological interaction may appear in the Central
+  // with explicit limitations, but only reaches the OS as a priority push when
+  // at least one reviewed regulatory source remains current.
+  if (isPharmacologicalInteraction(insight) && !hasCurrentRegulatorySource(insight.fontesExternas)) return false;
   return brainDecisionLane(insight) === "now" &&
     (insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante");
 }

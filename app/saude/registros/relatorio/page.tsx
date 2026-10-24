@@ -17,6 +17,8 @@ import { buildCautiousAssociations } from "@/lib/health-intelligence/cautious-as
 import { ReportShareComposer } from "@/components/saude/ReportShareComposer";
 import { buildCareReadiness } from "@/lib/health-intelligence/care-readiness";
 import { CareReadinessSummary } from "@/components/saude/CareReadinessSummary";
+import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
+import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCoverage";
 
 const periods: ClinicalReportPeriod[] = [7, 30, 90];
 const displayDate = (value: string) => { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; };
@@ -35,6 +37,7 @@ export default function ClinicalReportPage() {
   const forecast = useMemo(() => intelligence.context ? buildCareForecast(intelligence.context) : null, [intelligence.context]);
   const planReality = useMemo(() => intelligence.context ? buildPlannedRealizedSummary(intelligence.context, selectedDays) : null, [intelligence.context, selectedDays]);
   const readiness = useMemo(() => intelligence.context ? buildCareReadiness(intelligence.context) : null, [intelligence.context]);
+  const safetyCoverage = useMemo(() => intelligence.context ? buildMedicationSafetyCoverage(intelligence.context) : null, [intelligence.context]);
   const associations = useMemo(() => intelligence.context ? buildCautiousAssociations({records:intelligence.context.registrosSaude,userId:intelligence.context.userId||"",personId:intelligence.context.personId||"",today:intelligence.context.hoje||new Date().toISOString().slice(0,10),days:selectedDays<=30?30:90}) : [], [intelligence.context, selectedDays]);
   const consultation = useMemo(() => report ? buildConsultationBrief(report) : null, [report]);
   const copyConsultation = async () => {
@@ -75,6 +78,7 @@ export default function ClinicalReportPage() {
 
       {forecast&&forecast.withdrawals.length>0&&<section className="rounded-[24px] border border-surface-border bg-surface p-4 print:border-gray-300 print:bg-white"><SectionTitle icon={PackageSearch} title="Prontidão para retiradas"/><p className="mt-1 text-[10px] text-ink-muted">O Brain antecipa pendências sem concluir nem cancelar retiradas automaticamente.</p><div className="mt-3 divide-y divide-surface-border/50">{forecast.withdrawals.slice(0,8).map(item=><div key={item.id} className="flex items-start justify-between gap-3 py-2.5"><div><p className="text-xs font-semibold text-ink-primary">{item.medicationName} · {displayDate(item.date)}</p><p className="mt-1 text-[9px] text-ink-muted">{item.missing.length?`Falta: ${item.missing.join(" e ")}`:"Documentos e local informados"}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-bold uppercase ${item.overdue?"bg-red-400/10 text-red-300":item.missing.length?"bg-amber-300/10 text-amber-300":"bg-emerald-300/10 text-emerald-300"}`}>{item.overdue?"Atrasada":item.missing.length?"Preparar":"Pronta"}</span></div>)}</div></section>}
       {readiness&&<CareReadinessSummary portfolio={readiness}/>}
+      {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage}/>}
 
       {consultation && <section className="rounded-[24px] border border-violet-400/20 bg-surface p-4 print:border-gray-300 print:bg-white" aria-label="Preparação para consulta">
         <div className="flex flex-wrap items-center justify-between gap-3"><SectionTitle icon={Stethoscope} title="Preparar consulta"/>
