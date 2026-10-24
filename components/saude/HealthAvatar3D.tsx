@@ -143,6 +143,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const expressionLids: Array<{object:THREE.Mesh;sign:number}> = [];
     const expressionLidScaleY = new WeakMap<THREE.Mesh,number>();
     const expressionEyes: Array<{object:THREE.Mesh;restY:number}> = [];
+    const expressionHighlights: Array<{object:THREE.Mesh;restY:number}> = [];
     const expressionEyeScaleY = new WeakMap<THREE.Mesh,number>();
     // V214: planos orbitais afunilados integram as sobrancelhas ao rosto.
     // O brilho do olho existe em uma única camada, evitando o olhar duplicado.
@@ -323,7 +324,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const pupil=oval(materials.dark,sign*.083,2.819,.229,[.005,.006,.0025]);pupil.raycast=()=>{};
       expressionEyes.push({object:pupil,restY:pupil.position.y}); expressionEyeScaleY.set(pupil,pupil.scale.y);
       // V243: ponto de luz corneano discreto; material próprio evita que o reflexo pareça outra haste.
-      oval(materials.eyeHighlight,sign*.079,2.824,.232,[.0018,.0018,.0012]).raycast=()=>{};
+      const highlight=oval(materials.eyeHighlight,sign*.079,2.824,.232,[.0018,.0018,.0012]);highlight.raycast=()=>{};expressionHighlights.push({object:highlight,restY:highlight.position.y});
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
     // Isso reduz o nariz bulboso visto de frente e ainda economiza segmentos esféricos.
@@ -452,6 +453,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         object.position.y=restY+(value==="happy"?.002:value==="reflective"?-.004:0);
         object.scale.y=(expressionEyeScaleY.get(object) ?? object.scale.y)*(value==="reflective"?.88:1);
       }
+      for(const {object,restY} of expressionHighlights){object.position.y=restY+(value==="happy"?.0015:value==="reflective"?-.001:0);object.scale.setScalar(value==="reflective"?.82:1);}
     };
     setExpression(expressionRef.current);
     const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});

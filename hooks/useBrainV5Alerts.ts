@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { db } from "@/lib/db";
-import { brainV5Counters, rankBrainV5, type BrainV5Alert, type BrainV5Feedback, type BrainV5State } from "@/lib/health-intelligence/brain-v5";
+import { brainV5Counters, brainV5DecisionBrief, rankBrainV5, type BrainV5Alert, type BrainV5Feedback, type BrainV5State } from "@/lib/health-intelligence/brain-v5";
 import { brainV5AlertLedgerRepository as repo } from "@/lib/repositories/brainV5AlertLedger";
 export function useBrainV5Alerts() {
   const { user } = useAuth();
@@ -28,9 +28,10 @@ export function useBrainV5Alerts() {
     catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível salvar sua resposta."); return []; }
   }, []);
   const ranked = useMemo(() => rankBrainV5(scoped), [scoped]);
+  const brief = useMemo(() => brainV5DecisionBrief(scoped), [scoped]);
   const feedback = useCallback((key: string, value: BrainV5Feedback) => user?.id && activePersonId ? perform(() => repo.feedback(user.id, activePersonId, key, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const state = useCallback((key: string, value: BrainV5State) => user?.id && activePersonId ? perform(() => repo.state(user.id, activePersonId, key, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const seen = useCallback((key: string) => user?.id && activePersonId ? perform(() => repo.markSeen(user.id, activePersonId, key)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
-  return { records: scoped, ranked, counters: brainV5Counters(scoped), feedback, state, seen, error: error || health.error,
+  return { records: scoped, ranked, brief, counters: brainV5Counters(scoped), feedback, state, seen, error: error || health.error,
     isLoading: health.isLoading || Boolean(user?.id && settings === undefined) };
 }

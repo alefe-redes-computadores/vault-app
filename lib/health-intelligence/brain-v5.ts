@@ -75,6 +75,15 @@ export function brainV5PriorityReason(x:BrainV5Alert){
   return `${lane} · ${quality} · ${memory}`;
 }
 export function rankBrainV5(items:BrainV5Alert[]){const lp:Record<BrainDecisionLane,number>={now:4,next:3,follow_up:2,review_data:1};return [...items].sort((a,b)=>lp[brainV5Lane(b)]-lp[brainV5Lane(a)]||statePriority[b.state]-statePriority[a.state]||brainV5PriorityScore(b)-brainV5PriorityScore(a)||b.last_detected_at.localeCompare(a.last_detected_at)||a.key.localeCompare(b.key));}
+export function brainV5DecisionBrief(items:BrainV5Alert[]){
+  const open=rankBrainV5(items.filter(x=>x.state!=="resolved"));
+  const lanes:Record<BrainDecisionLane,number>={now:0,next:0,follow_up:0,review_data:0};
+  for(const item of open)lanes[brainV5Lane(item)]++;
+  const deferred=open.filter(x=>x.state==="monitoring"||x.feedback==="review_later").length;
+  const headline=lanes.now?`${lanes.now} sinal(is) para revisar agora`:lanes.next?`${lanes.next} próxima(s) ação(ões) organizada(s)`:open.length?"Acompanhamento sem urgência comprovada":"Nenhuma ação aberta";
+  const details=[lanes.next?`${lanes.next} nos próximos dias`:"",deferred?`${deferred} adiado(s) por você`:"",lanes.review_data?`${lanes.review_data} pede(m) mais dados`:""].filter(Boolean);
+  return {headline,summary:details.join(" · ")||"O histórico permanece acompanhado.",primary:open[0]??null,lanes,deferred,total:open.length};
+}
 export function brainV5Counters(items:BrainV5Alert[]){const a=items.filter(x=>x.state!=="resolved");return {active:a.length,new:a.filter(x=>!x.last_seen_at).length,monitoring:a.filter(x=>x.state==="monitoring").length,resolved:items.filter(x=>x.state==="resolved").length,attention:a.filter(brainV5RequiresAttention).length};}
 
 // A cor usa gravidade explícita; confiança/amostra nunca pintam o cartão de vermelho.

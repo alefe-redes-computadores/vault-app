@@ -2681,7 +2681,7 @@ export default function HomePage() {
               {longitudinalHighlights.length === 0 && brainV5Pulse.top && (
                 <button type="button" onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainV5Pulse.top!.insight_id)}`)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left active:scale-[0.985]">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={16}/></div>
-                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-[10px] text-ink-muted">{brainV5PriorityReason(brainV5Pulse.top)}</p></div>
+                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-[10px] text-ink-muted">{brainV5Pulse.brief.headline} · {brainV5PriorityReason(brainV5Pulse.top)}</p></div>
                   <ChevronRight size={14} className="shrink-0 text-violet-300"/>
                 </button>
               )}
