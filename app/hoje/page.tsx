@@ -80,6 +80,7 @@ import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-tim
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
 import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/health-intelligence/medication-care-decision";
+import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -221,6 +222,7 @@ interface DoseItemExt {
 
 export default function HojePage() {
  const supplyOverview=useSupplyOverview();
+  const brainPulse=useBrainV5Pulse();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -2986,6 +2988,21 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-5 px-4 pt-4">
+          {isHoje && !brainPulse.isLoading && brainPulse.brief.primary && (
+            <button
+              type="button"
+              onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainPulse.brief.primary!.insight_id)}&return_to=${encodeURIComponent("/hoje")}`)}
+              className="flex w-full items-center gap-3 rounded-[18px] border border-violet-400/20 bg-gradient-to-r from-violet-400/[0.07] to-surface p-3 text-left active:scale-[0.985]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={17}/></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[9px] font-bold uppercase tracking-[.14em] text-violet-300">Briefing do cuidado</span>
+                <span className="mt-0.5 block line-clamp-1 text-xs font-bold text-ink-primary">{brainPulse.brief.headline}</span>
+                <span className="mt-0.5 block line-clamp-1 text-[9px] text-ink-muted">{brainPulse.brief.primary.snapshot.titulo}{brainPulse.brief.supporting?` · ${brainPulse.brief.supporting} sinal(is) agrupado(s)`:""}</span>
+              </span>
+              <ChevronRight size={15} className="shrink-0 text-violet-300"/>
+            </button>
+          )}
           {user?.id && activePersonId && isHoje && <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} />}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <motion.div

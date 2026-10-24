@@ -323,8 +323,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       oval(materials.iris,sign*.083,2.819,.224,[.012,.011,.004]).raycast=()=>{};
       const pupil=oval(materials.dark,sign*.083,2.819,.229,[.005,.006,.0025]);pupil.raycast=()=>{};
       expressionEyes.push({object:pupil,restY:pupil.position.y}); expressionEyeScaleY.set(pupil,pupil.scale.y);
-      // V243: ponto de luz corneano discreto; material próprio evita que o reflexo pareça outra haste.
-      const highlight=oval(materials.eyeHighlight,sign*.079,2.824,.232,[.0018,.0018,.0012]);highlight.raycast=()=>{};expressionHighlights.push({object:highlight,restY:highlight.position.y});
+      // V245: ambos os reflexos recebem a mesma direção de luz do key light.
+      // Espelhar o ponto dentro de cada olho deixava o olhar sintético; manter o
+      // deslocamento global também conserva a escala microscópica segura da V243.
+      const highlight=oval(materials.eyeHighlight,sign*.083-.003,2.824,.232,[.0016,.0016,.0011]);highlight.raycast=()=>{};expressionHighlights.push({object:highlight,restY:highlight.position.y});
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
     // Isso reduz o nariz bulboso visto de frente e ainda economiza segmentos esféricos.

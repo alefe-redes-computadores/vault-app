@@ -2548,7 +2548,7 @@ export default function HomePage() {
 
                   <p className="mt-0.5 text-[10px] text-ink-muted">
                     {healthIntelligence.maturity.totalRecords} registros analisados
-                    {brainV5Pulse.counters.attention > 0 ? ` · ${brainV5Pulse.counters.attention} em atenção` : brainV5Pulse.counters.active > 0 ? ` · ${brainV5Pulse.counters.active} acompanhando` : ""}
+                    {brainV5Pulse.journeys.some(item => item.requires_attention) ? ` · ${brainV5Pulse.journeys.filter(item => item.requires_attention).length} decisões em atenção` : brainV5Pulse.brief.total > 0 ? ` · ${brainV5Pulse.brief.total} decisões acompanhadas` : ""}
                     {brainV5Pulse.counters.new > 0 ? ` · ${brainV5Pulse.counters.new} novo${brainV5Pulse.counters.new === 1 ? "" : "s"}` : ""}
                   </p>
                 </div>

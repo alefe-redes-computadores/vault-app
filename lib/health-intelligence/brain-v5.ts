@@ -20,7 +20,14 @@ export type BrainV5Alert = {
     fontes_internas:string[]; fontes_externas:Array<{titulo:string;autoridade:string;url:string;revisadoEm:string}>;
     comparacao?:HealthInsight["comparacao"]; cobertura_dias?:HealthInsight["coberturaDias"];
     acao_segura?:string; limitacao_seguranca?:string; gravidade_seguranca?:string;
+    entidade_tipo?:string; entidade_id?:string; entidade_ids?:string[];
+    relacoes_contextuais?:Array<{tipo:string;id:string}>;
   };
+};
+
+export type BrainV5Journey = {
+  key:string; label:string; primary:BrainV5Alert; supporting:BrainV5Alert[];
+  total:number; lane:BrainDecisionLane; requires_attention:boolean;
 };
 
 const norm=(v:unknown)=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
@@ -36,7 +43,7 @@ export function brainV5Family(i:HealthInsight):BrainV5Family{
   return "other";
 }
 export function brainV5Severity(i:HealthInsight){return (sev[i.gravidadeSeguranca||""]||0)+(sev[i.urgencia]||0)+(i.confianca==="alta"?30:i.confianca==="media"?20:10)+Math.min(30,i.amostra||0);}
-const snap=(i:HealthInsight):BrainV5Alert["snapshot"]=>{const meaningful=brainMeaningfulEvidence(i);return {kind:i.kind,categoria:i.categoria,titulo:i.titulo,mensagem:i.mensagem,urgencia:i.urgencia,confianca:i.confianca,amostra:i.amostra||0,periodo_dias:i.periodoDias,link:i.link,evidencias:meaningful.evidence,fontes_internas:meaningful.sources,fontes_externas:i.fontesExternas||[],acao_segura:i.acaoSegura,limitacao_seguranca:i.limitacaoSeguranca,gravidade_seguranca:i.gravidadeSeguranca,comparacao:i.comparacao,cobertura_dias:i.coberturaDias};};
+const snap=(i:HealthInsight):BrainV5Alert["snapshot"]=>{const meaningful=brainMeaningfulEvidence(i);return {kind:i.kind,categoria:i.categoria,titulo:i.titulo,mensagem:i.mensagem,urgencia:i.urgencia,confianca:i.confianca,amostra:i.amostra||0,periodo_dias:i.periodoDias,link:i.link,evidencias:meaningful.evidence,fontes_internas:meaningful.sources,fontes_externas:i.fontesExternas||[],acao_segura:i.acaoSegura,limitacao_seguranca:i.limitacaoSeguranca,gravidade_seguranca:i.gravidadeSeguranca,comparacao:i.comparacao,cobertura_dias:i.coberturaDias,entidade_tipo:i.entidadeTipo,entidade_id:i.entidadeId,entidade_ids:i.entidadeIds,relacoes_contextuais:i.relacoesContextuais};};
 // V122: evidence order and duplicate lines are not a new analysis.
 const canonicalStrings=(values:string[]=[])=>[...new Set(values.map(norm))].sort();
 const fingerprint=(i:HealthInsight)=>norm(JSON.stringify([i.kind,i.categoria,i.titulo,i.mensagem,i.urgencia,i.confianca,i.amostra||0,i.gravidadeSeguranca,canonicalStrings(i.evidencias),canonicalStrings(i.entidadeIds),i.entidadeId||""]));
@@ -75,14 +82,34 @@ export function brainV5PriorityReason(x:BrainV5Alert){
   return `${lane} · ${quality} · ${memory}`;
 }
 export function rankBrainV5(items:BrainV5Alert[]){const lp:Record<BrainDecisionLane,number>={now:4,next:3,follow_up:2,review_data:1};return [...items].sort((a,b)=>lp[brainV5Lane(b)]-lp[brainV5Lane(a)]||statePriority[b.state]-statePriority[a.state]||brainV5PriorityScore(b)-brainV5PriorityScore(a)||b.last_detected_at.localeCompare(a.last_detected_at)||a.key.localeCompare(b.key));}
+export function brainV5JourneyKey(item:BrainV5Alert){
+  const type=item.snapshot.entidade_tipo||"global";
+  const id=item.snapshot.entidade_id||item.snapshot.entidade_ids?.[0]||item.snapshot.relacoes_contextuais?.find(x=>x.id)?.id;
+  // Older ledger entries did not persist entity metadata. Keep them independent
+  // instead of risking unrelated clinical signals being merged.
+  return id?`${type}:${id}`:`signal:${item.key}`;
+}
+export function brainV5Journeys(items:BrainV5Alert[]):BrainV5Journey[]{
+  const groups=new Map<string,BrainV5Alert[]>();
+  for(const item of items)if(item.state!=="resolved"){
+    const key=brainV5JourneyKey(item), bucket=groups.get(key);
+    if(bucket)bucket.push(item);else groups.set(key,[item]);
+  }
+  return [...groups].map(([key,signals])=>{
+    const ranked=rankBrainV5(signals),primary=ranked[0];
+    return {key,label:primary.snapshot.titulo,primary,supporting:ranked.slice(1),total:ranked.length,lane:brainV5Lane(primary),requires_attention:ranked.some(brainV5RequiresAttention)};
+  }).sort((a,b)=>rankBrainV5([a.primary,b.primary])[0]===a.primary?-1:1);
+}
 export function brainV5DecisionBrief(items:BrainV5Alert[]){
-  const open=rankBrainV5(items.filter(x=>x.state!=="resolved"));
+  const journeys=brainV5Journeys(items),open=journeys.map(x=>x.primary);
   const lanes:Record<BrainDecisionLane,number>={now:0,next:0,follow_up:0,review_data:0};
   for(const item of open)lanes[brainV5Lane(item)]++;
   const deferred=open.filter(x=>x.state==="monitoring"||x.feedback==="review_later").length;
   const headline=lanes.now?`${lanes.now} sinal(is) para revisar agora`:lanes.next?`${lanes.next} próxima(s) ação(ões) organizada(s)`:open.length?"Acompanhamento sem urgência comprovada":"Nenhuma ação aberta";
   const details=[lanes.next?`${lanes.next} nos próximos dias`:"",deferred?`${deferred} adiado(s) por você`:"",lanes.review_data?`${lanes.review_data} pede(m) mais dados`:""].filter(Boolean);
-  return {headline,summary:details.join(" · ")||"O histórico permanece acompanhado.",primary:open[0]??null,lanes,deferred,total:open.length};
+  const supporting=journeys.reduce((sum,item)=>sum+item.supporting.length,0);
+  if(supporting)details.push(`${supporting} sinal(is) relacionado(s) agrupado(s)`);
+  return {headline,summary:details.join(" · ")||"O histórico permanece acompanhado.",primary:open[0]??null,lanes,deferred,total:open.length,signals:open.length+supporting,supporting};
 }
 export function brainV5Counters(items:BrainV5Alert[]){const a=items.filter(x=>x.state!=="resolved");return {active:a.length,new:a.filter(x=>!x.last_seen_at).length,monitoring:a.filter(x=>x.state==="monitoring").length,resolved:items.filter(x=>x.state==="resolved").length,attention:a.filter(brainV5RequiresAttention).length};}
 
