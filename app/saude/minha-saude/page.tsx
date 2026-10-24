@@ -76,6 +76,7 @@ import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index"
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { AvatarAssociationSummary } from "@/components/saude/AvatarAssociationSummary";
+import { AvatarCareReadiness } from "@/components/saude/AvatarCareReadiness";
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -379,6 +380,7 @@ function HealthDashboard({
             <CareContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarAssociationSummary context={intelligence.context} onNavigate={goFromHealth}/>
+            <AvatarCareReadiness context={intelligence.context} onNavigate={goFromHealth}/>
             <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">

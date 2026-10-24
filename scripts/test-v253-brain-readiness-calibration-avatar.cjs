@@ -1,0 +1,18 @@
+const fs=require("fs");
+const read=file=>fs.readFileSync(file,"utf8");
+const ok=(value,label)=>{if(!value)throw new Error(`V253: ${label}`);console.log("OK:",label)};
+const readiness=read("lib/health-intelligence/care-readiness.ts");
+const calibration=read("lib/health-intelligence/brain-calibration.ts");
+const alerts=read("app/inteligencia/alertas/page.tsx");
+const report=read("app/saude/registros/relatorio/page.tsx");
+const avatar=read("app/saude/minha-saude/page.tsx");
+const supply=read("lib/health-intelligence/supply-insights.ts");
+ok(readiness.includes("medicationSupplyRoute")&&readiness.includes('mode === "hybrid"'),"prontidão mantém rotas pública e privada independentes");
+ok(readiness.includes("planned event never becomes completed stock")&&readiness.includes("Ausência de evento não significa falha clínica"),"planejamento não vira estoque nem falha clínica");
+ok(readiness.includes("isPrescriptionOnly")&&readiness.includes("isFutureAcquisition"),"receita e compra futura usam semântica canônica");
+ok(calibration.includes("never the user's health or adherence")&&calibration.includes("evidence_quality"),"calibração mede o Brain e não o paciente");
+ok(alerts.includes("Calibração do Brain")&&alerts.includes("brain.calibration.score"),"Central explica qualidade decisória");
+ok(report.includes("CareReadinessSummary")&&report.includes("buildCareReadiness"),"relatório reúne prontidão da linha de cuidado");
+ok(avatar.includes("AvatarCareReadiness")&&avatar.includes("AvatarAssociationSummary"),"Avatar recebe contexto de rota sem perder associações cautelosas");
+ok(supply.includes('if (p.origem === "comprado") continue'),"compra particular continua fora do alerta documental SUS");
+console.log("VAULT V253 — BRAIN CALIBRADO + PRONTIDÃO + AVATAR: OK");
