@@ -4,9 +4,10 @@ import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
 import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
-import { isPrescriptionOnly, isFutureAcquisition, realizedAcquisitionExpense, renewalEventDate } from "@/lib/health-supply/renewal-event";
+import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
+import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -2235,9 +2236,8 @@ function MedicamentoDetalhesContent() {
 
   const diaFinanceiro = getLocalTodayISO();
   // V221: somente aquisicoes efetivadas e pagas; nao contar receitas nem agendamentos.
-  const comprasPagas = renovacoes.filter((item) =>
-    realizedAcquisitionExpense(item, diaFinanceiro) > 0
-  );
+  const medicationCosts = summarizeMedicationCosts(renovacoes, diaFinanceiro);
+  const comprasPagas = medicationCosts.realized;
 
   const rankingFarmacias =
     analisarMelhorFarmacia(
@@ -2309,26 +2309,9 @@ function MedicamentoDetalhesContent() {
   const renovacoesPagas =
     comprasPagas;
 
-  const custoHistoricoRenovacoes =
-    renovacoesPagas.reduce(
-      (
-        total,
-        item
-      ) =>
-        total +
-        Number(
-          item.preco ||
-            0
-        ),
-      0
-    );
+  const custoHistoricoRenovacoes = medicationCosts.realizedTotal;
 
-  const precoMedioRenovacoes =
-    renovacoesPagas.length >
-    0
-      ? custoHistoricoRenovacoes /
-        renovacoesPagas.length
-      : 0;
+  const precoMedioRenovacoes = medicationCosts.realizedAverage ?? 0;
 
   // ==========================================================
   // IDENTIDADE
@@ -4612,7 +4595,7 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           {(renovacoesPagas.length >
-            0 ||
+            0 || medicationCosts.planned.length > 0 ||
             typeof med.preco ===
               "number") && (
             <section className="vault-deferred space-y-3">
@@ -4678,6 +4661,12 @@ function MedicamentoDetalhesContent() {
                   )}`}
                   description="Valor de referência salvo no medicamento"
                 />
+              )}
+              {medicationCosts.planned.length > 0 && (
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
+                  <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Planejado · não realizado</span><strong className="text-xs text-ink-primary">{medicationCosts.plannedWithPrice ? `R$ ${medicationCosts.plannedKnownTotal.toFixed(2)}` : "Valor não informado"}</strong></div>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{medicationCosts.planned.length} aquisição(ões) futura(s). Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
+                </div>
               )}
             </section>
           )}

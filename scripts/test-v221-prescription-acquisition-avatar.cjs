@@ -44,7 +44,7 @@ const list=read("app/saude/renovacao/page.tsx");
 const avatar=read("components/saude/HealthAvatar3D.tsx");
 assert.match(detail,/somenteReceita \? \(/);
 assert.match(detail,/aquisicaoFutura \? \(/);
-assert.match(detail,/realizedAcquisitionExpense\(item, diaFinanceiro\)/);
+assert(detail.includes("summarizeMedicationCosts(renovacoes, diaFinanceiro)")||/realizedAcquisitionExpense\(item, diaFinanceiro\)/.test(detail));
 assert.match(list,/totalCompras = useMemo\(\(\) => comprasComValor\.reduce/);
 assert.match(list,/isFutureAcquisition\(item, hojeISO\)/);
 assert.match(full,/if \(!isRenovacaoSomenteReceita\(renovacao\)\) return false/);
