@@ -22,6 +22,7 @@ const kindMeta: Record<VaultInsightKind, { label: string; classes: string }> = {
   organization: { label: "Organização", classes: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" },
   financial: { label: "Financeiro", classes: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" },
 };
+const brl=(value:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(value);
 
 export default function VaultIntelligencePage() {
   const router = useRouter();
@@ -85,6 +86,8 @@ export default function VaultIntelligencePage() {
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
     </section>
+
+    {coverage&&coverage.acquisitions>0?<section aria-label="Inteligência financeira de saúde" className="mx-auto mt-4 max-w-2xl rounded-[20px] border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[.07] to-surface p-4"><div className="flex items-center gap-2"><WalletCards size={17} className="text-emerald-300"/><h2 className="text-sm font-bold">Custos de saúde documentados</h2><span className="ml-auto text-[9px] text-ink-faint">{coverage.financialCoverage}% coberto</span></div><div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-surface-border/60 bg-surface-border/50"><div className="bg-surface p-3"><span className="text-[8px] uppercase text-ink-faint">Realizado · 30d</span><strong className="mt-1 block text-xs text-ink-primary">{brl(coverage.financialSpend30d)}</strong></div><div className="bg-surface p-3"><span className="text-[8px] uppercase text-ink-faint">Realizado · 90d</span><strong className="mt-1 block text-xs text-ink-primary">{brl(coverage.financialSpend90d)}</strong></div><div className="bg-surface p-3"><span className="text-[8px] uppercase text-ink-faint">Planejado · 30d</span><strong className="mt-1 block text-xs text-amber-200">{coverage.plannedAcquisitions30d?brl(coverage.plannedAmount30d):"Nenhum"}</strong></div></div><p className="mt-2 text-[9px] leading-relaxed text-ink-muted">Realizado considera somente aquisição em data passada ou atual com valor informado. Planejado permanece separado e não altera estoque nem gasto.</p></section>:null}
 
     <section className="mx-auto mt-6 max-w-2xl">
       <div className="flex items-end justify-between gap-3"><div><h2 className="font-bold">Saúde agora</h2><p className="text-xs text-ink-muted">Sinais priorizados pelo histórico da pessoa ativa.</p></div><div className="rounded-full border border-violet-400/20 bg-violet-400/[0.07] px-3 py-1.5 font-mono text-[9px] text-violet-300">{health.maturity.score}% contexto</div></div>

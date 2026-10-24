@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
 import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/db";
+import { brainV5IsSnoozed, type BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { isVaultNative } from "@/lib/native-runtime";
 import {
@@ -35,14 +39,19 @@ function stableId(value: string) {
 // VAULT_INSIGHT_RECONCILER_V61
 export function InsightNotificationReconciler() {
   const { activePersonId } = useActivePersonId();
+  const { user } = useAuth();
   const { insights } = useHealthIntelligence();
+  const settings = useLiveQuery(() => user?.id ? db.settings.where("user_id").equals(user.id).first().then(row=>row??null) : null,[user?.id]) as ({brain_v5_alert_ledger?:BrainV5Alert[]}|null|undefined);
 
   useEffect(() => {
-    if (!isVaultNative() || !activePersonId) return;
+    if (!isVaultNative() || !activePersonId || !user?.id || settings===undefined) return;
     if (!isNotificationPreferenceEnabled()) return;
     if (!isVaultNotificationCategoryEnabled("insights")) return;
 
-    const eligible = rankHealthInsightNotificationCandidates(insights).map(
+    const snoozedIds=new Set((settings?.brain_v5_alert_ledger||[]).filter(item=>item.person_id===activePersonId&&brainV5IsSnoozed(item)).map(item=>item.insight_id));
+    const candidates=rankHealthInsightNotificationCandidates(insights).filter(candidate=>!snoozedIds.has(candidate.id));
+    if(snoozedIds.size)void LocalNotifications.cancel({notifications:[...snoozedIds].map(id=>({id:stableId(`${activePersonId}:${id}`)}))}).catch(()=>undefined);
+    const eligible = candidates.map(
       (candidate) => ({
         candidate,
         decision: shouldDeliverHealthInsight(activePersonId, candidate),
@@ -110,7 +119,7 @@ export function InsightNotificationReconciler() {
         error
       )
     );
-  }, [activePersonId, insights]);
+  }, [activePersonId, insights, settings, user?.id]);
 
   return null;
 }

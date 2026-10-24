@@ -39,7 +39,10 @@ export interface VaultIntelligenceResult {
     documents: number;
     vaults: number;
     acquisitions: number;
+    financialSpend30d: number;
     financialSpend90d: number;
+    plannedAcquisitions30d: number;
+    plannedAmount30d: number;
     financialCoverage: number;
     total: number;
   };

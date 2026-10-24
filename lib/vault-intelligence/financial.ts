@@ -55,7 +55,10 @@ function total(items: PaidAcquisition[]): number {
 export interface VaultFinancialAnalysis {
   insights: VaultGeneralInsight[];
   paidAcquisitions: number;
+  spend30d: number;
   spend90d: number;
+  plannedAcquisitions30d: number;
+  plannedAmount30d: number;
   pricedCoverage: number;
 }
 
@@ -72,19 +75,25 @@ export function buildVaultFinancialIntelligence(
     (item) => item.tipo_aquisicao === "comprado",
   );
 
-  const missingPrice = purchased.filter((item) => amountOf(item) === null);
+  const dated = purchased.map((item) => ({item,at:acquisitionDate(item)}));
+  const realized = dated.filter((entry): entry is {item:Renovacao;at:Date} => Boolean(entry.at && entry.at.getTime() <= now.getTime()));
+  const future30 = dated.filter((entry): entry is {item:Renovacao;at:Date} => Boolean(entry.at && entry.at.getTime() > now.getTime() && entry.at.getTime() <= now.getTime() + 30 * DAY_MS));
+  const missingPrice = realized.filter(({item}) => amountOf(item) === null);
   const invalidDate = purchased.filter((item) => acquisitionDate(item) === null);
 
-  const paid: PaidAcquisition[] = purchased.flatMap((item) => {
+  const paid: PaidAcquisition[] = realized.flatMap(({item,at}) => {
     const amount = amountOf(item);
-    const at = acquisitionDate(item);
-    if (amount === null || !at) return [];
+    if (amount === null) return [];
     return [{
       medicationId: item.medicamento_id,
       medicationName: item.medicamento_nome?.trim() || "Medicamento",
       amount,
       at,
     }];
+  });
+  const plannedWithPrice = future30.flatMap(({item,at}) => {
+    const amount=amountOf(item);
+    return amount===null?[]:[{medicationId:item.medicamento_id,medicationName:item.medicamento_nome?.trim()||"Medicamento",amount,at}];
   });
 
   const last30 = paid.filter((item) => {
@@ -103,28 +112,39 @@ export function buildVaultFinancialIntelligence(
   const spend30 = total(last30);
   const previousSpend30 = total(previous30);
   const spend90d = total(last90);
-  const pricedCoverage = purchased.length
-    ? Math.round((paid.length / purchased.length) * 100)
+  const pricedCoverage = realized.length
+    ? Math.round((paid.length / realized.length) * 100)
     : 100;
 
   const insights: VaultGeneralInsight[] = [];
 
-  if (purchased.length && (missingPrice.length || invalidDate.length)) {
+  if (realized.length && (missingPrice.length || invalidDate.length)) {
     insights.push({
       id: "financial-acquisition-coverage-v54",
       kind: "data_quality",
       title: "Histórico financeiro incompleto",
       message: `${missingPrice.length} compra(s) não têm valor total utilizável e ${invalidDate.length} não têm data financeira interpretável. O Vault exclui esses registros dos totais em vez de estimar valores.`,
       confidence: "alta",
-      sample: purchased.length,
+      sample: realized.length,
       sources: ["Aquisições de medicamentos da pessoa ativa"],
       evidence: [
-        `${paid.length} de ${purchased.length} compra(s) entram nos cálculos`,
+        `${paid.length} de ${realized.length} compra(s) realizadas entram nos cálculos`,
         `Cobertura utilizável: ${pricedCoverage}%`,
       ],
       actionLabel: "Revisar aquisições",
       href: "/saude/renovacao",
       priority: 16,
+    });
+  }
+
+  if (future30.length) {
+    const known=total(plannedWithPrice);
+    insights.push({
+      id:"financial-medication-planned-30d-v248",kind:"financial",title:"Aquisições planejadas nos próximos 30 dias",
+      message:`Há ${future30.length} aquisição(ões) futura(s). ${plannedWithPrice.length?`${money(known)} possui valor previamente informado.`:"Nenhuma possui valor informado."} Planejamento não é compra, gasto nem entrada no estoque.`,
+      confidence:"alta",sample:future30.length,sources:["Aquisições futuras registradas da pessoa ativa"],
+      evidence:[`${future30.length} compromisso(s) futuro(s)`,`${plannedWithPrice.length} com valor conhecido`,`Total planejado conhecido: ${money(known)}`],
+      actionLabel:"Revisar planejamento",href:"/saude/renovacao",priority:38,
     });
   }
 
@@ -203,5 +223,5 @@ export function buildVaultFinancialIntelligence(
     });
   }
 
-  return { insights, paidAcquisitions: paid.length, spend90d, pricedCoverage };
+  return { insights, paidAcquisitions: paid.length, spend30d:spend30, spend90d, plannedAcquisitions30d:future30.length, plannedAmount30d:total(plannedWithPrice), pricedCoverage };
 }

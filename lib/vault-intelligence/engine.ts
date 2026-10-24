@@ -229,6 +229,6 @@ export function buildVaultIntelligence(snapshot: VaultIntelligenceSnapshot, now 
   return {
     insights,
     highlights: insights.slice(0, 3),
-    coverage: { credentials: credentials.length, cards: cards.length - accounts, accounts, documents: documents.length, vaults: vaults.length, acquisitions: financial.paidAcquisitions, financialSpend90d: financial.spend90d, financialCoverage: financial.pricedCoverage, total },
+    coverage: { credentials: credentials.length, cards: cards.length - accounts, accounts, documents: documents.length, vaults: vaults.length, acquisitions: financial.paidAcquisitions, financialSpend30d:financial.spend30d, financialSpend90d: financial.spend90d, plannedAcquisitions30d:financial.plannedAcquisitions30d, plannedAmount30d:financial.plannedAmount30d, financialCoverage: financial.pricedCoverage, total },
   };
 }
