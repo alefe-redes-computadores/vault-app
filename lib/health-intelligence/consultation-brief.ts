@@ -16,11 +16,12 @@ export interface ConsultationBrief {
 const compact = (value: string, max = 160) => value.trim().slice(0, max);
 
 export function buildConsultationBrief(report: ClinicalReport): ConsultationBrief {
-  const { current, periodDays, totals, coverage, medications, symptoms, activeTreatments, insights, dataQuality } = report;
+  const { current, periodDays, totals, coverage, medications, medicationPlan, careDocuments, consultations, symptoms, activeTreatments, insights, dataQuality } = report;
   const overview = [
     `Período ${current.start} a ${current.end}: ${coverage.currentDays}/${periodDays} dias com dados registrados.`,
     `${totals.records} registros de saúde; ${totals.scheduledTaken} doses programadas tomadas; ${totals.ignored} doses explicitamente ignoradas.`,
     `${totals.sosTaken + totals.extraTaken} doses SOS/extra registradas como tomadas; ${activeTreatments.length} tratamento(s) ativo(s).`,
+    `${medicationPlan.length} medicamento(s) ativo(s) informado(s); ${careDocuments.withAttachment}/${careDocuments.total} documento(s) com anexo.`,
   ];
   const focus: string[] = [];
   for (const symptom of symptoms.slice(0, 4)) {
@@ -29,6 +30,10 @@ export function buildConsultationBrief(report: ClinicalReport): ConsultationBrie
   for (const medication of medications.slice(0, 6)) {
     focus.push(`${compact(medication.name, 75)}${medication.dosage ? ` (${compact(medication.dosage, 55)})` : ""}: ${medication.scheduledTaken} programadas tomadas, ${medication.sosTaken} SOS, ${medication.extraTaken} extras e ${medication.ignored} ignoradas, conforme registros.`);
   }
+  for (const medication of medicationPlan.filter(item=>!medications.some(record=>record.id===item.id)).slice(0,4)) {
+    focus.push(`${compact(medication.name,75)}${medication.dosage?` (${compact(medication.dosage,55)})`:""}: consta na linha de cuidado atual${medication.schedules.length?`; horários ${medication.schedules.join(", ")}`:"; horário não informado"}. Ausência de tomada no período não é classificada como falha.`);
+  }
+  if (consultations.latestCompleted) focus.push(`Última consulta concluída registrada em ${consultations.latestCompleted}; ${consultations.upcoming} próxima(s) consulta(s) agendada(s).`);
   for (const treatment of activeTreatments.slice(0, 5)) {
     focus.push(`Tratamento ativo informado: ${compact(treatment.name, 100)}.`);
   }

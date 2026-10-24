@@ -4,7 +4,7 @@ import { buildCareRhythm, type CareRhythmSummary } from "@/lib/health-intelligen
 export type ClinicalReportPeriod = 7 | 30 | 90;
 
 export type ClinicalReport = {
-  periodDays: ClinicalReportPeriod;
+  periodDays: number;
   current: { start: string; end: string };
   previous: { start: string; end: string };
   coverage: { currentDays: number; previousDays: number };
@@ -25,6 +25,9 @@ export type ClinicalReport = {
   };
   symptoms: Array<{ label: string; occurrences: number; days: number; averageIntensity: number | null }>;
   medications: Array<{ id: string; name: string; dosage?: string; scheduledTaken: number; sosTaken: number; extraTaken: number; ignored: number }>;
+  medicationPlan: Array<{ id: string; name: string; dosage?: string; use: string; schedules: string[]; stock: number | null }>;
+  careDocuments: { total: number; withAttachment: number };
+  consultations: { completed: number; upcoming: number; latestCompleted: string | null };
   activeTreatments: Array<{ id: string; name: string; startedAt?: string }>;
   /** Multi-domain summary of actual entries, not inferred clinical changes. */
   rhythm: CareRhythmSummary;
@@ -105,7 +108,7 @@ function calculateWindow(context: HealthInsightContext, start: Date, end: Date) 
   };
 }
 
-export function buildClinicalReport(context: HealthInsightContext, allInsights: HealthInsight[], periodDays: ClinicalReportPeriod, todayValue?: string): ClinicalReport {
+export function buildClinicalReport(context: HealthInsightContext, allInsights: HealthInsight[], periodDays: number, todayValue?: string): ClinicalReport {
   const today = parseDate(todayValue || context.hoje) || new Date();
   const currentStart = shift(today, -(periodDays - 1));
   const previousEnd = shift(currentStart, -1);
@@ -113,7 +116,9 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
   const current = calculateWindow(context, currentStart, today);
   const previous = calculateWindow(context, previousStart, previousEnd);
   // V225: pure selector; uses the same already-loaded person-scoped snapshot.
-  const rhythm = buildCareRhythm(context, periodDays, todayValue || context.hoje);
+  // The rhythm selector is numeric at runtime; the historical union only
+  // described the three original UI presets. V251 also supports consultation spans.
+  const rhythm = buildCareRhythm(context, periodDays as ClinicalReportPeriod, todayValue || context.hoje);
   // V224: comparable periods need some observations on both sides;
   // one isolated entry cannot establish a reliable percentage trend.
   const minimumCoveredDays = Math.max(3, Math.ceil(periodDays * 0.2));
@@ -190,6 +195,9 @@ export function buildClinicalReport(context: HealthInsightContext, allInsights: 
     },
     symptoms,
     medications,
+    medicationPlan: context.medicamentos.filter(item => item.person_id === context.personId && item.status !== "descontinuado").map(item => ({ id:item.id || item.nome, name:item.nome, dosage:item.dosagem, use:item.tipo_uso || "não informado", schedules:[...(item.estoque_horarios || [])].sort(), stock:typeof item.estoque_quantidade === "number" ? item.estoque_quantidade : null })).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR")),
+    careDocuments: { total: context.documentos.filter(item=>item.person_id===context.personId).length, withAttachment: context.documentos.filter(item=>item.person_id===context.personId&&Boolean(item.attachments?.length)).length },
+    consultations: (()=>{const owned=context.consultas.filter(item=>item.person_id===context.personId);const completed=owned.filter(item=>item.status==="realizada"&&within(item.data,currentStart,today));const upcoming=owned.filter(item=>item.status==="agendada"&&Boolean(parseDate(item.data))&&item.data>=iso(today));return {completed:completed.length,upcoming:upcoming.length,latestCompleted:owned.filter(item=>item.status==="realizada"&&Boolean(parseDate(item.data))&&item.data<=iso(today)).sort((a,b)=>b.data.localeCompare(a.data))[0]?.data??null};})(),
     rhythm,
     activeTreatments: context.tratamentos.filter((item) => item.person_id === context.personId && item.status === "ativo").map((item) => ({ id: item.id || item.nome, name: item.nome, startedAt: item.data_inicio })),
     insights: compatibleInsights,
