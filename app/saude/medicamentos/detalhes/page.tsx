@@ -7,6 +7,8 @@ import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/
 import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
+import { buildMedicationJourneySnapshot } from "@/lib/health-intelligence/medication-workspace";
+import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySummary";
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
@@ -1763,6 +1765,12 @@ function MedicamentoDetalhesContent() {
     needsStock: saldoRegistrado !== null && saldoRegistrado <= 5,
   });
   const carePresentation = medicationCarePresentation(careDecision, alertaInteligente.urgencia);
+  const journeySnapshot = useMemo(() => buildMedicationJourneySnapshot({
+    medication: med,
+    renewals: renovacoes,
+    withdrawals: retiradas,
+    today: hoje,
+  }), [med, renovacoes, retiradas, hoje]);
 
   const seteDiasAtras =
     getDateDaysAgoISO(
@@ -3249,6 +3257,7 @@ function MedicamentoDetalhesContent() {
               </button>
             </section>
           )}
+          <MedicationJourneySummary snapshot={journeySnapshot}/>
           <HealthSupplyEntry medicamentoId={med.id!}/>
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
           {med.id && activePersonId === med.person_id && (

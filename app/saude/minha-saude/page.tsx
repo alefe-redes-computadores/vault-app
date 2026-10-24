@@ -78,6 +78,7 @@ import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { AvatarAssociationSummary } from "@/components/saude/AvatarAssociationSummary";
 import { AvatarCareReadiness } from "@/components/saude/AvatarCareReadiness";
 import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCoverage";
+import { MedicationContinuityAvatarSummary } from "@/components/saude/MedicationContinuityAvatarSummary";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 export default function MyHealthPage() {
   const data = useHealthProfile();
@@ -381,6 +382,7 @@ function HealthDashboard({
               </button>
             </section>
             <CareContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
+            <MedicationContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarAssociationSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarCareReadiness context={intelligence.context} onNavigate={goFromHealth}/>

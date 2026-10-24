@@ -1,5 +1,6 @@
 import type { Medicamento, Renovacao, Retirada } from "@/lib/types";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
+import { buildMedicationJourneySnapshot, medicationJourneyEvidence } from "@/lib/health-intelligence/medication-workspace";
 
 export type MedicationCareStage =
   | "withdrawal_overdue"
@@ -97,11 +98,13 @@ export function decideMedicationCarePath(input: {
   const acquisition = `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(id)}&mode=acquisition&return_to=${encodeURIComponent(detail)}`;
   const prescription = `/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(id)}&return_to=${encodeURIComponent(detail)}`;
   const withdrawal = input.withdrawal && input.withdrawal.status === "agendada" ? input.withdrawal : null;
-  const evidence = [
-    `${prescriptions.length} receita(s) registrada(s)`,
-    `${acquisitions.length} aquisição(ões) realizada(s)`,
-    `${planned.length} aquisição(ões) futura(s)`,
-  ];
+  const journey = buildMedicationJourneySnapshot({
+    medication,
+    renewals: input.renewals,
+    withdrawals: input.withdrawal ? [input.withdrawal] : [],
+    today,
+  });
+  const evidence = medicationJourneyEvidence(journey);
 
   if (withdrawal && validDay(withdrawal.data)) {
     const overdue = withdrawal.data < today;

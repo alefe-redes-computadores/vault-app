@@ -21,6 +21,7 @@ import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState }
 import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { summarizeMedicationContinuity, continuityEvidenceMessage } from "@/lib/health-intelligence/medication-continuity";
 import { decideMedicationCarePath, type MedicationCareStage } from "@/lib/health-intelligence/medication-care-decision";
+import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
 
 export type MedicationCareOpportunityLevel =
   | "urgent"
@@ -119,20 +120,6 @@ function getEffectiveRenewalDate(
     Renovacao
 ): string {
   return renewalEventDate(renovacao);
-}
-
-function indexMedicationRenewals(renovacoes: Renovacao[]): Map<string, Renovacao[]> {
-  const byMedication = new Map<string, Renovacao[]>();
-  for (const renewal of renovacoes) {
-    if (!renewal.medicamento_id) continue;
-    const bucket = byMedication.get(renewal.medicamento_id);
-    if (bucket) bucket.push(renewal);
-    else byMedication.set(renewal.medicamento_id, [renewal]);
-  }
-  for (const bucket of byMedication.values()) {
-    bucket.sort((first, second) => getEffectiveRenewalDate(second).localeCompare(getEffectiveRenewalDate(first)));
-  }
-  return byMedication;
 }
 
 function indexTreatments(tratamentos: Tratamento[]) {

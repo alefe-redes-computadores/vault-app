@@ -5,6 +5,7 @@ import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medicat
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
+import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -223,15 +224,7 @@ export default function MedicamentosListPage() {
   const { retiradas } = useRetiradas();
   const { renovacoes = [] } = useRenovacoes();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
-  const renewalsByMedication = useMemo(() => {
-    const index = new Map<string, typeof renovacoes>();
-    for (const renewal of renovacoes) {
-      const rows = index.get(renewal.medicamento_id);
-      if (rows) rows.push(renewal);
-      else index.set(renewal.medicamento_id, [renewal]);
-    }
-    return index;
-  }, [renovacoes]);
+  const renewalsByMedication = useMemo(() => indexMedicationRenewals(renovacoes), [renovacoes]);
   const router =
     useRouter();
 
@@ -1161,7 +1154,7 @@ export default function MedicamentosListPage() {
                   )}
 
                   {careDecision.stage !== "stable" && (
-                    <span className={`inline-flex min-h-6 max-w-full items-center rounded-lg border px-2 py-1 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
+                    <span title={careDecision.explanation} className={`inline-flex min-h-6 max-w-full items-center rounded-lg border px-2 py-1 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
                       {careDecision.label}
                     </span>
                   )}
