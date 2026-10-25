@@ -174,8 +174,8 @@ export default function DiagnosticoPage() {
     setAuditingDoses(true);
     try {
       const local = await db.doseLogs
-        .toCollection()
-        .filter((row) => row.user_id === user.id)
+        .where("user_id")
+        .equals(user.id)
         .toArray();
       const { data, error } = await supabase
         .from("dose_logs")

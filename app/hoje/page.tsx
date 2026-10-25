@@ -590,7 +590,7 @@ export default function HojePage() {
               const agenda = plannedPrescriptionAgendaState(
                 medicamento.proxima_renovacao,
                 dataSelecionada,
-                getLocalTodayISO(),
+                hoje,
               );
               if (!agenda.visible) return [];
               const decision = decideMedicationCarePath({
@@ -631,15 +631,17 @@ export default function HojePage() {
         renovacoes,
         activePersonId,
         dataSelecionada,
+        hoje,
       ]
     );
 
   const retiradasHoje =
     useMemo(
-      () => withdrawalsForAgendaDate(retiradas, dataSelecionada, getLocalTodayISO()),
+      () => withdrawalsForAgendaDate(retiradas, dataSelecionada, hoje),
       [
         retiradas,
         dataSelecionada,
+        hoje,
       ]
     );
 

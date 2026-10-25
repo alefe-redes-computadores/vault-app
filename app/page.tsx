@@ -682,8 +682,8 @@ export default function HomePage() {
   // aos slots que os hooks de hoje e ontem já carregam.
   const plannedEarlier = useLiveQuery(
     () => activePersonId && user?.id
-      ? db.doseLogs.where("person_id").equals(activePersonId).filter(log =>
-          log.user_id === user.id && log.dose_kind === "planned" &&
+      ? db.doseLogs.where("[user_id+person_id]").equals([user.id, activePersonId]).filter(log =>
+          log.dose_kind === "planned" &&
           log.data < ontem && !log.tomado_em && !log.ignorado_em).toArray()
       : [],
     [activePersonId, user?.id, ontem],
@@ -694,115 +694,27 @@ export default function HomePage() {
   // ENTIDADES CLÍNICAS PERSON-SCOPED
   // ==========================================================
 
-  const tratamentos =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.tratamentos
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [activePersonId],
-      []
-    );
-
-  const exames =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.exames
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [activePersonId],
-      []
-    );
-
-  const renovacoes =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.renovacoes
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [activePersonId],
-      []
-    );
-
-  const consultas =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.consultas
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [activePersonId],
-      []
-    );
-
-  const cirurgias =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.cirurgias
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [activePersonId],
-      []
-    );
+  // V260: uma assinatura indexada substitui cinco observadores independentes.
+  // O snapshot carrega a identidade do proprietário para nunca renderizar o
+  // resultado atrasado da pessoa/conta anterior durante uma troca de perfil.
+  const homeClinicalData = useLiveQuery(async () => {
+    if (!activePersonId || !user?.id) return null;
+    const owner = [user.id, activePersonId] as [string, string];
+    const [tratamentos, exames, renovacoes, consultas, cirurgias] = await Promise.all([
+      db.tratamentos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.exames.where("[user_id+person_id]").equals(owner).toArray(),
+      db.renovacoes.where("[user_id+person_id]").equals(owner).toArray(),
+      db.consultas.where("[user_id+person_id]").equals(owner).toArray(),
+      db.cirurgias.where("[user_id+person_id]").equals(owner).toArray(),
+    ]);
+    return { userId: user.id, personId: activePersonId, tratamentos, exames, renovacoes, consultas, cirurgias };
+  }, [activePersonId, user?.id]);
+  const homeClinicalReady = Boolean(homeClinicalData && homeClinicalData.userId === user?.id && homeClinicalData.personId === activePersonId);
+  const tratamentos = homeClinicalReady ? homeClinicalData!.tratamentos : [];
+  const exames = homeClinicalReady ? homeClinicalData!.exames : [];
+  const renovacoes = homeClinicalReady ? homeClinicalData!.renovacoes : [];
+  const consultas = homeClinicalReady ? homeClinicalData!.consultas : [];
+  const cirurgias = homeClinicalReady ? homeClinicalData!.cirurgias : [];
 
   const {
     retiradas,

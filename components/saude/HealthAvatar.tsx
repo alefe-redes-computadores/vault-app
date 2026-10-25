@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { ChevronDown, SlidersHorizontal, Brain, EyeOff, Shirt, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, Brain, Shirt, X } from "lucide-react";
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { HealthDevice } from "@/lib/health-profile/types";
 import { avatarLayout } from "@/lib/health-profile/avatar";
@@ -36,7 +36,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   useEffect(()=>{
     let next:AvatarMode='3d',nextSize:AvatarSize='compact',nextAppearance:AvatarStyle=DEFAULT_AVATAR_STYLE,nextName=avatarDisplayName(null,personName),nextFraming:AvatarFraming='body';
     try{if(preferenceKey){const stored=localStorage.getItem(preferenceKey);next=parseAvatarMode(stored);nextSize=parseAvatarSize(stored);nextAppearance=parseAvatarStyle(stored);nextName=parseAvatarName(stored,personName);nextFraming=parseAvatarFraming(stored);}}catch{}
-    requestedMode.current=next;setFraming('body');setMode(next);setSize(nextSize==='hidden'?'hidden':'compact');setAppearance(nextAppearance);setAvatarName(nextName);setUnavailable(false);setLoadedKey(preferenceKey);
+    requestedMode.current=next;setFraming('body');setMode(next);setSize('compact');setAppearance(nextAppearance);setAvatarName(nextName);setUnavailable(false);setLoadedKey(preferenceKey);
   },[preferenceKey,personName]);
   const fallback=useCallback(()=>{setUnavailable(true);setMode('illustration');},[]);
   const chooseMode=(next:AvatarMode)=>{
@@ -82,7 +82,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
     else if(!event.shiftKey&&(document.activeElement===last||document.activeElement===event.currentTarget)){event.preventDefault();first.focus();}
   }} className={expanded&&size==='expanded'?"fixed inset-0 z-[110] overflow-y-auto overscroll-contain border border-surface-border bg-void px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] shadow-2xl sm:inset-3 sm:rounded-2xl sm:p-4":"relative"}>{expanded&&size==='expanded'?<div className="sticky top-0 z-30 mx-auto mb-2 flex max-w-[520px] items-center gap-2 rounded-2xl border border-surface-border bg-void/90 p-1.5 shadow-xl backdrop-blur-xl"><button data-avatar-close type="button" onClick={toggleExpanded} className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-ink-primary"><X size={17}/> Voltar</button><div className="min-w-0 flex-1 border-l border-surface-border pl-3"><p className="truncate text-xs font-semibold text-ink-primary">{avatarDisplayName(avatarName,personName)}</p><p className="truncate text-[9px] text-ink-muted">Sua representação pessoal e de saúde</p></div></div>:null}
 
-    <div className={expanded&&size==='expanded'?'mx-auto max-w-[520px] overflow-hidden rounded-2xl border border-emerald-300/10 bg-[radial-gradient(circle_at_50%_15%,rgba(110,231,183,.08),transparent_48%),linear-gradient(180deg,rgba(110,231,183,.025),transparent)] p-2':''}>{expanded&&size==='hidden'?<p className="rounded-lg border border-surface-border px-3 py-2 text-xs text-ink-muted">Avatar oculto. Os registros continuam disponíveis. <button type="button" className="ml-1 underline" onClick={()=>chooseSize('compact')}>Mostrar</button></p>:!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-ink-muted">Preparando avatar…</p>:
+    <div className={expanded&&size==='expanded'?'mx-auto max-w-[520px] overflow-hidden rounded-2xl border border-emerald-300/10 bg-[radial-gradient(circle_at_50%_15%,rgba(110,231,183,.08),transparent_48%),linear-gradient(180deg,rgba(110,231,183,.025),transparent)] p-2':''}>{!ready&&expanded?<p role="status" className="py-16 text-center text-sm text-ink-muted">Preparando avatar…</p>:
       expanded&&mode==='3d'?<Avatar3DBoundary onUnavailable={fallback}><Avatar3D framing={size==='expanded'?framing:'body'} onFramingChange={chooseFraming} skin={skin} appearance={appearance} devices={devices} onDeviceSelect={onDeviceSelect} onBrainSelect={onBrainSelect} body={body} onBodySelect={onBodySelect} compact={size!=='expanded'} controlsContainer={size==='expanded'?controlsContainer:null} onEmptyTap={toggleExpanded} attention={attention} onUnavailable={fallback}/></Avatar3DBoundary>:
       <div className="relative"><HealthBody appearance={appearance} surgeryMarkers={body?.surgeryMarkers} expression={body?.expression} onBodySelect={onBodySelect} onDeviceSelect={onDeviceSelect} skin={skin} devices={devices} expanded={expanded&&size==='expanded'} showControls={!expanded} controlsContainer={expanded&&size==='expanded'?controlsContainer:undefined}/>{expanded&&ready&&size!=='hidden'?<button type="button" aria-label={size==='expanded'?'Minimizar avatar':'Ampliar avatar'} onClick={toggleExpanded} className="absolute inset-0 h-full w-full rounded-2xl focus-visible:outline-2 focus-visible:outline-violet-300"/>:null}</div>}
     </div>
@@ -94,7 +94,6 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
         {([['illustration','Ilustração'],['3d','Ver em 3D']] as const).map(([id,label])=><button type="button" key={id} aria-pressed={mode===id} onClick={()=>chooseMode(id)} className={`min-h-11 flex-1 rounded-xl border text-xs ${mode===id?'border-violet-300/50 bg-violet-400/15 text-violet-200':'border-surface-border text-ink-secondary'}`}>{label}</button>)}
       </div>
       <div ref={setControlsContainer}/>
-      <button type="button" onClick={()=>chooseSize('hidden')} className="mt-3 flex min-h-11 items-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs text-ink-muted"><EyeOff size={15}/> Ocultar no perfil</button>
       {mode==='illustration'&&onDeviceSelect?<ul className="mt-3 space-y-2" aria-label="Aparelhos representados">{avatarLayout(devices).slots.map(({device,kind,side})=><li key={`${side}-${kind}`}><button type="button" className="min-h-11 w-full rounded-xl border border-surface-border p-3 text-left text-xs text-ink-primary" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)}>{device.name} ›</button></li>)}</ul>:null}
     </details>:null}
     {expanded&&ready&&size==='expanded'?<AvatarStyleEditor value={appearance} onChange={chooseAppearance} onPreview={setFraming} name={avatarName} onNameChange={chooseName}/>:null}

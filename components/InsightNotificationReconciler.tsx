@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { LocalNotifications } from "@capacitor/local-notifications";
 
@@ -42,6 +42,7 @@ export function InsightNotificationReconciler() {
   const { user } = useAuth();
   const { insights } = useHealthIntelligence();
   const settings = useLiveQuery(() => user?.id ? db.settings.where("user_id").equals(user.id).first().then(row=>row??null) : null,[user?.id]) as ({brain_v5_alert_ledger?:BrainV5Alert[]}|null|undefined);
+  const schedulingRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isVaultNative() || !activePersonId || !user?.id || settings===undefined) return;
@@ -67,14 +68,19 @@ export function InsightNotificationReconciler() {
     if (!selected) return;
 
     const { candidate, decision } = selected;
+    const signature = `${user.id}:${activePersonId}:${candidate.id}`;
+    if (schedulingRef.current === signature) return;
+    schedulingRef.current = signature;
+    let cancelled = false;
 
     void (async () => {
       const permission =
         await LocalNotifications.checkPermissions();
 
-      if (permission.display !== "granted") return;
+      if (permission.display !== "granted" || cancelled) return;
 
       await ensureVaultNotificationChannel();
+      if (cancelled) return;
 
       const scheduledAt = Date.now() + 2500;
 
@@ -117,12 +123,10 @@ export function InsightNotificationReconciler() {
         candidate,
         scheduledAt
       );
-    })().catch((error) =>
-      console.error(
-        "[Insight notifications V61]",
-        error
-      )
-    );
+    })().catch((error) => console.error("[Insight notifications V61]", error)).finally(() => {
+      if (schedulingRef.current === signature) schedulingRef.current = null;
+    });
+    return () => { cancelled = true; };
   }, [activePersonId, insights, settings, user?.id]);
 
   return null;

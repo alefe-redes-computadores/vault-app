@@ -10,7 +10,8 @@ for (const [file,src] of [['components/saude/HealthAvatar.tsx',shell],['componen
 }
 assert(shell.includes("framing={size==='expanded'?framing:'body'}"),'compact preview is not fixed to full body');
 assert(shell.includes("setFraming('body')"),'close must reset stored inspection framing');
-assert(shell.includes("setSize(nextSize==='hidden'?'hidden':'compact')"),'opening page must never resurrect expanded modal');
+assert(shell.includes("setSize('compact')"),'opening page must normalize legacy size without resurrecting expanded modal');
+assert(!shell.includes('Ocultar no perfil'),'current Avatar must remain available from the profile');
 assert(shell.includes("next==='expanded'?framing:'body'"),'persisted preview camera is not canonical');
 assert(shell.includes("if(size!=='expanded')return"),'compact preview can accidentally change editor framing');
 assert(shell.includes("parseAvatarFraming(stored)"),'legacy persisted preference parser removed');
