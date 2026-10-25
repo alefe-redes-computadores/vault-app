@@ -86,7 +86,7 @@ export default function HealthIntelligenceLabPage() {
   const {backTarget,preserveReturn}=useReturnContext("/inteligencia");
   const health = useHealthIntelligence();
   const [selected, setSelected] = useState<HealthInsight | null>(null);
-  const [period, setPeriod] = useState<30 | 90>(30);
+  const [period, setPeriod] = useState<30 | 90 | "since_consultation">("since_consultation");
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [feedbackRevision, setFeedbackRevision] = useState(0);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
@@ -337,19 +337,20 @@ export default function HealthIntelligenceLabPage() {
               <h2 className="font-bold">Preparar consulta</h2>
             </div>
             <div className="flex rounded-xl border border-surface-border bg-surface p-1">
-              {[30, 90].map((days) => (
+              {(["since_consultation", 30, 90] as const).map((days) => (
                 <button
                   key={days}
                   type="button"
-                  onClick={() => setPeriod(days as 30 | 90)}
+                  onClick={() => setPeriod(days)}
                   className={`rounded-lg px-2.5 py-1 text-[10px] ${period === days ? "bg-ice/10 text-ice" : "text-ink-muted"}`}
                 >
-                  {days}d
+                  {days === "since_consultation" ? "Desde consulta" : `${days}d`}
                 </button>
               ))}
             </div>
           </div>
           <div className="mt-3 rounded-[26px] border border-emerald-400/15 bg-emerald-400/[0.03] p-4">
+            <p className="mb-3 text-[10px] font-semibold text-emerald-200">{consultation.basis.label}</p>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.medicationCount}</strong><p className="text-[9px] text-ink-faint">medicamentos</p></div>
               <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.adherence.percentage ?? "—"}{consultation.adherence.percentage !== null ? "%" : ""}</strong><p className="text-[9px] text-ink-faint">doses registradas</p></div>
@@ -367,6 +368,7 @@ export default function HealthIntelligenceLabPage() {
                 {consultation.dataQuality.map((item) => <p key={item} className="mt-1.5 text-xs text-ink-muted">• {item}</p>)}
               </div>
             )}
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">{consultation.evidenceGroups.map(group => <div key={group.kind} className="rounded-2xl border border-surface-border/60 bg-black/10 p-3"><p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">{group.label}</p>{group.items.length ? group.items.map(item => <p key={item} className="mt-2 text-[10px] leading-relaxed text-ink-primary">• {item}</p>) : <p className="mt-2 text-[10px] text-ink-faint">Sem amostra suficiente.</p>}</div>)}</div>
           </div>
         </section>
 

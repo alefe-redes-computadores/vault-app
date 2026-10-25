@@ -91,6 +91,8 @@ export type ConsultationPrepV4 = {
   }>;
   questionsToRemember: string[];
   dataQuality: string[];
+  basis: { mode: "fixed_window" | "since_consultation"; start: string; end: string; lastConsultationDate: string | null; label: string };
+  evidenceGroups: Array<{ kind: "fact" | "temporal_association" | "discussion_signal"; label: string; items: string[] }>;
 };
 
 const DAY = 86_400_000;
@@ -242,10 +244,12 @@ export function buildConsultationPrepV4(
   context: HealthInsightContext,
   insights: HealthInsight[],
   snapshot: BrainV4Snapshot,
-  periodDays = 30
+  periodDays: number | "since_consultation" = 30
 ): ConsultationPrepV4 {
   const today = referenceDate(context, snapshot);
-  const timeline = snapshot.timeline.filter((event) => inWindow(event, today, periodDays));
+  const lastConsultation = snapshot.timeline.filter(event => event.type === "appointment" && event.date <= today && String(event.facts.status || "").toLowerCase() === "realizada").sort((a,b) => b.occurredAt.localeCompare(a.occurredAt))[0] ?? null;
+  const effectiveDays = periodDays === "since_consultation" && lastConsultation ? Math.max(1, Math.min(365, daysAgo(lastConsultation.date, today) + 1)) : typeof periodDays === "number" ? periodDays : 30;
+  const timeline = snapshot.timeline.filter((event) => inWindow(event, today, effectiveDays));
   const doseEvents = timeline.filter((event) => event.type === "dose");
   const scheduled = doseEvents.filter((event) => event.facts.doseKind === "scheduled");
   const taken = scheduled.filter((event) => event.facts.tomada === true);
@@ -287,10 +291,20 @@ export function buildConsultationPrepV4(
   const dataQuality = unique(
     snapshot.insightAudits.flatMap((audit) => audit.ledger.missingData)
   ).slice(0, 5);
+  const factualEvidence = [
+    `${scheduled.length} dose(s) programada(s) com desfecho registrado no período`,
+    `${sosExtra.length} uso(s) SOS/extra registrado(s) em ${new Set(sosExtra.map(event => event.date)).size} dia(s)`,
+    `${records.length} registro(s) de saúde em ${new Set(records.map(event => event.date)).size} dia(s)`,
+  ];
+  const temporalEvidence = snapshot.longitudinalSignals
+    .filter(signal => signal.kind === "temporal_relation" && signal.confidenceScore >= 55)
+    .slice(0, 4)
+    .map(signal => `${signal.evidence[0] || signal.subject} · amostra ${signal.sample}`);
+  const discussionSignals = importantInsights.slice(0, 4).map(item => `${item.title} · confiança ${item.confidence} · amostra ${item.sample}`);
 
   return {
     generatedAt: new Date().toISOString(),
-    periodDays,
+    periodDays: effectiveDays,
     currentTreatments: context.tratamentos
       .filter((item) => {
         const raw = item as typeof item & { status?: string; nome?: string };
@@ -321,6 +335,18 @@ export function buildConsultationPrepV4(
     importantInsights,
     questionsToRemember,
     dataQuality,
+    basis: {
+      mode: periodDays === "since_consultation" && lastConsultation ? "since_consultation" : "fixed_window",
+      start: new Date(dayMs(today) - (effectiveDays - 1) * DAY).toISOString().slice(0, 10),
+      end: today,
+      lastConsultationDate: lastConsultation?.date ?? null,
+      label: periodDays === "since_consultation" && lastConsultation ? `Desde a consulta de ${lastConsultation.date.split("-").reverse().join("/")}` : `Últimos ${effectiveDays} dias`,
+    },
+    evidenceGroups: [
+      { kind: "fact", label: "Fatos registrados", items: factualEvidence },
+      { kind: "temporal_association", label: "Associações temporais", items: temporalEvidence },
+      { kind: "discussion_signal", label: "Sinais para conversar", items: discussionSignals },
+    ],
   };
 }
 
