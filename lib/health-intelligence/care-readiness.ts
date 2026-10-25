@@ -33,9 +33,9 @@ const validDay = (value?: string | null) => Boolean(value && /^\d{4}-\d{2}-\d{2}
 export function buildCareReadiness(
   context: HealthInsightContext,
   today = context.hoje || getLocalTodayISO(),
+  forecast = buildCareForecast(context, today),
 ): CareReadinessPortfolio {
   const supply = context.fornecimento ?? { processos: [], ciclos: [], itens: [], documentos: [] };
-  const forecast = buildCareForecast(context, today);
   const withdrawalByMedication = new Map<string, (typeof forecast.withdrawals)[number]>();
   for (const withdrawal of forecast.withdrawals) {
     const current = withdrawalByMedication.get(withdrawal.medicationId);

@@ -1431,6 +1431,12 @@ export default function HomePage() {
     medicationCareOpportunities[0] ??
     null;
 
+  const primaryCareCommand =
+    healthIntelligence.careCommand?.primary?.lane === "now" ||
+    healthIntelligence.careCommand?.primary?.lane === "next"
+      ? healthIntelligence.careCommand.primary
+      : null;
+
   // VAULT_HOME_INTELLIGENCE_ORCHESTRATION_V96
   // Atenção é operacional; Intelligence é analítico.
   const longitudinalHighlights =
@@ -1468,6 +1474,17 @@ export default function HomePage() {
 
             color:
               "#FB7185",
+          };
+        }
+
+        if (
+          primaryCareCommand
+        ) {
+          return {
+            eyebrow: primaryCareCommand.lane === "now" ? "Ação agora" : "Próxima etapa",
+            title: primaryCareCommand.title,
+            description: primaryCareCommand.reason,
+            color: primaryCareCommand.lane === "now" ? "#FB7185" : "#FBBF24",
           };
         }
 
@@ -1561,6 +1578,7 @@ export default function HomePage() {
       },
       [
         dosesPendentesAtrasadas.length,
+        primaryCareCommand,
         primaryMedicationCareOpportunity,
         retiradasAtrasadas.length,
         totalCompromissosHoje,

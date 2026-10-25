@@ -58,6 +58,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { documentedDayCount } from "@/lib/health-intelligence/context-coverage";
 import { useHealthExperienceFeedback } from "@/hooks/useHealthExperienceFeedback";
 import { selectExperienceInsightsV4 } from "@/lib/health-intelligence/feedback-v4";
+import { buildCareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 
 export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) {
   const includeAudit = options.includeAudit !== false;
@@ -112,6 +113,11 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
     );
 
   const feedbackState = useHealthExperienceFeedback(activePersonId, insights);
+
+  const careCommand = useMemo(
+    () => context ? buildCareCommandSnapshot(context) : null,
+    [context]
+  );
 
   // VAULT_BRAIN_V4_SHADOW_CORE
   // O V4 observa o mesmo contexto e os mesmos Insights do motor estável.
@@ -412,6 +418,7 @@ export function useHealthIntelligence(options: { includeAudit?: boolean } = {}) 
     sendExperienceFeedback: feedbackState.sendFeedback,
 
     brainV4,
+    careCommand,
 
     replayBrainV4: (days = 90, stepDays = 7) =>
       context ? replayBrainV4(context, days, stepDays) : [],

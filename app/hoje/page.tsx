@@ -81,6 +81,8 @@ import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
 import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/health-intelligence/medication-care-decision";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
+import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
+import { CareCommandStrip } from "@/components/saude/CareCommandStrip";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -223,6 +225,7 @@ interface DoseItemExt {
 export default function HojePage() {
  const supplyOverview=useSupplyOverview();
   const brainPulse=useBrainV5Pulse();
+  const healthIntelligence=useSharedHealthIntelligence({includeAudit:false});
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -2988,6 +2991,7 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-5 px-4 pt-4">
+          {isHoje ? <CareCommandStrip command={healthIntelligence.careCommand} onNavigate={(href) => router.push(href)}/> : null}
           {isHoje && !brainPulse.isLoading && brainPulse.brief.primary && (
             <button
               type="button"

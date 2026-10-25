@@ -385,7 +385,7 @@ function HealthDashboard({
             <MedicationContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarAssociationSummary context={intelligence.context} onNavigate={goFromHealth}/>
-            <AvatarCareReadiness context={intelligence.context} onNavigate={goFromHealth}/>
+            <AvatarCareReadiness context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
             {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}
             <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
             <section className="space-y-3">

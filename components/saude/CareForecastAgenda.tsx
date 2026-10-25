@@ -3,13 +3,13 @@
 import { useMemo } from "react";
 import { CalendarClock, ChevronRight } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
-import { buildCareForecast, type CareForecastAction } from "@/lib/health-intelligence/care-forecast";
+import { buildCareForecast, type CareForecast, type CareForecastAction } from "@/lib/health-intelligence/care-forecast";
 
 const laneLabel: Record<CareForecastAction["lane"], string> = { now: "Agora", next: "Próxima etapa", follow_up: "Acompanhar", review_data: "Completar dados" };
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)) : null;
 
-export function CareForecastAgenda({ context, onNavigate }: { context: HealthInsightContext | null; onNavigate: (href: string) => void }) {
-  const forecast = useMemo(() => context ? buildCareForecast(context) : null, [context]);
+export function CareForecastAgenda({ context, forecast: sharedForecast, onNavigate }: { context: HealthInsightContext | null; forecast?: CareForecast | null; onNavigate: (href: string) => void }) {
+  const forecast = useMemo(() => sharedForecast ?? (context ? buildCareForecast(context) : null), [context, sharedForecast]);
   if (!forecast) return null;
   const visible = forecast.actions.slice(0, 4);
   return <section aria-label="Próximas etapas da linha de cuidado" className="mx-auto mt-4 max-w-2xl rounded-[20px] border border-cyan-300/15 bg-gradient-to-br from-cyan-300/[.05] to-surface p-4">
