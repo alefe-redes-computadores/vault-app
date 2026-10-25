@@ -2,6 +2,7 @@ import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCareForecast } from "@/lib/health-intelligence/care-forecast";
 import { medicationSupplyRoute, type MedicationSupplyRoute } from "@/lib/health-supply/route-authority";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
+import { getLocalTodayISO } from "@/lib/health-utils";
 
 export type CareReadinessState = "ready" | "prepare" | "overdue" | "unknown";
 export type CareReadinessItem = {
@@ -31,7 +32,7 @@ const validDay = (value?: string | null) => Boolean(value && /^\d{4}-\d{2}-\d{2}
  */
 export function buildCareReadiness(
   context: HealthInsightContext,
-  today = context.hoje || new Date().toISOString().slice(0, 10),
+  today = context.hoje || getLocalTodayISO(),
 ): CareReadinessPortfolio {
   const supply = context.fornecimento ?? { processos: [], ciclos: [], itens: [], documentos: [] };
   const forecast = buildCareForecast(context, today);

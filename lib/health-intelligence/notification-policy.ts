@@ -1,6 +1,12 @@
 import type { HealthInsight } from "@/lib/health-insights";
 import { brainDecisionLane, compareBrainSignals } from "@/lib/health-intelligence/brain-next";
 import { hasCurrentRegulatorySource } from "@/lib/health-intelligence/regulatory-evidence";
+import type { CareForecastAction } from "@/lib/health-intelligence/care-forecast";
+
+/** Agenda e projeções ficam na Central; só retirada vencida pode disputar push operacional. */
+export function careForecastActionAllowsBehavioralPush(action: CareForecastAction): boolean {
+  return action.kind === "overdue_withdrawal" && action.lane === "now";
+}
 
 const normalize = (value: unknown) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 function isPharmacologicalInteraction(insight: HealthInsight): boolean {

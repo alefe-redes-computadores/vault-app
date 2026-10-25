@@ -14,6 +14,7 @@ import type { HealthInsight } from "@/lib/health-insights";
 import { useVaultIntelligence } from "@/hooks/useVaultIntelligence";
 import type { VaultGeneralInsight, VaultInsightKind } from "@/lib/vault-intelligence/types";
 import { useReturnContext } from "@/hooks/useReturnContext";
+import { CareForecastAgenda } from "@/components/saude/CareForecastAgenda";
 
 const kindMeta: Record<VaultInsightKind, { label: string; classes: string }> = {
   attention: { label: "Atenção", classes: "border-amber-400/25 bg-amber-400/10 text-amber-300" },
@@ -86,6 +87,8 @@ export default function VaultIntelligencePage() {
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
     </section>
+
+    {!health.isLoading ? <CareForecastAgenda context={health.context} onNavigate={(href) => router.push(preserveReturn(`${href}`))}/> : null}
 
     {coverage&&coverage.acquisitions>0?<section aria-label="Inteligência financeira de saúde" className="mx-auto mt-4 max-w-2xl rounded-[20px] border border-emerald-400/20 bg-gradient-to-br from-emerald-400/[.07] to-surface p-4"><div className="flex items-center gap-2"><WalletCards size={17} className="text-emerald-300"/><h2 className="text-sm font-bold">Custos de saúde documentados</h2><span className="ml-auto text-[9px] text-ink-faint">{coverage.financialCoverage}% coberto</span></div><div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-surface-border/60 bg-surface-border/50"><div className="bg-surface p-3"><span className="text-[8px] uppercase text-ink-faint">Realizado · 30d</span><strong className="mt-1 block text-xs text-ink-primary">{brl(coverage.financialSpend30d)}</strong></div><div className="bg-surface p-3"><span className="text-[8px] uppercase text-ink-faint">Realizado · 90d</span><strong className="mt-1 block text-xs text-ink-primary">{brl(coverage.financialSpend90d)}</strong></div><div className="bg-surface p-3"><span className="text-[8px] uppercase text-ink-faint">Planejado · 30d</span><strong className="mt-1 block text-xs text-amber-200">{coverage.plannedAcquisitions30d?brl(coverage.plannedAmount30d):"Nenhum"}</strong></div></div><p className="mt-2 text-[9px] leading-relaxed text-ink-muted">Realizado considera somente aquisição em data passada ou atual com valor informado. Planejado permanece separado e não altera estoque nem gasto.</p></section>:null}
 
