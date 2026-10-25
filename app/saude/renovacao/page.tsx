@@ -66,6 +66,7 @@ import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import { isPrescriptionOnly, renewalEventDate, isFutureAcquisition, realizedAcquisitionExpense } from "@/lib/health-supply/renewal-event";
+import { presentRenewalEvent, summarizeRenewalEvents } from "@/lib/health-supply/renewal-event-presentation";
 import { useLocalDay } from "@/hooks/useLocalDay";
 
 import type {
@@ -89,6 +90,7 @@ type StatusFilter =
 type AcquisitionFilter =
   | "todos"
   | "receita"
+  | "planejada"
   | "comprado"
   | "sus"
   | "gratuito";
@@ -560,11 +562,13 @@ export default function RenovacoesPage() {
       ]
     );
 
-  const comprasRegistradas = useMemo(() => renovacoesEnriquecidas.filter((item) => !isPrescriptionOnly(item)), [renovacoesEnriquecidas]);
+  const eventSummary = useMemo(() => summarizeRenewalEvents(renovacoesEnriquecidas, hojeISO), [renovacoesEnriquecidas, hojeISO]);
+  const comprasRegistradas = useMemo(() => renovacoesEnriquecidas.filter((item) => presentRenewalEvent(item, hojeISO).realized && !isPrescriptionOnly(item)), [renovacoesEnriquecidas, hojeISO]);
   const comprasComValor = useMemo(() => comprasRegistradas.filter((item) => realizedAcquisitionExpense(item, hojeISO) > 0), [comprasRegistradas, hojeISO]);
   const totalCompras = useMemo(() => comprasComValor.reduce((total, item) => total + realizedAcquisitionExpense(item, hojeISO), 0), [comprasComValor, hojeISO]);
-  const receitasRegistradas = indicadores.total - comprasRegistradas.length;
-  const datasFuturas = useMemo(() => comprasRegistradas.filter((item) => isFutureAcquisition(item, hojeISO)).length, [comprasRegistradas, hojeISO]);
+  const receitasRegistradas = eventSummary.prescriptions;
+  // Compatibilidade V221: a tela mantém a exclusão temporal explícita além do presenter canônico.
+  const datasFuturas = useMemo(() => renovacoesEnriquecidas.filter((item) => isFutureAcquisition(item, hojeISO)).length, [renovacoesEnriquecidas, hojeISO]);
 
   const renewalSearchIndex = useMemo(() => createLocalSearchIndex(renovacoesEnriquecidas, (item) => [
     item.medicamentoNome,
@@ -661,7 +665,9 @@ export default function RenovacoesPage() {
               ) =>
                 filtroAquisicao === "receita"
                   ? isPrescriptionOnly(renovacao)
-                  : renovacao.tipo_aquisicao === filtroAquisicao
+                  : filtroAquisicao === "planejada"
+                    ? presentRenewalEvent(renovacao, hojeISO).planned
+                    : renovacao.tipo_aquisicao === filtroAquisicao && !presentRenewalEvent(renovacao, hojeISO).planned
             );
         }
 
@@ -777,8 +783,8 @@ export default function RenovacoesPage() {
               <ClinicalListSummary
                 icon={Receipt}
                 eyebrow="Receita ≠ aquisição"
-                title={`${receitasRegistradas} receita${receitasRegistradas === 1 ? "" : "s"} · ${comprasRegistradas.length} aquisição${comprasRegistradas.length === 1 ? "" : "ões"}`}
-                detail={`${indicadores.sus} via SUS/gratuito · ${formatCurrency(totalCompras)} em valores informados`}
+                title={`${receitasRegistradas} receita${receitasRegistradas === 1 ? "" : "s"} · ${eventSummary.realizedAcquisitions} aquisição${eventSummary.realizedAcquisitions === 1 ? "" : "ões"} realizada${eventSummary.realizedAcquisitions === 1 ? "" : "s"}`}
+                detail={`${eventSummary.publicAcquisitions} via SUS/gratuito · ${formatCurrency(totalCompras)} em gastos realizados`}
                 metrics={[
                   { label: "Eventos", value: indicadores.total },
                   { label: "Até 7 dias", value: indicadores.proximas, tone: indicadores.proximas ? "attention" : "neutral" },
@@ -788,7 +794,7 @@ export default function RenovacoesPage() {
               <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/nova-receita"); }} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[.055] text-xs font-bold text-violet-200 active:scale-[.99]"><FileText size={14}/>Registrar somente uma receita</button>
             </div>
           )}
-          {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-amber-400/25 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-300"><strong>Data futura: confira este registro.</strong> {datasFuturas} item(ns) não entram como gasto atual até a data informada.</div>}
+          {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-ice/25 bg-ice/[0.07] px-4 py-3 text-xs text-ice"><strong>{datasFuturas} aquisição(ões) planejada(s).</strong> Permanecem fora do gasto e do estoque até a confirmação.</div>}
 
           {/* ==================================================
               FILTERS
@@ -870,6 +876,8 @@ export default function RenovacoesPage() {
               <FileText size={10}/>
               Só receita
             </button>
+
+            <button type="button" onClick={() => { trigger("vibrate"); setFiltroAquisicao(filtroAquisicao === "planejada" ? "todos" : "planejada"); }} className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${filtroAquisicao === "planejada" ? "border-ice bg-ice/20 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}><Clock size={10}/>Planejadas</button>
 
             <button
               type="button"
@@ -1059,9 +1067,10 @@ export default function RenovacoesPage() {
                     ? "#EF4444"
                     : theme.hex;
 
-                const acquisitionLabel = isFutureAcquisition(renovacao, hojeISO)
-                  ? "Aquisição prevista"
-                  : getAcquisitionLabel(renovacao);
+                const eventPresentation = presentRenewalEvent(renovacao, hojeISO);
+                const acquisitionLabel = eventPresentation.state === "private_acquisition"
+                  ? getAcquisitionLabel(renovacao)
+                  : eventPresentation.chip;
 
                 return (
                   <ListCard
@@ -1112,7 +1121,9 @@ export default function RenovacoesPage() {
 
                       <span
                         className={`shrink-0 whitespace-nowrap text-xs font-mono font-medium ${
-                          renovacao.tipo_aquisicao ===
+                          eventPresentation.planned
+                            ? "text-ice"
+                            : renovacao.tipo_aquisicao ===
                             "sus" ||
                           renovacao.tipo_aquisicao ===
                             "gratuito"
@@ -1147,9 +1158,7 @@ export default function RenovacoesPage() {
                       <span
                         className="flex items-center gap-1 font-mono"
                         title={
-                          getEventDateLabel(
-                            renovacao
-                          )
+                          eventPresentation.eventDateLabel
                         }
                       >
                         <Calendar
@@ -1160,9 +1169,7 @@ export default function RenovacoesPage() {
                         />
 
                         {formatDateDisplay(
-                          getEffectiveAcquisitionDate(
-                            renovacao
-                          )
+                          eventPresentation.eventDate
                         )}
                       </span>
 
@@ -1184,7 +1191,9 @@ export default function RenovacoesPage() {
 
                       <span
                         className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          isPrescriptionOnly(
+                          eventPresentation.planned
+                            ? "border-ice/20 bg-ice/10 text-ice"
+                            : isPrescriptionOnly(
                             renovacao
                           )
                             ? "border-violet-400/20 bg-violet-400/10 text-violet-300"
@@ -1219,9 +1228,7 @@ export default function RenovacoesPage() {
                           />
                         )}
 
-                        {getAcquisitionTypeLabel(
-                          renovacao
-                        )}
+                        {eventPresentation.title}
                       </span>
 
                       {/* VALIDADE */}

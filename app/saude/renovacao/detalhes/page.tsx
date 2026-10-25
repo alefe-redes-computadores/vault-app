@@ -4,6 +4,8 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
+import { presentRenewalEvent } from "@/lib/health-supply/renewal-event-presentation";
+import { useLocalDay } from "@/hooks/useLocalDay";
 
 import {
   Suspense,
@@ -191,6 +193,7 @@ function getPriceLabel(
 
 function DetalhesRenovacaoContent() {
  const {retiradas}=useRetiradas();
+  const hojeISO=useLocalDay();
   const router =
     useRouter();
 
@@ -575,16 +578,11 @@ function DetalhesRenovacaoContent() {
       )
     );
 
+  const eventPresentation = renovacao ? presentRenewalEvent(renovacao, hojeISO) : null;
+  const linkedWithdrawals = useMemo(() => retiradas.filter(item => item.renovacao_origem_id === renovacao?.id || item.renovacao_realizada_id === renovacao?.id), [retiradas, renovacao?.id]);
+
   const tipoAquisicaoLabel =
-    somenteReceita
-      ? "Somente receita"
-      : renovacao?.tipo_aquisicao ===
-          "sus"
-        ? "SUS / Governo"
-        : renovacao?.tipo_aquisicao ===
-            "gratuito"
-          ? "Gratuito"
-          : "Particular";
+    eventPresentation?.title || "Evento de medicamento";
 
   // ==========================================================
   // DELETE
@@ -1246,7 +1244,7 @@ function DetalhesRenovacaoContent() {
                     }
                   />
 
-                  Ver Receita / Comprovante
+                  {eventPresentation?.attachmentLabel || "Ver anexo"}
                 </div>
 
                 <ExternalLink
@@ -1691,16 +1689,14 @@ function DetalhesRenovacaoContent() {
                 </p>
 
                 <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-                  {somenteReceita
-                    ? "Este registro representa somente a renovação da receita. Ele atualiza a referência clínica da prescrição sem registrar compra, retirada ou entrada de estoque."
-                    : "Esta tela representa esta renovação específica. Mudanças posteriores no medicamento não alteram o custo, a forma de aquisição nem a referência histórica mostrados neste registro."}
+                  {eventPresentation?.effect}
                 </p>
               </div>
             </div>
           </motion.div>
         </section>
 
-        {retiradas.filter(r=>r.renovacao_realizada_id===renovacao.id).map(r=><div key={r.id} className="px-5 pt-4"><button type="button" onClick={()=>router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id!)}`)} className="min-h-[44px] w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-xs font-bold text-emerald-400">Recebimento vinculado à retirada de {formatDateDisplay(r.data)} · ver retirada</button></div>)}
+        {(renovacao.document_id || linkedWithdrawals.length > 0) && <section aria-label="Relações deste evento" className="mx-5 mt-4 space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4"><div><p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Relações comprovadas</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Documento e retiradas</h2></div>{renovacao.document_id && <button type="button" onClick={()=>router.push(`/saude/documentos/detalhes?id=${encodeURIComponent(renovacao.document_id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.06] px-3 text-left text-xs font-semibold text-violet-200"><FileText size={14}/><span className="flex-1">Abrir documento de saúde vinculado</span><ChevronRight size={14}/></button>}{linkedWithdrawals.map(item=><button type="button" key={item.id} onClick={()=>router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(item.id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 text-left text-xs font-semibold text-emerald-300"><Receipt size={14}/><span className="flex-1">{item.renovacao_realizada_id===renovacao.id?"Recebimento":"Origem"} · retirada de {formatDateDisplay(item.data)}</span><ChevronRight size={14}/></button>)}</section>}
         <div className="px-5 pt-4"><HealthSupplyEntry medicamentoId={renovacao.medicamento_id}/></div>
 
         <ContextualHealthIntelligence

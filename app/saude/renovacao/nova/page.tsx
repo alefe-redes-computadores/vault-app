@@ -3,6 +3,7 @@
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
+import {MedicationEventBoundary} from "@/components/saude/MedicationEventBoundary";
 
 import {
   Suspense,
@@ -2102,6 +2103,7 @@ function NovaRenovacaoContent() {
 
           {/* VAULT_ACQUISITION_ONLY_V93
               Receita, validade e planejamento vivem em nova-receita. */}
+          <MedicationEventBoundary mode="acquisition"/>
 
           {/* ==================================================
               AQUISIÇÃO

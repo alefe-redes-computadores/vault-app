@@ -2,6 +2,7 @@
 "use client";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { CustomDatePicker } from "@/components/DatePicker";
+import { MedicationEventBoundary } from "@/components/saude/MedicationEventBoundary";
 
 import {
   Suspense,
@@ -552,6 +553,7 @@ function NovaReceitaContent() {
             <button type="button" aria-pressed={planOnly} onClick={() => setPlanOnly(true)} className={`min-h-11 rounded-xl px-2 text-xs font-semibold ${planOnly ? "bg-violet-400/15 text-violet-200" : "text-ink-muted"}`}>Vou solicitar</button>
             <button type="button" aria-pressed={!planOnly} onClick={() => setPlanOnly(false)} className={`min-h-11 rounded-xl px-2 text-xs font-semibold ${!planOnly ? "bg-emerald-400/15 text-emerald-200" : "text-ink-muted"}`}>Já recebi</button>
           </div>
+          <MedicationEventBoundary mode={planOnly ? "prescription_plan" : "prescription"}/>
 
           <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4">
             <div>
