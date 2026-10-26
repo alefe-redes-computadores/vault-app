@@ -100,6 +100,28 @@ function storageKey(personId: string, semanticKey: string): string {
   return `${STORAGE_PREFIX}${personId}:${semanticKey}`;
 }
 
+/** Mantém a memória anti-spam limitada por pessoa e descarta entradas inválidas/antigas. */
+export function pruneHealthInsightMemory(personId: string, now = Date.now(), maxEntries = 64): number {
+  if (typeof window === "undefined") return 0;
+  const prefix = `${STORAGE_PREFIX}${personId}:`;
+  const rows: Array<{ key: string; time: number }> = [];
+  let removed = 0;
+  try {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem(key) || "null") as Partial<InsightMemoryEntry> | null;
+        const time = Number(parsed?.lastDeliveredAt);
+        if (!Number.isFinite(time) || now - time > 90 * 24 * 60 * 60 * 1000) { window.localStorage.removeItem(key); removed += 1; index -= 1; }
+        else rows.push({ key, time });
+      } catch { window.localStorage.removeItem(key); removed += 1; index -= 1; }
+    }
+    rows.sort((a, b) => b.time - a.time).slice(Math.max(0, maxEntries)).forEach(row => { window.localStorage.removeItem(row.key); removed += 1; });
+  } catch { return removed; }
+  return removed;
+}
+
 export function readHealthInsightMemory(
   personId: string,
   insight: HealthInsight

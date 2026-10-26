@@ -22,6 +22,7 @@ import {
 } from "@/lib/health-intelligence/notification-policy";
 import {
   recordHealthInsightDelivery,
+  pruneHealthInsightMemory,
   shouldDeliverHealthInsight,
 } from "@/lib/health-intelligence/insight-memory";
 
@@ -48,6 +49,7 @@ export function InsightNotificationReconciler() {
     if (!isVaultNative() || !activePersonId || !user?.id || settings===undefined) return;
     if (!isNotificationPreferenceEnabled()) return;
     if (!isVaultNotificationCategoryEnabled("insights")) return;
+    pruneHealthInsightMemory(activePersonId);
 
     const ledger=(settings?.brain_v5_alert_ledger||[]).filter(item=>item.person_id===activePersonId);
     const snoozedIds=new Set(ledger.filter(item=>brainV5IsSnoozed(item)).map(item=>item.insight_id));

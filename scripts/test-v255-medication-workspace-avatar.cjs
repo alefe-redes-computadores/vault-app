@@ -14,7 +14,7 @@ ok(workspace.includes('event.status === "agendada"')&&workspace.includes('overdu
 ok(workspace.includes('sameOwner(input.medication, event)'),'histórico respeita usuário e pessoa ativa');
 ok(decision.includes('buildMedicationJourneySnapshot')&&decision.includes('medicationJourneyEvidence'),'Brain usa a linha do tempo canônica');
 ok(list.includes('indexMedicationRenewals(renovacoes)')&&list.includes('title={careDecision.explanation}'),'listagem compacta reutiliza índice e explica a ação');
-ok(detail.includes('<MedicationJourneySummary snapshot={journeySnapshot}/>'),'detalhe apresenta jornada operacional');
+ok(detail.includes('<MedicationJourneySummary snapshot={journeySnapshot}')&&detail.includes('medicationId={med.id}'),'detalhe apresenta jornada operacional contextual');
 ok(summary.includes('Receita, aquisição e retirada são eventos independentes'),'detalhe não mistura eventos');
 ok(avatar.includes('Ausência de registro não é falha clínica'),'Avatar preserva incerteza clínica');
 ok(health.includes('<MedicationContinuityAvatarSummary'),'Avatar recebe continuidade sem nova consulta');

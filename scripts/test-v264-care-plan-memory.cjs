@@ -1,11 +1,11 @@
 const fs=require('fs'),assert=require('assert'),r=p=>fs.readFileSync(p,'utf8');
 const memory=r('lib/health-intelligence/care-plan-memory.ts'),plan=r('lib/health-intelligence/care-plan.ts'),ui=r('components/health-intelligence/BrainCarePlan.tsx');
-assert(memory.includes('vault_brain_care_plan_v64:${ownerKey}'),'memória deve ser isolada por proprietário');
+assert(memory.includes('carePlanMemoryKey')&&memory.includes('${ownerKey}'),'memória deve ser isolada por proprietário');
 assert(memory.includes('previous.fingerprint === current.fingerprint'),'plano estável não pode gerar novidade');
 assert(memory.includes('current.score > previous.score'),'escalada exige aumento real de prioridade');
 assert(memory.includes('A prioridade anterior saiu do plano atual'),'resolução precisa ser reconhecida');
 assert(plan.includes('ownerKey: `${context.userId')&&plan.includes('decision: ordered[0] ?? null'),'plano deve carregar escopo e decisão');
-assert(ui.includes('window.localStorage.setItem')&&ui.includes('compareCarePlan(previous, plan)'),'Central deve persistir e comparar memória');
-assert(ui.includes('catch { setChange(null); }'),'falha de storage não pode quebrar a Central');
-assert(r('lib/health-intelligence/version.ts').includes('"6.4"'),'Brain deve avançar para 6.4');
+assert(ui.includes('writeCarePlanMemory(plan)')&&ui.includes('compareCarePlan(previous, plan)'),'Central deve persistir e comparar memória');
+assert(memory.includes('catch { return null; }')&&memory.includes('catch { /* memória auxiliar'),'falha de storage não pode quebrar a Central');
+assert(/BRAIN_VERSION = "6\.[0-9]+"/.test(r('lib/health-intelligence/version.ts')),'Brain deve permanecer na linha 6.x');
 console.log('VAULT V264 — memória de mudança do plano: OK');

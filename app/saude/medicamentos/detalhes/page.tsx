@@ -3257,7 +3257,7 @@ function MedicamentoDetalhesContent() {
               </button>
             </section>
           )}
-          <MedicationJourneySummary snapshot={journeySnapshot}/>
+          <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
           <HealthSupplyEntry medicamentoId={med.id!}/>
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
           {med.id && activePersonId === med.person_id && (

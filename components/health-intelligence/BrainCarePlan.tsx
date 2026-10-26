@@ -3,7 +3,7 @@
 import { BrainCircuit, CalendarClock, ChevronRight, CircleDollarSign, MessageCircle, Search } from "lucide-react";
 import type { BrainCarePlan as BrainCarePlanModel, BrainCarePlanLane } from "@/lib/health-intelligence/care-plan";
 import { useEffect, useState } from "react";
-import { carePlanMemoryKey, compareCarePlan, snapshotCarePlan, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
+import { compareCarePlan, readCarePlanMemory, writeCarePlanMemory, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
 
 const laneMeta: Record<BrainCarePlanLane, { label: string; tone: string; icon: typeof CalendarClock }> = {
   now: { label: "Resolver agora", tone: "border-rose-400/25 bg-rose-400/[0.07] text-rose-200", icon: CalendarClock },
@@ -21,13 +21,9 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
 }) {
   const [change, setChange] = useState<CarePlanChange | null>(null);
   useEffect(() => {
-    try {
-      const key = carePlanMemoryKey(plan.ownerKey);
-      const raw = window.localStorage.getItem(key);
-      const previous = raw ? JSON.parse(raw) : null;
-      setChange(compareCarePlan(previous, plan));
-      window.localStorage.setItem(key, JSON.stringify(snapshotCarePlan(plan)));
-    } catch { setChange(null); }
+    const previous = readCarePlanMemory(plan.ownerKey);
+    setChange(compareCarePlan(previous, plan));
+    writeCarePlanMemory(plan);
   }, [plan]);
   const visible = compact ? plan.focus.slice(0, 2) : plan.focus;
   return <section aria-label="Plano do Brain" className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[0.07] via-surface to-emerald-400/[0.04]">
