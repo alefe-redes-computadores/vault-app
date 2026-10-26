@@ -21,6 +21,6 @@ ok(forecast.includes('item.id ? `/saude/retiradas/detalhes')&&forecast.includes(
 ok(forecast.includes('event.id ? `/saude/renovacao/detalhes')&&forecast.includes('/saude/renovacao?medicamento_id='),'planejamento sem id usa listagem segura');
 ok(central.includes('forecast={health.careCommand?.forecast}'),'Central reutiliza previsão compartilhada');
 ok(home.includes('primaryCareCommand')&&home.includes('primaryCareCommand.reason'),'Home explica a próxima ação real');
-ok(today.includes('<CareCommandStrip')&&strip.includes('action.lane !== "now" && action.lane !== "next"'),'Hoje mostra somente ação operacional atual ou próxima');
+ok(today.includes('<CareCommandStrip')&&(strip.includes('action.lane !== "now" && action.lane !== "next"')||strip.includes('action.lane !== "now" && action.lane !== "prepare"')),'Hoje mostra somente ação operacional atual ou próxima');
 ok(avatar.includes('command?.readiness')&&avatar.includes("(!portfolio.items.length && !forecast?.actions.length)"),'Avatar não esconde ação sem processo formal');
 console.log('\nVAULT V258 — COMANDO COMPARTILHADO + HOME/HOJE + AVATAR: OK');

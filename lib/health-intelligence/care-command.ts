@@ -10,6 +10,7 @@ export type CareCommandSnapshot = {
   primary: CareForecastAction | null;
   counts: Record<CareForecastAction["lane"], number>;
   plan: BrainCarePlan;
+  decision: BrainCarePlan["focus"][number] | null;
 };
 
 /**
@@ -33,5 +34,5 @@ export function buildCareCommandSnapshot(context: HealthInsightContext): CareCom
     return acc;
   }, { now: 0, next: 0, follow_up: 0, review_data: 0 });
   const plan = buildBrainCarePlan(context, forecast, readiness);
-  return { forecast, readiness, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan };
+  return { forecast, readiness, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan, decision: plan.focus[0] ?? null };
 }

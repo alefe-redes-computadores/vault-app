@@ -1344,9 +1344,9 @@ export default function HomePage() {
     null;
 
   const primaryCareCommand =
-    healthIntelligence.careCommand?.primary?.lane === "now" ||
-    healthIntelligence.careCommand?.primary?.lane === "next"
-      ? healthIntelligence.careCommand.primary
+    healthIntelligence.careCommand?.decision?.lane === "now" ||
+    healthIntelligence.careCommand?.decision?.lane === "prepare"
+      ? healthIntelligence.careCommand.decision
       : null;
 
   // VAULT_HOME_INTELLIGENCE_ORCHESTRATION_V96

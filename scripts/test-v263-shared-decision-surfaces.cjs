@@ -1,0 +1,13 @@
+const fs=require('fs'),assert=require('assert');
+const r=p=>fs.readFileSync(p,'utf8');
+const command=r('lib/health-intelligence/care-command.ts');
+const today=r('components/saude/CareCommandStrip.tsx');
+const avatar=r('components/saude/AvatarCareReadiness.tsx');
+const home=r('app/page.tsx');
+assert(command.includes('decision: plan.focus[0] ?? null'),'comando deve publicar decisão única');
+assert(today.includes('command?.decision')&&today.includes('priorityScore'),'Hoje deve usar decisão explicável');
+assert(avatar.includes('command?.decision')&&avatar.includes('planFocus.priorityScore'),'Avatar deve usar a mesma decisão');
+assert(home.includes('careCommand?.decision?.lane')&&!home.includes('careCommand?.primary?.lane'),'Home deve usar a decisão canônica');
+assert(today.includes('confidence === "high"')&&avatar.includes('confidence === "high"'),'superfícies devem mostrar confiança');
+assert(r('lib/health-intelligence/version.ts').includes('"6.2"'),'Brain deve avançar para 6.2');
+console.log('VAULT V263 — decisão compartilhada Home/Hoje/Avatar: OK');

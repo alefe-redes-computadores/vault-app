@@ -12,5 +12,5 @@ assert(plan.includes('associação temporal cautelosa'), 'associação não pode
 assert(plan.includes('b.priorityScore - a.priorityScore'), 'ordenação precisa ser determinística');
 assert(card.includes('Prioridade {item.priorityScore}'), 'Central precisa mostrar prioridade');
 assert(card.includes('confiança'), 'Central precisa mostrar confiança');
-assert(version.includes('"6.1"'), 'Brain deve avançar para 6.1');
+assert(/BRAIN_VERSION = "6\.[0-9]+"/.test(version), 'Brain deve permanecer na linha canônica 6.x');
 console.log('VAULT V262 — prioridade explicável e autoridade de evidência: OK');

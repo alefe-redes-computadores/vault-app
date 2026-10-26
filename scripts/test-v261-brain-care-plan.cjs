@@ -20,7 +20,7 @@ ok(plan.includes("status !== \"cancelada\"") && plan.includes("item.data >= fore
 ok(command.includes("buildBrainCarePlan") && command.includes("plan: BrainCarePlan"), "comando compartilhado é a fonte única do plano");
 ok(central.includes("<BrainCarePlan plan={health.careCommand.plan}"), "Central apresenta o plano compartilhado");
 ok(component.includes("fato registrado, projeção e padrão") && component.includes("projectedCostCoverage30d"), "UI explica evidência e cobertura financeira");
-ok(avatar.includes("command?.plan.focus[0]") && avatar.includes("planFocus?.href"), "Avatar abre a etapa contextual real");
+ok((avatar.includes("command?.plan.focus[0]") || avatar.includes("command?.decision")) && avatar.includes("planFocus?.href"), "Avatar abre a etapa contextual real");
 ok(/BRAIN_VERSION = "6\.[0-9]+"/.test(version), "Brain V6 possui versão canônica");
 ok(manifest.base === "0837f97dd955499c86924ca8c97272154ba8a11f" && manifest.publish === false && manifest.database.migrations.length === 0, "manifesto Surgery 2.1 fixa base, banco e publicação separada");
 
