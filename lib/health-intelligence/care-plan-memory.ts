@@ -10,6 +10,7 @@ const validLane = new Set<BrainCarePlanLane>(["now", "prepare", "discuss", "obse
 export const carePlanFingerprint = (plan: BrainCarePlan) => plan.items.map(item => `${item.id}:${item.lane}:${item.evidenceKind}:${item.priorityScore}`).sort().join("|");
 export const carePlanMemoryKey = (ownerKey: string) => `vault_brain_care_plan_v65:${ownerKey}`;
 export const carePlanHistoryKey = (ownerKey: string) => `vault_brain_care_plan_history_v67:${ownerKey}`;
+export const CARE_PLAN_HISTORY_EVENT = "vault:care-plan-history-updated";
 export function snapshotCarePlan(plan: BrainCarePlan): CarePlanMemory {
   return { version: 2, fingerprint: carePlanFingerprint(plan), decisionId: plan.decision?.id ?? null, decisionTitle: plan.decision?.title ?? null, evidenceKind: plan.decision?.evidenceKind ?? null, lane: plan.decision?.lane ?? null, score: plan.decision?.priorityScore ?? 0, savedAt: new Date().toISOString() };
 }
@@ -33,13 +34,19 @@ export function writeCarePlanMemory(plan: BrainCarePlan): void {
     if (change.kind !== "stable") {
       const history = readCarePlanHistory(plan.ownerKey);
       const entry: CarePlanHistoryEntry = { ...change, id: `${current.savedAt}:${current.decisionId || "none"}`, savedAt: current.savedAt, score: current.score, evidenceKind: current.evidenceKind };
-      window.localStorage.setItem(carePlanHistoryKey(plan.ownerKey), JSON.stringify([entry, ...history].slice(0, 12)));
+      const deduped = history[0]?.kind === entry.kind && history[0]?.currentDecisionTitle === entry.currentDecisionTitle && history[0]?.score === entry.score ? history.slice(1) : history;
+      window.localStorage.setItem(carePlanHistoryKey(plan.ownerKey), JSON.stringify([entry, ...deduped].slice(0, 12)));
+      window.dispatchEvent(new CustomEvent(CARE_PLAN_HISTORY_EVENT, { detail: { ownerKey: plan.ownerKey } }));
     }
   } catch { /* memória auxiliar não interrompe o cuidado */ }
 }
 export function readCarePlanHistory(ownerKey: string): CarePlanHistoryEntry[] {
   if (typeof window === "undefined") return [];
-  try { const value=JSON.parse(window.localStorage.getItem(carePlanHistoryKey(ownerKey))||"[]"); return Array.isArray(value)?value.filter((item):item is CarePlanHistoryEntry=>Boolean(item&&typeof item.id==="string"&&typeof item.savedAt==="string"&&typeof item.label==="string"&&["first","changed","escalated","resolved"].includes(item.kind))).slice(0,12):[]; } catch { return []; }
+  try { const value=JSON.parse(window.localStorage.getItem(carePlanHistoryKey(ownerKey))||"[]"), cutoff=Date.now()-180*24*60*60*1000; return Array.isArray(value)?value.filter((item):item is CarePlanHistoryEntry=>Boolean(item&&typeof item.id==="string"&&typeof item.savedAt==="string"&&Date.parse(item.savedAt)>=cutoff&&typeof item.label==="string"&&["first","changed","escalated","resolved"].includes(item.kind))).slice(0,12):[]; } catch { return []; }
+}
+export function formatCarePlanHistory(items: readonly CarePlanHistoryEntry[], limit=5): string {
+  if (!items.length) return "";
+  return ["Mudanças recentes acompanhadas pelo Brain:", ...items.slice(0,limit).map(item=>`• ${item.label}${item.currentDecisionTitle?`: ${item.currentDecisionTitle}`:""} (${new Date(item.savedAt).toLocaleDateString("pt-BR")})`), "Histórico descritivo do aplicativo; não representa diagnóstico nem evolução clínica confirmada."].join("\n");
 }
 export function compareCarePlan(previous: CarePlanMemory | null, plan: BrainCarePlan): CarePlanChange {
   const current = snapshotCarePlan(plan);

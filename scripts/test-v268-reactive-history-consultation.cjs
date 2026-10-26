@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('assert'),r=p=>fs.readFileSync(p,'utf8');
+const memory=r('lib/health-intelligence/care-plan-memory.ts'),ui=r('components/health-intelligence/CarePlanHistory.tsx'),report=r('app/saude/registros/relatorio/page.tsx');
+assert(memory.includes('CARE_PLAN_HISTORY_EVENT')&&memory.includes('dispatchEvent(new CustomEvent'),'escrita publica evento reativo');
+assert(ui.includes('addEventListener(CARE_PLAN_HISTORY_EVENT')&&ui.includes('addEventListener("storage"'),'UI reage na aba atual e entre abas');
+assert(memory.includes('180*24*60*60*1000')&&memory.includes('.slice(0,12)'),'histórico possui retenção e limite');
+assert(memory.includes('history[0]?.kind === entry.kind')&&memory.includes('history.slice(1)'),'concorrência imediata não duplica estado');
+assert(memory.includes('formatCarePlanHistory')&&memory.includes('não representa diagnóstico'),'exportação preserva limite clínico');
+assert(report.includes('formatCarePlanHistory(readCarePlanHistory(ownerKey))')&&report.includes('join("\\n\\n")'),'resumo copiado inclui mudanças do Brain');
+assert(r('lib/health-intelligence/version.ts').includes('"6.8"'),'Brain avança para 6.8');
+console.log('VAULT V268 — HISTÓRICO REATIVO + CONSULTA COMPARTILHÁVEL: OK');

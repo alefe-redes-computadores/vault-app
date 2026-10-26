@@ -6,5 +6,5 @@ assert(memory.includes('readCarePlanHistory')&&memory.includes('Array.isArray'),
 assert(ui.includes('O que mudou no plano')&&ui.includes('fato registrado')&&ui.includes('projeção'),'UI preserva autoridade da evidência');
 assert(central.includes('<CarePlanHistory ownerKey={plan.ownerKey}'),'Central mostra evolução do plano');
 assert(report.includes('<CarePlanHistory ownerKey={intelligence.careCommand.plan.ownerKey}'),'relatório leva mudanças para preparação da consulta');
-assert(r('lib/health-intelligence/version.ts').includes('"6.7"'),'Brain avança para 6.7');
+assert(/BRAIN_VERSION = "6\.[0-9]+"/.test(r('lib/health-intelligence/version.ts')),'Brain permanece na linha canônica 6.x');
 console.log('VAULT V267 — HISTÓRICO DO PLANO + CONSULTA: OK');

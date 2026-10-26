@@ -22,6 +22,7 @@ import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCov
 import { buildCareDocumentReadiness } from "@/lib/health-intelligence/care-document-readiness";
 import { CareDocumentReadiness } from "@/components/saude/CareDocumentReadiness";
 import { CarePlanHistory } from "@/components/health-intelligence/CarePlanHistory";
+import { formatCarePlanHistory, readCarePlanHistory } from "@/lib/health-intelligence/care-plan-memory";
 
 const periods: ClinicalReportPeriod[] = [7, 30, 90];
 const displayDate = (value: string) => { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; };
@@ -48,7 +49,7 @@ export default function ClinicalReportPage() {
     if (!consultation || typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
       setCopyStatus("unavailable");return;
     }
-    try { await navigator.clipboard.writeText(formatConsultationBrief(consultation));setCopyStatus("copied"); }
+    try { const ownerKey=intelligence.careCommand?.plan.ownerKey;const changes=ownerKey?formatCarePlanHistory(readCarePlanHistory(ownerKey)):"";await navigator.clipboard.writeText([formatConsultationBrief(consultation),changes].filter(Boolean).join("\n\n"));setCopyStatus("copied"); }
     catch { setCopyStatus("unavailable"); }
   };
 
