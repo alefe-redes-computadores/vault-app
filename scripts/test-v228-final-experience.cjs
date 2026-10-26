@@ -56,7 +56,7 @@ assert.equal(buildSymptomTrendObservations({...context,registrosSaude:symptoms.s
 // Real composed app files, not only synthetic anchors.
 const requires={
  'app/hoje/page.tsx':['<DoseMonthOverview','personId={activePersonId}','import { DoseMonthOverview }'],
- 'app/saude/minha-saude/page.tsx':['<HealthTrendsExplorer','<CareContinuityAvatarSummary','import { HealthTrendsExplorer }'],
+ 'app/saude/minha-saude/page.tsx':['<HealthTrendsExplorer','<AvatarCareWorkspace','import { HealthTrendsExplorer }'],
  'app/saude/tratamentos/detalhes/page.tsx':['<TreatmentSymptomTimeline dossier={careDossier}','<TreatmentVisitBrief dossier={careDossier}'],
  'components/saude/TreatmentCareLinks.tsx':['Aquisições vinculadas','Documentos relacionados','/saude/renovacao/detalhes?id=','/saude/documentos/detalhes?id='],
  'lib/health-insights.ts':['buildSymptomTrendObservations','insights.push(...buildSymptomTrendObservations('],

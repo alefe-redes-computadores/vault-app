@@ -17,5 +17,5 @@ ok(list.includes('indexMedicationRenewals(renovacoes)')&&list.includes('title={c
 ok(detail.includes('<MedicationJourneySummary snapshot={journeySnapshot}')&&detail.includes('medicationId={med.id}'),'detalhe apresenta jornada operacional contextual');
 ok(summary.includes('Receita, aquisição e retirada são eventos independentes'),'detalhe não mistura eventos');
 ok(avatar.includes('Ausência de registro não é falha clínica'),'Avatar preserva incerteza clínica');
-ok(health.includes('<MedicationContinuityAvatarSummary'),'Avatar recebe continuidade sem nova consulta');
+ok(health.includes('<AvatarCareWorkspace'),'Avatar recebe continuidade integrada sem nova consulta');
 console.log('\nVAULT V255 — WORKSPACE DE MEDICAMENTOS + AVATAR: OK');

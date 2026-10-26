@@ -14,6 +14,6 @@ ok(readiness.includes("isPrescriptionOnly")&&readiness.includes("isFutureAcquisi
 ok(calibration.includes("never the user's health or adherence")&&calibration.includes("evidence_quality"),"calibração mede o Brain e não o paciente");
 ok(alerts.includes("Cobertura e qualidade")&&alerts.includes("brain.calibration.score")&&alerts.includes("brain.calibration.explanation"),"Central explica qualidade decisória em divulgação progressiva");
 ok(report.includes("CareReadinessSummary")&&report.includes("buildCareReadiness"),"relatório reúne prontidão da linha de cuidado");
-ok(avatar.includes("AvatarCareReadiness")&&avatar.includes("AvatarAssociationSummary"),"Avatar recebe contexto de rota sem perder associações cautelosas");
+ok(avatar.includes("AvatarCareWorkspace"),"Avatar recebe contexto integrado de rota e associações cautelosas");
 ok(supply.includes('if (p.origem === "comprado") continue'),"compra particular continua fora do alerta documental SUS");
 console.log("VAULT V253 — BRAIN CALIBRADO + PRONTIDÃO + AVATAR: OK");

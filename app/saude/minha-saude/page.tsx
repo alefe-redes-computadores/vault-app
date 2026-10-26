@@ -70,15 +70,11 @@ import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsigh
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { HealthInsight } from "@/lib/health-insights";
 import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
-import { CareContinuityAvatarSummary } from "@/components/saude/CareContinuityAvatarSummary";
-import { TemporaryCourseAvatarSummary } from "@/components/saude/TemporaryCourseAvatarSummary";
 import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
-import { AvatarAssociationSummary } from "@/components/saude/AvatarAssociationSummary";
-import { AvatarCareReadiness } from "@/components/saude/AvatarCareReadiness";
 import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCoverage";
-import { MedicationContinuityAvatarSummary } from "@/components/saude/MedicationContinuityAvatarSummary";
+import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 export default function MyHealthPage() {
   const data = useHealthProfile();
@@ -381,11 +377,7 @@ function HealthDashboard({
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
-            <CareContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
-            <MedicationContinuityAvatarSummary context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
-            <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
-            <AvatarAssociationSummary context={intelligence.context} onNavigate={goFromHealth}/>
-            <AvatarCareReadiness context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
+            <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
             {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}
             <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
             <section className="space-y-3">

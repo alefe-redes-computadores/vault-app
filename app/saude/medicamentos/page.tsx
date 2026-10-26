@@ -1191,13 +1191,13 @@ export default function MedicamentosListPage() {
                     </span>
                   )}
 
-                  {careDecision.stage !== "stable" && (
+                  {careDecision.stage !== "stable" && !careAction && (
                     <span title={careDecision.explanation} className={`inline-flex min-h-6 max-w-full items-center rounded-lg border px-2 py-1 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
                       {careDecision.label}
                     </span>
                   )}
 
-                  {supplyRoute && supplyRoute.mode !== "none" && (
+                  {supplyRoute?.mode === "hybrid" && (
                     <span title="Origem baseada nos vínculos e aquisições registrados" className="inline-flex min-h-6 max-w-full items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[9px] font-semibold text-emerald-200">
                       {supplyRoute.labels.join(" + ")}
                     </span>

@@ -27,7 +27,7 @@ const required = {
   'app/saude/medicamentos/novo/page.tsx': ['TemporaryCourseFields', 'replaceTemporaryCourse({'],
   'app/saude/medicamentos/editar/page.tsx': ['TemporaryCourseFields', 'replaceTemporaryCourse({'],
   'lib/health-insights.ts': ['buildTemporaryCourseInsights'],
-  'app/saude/minha-saude/page.tsx': ['TemporaryCourseAvatarSummary'],
+  'components/saude/AvatarCareWorkspace.tsx': ['TemporaryCourseAvatarSummary'],
   'components/PendingDosesModal.tsx': ['Tomei no horário programado'],
   'components/saude/QuickDoseModal.tsx': ['Registrar tomada agora'],
   'scripts/test-v63-release-gate.mjs': ['scripts/test-v229-course-prescription.cjs'],

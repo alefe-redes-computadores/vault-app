@@ -1,0 +1,21 @@
+{
+  "version": "V274",
+  "base": "1cbe2fb2242732e02058c2c010a603bffcff5cfe",
+  "scope": "medicamentos, fornecimento progressivo e workspace integrado do Avatar",
+  "database": "none",
+  "publication": "after-all-gates",
+  "files": [
+    "app/saude/fornecimento/page.tsx",
+    "app/saude/medicamentos/page.tsx",
+    "app/saude/minha-saude/page.tsx",
+    "components/saude/AvatarCareWorkspace.tsx",
+    "components/saude/MedicationJourneySummary.tsx",
+    "scripts/test-v227-care-network-avatar.cjs",
+    "scripts/test-v228-final-experience.cjs",
+    "scripts/test-v229-course-prescription.cjs",
+    "scripts/test-v253-brain-readiness-calibration-avatar.cjs",
+    "scripts/test-v255-medication-workspace-avatar.cjs",
+    "scripts/test-v274-medication-supply-avatar-workspace.cjs",
+    "scripts/test-v63-release-gate.mjs"
+  ]
+}

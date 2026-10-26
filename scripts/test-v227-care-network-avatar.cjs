@@ -56,7 +56,7 @@ assert.match(view,/navigator\.clipboard\.writeText/);assert.match(view,/Copiar r
 assert.match(avatar,/buildCareContinuityOverview/);assert.match(avatar,/Nenhum compartilhamento automático/);
 assert.match(treatmentPage,/consultations:consultas,exams:exames,surgeries:cirurgias,documents:documentosDaPessoa/,'V227: explicitly map names from the page to the dossier contract');
 assert.match(treatmentPage,/<TreatmentVisitBrief dossier=\{careDossier\}/);
-assert.match(healthPage,/<CareContinuityAvatarSummary context=\{intelligence\.context\}/);
+assert.match(healthPage,/<AvatarCareWorkspace context=\{intelligence\.context\}/);
 assert.match(brain,/insights\.push\(\.\.\.buildCareContinuityInsights\(/);
 assert.match(gate,/test-v227-care-network-avatar\.cjs/);
 console.log('VAULT V227 QA: scoped explicit clinical links, dedupe, date validation, consultation readiness, Brain, Avatar and release contract OK');

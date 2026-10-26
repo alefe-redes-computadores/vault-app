@@ -1248,6 +1248,9 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     </div>
                     {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="inline-flex min-h-11 items-center rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="inline-flex min-h-11 items-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
                     <p className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-surface-border/60 px-3 py-2 text-[11px] text-ink-muted" aria-label="Resumo relacional do fornecimento"><span><strong className="text-ink-primary">{processCycles.length}</strong> {processCycles.length===1?"ciclo":"ciclos"}</span><span><strong className="text-ink-primary">{processWithdrawals.length}</strong> {processWithdrawals.length===1?"retirada":"retiradas"}</span><span><strong className="text-ink-primary">{processDocs.length}</strong> {processDocs.length===1?"documento vinculado":"documentos vinculados"}</span></p>
+                    <details className="group rounded-2xl border border-surface-border/60 bg-void/10 px-3 py-1">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary"><span>Histórico e relações do processo</span><span className="flex items-center gap-2 text-[9px] font-normal text-ink-muted">{processWithdrawals.length + processDocs.length + purchases.count} registro(s)<span className="transition group-open:rotate-90">›</span></span></summary>
+                    <div className="vault-deferred space-y-3 border-t border-surface-border/50 py-3">
                     {processWithdrawals.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Retiradas vinculadas a este processo</p>
                       {processWithdrawals.slice(0, 5).map(r => <Link key={r.id} href={`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-surface-raised p-3 text-xs text-ink-primary">
@@ -1285,6 +1288,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       <Link className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-3 py-3 text-center font-semibold text-violet-300" href="/saude/medicamentos">Medicamentos ↗</Link>
                       <Link className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-3 text-center font-semibold text-amber-300" href="/saude/renovacao">Aquisições ↗</Link>
                     </div>
+                    </div>
+                    </details>
                   </div>;
                 })()}
                 {process.protocolo && (
