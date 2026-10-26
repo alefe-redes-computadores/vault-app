@@ -5,6 +5,6 @@ assert(ui.includes('addEventListener(CARE_PLAN_HISTORY_EVENT')&&ui.includes('add
 assert(memory.includes('180*24*60*60*1000')&&memory.includes('.slice(0,12)'),'histórico possui retenção e limite');
 assert(memory.includes('history[0]?.kind === entry.kind')&&memory.includes('history.slice(1)'),'concorrência imediata não duplica estado');
 assert(memory.includes('formatCarePlanHistory')&&memory.includes('não representa diagnóstico'),'exportação preserva limite clínico');
-assert(report.includes('formatCarePlanHistory(readCarePlanHistory(ownerKey))')&&report.includes('join("\\n\\n")'),'resumo copiado inclui mudanças do Brain');
-assert(r('lib/health-intelligence/version.ts').includes('"6.8"'),'Brain avança para 6.8');
+assert(/formatCarePlanHistory\(readCarePlanHistory\((?:ownerKey|plan\.ownerKey)\)\)/.test(report)&&report.includes('join("\\n\\n")'),'resumo copiado inclui mudanças do Brain');
+assert(/BRAIN_VERSION = "6\.[89]"/.test(r('lib/health-intelligence/version.ts')),'Brain preserva V6.8 ou evolução compatível');
 console.log('VAULT V268 — HISTÓRICO REATIVO + CONSULTA COMPARTILHÁVEL: OK');

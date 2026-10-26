@@ -21,12 +21,14 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
   compact?: boolean;
 }) {
   const [change, setChange] = useState<CarePlanChange | null>(null);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     const previous = readCarePlanMemory(plan.ownerKey);
     setChange(compareCarePlan(previous, plan));
     writeCarePlanMemory(plan);
   }, [plan]);
-  const visible = compact ? plan.focus.slice(0, 2) : plan.focus;
+  const visible = compact ? plan.focus.slice(0, 2) : expanded ? plan.items : plan.focus;
+  const formatDate = (value?: string | null) => value ? value.split("-").reverse().join("/") : null;
   return <section aria-label="Plano do Brain" className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[0.07] via-surface to-emerald-400/[0.04]">
     <div className="flex items-start gap-3 px-4 py-3.5">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
@@ -40,9 +42,10 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
     {visible.length ? <div className="space-y-2 p-3">{visible.map(item => {
       const meta = laneMeta[item.lane], Icon = meta.icon;
       return <button key={item.id} type="button" onClick={() => onNavigate(item.href)} className={`flex min-h-[68px] w-full items-center gap-3 rounded-2xl border p-3 text-left active:scale-[0.985] ${meta.tone}`}>
-        <Icon size={17} className="shrink-0"/><span className="min-w-0 flex-1"><span className="block text-[9px] font-semibold uppercase tracking-wide opacity-80">{meta.label} · {item.evidenceKind === "recorded" ? "registrado" : item.evidenceKind === "projected" ? "projeção" : item.evidenceKind === "association" ? "associação" : "dado ausente"}</span><strong className="mt-1 block text-xs text-ink-primary">{item.title}</strong><span className="mt-1 line-clamp-2 block text-[10px] leading-relaxed text-ink-muted">{item.reason}</span><span className="mt-1.5 block font-mono text-[8px] uppercase tracking-wide opacity-70">Prioridade {item.priorityScore} · confiança {item.confidence === "high" ? "alta" : item.confidence === "moderate" ? "moderada" : "limitada"}</span></span><ChevronRight size={16} className="shrink-0 opacity-60"/>
+        <Icon size={17} className="shrink-0"/><span className="min-w-0 flex-1"><span className="block text-[9px] font-semibold uppercase tracking-wide opacity-80">{meta.label} · {item.evidenceKind === "recorded" ? "registrado" : item.evidenceKind === "projected" ? "projeção" : item.evidenceKind === "association" ? "associação" : "dado ausente"}</span><strong className="mt-1 block text-xs text-ink-primary">{item.title}</strong>{(item.dueDate || item.supplyRoute) && <span className="mt-1 flex flex-wrap gap-1.5 text-[8px] text-ink-muted">{item.dueDate && <span className="rounded-full border border-current/15 px-1.5 py-0.5">{formatDate(item.dueDate)}</span>}{item.supplyRoute && <span className="rounded-full border border-current/15 px-1.5 py-0.5">{item.supplyRoute}</span>}{item.relatedCount > 1 && <span className="rounded-full border border-current/15 px-1.5 py-0.5">+{item.relatedCount - 1} etapa(s) relacionada(s)</span>}</span>}<span className="mt-1 line-clamp-2 block text-[10px] leading-relaxed text-ink-muted">{item.reason}</span><span className="mt-1.5 block font-mono text-[8px] uppercase tracking-wide opacity-70">Prioridade {item.priorityScore} · confiança {item.confidence === "high" ? "alta" : item.confidence === "moderate" ? "moderada" : "limitada"}</span></span><ChevronRight size={16} className="shrink-0 opacity-60"/>
       </button>;
     })}</div> : <div className="p-4 text-xs text-emerald-200">Nenhuma etapa prioritária produzida pelos registros atuais.</div>}
+    {!compact && plan.items.length > plan.focus.length ? <button type="button" onClick={() => setExpanded(value => !value)} className="mx-3 mb-3 min-h-11 w-[calc(100%-1.5rem)] rounded-xl border border-surface-border text-[10px] font-semibold text-violet-200">{expanded ? "Mostrar somente prioridades" : `Ver plano completo · ${plan.items.length} etapas`}</button> : null}
     {!compact ? <><div className="flex items-center gap-3 border-t border-surface-border/50 px-4 py-3 text-[9px] text-ink-muted"><CircleDollarSign size={15} className="text-emerald-300"/><span className="min-w-0 flex-1">30 dias: {plan.projectedCost30d > 0 ? `${brl(plan.projectedCost30d)} estimados` : "sem custo projetado conhecido"} · cobertura {plan.projectedCostCoverage30d}%</span></div><div className="p-3 pt-0"><CarePlanHistory ownerKey={plan.ownerKey}/></div></> : null}
   </section>;
 }

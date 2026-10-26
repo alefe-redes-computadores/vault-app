@@ -7,7 +7,7 @@ export type CarePlanHistoryEntry = CarePlanChange & { id: string; savedAt: strin
 const laneRank: Record<BrainCarePlanLane, number> = { now: 4, prepare: 3, discuss: 2, observe: 1 };
 const validEvidence = new Set<BrainCarePlanEvidence>(["recorded", "projected", "association", "missing_data"]);
 const validLane = new Set<BrainCarePlanLane>(["now", "prepare", "discuss", "observe"]);
-export const carePlanFingerprint = (plan: BrainCarePlan) => plan.items.map(item => `${item.id}:${item.lane}:${item.evidenceKind}:${item.priorityScore}`).sort().join("|");
+export const carePlanFingerprint = (plan: BrainCarePlan) => plan.items.map(item => `${item.id}:${item.lane}:${item.evidenceKind}:${item.priorityScore}:${item.dueDate || ""}:${item.supplyRoute || ""}:${item.relatedCount}`).sort().join("|");
 export const carePlanMemoryKey = (ownerKey: string) => `vault_brain_care_plan_v65:${ownerKey}`;
 export const carePlanHistoryKey = (ownerKey: string) => `vault_brain_care_plan_history_v67:${ownerKey}`;
 export const CARE_PLAN_HISTORY_EVENT = "vault:care-plan-history-updated";

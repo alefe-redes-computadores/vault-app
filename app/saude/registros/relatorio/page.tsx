@@ -23,6 +23,7 @@ import { buildCareDocumentReadiness } from "@/lib/health-intelligence/care-docum
 import { CareDocumentReadiness } from "@/components/saude/CareDocumentReadiness";
 import { CarePlanHistory } from "@/components/health-intelligence/CarePlanHistory";
 import { formatCarePlanHistory, readCarePlanHistory } from "@/lib/health-intelligence/care-plan-memory";
+import { formatBrainCarePlan } from "@/lib/health-intelligence/care-plan";
 
 const periods: ClinicalReportPeriod[] = [7, 30, 90];
 const displayDate = (value: string) => { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; };
@@ -49,7 +50,7 @@ export default function ClinicalReportPage() {
     if (!consultation || typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
       setCopyStatus("unavailable");return;
     }
-    try { const ownerKey=intelligence.careCommand?.plan.ownerKey;const changes=ownerKey?formatCarePlanHistory(readCarePlanHistory(ownerKey)):"";await navigator.clipboard.writeText([formatConsultationBrief(consultation),changes].filter(Boolean).join("\n\n"));setCopyStatus("copied"); }
+    try { const plan=intelligence.careCommand?.plan;const changes=plan?formatCarePlanHistory(readCarePlanHistory(plan.ownerKey)):"";const currentPlan=plan?formatBrainCarePlan(plan):"";await navigator.clipboard.writeText([formatConsultationBrief(consultation),currentPlan,changes].filter(Boolean).join("\n\n"));setCopyStatus("copied"); }
     catch { setCopyStatus("unavailable"); }
   };
 
