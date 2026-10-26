@@ -1,0 +1,33 @@
+{
+  "id": "VAULT-V261",
+  "title": "Brain V6 care plan",
+  "base": "0837f97dd955499c86924ca8c97272154ba8a11f",
+  "files": [
+    "app/inteligencia/page.tsx",
+    "components/health-intelligence/BrainCarePlan.tsx",
+    "components/saude/AvatarCareReadiness.tsx",
+    "lib/health-intelligence/care-command.ts",
+    "lib/health-intelligence/care-plan.ts",
+    "lib/health-intelligence/version.ts",
+    "scripts/test-v261-brain-care-plan.cjs",
+    "scripts/test-v194-intelligence-command.cjs",
+    "scripts/test-v63-release-gate.mjs",
+    "scripts/surgery21/manifests/v261.json"
+  ],
+  "tests": {
+    "focused": [
+      "scripts/test-v261-brain-care-plan.cjs",
+      "scripts/test-v258-shared-care-command-surfaces.cjs",
+      "scripts/test-v257-brain-forecast-agenda-avatar.cjs",
+      "scripts/test-v252-brain-associations-supply-routes.cjs"
+    ],
+    "typescript": "node node_modules/typescript/bin/tsc --noEmit",
+    "fullGate": "node scripts/test-v63-release-gate.mjs"
+  },
+  "database": {
+    "migrations": [],
+    "destructive": false
+  },
+  "publish": false,
+  "policy": "Aplicação e publicação são operações separadas; testes afetados não substituem o gate completo."
+}

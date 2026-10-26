@@ -1,6 +1,7 @@
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCareForecast, type CareForecast, type CareForecastAction } from "./care-forecast";
 import { buildCareReadiness, type CareReadinessPortfolio } from "./care-readiness";
+import { buildBrainCarePlan, type BrainCarePlan } from "./care-plan";
 
 export type CareCommandSnapshot = {
   forecast: CareForecast;
@@ -8,6 +9,7 @@ export type CareCommandSnapshot = {
   surfaceActions: CareForecastAction[];
   primary: CareForecastAction | null;
   counts: Record<CareForecastAction["lane"], number>;
+  plan: BrainCarePlan;
 };
 
 /**
@@ -30,5 +32,6 @@ export function buildCareCommandSnapshot(context: HealthInsightContext): CareCom
     acc[action.lane] += 1;
     return acc;
   }, { now: 0, next: 0, follow_up: 0, review_data: 0 });
-  return { forecast, readiness, surfaceActions, primary: surfaceActions[0] ?? null, counts };
+  const plan = buildBrainCarePlan(context, forecast, readiness);
+  return { forecast, readiness, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan };
 }

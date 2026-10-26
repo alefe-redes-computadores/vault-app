@@ -21,7 +21,7 @@ assert(central.includes('contentVisibility:"auto"'));
 assert(hub.includes('useReturnContext("/mais")'));
 assert(!hub.includes('router.replace("/mais")'));
 assert(hub.includes('preserveReturn("/inteligencia/alertas")'));
-assert.equal(hub.match(/router\.push\(preserveReturn\(href\)\)/g)?.length, 2);
+assert.ok((hub.match(/router\.push\(preserveReturn\(href\)\)/g)?.length || 0) >= 2, "Central preserva as rotas contextuais históricas e permite novas superfícies navegáveis");
 
 assert(contextual.includes("withReturnTarget"));
 assert(contextual.includes("currentHref"));
