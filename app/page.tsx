@@ -1395,7 +1395,7 @@ export default function HomePage() {
           return {
             eyebrow: primaryCareCommand.lane === "now" ? "Ação agora" : "Próxima etapa",
             title: primaryCareCommand.title,
-            description: primaryCareCommand.reason,
+            description: [primaryCareCommand.reason, primaryCareCommand.supplyRoute ? `Origem: ${primaryCareCommand.supplyRoute}.` : ""].filter(Boolean).join(" "),
             color: primaryCareCommand.lane === "now" ? "#FB7185" : "#FBBF24",
           };
         }

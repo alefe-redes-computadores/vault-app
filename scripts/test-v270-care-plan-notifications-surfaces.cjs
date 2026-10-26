@@ -1,0 +1,22 @@
+const fs=require('fs'),assert=require('assert'),r=p=>fs.readFileSync(p,'utf8');
+const policy=r('lib/health-intelligence/care-plan-notification.ts');
+const reconciler=r('components/InsightNotificationReconciler.tsx');
+const providers=r('components/Providers.tsx');
+const legacy=r('components/HealthReminderReconciler.tsx');
+const strip=r('components/saude/CareCommandStrip.tsx');
+const home=r('app/page.tsx');
+
+assert(policy.includes('item.lane!=="now"')&&policy.includes('item.evidenceKind!=="recorded"')&&policy.includes('item.confidence==="limited"'),'push exige fato atual com confiança suficiente');
+assert(policy.includes('previous.signature!==signature')&&policy.includes('item.priorityScore>previous.score'),'memória reabre somente por mudança ou escalada');
+assert(policy.includes('vault_brain_care_notification_v70:')&&policy.includes('ownerKey'),'memória é isolada por proprietário');
+assert(policy.includes('.slice(0,240)')&&policy.includes('Origem:'),'corpo é limitado e explica a origem');
+assert(reconciler.includes('planDecision?.deliver')&&reconciler.includes('recordCarePlanNotification(plan, item, scheduledAt)'),'reconciliador agenda e só então grava memória');
+assert(reconciler.indexOf('planDecision?.deliver') < reconciler.indexOf('if (!selected) return'),'pendência operacional vence insight comportamental');
+assert(reconciler.includes('LocalNotifications.cancel')&&reconciler.includes('clearCarePlanNotificationMemory'),'resolução cancela alarme e limpa memória');
+assert(reconciler.includes('targetRoute: item.href')&&reconciler.includes('type: "care_plan"'),'notificação abre a ação exata');
+assert(providers.includes('data.type === "care_plan"')&&providers.includes('data.vaultCarePlan === true'),'cold start conhece plano de cuidado');
+assert(legacy.includes('extra?.type === "care_plan"')&&legacy.includes('extra?.vaultCarePlan === true'),'listener legado não disputa navegação');
+assert(strip.includes('action.supplyRoute')&&strip.includes('action.relatedCount'),'Hoje explica rota e consolidação');
+assert(home.includes('Origem: ${primaryCareCommand.supplyRoute}'),'Home usa a mesma autoridade da decisão');
+assert(r('lib/health-intelligence/version.ts').includes('"6.10"'),'Brain avança para 6.10');
+console.log('VAULT V270 — PUSH OPERACIONAL + HOME/HOJE + DEEP-LINK: OK');

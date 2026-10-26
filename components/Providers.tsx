@@ -126,6 +126,9 @@ interface NotificationActionData {
 
   vaultHealthInsight?:
     boolean;
+
+  vaultCarePlan?:
+    boolean;
 }
 
 function getNotificationActionData(
@@ -198,6 +201,9 @@ function getNotificationActionData(
 
     vaultHealthInsight:
       record.vaultHealthInsight === true,
+
+    vaultCarePlan:
+      record.vaultCarePlan === true,
   };
 }
 
@@ -813,8 +819,10 @@ export function Providers({
               data.type === "health_reminder" ||
               data.type === "health_event" ||
               data.type === "health_insight" ||
+              data.type === "care_plan" ||
               data.vaultHealthEvent === true ||
-              data.vaultHealthInsight === true
+              data.vaultHealthInsight === true ||
+              data.vaultCarePlan === true
             ) {
               void (async () => {
                 try {

@@ -42,7 +42,8 @@ ok(/eligible\.find\(\(item\) => item\.decision\.deliver\)/.test(reconciler), "pr
 ok(/notifications:\s*\[\s*\{/.test(reconciler), "ciclo agenda uma única notificação");
 ok(/getHealthInsightNotificationRoute\(\s*candidate\s*\)/.test(reconciler), "reconciliador usa helper de rota");
 
-const asyncFlow = reconciler.match(/void \(async \(\) => \{([\s\S]*?)\}\)\(\)\.catch/);
+const asyncFlows = [...reconciler.matchAll(/void \(async \(\) => \{([\s\S]*?)\}\)\(\)\.catch/g)];
+const asyncFlow = asyncFlows.find((match) => match[1].includes("recordHealthInsightDelivery("));
 ok(Boolean(asyncFlow), "fluxo assíncrono de entrega identificado");
 const flow = asyncFlow?.[1] ?? "";
 const schedule = flow.indexOf("await LocalNotifications.schedule(");

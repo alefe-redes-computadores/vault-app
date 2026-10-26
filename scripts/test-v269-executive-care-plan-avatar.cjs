@@ -15,5 +15,5 @@ assert(card.includes('item.supplyRoute')&&card.includes('item.relatedCount > 1')
 assert(avatar.indexOf('useEffect(() =>') < avatar.indexOf('if (!portfolio'),'Avatar mantém ordem estável dos hooks');
 assert(avatar.includes('planFocus?.supplyRoute'),'Avatar mostra contexto da rota sem poluir o personagem');
 assert(report.includes('formatBrainCarePlan(plan)')&&report.includes('currentPlan'),'resumo de consulta inclui o plano atual');
-assert(r('lib/health-intelligence/version.ts').includes('"6.9"'),'Brain avança para 6.9');
+assert(/BRAIN_VERSION = "6\.(?:9|10)"/.test(r('lib/health-intelligence/version.ts')),'Brain preserva 6.9 ou evolução compatível');
 console.log('VAULT V269 — PLANO EXECUTIVO + ROTAS + AVATAR ESTÁVEL: OK');

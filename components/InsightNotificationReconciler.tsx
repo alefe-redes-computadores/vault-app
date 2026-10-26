@@ -25,6 +25,14 @@ import {
   pruneHealthInsightMemory,
   shouldDeliverHealthInsight,
 } from "@/lib/health-intelligence/insight-memory";
+import {
+  carePlanNotificationBody,
+  carePlanNotificationId,
+  clearCarePlanNotificationMemory,
+  decideCarePlanNotification,
+  readCarePlanNotificationMemory,
+  recordCarePlanNotification,
+} from "@/lib/health-intelligence/care-plan-notification";
 
 function stableId(value: string) {
   let hash = 2166136261;
@@ -41,7 +49,7 @@ function stableId(value: string) {
 export function InsightNotificationReconciler() {
   const { activePersonId } = useActivePersonId();
   const { user } = useAuth();
-  const { insights } = useHealthIntelligence();
+  const { insights, careCommand } = useHealthIntelligence();
   const settings = useLiveQuery(() => user?.id ? db.settings.where("user_id").equals(user.id).first().then(row=>row??null) : null,[user?.id]) as ({brain_v5_alert_ledger?:BrainV5Alert[]}|null|undefined);
   const schedulingRef = useRef<string | null>(null);
 
@@ -50,6 +58,14 @@ export function InsightNotificationReconciler() {
     if (!isNotificationPreferenceEnabled()) return;
     if (!isVaultNotificationCategoryEnabled("insights")) return;
     pruneHealthInsightMemory(activePersonId);
+
+    const plan = careCommand?.plan ?? null;
+    const planMemory = plan ? readCarePlanNotificationMemory(plan.ownerKey) : null;
+    const planDecision = plan ? decideCarePlanNotification(plan, planMemory) : null;
+    if (plan && planDecision?.reason === "ineligible" && planMemory) {
+      clearCarePlanNotificationMemory(plan.ownerKey);
+      void LocalNotifications.cancel({ notifications: [{ id: planMemory.notificationId }] }).catch(() => undefined);
+    }
 
     const ledger=(settings?.brain_v5_alert_ledger||[]).filter(item=>item.person_id===activePersonId);
     const snoozedIds=new Set(ledger.filter(item=>brainV5IsSnoozed(item)).map(item=>item.insight_id));
@@ -66,6 +82,37 @@ export function InsightNotificationReconciler() {
     );
 
     const selected = eligible.find((item) => item.decision.deliver);
+
+    // Uma pendência operacional registrada vence um insight comportamental.
+    // Assim apenas um push novo disputa atenção por reconciliação.
+    if (plan && planDecision?.deliver && planDecision.item) {
+      const item = planDecision.item;
+      const signature = `${user.id}:${activePersonId}:care:${planDecision.signature}`;
+      if (schedulingRef.current === signature) return;
+      schedulingRef.current = signature;
+      let cancelled = false;
+      void (async () => {
+        const permission = await LocalNotifications.checkPermissions();
+        if (permission.display !== "granted" || cancelled) return;
+        await ensureVaultNotificationChannel();
+        if (cancelled) return;
+        const scheduledAt = Date.now() + 2500;
+        const nextId = carePlanNotificationId(plan.ownerKey, item);
+        if (planMemory && planMemory.notificationId !== nextId) {
+          await LocalNotifications.cancel({ notifications: [{ id: planMemory.notificationId }] }).catch(() => undefined);
+        }
+        await LocalNotifications.schedule({ notifications: [{
+          id: nextId, title: item.title || "Ação de cuidado pendente",
+          body: carePlanNotificationBody(item), schedule: { at: new Date(scheduledAt), allowWhileIdle: true },
+          channelId: VAULT_NOTIFICATION_CHANNEL_ID,
+          extra: { type: "care_plan", vaultCarePlan: true, personId: activePersonId, carePlanItemId: item.id, targetRoute: item.href, memoryReason: planDecision.reason },
+        }] });
+        recordCarePlanNotification(plan, item, scheduledAt);
+      })().catch(error => console.error("[Care plan notifications V270]", error)).finally(() => {
+        if (schedulingRef.current === signature) schedulingRef.current = null;
+      });
+      return () => { cancelled = true; };
+    }
 
     if (!selected) return;
 
@@ -129,7 +176,7 @@ export function InsightNotificationReconciler() {
       if (schedulingRef.current === signature) schedulingRef.current = null;
     });
     return () => { cancelled = true; };
-  }, [activePersonId, insights, settings, user?.id]);
+  }, [activePersonId, careCommand, insights, settings, user?.id]);
 
   return null;
 }

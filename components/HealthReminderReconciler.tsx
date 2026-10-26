@@ -28,6 +28,7 @@ type NotificationExtra = {
   personId?: string;
   targetRoute?: string;
   vaultHealthInsight?: boolean;
+  vaultCarePlan?: boolean;
   insightId?: string;
 };
 
@@ -190,8 +191,10 @@ export function HealthReminderReconciler() {
           extra?.type === "health_reminder" ||
           extra?.type === "health_event" ||
           extra?.type === "health_insight" ||
+          extra?.type === "care_plan" ||
           extra?.vaultHealthEvent === true ||
-          extra?.vaultHealthInsight === true
+          extra?.vaultHealthInsight === true ||
+          extra?.vaultCarePlan === true
         ) {
           return;
         }
