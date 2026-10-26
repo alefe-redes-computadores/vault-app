@@ -1,0 +1,10 @@
+const fs=require('fs'),assert=require('assert'),r=p=>fs.readFileSync(p,'utf8');
+const memory=r('lib/health-intelligence/care-plan-memory.ts'),ui=r('components/health-intelligence/CarePlanHistory.tsx'),central=r('components/health-intelligence/BrainCarePlan.tsx'),report=r('app/saude/registros/relatorio/page.tsx');
+assert(memory.includes('carePlanHistoryKey')&&memory.includes('.slice(0, 12)'),'histórico é isolado e limitado');
+assert(memory.includes('change.kind !== "stable"'),'estabilidade não cria ruído no histórico');
+assert(memory.includes('readCarePlanHistory')&&memory.includes('Array.isArray'),'histórico corrompido é tolerado');
+assert(ui.includes('O que mudou no plano')&&ui.includes('fato registrado')&&ui.includes('projeção'),'UI preserva autoridade da evidência');
+assert(central.includes('<CarePlanHistory ownerKey={plan.ownerKey}'),'Central mostra evolução do plano');
+assert(report.includes('<CarePlanHistory ownerKey={intelligence.careCommand.plan.ownerKey}'),'relatório leva mudanças para preparação da consulta');
+assert(r('lib/health-intelligence/version.ts').includes('"6.7"'),'Brain avança para 6.7');
+console.log('VAULT V267 — HISTÓRICO DO PLANO + CONSULTA: OK');

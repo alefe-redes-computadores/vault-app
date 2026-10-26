@@ -2,12 +2,14 @@ import type { BrainCarePlan, BrainCarePlanEvidence, BrainCarePlanLane } from "./
 
 export type CarePlanMemory = { version: 2; fingerprint: string; decisionId: string | null; decisionTitle: string | null; evidenceKind: BrainCarePlanEvidence | null; lane: BrainCarePlanLane | null; score: number; savedAt: string };
 export type CarePlanChange = { kind: "first" | "stable" | "changed" | "escalated" | "resolved"; label: string; previousDecisionTitle?: string | null; currentDecisionTitle?: string | null };
+export type CarePlanHistoryEntry = CarePlanChange & { id: string; savedAt: string; score: number; evidenceKind: BrainCarePlanEvidence | null };
 
 const laneRank: Record<BrainCarePlanLane, number> = { now: 4, prepare: 3, discuss: 2, observe: 1 };
 const validEvidence = new Set<BrainCarePlanEvidence>(["recorded", "projected", "association", "missing_data"]);
 const validLane = new Set<BrainCarePlanLane>(["now", "prepare", "discuss", "observe"]);
 export const carePlanFingerprint = (plan: BrainCarePlan) => plan.items.map(item => `${item.id}:${item.lane}:${item.evidenceKind}:${item.priorityScore}`).sort().join("|");
 export const carePlanMemoryKey = (ownerKey: string) => `vault_brain_care_plan_v65:${ownerKey}`;
+export const carePlanHistoryKey = (ownerKey: string) => `vault_brain_care_plan_history_v67:${ownerKey}`;
 export function snapshotCarePlan(plan: BrainCarePlan): CarePlanMemory {
   return { version: 2, fingerprint: carePlanFingerprint(plan), decisionId: plan.decision?.id ?? null, decisionTitle: plan.decision?.title ?? null, evidenceKind: plan.decision?.evidenceKind ?? null, lane: plan.decision?.lane ?? null, score: plan.decision?.priorityScore ?? 0, savedAt: new Date().toISOString() };
 }
@@ -25,7 +27,19 @@ export function readCarePlanMemory(ownerKey: string): CarePlanMemory | null {
 }
 export function writeCarePlanMemory(plan: BrainCarePlan): void {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(carePlanMemoryKey(plan.ownerKey), JSON.stringify(snapshotCarePlan(plan))); } catch { /* memória auxiliar não interrompe o cuidado */ }
+  try {
+    const previous = readCarePlanMemory(plan.ownerKey), current = snapshotCarePlan(plan), change = compareCarePlan(previous, plan);
+    window.localStorage.setItem(carePlanMemoryKey(plan.ownerKey), JSON.stringify(current));
+    if (change.kind !== "stable") {
+      const history = readCarePlanHistory(plan.ownerKey);
+      const entry: CarePlanHistoryEntry = { ...change, id: `${current.savedAt}:${current.decisionId || "none"}`, savedAt: current.savedAt, score: current.score, evidenceKind: current.evidenceKind };
+      window.localStorage.setItem(carePlanHistoryKey(plan.ownerKey), JSON.stringify([entry, ...history].slice(0, 12)));
+    }
+  } catch { /* memória auxiliar não interrompe o cuidado */ }
+}
+export function readCarePlanHistory(ownerKey: string): CarePlanHistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try { const value=JSON.parse(window.localStorage.getItem(carePlanHistoryKey(ownerKey))||"[]"); return Array.isArray(value)?value.filter((item):item is CarePlanHistoryEntry=>Boolean(item&&typeof item.id==="string"&&typeof item.savedAt==="string"&&typeof item.label==="string"&&["first","changed","escalated","resolved"].includes(item.kind))).slice(0,12):[]; } catch { return []; }
 }
 export function compareCarePlan(previous: CarePlanMemory | null, plan: BrainCarePlan): CarePlanChange {
   const current = snapshotCarePlan(plan);

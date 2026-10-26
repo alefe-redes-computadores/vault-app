@@ -14,5 +14,5 @@ assert(list.includes('medsPlanejados')&&list.includes('Próximas etapas'),'lista
 assert(today.includes('decideMedicationCarePath')&&today.includes('decision.stage === "prescription_needed"'),'Hoje preserva a mesma decisão canônica');
 assert(home.includes('buildMedicationCareOpportunities')&&home.includes('careCommand?.decision'),'Home mantém fila e Brain compartilhados');
 assert(avatar.includes('authorityLabel')&&avatar.includes('associação cautelosa'),'Avatar explica autoridade sem poluir o personagem');
-assert(r('lib/health-intelligence/version.ts').includes('"6.6"'),'Brain avança para 6.6');
+assert(/BRAIN_VERSION = "6\.[0-9]+"/.test(r('lib/health-intelligence/version.ts')),'Brain permanece na linha canônica 6.x');
 console.log('VAULT V266 — FILA CANÔNICA HOME/HOJE/MEDICAMENTOS/AVATAR: OK');

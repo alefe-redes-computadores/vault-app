@@ -4,6 +4,7 @@ import { BrainCircuit, CalendarClock, ChevronRight, CircleDollarSign, MessageCir
 import type { BrainCarePlan as BrainCarePlanModel, BrainCarePlanLane } from "@/lib/health-intelligence/care-plan";
 import { useEffect, useState } from "react";
 import { compareCarePlan, readCarePlanMemory, writeCarePlanMemory, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
+import { CarePlanHistory } from "./CarePlanHistory";
 
 const laneMeta: Record<BrainCarePlanLane, { label: string; tone: string; icon: typeof CalendarClock }> = {
   now: { label: "Resolver agora", tone: "border-rose-400/25 bg-rose-400/[0.07] text-rose-200", icon: CalendarClock },
@@ -42,6 +43,6 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
         <Icon size={17} className="shrink-0"/><span className="min-w-0 flex-1"><span className="block text-[9px] font-semibold uppercase tracking-wide opacity-80">{meta.label} · {item.evidenceKind === "recorded" ? "registrado" : item.evidenceKind === "projected" ? "projeção" : item.evidenceKind === "association" ? "associação" : "dado ausente"}</span><strong className="mt-1 block text-xs text-ink-primary">{item.title}</strong><span className="mt-1 line-clamp-2 block text-[10px] leading-relaxed text-ink-muted">{item.reason}</span><span className="mt-1.5 block font-mono text-[8px] uppercase tracking-wide opacity-70">Prioridade {item.priorityScore} · confiança {item.confidence === "high" ? "alta" : item.confidence === "moderate" ? "moderada" : "limitada"}</span></span><ChevronRight size={16} className="shrink-0 opacity-60"/>
       </button>;
     })}</div> : <div className="p-4 text-xs text-emerald-200">Nenhuma etapa prioritária produzida pelos registros atuais.</div>}
-    {!compact ? <div className="flex items-center gap-3 border-t border-surface-border/50 px-4 py-3 text-[9px] text-ink-muted"><CircleDollarSign size={15} className="text-emerald-300"/><span className="min-w-0 flex-1">30 dias: {plan.projectedCost30d > 0 ? `${brl(plan.projectedCost30d)} estimados` : "sem custo projetado conhecido"} · cobertura {plan.projectedCostCoverage30d}%</span></div> : null}
+    {!compact ? <><div className="flex items-center gap-3 border-t border-surface-border/50 px-4 py-3 text-[9px] text-ink-muted"><CircleDollarSign size={15} className="text-emerald-300"/><span className="min-w-0 flex-1">30 dias: {plan.projectedCost30d > 0 ? `${brl(plan.projectedCost30d)} estimados` : "sem custo projetado conhecido"} · cobertura {plan.projectedCostCoverage30d}%</span></div><div className="p-3 pt-0"><CarePlanHistory ownerKey={plan.ownerKey}/></div></> : null}
   </section>;
 }

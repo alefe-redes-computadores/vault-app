@@ -21,6 +21,7 @@ import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medicat
 import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCoverage";
 import { buildCareDocumentReadiness } from "@/lib/health-intelligence/care-document-readiness";
 import { CareDocumentReadiness } from "@/components/saude/CareDocumentReadiness";
+import { CarePlanHistory } from "@/components/health-intelligence/CarePlanHistory";
 
 const periods: ClinicalReportPeriod[] = [7, 30, 90];
 const displayDate = (value: string) => { const [year, month, day] = value.split("-"); return `${day}/${month}/${year}`; };
@@ -82,6 +83,7 @@ export default function ClinicalReportPage() {
       {forecast&&forecast.withdrawals.length>0&&<section className="rounded-[24px] border border-surface-border bg-surface p-4 print:border-gray-300 print:bg-white"><SectionTitle icon={PackageSearch} title="Prontidão para retiradas"/><p className="mt-1 text-[10px] text-ink-muted">O Brain antecipa pendências sem concluir nem cancelar retiradas automaticamente.</p><div className="mt-3 divide-y divide-surface-border/50">{forecast.withdrawals.slice(0,8).map(item=><div key={item.id} className="flex items-start justify-between gap-3 py-2.5"><div><p className="text-xs font-semibold text-ink-primary">{item.medicationName} · {displayDate(item.date)}</p><p className="mt-1 text-[9px] text-ink-muted">{item.missing.length?`Falta: ${item.missing.join(" e ")}`:"Documentos e local informados"}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-bold uppercase ${item.overdue?"bg-red-400/10 text-red-300":item.missing.length?"bg-amber-300/10 text-amber-300":"bg-emerald-300/10 text-emerald-300"}`}>{item.overdue?"Atrasada":item.missing.length?"Preparar":"Pronta"}</span></div>)}</div></section>}
       {readiness&&<CareReadinessSummary portfolio={readiness}/>}
       {documentReadiness&&<CareDocumentReadiness portfolio={documentReadiness}/>}
+      {intelligence.careCommand?.plan&&<CarePlanHistory ownerKey={intelligence.careCommand.plan.ownerKey}/>}
       {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage}/>}
 
       {consultation && <section className="rounded-[24px] border border-violet-400/20 bg-surface p-4 print:border-gray-300 print:bg-white" aria-label="Preparação para consulta">
