@@ -1,0 +1,16 @@
+{
+  "version": "V262",
+  "base": "c01da1b2f891f48665515dff20c25a3988aa7fa3",
+  "scope": "Brain V6.1 explainable priority",
+  "files": [
+    "components/health-intelligence/BrainCarePlan.tsx",
+    "lib/health-intelligence/care-plan.ts",
+    "lib/health-intelligence/version.ts",
+    "scripts/surgery21/manifests/v262.json",
+    "scripts/test-v261-brain-care-plan.cjs",
+    "scripts/test-v262-brain-explainable-priority.cjs",
+    "scripts/test-v63-release-gate.mjs"
+  ],
+  "database": { "migrations": [], "destructive": false },
+  "publishAfterAllGates": true
+}

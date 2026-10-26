@@ -1,0 +1,16 @@
+const fs=require('fs');
+const assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+const plan=read('lib/health-intelligence/care-plan.ts');
+const card=read('components/health-intelligence/BrainCarePlan.tsx');
+const version=read('lib/health-intelligence/version.ts');
+assert(plan.includes('priorityScore'), 'plano precisa expor prioridade');
+assert(plan.includes('priorityReasons'), 'plano precisa explicar prioridade');
+assert(plan.includes('confidence'), 'plano precisa classificar confiança');
+assert(plan.includes('missing_data: 0'), 'dado ausente não pode ganhar autoridade');
+assert(plan.includes('associação temporal cautelosa'), 'associação não pode virar causalidade');
+assert(plan.includes('b.priorityScore - a.priorityScore'), 'ordenação precisa ser determinística');
+assert(card.includes('Prioridade {item.priorityScore}'), 'Central precisa mostrar prioridade');
+assert(card.includes('confiança'), 'Central precisa mostrar confiança');
+assert(version.includes('"6.1"'), 'Brain deve avançar para 6.1');
+console.log('VAULT V262 — prioridade explicável e autoridade de evidência: OK');
