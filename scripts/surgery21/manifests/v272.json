@@ -1,0 +1,16 @@
+{
+  "version": "V272",
+  "base": "3815aaaa8cb50f54f9bf0bbf2bb31651b5be7509",
+  "scope": "Avatar, fornecimento responsivo, confirmação de doses e resiliência de rota",
+  "database": "none",
+  "publication": "after-all-gates",
+  "files": [
+    "app/error.tsx",
+    "app/saude/fornecimento/page.tsx",
+    "components/BottomNav.tsx",
+    "components/PendingDosesModal.tsx",
+    "components/saude/HealthAvatar3D.tsx",
+    "scripts/test-v272-avatar-supply-dose-resilience.cjs",
+    "scripts/test-v63-release-gate.mjs"
+  ]
+}

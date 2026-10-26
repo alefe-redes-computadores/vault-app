@@ -283,6 +283,15 @@ const RETIRADAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   },
 ];
 
+const SUPPLY_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
+  {
+    id: "novo-fornecimento",
+    label: "Novo fornecimento",
+    icon: FolderHeart,
+    path: "/saude/fornecimento?action=novo",
+  },
+];
+
 const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "cartao",
@@ -389,6 +398,9 @@ function getComposeOptions(
   if (normalizedPathname === "/saude/retiradas") {
     return RETIRADAS_LIST_COMPOSE_OPTIONS;
   }
+  if (normalizedPathname === "/saude/fornecimento") {
+    return SUPPLY_LIST_COMPOSE_OPTIONS;
+  }
 
   if (normalizedPathname === "/saude/rede") {
     const tab = searchParams.get("tab");
@@ -423,6 +435,7 @@ const ALLOWED_NAV_PATHS = [
   "/saude/farmacias",
   "/saude/tratamentos",
   "/saude/retiradas",
+  "/saude/fornecimento",
   "/saude/hospitais",
   "/saude/locais",
   "/saude/renovacao",

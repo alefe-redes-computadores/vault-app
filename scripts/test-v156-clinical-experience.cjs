@@ -14,7 +14,7 @@ assert(health.includes('brainSummaryOpen &&'),'Brain not collapsible');
 assert(health.includes('Valores recentes e acesso ao histórico')&&health.includes("goFromHealth('/saude/registros')"),'compact measurements or complete history access missing');
 assert(supply.includes('{med && isDropMedication && <details'),'bottle calculator visible to pills');
 assert(supply.includes('SUPPLY_ORIGIN_LABELS[p.origem]'),'origin label missing');
-assert(supply.includes('Um tratamento pode incluir medicamentos comprados'),'mixed-treatment explanation absent');
+assert(supply.includes('Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS'),'mixed-treatment explanation absent');
 assert(supply.includes('canTrackSupplyMedication'),'V155 SOS + withdrawal logic absent');
 assert(supply.includes('processView.treatmentGroups')&&supplyIndex.includes('purchasedMedicationsByTreatment')&&supplyIndex.includes('renewal.tipo_aquisicao === "comprado"'),'purchase treatment grouping absent');
 assert(av.includes('AvatarStyleEditor'),'accessory customization removed');

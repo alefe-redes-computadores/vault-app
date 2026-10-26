@@ -10,8 +10,8 @@ for (const marker of [
   "useReturnContext",
   "activeProcesses",
   "cyclesInProgress",
-  "overflow-x-auto",
-  "Consultar cobertura e catálogo SUS",
+  "grid-cols-1 gap-2 sm:grid-cols-2",
+  "Ajuda e catálogo SUS",
   "<SusCatalogBrowser compact />",
 ]) assert(supply.includes(marker), `V189 supply command missing: ${marker}`);
 

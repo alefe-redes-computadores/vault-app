@@ -144,6 +144,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const expressionLidScaleY = new WeakMap<THREE.Mesh,number>();
     const expressionEyes: Array<{object:THREE.Mesh;restY:number}> = [];
     const expressionHighlights: Array<{object:THREE.Mesh;restY:number}> = [];
+    const expressionHighlightScale = new WeakMap<THREE.Mesh,THREE.Vector3>();
     const expressionEyeScaleY = new WeakMap<THREE.Mesh,number>();
     // V214: planos orbitais afunilados integram as sobrancelhas ao rosto.
     // O brilho do olho existe em uma única camada, evitando o olhar duplicado.
@@ -326,7 +327,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // V245: ambos os reflexos recebem a mesma direção de luz do key light.
       // Espelhar o ponto dentro de cada olho deixava o olhar sintético; manter o
       // deslocamento global também conserva a escala microscópica segura da V243.
-      const highlight=oval(materials.eyeHighlight,sign*.083-.003,2.824,.232,[.0016,.0016,.0011]);highlight.raycast=()=>{};expressionHighlights.push({object:highlight,restY:highlight.position.y});
+      const highlight=oval(materials.eyeHighlight,sign*.083-.003,2.824,.232,[.0016,.0016,.0011]);highlight.raycast=()=>{};expressionHighlights.push({object:highlight,restY:highlight.position.y});expressionHighlightScale.set(highlight,highlight.scale.clone());
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
     // Isso reduz o nariz bulboso visto de frente e ainda economiza segmentos esféricos.
@@ -455,7 +456,13 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         object.position.y=restY+(value==="happy"?.002:value==="reflective"?-.004:0);
         object.scale.y=(expressionEyeScaleY.get(object) ?? object.scale.y)*(value==="reflective"?.88:1);
       }
-      for(const {object,restY} of expressionHighlights){object.position.y=restY+(value==="happy"?.0015:value==="reflective"?-.001:0);object.scale.setScalar(value==="reflective"?.82:1);}
+      // V272: a expressão é relativa à escala microscópica original.
+      // Substituí-la por 1 transformava a esfera-base numa bolha gigante no PWA.
+      for(const {object,restY} of expressionHighlights){
+        object.position.y=restY+(value==="happy"?.0015:value==="reflective"?-.001:0);
+        const base=expressionHighlightScale.get(object);
+        if(base)object.scale.copy(base).multiplyScalar(value==="reflective"?.82:1);
+      }
     };
     setExpression(expressionRef.current);
     const hitMaterial=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});

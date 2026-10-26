@@ -1028,7 +1028,7 @@ export function PendingDosesModal({
                 <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
                   Registra cada dose no dia e horário exibidos. Se alguma foi tomada em outro horário, revise essa dose individualmente.
                 </p>
-                <button
+                {!bulkResolutionOpen && <button
                   type="button"
                   onClick={() => {
                   trigger("vibrate");
@@ -1038,8 +1038,8 @@ export function PendingDosesModal({
                   className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-4 py-3 text-xs font-bold text-void active:scale-[0.98] disabled:opacity-50"
                 >
                   {isProcessingAll ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                  {isProcessingAll ? "Registrando com segurança..." : `Registrar tomadas (${availableDoses.length})`}
-                </button>
+                  {isProcessingAll ? "Registrando com segurança..." : `Escolher horário das tomadas (${availableDoses.length})`}
+                </button>}
 
             {bulkResolutionOpen && availableDoses.length > 0 && (
               <div className="rounded-[22px] border border-ice/20 bg-ice/5 p-3.5">
@@ -1047,7 +1047,7 @@ export function PendingDosesModal({
                   Quando você tomou essas doses?
                 </p>
                 <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                  Escolha o que realmente aconteceu. O Vault usa esse horário no histórico.
+                  Confirme uma das opções abaixo. Nada será registrado até você escolher o horário real.
                 </p>
 
                 <div className="mt-3 space-y-2">
@@ -1060,7 +1060,7 @@ export function PendingDosesModal({
                     <CheckCircle2 size={18} className="shrink-0 text-emerald-400" />
                     <span>
                       <span className="block text-sm font-semibold text-ink-primary">
-                        Tomei nos horários programados
+                        Confirmar horários programados
                       </span>
                       <span className="mt-0.5 block text-[10px] text-ink-muted">
                         Cada dose mantém o horário previsto no histórico.
@@ -1077,7 +1077,7 @@ export function PendingDosesModal({
                     <Timer size={18} className="shrink-0 text-ice" />
                     <span>
                       <span className="block text-sm font-semibold text-ink-primary">
-                        Tomei as disponíveis agora · {getCurrentTimeHHMM()}
+                        Confirmar como tomadas agora · {getCurrentTimeHHMM()}
                       </span>
                       <span className="mt-0.5 block text-[10px] text-ink-muted">
                         Registra o horário atual como horário real das doses.

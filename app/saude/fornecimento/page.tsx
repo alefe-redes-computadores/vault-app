@@ -988,7 +988,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     { locais } = useLocais(),
     { showToast } = useToast();
   const [selected, setSelected] = useState(params.get("id") || ""),
-    [creating, setCreating] = useState(false),
+    [creating, setCreating] = useState(params.get("action") === "novo"),
     [editing, setEditing] = useState(false),
     [cycleId, setCycleId] = useState(params.get("ciclo_id") || ""),
     [busy, setBusy] = useState(false),
@@ -1038,14 +1038,16 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   // V136 PROCESS ROUTING: URL selection only within person- and medication-scoped processes.
   const requestedProcessId = params.get("id");
   const requestedCycleId = params.get("ciclo_id");
+  const requestedWithdrawalId = params.get("retirada_id") || "";
+  const requestedCreate = params.get("action") === "novo";
   const requestRef = useRef(requestedProcessId);
   const requestChanged = requestRef.current !== requestedProcessId;
   useEffect(() => {
     requestRef.current = requestedProcessId;
     setSelected(requestedProcessId || "");
     setCycleId(requestedCycleId || "");
-    setCreating(false); setEditing(false); setSeed(null); setWithdrawalId(params.get("retirada_id") || "");
-  }, [requestedProcessId, requestedCycleId, medId, params]);
+    setCreating(requestedCreate); setEditing(false); setSeed(null); setWithdrawalId(requestedWithdrawalId);
+  }, [requestedProcessId, requestedCycleId, requestedWithdrawalId, requestedCreate, medId]);
   const process = resolveProcessSelection(processes, requestChanged ? requestedProcessId || "" : selected);
   const missingProcess = !!(requestChanged ? requestedProcessId : selected) && !process;
   const cycles = (relationalIndex.cyclesByProcess.get(process?.id || "") || [])
@@ -1105,7 +1107,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}50`, backgroundColor: "#10151c"} : {})}}
                 key={p.id}
                 className={
-                  "inline-flex min-h-11 max-w-full shrink-0 items-center rounded-xl border px-2 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
+                  "flex min-h-12 w-full min-w-0 items-center rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
                 }
                 onClick={() => {
                   setSeed(null); setWithdrawalId("");
@@ -1119,17 +1121,6 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               </button>
     );
   };
-  const startCreating = () => {
-    try { triggerHaptic("vibrate"); } catch {}
-    if (!creating && processes.length) setSeed(null);
-    setEditing(false);
-    setCreating(true);
-    if (creating || !processes.length) {
-      createRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
-      createRef.current?.querySelector<HTMLInputElement>('input:not([type="checkbox"])')?.focus({ preventScroll: true });
-      showToast("Preencha o formulário abaixo para organizar o fornecimento.", "success");
-    }
-  };
   if (!personId)
     return (
       <main className="p-5 text-ink-muted">
@@ -1137,24 +1128,21 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       </main>
     );
   return (
-    <main key={personId} className="min-h-screen bg-void pb-32">
+    <main key={personId} className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-void pb-32">
       <ListPageHeader
         title="Fornecimento"
         badgeLabel="PROCESSOS E CICLOS"
         badgeColor="text-emerald-300"
         backUrl={backTarget}
-        rightAction={<button type="button" disabled={busy} aria-expanded={creating || !processes.length} aria-controls="supply-create-form" onClick={startCreating} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95 disabled:opacity-40"><Plus size={15}/>Novo</button>}
       />
-      <div className="space-y-3 px-5 pt-4">
+      <div className="min-w-0 space-y-3 px-4 pt-4 sm:px-5">
       {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={processView.cyclesInProgress ? `${processView.cyclesInProgress} ciclo${processView.cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:processView.activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processView.cycles},{label:"Documentos",value:processView.documents}]}/> : null}
       <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
-        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Como organizar o fornecimento</summary>
-        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Ajuda e catálogo SUS</summary>
+        <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
           Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
         </p>
-      </details>
-      <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
-        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FileText size={16} className="text-violet-300"/>Consultar cobertura e catálogo SUS</summary>
+        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
         <div className="pb-3 pt-2"><SusCatalogBrowser compact /></div>
       </details>
       {busy ? (
@@ -1167,7 +1155,6 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       ) : (
         <>
           {/* V156: a treatment is not a funding source; each process retains its own origin. */}
-          <p className="mb-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode incluir medicamentos comprados e fornecidos pelo SUS. Selecione a origem real de cada processo; compartilhar tratamento não torna a compra uma retirada SUS.</p>
           {/* Mixed origins remain accessible without duplicating one-process navigation. */}
           {processView.treatmentGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({processView.treatmentGroups.length})</summary><div className="mt-2 space-y-2">{processView.treatmentGroups.map(({treatment:t,linked,purchased})=>{
             const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:"#8b5cf6";
@@ -1178,7 +1165,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
-          <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Selecionar fornecimento">
+          <div className="mb-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Selecionar fornecimento">
             {processView.activeProcesses.map(renderProcess)}
           </div>
             {processView.archivedProcesses.length > 0 && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>

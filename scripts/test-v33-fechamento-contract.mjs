@@ -8,7 +8,7 @@ ok(P.includes('localStorage.setItem(key, "1")'),"gravação perfil ausente");
 ok(D.includes("const handleResolveAll ="),"lote pendente ausente");
 ok(D.includes('await onResolveDose(dose, {...resolution, requireRegisteredStock:true})'),"lote não reutiliza contrato individual");
 ok(D.includes("for (const dose of availableDoses)"),"lote não serial");
-ok(D.includes("Registrar tomadas ("),"botão Tomar todas ausente");
+ok(D.includes("Escolher horário das tomadas (")&&D.includes("Confirmar horários programados"),"fluxo de confirmação em lote ausente");
 ok(D.includes("Abrir cronograma completo"),"cronograma ausente");
 ok(B.includes("VAULT_BIOMETRIC_POLICY_V66")&&!B.includes("appStateChange")&&!B.includes("authenticate("),"biometria seletiva V66 regrediu");
 ok(P.includes('Capacitor.getPlatform() !== "android"'),"V30.5 StatusBar regrediu");
