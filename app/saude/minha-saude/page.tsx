@@ -382,7 +382,7 @@ function HealthDashboard({
               </button>
             </section>
             <CareContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
-            <MedicationContinuityAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
+            <MedicationContinuityAvatarSummary context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
             <TemporaryCourseAvatarSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarAssociationSummary context={intelligence.context} onNavigate={goFromHealth}/>
             <AvatarCareReadiness context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>

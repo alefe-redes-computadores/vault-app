@@ -17,7 +17,7 @@ for(const source of [central,home,detail])assert(source.includes('brainV5Priorit
 assert(central.includes('text-emerald-300'),'acompanhamento usa semântica verde');
 const medication=read('app/saude/medicamentos/detalhes/page.tsx');
 assert(medication.includes('medicationCarePresentation(careDecision, alertaInteligente.urgencia)'));
-assert(medication.includes('${carePresentation.actionClass}'));
+assert(medication.includes('carePresentation.actionClass')&&medication.includes('brainCareAction?.lane === "now"'));
 const avatar=read('components/saude/HealthAvatar3D.tsx');
 assert(avatar.includes('eyeHighlight: new THREE.MeshBasicMaterial'));
 assert(avatar.includes('oval(materials.eyeHighlight'));

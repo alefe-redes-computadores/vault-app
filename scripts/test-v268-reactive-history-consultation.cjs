@@ -6,5 +6,5 @@ assert(memory.includes('180*24*60*60*1000')&&memory.includes('.slice(0,12)'),'hi
 assert(memory.includes('history[0]?.kind === entry.kind')&&memory.includes('history.slice(1)'),'concorrência imediata não duplica estado');
 assert(memory.includes('formatCarePlanHistory')&&memory.includes('não representa diagnóstico'),'exportação preserva limite clínico');
 assert(/formatCarePlanHistory\(readCarePlanHistory\((?:ownerKey|plan\.ownerKey)\)\)/.test(report)&&report.includes('join("\\n\\n")'),'resumo copiado inclui mudanças do Brain');
-assert(/BRAIN_VERSION = "6\.(?:8|9|10)"/.test(r('lib/health-intelligence/version.ts')),'Brain preserva V6.8 ou evolução compatível');
+assert(/BRAIN_VERSION = "6\.(?:8|9|10|11)"/.test(r('lib/health-intelligence/version.ts')),'Brain preserva V6.8 ou evolução compatível');
 console.log('VAULT V268 — HISTÓRICO REATIVO + CONSULTA COMPARTILHÁVEL: OK');

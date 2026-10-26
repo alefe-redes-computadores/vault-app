@@ -1,6 +1,6 @@
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCareForecast } from "@/lib/health-intelligence/care-forecast";
-import { medicationSupplyRoute, type MedicationSupplyRoute } from "@/lib/health-supply/route-authority";
+import { indexMedicationSupplyRoutes, type MedicationSupplyRoute } from "@/lib/health-supply/route-authority";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { getLocalTodayISO } from "@/lib/health-utils";
 
@@ -36,6 +36,8 @@ export function buildCareReadiness(
   forecast = buildCareForecast(context, today),
 ): CareReadinessPortfolio {
   const supply = context.fornecimento ?? { processos: [], ciclos: [], itens: [], documentos: [] };
+  const routeUserId = context.userId || context.medicamentos.find(med => med.person_id === context.personId)?.user_id || "";
+  const routeIndex = routeUserId ? indexMedicationSupplyRoutes(supply, context.renovacoes, context.personId, routeUserId) : new Map<string, MedicationSupplyRoute>();
   const withdrawalByMedication = new Map<string, (typeof forecast.withdrawals)[number]>();
   for (const withdrawal of forecast.withdrawals) {
     const current = withdrawalByMedication.get(withdrawal.medicationId);
@@ -45,7 +47,7 @@ export function buildCareReadiness(
     .filter(med => med.id && med.person_id === context.personId && med.status !== "descontinuado")
     .map(med => {
       const id = med.id!;
-      const route = medicationSupplyRoute(id, supply, context.renovacoes, context.personId, med.user_id);
+      const route = routeIndex.get(id) ?? { origins: [], hasPrivatePurchase: false, labels: [], mode: "none" as const };
       const events = context.renovacoes
         .filter(row => row.medicamento_id === id && row.user_id === med.user_id && (!row.person_id || row.person_id === context.personId))
         .sort((a, b) => renewalEventDate(b).localeCompare(renewalEventDate(a)));

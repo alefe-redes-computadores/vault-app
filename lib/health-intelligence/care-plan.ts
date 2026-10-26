@@ -2,7 +2,6 @@ import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCautiousAssociations } from "./cautious-associations";
 import { buildCareForecast, daysSinceLastCompletedConsultation, type CareForecast } from "./care-forecast";
 import { buildCareReadiness, type CareReadinessPortfolio } from "./care-readiness";
-import { medicationSupplyRoute } from "@/lib/health-supply/route-authority";
 
 export type BrainCarePlanLane = "now" | "prepare" | "discuss" | "observe";
 export type BrainCarePlanEvidence = "recorded" | "projected" | "association" | "missing_data";
@@ -63,11 +62,9 @@ export function buildBrainCarePlan(
   forecast: CareForecast = buildCareForecast(context),
   readiness: CareReadinessPortfolio = buildCareReadiness(context, forecast.generatedFor, forecast),
 ): BrainCarePlan {
-  const medicationById = new Map(context.medicamentos.filter(item => item.id).map(item => [item.id!, item]));
-  const supply = context.fornecimento ?? { processos: [], ciclos: [], itens: [], documentos: [] };
+  const readinessByMedication = new Map(readiness.items.map(item => [item.medicationId, item]));
   const items: BrainCarePlanItem[] = forecast.actions.map(action => {
-    const medication = medicationById.get(action.medicationId);
-    const route = medication ? medicationSupplyRoute(action.medicationId, supply, context.renovacoes, context.personId, medication.user_id) : null;
+    const route = readinessByMedication.get(action.medicationId)?.route;
     return explain({
     id: `action:${action.id}`,
     lane: action.lane === "now" ? "now" : action.lane === "review_data" ? "observe" : "prepare",

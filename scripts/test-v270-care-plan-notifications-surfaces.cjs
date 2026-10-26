@@ -18,5 +18,5 @@ assert(providers.includes('data.type === "care_plan"')&&providers.includes('data
 assert(legacy.includes('extra?.type === "care_plan"')&&legacy.includes('extra?.vaultCarePlan === true'),'listener legado não disputa navegação');
 assert(strip.includes('action.supplyRoute')&&strip.includes('action.relatedCount'),'Hoje explica rota e consolidação');
 assert(home.includes('Origem: ${primaryCareCommand.supplyRoute}'),'Home usa a mesma autoridade da decisão');
-assert(r('lib/health-intelligence/version.ts').includes('"6.10"'),'Brain avança para 6.10');
+assert(/BRAIN_VERSION = "6\.(?:10|11)"/.test(r('lib/health-intelligence/version.ts')),'Brain preserva 6.10 ou evolução compatível');
 console.log('VAULT V270 — PUSH OPERACIONAL + HOME/HOJE + DEEP-LINK: OK');

@@ -10,6 +10,7 @@ import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/heal
 import { buildMedicationJourneySnapshot } from "@/lib/health-intelligence/medication-workspace";
 import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySummary";
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
+import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -699,6 +700,7 @@ function getReceitaBadgeProps(
 // ============================================================
 
 function MedicamentoDetalhesContent() {
+  const healthIntelligence = useSharedHealthIntelligence();
   const router =
     useRouter();
 
@@ -1765,6 +1767,9 @@ function MedicamentoDetalhesContent() {
     needsStock: saldoRegistrado !== null && saldoRegistrado <= 5,
   });
   const carePresentation = medicationCarePresentation(careDecision, alertaInteligente.urgencia);
+  const brainCareItem = healthIntelligence.careCommand?.plan.items.find(item => item.medicationId === med.id) ?? null;
+  const supplyRoute = healthIntelligence.careCommand?.readiness.items.find(item => item.medicationId === med.id)?.route ?? null;
+  const brainCareAction = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? brainCareItem : null;
   const journeySnapshot = useMemo(() => buildMedicationJourneySnapshot({
     medication: med,
     renewals: renovacoes,
@@ -3237,7 +3242,7 @@ function MedicamentoDetalhesContent() {
               HERO
               ================================================== */}
 
-          {careDecision.stage !== "stable" && (
+          {(careDecision.stage !== "stable" || brainCareAction) && (
             <section className="rounded-[20px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-4">
               <div className="flex items-start gap-3">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${carePresentation.badgeClass}`}>
@@ -3245,15 +3250,16 @@ function MedicamentoDetalhesContent() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
-                  <h2 className="mt-1 text-sm font-bold text-ink-primary">{careDecision.label}</h2>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{careDecision.explanation}</p>
+                  <h2 className="mt-1 text-sm font-bold text-ink-primary">{brainCareAction?.title || careDecision.label}</h2>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {careDecision.evidence.slice(0,3).map(item=><span key={item} className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 text-[8px] text-ink-muted">{item}</span>)}
+                    {(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 text-[8px] text-ink-muted">{item}</span>)}
+                    {supplyRoute && supplyRoute.mode !== "none" && <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[8px] text-emerald-200">Origem: {supplyRoute.labels.join(" + ")}</span>}
                   </div>
                 </div>
               </div>
-              <button type="button" onClick={()=>router.push(careDecision.actionHref)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${carePresentation.actionClass}`}>
-                {careDecision.actionLabel}
+              <button type="button" onClick={()=>router.push(brainCareAction?.href || careDecision.actionHref)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
+                {brainCareAction ? "Abrir próxima etapa" : careDecision.actionLabel}
               </button>
             </section>
           )}

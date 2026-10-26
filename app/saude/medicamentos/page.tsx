@@ -94,6 +94,7 @@ import { medicationIgnoredStatus } from "@/lib/medication-availability";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
+import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 
 type MedicationListFilter =
   | "todos"
@@ -221,6 +222,7 @@ const SectionTitle = ({
 // ============================================================
 
 export default function MedicamentosListPage() {
+  const healthIntelligence = useSharedHealthIntelligence();
   const { retiradas } = useRetiradas();
   const { renovacoes = [] } = useRenovacoes();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
@@ -426,6 +428,12 @@ export default function MedicamentosListPage() {
     }
     return decisions;
   }, [listaBase, renewalsByMedication, scheduledWithdrawals, hojeString]);
+  const brainCareByMedication = useMemo(() => new Map(
+    (healthIntelligence.careCommand?.plan.items ?? []).filter(item => item.medicationId).map(item => [item.medicationId!, item])
+  ), [healthIntelligence.careCommand]);
+  const supplyRouteByMedication = useMemo(() => new Map(
+    (healthIntelligence.careCommand?.readiness.items ?? []).map(item => [item.medicationId, item.route])
+  ), [healthIntelligence.careCommand]);
 
   // ==========================================================
   // LISTA VISÍVEL
@@ -449,7 +457,8 @@ export default function MedicamentosListPage() {
         if (item.isSuspenso) return false;
 
         if (medicationFilter === "atencao") {
-          return medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage ?? "stable") ||
+          const brainLane=brainCareByMedication.get(medId)?.lane;
+          return brainLane === "now" || brainLane === "prepare" || medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage ?? "stable") ||
             item.dosesPendentesHoje > 0 || item.dosesIgnoradasHoje > 0;
         }
 
@@ -477,6 +486,7 @@ export default function MedicamentosListPage() {
       medicationSearchMatches,
       regulatoryProfiles,
       careDecisionsByMedication,
+      brainCareByMedication,
     ]);
 
   // ==========================================================
@@ -582,6 +592,7 @@ export default function MedicamentosListPage() {
             }
 
             const precisaAcao =
+              ["now","prepare"].includes(brainCareByMedication.get(item.med.id || "")?.lane || "") ||
               medicationCareStageNeedsAttention(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable") ||
               item.dosesPendentesHoje >
                 0 || item.dosesIgnoradasHoje > 0;
@@ -594,7 +605,7 @@ export default function MedicamentosListPage() {
               return;
             }
 
-            if (medicationCareStageIsPlanning(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable")) {
+            if (brainCareByMedication.get(item.med.id || "")?.lane === "discuss" || medicationCareStageIsPlanning(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable")) {
               planejados.push(item);
               return;
             }
@@ -681,6 +692,7 @@ export default function MedicamentosListPage() {
       [
         listaProcessada,
         careDecisionsByMedication,
+        brainCareByMedication,
       ]
     );
 
@@ -1027,10 +1039,14 @@ export default function MedicamentosListPage() {
           })
         : null;
       const careDecision = careDecisionsByMedication.get(med.id!) ?? decideMedicationCarePath({ medication: med, renewals: [], today: hojeString, needsPrescription: false, needsStock: false });
-      const careAction = careDecision.stage !== "stable"
+      const brainCareItem = brainCareByMedication.get(med.id!);
+      const supplyRoute = supplyRouteByMedication.get(med.id!);
+      const brainAction = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason } : null;
+      const careAction = brainAction ?? (careDecision.stage !== "stable"
         ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
-        : accessAction;
+        : accessAction);
       const carePresentation = medicationCarePresentation(careDecision, insight?.urgencia);
+      const careActionClass = brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : brainCareItem?.lane === "prepare" ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300" : carePresentation.actionClass;
 
       // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
@@ -1181,6 +1197,12 @@ export default function MedicamentosListPage() {
                     </span>
                   )}
 
+                  {supplyRoute && supplyRoute.mode !== "none" && (
+                    <span title="Origem baseada nos vínculos e aquisições registrados" className="inline-flex min-h-6 max-w-full items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[9px] font-semibold text-emerald-200">
+                      {supplyRoute.labels.join(" + ")}
+                    </span>
+                  )}
+
                   {textoDose && (
                     <span className="inline-flex min-h-6 max-w-full items-center whitespace-normal break-words rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 py-1 text-[9px] font-semibold text-ink-muted">
                       Dose&nbsp;
@@ -1199,7 +1221,7 @@ export default function MedicamentosListPage() {
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${carePresentation.actionClass}`}
+                    className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {

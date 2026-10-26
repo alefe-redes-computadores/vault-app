@@ -1,0 +1,22 @@
+const fs=require('fs'),assert=require('assert'),r=p=>fs.readFileSync(p,'utf8');
+const authority=r('lib/health-supply/route-authority.ts');
+const readiness=r('lib/health-intelligence/care-readiness.ts');
+const plan=r('lib/health-intelligence/care-plan.ts');
+const list=r('app/saude/medicamentos/page.tsx');
+const detail=r('app/saude/medicamentos/detalhes/page.tsx');
+const avatar=r('components/saude/MedicationContinuityAvatarSummary.tsx');
+const profile=r('app/saude/minha-saude/page.tsx');
+
+assert(authority.includes('indexMedicationSupplyRoutes')&&authority.includes('activeProcessOrigin')&&authority.includes('originsByMedication'),'origens usam índice linear compartilhável');
+assert(authority.includes('privateByMedication')&&authority.includes('mode:publicOrigins.length&&privateRoute?"hybrid"'),'índice preserva compra e rota híbrida');
+assert(authority.includes('indexMedicationSupplyRoutes(data,renewals,personId,userId).get(medicationId)'),'API legada delega ao índice canônico');
+assert(readiness.includes('const routeIndex =')&&readiness.includes('routeIndex.get(id)'),'prontidão calcula rotas uma única vez');
+assert(plan.includes('readinessByMedication')&&!plan.includes('medicationSupplyRoute('),'plano reutiliza prontidão sem segunda varredura');
+assert(list.includes('useSharedHealthIntelligence')&&list.includes('brainCareByMedication')&&list.includes('supplyRouteByMedication'),'listagem consome comando compartilhado');
+assert(list.includes('brainAction ??')&&list.includes('supplyRoute.labels.join(" + ")'),'ação e origem canônicas aparecem no card');
+assert(list.includes('brainLane === "now" || brainLane === "prepare"'),'filtro Atenção respeita a decisão executiva');
+assert(detail.includes('brainCareAction')&&detail.includes('Origem: {supplyRoute.labels.join(" + ")}'),'detalhes unem próxima etapa e origem');
+assert(avatar.includes('command?.readiness.items')&&avatar.includes('SUS/público')&&avatar.includes('Híbrido'),'Avatar resume rotas sem poluir personagem');
+assert(profile.includes('command={intelligence.careCommand}'),'perfil injeta o snapshot já calculado no Avatar');
+assert(r('lib/health-intelligence/version.ts').includes('"6.11"'),'Brain avança para 6.11');
+console.log('VAULT V271 — ÍNDICE DE ROTAS + MEDICAMENTOS + AVATAR: OK');
