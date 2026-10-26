@@ -1386,6 +1386,7 @@ export default function HomePage() {
 
             color:
               "#FB7185",
+            href: "/hoje",
           };
         }
 
@@ -1397,6 +1398,7 @@ export default function HomePage() {
             title: primaryCareCommand.title,
             description: [primaryCareCommand.reason, primaryCareCommand.supplyRoute ? `Origem: ${primaryCareCommand.supplyRoute}.` : ""].filter(Boolean).join(" "),
             color: primaryCareCommand.lane === "now" ? "#FB7185" : "#FBBF24",
+            href: primaryCareCommand.href,
           };
         }
 
@@ -1423,6 +1425,7 @@ export default function HomePage() {
               "urgent"
                 ? "#FB7185"
                 : "#FBBF24",
+            href: primaryMedicationCareOpportunity.actionHref,
           };
         }
 
@@ -1447,6 +1450,7 @@ export default function HomePage() {
 
             color:
               "#38BDF8",
+            href: "/hoje",
           };
         }
 
@@ -1471,6 +1475,7 @@ export default function HomePage() {
 
             color:
               "#34D399",
+            href: "/hoje",
           };
         }
 
@@ -1486,6 +1491,7 @@ export default function HomePage() {
 
           color:
             "#34D399",
+          href: "/hoje",
         };
       },
       [
@@ -2046,9 +2052,7 @@ export default function HomePage() {
                   "vibrate"
                 );
 
-                router.push(
-                  "/hoje"
-                );
+                router.push(resumoContextual.href);
               }}
               className="flex shrink-0 items-center gap-2 rounded-full border border-surface-border/50 bg-surface px-3 py-2 text-[10px] font-semibold text-ink-muted shadow-sm transition-all active:scale-95"
             >

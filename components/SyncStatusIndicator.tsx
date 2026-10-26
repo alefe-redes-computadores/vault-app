@@ -15,13 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import {
-  useLiveQuery,
-} from "dexie-react-hooks";
-
-import {
-  db,
-} from "@/lib/db";
+import { useSyncQueueSummary } from "@/hooks/useSyncQueueSummary";
 
 import {
   useVaultSyncRuntime,
@@ -96,37 +90,7 @@ export function SyncStatusIndicator({
   const syncRuntime =
     useVaultSyncRuntime();
 
-  const pendingCount =
-    useLiveQuery(
-      () =>
-        db.syncQueue
-          .filter(
-            (
-              item
-            ) =>
-              item.failed !==
-              true
-          )
-          .count(),
-      []
-    ) ??
-    0;
-
-  const failedCount =
-    useLiveQuery(
-      () =>
-        db.syncQueue
-          .filter(
-            (
-              item
-            ) =>
-              item.failed ===
-              true
-          )
-          .count(),
-      []
-    ) ??
-    0;
+  const { pending: pendingCount, failed: failedCount } = useSyncQueueSummary();
 
   const handleClick =
     () => {

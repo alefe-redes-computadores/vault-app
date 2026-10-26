@@ -55,11 +55,20 @@ export function InsightNotificationReconciler() {
 
   useEffect(() => {
     if (!isVaultNative() || !activePersonId || !user?.id || settings===undefined) return;
-    if (!isNotificationPreferenceEnabled()) return;
-    if (!isVaultNotificationCategoryEnabled("insights")) return;
+    const ownerKey = `${user.id}:${activePersonId}`;
+    const notificationsEnabled = isNotificationPreferenceEnabled() && isVaultNotificationCategoryEnabled("insights");
+    if (!notificationsEnabled) {
+      const previous = clearCarePlanNotificationMemory(ownerKey);
+      if (previous) void LocalNotifications.cancel({ notifications: [{ id: previous.notificationId }] }).catch(() => undefined);
+      return;
+    }
     pruneHealthInsightMemory(activePersonId);
 
     const plan = careCommand?.plan ?? null;
+    if (!plan) {
+      const previous = clearCarePlanNotificationMemory(ownerKey);
+      if (previous) void LocalNotifications.cancel({ notifications: [{ id: previous.notificationId }] }).catch(() => undefined);
+    }
     const planMemory = plan ? readCarePlanNotificationMemory(plan.ownerKey) : null;
     const planDecision = plan ? decideCarePlanNotification(plan, planMemory) : null;
     if (plan && planDecision?.reason === "ineligible" && planMemory) {

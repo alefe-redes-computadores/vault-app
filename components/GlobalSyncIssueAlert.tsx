@@ -3,9 +3,8 @@
 
 import { AlertTriangle, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
+import { useSyncQueueSummary } from "@/hooks/useSyncQueueSummary";
 
 // VAULT_SYNC_TRUTH_V95_2
 // Atividade saudável é silenciosa fora de Mais.
@@ -13,11 +12,7 @@ import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 export function GlobalSyncIssueAlert() {
   const router = useRouter();
   const runtime = useVaultSyncRuntime();
-  const failedCount = useLiveQuery(
-    () => db.syncQueue.filter((item) => item.failed === true).count(),
-    [],
-    0
-  );
+  const { failed: failedCount } = useSyncQueueSummary();
 
   if (failedCount <= 0 && runtime.phase !== "error") return null;
 
