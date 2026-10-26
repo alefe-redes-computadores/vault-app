@@ -20,7 +20,7 @@ import { decideMedicationAlerts } from "@/lib/health-intelligence/medication-ale
 import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { summarizeMedicationContinuity, continuityEvidenceMessage } from "@/lib/health-intelligence/medication-continuity";
-import { decideMedicationCarePath, type MedicationCareStage } from "@/lib/health-intelligence/medication-care-decision";
+import { decideMedicationCarePath, medicationCareStageIsPlanning, type MedicationCareStage } from "@/lib/health-intelligence/medication-care-decision";
 import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
 
 export type MedicationCareOpportunityLevel =
@@ -494,7 +494,9 @@ export function buildMedicationCareOpportunities({
       });
 
     // Retirada atrasada com estoque SOS positivo é pendência logística, não urgência clínica.
-    const level = overdueWithdrawal && decision.isAsNeeded && (decision.count ?? 0) > 0
+    const level = medicationCareStageIsPlanning(careDecision.stage)
+      ? "planning"
+      : overdueWithdrawal && decision.isAsNeeded && (decision.count ?? 0) > 0
       ? "attention"
       : overdueWithdrawal ? "urgent" : resolveLevel(score);
 
@@ -598,7 +600,7 @@ export function buildMedicationCareOpportunities({
             )}`
           : null,
 
-      score: overdueWithdrawal ? Math.max(score, 90) : score,
+      score: medicationCareStageIsPlanning(careDecision.stage) ? Math.min(score, 20) : overdueWithdrawal ? Math.max(score, 90) : score,
       careStage: careDecision.stage,
       careStageLabel: careDecision.label,
       evidence: careDecision.evidence,

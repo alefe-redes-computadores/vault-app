@@ -15,5 +15,5 @@ assert(journey.includes('medicationId')&&journey.includes('onNavigate')&&journey
 assert(detail.includes('medicationId={med.id}')&&detail.includes('onNavigate={href=>router.push(href)}'),'detalhe liga a jornada navegável');
 assert(insightMemory.includes('pruneHealthInsightMemory')&&insightMemory.includes('maxEntries = 64')&&insightMemory.includes('90 * 24'),'memória anti-spam é limitada e expira');
 assert(reconciler.includes('pruneHealthInsightMemory(activePersonId)'),'reconciliador limpa memória antes de decidir');
-assert(r('lib/health-intelligence/version.ts').includes('"6.5"'),'Brain avança para 6.5');
+assert(/BRAIN_VERSION = "6\.[0-9]+"/.test(r('lib/health-intelligence/version.ts')),'Brain permanece na linha canônica 6.x');
 console.log('VAULT V265 — MEMÓRIA SEGURA + MEDICAMENTO NAVEGÁVEL + AVATAR: OK');

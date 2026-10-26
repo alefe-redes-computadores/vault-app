@@ -4,7 +4,7 @@
 import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
-import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
+import { decideMedicationCarePath, medicationCarePresentation, medicationCareStageIsPlanning, medicationCareStageNeedsAttention } from "@/lib/health-intelligence/medication-care-decision";
 import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
@@ -410,6 +410,23 @@ export default function MedicamentosListPage() {
       ]
     );
 
+  const careDecisionsByMedication = useMemo(() => {
+    const decisions = new Map<string, ReturnType<typeof decideMedicationCarePath>>();
+    for (const item of listaBase) {
+      const id = item.med.id;
+      if (!id || item.isSuspenso) continue;
+      decisions.set(id, decideMedicationCarePath({
+        medication: item.med,
+        renewals: renewalsByMedication.get(id) ?? [],
+        withdrawal: scheduledWithdrawals.get(id) ?? null,
+        today: hojeString,
+        needsPrescription: Boolean(item.insight?.deveRenovar && item.insight.motivo === "receita"),
+        needsStock: item.isEstoqueZerado || item.isEstoqueCritico,
+      }));
+    }
+    return decisions;
+  }, [listaBase, renewalsByMedication, scheduledWithdrawals, hojeString]);
+
   // ==========================================================
   // LISTA VISÍVEL
   // ==========================================================
@@ -432,9 +449,7 @@ export default function MedicamentosListPage() {
         if (item.isSuspenso) return false;
 
         if (medicationFilter === "atencao") {
-          return item.isEstoqueZerado ||
-            item.isEstoqueCritico ||
-            item.insight.deveRenovar ||
+          return medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage ?? "stable") ||
             item.dosesPendentesHoje > 0 || item.dosesIgnoradasHoje > 0;
         }
 
@@ -461,6 +476,7 @@ export default function MedicamentosListPage() {
       medicationFilter,
       medicationSearchMatches,
       regulatoryProfiles,
+      careDecisionsByMedication,
     ]);
 
   // ==========================================================
@@ -519,6 +535,7 @@ export default function MedicamentosListPage() {
 
   const {
     medsPrioridade,
+    medsPlanejados,
     medsEmDia,
     medsSOS,
     medsSuspensos,
@@ -529,6 +546,9 @@ export default function MedicamentosListPage() {
           ProcessedMed[] = [];
 
         const emDia:
+          ProcessedMed[] = [];
+
+        const planejados:
           ProcessedMed[] = [];
 
         const sos:
@@ -562,9 +582,7 @@ export default function MedicamentosListPage() {
             }
 
             const precisaAcao =
-              item.isEstoqueZerado ||
-              item.isEstoqueCritico ||
-              item.insight.deveRenovar ||
+              medicationCareStageNeedsAttention(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable") ||
               item.dosesPendentesHoje >
                 0 || item.dosesIgnoradasHoje > 0;
 
@@ -573,6 +591,11 @@ export default function MedicamentosListPage() {
                 item
               );
 
+              return;
+            }
+
+            if (medicationCareStageIsPlanning(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable")) {
+              planejados.push(item);
               return;
             }
 
@@ -630,6 +653,8 @@ export default function MedicamentosListPage() {
             )
         );
 
+        planejados.sort((a, b) => String(a.med.nome || "").localeCompare(String(b.med.nome || ""), "pt-BR"));
+
         const byName = (a: ProcessedMed, b: ProcessedMed) =>
           String(a.med.nome || "").localeCompare(String(b.med.nome || ""), "pt-BR");
 
@@ -643,6 +668,9 @@ export default function MedicamentosListPage() {
           medsEmDia:
             emDia,
 
+          medsPlanejados:
+            planejados,
+
           medsSOS:
             sos,
 
@@ -652,6 +680,7 @@ export default function MedicamentosListPage() {
       },
       [
         listaProcessada,
+        careDecisionsByMedication,
       ]
     );
 
@@ -997,14 +1026,7 @@ export default function MedicamentosListPage() {
             scheduledWithdrawalId: scheduledWithdrawals.get(med.id!)?.id,
           })
         : null;
-      const careDecision = decideMedicationCarePath({
-        medication: med,
-        renewals: renewalsByMedication.get(med.id!) ?? [],
-        withdrawal: scheduledWithdrawals.get(med.id!) ?? null,
-        today: hojeString,
-        needsPrescription: Boolean(insight?.deveRenovar && insight.motivo === "receita"),
-        needsStock: isEstoqueZerado || isEstoqueCritico,
-      });
+      const careDecision = careDecisionsByMedication.get(med.id!) ?? decideMedicationCarePath({ medication: med, renewals: [], today: hojeString, needsPrescription: false, needsStock: false });
       const careAction = careDecision.stage !== "stable"
         ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
         : accessAction;
@@ -1629,6 +1651,8 @@ export default function MedicamentosListPage() {
                 {medsEmDia.length} em dia
               </span>
 
+              {medsPlanejados.length > 0 && <span className="text-ice">{medsPlanejados.length} planejado(s)</span>}
+
               {statsProgresso.ignoradas > 0 && <span className="text-amber-400">{statsProgresso.ignoradas} ignorada(s) · não contam como tomadas</span>}
               <span className="text-violet-400">
                 {medsSOS.length} SOS
@@ -1715,6 +1739,13 @@ export default function MedicamentosListPage() {
                   {medsEmDia.map(
                     renderCard
                   )}
+                </>
+              )}
+
+              {medsPlanejados.length > 0 && (
+                <>
+                  <SectionTitle icon={Calendar} title={`Próximas etapas · ${medsPlanejados.length}`} />
+                  {medsPlanejados.map(renderCard)}
                 </>
               )}
 

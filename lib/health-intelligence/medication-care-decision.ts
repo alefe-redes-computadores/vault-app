@@ -24,6 +24,14 @@ export interface MedicationCareDecision {
 
 export type MedicationCareTone = "critical" | "attention" | "planning" | "stable";
 
+export function medicationCareStageNeedsAttention(stage: MedicationCareStage): boolean {
+  return stage === "withdrawal_overdue" || stage === "prescription_needed" || stage === "acquisition_needed" || stage === "stock_review";
+}
+
+export function medicationCareStageIsPlanning(stage: MedicationCareStage): boolean {
+  return stage === "withdrawal_planned" || stage === "acquisition_planned";
+}
+
 /**
  * Canonical presentation shared by list/detail surfaces. Keeping this next to the
  * decision prevents a correct care stage from receiving a contradictory colour or
@@ -34,7 +42,7 @@ export function medicationCarePresentation(
   urgency?: "alta" | "media" | "baixa" | "nenhuma" | null,
 ): { tone: MedicationCareTone; actionClass: string; badgeClass: string } {
   const critical = decision.stage === "withdrawal_overdue" || urgency === "alta";
-  const planning = decision.stage === "withdrawal_planned" || decision.stage === "acquisition_planned";
+  const planning = medicationCareStageIsPlanning(decision.stage);
   const stable = decision.stage === "stable";
   const tone: MedicationCareTone = critical ? "critical" : stable ? "stable" : planning ? "planning" : "attention";
   if (tone === "critical") return {

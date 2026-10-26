@@ -1,0 +1,18 @@
+const fs=require('fs'),assert=require('assert'),r=p=>fs.readFileSync(p,'utf8');
+const decision=r('lib/health-intelligence/medication-care-decision.ts');
+const opportunities=r('lib/health-intelligence/medication-care-opportunities.ts');
+const list=r('app/saude/medicamentos/page.tsx');
+const today=r('app/hoje/page.tsx');
+const home=r('app/page.tsx');
+const avatar=r('components/saude/AvatarCareReadiness.tsx');
+assert(decision.includes('medicationCareStageNeedsAttention')&&decision.includes('medicationCareStageIsPlanning'),'motor publica semântica única de atenção e planejamento');
+assert(decision.includes('withdrawal_overdue')&&decision.includes('acquisition_planned'),'estágios de retirada e aquisição continuam separados');
+assert(opportunities.includes('medicationCareStageIsPlanning(careDecision.stage)')&&opportunities.includes('? "planning"'),'Home não pinta planejamento futuro como urgência');
+assert(opportunities.includes('Math.min(score, 20)'),'planejamento futuro não domina o ranking operacional');
+assert(list.includes('careDecisionsByMedication')&&list.includes('medicationCareStageNeedsAttention(careDecisionsByMedication'),'lista usa decisão canônica em uma passagem');
+assert(list.includes('medsPlanejados')&&list.includes('Próximas etapas'),'lista separa planejamento de atenção e em dia');
+assert(today.includes('decideMedicationCarePath')&&today.includes('decision.stage === "prescription_needed"'),'Hoje preserva a mesma decisão canônica');
+assert(home.includes('buildMedicationCareOpportunities')&&home.includes('careCommand?.decision'),'Home mantém fila e Brain compartilhados');
+assert(avatar.includes('authorityLabel')&&avatar.includes('associação cautelosa'),'Avatar explica autoridade sem poluir o personagem');
+assert(r('lib/health-intelligence/version.ts').includes('"6.6"'),'Brain avança para 6.6');
+console.log('VAULT V266 — FILA CANÔNICA HOME/HOJE/MEDICAMENTOS/AVATAR: OK');
