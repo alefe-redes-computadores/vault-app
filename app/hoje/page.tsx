@@ -2994,7 +2994,7 @@ export default function HojePage() {
         ========================================================= */}
         <section className="space-y-5 px-4 pt-4">
           {isHoje ? <CareCommandStrip command={healthIntelligence.careCommand} onNavigate={(href) => router.push(href)}/> : null}
-          {isHoje && !brainPulse.isLoading && brainPulse.brief.primary && (
+          {isHoje && !healthIntelligence.careCommand?.decision && !brainPulse.isLoading && brainPulse.brief.primary && (
             <button
               type="button"
               onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainPulse.brief.primary!.insight_id)}&return_to=${encodeURIComponent("/hoje")}`)}
@@ -3040,16 +3040,17 @@ export default function HojePage() {
 
           {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
           {isHoje && !retroReviewMode && (
-            <section aria-label="Diário rápido do dia" className="rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 text-[10px] text-ink-muted">Seus relatos ajudam o Brain. Nada é presumido quando você não registra.</p></div>
-                <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="min-h-10 shrink-0 rounded-xl px-2 text-[10px] font-semibold text-violet-300">Resumo</button>
-              </div>
+            <details aria-label="Diário rápido do dia" className="group rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-[10px] text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
+                <ChevronRight size={15} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
+              </summary>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
                 <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
               </div>
-            </section>
+              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-[10px] font-semibold text-violet-300">Ver resumo longitudinal</button>
+            </details>
           )}
 
           {isHoje && medicamentosSemHorario.length > 0 && (

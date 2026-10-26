@@ -12,7 +12,7 @@ ok(readiness.includes("indexMedicationSupplyRoutes")&&readiness.includes('mode =
 ok(readiness.includes("planned event never becomes completed stock")&&readiness.includes("Ausência de evento não significa falha clínica"),"planejamento não vira estoque nem falha clínica");
 ok(readiness.includes("isPrescriptionOnly")&&readiness.includes("isFutureAcquisition"),"receita e compra futura usam semântica canônica");
 ok(calibration.includes("never the user's health or adherence")&&calibration.includes("evidence_quality"),"calibração mede o Brain e não o paciente");
-ok(alerts.includes("Calibração do Brain")&&alerts.includes("brain.calibration.score"),"Central explica qualidade decisória");
+ok(alerts.includes("Cobertura e qualidade")&&alerts.includes("brain.calibration.score")&&alerts.includes("brain.calibration.explanation"),"Central explica qualidade decisória em divulgação progressiva");
 ok(report.includes("CareReadinessSummary")&&report.includes("buildCareReadiness"),"relatório reúne prontidão da linha de cuidado");
 ok(avatar.includes("AvatarCareReadiness")&&avatar.includes("AvatarAssociationSummary"),"Avatar recebe contexto de rota sem perder associações cautelosas");
 ok(supply.includes('if (p.origem === "comprado") continue'),"compra particular continua fora do alerta documental SUS");

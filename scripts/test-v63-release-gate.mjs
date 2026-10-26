@@ -224,6 +224,7 @@ const contracts = [
   "scripts/test-v101-behavior-priority.mjs",
   "scripts/test-v102-health-supply-contract.mjs",
   "scripts/test-v103-sus-knowledge-contract.mjs",
+  "scripts/test-v273-information-hierarchy-avatar.cjs",
 ];
 
 for (const contract of contracts) {

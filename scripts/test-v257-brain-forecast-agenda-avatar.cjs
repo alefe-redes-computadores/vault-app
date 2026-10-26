@@ -12,7 +12,7 @@ ok(forecast.includes('getLocalTodayISO()')&&readiness.includes('getLocalTodayISO
 ok(forecast.includes('kind: item.overdue ? "overdue_withdrawal" : "upcoming_withdrawal"'),'retirada vencida continua pendente e explícita');
 ok(forecast.includes('kind: "planned_acquisition"')&&forecast.includes('ainda não representa compra, gasto ou entrada no estoque'),'aquisição futura permanece planejamento');
 ok(forecast.includes('kind: "review_stock_data"')&&forecast.includes('Estoque desconhecido não foi convertido em zero'),'estoque ausente não vira zero');
-ok(agenda.includes('Próximas etapas do cuidado')&&agenda.includes('forecast.actions.slice(0, 4)'),'agenda é priorizada e compacta');
+ok(agenda.includes('Próximas etapas do cuidado')&&/forecast\.actions\.slice\(0,\s*[24]\)/.test(agenda)&&agenda.includes('Ver próximas'),'agenda é priorizada, compacta e revela a cauda sob demanda');
 ok(central.includes('<CareForecastAgenda')&&central.includes('health.context'),'Central recebe contexto compartilhado');
 ok(policy.includes('careForecastActionAllowsBehavioralPush')&&policy.includes('action.kind === "overdue_withdrawal"'),'política impede alarme de mero planejamento');
 ok(avatar.includes('buildCareForecast')&&avatar.includes('nextAction.title')&&avatar.includes('line-clamp-1'),'Avatar resume a próxima etapa sem poluição');

@@ -1,0 +1,20 @@
+{
+  "version": "V273",
+  "base": "5d0b086c9ae0a4cd21d6eb71d6096e80f8bc559f",
+  "scope": "hierarquia global do Brain, Hoje, Vault Insight, previsao progressiva e refinamento do Avatar",
+  "database": "none",
+  "publication": "after-all-gates",
+  "files": [
+    "app/hoje/page.tsx",
+    "app/inteligencia/alertas/page.tsx",
+    "app/inteligencia/page.tsx",
+    "components/saude/CareForecastAgenda.tsx",
+    "components/saude/HealthAvatar3D.tsx",
+    "scripts/test-v194-intelligence-command.cjs",
+    "scripts/test-v245-care-journeys-today-avatar.cjs",
+    "scripts/test-v253-brain-readiness-calibration-avatar.cjs",
+    "scripts/test-v257-brain-forecast-agenda-avatar.cjs",
+    "scripts/test-v273-information-hierarchy-avatar.cjs",
+    "scripts/test-v63-release-gate.mjs"
+  ]
+}

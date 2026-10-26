@@ -87,7 +87,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
       eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .85 }),
-      eyeHighlight: new THREE.MeshBasicMaterial({ color: "#f8fafc", transparent: true, opacity: .62, depthWrite: false }),
+      eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .48, metalness: .015 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
@@ -389,7 +389,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         const nosePad=mesh(softBox(.008,.016,.006,.003),materials.glasses,side*.026,y-.018,.268);nosePad.rotation.z=side*.18;nosePad.raycast=()=>{};
       }
       const bridge=mesh(taperedBox(.022,.018,.01,.014),materials.glasses,0,2.831,.263);bridge.raycast=()=>{};
-      const lensMaterial=new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.12,roughness:.12,metalness:.05,depthWrite:false});
+      const lensMaterial=new THREE.MeshPhysicalMaterial({color:0xb7e6fa,transparent:true,opacity:.075,roughness:.2,metalness:.02,depthWrite:false});
       for(const side of [-1,1]){
         const lens=appearance.glasses==="rectangular"
           ? mesh(softBox(.116,.058,.004,.008),lensMaterial,side*.082,2.825,.254)
