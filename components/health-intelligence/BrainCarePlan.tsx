@@ -2,6 +2,8 @@
 
 import { BrainCircuit, CalendarClock, ChevronRight, CircleDollarSign, MessageCircle, Search } from "lucide-react";
 import type { BrainCarePlan as BrainCarePlanModel, BrainCarePlanLane } from "@/lib/health-intelligence/care-plan";
+import { useEffect, useState } from "react";
+import { carePlanMemoryKey, compareCarePlan, snapshotCarePlan, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
 
 const laneMeta: Record<BrainCarePlanLane, { label: string; tone: string; icon: typeof CalendarClock }> = {
   now: { label: "Resolver agora", tone: "border-rose-400/25 bg-rose-400/[0.07] text-rose-200", icon: CalendarClock },
@@ -17,6 +19,16 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
   onNavigate: (href: string) => void;
   compact?: boolean;
 }) {
+  const [change, setChange] = useState<CarePlanChange | null>(null);
+  useEffect(() => {
+    try {
+      const key = carePlanMemoryKey(plan.ownerKey);
+      const raw = window.localStorage.getItem(key);
+      const previous = raw ? JSON.parse(raw) : null;
+      setChange(compareCarePlan(previous, plan));
+      window.localStorage.setItem(key, JSON.stringify(snapshotCarePlan(plan)));
+    } catch { setChange(null); }
+  }, [plan]);
   const visible = compact ? plan.focus.slice(0, 2) : plan.focus;
   return <section aria-label="Plano do Brain" className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-violet-400/20 bg-gradient-to-br from-violet-400/[0.07] via-surface to-emerald-400/[0.04]">
     <div className="flex items-start gap-3 px-4 py-3.5">
@@ -27,6 +39,7 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
     <div className="grid grid-cols-4 border-y border-surface-border/50 bg-void/20">
       {(Object.keys(laneMeta) as BrainCarePlanLane[]).map(lane => <div key={lane} className="border-r border-surface-border/40 px-1.5 py-2 text-center last:border-r-0"><strong className="block text-sm">{plan.counts[lane]}</strong><span className="mt-0.5 block text-[7px] uppercase tracking-wide text-ink-faint">{laneMeta[lane].label}</span></div>)}
     </div>
+    {change ? <div className="border-b border-surface-border/50 px-4 py-2 font-mono text-[8px] uppercase tracking-wide text-ink-faint">{change.label}</div> : null}
     {visible.length ? <div className="space-y-2 p-3">{visible.map(item => {
       const meta = laneMeta[item.lane], Icon = meta.icon;
       return <button key={item.id} type="button" onClick={() => onNavigate(item.href)} className={`flex min-h-[68px] w-full items-center gap-3 rounded-2xl border p-3 text-left active:scale-[0.985] ${meta.tone}`}>

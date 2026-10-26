@@ -19,6 +19,7 @@ export type BrainCarePlanItem = {
   confidence: "high" | "moderate" | "limited";
 };
 export type BrainCarePlan = {
+  ownerKey: string;
   generatedFor: string;
   items: BrainCarePlanItem[];
   focus: BrainCarePlanItem[];
@@ -28,6 +29,7 @@ export type BrainCarePlan = {
   projectedCost30d: number;
   projectedCostCoverage30d: number;
   note: string;
+  decision: BrainCarePlanItem | null;
 };
 
 const laneRank: Record<BrainCarePlanLane, number> = { now: 0, prepare: 1, discuss: 2, observe: 3 };
@@ -127,6 +129,7 @@ export function buildBrainCarePlan(
   ordered.forEach(item => { counts[item.lane] += 1; });
   const month = forecast.windows.find(window => window.days === 30)!;
   return {
+    ownerKey: `${context.userId || "local"}:${context.personId || "active"}`,
     generatedFor: forecast.generatedFor,
     items: ordered,
     focus: ordered.slice(0, 4),
@@ -136,5 +139,6 @@ export function buildBrainCarePlan(
     projectedCost30d: month.plannedKnownCost + month.expectedRefillCost,
     projectedCostCoverage30d: month.expectedRefillCostCoverage,
     note: "Plano orientativo baseado somente no que foi registrado. Projeções e associações aparecem identificadas e não substituem avaliação profissional.",
+    decision: ordered[0] ?? null,
   };
 }
