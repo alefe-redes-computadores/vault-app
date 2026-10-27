@@ -18,7 +18,7 @@ ok(insight.includes("health.experienceHighlights.slice(0, 2)"), "Vault Insight l
 ok(insight.includes("itens analisados sem abrir dados sensíveis"), "inventário sensível usa resumo progressivo");
 ok(today.includes("!healthIntelligence.careCommand?.decision"), "Hoje não duplica comando e briefing");
 ok(today.includes('aria-label="Diário rápido do dia"') && today.includes("<details"), "diário rápido permanece acessível e recolhível");
-ok(forecast.includes("forecast.actions.slice(0, 2)") && forecast.includes("Ver próximas"), "previsão mostra foco antes da cauda");
+ok(forecast.includes("agenda.slice(0, 2)") && forecast.includes("Ver próximas"), "previsão mostra foco antes da cauda");
 ok(avatar.includes("opacity: .42") && avatar.includes("opacity:.075"), "Avatar suaviza brilho ocular e reflexo das lentes");
 ok(central.includes('contentVisibility:"auto"'), "lista longa preserva renderização progressiva");
 
