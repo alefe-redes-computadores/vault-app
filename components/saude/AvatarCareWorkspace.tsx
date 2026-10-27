@@ -13,6 +13,7 @@ import { DoseEvidenceBrief } from "./DoseEvidenceBrief";
 import { CareAccessBrief } from "./CareAccessBrief";
 import { UpcomingDoseAgenda } from "./UpcomingDoseAgenda";
 import { PrescriptionPlanningBrief } from "./PrescriptionPlanningBrief";
+import { CareFinancialOutlook } from "./CareFinancialOutlook";
 
 export function AvatarCareWorkspace({ context, command, onNavigate }: {
   context: HealthInsightContext | null | undefined;
@@ -40,6 +41,7 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
         <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>
         <UpcomingDoseAgenda context={context} onNavigate={onNavigate} compact/>
         <PrescriptionPlanningBrief context={context} onNavigate={onNavigate} compact/>
+        {command?<CareFinancialOutlook command={command} compact/>:null}
         <CareContinuityAvatarSummary context={context} onNavigate={onNavigate}/>
         <MedicationContinuityAvatarSummary context={context} command={command} onNavigate={onNavigate}/>
         <TemporaryCourseAvatarSummary context={context} onNavigate={onNavigate}/>

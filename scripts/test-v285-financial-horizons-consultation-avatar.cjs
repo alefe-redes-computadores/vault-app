@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const read=file=>fs.readFileSync(file,'utf8');
+const component=read('components/saude/CareFinancialOutlook.tsx');
+const central=read('app/inteligencia/page.tsx');
+const avatar=read('components/saude/AvatarCareWorkspace.tsx');
+const plan=read('lib/health-intelligence/care-plan.ts');
+const forecast=read('lib/health-intelligence/care-forecast.ts');
+for(const token of ['Planejado × realizado × projetado','item.days','item.stockRisk','item.plannedAcquisitions','item.expectedRefillCost','item.expectedRefillCostCoverage','item.plannedKnownCost'])assert(component.includes(token),`financial outlook: ${token}`);
+assert(component.includes('realized30')&&component.includes('realized90'),'confirmed spending remains separate');
+assert(component.includes('Valores ausentes continuam desconhecidos'),'missing price remains unknown');
+assert(component.includes('Planejamento não registra compra, gasto nem entrada no estoque'),'planning authority');
+assert(component.includes('command.plan.daysSinceConsultation'),'longitudinal consultation window');
+assert(central.includes('<CareFinancialOutlook command={health.careCommand}')&&central.includes('financialSpend30d')&&central.includes('financialSpend90d'),'Central combines canonical forecast and documented spending');
+assert(!central.includes('aria-label="Inteligência financeira de saúde"'),'old duplicate financial card removed');
+assert(avatar.includes('<CareFinancialOutlook command={command} compact/>'),'Avatar receives same financial and consultation context');
+assert(plan.includes('daysSinceLastCompletedConsultation')&&plan.includes('projectedCostCoverage30d'),'Brain owns consultation and coverage');
+assert(forecast.includes('([30, 60, 90] as const)'),'canonical horizons');
+console.log('VAULT V285 — CUSTOS 30/60/90 + CONSULTA + AVATAR: OK');

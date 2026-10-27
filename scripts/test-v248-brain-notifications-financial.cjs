@@ -20,7 +20,7 @@ ok(reconciler.includes('LocalNotifications.cancel')&&reconciler.includes('snooze
 const central=read('app/inteligencia/alertas/page.tsx');
 ok(central.includes('state==="snoozed"')&&central.includes('Programados'),'Central separa decisões programadas');
 ok(central.includes('x.requires_attention&&!brainV5IsSnoozed(x.primary)')||central.includes('brain.portfolio.visibleJourneys'),'contagem de atenção exclui jornada adiada');
-const page=read('app/inteligencia/page.tsx');
-ok(page.includes('Custos de saúde documentados')&&page.includes('Realizado · 30d')&&page.includes('Planejado · 30d'),'painel financeiro diferencia realizado e planejado');
+const page=read('app/inteligencia/page.tsx'),outlook=read('components/saude/CareFinancialOutlook.tsx');
+ok(page.includes('CareFinancialOutlook')&&outlook.includes('Planejado × realizado × projetado')&&outlook.includes('Realizado · 30 dias'),'painel financeiro diferencia realizado, planejado e projetado');
 ok(read('app/saude/minha-saude/page.tsx').includes('brainPulse.counters.snoozed'),'Avatar preserva integração temporal V247');
 console.log('\nVAULT V248 — BRAIN NOTIFICATIONS + FINANCIAL TRUTH: OK');
