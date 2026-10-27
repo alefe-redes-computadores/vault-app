@@ -3,6 +3,7 @@ import { buildCautiousAssociations } from "./cautious-associations";
 import { buildCareForecast, daysSinceLastCompletedConsultation, type CareForecast } from "./care-forecast";
 import { buildCareReadiness, type CareReadinessPortfolio } from "./care-readiness";
 import { buildCareDocumentReadiness, type CareDocumentReadinessPortfolio } from "./care-document-readiness";
+import { buildPrescriptionPlanningPortfolio } from "./prescription-planning";
 
 export type BrainCarePlanLane = "now" | "prepare" | "discuss" | "observe";
 export type BrainCarePlanEvidence = "recorded" | "projected" | "association" | "missing_data";
@@ -117,6 +118,23 @@ export function buildBrainCarePlan(
       medicationName:entry.medicationName,
       supplyRoute:entry.routeLabel,
       relatedCount:missing.length,
+    }));
+  }
+
+  const prescriptionPlans = buildPrescriptionPlanningPortfolio(context);
+  for (const entry of prescriptionPlans.items) {
+    items.push(explain({
+      id: `prescription-plan:${entry.medicationId}`,
+      lane: entry.due ? "now" : "prepare",
+      evidenceKind: "projected",
+      title: `${entry.medicationName}: ${entry.due ? "solicitar nova receita" : "receita planejada"}`,
+      reason: `Data de solicitação escolhida: ${entry.date}. O planejamento não representa receita recebida e será concluído somente quando a nova prescrição for registrada.`,
+      evidence: ["Data escolhida pelo usuário", `Solicitação: ${entry.date}`],
+      href: entry.href,
+      medicationId: entry.medicationId,
+      medicationName: entry.medicationName,
+      dueDate: entry.date,
+      relatedCount: 1,
     }));
   }
 

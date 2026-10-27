@@ -220,6 +220,7 @@ function NovaReceitaContent() {
     useState(
       false
     );
+  const [formError, setFormError] = useState("");
 
   const [
     localFile,
@@ -309,6 +310,7 @@ function NovaReceitaContent() {
 
   const handleSave =
     async () => {
+      setFormError("");
       if (
         saving
       ) {
@@ -322,6 +324,7 @@ function NovaReceitaContent() {
           "error"
         );
 
+        setFormError("Selecione a pessoa antes de registrar a receita.");
         return;
       }
 
@@ -332,12 +335,25 @@ function NovaReceitaContent() {
           "error"
         );
 
+        setFormError("Selecione o medicamento desta receita.");
         return;
       }
 
       const parsedPlanDate = parseLocalDate(plannedDate);
       if (planOnly && (!/^\d{4}-\d{2}-\d{2}$/.test(plannedDate) || !parsedPlanDate || formatLocalDateISO(parsedPlanDate) !== plannedDate || plannedDate < getLocalTodayISO())) {
         trigger("error");
+        setFormError("Escolha hoje ou uma data futura válida para solicitar a receita.");
+        return;
+      }
+      const parsedPrescriptionDate = parseLocalDate(dataReceita);
+      if (!planOnly && (!/^\d{4}-\d{2}-\d{2}$/.test(dataReceita) || !parsedPrescriptionDate || formatLocalDateISO(parsedPrescriptionDate) !== dataReceita)) {
+        trigger("error");
+        setFormError("Informe uma data válida para a receita recebida.");
+        return;
+      }
+      if (!planOnly && proximaRenovacao && proximaRenovacao < dataReceita) {
+        trigger("error");
+        setFormError("A próxima revisão da receita não pode ficar antes da data da receita recebida.");
         return;
       }
 
@@ -470,6 +486,7 @@ function NovaReceitaContent() {
         trigger(
           "error"
         );
+        setFormError(error instanceof Error ? error.message : "Não foi possível salvar a receita. Tente novamente.");
       } finally {
         setSaving(
           false
@@ -828,6 +845,7 @@ function NovaReceitaContent() {
               ? "Salvando..."
               : planOnly ? "Salvar planejamento" : "Registrar nova receita"}
           </Button>
+          {formError ? <p role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/25 bg-rose-400/[.06] px-3 py-3 text-xs leading-relaxed text-rose-200">{formError}</p> : null}
         </section>
       </main>
     </PageTransition>
