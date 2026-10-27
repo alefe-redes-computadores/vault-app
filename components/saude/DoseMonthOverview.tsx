@@ -7,19 +7,22 @@ import { CalendarDays, ChevronDown, ChevronRight, CloudOff, Pill } from "lucide-
 import { db } from "@/lib/db";
 import { buildDoseMonthMetrics } from "@/lib/health-intelligence/dose-month-metrics";
 import type { DoseLog } from "@/lib/types";
+import type { HealthInsightContext } from "@/lib/health-insights";
+import { PlannedRealizedBrief } from "./PlannedRealizedBrief";
 
 const ms=(value:string)=>Date.parse(`${value}T00:00:00.000Z`);
 const periodStart=(today:string,days:number)=>new Date(ms(today)-(days-1)*86400000).toISOString().slice(0,10);
 
 /** Zero extra DB subscriptions until the user expands the timeline. */
-export function DoseMonthOverview({personId,userId,today}:{personId:string;userId:string;today:string}) {
+export function DoseMonthOverview({personId,userId,today,context,onNavigate}:{personId:string;userId:string;today:string;context?:HealthInsightContext|null;onNavigate?:(href:string)=>void}) {
  const [expanded,setExpanded]=useState(false);
+ const router=useRouter();
  return <section className="overflow-hidden rounded-2xl border border-surface-border/70 bg-surface" aria-label="Linha do tempo das doses registradas">
   <button type="button" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)} className="flex min-h-12 w-full items-center gap-3 px-3 py-3 text-left">
    <CalendarDays size={18} className="shrink-0 text-emerald-300"/><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Histórico de doses</strong><span className="block text-[10px] text-ink-muted">Calendário de confirmações e registros · sem presumir doses perdidas</span></span>
    <ChevronDown size={16} className={`shrink-0 text-ink-muted transition-transform ${expanded?"rotate-180":""}`}/>
   </button>
-  {expanded && <DoseMonthBody personId={personId} userId={userId} today={today}/>}
+  {expanded && <><div className="border-t border-surface-border/60 px-3 pt-3"><PlannedRealizedBrief context={context} onNavigate={onNavigate||((href)=>router.push(href))}/></div><DoseMonthBody personId={personId} userId={userId} today={today}/></>}
  </section>;
 }
 function DoseMonthBody({personId,userId,today}:{personId:string;userId:string;today:string}){

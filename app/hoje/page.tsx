@@ -3009,7 +3009,7 @@ export default function HojePage() {
               <ChevronRight size={15} className="shrink-0 text-violet-300"/>
             </button>
           )}
-          {user?.id && activePersonId && isHoje && <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} />}
+          {user?.id && activePersonId && isHoje && <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} context={healthIntelligence.context} onNavigate={(href)=>router.push(href)} />}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
