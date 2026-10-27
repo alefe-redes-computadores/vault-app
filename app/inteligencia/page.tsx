@@ -17,6 +17,7 @@ import { useReturnContext } from "@/hooks/useReturnContext";
 import { CareForecastAgenda } from "@/components/saude/CareForecastAgenda";
 import { BrainCarePlan } from "@/components/health-intelligence/BrainCarePlan";
 import { DoseEvidenceBrief } from "@/components/saude/DoseEvidenceBrief";
+import { CareAccessBrief } from "@/components/saude/CareAccessBrief";
 
 const kindMeta: Record<VaultInsightKind, { label: string; classes: string }> = {
   attention: { label: "Atenção", classes: "border-amber-400/25 bg-amber-400/10 text-amber-300" },
@@ -93,6 +94,8 @@ export default function VaultIntelligencePage() {
     {!health.isLoading ? <CareForecastAgenda context={health.context} forecast={health.careCommand?.forecast} onNavigate={(href) => router.push(preserveReturn(`${href}`))}/> : null}
 
     {!health.isLoading && health.careCommand ? <BrainCarePlan plan={health.careCommand.plan} onNavigate={(href) => router.push(preserveReturn(href))}/> : null}
+
+    {!health.isLoading && health.careCommand ? <section className="mx-auto mt-4 max-w-2xl"><CareAccessBrief portfolio={health.careCommand.documents} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
 
     {!health.isLoading ? <section className="mx-auto mt-4 max-w-2xl"><DoseEvidenceBrief context={health.context} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
 

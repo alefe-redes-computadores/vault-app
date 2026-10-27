@@ -21,6 +21,8 @@ export type MedicationDocumentReadiness = {
 export type CareDocumentReadinessPortfolio = {
   items: MedicationDocumentReadiness[];
   counts: Record<CareDocumentStatus, number>;
+  laneCounts: Record<CareDocumentLane, Record<CareDocumentStatus, number>>;
+  attentionItems: number;
   note: string;
 };
 
@@ -52,6 +54,8 @@ export function buildCareDocumentReadiness(context: HealthInsightContext): CareD
       const receiptLinked = linked.some(row => row?.type === "outro" && /comprovante|cupom|nota/i.test(row.title || ""));
       const publicRoute = route.mode === "public" || route.mode === "hybrid";
       const privateRoute = route.mode === "private" || route.mode === "hybrid";
+      const activeProcess = supply.processos.find(row => processIds.has(row.id) && row.status === "ativo");
+      const activeCycle = supply.ciclos.filter(row => cycleIds.has(row.id) && row.status !== "encerrado").sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||"")))[0];
       const requirements: CareDocumentRequirement[] = [
         {
           lane: "regulatory_prescription",
@@ -75,9 +79,13 @@ export function buildCareDocumentReadiness(context: HealthInsightContext): CareD
           evidence: [`${purchaseEvents.length} aquisição(ões) registrada(s)`, receiptLinked ? "Comprovante vinculado" : "Sem comprovante identificado"],
         },
       ];
-      return { medicationId, medicationName: med.nome, routeLabel: route.labels.join(" + ") || "Rota não informada", requirements, href: `/saude/medicamentos/detalhes?id=${encodeURIComponent(medicationId)}` };
+      const href=activeProcess?`/saude/fornecimento?id=${encodeURIComponent(activeProcess.id)}${activeCycle?`&ciclo_id=${encodeURIComponent(activeCycle.id)}`:""}`:`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicationId)}`;
+      return { medicationId, medicationName: med.nome, routeLabel: route.labels.join(" + ") || "Rota não informada", requirements, href };
     });
   const counts: Record<CareDocumentStatus, number> = { available: 0, missing: 0, not_required: 0, not_informed: 0 };
-  for (const item of items) for (const requirement of item.requirements) counts[requirement.status] += 1;
-  return { items, counts, note: "Somente uma exigência explícita de processo aparece como pendência. Documento não informado e documento não aplicável permanecem separados." };
+  const emptyLane=():Record<CareDocumentStatus,number>=>({available:0,missing:0,not_required:0,not_informed:0});
+  const laneCounts:Record<CareDocumentLane,Record<CareDocumentStatus,number>>={regulatory_prescription:emptyLane(),sus_process:emptyLane(),purchase_receipt:emptyLane()};
+  for (const item of items) for (const requirement of item.requirements) {counts[requirement.status] += 1;laneCounts[requirement.lane][requirement.status]+=1;}
+  const attentionItems=items.filter(item=>item.requirements.some(row=>row.status==="missing")).length;
+  return { items, counts, laneCounts, attentionItems, note: "Somente uma exigência explícita de processo aparece como pendência. Documento não informado e documento não aplicável permanecem separados; comprovante de compra continua opcional." };
 }

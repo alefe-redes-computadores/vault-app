@@ -85,7 +85,9 @@ export function buildCareForecast(context: HealthInsightContext, today = context
       overdue: validDate ? date < today : false, prescriptionRequired, prescriptionLinked, missing, validDate,
       href: item.id ? `/saude/retiradas/detalhes?id=${encodeURIComponent(item.id)}` : `/saude/retiradas?medicamento_id=${encodeURIComponent(item.medicamento_id)}` };
   }).sort((a, b) => a.date.localeCompare(b.date) || a.medicationName.localeCompare(b.medicationName, "pt-BR"));
-  const actions: CareForecastAction[] = withdrawals.map(item => ({
+  const actions: CareForecastAction[] = withdrawals.map(item => {
+    const regulatoryMissing=item.prescriptionRequired&&!item.prescriptionLinked;
+    return ({
     // V257 preservado para datas válidas: kind: item.overdue ? "overdue_withdrawal" : "upcoming_withdrawal"
     id: `withdrawal:${item.id}`,
     kind: !item.validDate ? "review_schedule_data" : item.overdue ? "overdue_withdrawal" : "upcoming_withdrawal",
@@ -93,11 +95,11 @@ export function buildCareForecast(context: HealthInsightContext, today = context
     medicationId: item.medicationId,
     medicationName: item.medicationName,
     date: item.date,
-    title: !item.validDate ? `${item.medicationName}: revisar data da retirada` : item.overdue ? `${item.medicationName}: retirada continua pendente` : `${item.medicationName}: preparar retirada`,
-    reason: !item.validDate ? "O compromisso existe, mas a data não é válida; ele não foi tratado como vencido nem concluído." : item.overdue ? "O compromisso passou da data e ainda não foi concluído, cancelado ou reagendado." : item.missing.length ? `Falta organizar: ${item.missing.join(" e ")}.` : "Compromisso registrado com os dados essenciais disponíveis.",
+    title: !item.validDate ? `${item.medicationName}: revisar data da retirada` : regulatoryMissing ? `${item.medicationName}: preparar receita regulatória` : item.overdue ? `${item.medicationName}: retirada continua pendente` : `${item.medicationName}: preparar retirada`,
+    reason: !item.validDate ? "O compromisso existe, mas a data não é válida; ele não foi tratado como vencido nem concluído." : regulatoryMissing ? "A retirada está registrada com exigência explícita de nova receita, mas ainda não há receita vinculada ao compromisso. Documento SUS e comprovante de compra não substituem a prescrição." : item.overdue ? "O compromisso passou da data e ainda não foi concluído, cancelado ou reagendado." : item.missing.length ? `Falta organizar: ${item.missing.join(" e ")}.` : "Compromisso registrado com os dados essenciais disponíveis.",
     href: item.href,
     evidence: [item.validDate ? `Data registrada: ${item.date}` : "Data ausente ou inválida", item.prescriptionRequired ? item.prescriptionLinked ? "Receita/documento vinculado" : "Receita/documento ainda não vinculado" : "Sem exigência explícita de nova receita"],
-  }));
+  });});
   const nextPlannedByMedication = new Map<string, (typeof events)[number]>();
   for (const event of events.filter(item => !isPrescriptionOnly(item) && isFutureAcquisition(item, today)).sort((a, b) => safeRenewalDate(a).localeCompare(safeRenewalDate(b)))) {
     if (!nextPlannedByMedication.has(event.medicamento_id)) nextPlannedByMedication.set(event.medicamento_id, event);

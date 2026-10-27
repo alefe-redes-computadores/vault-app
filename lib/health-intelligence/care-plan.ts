@@ -2,6 +2,7 @@ import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCautiousAssociations } from "./cautious-associations";
 import { buildCareForecast, daysSinceLastCompletedConsultation, type CareForecast } from "./care-forecast";
 import { buildCareReadiness, type CareReadinessPortfolio } from "./care-readiness";
+import { buildCareDocumentReadiness, type CareDocumentReadinessPortfolio } from "./care-document-readiness";
 
 export type BrainCarePlanLane = "now" | "prepare" | "discuss" | "observe";
 export type BrainCarePlanEvidence = "recorded" | "projected" | "association" | "missing_data";
@@ -61,6 +62,7 @@ export function buildBrainCarePlan(
   context: HealthInsightContext,
   forecast: CareForecast = buildCareForecast(context),
   readiness: CareReadinessPortfolio = buildCareReadiness(context, forecast.generatedFor, forecast),
+  documents: CareDocumentReadinessPortfolio = buildCareDocumentReadiness(context),
 ): BrainCarePlan {
   const readinessByMedication = new Map(readiness.items.map(item => [item.medicationId, item]));
   const items: BrainCarePlanItem[] = forecast.actions.map(action => {
@@ -97,6 +99,24 @@ export function buildBrainCarePlan(
       dueDate: entry.nextDate,
       supplyRoute: entry.route.labels.join(" + ") || "Origem não informada",
       relatedCount: 1,
+    }));
+  }
+
+  for (const entry of documents.items) {
+    const missing=entry.requirements.filter(requirement=>requirement.status==="missing");
+    if(!missing.length)continue;
+    items.push(explain({
+      id:`documents:${entry.medicationId}`,
+      lane:"prepare",
+      evidenceKind:"recorded",
+      title:`${entry.medicationName}: preparar documento SUS`,
+      reason:`O processo público está registrado e ainda falta vincular: ${missing.map(item=>item.label).join(" e ")}. Receita regulatória e comprovante de compra não substituem esse documento.`,
+      evidence:[entry.routeLabel,...missing.flatMap(item=>item.evidence)].slice(0,6),
+      href:entry.href,
+      medicationId:entry.medicationId,
+      medicationName:entry.medicationName,
+      supplyRoute:entry.routeLabel,
+      relatedCount:missing.length,
     }));
   }
 
