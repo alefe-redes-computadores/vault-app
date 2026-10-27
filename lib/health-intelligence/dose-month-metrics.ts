@@ -1,4 +1,5 @@
 import type { DoseLog } from "@/lib/types";
+import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 /** V228: only explicitly registered slots; no inferred medication adherence. */
 export type DoseDay = {
@@ -34,14 +35,6 @@ function validHour(value: string): string | null {
 }
 const zeros = (): Omit<DoseDay,"date"> => ({taken:0,ignored:0,unconfirmed:0,conflicts:0,sos:0,extra:0,pendingSync:0});
 const empty = (date: string): DoseDay => ({date,...zeros()});
-function status(records: DoseLog[]): "taken"|"ignored"|"unconfirmed"|"conflicts" {
-  const taken = records.some(x => Boolean(x.tomado_em));
-  const ignored = records.some(x => Boolean(x.ignorado_em));
-  // Contradictory duplicate logs are not clinical confirmations.
-  if (taken && ignored) return "conflicts";
-  if (!taken && !ignored) return "unconfirmed";
-  return taken ? "taken" : "ignored";
-}
 export function buildDoseMonthMetrics(input:{logs:DoseLog[];personId:string;userId:string;today:string;days?:number}): DoseMonthResult {
   const none: DoseMonthResult = {days:[],total:zeros(),documentedDays:0,decisions:0,takenOfDecisions:null};
   const end = parseDate(input.today);
@@ -49,7 +42,7 @@ export function buildDoseMonthMetrics(input:{logs:DoseLog[];personId:string;user
   const length = input.days === undefined ? 30 : Math.min(90,Math.max(1,Math.floor(input.days)));
   const dates = Array.from({length}, (_,i)=>dayKey(end - DAY * (length-1-i)));
   const rows = new Map(dates.map(date=>[date,empty(date)]));
-  const slots = new Map<string,DoseLog[]>();
+  const slotIndex = buildDoseSlotIndex(input.logs,{userId:input.userId,personId:input.personId});
   const seen = new Set<string>();
   for (const log of input.logs) {
     if (log.person_id !== input.personId || log.user_id !== input.userId || !rows.has(log.data)) continue;
@@ -70,15 +63,15 @@ export function buildDoseMonthMetrics(input:{logs:DoseLog[];personId:string;user
       }
       continue;
     }
-    const key = `${log.data}|${log.medicamento_id}|${hour}`;
-    const group = slots.get(key) || [];
-    group.push(log);
-    slots.set(key,group);
   }
-  for (const [key, group] of slots) {
-    const date = key.split("|")[0];
+  for (const group of slotIndex.values()) {
+    const first=group[0];
+    if (!first || !rows.has(first.data)) continue;
+    const date = first.data;
     const row = rows.get(date)!;
-    row[status(group)] += 1;
+    const snapshot=resolveDoseSlot(slotIndex,first.medicamento_id,first.data,first.horario);
+    const field=snapshot.state==="taken"?"taken":snapshot.state==="ignored"?"ignored":snapshot.state==="conflict"?"conflicts":"unconfirmed";
+    row[field] += 1;
     if (group.some(x=>x.synced === false)) row.pendingSync += 1;
   }
   const days = [...rows.values()];

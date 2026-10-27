@@ -6,6 +6,7 @@
  * Works only with the supplied person-scoped snapshot; no I/O or persistence.
  */
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
+import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 export type CareRhythmPeriod = 7 | 30 | 90;
 export interface CareRhythmDay {
@@ -27,7 +28,7 @@ export interface CareRhythmSummary {
   symptoms: { documentedDays: number; records: number };
   doses: { taken: number; sosExtra: number; ignored: number };
   overlap: { sleepAndSymptoms: number; walkAndMood: number; sleepAndSosExtra: number };
-  dataQuality: { excludedInvalid: number; dayCoverage: number; localUnsynced: number; ownershipConflict: boolean };
+  dataQuality: { excludedInvalid: number; dayCoverage: number; localUnsynced: number; ownershipConflict: boolean; doseConflicts: number };
   /** Like-for-like comparison: *both* the factor and the outcome were recorded on each day. */
   factorComparisons: CareFactorComparison[];
 }
@@ -117,7 +118,7 @@ export function buildCareRhythm(context: HealthInsightContext, periodDays: CareR
     walk: { days: 0, recordedMinutes: 0 }, mood: { declaredDays: 0, positiveDays: 0, negativeDays: 0 },
     symptoms: { documentedDays: 0, records: 0 }, doses: { taken: 0, sosExtra: 0, ignored: 0 },
     overlap: { sleepAndSymptoms: 0, walkAndMood: 0, sleepAndSosExtra: 0 },
-    dataQuality: { excludedInvalid: 0, dayCoverage: 0, localUnsynced: 0, ownershipConflict: false },
+    dataQuality: { excludedInvalid: 0, dayCoverage: 0, localUnsynced: 0, ownershipConflict: false, doseConflicts: 0 },
     factorComparisons: [],
   });
   if (today === null || !context.personId) return empty();
@@ -165,20 +166,21 @@ export function buildCareRhythm(context: HealthInsightContext, periodDays: CareR
   }
   // Collapse duplicate scheduled slots before counting. A resolved record wins
   // over an unresolved legacy duplicate; SOS/extra are separate real events.
-  const scheduledSlots = new Map<string, HealthInsightContext["doseLogs"][number]>();
+  const scheduledSlots = buildDoseSlotIndex(context.doseLogs.filter(dose=>!dose.dose_kind||dose.dose_kind==="scheduled"),{userId:context.userId,personId:context.personId});
   const independent: HealthInsightContext["doseLogs"] = [];
-  const resolution = (dose: HealthInsightContext["doseLogs"][number]) =>
-    dose.tomado_em ? 2 : dose.ignorado_em ? 1 : 0;
   for (const dose of context.doseLogs) {
     if (dose.dose_kind && dose.dose_kind !== "scheduled") { independent.push(dose); continue; }
-    const key=`${dose.person_id||""}:${dose.medicamento_id}:${dose.data}:${dose.horario}`;
-    const existing=scheduledSlots.get(key);
-    if (!existing || resolution(dose) > resolution(existing) ||
-      (resolution(dose) === resolution(existing) && (dose.updated_at||"") > (existing.updated_at||""))) {
-      scheduledSlots.set(key,dose);
-    }
   }
-  for (const dose of [...scheduledSlots.values(), ...independent]) {
+  let doseConflicts=0;
+  const canonicalScheduled=[...scheduledSlots.values()].flatMap(group=>{
+    const first=group[0]; if(!first)return [];
+    const snapshot=resolveDoseSlot(scheduledSlots,first.medicamento_id,first.data,first.horario);
+    if(snapshot.state==="conflict"){doseConflicts++;return [];}
+    const representative=snapshot.state==="taken"?snapshot.records.find(row=>Boolean(row.tomado_em)):
+      snapshot.state==="ignored"?snapshot.records.find(row=>Boolean(row.ignorado_em)):snapshot.latest;
+    return representative?[representative]:[];
+  });
+  for (const dose of [...canonicalScheduled, ...independent]) {
     if (dose.person_id !== context.personId) continue;
     const at = utcDay(dose.data);
     if (at === null) { excludedInvalid++; continue; }
@@ -217,7 +219,7 @@ export function buildCareRhythm(context: HealthInsightContext, periodDays: CareR
       walkAndMood: days.filter(d => d.walkMinutes !== null && d.mood !== null).length,
       sleepAndSosExtra: days.filter(d => d.sleepMinutes !== null && d.sosExtraDoses > 0).length,
     },
-    dataQuality: { excludedInvalid, dayCoverage: covered.length, localUnsynced, ownershipConflict:false },
+    dataQuality: { excludedInvalid, dayCoverage: covered.length, localUnsynced, ownershipConflict:false, doseConflicts },
     factorComparisons: [
       compareMoodFactor(days, "sleep", 420),
       compareMoodFactor(days, "walk", 30),

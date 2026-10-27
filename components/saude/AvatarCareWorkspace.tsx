@@ -9,6 +9,7 @@ import { TemporaryCourseAvatarSummary } from "./TemporaryCourseAvatarSummary";
 import { AvatarAssociationSummary } from "./AvatarAssociationSummary";
 import { AvatarCareReadiness } from "./AvatarCareReadiness";
 import { PlannedRealizedBrief } from "./PlannedRealizedBrief";
+import { DoseEvidenceBrief } from "./DoseEvidenceBrief";
 
 export function AvatarCareWorkspace({ context, command, onNavigate }: {
   context: HealthInsightContext | null | undefined;
@@ -31,6 +32,7 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
         <ChevronRight size={14} className="shrink-0 text-ink-muted transition group-open:rotate-90"/>
       </summary>
       <div className="vault-deferred space-y-2 border-t border-surface-border/50 py-3">
+        <DoseEvidenceBrief context={context} onNavigate={onNavigate} compact/>
         <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>
         <CareContinuityAvatarSummary context={context} onNavigate={onNavigate}/>
         <MedicationContinuityAvatarSummary context={context} command={command} onNavigate={onNavigate}/>

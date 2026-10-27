@@ -9,7 +9,7 @@ function load(rel){
  const src=fs.readFileSync(full,'utf8');const parsed=ts.transpileModule(src,{fileName:full,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}});
  assert.deepEqual((parsed.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error).map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')),[],rel);
  const mod=new Module(full,module);mod.filename=full;mod.paths=Module._nodeModulePaths(path.dirname(full));cache.set(full,mod);
- mod.require=id=>{if(id.startsWith('@/lib/health-intelligence/'))return load(`lib/health-intelligence/${id.split('/').at(-1)}.ts`);throw Error('Unexpected runtime import '+id+' from '+rel)};
+ mod.require=id=>{if(id==='@/lib/dose-slot-authority')return load('lib/dose-slot-authority.ts');if(id.startsWith('@/lib/health-intelligence/'))return load(`lib/health-intelligence/${id.split('/').at(-1)}.ts`);throw Error('Unexpected runtime import '+id+' from '+rel)};
  mod._compile(parsed.outputText,full);return mod.exports;
 }
 const {buildDoseMonthMetrics}=load('lib/health-intelligence/dose-month-metrics.ts');

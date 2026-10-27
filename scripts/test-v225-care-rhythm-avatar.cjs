@@ -3,11 +3,14 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const ts=require('typescript');
+const pureCache=new Map();
 function loadPure(file){
+  if(pureCache.has(file))return pureCache.get(file).exports;
   const source=fs.readFileSync(file,'utf8');
   const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const box={exports:{}};
-  new Function('module','exports','require',compiled)(box,box.exports,(name)=>{throw new Error('Unexpected runtime dependency '+name)});
+  pureCache.set(file,box);
+  new Function('module','exports','require',compiled)(box,box.exports,(name)=>name==='@/lib/dose-slot-authority'?loadPure('lib/dose-slot-authority.ts'):(()=>{throw new Error('Unexpected runtime dependency '+name)})());
   return box.exports;
 }
 const {buildCareRhythm,buildCareRhythmInsights}=loadPure(process.env.V225_ENGINE_FILE || 'lib/health-intelligence/care-rhythm.ts');

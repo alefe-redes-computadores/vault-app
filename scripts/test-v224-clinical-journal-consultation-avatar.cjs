@@ -17,7 +17,8 @@ const load = (file, injected={}) => {
 const read=f=>fs.readFileSync(f,'utf8');
 // V225 R3: the V224 contract now executes the REAL added pure module,
 // rather than rejecting a legitimate new import or skipping old assertions.
-const rhythm=load('lib/health-intelligence/care-rhythm.ts');
+const doseSlotAuthority=load('lib/dose-slot-authority.ts');
+const rhythm=load('lib/health-intelligence/care-rhythm.ts',{'@/lib/dose-slot-authority':doseSlotAuthority});
 const clinical=load('lib/clinical-report.ts',{
   '@/lib/health-intelligence/care-rhythm':rhythm,
 });

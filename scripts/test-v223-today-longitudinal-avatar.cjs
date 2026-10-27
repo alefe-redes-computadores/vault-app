@@ -5,7 +5,8 @@ const source = file => fs.readFileSync(file,'utf8');
 function load(file) {
   const transpiled = ts.transpileModule(source(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const module={exports:{}};
-  new Function('module','exports','require',transpiled)(module,module.exports,require);
+  const scopedRequire=(name)=>name==='@/lib/dose-slot-authority'?load('lib/dose-slot-authority.ts'):require(name);
+  new Function('module','exports','require',transpiled)(module,module.exports,scopedRequire);
   return module.exports;
 }
 const {compareRecordedDoseWindows} = load('lib/health-intelligence/recorded-dose-trend.ts');

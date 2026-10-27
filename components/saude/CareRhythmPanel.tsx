@@ -45,6 +45,7 @@ export function CareRhythmPanel({summary}:{summary: CareRhythmSummary}) {
       )) : <p className="rounded-xl border border-surface-border/70 bg-surface-raised/50 p-2.5 text-[10px] leading-relaxed text-ink-muted print:text-gray-600">Ainda não há duas amostras comparáveis. São necessários ao menos três dias em cada faixa, com duração e humor explicitamente registrados. Sem registro não significa ausência da atividade.</p>}
     </div>
     {summary.dataQuality.localUnsynced>0 && <p className="mt-2 rounded-xl border border-amber-400/15 bg-amber-400/[.04] p-2.5 text-[10px] leading-relaxed text-ink-muted print:text-gray-600">{summary.dataQuality.localUnsynced} evento(s) deste período ainda marcados localmente como não sincronizados. O relatório usa os dados deste aparelho; consulte a sincronização antes de trocar de dispositivo.</p>}
+    {summary.dataQuality.doseConflicts>0 && <p className="mt-2 rounded-xl border border-amber-400/20 bg-amber-400/[.05] p-2.5 text-[10px] leading-relaxed text-amber-200 print:text-black">{summary.dataQuality.doseConflicts} horário(s) possuem registros contraditórios de tomada e não tomada. Eles foram excluídos das contagens clínicas até revisão.</p>}
     {summary.dataQuality.ownershipConflict && <p className="mt-2 rounded-xl border border-rose-400/20 p-2.5 text-[10px] text-rose-300 print:text-black">Análise suspensa: registros de mais de uma conta no contexto. Nenhum dado foi misturado.</p>}
   </section>;
 }
