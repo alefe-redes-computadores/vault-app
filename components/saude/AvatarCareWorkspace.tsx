@@ -11,6 +11,7 @@ import { AvatarCareReadiness } from "./AvatarCareReadiness";
 import { PlannedRealizedBrief } from "./PlannedRealizedBrief";
 import { DoseEvidenceBrief } from "./DoseEvidenceBrief";
 import { CareAccessBrief } from "./CareAccessBrief";
+import { UpcomingDoseAgenda } from "./UpcomingDoseAgenda";
 
 export function AvatarCareWorkspace({ context, command, onNavigate }: {
   context: HealthInsightContext | null | undefined;
@@ -36,6 +37,7 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
         {command?.documents?<CareAccessBrief portfolio={command.documents} onNavigate={onNavigate} compact/>:null}
         <DoseEvidenceBrief context={context} onNavigate={onNavigate} compact/>
         <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>
+        <UpcomingDoseAgenda context={context} onNavigate={onNavigate} compact/>
         <CareContinuityAvatarSummary context={context} onNavigate={onNavigate}/>
         <MedicationContinuityAvatarSummary context={context} command={command} onNavigate={onNavigate}/>
         <TemporaryCourseAvatarSummary context={context} onNavigate={onNavigate}/>

@@ -9,6 +9,7 @@ import { buildDoseMonthMetrics } from "@/lib/health-intelligence/dose-month-metr
 import type { DoseLog } from "@/lib/types";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { PlannedRealizedBrief } from "./PlannedRealizedBrief";
+import { UpcomingDoseAgenda } from "./UpcomingDoseAgenda";
 
 const ms=(value:string)=>Date.parse(`${value}T00:00:00.000Z`);
 const periodStart=(today:string,days:number)=>new Date(ms(today)-(days-1)*86400000).toISOString().slice(0,10);
@@ -22,7 +23,7 @@ export function DoseMonthOverview({personId,userId,today,context,onNavigate}:{pe
    <CalendarDays size={18} className="shrink-0 text-emerald-300"/><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Histórico de doses</strong><span className="block text-[10px] text-ink-muted">Calendário de confirmações e registros · sem presumir doses perdidas</span></span>
    <ChevronDown size={16} className={`shrink-0 text-ink-muted transition-transform ${expanded?"rotate-180":""}`}/>
   </button>
-  {expanded && <><div className="border-t border-surface-border/60 px-3 pt-3"><PlannedRealizedBrief context={context} onNavigate={onNavigate||((href)=>router.push(href))}/></div><DoseMonthBody personId={personId} userId={userId} today={today}/></>}
+  {expanded && <><div className="space-y-2 border-t border-surface-border/60 px-3 pt-3"><PlannedRealizedBrief context={context} onNavigate={onNavigate||((href)=>router.push(href))}/><UpcomingDoseAgenda context={context} onNavigate={onNavigate||((href)=>router.push(href))}/></div><DoseMonthBody personId={personId} userId={userId} today={today}/></>}
  </section>;
 }
 function DoseMonthBody({personId,userId,today}:{personId:string;userId:string;today:string}){
