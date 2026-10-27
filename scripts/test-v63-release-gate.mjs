@@ -228,6 +228,7 @@ const contracts = [
   "scripts/test-v103-sus-knowledge-contract.mjs",
   "scripts/test-v273-information-hierarchy-avatar.cjs",
   "scripts/test-v276-temporal-dose-authority-avatar.cjs",
+  "scripts/test-v277-dose-slot-notification-authority.cjs",
 ];
 
 for (const contract of contracts) {

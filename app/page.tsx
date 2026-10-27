@@ -82,6 +82,7 @@ import {
   suppressOperationalOverlap,
 } from "@/lib/health-intelligence/home-signal-orchestration";
 import { normalizedMedicationSchedules } from "@/lib/medication-dose-history";
+import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -802,19 +803,18 @@ export default function HomePage() {
         const lista:
           PendingDose[] = [];
         const medicationById = new Map(medicamentosAtivos.filter(med => med.id && med.person_id === activePersonId && med.user_id === user?.id).map(med => [med.id!, med]));
+        const todaySlots=buildDoseSlotIndex(doseLogs,{userId:user?.id,personId:activePersonId||undefined});
+        const yesterdaySlots=buildDoseSlotIndex(doseLogsOntem,{userId:user?.id,personId:activePersonId||undefined});
 
         const appendPendingSlots =
           ({
             data,
-            logs,
             diaLabel,
             respectCurrentTime,
+            slotIndex,
           }: {
             data:
               string;
-
-            logs:
-              typeof doseLogs;
 
             diaLabel:
               "Hoje" |
@@ -822,6 +822,7 @@ export default function HomePage() {
 
             respectCurrentTime:
               boolean;
+            slotIndex: ReturnType<typeof buildDoseSlotIndex>;
           }) => {
             for (
               const med of
@@ -857,23 +858,8 @@ export default function HomePage() {
                   continue;
                 }
 
-                const log =
-                  logs.find(
-                    (
-                      item
-                    ) =>
-                      item.medicamento_id ===
-                        med.id &&
-                      item.data ===
-                        data &&
-                      item.horario ===
-                        horario
-                  );
-
-                if (
-                  log?.tomado_em ||
-                  log?.ignorado_em
-                ) {
+                const slot=resolveDoseSlot(slotIndex,med.id,data,horario);
+                if (doseSlotIsResolved(slot)) {
                   continue;
                 }
 
@@ -908,28 +894,24 @@ export default function HomePage() {
           data:
             ontem,
 
-          logs:
-            doseLogsOntem,
-
           diaLabel:
             "Ontem",
 
           respectCurrentTime:
             false,
+          slotIndex:yesterdaySlots,
         });
 
         appendPendingSlots({
           data:
             hoje,
 
-          logs:
-            doseLogs,
-
           diaLabel:
             "Hoje",
 
           respectCurrentTime:
             true,
+          slotIndex:todaySlots,
         });
 
         for (const log of plannedEarlier) {

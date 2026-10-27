@@ -83,6 +83,7 @@ import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { CareCommandStrip } from "@/components/saude/CareCommandStrip";
+import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -213,6 +214,7 @@ interface DoseItemExt {
    * É informativo e não entra nas métricas de adesão.
    */
   isExpectedUnconfirmed?: boolean;
+  isDataConflict?: boolean;
 
   isSintoma?: boolean;
   sintomaId?: string;
@@ -1210,6 +1212,7 @@ export default function HojePage() {
   const doses = useMemo<DoseItemExt[]>(() => {
     const list: DoseItemExt[] = [];
     const chavesProgramadas = new Set<string>();
+    const slotIndex=buildDoseSlotIndex(doseLogs||[],{userId:user?.id,personId:activePersonId||undefined});
 
     for (const med of medicamentos || []) {
       if (
@@ -1362,16 +1365,9 @@ export default function HojePage() {
           `${med.id}-${horario}`
         );
 
-        const log = (doseLogs || []).find(
-          (l) =>
-            l.medicamento_id === med.id &&
-            l.horario === horario &&
-            l.dose_kind !== "extra" &&
-            l.dose_kind !== "sos"
-        );
-
-        const tomada = !!log?.tomado_em;
-        const ignorada = !!log?.ignorado_em;
+        const slot=resolveDoseSlot(slotIndex,med.id,dataSelecionada,horario);
+        const tomada=slot.state==="taken";
+        const ignorada=slot.state==="ignored";
 
         list.push({
           medicamentoId: med.id,
@@ -1382,6 +1378,7 @@ export default function HojePage() {
           horario,
           tomada,
           ignorada,
+          isDataConflict:slot.state==="conflict",
           cor:
             tratamentoObj?.cor ||
             med.cor_principal ||
@@ -1433,7 +1430,7 @@ export default function HojePage() {
 
           isExpectedUnconfirmed:
             !isHoje &&
-            !log,
+            slot.state === "absent",
         });
       }
     }
@@ -1703,6 +1700,7 @@ export default function HojePage() {
               (d) =>
                 !d.tomada &&
                 !d.ignorada &&
+                !d.isDataConflict &&
                 !d.isSintoma &&
                 !d.isExpectedUnconfirmed
             )
@@ -1710,6 +1708,7 @@ export default function HojePage() {
               (d) =>
                 !d.tomada &&
                 !d.ignorada &&
+                !d.isDataConflict &&
                 !d.isSintoma &&
                 d.isExpectedUnconfirmed
             );
@@ -1739,11 +1738,11 @@ export default function HojePage() {
 
   const dosesParaExibir = useMemo(() => {
     if (!isHoje || filtroStatus !== "todos" || mostrarConcluidas) return dosesFiltradas;
-    return dosesFiltradas.filter((dose) => !dose.tomada && !dose.ignorada);
+    return dosesFiltradas.filter((dose) => !dose.tomada && !dose.ignorada && !dose.isDataConflict);
   }, [dosesFiltradas, filtroStatus, isHoje, mostrarConcluidas]);
 
   const concluidasOcultas = isHoje && filtroStatus === "todos" && !mostrarConcluidas
-    ? dosesFiltradas.filter((dose) => dose.tomada || dose.ignorada).length
+    ? dosesFiltradas.filter((dose) => dose.tomada || dose.ignorada || dose.isDataConflict).length
     : 0;
 
   const dosesAgrupadas = useMemo(() => {
@@ -1755,6 +1754,7 @@ export default function HojePage() {
           atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle, items: [] },
           depois: { label: "Depois", sub: "Programadas para depois · ainda não estão atrasadas", icon: ChevronRight, items: [] },
           avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap, items: [] },
+          revisao: { label: "Revisar dados", sub: "Registros contraditórios não entram nas métricas", icon: AlertOctagon, items: [] },
           concluidas: { label: "Tomadas", sub: "Doses com tomada registrada hoje", icon: CheckCircle2, items: [] },
           ignoradas: { label: "Ignoradas", sub: "Não contam como tomadas", icon: XCircle, items: [] },
         }
@@ -1770,6 +1770,7 @@ export default function HojePage() {
         grupos[periodo.key]?.items.push(dose);
         return;
       }
+      if (dose.isDataConflict) { grupos.revisao.items.push(dose); return; }
       if (dose.tomada) { grupos.concluidas.items.push(dose); return; }
       if (dose.ignorada) { grupos.ignoradas.items.push(dose); return; }
       if (dose.isAvulsa && dose.doseKind !== "planned") { grupos.avulsas.items.push(dose); return; }
@@ -1796,6 +1797,7 @@ export default function HojePage() {
     doses.filter(
       (dose) =>
         !dose.isExpectedUnconfirmed &&
+        !dose.isDataConflict &&
         !dose.isAvulsa &&
         !dose.isSintoma
     );
@@ -1815,6 +1817,7 @@ export default function HojePage() {
       ) =>
         !dose.tomada &&
         !dose.ignorada &&
+        !dose.isDataConflict &&
         !dose.isSintoma
     ).length;
 
@@ -1870,6 +1873,7 @@ export default function HojePage() {
                 Boolean(dose.medicamentoId) &&
                 !dose.tomada &&
                 !dose.ignorada &&
+                !dose.isDataConflict &&
                 (batchTargetKeys ? batchTargetKeys.includes(`${dose.medicamentoId}-${dose.horario}`) : dose.horario <= horaAtual)
             )
             .reduce((map, dose) => {
@@ -3995,6 +3999,7 @@ export default function HojePage() {
 
                           const isAtrasado =
                             isHoje &&
+                            !item.isDataConflict &&
                             !item.tomada &&
                             !item.ignorada &&
                             item.horario <
@@ -4003,6 +4008,7 @@ export default function HojePage() {
 
                           const isProximo =
                             isHoje &&
+                            !item.isDataConflict &&
                             !item.tomada &&
                             !item.ignorada &&
                             item.horario >=
@@ -4011,12 +4017,14 @@ export default function HojePage() {
 
                           const isPrevistoFuturo =
                             isFuturo &&
+                            !item.isDataConflict &&
                             !item.tomada &&
                             !item.ignorada &&
                             !item.isAvulsa;
 
                           const isHistoricoSemConfirmacao =
                             isPassado &&
+                            !item.isDataConflict &&
                             item.isExpectedUnconfirmed &&
                             !item.tomada &&
                             !item.ignorada &&
@@ -4063,7 +4071,11 @@ export default function HojePage() {
                           let statusColor =
                             "";
 
-                          if (
+                          if (item.isDataConflict) {
+                            statusIcon = <AlertOctagon size={12} className="text-amber-300" />;
+                            statusText = "Revisar registros";
+                            statusColor = "text-amber-300";
+                          } else if (
                             item.tomada
                           ) {
                             statusIcon = (
@@ -4211,7 +4223,9 @@ export default function HojePage() {
                                 borderLeft: `4px solid ${regulatorySurface.rail}`,
                               }}
                               className={`group relative w-full cursor-pointer rounded-[18px] border px-3 py-2.5 pr-8 text-left shadow-sm transition-all ${
-                                item.tomada
+                                item.isDataConflict
+                                  ? "border-amber-300/30 bg-amber-300/[0.055]"
+                                  : item.tomada
                                   ? "border-emerald-400/30 bg-emerald-400/5 opacity-90"
                                   : item.ignorada
                                   ? "border-ink-muted/20 bg-surface-raised/50 opacity-60"
@@ -4239,7 +4253,9 @@ export default function HojePage() {
                               <div className="space-y-1.5">
                                 <div className="flex items-start gap-2.5">
                                   <div className="shrink-0 pt-0.5">
-                                    {item.tomada ? (
+                                    {item.isDataConflict ? (
+                                      <AlertOctagon size={20} className="text-amber-300" />
+                                    ) : item.tomada ? (
                                       <CheckCircle2
                                         size={20}
                                         className="text-emerald-400"
@@ -4530,6 +4546,7 @@ export default function HojePage() {
                                     <>
                                       {!isHoje &&
                                         item.doseKind === "planned" &&
+                                        !item.isDataConflict &&
                                         !item.tomada &&
                                         !item.ignorada && (
                                           <button
@@ -4549,6 +4566,7 @@ export default function HojePage() {
                                       {!item.tomada &&
                                         !item.ignorada &&
                                         isHoje &&
+                                        !item.isDataConflict &&
                                         (!item.isAvulsa || item.doseKind === "planned") && (
                                           <>
                                             {!item.isAvulsa && <button

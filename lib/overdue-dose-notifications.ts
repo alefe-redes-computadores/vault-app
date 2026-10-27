@@ -9,6 +9,7 @@ import {
   VAULT_NOTIFICATION_CHANNEL_ID,
 } from "@/lib/notifications";
 import type { DoseLog, Medicamento } from "@/lib/types";
+import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 const ACTION_TYPE_ID = "DOSE_REMINDER_ACTIONS";
 const HORIZON_DAYS = 7;
@@ -22,7 +23,9 @@ function addLocalDays(base:Date,days:number){const d=new Date(base);d.setHours(1
 function dateAt(data:string,horario:string):Date|null{const d=/^(\d{4})-(\d{2})-(\d{2})$/.exec(data),h=/^(\d{2}):(\d{2})$/.exec(horario);if(!d||!h)return null;const result=new Date(+d[1],+d[2]-1,+d[3],+h[1],+h[2],0,0);return Number.isNaN(result.getTime())?null:result;}
 function slotKey(personId:string,medicamentoId:string,data:string,horario:string){return `${personId}:${medicamentoId}:${data}:${horario}`;}
 export function getOverdueDoseNotificationId(personId:string,medicamentoId:string,data:string,horario:string,offsetMinutes=30){return hashToId(`dose-overdue:v52:${slotKey(personId,medicamentoId,data,horario)}:${offsetMinutes}`);}
-function isResolved(logs:DoseLog[],personId:string,medicamentoId:string,data:string,horario:string){return logs.some(log=>log.person_id===personId&&log.medicamento_id===medicamentoId&&log.data===data&&log.horario===horario&&Boolean(log.tomado_em||log.ignorado_em));}
+// isResolved preserves the V52 contract. The canonical resolver subsumes the
+// former Boolean(log.tomado_em||log.ignorado_em) check and also isolates conflicts.
+function isResolved(index:ReturnType<typeof buildDoseSlotIndex>,medicamentoId:string,data:string,horario:string){return doseSlotIsResolved(resolveDoseSlot(index,medicamentoId,data,horario));}
 function eligible(med:Medicamento,personId:string){return Boolean(med.id)&&med.person_id===personId&&med.status!=="descontinuado"&&med.tipo_uso!=="sos"&&med.tipo_uso!=="esporadico"&&Array.isArray(med.estoque_horarios)&&med.estoque_horarios.length>0;}
 async function cancelIds(ids:number[]){if(!ids.length)return;await LocalNotifications.cancel({notifications:Array.from(new Set(ids)).map(id=>({id}))});}
 
@@ -60,6 +63,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
   type PendingSlot={medicamentoId:string;nome:string;data:string;horario:string;base:Date};
   const grouped=new Map<string,PendingSlot[]>();
   const slotKeys=new Set<string>();
+  const resolvedIndex=buildDoseSlotIndex(input.logs,{personId});
 
   for(let day=0;day<HORIZON_DAYS;day+=1){
     const data=localDateKey(addLocalDays(now,day));
@@ -67,7 +71,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
       const medicamentoId=med.id!;
       const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v))));
       for(const horario of horarios){
-        if(isResolved(input.logs,personId,medicamentoId,data,horario))continue;
+        if(isResolved(resolvedIndex,medicamentoId,data,horario))continue;
         const base=dateAt(data,horario);if(!base)continue;
         const at=new Date(base.getTime()+offsetMinutes*60000);
         if(at<=now)continue;

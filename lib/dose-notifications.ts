@@ -16,6 +16,7 @@ import {
 } from "@capacitor/local-notifications";
 
 import type { DoseLog, Medicamento } from "@/lib/types";
+import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 import {
   ensureVaultNotificationChannel,
@@ -506,14 +507,8 @@ function scheduledDateAtV51(data: string, horario: string): Date | null {
   return result.getFullYear()===+d[1] && result.getMonth()===+d[2]-1 && result.getDate()===+d[3] && result.getHours()===+h[1] && result.getMinutes()===+h[2] ? result : null;
 }
 
-function scheduledDoseResolvedV51(logs: DoseLog[], personId: string, medicamentoId: string, data: string, horario: string): boolean {
-  return logs.some((log) =>
-    log.person_id===personId &&
-    log.medicamento_id===medicamentoId &&
-    log.data===data &&
-    log.horario===horario &&
-    Boolean(log.tomado_em || log.ignorado_em)
-  );
+function scheduledDoseResolvedV51(index:ReturnType<typeof buildDoseSlotIndex>,medicamentoId:string,data:string,horario:string):boolean{
+  return doseSlotIsResolved(resolveDoseSlot(index,medicamentoId,data,horario));
 }
 
 // VAULT_V226_INCREMENTAL_NATIVE_REMINDERS
@@ -575,6 +570,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
   const slots: PendingDoseSlot[]=[];
   const stockSlots: PendingDoseSlot[]=[];
   const stockDays = new Set<string>();
+  const resolvedIndex=buildDoseSlotIndex(input.logs,{personId});
 
   for(let offset=0; offset<SCHEDULED_DOSE_HORIZON_DAYS_V51; offset+=1){
     const data=localDateKeyV51(addLocalDaysV51(now,offset));
@@ -583,7 +579,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
       const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v)))).sort();
       for(const horario of horarios){
         if (hasKnownEmptyMedicationStock(med) && horario !== horarios[0]) continue;
-        if(scheduledDoseResolvedV51(input.logs,personId,medicamentoId,data,horario)) continue;
+        if(scheduledDoseResolvedV51(resolvedIndex,medicamentoId,data,horario)) continue;
         const at=scheduledDateAtV51(data,horario);
         if(!at || at.getTime()<=now.getTime()) continue;
         if (hasKnownEmptyMedicationStock(med)) {
