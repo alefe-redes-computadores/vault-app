@@ -2,7 +2,13 @@ import type { HealthInsight } from "@/lib/health-insights";
 import { compareHealthPriority } from "@/lib/health-intelligence/priority";
 
 export type AvatarAttentionRegion = "cabeca" | "torax" | "abdome" | "mobilidade" | "geral";
-export type AvatarAttentionItem = { region: AvatarAttentionRegion; label: string; insight: HealthInsight };
+export type AvatarAttentionItem = {
+  region: AvatarAttentionRegion;
+  label: string;
+  insight: HealthInsight;
+  evidenceLabel: "registro" | "projeção" | "associação" | "dado incompleto";
+  priorityLabel: "prioritária" | "atenção" | "acompanhar";
+};
 
 const labels: Record<AvatarAttentionRegion, string> = {
   cabeca: "Cabeça e bem-estar", torax: "Tórax e respiração", abdome: "Abdome e digestão",
@@ -23,6 +29,8 @@ export function buildAvatarAttentionMap(insights: HealthInsight[]): AvatarAttent
     const region = rules.find(([, rule]) => rule.test(text))?.[0] || "geral";
     if (used.has(region)) return [];
     used.add(region);
-    return [{ region, label: labels[region], insight }];
+    const evidenceLabel: AvatarAttentionItem["evidenceLabel"] = insight.kind === "pattern" ? "associação" : insight.kind === "recommendation" ? "projeção" : insight.kind === "data_quality" ? "dado incompleto" : "registro";
+    const priorityLabel: AvatarAttentionItem["priorityLabel"] = insight.urgencia === "alta" || insight.gravidadeSeguranca === "critica" ? "prioritária" : insight.urgencia === "media" ? "atenção" : "acompanhar";
+    return [{ region, label: labels[region], insight, evidenceLabel, priorityLabel }];
   }).slice(0, 3);
 }

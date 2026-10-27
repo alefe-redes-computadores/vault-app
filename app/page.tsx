@@ -9,6 +9,7 @@ import {brainV5PriorityReason} from "@/lib/health-intelligence/brain-v5";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -1653,6 +1654,7 @@ export default function HomePage() {
     >(
       null
     );
+  const doseResolutionLockRef = useRef(false);
 
   const handleResolveDosePendente =
     async (
@@ -1670,12 +1672,11 @@ export default function HomePage() {
           ":"
         );
 
-      if (
-        processandoDoseId
-      ) {
+      if (doseResolutionLockRef.current) {
         return;
       }
 
+      doseResolutionLockRef.current = true;
       setProcessandoDoseId(
         processingKey
       );
@@ -1764,6 +1765,7 @@ export default function HomePage() {
         );
         throw error;
       } finally {
+        doseResolutionLockRef.current = false;
         setProcessandoDoseId(
           null
         );

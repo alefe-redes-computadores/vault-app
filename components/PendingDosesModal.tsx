@@ -1,6 +1,6 @@
 // components/PendingDosesModal.tsx
 "use client";
-import { pendingDoseCustomTime } from "@/lib/pending-dose-review";
+import { nextPendingDose, pendingDoseCustomTime, pendingDoseKey } from "@/lib/pending-dose-review";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 
 import {
@@ -127,19 +127,6 @@ function getCurrentTimeHHMM(): string {
     );
 }
 
-function getDoseKey(
-  dose:
-    PendingDose
-): string {
-  return [
-    dose.data,
-    dose.medicamentoId,
-    dose.horario,
-  ].join(
-    ":"
-  );
-}
-
 function getDefaultCustomValue(
   dose:
     PendingDose
@@ -160,15 +147,7 @@ export function PendingDosesModal({
   } =
     useHapticFeedback();
 
-  const [
-    selectedDoseKey,
-    setSelectedDoseKey,
-  ] =
-    useState<
-      string | null
-    >(
-      null
-    );
+  const [selectedDose, setSelectedDose] = useState<PendingDose | null>(null);
 
   const [
     customTakenAt,
@@ -188,31 +167,13 @@ export function PendingDosesModal({
 
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [bulkResolutionOpen, setBulkResolutionOpen] = useState(false);
+  const [resolvedInSession, setResolvedInSession] = useState(0);
 
   const existeProcessamento =
     Boolean(
       isProcessingDose
     ) ||
     isProcessingAll;
-
-  const selectedDose =
-    useMemo(
-      () =>
-        doses.find(
-          (
-            dose
-          ) =>
-            getDoseKey(
-              dose
-            ) ===
-            selectedDoseKey
-        ) ??
-        null,
-      [
-        doses,
-        selectedDoseKey,
-      ]
-    );
 
   const { availableDoses, unavailableDoses, doseGroups, dosesOntem } = useMemo(() => {
     const available: PendingDose[] = [], unavailable: PendingDose[] = [], yesterday: PendingDose[] = [], today: PendingDose[] = [];
@@ -248,9 +209,8 @@ export function PendingDosesModal({
       setStockConfirmationOpen(false);
       setBulkResolutionOpen(false);
       setBatchError("");
-      setSelectedDoseKey(
-        null
-      );
+      setSelectedDose(null);
+      setResolvedInSession(0);
 
       setCustomTakenAt(
         ""
@@ -293,15 +253,13 @@ export function PendingDosesModal({
           }
 
           if (
-            selectedDoseKey
+            selectedDose
           ) {
             trigger(
               "vibrate"
             );
 
-            setSelectedDoseKey(
-              null
-            );
+            setSelectedDose(null);
 
             setCustomTimeOpen(
               false
@@ -332,7 +290,7 @@ export function PendingDosesModal({
     [
       isOpen,
       existeProcessamento,
-      selectedDoseKey,
+      selectedDose,
       onClose,
       trigger,
     ]
@@ -351,7 +309,7 @@ export function PendingDosesModal({
     if (!isOpen) return;
     const frame=requestAnimationFrame(()=>{if(dialogRef.current){dialogRef.current.scrollTop=0;dialogRef.current.focus({preventScroll:true});}});
     return()=>cancelAnimationFrame(frame);
-  }, [selectedDoseKey,isOpen]);
+  }, [selectedDose,isOpen]);
 
   const handleStockBatch = async () => {
     if (existeProcessamento || resolutionLock.current) return;
@@ -360,6 +318,7 @@ export function PendingDosesModal({
     try {
       for (const dose of unavailableDoses) {
         await onResolveDose(dose, {kind:"ignored", motivo:"sem_estoque"});
+        setResolvedInSession(value => value + 1);
       }
       setStockConfirmationOpen(false);
     } catch (error) {
@@ -382,15 +341,13 @@ export function PendingDosesModal({
       }
 
       if (
-        selectedDoseKey
+        selectedDose
       ) {
         trigger(
           "vibrate"
         );
 
-        setSelectedDoseKey(
-          null
-        );
+        setSelectedDose(null);
 
         setCustomTimeOpen(
           false
@@ -441,6 +398,7 @@ export function PendingDosesModal({
         try {
           await onResolveDose(dose, {...resolution, requireRegisteredStock:true});
           successCount += 1;
+          setResolvedInSession(value => value + 1);
         } catch (error) {
           setBatchError(error instanceof Error ? error.message : "Uma dose não pôde ser registrada. Revise as pendências.");
         }
@@ -451,7 +409,7 @@ export function PendingDosesModal({
     }
 
     if (successCount === availableDoses.length) {
-      setSelectedDoseKey(null);
+      setSelectedDose(null);
       setCustomTimeOpen(false);
       setBulkResolutionOpen(false);
     }
@@ -472,11 +430,7 @@ export function PendingDosesModal({
         "vibrate"
       );
 
-      setSelectedDoseKey(
-        getDoseKey(
-          dose
-        )
-      );
+      setSelectedDose({...dose});
 
       setBulkResolutionOpen(false);
 
@@ -509,13 +463,15 @@ export function PendingDosesModal({
 
       setBatchError("");
       resolutionLock.current = true;
-      try { await onResolveDose(selectedDose, resolution); }
+      const resolvedDose = selectedDose;
+      try { await onResolveDose(resolvedDose, resolution); }
       catch(e) { setBatchError(e instanceof Error ? e.message : "Não foi possível salvar esta dose."); return; }
       finally { resolutionLock.current = false; }
 
-      setSelectedDoseKey(
-        null
-      );
+      setResolvedInSession(value => value + 1);
+      const next = nextPendingDose(resolvedDose, doses);
+      setSelectedDose(next ? {...next} : null);
+      if (next) setCustomTakenAt(getDefaultCustomValue(next));
 
       setCustomTimeOpen(
         false
@@ -642,6 +598,8 @@ export function PendingDosesModal({
           <div className="border-x border-surface-border/50 px-3 py-2"><strong className="block font-mono text-base text-coral">{dosesOntem}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Anteriores</span></div>
           <div className="px-3 py-2"><strong className={`block font-mono text-base ${unavailableDoses.length ? "text-amber-300" : "text-emerald-300"}`}>{unavailableDoses.length}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Sem saldo</span></div>
         </div>}
+
+        {resolvedInSession > 0 && <p role="status" aria-live="polite" className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] px-3 py-2 text-[10px] text-emerald-200"><CheckCircle2 size={13} className="mr-1.5 inline"/>{resolvedInSession} {resolvedInSession===1?"dose revisada":"doses revisadas"} nesta sessão. A lista acompanha os registros salvos.</p>}
 
         {existeProcessamento && <p role="status" aria-live="polite" className="flex min-h-10 items-center gap-2 rounded-xl border border-ice/15 bg-ice/[.05] px-3 text-[10px] text-ice"><Loader2 size={14} className="animate-spin"/>Salvando sem duplicar dose ou estoque…</p>}
 
@@ -903,9 +861,7 @@ export function PendingDosesModal({
                     "vibrate"
                   );
 
-                  setSelectedDoseKey(
-                    null
-                  );
+                  setSelectedDose(null);
 
                   setCustomTimeOpen(
                     false
@@ -941,7 +897,7 @@ export function PendingDosesModal({
                     dose
                   ) => {
                     const processingKey =
-                      getDoseKey(
+                      pendingDoseKey(
                         dose
                       );
 
