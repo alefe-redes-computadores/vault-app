@@ -3,19 +3,21 @@
 import { useState } from "react";
 import { CalendarClock, Check, ChevronDown } from "lucide-react";
 import { CustomDatePicker } from "@/components/DatePicker";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { useToast } from "@/components/ToastProvider";
 import type { Retirada } from "@/lib/types";
 
 type Selection = {id: string; data: string; updated_at?: string};
 interface Props {
   rows: Retirada[];
-  onSave: (rows: Selection[], date: string, reason: string) => Promise<number>;
+  onSave: (rows: Selection[], date: string, reason: string, time?: string | null) => Promise<number>;
 }
 
 export function WithdrawalBatchPlanner({rows, onSave}: Props) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Selection[]>([]);
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [reason, setReason] = useState("Ainda tenho estoque");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ export function WithdrawalBatchPlanner({rows, onSave}: Props) {
     if (saving || !selected.length || !date) return;
     setSaving(true); setError("");
     try {
-      const count = await onSave(selected, date, reason);
+      const count = await onSave(selected, date, reason, time || null);
       showToast(count ? `${count} retirada${count === 1 ? " reagendada" : "s reagendadas"}` : "As retiradas já estão nesta data", "success");
       setSelected([]); setOpen(false);
     } catch (failure) {
@@ -55,6 +57,9 @@ export function WithdrawalBatchPlanner({rows, onSave}: Props) {
         })}
       </div>
       <CustomDatePicker label="Nova data de retirada" value={date} onChange={setDate} disabled={saving}/>
+      <label className="block text-xs text-ink-muted">Novo horário opcional
+        <HealthTimePicker value={time} onChange={setTime} className={saving ? "pointer-events-none opacity-50" : ""}/>
+      </label>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Motivo do reagendamento">
         {["Ainda tenho estoque", "Aguardando receita", "Indisponível no serviço"].map(value => <button key={value} type="button" disabled={saving} aria-pressed={reason === value} onClick={() => setReason(value)} className={`min-h-11 rounded-xl border px-2.5 text-[11px] ${reason === value ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-surface-border text-ink-muted"}`}>{value}</button>)}
       </div>
@@ -63,7 +68,7 @@ export function WithdrawalBatchPlanner({rows, onSave}: Props) {
       <button type="button" disabled={saving || !selected.length || !date} onClick={() => void save()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 py-2 text-xs font-bold text-void disabled:opacity-40">
         <Check size={16}/>{saving ? "Reagendando…" : `Confirmar ${selected.length} retirada${selected.length === 1 ? "" : "s"}`}
       </button>
-      <p className="text-[10px] leading-relaxed text-ink-muted">Os horários atuais serão mantidos. O histórico guardará a data anterior e o motivo.</p>
+      <p className="text-[10px] leading-relaxed text-ink-muted">Sem novo horário, cada retirada mantém sua hora atual. O histórico guarda data, hora anterior, novo compromisso e motivo.</p>
     </div> : null}
   </section>;
 }

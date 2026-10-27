@@ -16,7 +16,7 @@ const native={isVaultNative:()=>true};
 const notifications={ensureVaultNotificationChannel:async()=>{},isNotificationPreferenceEnabled:()=>enabled,requestNotificationPermissions:async()=>true,VAULT_NOTIFICATION_CHANNEL_ID:'vault'};
 const preferences={isVaultNotificationCategoryEnabled:()=>enabled};
 const db={medicamentos:{get:async id=>storedMeds.find(m=>m.id===id),where:()=>({equals:person=>({toArray:async()=>storedMeds.filter(m=>m.person_id===person)})})},doseLogs:{where:()=>({equals:person=>({toArray:async()=>storedLogs.filter(m=>m.person_id===person)})})}};
-const mocks={'@capacitor/local-notifications':{LocalNotifications:api},'@/lib/native-runtime':native,'@/lib/notifications':notifications,'@/lib/notification-preferences':preferences,'@/lib/notification-brain':{getVaultNotificationBrainSettings:()=>({doseOverdueOffsets:[30]})},'@/lib/db':{db}};
+const mocks={'@capacitor/local-notifications':{LocalNotifications:api},'@/lib/native-runtime':native,'@/lib/notifications':notifications,'@/lib/notification-preferences':preferences,'@/lib/notification-brain':{getVaultNotificationBrainSettings:()=>({doseOverdueOffsets:[30],stockReviewTime:'10:00'})},'@/lib/db':{db}};
 const cache=new Map();
 function load(rel){
  const filename=path.join(root,rel);if(cache.has(filename))return cache.get(filename).exports;
@@ -69,7 +69,7 @@ const conflict=core.processarListaMedicamentos([{...zero,estoque_horarios:['09:0
  assert.equal(await resolveMedicationStockReview({personId:'p',medicamentoIds:[]},'u',lookup),null);
  await scheduled.reconcileScheduledDoseNotifications({personId:'p',medicamentos:[zero,normal,unknown],logs:[],now});
  const stock=pending.filter(n=>n.extra.type==='dose_stock_review');assert.equal(stock.length,7,'uma revisão por dia');
- for(const n of stock){assert.equal(n.actionTypeId,undefined);assert.deepEqual(n.extra.medicamentoIds,['Venvanse']);assert.equal(n.extra.horario,'09:00');}
+ for(const n of stock){assert.equal(n.actionTypeId,undefined);assert.deepEqual(n.extra.medicamentoIds,['Venvanse']);assert.equal(n.extra.horario,'10:00');}
  for(const n of pending.filter(n=>n.extra.type!=='dose_stock_review'))assert.equal((n.extra.medicamentoIds||[n.extra.medicamentoId]).includes('Venvanse'),false);
  await scheduled.reconcileScheduledDoseNotifications({personId:'p',medicamentos:[zero],logs:[ignored],now});
  assert.equal(pending.filter(n=>n.extra.type==='dose_stock_review'&&n.extra.data===day).length,0,'ignorar a primeira dose não reagenda uma segunda cobrança no dia');

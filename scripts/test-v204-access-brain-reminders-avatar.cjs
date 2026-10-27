@@ -30,7 +30,7 @@ assert(alerts.includes('router.push(alerta.href'));
 assert(alerts.includes('Acesso e medicamentos'));
 
 const scheduler=read('lib/health-reminders/event-scheduler.ts');
-assert(scheduler.includes('allowDateOnly ? "09:00"'));
+assert(scheduler.includes('settings.dateOnlyEventTime'),'date-only withdrawal uses the configurable operational time');
 assert(scheduler.includes('event.kind === "retirada" && !event.time'));
 assert(scheduler.includes('Retirada')&&scheduler.includes('prevista para hoje'));
 assert(scheduler.includes('notifyAt.getTime()'),'rescheduling must change notification fingerprint');
@@ -53,7 +53,7 @@ function loadScheduler(){
   m.require=name=>{
     if(name==='@/lib/notification-preferences')return {isVaultNotificationCategoryEnabled:()=>true};
     if(name==='@capacitor/local-notifications')return {LocalNotifications:{checkPermissions:async()=>({display:'granted'})}};
-    if(name==='@/lib/notification-brain')return {formatReminderOffset:value=>`${value} minutos antes`,getVaultNotificationBrainSettings:()=>({eventOffsets:{consulta:[60],exame:[60],retirada:[1440,60]}})};
+    if(name==='@/lib/notification-brain')return {formatReminderOffset:value=>`${value} minutos antes`,getVaultNotificationBrainSettings:()=>({eventOffsets:{consulta:[60],exame:[60],retirada:[1440,60]},dateOnlyEventTime:'09:00',stockReviewTime:'10:00'})};
     if(name==='@/lib/native-runtime')return {isVaultNative:()=>true};
     if(name==='@/lib/notifications')return {ensureVaultNotificationChannel:async()=>{},isNotificationPreferenceEnabled:()=>true,VAULT_NOTIFICATION_CHANNEL_ID:'vault'};
     if(name==='@/lib/notification-reconciliation')return {VAULT_NOTIFICATION_FINGERPRINT:'fingerprint',vaultNotificationFingerprint:parts=>parts.join('|'),reconcileVaultNotificationSet:async notifications=>{reconciled=notifications}};

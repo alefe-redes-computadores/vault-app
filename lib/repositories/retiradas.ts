@@ -364,12 +364,14 @@ export const retiradasRepository={
     solicitarProcessamentoSync();
   },
 
-  async rescheduleMany(personId: string, selected: Array<{id: string; data: string; updated_at?: string}>, targetDate: string, reason: string) {
+  async rescheduleMany(personId: string, selected: Array<{id: string; data: string; updated_at?: string}>, targetDate: string, reason: string, targetTime?: string | null) {
     const userId = await uid();
     const target = date(targetDate, "Data da retirada");
     const parsed = new Date(`${target}T12:00:00Z`);
     if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== target) throw new Error("Data da retirada inválida.");
     if (!selected.length || new Set(selected.map(row => row.id)).size !== selected.length) throw new Error("Selecione retiradas distintas.");
+    const normalizedTime = targetTime?.trim() || null;
+    if (normalizedTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(normalizedTime)) throw new Error("Horário da retirada inválido.");
     const timestamp = now();
     let changed = 0;
     await db.transaction("rw", [db.retiradas, db.medicamentos, db.syncQueue], async () => {
@@ -383,8 +385,8 @@ export const retiradasRepository={
         rows.push(row);
       }
       for (const row of rows) {
-        if (row.data === target) continue;
-        const next = {...row, data: target, updated_at: timestamp, synced: false};
+        if (row.data === target && (!normalizedTime || (row.horario || null) === normalizedTime)) continue;
+        const next = {...row, data: target, ...(normalizedTime ? {horario: normalizedTime} : {}), updated_at: timestamp, synced: false};
         next.reagendamentos = withdrawalHistory(row, next, timestamp, reason);
         await db.retiradas.put(next);
         await enfileirarOperacao("retiradas", "update", next, {dispatchSync:false});

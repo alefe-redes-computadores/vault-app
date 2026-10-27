@@ -6,6 +6,7 @@ import {
   VAULT_NOTIFICATION_FINGERPRINT,
   vaultNotificationFingerprint,
 } from "@/lib/notification-reconciliation";
+import { getVaultNotificationBrainSettings } from "@/lib/notification-brain";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import {
   isVaultNative,
@@ -547,6 +548,7 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
   await registerNotificationActions();
 
   const now=input.now ?? new Date();
+  const stockReviewTime = getVaultNotificationBrainSettings().stockReviewTime;
   const notifications: Array<Record<string,unknown>>=[];
   const meds=input.medicamentos.filter((med) =>
     Boolean(med.id) && med.person_id===personId && med.status!=="descontinuado" &&
@@ -586,7 +588,8 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
           const key = `${medicamentoId}:${data}`;
           if (!stockDays.has(key)) {
             stockDays.add(key);
-            stockSlots.push({ medicamentoId, nome: med.nome?.trim() || "Medicamento", dosagem: "", data, horario, at, planned: false });
+            const stockAt = scheduledDateAtV51(data, stockReviewTime);
+            if (stockAt && stockAt.getTime() > now.getTime()) stockSlots.push({ medicamentoId, nome: med.nome?.trim() || "Medicamento", dosagem: "", data, horario: stockReviewTime, at: stockAt, planned: false });
           }
           continue;
         }

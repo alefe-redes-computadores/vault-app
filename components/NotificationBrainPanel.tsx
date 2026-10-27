@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Brain, Clock3, Pill } from "lucide-react";
+import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import {
   DEFAULT_NOTIFICATION_BRAIN_SETTINGS,
   DOSE_OVERDUE_OFFSET_OPTIONS,
@@ -51,6 +52,11 @@ export function NotificationBrainPanel() {
     save({ ...settings, doseOverdueOffsets: nextValues });
   };
 
+  const saveTime = (field: "dateOnlyEventTime" | "stockReviewTime", value: string) => {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return;
+    save({ ...settings, [field]: value });
+  };
+
   return (
     <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">
       <div className="flex items-start gap-3">
@@ -83,6 +89,17 @@ export function NotificationBrainPanel() {
               return <button key={option.minutes} type="button" onClick={() => toggleDose(option.minutes)} className={`rounded-xl border px-3 py-2 text-[11px] font-semibold transition ${selected ? "border-ice/50 bg-ice/10 text-ice" : "border-surface-border bg-void/40 text-ink-muted"}`}>{option.label}</button>;
             })}
           </div>
+        </div>
+
+        <div className="grid gap-3 border-t border-surface-border pt-4 sm:grid-cols-2">
+          <label className="text-xs font-semibold text-ink-primary">Retirada sem horário
+            <HealthTimePicker value={settings.dateOnlyEventTime} onChange={(value) => saveTime("dateOnlyEventTime", value)} className="mt-2" />
+            <span className="mt-1 block text-[10px] font-normal leading-relaxed text-ink-muted">Horário usado somente quando o compromisso tem data, mas não tem hora.</span>
+          </label>
+          <label className="text-xs font-semibold text-ink-primary">Conferência de estoque
+            <HealthTimePicker value={settings.stockReviewTime} onChange={(value) => saveTime("stockReviewTime", value)} className="mt-2" />
+            <span className="mt-1 block text-[10px] font-normal leading-relaxed text-ink-muted">Evita cobrar estoque zerado no mesmo horário clínico da dose.</span>
+          </label>
         </div>
       </div>
     </section>

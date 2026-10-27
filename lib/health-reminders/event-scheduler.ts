@@ -42,10 +42,10 @@ function hash(value: string): number {
 function parseEventDate(
   date: string,
   time?: string | null,
-  allowDateOnly = false
+  fallbackTime = ""
 ): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) return null;
-  const resolvedTime = time?.trim() || (allowDateOnly ? "09:00" : "");
+  const resolvedTime = time?.trim() || fallbackTime;
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(resolvedTime)) return null;
 
   const [year, month, day] = date.split("-").map(Number);
@@ -123,10 +123,11 @@ export async function reconcileHealthEventNotifications(
       return isVaultNotificationCategoryEnabled("retiradas");
     })
     .flatMap((event) => {
-      const at = parseEventDate(event.date, event.time, event.kind === "retirada");
+      const settings = getVaultNotificationBrainSettings();
+      const at = parseEventDate(event.date, event.time, event.kind === "retirada" ? settings.dateOnlyEventTime : "");
       if (!at || at <= now) return [];
 
-      const offsets = getVaultNotificationBrainSettings().eventOffsets[event.kind];
+      const offsets = settings.eventOffsets[event.kind];
       const candidates = offsets
         .map((offsetMinutes) => ({
           offsetMinutes,

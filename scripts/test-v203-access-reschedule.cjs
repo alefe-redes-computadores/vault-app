@@ -52,10 +52,10 @@ await assert.rejects(repo.rescheduleMany('p',[selection[0],{...selection[1],upda
 assert.equal((await db.retiradas.get('r')).data,row.data,'a stale member prevents all changes');
 fail=true;await assert.rejects(repo.rescheduleMany('p',selection,'2026-11-01','Ainda tenho estoque'),/queue failed/);fail=false;
 assert.equal((await db.retiradas.get('r')).data,row.data);assert.equal((await db.retiradas.get('r2')).data,row.data);
-assert.equal(await repo.rescheduleMany('p',selection,'2026-11-01','Ainda tenho estoque'),2);
-for(const id of ['r','r2']){const updated=await db.retiradas.get(id);assert.equal(updated.data,'2026-11-01');assert.equal(updated.reagendamentos.length,1);assert.equal(updated.reagendamentos[0].motivo,'Ainda tenho estoque');}
+assert.equal(await repo.rescheduleMany('p',selection,'2026-11-01','Ainda tenho estoque','14:30'),2);
+for(const id of ['r','r2']){const updated=await db.retiradas.get(id);assert.equal(updated.data,'2026-11-01');assert.equal(updated.reagendamentos.length,1);assert.equal(updated.horario,'14:30');assert.equal(updated.reagendamentos[0].motivo,'Ainda tenho estoque');assert.equal(updated.reagendamentos[0].novo_horario,'14:30');}
 assert.equal((await db.medicamentos.get('m2')).data_retorno_sus,'2026-11-01');assert.equal((await db.medicamentos.get('m2')).estoque_quantidade,61);
-const again=await db.retiradas.toArray();assert.equal(await repo.rescheduleMany('p',again,'2026-11-01',''),0,'same date never appends duplicate events');
+const again=await db.retiradas.toArray();await assert.rejects(repo.rescheduleMany('p',again,'2026-11-01','','25:00'),/Horário/);assert.equal(await repo.rescheduleMany('p',again,'2026-11-01',''),0,'same date never appends duplicate events');
 await db.retiradas.update('r2',{user_id:'other'});await assert.rejects(repo.rescheduleMany('p',again,'2026-11-02',''),/disponível/);
 assert.equal((await db.retiradas.get('r')).data,'2026-11-01');
 await db.delete();console.log('V203 OK: contextual actions, append-only rescheduling, mirrored date, rollback and isolation');

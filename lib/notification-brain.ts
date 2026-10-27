@@ -4,6 +4,8 @@ export type EventReminderKind = "consulta" | "exame" | "retirada";
 export type VaultNotificationBrainSettings = {
   eventOffsets: Record<EventReminderKind, number[]>;
   doseOverdueOffsets: number[];
+  dateOnlyEventTime: string;
+  stockReviewTime: string;
 };
 
 const KEY = "vault_notification_brain_v52";
@@ -34,7 +36,13 @@ export const DEFAULT_NOTIFICATION_BRAIN_SETTINGS: VaultNotificationBrainSettings
     retirada: [1440, 60],
   },
   doseOverdueOffsets: [30, 60, 120],
+  dateOnlyEventTime: "09:00",
+  stockReviewTime: "10:00",
 };
+
+function validTime(value: unknown, fallback: string): string {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : fallback;
+}
 
 function uniqueSorted(values: unknown, allowed: readonly number[], fallback: number[]): number[] {
   if (!Array.isArray(values)) return [...fallback];
@@ -59,6 +67,8 @@ export function getVaultNotificationBrainSettings(): VaultNotificationBrainSetti
         retirada: uniqueSorted(parsed.eventOffsets?.retirada, eventAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.eventOffsets.retirada),
       },
       doseOverdueOffsets: uniqueSorted(parsed.doseOverdueOffsets, doseAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.doseOverdueOffsets),
+      dateOnlyEventTime: validTime(parsed.dateOnlyEventTime, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.dateOnlyEventTime),
+      stockReviewTime: validTime(parsed.stockReviewTime, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.stockReviewTime),
     };
   } catch {
     return structuredClone(DEFAULT_NOTIFICATION_BRAIN_SETTINGS);
