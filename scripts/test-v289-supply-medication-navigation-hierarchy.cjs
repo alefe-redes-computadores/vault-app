@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const nav=fs.readFileSync('components/saude/ClinicalSectionNav.tsx','utf8');
+const journey=fs.readFileSync('components/saude/SupplyProcessJourney.tsx','utf8');
+const supply=fs.readFileSync('app/saude/fornecimento/page.tsx','utf8');
+const medication=fs.readFileSync('app/saude/medicamentos/detalhes/page.tsx','utf8');
+assert(nav.includes('aria-label={label}')&&nav.includes('href={`#${item.id}`}'),'shared navigator is accessible and anchor based');
+assert(nav.includes('overflow-x-auto')&&nav.includes('sticky top-2'),'mobile navigation remains reachable');
+for(const id of ['fornecimento-agora','processos','processo-atual','ciclo-atual'])assert(supply.includes(`id="${id}"`),`missing supply anchor ${id}`);
+assert(supply.includes('<SupplyProcessJourney hasProcess'),'selected process exposes one journey');
+assert(supply.includes('privateRoute={process.origem==="comprado"}'),'private purchase authority changes the final lane');
+for(const label of ['Processo','Ciclo','Documentos'])assert(journey.includes(`label:"${label}"`),`missing journey step ${label}`);
+assert(journey.includes('privateRoute?"Compras":"Retiradas"'),'purchase and withdrawal remain distinct');
+assert(journey.includes('aria-current={current?"step":undefined}'),'current step is exposed semantically');
+for(const id of ['medicamento-agora','medicamento-rotina','medicamento-fornecimento','medicamento-financeiro','medicamento-receita','historico-aquisicoes'])assert(medication.includes(`id="${id}"`),`missing medication anchor ${id}`);
+assert(medication.includes('badge:renovacoes.length'),'history count uses the existing scoped collection');
+assert(medication.includes('<HealthSupplyEntry medicamentoId={med.id!}/>'),'canonical supply entry remains shared');
+assert(supply.includes('SUS, compras e documentos mantêm suas origens independentes.'),'authority explanation remains visible');
+console.log('VAULT V289 — FORNECIMENTO + MEDICAMENTO + HIERARQUIA: OK');

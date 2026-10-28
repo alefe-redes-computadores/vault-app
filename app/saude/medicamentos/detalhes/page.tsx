@@ -11,6 +11,7 @@ import { buildMedicationJourneySnapshot } from "@/lib/health-intelligence/medica
 import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySummary";
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
@@ -3238,6 +3239,8 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-4 px-5 pt-4">
+          <ClinicalSectionNav label="Áreas do medicamento" items={[{id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>},{id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>},{id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]}/>
+          <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
               HERO
@@ -3265,7 +3268,7 @@ function MedicamentoDetalhesContent() {
             </section>
           )}
           <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
-          <HealthSupplyEntry medicamentoId={med.id!}/>
+          <div id="medicamento-fornecimento" className="scroll-mt-24"><HealthSupplyEntry medicamentoId={med.id!}/></div>
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
           {med.id && activePersonId === med.person_id && (
             <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
@@ -3868,7 +3871,7 @@ function MedicamentoDetalhesContent() {
           {(med.status !==
             "descontinuado" ||
             isSOS) && (
-            <section className="vault-deferred space-y-3">
+            <section id="medicamento-rotina" className="vault-deferred scroll-mt-24 space-y-3">
               <SectionTitle
                 icon={
                   <Clock
@@ -4614,7 +4617,7 @@ function MedicamentoDetalhesContent() {
             0 || medicationCosts.planned.length > 0 ||
             typeof med.preco ===
               "number") && (
-            <section className="vault-deferred space-y-3">
+            <section id="medicamento-financeiro" className="vault-deferred scroll-mt-24 space-y-3">
               <SectionTitle
                 icon={
                   <LineChart
@@ -4692,7 +4695,7 @@ function MedicamentoDetalhesContent() {
               REDE
               ================================================== */}
 
-          <section className="vault-deferred space-y-3">
+          <section id="medicamento-rede" className="vault-deferred scroll-mt-24 space-y-3">
             <SectionTitle
               icon={
                 <Stethoscope
@@ -4975,7 +4978,7 @@ function MedicamentoDetalhesContent() {
               RECEITA
               ================================================== */}
 
-          <section className="vault-deferred space-y-3">
+          <section id="medicamento-receita" className="vault-deferred scroll-mt-24 space-y-3">
             <SectionTitle
               icon={
                 <FileText

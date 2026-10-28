@@ -8,6 +8,8 @@ import { triggerHaptic } from "@/lib/haptics";
 import { SusCatalogBrowser } from "@/components/saude/SusCatalogBrowser";
 import { SupplyPreparation } from "@/components/saude/SupplyPreparation";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
 import {
   catalogIndications,
@@ -1136,7 +1138,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         backUrl={backTarget}
       />
       <div className="min-w-0 space-y-3 px-4 pt-4 sm:px-5">
+      <ClinicalSectionNav label="Áreas do fornecimento" items={[{id:"fornecimento-agora",label:"Agora",icon:<PackageCheck size={14}/>,badge:processView.cyclesInProgress},{id:"processos",label:"Processos",icon:<FolderHeart size={14}/>,badge:processView.activeProcesses.length},{id:"processo-atual",label:"Processo atual",icon:<CheckCircle2 size={14}/>},{id:"ciclo-atual",label:"Ciclo",icon:<FileText size={14}/>,badge:cycles.length}]}/>
+      <div id="fornecimento-agora" className="scroll-mt-24">
       {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={processView.cyclesInProgress ? `${processView.cyclesInProgress} ciclo${processView.cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:processView.activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processView.cycles},{label:"Documentos",value:processView.documents}]}/> : null}
+      </div>
       <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Ajuda e catálogo SUS</summary>
         <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
@@ -1165,7 +1170,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
-          <div className="mb-3 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Selecionar fornecimento">
+          <div id="processos" className="mb-3 grid min-w-0 scroll-mt-24 grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Selecionar fornecimento">
             {processView.activeProcesses.map(renderProcess)}
           </div>
             {processView.archivedProcesses.length > 0 && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
@@ -1209,7 +1214,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             </section>
           )}
           {process && !creating && (
-            <fieldset disabled={busy} className="space-y-4 [content-visibility:auto] [contain-intrinsic-size:900px]">
+            <fieldset id="processo-atual" disabled={busy} className="scroll-mt-24 space-y-4 [content-visibility:auto] [contain-intrinsic-size:900px]">
               <div className={panel}>
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
@@ -1225,6 +1230,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
                   return <div className="space-y-3">
+                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"}/>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{processRouteLabel}</span>
                       {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Rotas independentes</span>}
@@ -1386,6 +1392,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 <p className="mt-2 text-[11px] text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
               </details>}
               {cycle && (
+                <div id="ciclo-atual" className="scroll-mt-24">
                 <CyclePanel
                   key={personId + cycle.id}
                   cycle={cycle}
@@ -1398,6 +1405,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   run={run}
                   pid={personId}
                 />
+                </div>
               )}
             </fieldset>
           )}
