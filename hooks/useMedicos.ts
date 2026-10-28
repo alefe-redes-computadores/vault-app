@@ -64,7 +64,6 @@ export function useMedicos() {
     useLiveQuery(
       () =>
         db.medicos.toArray(),
-      [],
       []
     );
 
@@ -152,7 +151,8 @@ export function useMedicos() {
     );
 
   return {
-    medicos,
+    medicos: medicos || [],
+    isLoading: medicos === undefined,
     getMedico,
     addMedico,
     updateMedico,

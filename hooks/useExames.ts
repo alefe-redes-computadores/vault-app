@@ -63,8 +63,7 @@ export function useExames() {
       },
       [
         activePersonId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================
@@ -183,7 +182,8 @@ export function useExames() {
     );
 
   return {
-    exames,
+    exames: exames || [],
+    isLoading: Boolean(activePersonId) && exames === undefined,
     getExame,
     addExame,
     updateExame,

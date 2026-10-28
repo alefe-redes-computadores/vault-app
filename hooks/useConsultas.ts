@@ -78,8 +78,7 @@ export function useConsultas() {
       },
       [
         activePersonId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================
@@ -197,7 +196,8 @@ export function useConsultas() {
     );
 
   return {
-    consultas,
+    consultas: consultas || [],
+    isLoading: Boolean(activePersonId) && consultas === undefined,
     getConsulta,
     addConsulta,
     updateConsulta,

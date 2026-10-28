@@ -76,8 +76,7 @@ export function useCirurgias() {
       },
       [
         activePersonId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================
@@ -195,7 +194,8 @@ export function useCirurgias() {
     );
 
   return {
-    cirurgias,
+    cirurgias: cirurgias || [],
+    isLoading: Boolean(activePersonId) && cirurgias === undefined,
     getCirurgia,
     addCirurgia,
     updateCirurgia,

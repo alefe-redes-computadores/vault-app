@@ -965,48 +965,59 @@ export default function DocumentsPage() {
 
   const {
     medicamentosIncluindoDescontinuados: medicamentos = [],
+    isLoading: medicationsLoading,
   } =
     useMedicamentos();
 
   const {
     tratamentos = [],
+    isLoading: treatmentsLoading,
   } =
     useTratamentos();
 
   const {
     cids = [],
+    isLoading: cidsLoading,
   } =
     useCids();
 
   const {
     consultas = [],
+    isLoading: consultationsLoading,
   } =
     useConsultas();
 
   const {
     exames = [],
+    isLoading: examsLoading,
   } =
     useExames();
 
   const {
     cirurgias = [],
+    isLoading: surgeriesLoading,
   } =
     useCirurgias();
 
   const {
     medicos = [],
+    isLoading: doctorsLoading,
   } =
     useMedicos();
 
   const {
     renovacoes = [],
+    isLoading: renewalsLoading,
   } =
     useRenovacoes();
 
   const {
     registros = [],
+    isLoading: recordsLoading,
   } =
     useRegistrosSaude();
+
+  const contextLoading = documentsLoading || medicationsLoading || treatmentsLoading || cidsLoading || consultationsLoading || examsLoading || surgeriesLoading || doctorsLoading || renewalsLoading || recordsLoading;
 
   // ==========================================================
   // STATE
@@ -4300,10 +4311,10 @@ export default function DocumentsPage() {
   // RENDER
   // ==========================================================
 
-  if (documentsLoading) {
+  if (contextLoading) {
     return (
-      <main className="min-h-screen bg-void px-5 pb-28 pt-6" aria-busy="true" aria-label="Carregando documentos">
-        <p role="status" className="sr-only">Carregando documentos da pessoa selecionada.</p>
+      <main className="min-h-screen bg-void px-5 pb-28 pt-6" aria-busy="true" aria-label="Carregando acervo clínico">
+        <p role="status" className="sr-only">Carregando documentos e relações clínicas da pessoa selecionada.</p>
         <CardListSkeleton />
       </main>
     );
