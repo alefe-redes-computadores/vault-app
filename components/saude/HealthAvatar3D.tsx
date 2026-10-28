@@ -438,6 +438,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // ao rosto. O arco escuro continua sendo a boca; o tom é apenas profundidade.
     const lipTint=oval(materials.lips,0,2.642,.247,[.041,.006,.004]);lipTint.raycast=()=>{};
     const setExpression=(value:AvatarBodyContext['expression'])=>{
+      // Postura sutil e estática, derivada apenas do humor explicitamente
+      // registrado. Não cria animação contínua nem traduz prioridade clínica.
+      model.rotation.z=value==="reflective"?.006:value==="happy"?-.003:0;
+      model.position.y=value==="reflective"?-.008:value==="happy"?.005:0;
       mouth.visible=value!=="neutral";neutralMouth.visible=value==="neutral";
       mouth.rotation.z=value==="reflective"?0:Math.PI;mouth.position.y=value==="reflective"?2.61:2.647;
       lowerLip.visible=value==="neutral";

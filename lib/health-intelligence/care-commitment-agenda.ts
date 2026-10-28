@@ -9,9 +9,10 @@ const authorityRank: Record<CareForecastAction["kind"], number> = {
   overdue_withdrawal: 0,
   upcoming_withdrawal: 1,
   planned_acquisition: 2,
-  stock_projection: 3,
-  review_schedule_data: 4,
-  review_stock_data: 5,
+  sos_stock_attention: 3,
+  stock_projection: 4,
+  review_schedule_data: 5,
+  review_stock_data: 6,
 };
 
 /**

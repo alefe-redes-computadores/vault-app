@@ -13,6 +13,6 @@ assert(component.includes('command.plan.daysSinceConsultation'),'longitudinal co
 assert(central.includes('<CareFinancialOutlook command={health.careCommand}')&&central.includes('financialSpend30d')&&central.includes('financialSpend90d'),'Central combines canonical forecast and documented spending');
 assert(!central.includes('aria-label="Inteligência financeira de saúde"'),'old duplicate financial card removed');
 assert(avatar.includes('<CareFinancialOutlook command={command} compact/>'),'Avatar receives same financial and consultation context');
-assert(plan.includes('daysSinceLastCompletedConsultation')&&plan.includes('projectedCostCoverage30d'),'Brain owns consultation and coverage');
+assert(plan.includes('buildConsultationWindow')&&plan.includes('daysSinceConsultation: consultationWindow.days')&&plan.includes('projectedCostCoverage30d'),'Brain owns explicit consultation window and coverage');
 assert(forecast.includes('([30, 60, 90] as const)'),'canonical horizons');
 console.log('VAULT V285 — CUSTOS 30/60/90 + CONSULTA + AVATAR: OK');

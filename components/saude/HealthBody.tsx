@@ -12,6 +12,7 @@ import { DEFAULT_AVATAR_STYLE, type AvatarStyle } from "@/lib/health-profile/ava
 export const HealthBody = memo(function HealthBody({ skin, devices, appearance=DEFAULT_AVATAR_STYLE, expanded = false, showControls = true, controlsContainer, expression="neutral", surgeryMarkers=[], onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; appearance?:AvatarStyle; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; surgeryMarkers?:AvatarBodyContext["surgeryMarkers"];expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void;onDeviceSelect?:(id:string)=>void }) {
   const [view,setView]=useState<"front"|"left"|"right">("front");
   const angle=view==="front"?0:view==="left"?-18:18;
+  const posture=expression==="reflective"?" translateY(1px) rotateZ(.35deg)":expression==="happy"?" translateY(-1px) rotateZ(-.2deg)":"";
   const uid = useId().replace(/:/g, "");
   const ids = { skin: `skin-${uid}`, cloth: `cloth-${uid}`, halo: `halo-${uid}`, metal: `metal-${uid}`, glass: `glass-${uid}`, title: `title-${uid}`, description: `description-${uid}` };
   const color = avatarColor(skin);
@@ -27,9 +28,9 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
   </>;
   return (
     <div className={"mx-auto w-full " + (expanded ? "max-w-[320px]" : "max-w-[180px]")}>
-      <svg viewBox="0 0 180 260" role={onBodySelect?"group":"img"} aria-labelledby={`${ids.title} ${ids.description}`} className={"w-full motion-safe:transition-transform motion-safe:duration-300 " + (expanded ? "h-auto" : "h-60")} style={{transform:`perspective(700px) rotateY(${angle}deg)`,transformOrigin:"50% 55%"}}>
+      <svg viewBox="0 0 180 260" role={onBodySelect?"group":"img"} aria-labelledby={`${ids.title} ${ids.description}`} className={"w-full motion-safe:transition-transform motion-safe:duration-300 " + (expanded ? "h-auto" : "h-60")} style={{transform:`perspective(700px) rotateY(${angle}deg)${posture}`,transformOrigin:"50% 55%"}}>
         <title id={ids.title}>{`Avatar Vault com emblema ${BRAIN_BRAND}`}</title>
-        <desc id={ids.description}>Ilustração de perfil. {description} Celular ilustrativo com Vault aberto. Acessórios cosméticos são independentes dos aparelhos cadastrados; o desenho não indica conexão nem estado de saúde.</desc>
+        <desc id={ids.description}>Ilustração de perfil. {description} Expressão e postura usam somente o humor explicitamente registrado; não indicam diagnóstico nem estado clínico. Celular ilustrativo com Vault aberto. Acessórios cosméticos são independentes dos aparelhos cadastrados.</desc>
         <defs>
           <linearGradient id={ids.skin} x1="0" x2="1">
             <stop offset="0" stopColor={avatarShade(color, .78)} />

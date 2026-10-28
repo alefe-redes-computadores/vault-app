@@ -1,9 +1,10 @@
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCautiousAssociations } from "./cautious-associations";
-import { buildCareForecast, daysSinceLastCompletedConsultation, type CareForecast } from "./care-forecast";
+import { buildCareForecast, type CareForecast } from "./care-forecast";
 import { buildCareReadiness, type CareReadinessPortfolio } from "./care-readiness";
 import { buildCareDocumentReadiness, type CareDocumentReadinessPortfolio } from "./care-document-readiness";
 import { buildPrescriptionPlanningPortfolio } from "./prescription-planning";
+import { buildConsultationWindow, type ConsultationWindowSummary } from "./consultation-window";
 
 export type BrainCarePlanLane = "now" | "prepare" | "discuss" | "observe";
 export type BrainCarePlanEvidence = "recorded" | "projected" | "association" | "missing_data";
@@ -20,6 +21,7 @@ export type BrainCarePlanItem = {
   dueDate?: string | null;
   supplyRoute?: string;
   relatedCount: number;
+  relatedSteps: string[];
   priorityScore: number;
   priorityReasons: string[];
   confidence: "high" | "moderate" | "limited";
@@ -36,6 +38,7 @@ export type BrainCarePlan = {
   projectedCostCoverage30d: number;
   note: string;
   decision: BrainCarePlanItem | null;
+  consultationWindow: ConsultationWindowSummary;
 };
 
 const laneRank: Record<BrainCarePlanLane, number> = { now: 0, prepare: 1, discuss: 2, observe: 3 };
@@ -81,6 +84,7 @@ export function buildBrainCarePlan(
     dueDate: action.date,
     supplyRoute: route?.labels.join(" + ") || "Origem não informada",
     relatedCount: 1,
+    relatedSteps: [action.title],
   });
   });
 
@@ -100,6 +104,7 @@ export function buildBrainCarePlan(
       dueDate: entry.nextDate,
       supplyRoute: entry.route.labels.join(" + ") || "Origem não informada",
       relatedCount: 1,
+      relatedSteps: [entry.headline],
     }));
   }
 
@@ -123,6 +128,7 @@ export function buildBrainCarePlan(
       medicationName:entry.medicationName,
       supplyRoute:entry.routeLabel,
       relatedCount:missing.length,
+      relatedSteps: missing.map(item => item.label),
     }));
   }
 
@@ -140,6 +146,7 @@ export function buildBrainCarePlan(
       medicationName: entry.medicationName,
       dueDate: entry.date,
       relatedCount: 1,
+      relatedSteps: [entry.due ? "Solicitar nova receita" : "Receita planejada"],
     }));
   }
 
@@ -160,24 +167,26 @@ export function buildBrainCarePlan(
       evidence: [`${association.pairedDays} dias comparáveis`, `Coeficiente descritivo ${association.coefficient}`],
       href: "/saude/registros/relatorio",
       relatedCount: 1,
+      relatedSteps: ["Conversar na próxima consulta"],
     }));
   }
 
   const nextConsultation = context.consultas
     .filter(item => item.person_id === context.personId && item.status !== "cancelada" && validDay(item.data) && item.data >= forecast.generatedFor)
     .sort((a, b) => a.data.localeCompare(b.data))[0] ?? null;
-  const sinceConsultation = daysSinceLastCompletedConsultation(context, forecast.generatedFor);
+  const consultationWindow = buildConsultationWindow(context, forecast.generatedFor);
   if (nextConsultation) {
     items.push(explain({
       id: `consultation:${nextConsultation.id || nextConsultation.data}`,
       lane: "prepare",
       evidenceKind: "recorded",
       title: "Preparar a próxima consulta",
-      reason: `Consulta registrada para ${nextConsultation.data}. Reúna mudanças, dúvidas, documentos e o período desde a última consulta.`,
-      evidence: [sinceConsultation ? `${sinceConsultation} dias desde a última consulta realizada` : "Sem consulta realizada anterior identificada"],
+      reason: `Consulta registrada para ${nextConsultation.data}. O resumo reúne somente mudanças e eventos explicitamente registrados desde o último atendimento.`,
+      evidence: consultationWindow.evidence,
       href: "/saude/registros/relatorio",
       dueDate: nextConsultation.data,
       relatedCount: 1,
+      relatedSteps: ["Preparar resumo desde a última consulta"],
     }));
   }
 
@@ -194,6 +203,7 @@ export function buildBrainCarePlan(
       relatedCount: primary.relatedCount + item.relatedCount,
       evidence: [...new Set([...primary.evidence, ...item.evidence])].slice(0, 6),
       priorityReasons: [...new Set([...primary.priorityReasons, ...item.priorityReasons])],
+      relatedSteps: [...new Set([...primary.relatedSteps, ...item.relatedSteps])].slice(0, 6),
     });
   }
   const ordered = [...unique.values()];
@@ -207,11 +217,12 @@ export function buildBrainCarePlan(
     focus: ordered.slice(0, 4),
     counts,
     nextConsultation: nextConsultation?.data ?? null,
-    daysSinceConsultation: sinceConsultation,
+    daysSinceConsultation: consultationWindow.days,
     projectedCost30d: month.plannedKnownCost + month.expectedRefillCost,
     projectedCostCoverage30d: month.expectedRefillCostCoverage,
     note: "Plano orientativo baseado somente no que foi registrado. Projeções e associações aparecem identificadas e não substituem avaliação profissional.",
     decision: ordered[0] ?? null,
+    consultationWindow,
   };
 }
 

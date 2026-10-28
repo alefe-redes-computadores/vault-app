@@ -25,7 +25,7 @@ export type WithdrawalReadiness = {
   validDate: boolean;
   href: string;
 };
-export type CareForecastActionKind = "overdue_withdrawal" | "upcoming_withdrawal" | "planned_acquisition" | "stock_projection" | "review_stock_data" | "review_schedule_data";
+export type CareForecastActionKind = "overdue_withdrawal" | "upcoming_withdrawal" | "planned_acquisition" | "stock_projection" | "sos_stock_attention" | "review_stock_data" | "review_schedule_data";
 export type CareForecastAction = {
   id: string;
   kind: CareForecastActionKind;
@@ -110,9 +110,24 @@ export function buildCareForecast(context: HealthInsightContext, today = context
       title: `${medication?.nome || event.medicamento_nome || "Medicamento"}: aquisição planejada`, reason: "Planejamento futuro; ainda não representa compra, gasto ou entrada no estoque.", href: event.id ? `/saude/renovacao/detalhes?id=${encodeURIComponent(event.id)}` : `/saude/renovacao?medicamento_id=${encodeURIComponent(medicationId)}`, evidence: [`Data planejada: ${date}`, typeof event.preco === "number" && event.preco > 0 ? "Valor planejado informado" : "Valor planejado desconhecido"] });
   }
   for (const medication of ownedMedications) {
-    if (!medication.id || medication.tipo_uso === "sos" || medication.tipo_uso === "esporadico") continue;
+    if (!medication.id) continue;
     const stock = stockByMedication.get(medication.id);
     const medicationName = medication.nome || "Medicamento";
+    if (medication.tipo_uso === "sos" || medication.tipo_uso === "esporadico") {
+      if (stock?.state === "empty") actions.push({
+        id: `sos-stock:${medication.id}`,
+        kind: "sos_stock_attention",
+        lane: "next",
+        medicationId: medication.id,
+        medicationName,
+        date: null,
+        title: `${medicationName}: conferir disponibilidade SOS`,
+        reason: "O estoque cadastrado está zerado. Como o uso é SOS/esporádico, o Brain não projeta consumo nem presume necessidade; apenas recomenda conferir a disponibilidade física.",
+        href: `/saude/medicamentos/detalhes?id=${encodeURIComponent(medication.id)}`,
+        evidence: ["Uso cadastrado como SOS/esporádico", "Estoque registrado igual a zero", "Nenhuma tomada ou necessidade foi inferida"],
+      });
+      continue;
+    }
     if (!stock || stock.state === "unknown") {
       actions.push({ id: `stock-data:${medication.id}`, kind: "review_stock_data", lane: "review_data", medicationId: medication.id, medicationName, date: null, title: `${medicationName}: estoque sem projeção`, reason: "Sem quantidade ou ritmo suficiente para antecipar reposição com segurança.", href: `/saude/medicamentos/detalhes?id=${encodeURIComponent(medication.id)}`, evidence: ["Estoque desconhecido não foi convertido em zero"] });
     } else if (stock.daysRemaining !== null && stock.daysRemaining <= 30) {
