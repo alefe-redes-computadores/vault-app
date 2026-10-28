@@ -4,6 +4,7 @@
 
 import {createLocalSearchIndex,filterLocalSearchIndex} from "@/lib/local-search";
 import {
+  useDeferredValue,
   Suspense,
   useMemo,
   useState,
@@ -215,6 +216,13 @@ function TratamentoListContent() {
     useState(
       ""
     );
+
+  const [
+    showHistory,
+    setShowHistory,
+  ] = useState(false);
+
+  const deferredSearch = useDeferredValue(search);
 
   /*
    * Os hooks já trabalham com a pessoa ativa.
@@ -537,10 +545,10 @@ function TratamentoListContent() {
     treatment.nome,treatment.condicao,treatment.observacoes,...(medicamentosPorTratamento.get(treatment.id||"")||[]).flatMap(m=>[m.nome,m.dosagem])
   ]),[listaEnriquecida,medicamentosPorTratamento]);
 
-  const filteredList =
+  const matchedList =
     useMemo(
       () => {
-        const result=filterLocalSearchIndex(treatmentSearchIndex,search).filter(tratamento=>filtroStatus==='todos'||tratamento.status===filtroStatus);
+        const result=filterLocalSearchIndex(treatmentSearchIndex,deferredSearch).filter(tratamento=>filtroStatus==='todos'||tratamento.status===filtroStatus);
 
         return [
           ...result,
@@ -568,9 +576,20 @@ function TratamentoListContent() {
       [
         treatmentSearchIndex,
         filtroStatus,
-        search,
+        deferredSearch,
       ]
     );
+
+  const filteredList = useMemo(() => {
+    const browsingCurrentCare = filtroStatus === "todos" && !deferredSearch.trim();
+    if (!browsingCurrentCare || showHistory) return matchedList;
+    return matchedList.filter(tratamento => tratamento.status === "ativo");
+  }, [deferredSearch, filtroStatus, matchedList, showHistory]);
+
+  const hiddenHistoryCount = useMemo(
+    () => matchedList.filter(tratamento => tratamento.status !== "ativo").length,
+    [matchedList]
+  );
 
   const hasFilters =
     filtroStatus !==
@@ -633,6 +652,8 @@ function TratamentoListContent() {
       setSearch(
         ""
       );
+
+      setShowHistory(false);
     };
 
   const handleCreate =
@@ -797,6 +818,25 @@ function TratamentoListContent() {
                 { label: "Revisar", value: treatmentCommand.insights, tone: treatmentCommand.insights ? "attention" : "neutral" },
               ]}
             />
+          ) : null}
+          {filtroStatus === "todos" && !search.trim() && hiddenHistoryCount > 0 ? (
+            <button
+              type="button"
+              aria-expanded={showHistory}
+              onClick={() => {
+                trigger("vibrate");
+                setShowHistory(current => !current);
+              }}
+              className="flex min-h-11 w-full items-center justify-between rounded-2xl border border-surface-border/60 bg-surface px-4 text-left text-xs text-ink-muted active:scale-[.99]"
+            >
+              <span>
+                <strong className="block text-sm text-ink-primary">Histórico de tratamentos</strong>
+                Concluídos e suspensos ficam recolhidos para priorizar o cuidado atual.
+              </span>
+              <span className="ml-3 shrink-0 rounded-full bg-surface-raised px-2.5 py-1 font-mono text-[10px]">
+                {showHistory ? "Recolher" : hiddenHistoryCount}
+              </span>
+            </button>
           ) : null}
           {filteredList.length ===
           0 ? (

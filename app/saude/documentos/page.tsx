@@ -3,6 +3,7 @@
 
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -1013,6 +1014,8 @@ export default function DocumentsPage() {
     setSearchQuery,
   ] =
     useState("");
+
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [
     selectedMonth,
@@ -3741,7 +3744,7 @@ export default function DocumentsPage() {
     return expanded;
   }, [resolvedViewModels, medicationLinksByDocument, renewalsByMedication]);
   const documentSearchIndex=useMemo(()=>createLocalSearchIndex(projectedViewModels,documentSearchFields),[projectedViewModels]);
-  const viewModels=useMemo(()=>filterLocalSearchIndex(documentSearchIndex,searchQuery),[documentSearchIndex,searchQuery]);
+  const viewModels=useMemo(()=>filterLocalSearchIndex(documentSearchIndex,deferredSearchQuery),[documentSearchIndex,deferredSearchQuery]);
 
   // A document may have two *visual* parents, yet it still has one physical ID,
   // one export card, one set of attachments and one count in the acervo summary.
@@ -4026,18 +4029,8 @@ export default function DocumentsPage() {
             }
           }
 
-          if (
-            next.size ===
-            0
-          ) {
-            domainGroups.forEach(
-              (
-                group
-              ) =>
-                next.add(
-                  group.id
-                )
-            );
+          if (next.size === 0 && domainGroups[0]) {
+            next.add(domainGroups[0].id);
           }
 
           return next;
@@ -4088,21 +4081,16 @@ export default function DocumentsPage() {
             }
           }
 
-          if (
-            next.size ===
-            0
-          ) {
-            domainGroups.forEach(
-              (
-                domain
-              ) => {
+          if (next.size === 0) {
+            const primaryDomain = domainGroups[0];
+            if (primaryDomain) {
                 const firstExpandable =
-                  domain.parents.find(
+                  primaryDomain.parents.find(
                     (
                       parent
                     ) =>
                       !(
-                        domain.id ===
+                        primaryDomain.id ===
                           "medicamentos" &&
                         parent.medication &&
                         parent.documents.length ===
@@ -4117,8 +4105,7 @@ export default function DocumentsPage() {
                     firstExpandable.key
                   );
                 }
-              }
-            );
+            }
           }
 
           return next;
@@ -4131,10 +4118,10 @@ export default function DocumentsPage() {
   );
 
   useEffect(()=>{
-    if(!searchQuery.trim())return;
+    if(!deferredSearchQuery.trim())return;
     setExpandedDomains(new Set(domainGroups.map(group=>group.id)));
     setExpandedParents(new Set(domainGroups.flatMap(group=>group.parents.map(parent=>parent.key)).slice(0,12)));
-  },[searchQuery,domainGroups]);
+  },[deferredSearchQuery,domainGroups]);
 
   // ==========================================================
   // ACTIONS
