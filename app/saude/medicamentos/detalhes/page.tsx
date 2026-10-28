@@ -10,6 +10,7 @@ import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/heal
 import { buildMedicationJourneySnapshot } from "@/lib/health-intelligence/medication-workspace";
 import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySummary";
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
+import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
@@ -4683,6 +4684,7 @@ function MedicamentoDetalhesContent() {
                   <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{medicationCosts.planned.length} aquisição(ões) futura(s). Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
                 </div>
               )}
+              <MedicationPurchaseRhythmCard events={renovacoes} medicationId={med.id!} todayISO={diaFinanceiro}/>
             </section>
           )}
 
