@@ -135,8 +135,7 @@ export function useTratamentos() {
       },
       [
         activePersonId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================
@@ -330,6 +329,10 @@ export function useTratamentos() {
     tratamentos:
       tratamentos ||
       [],
+
+    isLoading:
+      Boolean(activePersonId) &&
+      tratamentos === undefined,
 
     getTratamento,
 

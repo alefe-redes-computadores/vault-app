@@ -45,9 +45,9 @@ type UpdateDocumentActionInput =
 // DOCUMENT LIST
 // ============================================================
 
-export function useDocuments(
+function useDocumentsQuery(
   personId?: string
-): Document[] {
+) {
   const {
     activePersonId,
   } =
@@ -76,7 +76,20 @@ export function useDocuments(
       ]
     );
 
-  return documentos ?? [];
+  return {
+    documents: documentos ?? [],
+    isLoading: Boolean(targetPersonId) && documentos === undefined,
+  };
+}
+
+export function useDocuments(
+  personId?: string
+): Document[] {
+  return useDocumentsQuery(personId).documents;
+}
+
+export function useDocumentsState(personId?: string) {
+  return useDocumentsQuery(personId);
 }
 
 // ============================================================

@@ -231,11 +231,13 @@ function TratamentoListContent() {
    */
   const {
     tratamentos = [],
+    isLoading: treatmentsLoading,
   } =
     useTratamentos();
 
   const {
     medicamentosIncluindoDescontinuados: medicamentos = [],
+    isLoading: medicationsLoading,
   } =
     useMedicamentos();
 
@@ -670,6 +672,15 @@ function TratamentoListContent() {
   // ==========================================================
   // RENDER
   // ==========================================================
+
+  if (treatmentsLoading || medicationsLoading) {
+    return (
+      <main className="min-h-[100dvh] bg-void px-5 pb-24 pt-6" aria-busy="true" aria-label="Carregando tratamentos">
+        <p role="status" className="sr-only">Carregando tratamentos da pessoa selecionada.</p>
+        <CardListSkeleton />
+      </main>
+    );
+  }
 
   return (
     <PageTransition>

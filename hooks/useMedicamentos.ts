@@ -64,9 +64,8 @@ export function useMedicamentos() {
       },
       [
         activePersonId,
-      ],
-      []
-    ) || [];
+      ]
+    );
 
   // VAULT_SOS_AFTER_DISCONTINUATION_V94
   const medicamentosIncluindoDescontinuados =
@@ -79,9 +78,8 @@ export function useMedicamentos() {
           activePersonId
         );
       },
-      [activePersonId],
-      []
-    ) || [];
+      [activePersonId]
+    );
 
   // ==========================================================
   // GET
@@ -196,8 +194,12 @@ export function useMedicamentos() {
     );
 
   return {
-    medicamentos,
-    medicamentosIncluindoDescontinuados,
+    medicamentos: medicamentos || [],
+    medicamentosIncluindoDescontinuados: medicamentosIncluindoDescontinuados || [],
+    isLoading:
+      Boolean(activePersonId) &&
+      (medicamentos === undefined ||
+        medicamentosIncluindoDescontinuados === undefined),
     getMedicamento,
     addMedicamento,
     updateMedicamento,

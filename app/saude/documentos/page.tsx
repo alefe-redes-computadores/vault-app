@@ -55,8 +55,9 @@ import {
 } from "date-fns/locale";
 
 import {
-  useDocuments,
+  useDocumentsState,
 } from "@/hooks/useDocuments";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 
 import {
   useMedicamentos,
@@ -957,8 +958,10 @@ export default function DocumentsPage() {
   } =
     useActivePersonId();
 
-  const documents =
-    useDocuments();
+  const {
+    documents,
+    isLoading: documentsLoading,
+  } = useDocumentsState();
 
   const {
     medicamentosIncluindoDescontinuados: medicamentos = [],
@@ -4296,6 +4299,15 @@ export default function DocumentsPage() {
   // ==========================================================
   // RENDER
   // ==========================================================
+
+  if (documentsLoading) {
+    return (
+      <main className="min-h-screen bg-void px-5 pb-28 pt-6" aria-busy="true" aria-label="Carregando documentos">
+        <p role="status" className="sr-only">Carregando documentos da pessoa selecionada.</p>
+        <CardListSkeleton />
+      </main>
+    );
+  }
 
   return (
     <PageTransition>
