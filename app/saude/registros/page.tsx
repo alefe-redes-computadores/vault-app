@@ -8,6 +8,7 @@ import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ListFilters, ListPageHeader, ListSearch } from "@/components/list";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useAllDoseLogs } from "@/hooks/useDoseLogs";
@@ -38,7 +39,7 @@ export default function RegistrosSaudePage() {
   const { trigger } = useHapticFeedback();
   const { registros, isLoading } = useRegistrosSaude();
   const { allDoseLogs, isLoading: dosesLoading } = useAllDoseLogs();
-  const { medicamentos = [] } = useMedicamentos();
+  const { medicamentos = [], isLoading: medicationsLoading } = useMedicamentos();
   const [monthKey, setMonthKey] = useState(currentClinicalMonth);
   const [filter, setFilter] = useState<ViewFilter>("todos");
   const [search, setSearch] = useState("");
@@ -48,15 +49,16 @@ export default function RegistrosSaudePage() {
   const visibleEvents = useMemo(() => filterLocalSearchIndex(eventSearchIndex,search).filter(event => filter === "todos" || event.category === filter), [eventSearchIndex, filter, search]);
   const visibleIds = useMemo(() => new Set(visibleEvents.map(item => item.id)), [visibleEvents]);
   const stats = useMemo(() => { let records=0,doses=0,alerts=0;const days=new Set<string>();for(const event of month.events){days.add(event.date);if(event.kind==="record")records+=1;if(event.category==="dose")doses+=1;if(event.record){const insight=analisarRegistroSaude(event.record.nome,event.record.valor_medicao,event.record.intensidade,event.record.observacoes);if(insight&&insight.status!=="normal")alerts+=1;}}return {records,doses,alerts,days:days.size}; }, [month.events]);
-  if (isLoading || dosesLoading) return <CardListSkeleton />;
+  if (isLoading || dosesLoading || medicationsLoading) return <CardListSkeleton />;
   const selectFilter = (next: ViewFilter) => { trigger("vibrate"); setFilter(next); };
   return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
     <ListPageHeader title="Linha de cuidado" badgeLabel="PRONTUÁRIO CLÍNICO" badgeColor="text-violet-300" subtitle="Registros e doses, sem substituir avaliação profissional" backUrl={backTarget} className="print:static print:bg-white" rightAction={<button type="button" onClick={() => router.push(preserveReturn("/saude/registros/novo"))} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ice text-void print:hidden" aria-label="Novo registro"><Plus size={20}/></button>}>
       <div className="flex w-full items-center gap-2 print:hidden"><button type="button" aria-label="Mês anterior" onClick={() => setMonthKey(shiftClinicalMonth(monthKey,-1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised"><ChevronLeft size={17}/></button><button type="button" onClick={() => setMonthKey(currentClinicalMonth())} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface text-sm font-semibold capitalize"><CalendarDays size={15} className="text-ink-muted"/>{month.label}</button><button type="button" aria-label="Próximo mês" disabled={monthKey >= currentClinicalMonth()} onClick={() => setMonthKey(shiftClinicalMonth(monthKey,1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised disabled:opacity-30"><ChevronRight size={17}/></button></div>
     </ListPageHeader>
     <section className="space-y-4 px-5 pt-4">
+      <div className="print:hidden"><ClinicalSectionNav label="Áreas da linha de cuidado" items={[{id:"registros-agora",label:"Registrar",icon:<Plus size={14}/>},{id:"registros-resumo",label:"Resumo",icon:<ClipboardList size={14}/>,badge:stats.records+stats.doses},{id:"registros-linha",label:"Linha clínica",icon:<CalendarDays size={14}/>,badge:visibleEvents.length}]}/></div>
       {/* V224: one-tap diary shortcuts reuse the existing offline-first record repository. */}
-      <div className="flex flex-wrap items-center gap-2 print:hidden" aria-label="Registrar rapidamente">
+      <div id="registros-agora" className="flex scroll-mt-24 flex-wrap items-center gap-2 print:hidden" aria-label="Registrar rapidamente">
         {([[
           "Humor", "humor", "border-fuchsia-400/25 bg-fuchsia-400/[.06] text-fuchsia-200"
         ],[
@@ -72,8 +74,9 @@ export default function RegistrosSaudePage() {
           </button>
         )}
       </div>
+      <span id="registros-resumo" className="block scroll-mt-24" aria-hidden="true"/>
       <div><ClinicalListSummary icon={ClipboardList} eyebrow="Resumo do período" title={stats.days ? `${stats.days} dias documentados` : "Sem eventos neste mês"} detail="Cobertura descritiva dos dados registrados; não mede adesão clínica." metrics={[{label:"Registros",value:stats.records},{label:"Doses",value:stats.doses,tone:"positive"},{label:"Destaques",value:stats.alerts,tone:stats.alerts?"attention":"neutral"}]}/><div className="mt-2 grid grid-cols-2 gap-2 print:hidden"><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/evolucao"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><BarChart3 size={15} className="text-violet-300"/>Ver evolução</button><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/relatorio"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><FileDown size={15} className="text-emerald-300"/>Resumo clínico</button></div></div>
-      <div className="flex min-w-0 items-center gap-2 print:hidden">
+      <div id="registros-linha" className="flex min-w-0 scroll-mt-24 items-center gap-2 print:hidden">
         <ListSearch value={search} onChange={setSearch} placeholder="Buscar na linha clínica" />
         <ListFilters activeCount={Number(filter !== "todos")+Number(Boolean(search.trim()))} onClear={() => {setFilter("todos");setSearch("");}} title="Filtrar linha de cuidado">
           {([['todos','Tudo'],['sintoma','Sintomas'],['medicao','Medições'],['hidratacao','Água'],['dose','Doses']] as [ViewFilter,string][]).map(([key,label])=><button key={key} type="button" onClick={()=>selectFilter(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${filter===key?'border-ice/60 bg-ice/15 text-ice':'border-surface-border bg-surface-raised text-ink-muted'}`}>{label}</button>)}

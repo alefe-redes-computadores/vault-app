@@ -77,6 +77,7 @@ import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index"
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 const HealthConnectPanel = dynamic(() => import("@/components/saude/HealthConnectPanel").then(m => m.HealthConnectPanel), { loading: () => <p className="p-3 text-xs text-ink-muted">Preparando sincronização…</p> });
 const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/MedicationSafetyCoverage").then(m => m.MedicationSafetyCoverage));
@@ -239,9 +240,7 @@ function HealthDashboard({
             <Bell size={20} />
           </button>
         </header>
-        <nav aria-label="Áreas de Minha Saúde" className="sticky top-2 z-20 -mx-1 flex gap-2 overflow-x-auto rounded-2xl border border-surface-border/70 bg-void/90 p-1.5 shadow-lg backdrop-blur-xl [scrollbar-width:none]">
-          {[{href:"#meu-avatar",label:"Avatar",icon:<UserRound size={14}/>},{href:"#analises",label:"Análises",icon:<BarChart3 size={14}/>},{href:"#fontes",label:"Fontes",icon:<Database size={14}/>},{href:"#indicadores",label:"Indicadores",icon:<ListChecks size={14}/>},{href:"#historico",label:"Histórico",icon:<CalendarRange size={14}/>}].map(item=><a key={item.href} href={item.href} className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[10px] font-semibold text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{item.icon}{item.label}</a>)}
-        </nav>
+        <ClinicalSectionNav label="Áreas de Minha Saúde" items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>},{id:"fontes",label:"Fontes",icon:<Database size={14}/>},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>}]}/>
         {error && (
           <p
             role="alert"

@@ -83,6 +83,7 @@ import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { CareCommandStrip } from "@/components/saude/CareCommandStrip";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
@@ -2997,6 +2998,8 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-5 px-4 pt-4">
+          {isHoje ? <ClinicalSectionNav label="Áreas de Hoje" items={[{id:"hoje-agora",label:"Agora",icon:<Activity size={14}/>},{id:"hoje-agenda",label:"Agenda",icon:<Bell size={14}/>,badge:remindersDoDia.length},{id:"hoje-doses",label:"Doses",icon:<Pill size={14}/>,badge:totalPendentes},{id:"hoje-diario",label:"Diário",icon:<ListChecks size={14}/>}]} /> : null}
+          <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {isHoje ? <CareCommandStrip command={healthIntelligence.careCommand} onNavigate={(href) => router.push(href)}/> : null}
           {isHoje && !healthIntelligence.careCommand?.decision && !brainPulse.isLoading && brainPulse.brief.primary && (
             <button
@@ -3044,7 +3047,7 @@ export default function HojePage() {
 
           {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
           {isHoje && !retroReviewMode && (
-            <details aria-label="Diário rápido do dia" className="group rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
+            <details id="hoje-diario" aria-label="Diário rápido do dia" className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                 <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-[10px] text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
                 <ChevronRight size={15} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
@@ -3392,6 +3395,7 @@ export default function HojePage() {
             </motion.div>
           )}
 
+          <span id="hoje-agenda" className="block scroll-mt-24" aria-hidden="true"/>
           {remindersDoDia.length > 0 && (
             <section className="vault-deferred space-y-3" aria-label="Lembretes de saúde do dia">
               <div className="flex items-center justify-between gap-3 px-1">
@@ -3770,6 +3774,7 @@ export default function HojePage() {
           {/* =======================================================
               TIMELINE / DOSES
           ======================================================= */}
+          <span id="hoje-doses" className="block scroll-mt-24" aria-hidden="true"/>
           {isHoje && filtroStatus === "todos" && dosesFiltradas.some((dose) => dose.tomada || dose.ignorada) && (
             <button type="button" onClick={() => setMostrarConcluidas((value) => !value)} className="flex w-full items-center justify-between rounded-[20px] border border-ice/15 bg-ice/[0.045] px-4 py-3 text-left">
               <div className="flex items-center gap-2.5"><Activity size={17} className="text-ice" /><div><p className="text-xs font-semibold text-ink-primary">{mostrarConcluidas ? "Ocultar doses registradas" : "Ver tomadas e ignoradas"}</p><p className="mt-0.5 text-[9px] text-ink-muted">{mostrarConcluidas ? "Deixe a agenda focada no que ainda importa" : `${concluidasOcultas} registro(s) resumido(s) para reduzir ruído`}</p></div></div>

@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  createElement,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -58,6 +59,7 @@ import {
   useDocumentsState,
 } from "@/hooks/useDocuments";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 
 import {
   useMedicamentos,
@@ -4307,6 +4309,16 @@ export default function DocumentsPage() {
       ]
     );
 
+  const documentNavItems = useMemo(
+    () => domainGroups.map(domain => ({
+      id: `document-domain-${domain.id}`,
+      label: domain.label,
+      icon: createElement(domain.icon, { size: 14 }),
+      badge: domain.count,
+    })),
+    [domainGroups]
+  );
+
   // ==========================================================
   // RENDER
   // ==========================================================
@@ -4628,6 +4640,7 @@ export default function DocumentsPage() {
                 </motion.div>
               ) : (
                 <div className="space-y-4">
+                  <ClinicalSectionNav label="Domínios do acervo" items={documentNavItems}/>
                   <div className="flex items-center gap-2 px-1">
                     <LayersSummary
                       domains={
@@ -4657,6 +4670,7 @@ export default function DocumentsPage() {
 
                       return (
                         <motion.div
+                          id={`document-domain-${domain.id}`}
                           key={
                             domain.id
                           }
@@ -4677,7 +4691,7 @@ export default function DocumentsPage() {
                               domainIndex *
                               0.025,
                           }}
-                          className="overflow-hidden rounded-[20px] border border-surface-border/50 bg-surface shadow-sm [content-visibility:auto] [contain-intrinsic-size:0_160px]"
+                          className="scroll-mt-24 overflow-hidden rounded-[20px] border border-surface-border/50 bg-surface shadow-sm [content-visibility:auto] [contain-intrinsic-size:0_160px]"
                         >
                           <button
                             type="button"
