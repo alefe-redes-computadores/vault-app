@@ -91,6 +91,7 @@ import {
 } from "@/components/PageTransition";
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 
 import {
   DetailSkeleton,
@@ -989,6 +990,8 @@ function DetalhesRenovacaoContent() {
             ==================================================== */}
 
         <section className="space-y-5 px-5 pt-6">
+          <ClinicalSectionNav label="Áreas da receita ou aquisição" items={[{id:"renovacao-visao",label:"Visão geral",icon:<Receipt size={14}/>},...(renovacao.tipo_aquisicao==="sus"?[{id:"renovacao-sus",label:"SUS",icon:<Building2 size={14}/>}]:[]),...((renovacao.lote||renovacao.validade_produto)?[{id:"renovacao-produto",label:"Produto",icon:<Package size={14}/>}]:[]),...((medico||farmacia||hospital||local)?[{id:"renovacao-rede",label:"Rede",icon:<Stethoscope size={14}/>}]:[]),...(historicoRenovacoes.length?[{id:"renovacao-historico",label:"Histórico",icon:<History size={14}/>,badge:historicoRenovacoes.length}]:[])]}/>
+          <span id="renovacao-visao" className="block scroll-mt-24" aria-hidden="true"/>
           {/* ==================================================
               CARD PRINCIPAL
               ================================================== */}
@@ -1262,7 +1265,7 @@ function DetalhesRenovacaoContent() {
 
           {renovacao.tipo_aquisicao ===
             "sus" && (
-            <motion.div
+            <motion.div id="renovacao-sus"
               variants={
                 fadeUp
               }
@@ -1272,7 +1275,7 @@ function DetalhesRenovacaoContent() {
                 delay:
                   0.04,
               }}
-              className="space-y-3"
+              className="scroll-mt-24 space-y-3 [content-visibility:auto] [contain-intrinsic-size:260px]"
             >
               <SectionTitle
                 icon={
@@ -1348,7 +1351,7 @@ function DetalhesRenovacaoContent() {
 
           {(renovacao.lote ||
             renovacao.validade_produto) && (
-            <motion.div
+            <motion.div id="renovacao-produto"
               variants={
                 fadeUp
               }
@@ -1358,7 +1361,7 @@ function DetalhesRenovacaoContent() {
                 delay:
                   0.06,
               }}
-              className="space-y-3"
+              className="scroll-mt-24 space-y-3 [content-visibility:auto] [contain-intrinsic-size:220px]"
             >
               <SectionTitle
                 icon={
@@ -1423,7 +1426,7 @@ function DetalhesRenovacaoContent() {
             farmacia ||
             hospital ||
             local) && (
-            <motion.div
+            <motion.div id="renovacao-rede"
               variants={
                 fadeUp
               }
@@ -1433,7 +1436,7 @@ function DetalhesRenovacaoContent() {
                 delay:
                   0.08,
               }}
-              className="space-y-3"
+              className="scroll-mt-24 space-y-3 [content-visibility:auto] [contain-intrinsic-size:260px]"
             >
               <SectionTitle
                 icon={
@@ -1542,7 +1545,7 @@ function DetalhesRenovacaoContent() {
 
           {historicoRenovacoes.length >
             0 && (
-            <motion.div
+            <motion.div id="renovacao-historico"
               variants={
                 fadeUp
               }
@@ -1552,7 +1555,7 @@ function DetalhesRenovacaoContent() {
                 delay:
                   0.1,
               }}
-              className="space-y-3"
+              className="scroll-mt-24 space-y-3 [content-visibility:auto] [contain-intrinsic-size:320px]"
             >
               <SectionTitle
                 icon={

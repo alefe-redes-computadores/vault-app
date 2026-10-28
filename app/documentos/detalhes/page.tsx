@@ -79,6 +79,7 @@ import {
 import {
   PageTransition,
 } from "@/components/PageTransition";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import {
   useToast,
 } from "@/components/ToastProvider";
@@ -1807,6 +1808,7 @@ export default function DocumentDetailPage() {
         </header>
 
         <section className="mx-auto max-w-3xl space-y-4 px-5 pt-5">
+          <ClinicalSectionNav label="Áreas do documento pessoal" items={[{id:"documento-pessoal-visao",label:"Visão geral",icon:<File size={14}/>},...(genericMetadata.length?[{id:"documento-pessoal-info",label:"Informações",icon:<FileText size={14}/>,badge:genericMetadata.length}]:[]),{id:"documento-pessoal-anexos",label:"Anexos",icon:<Paperclip size={14}/>,badge:doc.attachments.length},...(doc.description?[{id:"documento-pessoal-notas",label:"Notas",icon:<Pencil size={14}/>}]:[]),{id:"documento-pessoal-registro",label:"Registro",icon:<CalendarDays size={14}/>}]} />
           {/* ==================================================
               PESSOA VINCULADA
               ================================================== */}
@@ -1877,6 +1879,7 @@ export default function DocumentDetailPage() {
               ================================================== */}
 
           <motion.div
+            id="documento-pessoal-visao"
             ref={
               cardRef
             }
@@ -2042,6 +2045,7 @@ export default function DocumentDetailPage() {
           {genericMetadata.length >
             0 && (
             <motion.div
+              id="documento-pessoal-info"
               {...sectionMotion}
               transition={{
                 duration:
@@ -2050,7 +2054,7 @@ export default function DocumentDetailPage() {
                 delay:
                   0.06,
               }}
-              className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm"
+              className="vault-deferred scroll-mt-24 rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm [content-visibility:auto] [contain-intrinsic-size:220px]"
             >
               <SectionTitle
                 icon={
@@ -2110,7 +2114,7 @@ export default function DocumentDetailPage() {
               ANEXOS
               ================================================== */}
 
-          <motion.div
+          <motion.div id="documento-pessoal-anexos"
             {...sectionMotion}
             transition={{
               duration:
@@ -2119,7 +2123,7 @@ export default function DocumentDetailPage() {
               delay:
                 0.09,
             }}
-            className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm"
+            className="vault-deferred scroll-mt-24 rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm [content-visibility:auto] [contain-intrinsic-size:320px]"
           >
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
@@ -2261,6 +2265,7 @@ export default function DocumentDetailPage() {
 
           {doc.description && (
             <motion.div
+              id="documento-pessoal-notas"
               {...sectionMotion}
               transition={{
                 duration:
@@ -2269,7 +2274,7 @@ export default function DocumentDetailPage() {
                 delay:
                   0.12,
               }}
-              className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm"
+              className="vault-deferred scroll-mt-24 rounded-[20px] border border-surface-border/40 bg-surface/90 p-3.5 shadow-sm [content-visibility:auto] [contain-intrinsic-size:180px]"
             >
               <div className="flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted">
@@ -2299,7 +2304,7 @@ export default function DocumentDetailPage() {
               REGISTRO TÉCNICO
               ================================================== */}
 
-          <motion.div
+          <motion.div id="documento-pessoal-registro"
             {...sectionMotion}
             transition={{
               duration:
@@ -2308,7 +2313,7 @@ export default function DocumentDetailPage() {
               delay:
                 0.15,
             }}
-            className="vault-deferred rounded-[20px] border border-surface-border/40 bg-surface/75 p-3.5 shadow-sm"
+            className="vault-deferred scroll-mt-24 rounded-[20px] border border-surface-border/40 bg-surface/75 p-3.5 shadow-sm [content-visibility:auto] [contain-intrinsic-size:220px]"
           >
             <SectionTitle
               icon={

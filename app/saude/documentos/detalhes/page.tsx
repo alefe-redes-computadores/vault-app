@@ -1,6 +1,7 @@
 // app/saude/documentos/detalhes/page.tsx
 "use client";
 import {SupplyDocumentRelations} from "@/components/saude/SupplyDocumentRelations";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 
 import {
   Suspense,
@@ -2106,6 +2107,8 @@ function DocumentoSaudeDetalhesContent() {
         </header>
 
         <section className="mx-auto max-w-3xl space-y-4 px-5 pt-5">
+          <ClinicalSectionNav label="Áreas do documento clínico" items={[{id:"documento-saude-visao",label:"Visão geral",icon:<FileHeart size={14}/>},...(clinicalEntity?[{id:"documento-saude-vinculo",label:"Vínculo",icon:<Link2 size={14}/>}]:[]),...(metadataItems.length?[{id:"documento-saude-dados",label:"Dados",icon:<Tag size={14}/>,badge:metadataItems.length}]:[]),{id:"documento-saude-arquivos",label:"Arquivos",icon:<Paperclip size={14}/>,badge:attachments.length},{id:"documento-saude-registro",label:"Registro",icon:<Calendar size={14}/>}]} />
+          <span id="documento-saude-visao" className="block scroll-mt-24" aria-hidden="true"/>
           <SupplyDocumentRelations documentId={document.id!}/>
           <motion.div
             initial={{
@@ -2199,7 +2202,7 @@ function DocumentoSaudeDetalhesContent() {
           </motion.div>
 
           {clinicalEntity && (
-            <section className="rounded-[28px] border border-violet-400/20 bg-violet-400/5 p-4">
+            <section id="documento-saude-vinculo" className="scroll-mt-24 rounded-[28px] border border-violet-400/20 bg-violet-400/5 p-4 [content-visibility:auto] [contain-intrinsic-size:240px]">
               <div className="mb-3 flex items-center gap-2">
                 <Link2
                   size={
@@ -2334,7 +2337,7 @@ function DocumentoSaudeDetalhesContent() {
 
           {metadataItems.length >
             0 && (
-            <section className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <section id="documento-saude-dados" className="scroll-mt-24 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm [content-visibility:auto] [contain-intrinsic-size:220px]">
               <div className="mb-4">
                 <p className="font-display text-sm font-semibold text-ink-primary">
                   Dados do documento
@@ -2389,7 +2392,7 @@ function DocumentoSaudeDetalhesContent() {
             </section>
           )}
 
-          <section className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <section id="documento-saude-arquivos" className="scroll-mt-24 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm [content-visibility:auto] [contain-intrinsic-size:320px]">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="font-display text-sm font-semibold text-ink-primary">
@@ -2539,7 +2542,7 @@ function DocumentoSaudeDetalhesContent() {
             )}
           </section>
 
-          <section className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+          <section id="documento-saude-registro" className="scroll-mt-24 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm [content-visibility:auto] [contain-intrinsic-size:180px]">
             <p className="font-display text-sm font-semibold text-ink-primary">
               Registro no Vault
             </p>

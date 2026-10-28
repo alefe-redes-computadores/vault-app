@@ -1566,6 +1566,7 @@ export default function NovoMedicamentoPage() {
 
   const totalSteps =
     3;
+  const stepLabels = ["Identidade", "Rotina", "Revisão"] as const;
 
   // ==========================================================
   // DADOS PRINCIPAIS
@@ -4404,7 +4405,7 @@ export default function NovoMedicamentoPage() {
               </button>
 
               <h1 className="font-display text-lg font-semibold text-ink-primary">
-                Novo Cadastro
+                Novo medicamento
               </h1>
             </div>
 
@@ -4442,6 +4443,9 @@ export default function NovoMedicamentoPage() {
                 />
               )
             )}
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2" aria-label={`Etapa atual: ${stepLabels[currentStep-1]}`}>
+            {stepLabels.map((label,index)=><span key={label} className={`truncate text-center text-[8px] font-bold uppercase tracking-wide ${index+1===currentStep?"text-ice":index+1<currentStep?"text-emerald-300":"text-ink-faint"}`}>{label}</span>)}
           </div>
         </header>
 

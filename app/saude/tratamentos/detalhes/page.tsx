@@ -10,6 +10,7 @@ import {TreatmentSymptomTimeline} from "@/components/saude/TreatmentSymptomTimel
 import {TreatmentVisitBrief} from "@/components/saude/TreatmentVisitBrief";
 import {buildTreatmentCareDossier} from "@/lib/health-network/care-continuity";
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 
@@ -1179,6 +1180,8 @@ function TratamentoContent() {
 
 
         <section className="space-y-4 px-5 pt-5">
+          <ClinicalSectionNav label="Áreas do tratamento" items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length}]}/>
+          <span id="tratamento-visao" className="block scroll-mt-24" aria-hidden="true"/>
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -1402,14 +1405,14 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          <motion.div
+          <motion.div id="tratamento-linha"
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{
               delay: 0.03,
             }}
-            className="vault-deferred space-y-3"
+            className="vault-deferred scroll-mt-24 space-y-3"
           >
             <SectionTitle
               icon={<History size={15} />}
@@ -1495,7 +1498,7 @@ function TratamentoContent() {
             transition={{
               delay: 0.02,
             }}
-            className="vault-deferred space-y-3"
+            className="vault-deferred scroll-mt-24 space-y-3"
           >
             <SectionTitle
               icon={<Activity size={15} />}
@@ -1551,14 +1554,14 @@ function TratamentoContent() {
               )}
           </motion.div>
 
-          <motion.div
+          <motion.div id="tratamento-financeiro"
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{
               delay: 0.04,
             }}
-            className="vault-deferred space-y-3"
+            className="vault-deferred scroll-mt-24 space-y-3"
           >
             <SectionTitle
               icon={<Receipt size={15} />}
@@ -1679,14 +1682,14 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          <motion.div
+          <motion.div id="tratamento-rede"
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{
               delay: 0.04,
             }}
-            className="vault-deferred space-y-3"
+            className="vault-deferred scroll-mt-24 space-y-3"
           >
             <SectionTitle icon={<Users size={15} />} title="Rede de Apoio" />
 
@@ -1857,14 +1860,14 @@ function TratamentoContent() {
             </motion.div>
           )}
 
-          <motion.div
+          <motion.div id="tratamento-medicamentos"
             variants={fadeUp}
             initial="initial"
             animate="animate"
             transition={{
               delay: 0.06,
             }}
-            className="vault-deferred space-y-3"
+            className="vault-deferred scroll-mt-24 space-y-3"
           >
             {/* V130: fornecimento relacional — navigation is filtered by this treatment's medications. */}
             <button type="button" onClick={() => {

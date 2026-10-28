@@ -34,7 +34,6 @@ import {
   Syringe,
   X,
   Zap,
-  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -95,6 +94,8 @@ import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
+import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGroup";
+import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 
 type MedicationListFilter =
   | "todos"
@@ -193,29 +194,6 @@ function formatQuantidade(
       ","
     );
 }
-
-// ============================================================
-// SECTION TITLE
-// ============================================================
-
-const SectionTitle = ({
-  icon: Icon,
-  title,
-}: {
-  icon: LucideIcon;
-  title: string;
-}) => (
-  <div className="mb-1.5 mt-4 flex items-center gap-2 pl-1 opacity-80">
-    <Icon
-      size={16}
-      className="text-ink-muted"
-    />
-
-    <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-      {title}
-    </h2>
-  </div>
-);
 
 // ============================================================
 // PAGE
@@ -1617,6 +1595,7 @@ export default function MedicamentosListPage() {
 
         {/* CONTEÚDO */}
         <section className="px-5 pt-3">
+          {listaProcessada.length>0?<ClinicalSectionNav label="Grupos de medicamentos" items={[...(medsPrioridade.length?[{id:"medicamentos-atencao",label:"Atenção",icon:<AlertTriangle size={14}/>,badge:medsPrioridade.length}]:[]),...(medsEmDia.length?[{id:"medicamentos-em-dia",label:"Em dia",icon:<CheckCircle2 size={14}/>,badge:medsEmDia.length}]:[]),...(medsPlanejados.length?[{id:"medicamentos-planejados",label:"Próximas",icon:<Calendar size={14}/>,badge:medsPlanejados.length}]:[]),...(medsSOS.length?[{id:"medicamentos-sos",label:"SOS",icon:<Zap size={14}/>,badge:medsSOS.length}]:[]),...(medsSuspensos.length?[{id:"medicamentos-suspensos",label:"Suspensos",icon:<EyeOff size={14}/>,badge:medsSuspensos.length}]:[])]}/>:null}
           <div className="mb-3 rounded-[18px] border border-surface-border/45 bg-surface px-3 py-2.5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -1737,76 +1716,11 @@ export default function MedicamentosListPage() {
             />
           ) : (
             <div className="space-y-2.5 pb-8">
-              {medsPrioridade.length >
-                0 && (
-                <>
-                  <SectionTitle
-                    icon={
-                      AlertTriangle
-                    }
-                    title="Rotina de hoje"
-                  />
-
-                  {medsPrioridade.map(
-                    renderCard
-                  )}
-                </>
-              )}
-
-              {medsEmDia.length >
-                0 && (
-                <>
-                  <SectionTitle
-                    icon={
-                      CheckCircle2
-                    }
-                    title="Em dia"
-                  />
-
-                  {medsEmDia.map(
-                    renderCard
-                  )}
-                </>
-              )}
-
-              {medsPlanejados.length > 0 && (
-                <>
-                  <SectionTitle icon={Calendar} title={`Próximas etapas · ${medsPlanejados.length}`} />
-                  {medsPlanejados.map(renderCard)}
-                </>
-              )}
-
-              {medsSOS.length >
-                0 && (
-                <>
-                  <SectionTitle
-                    icon={
-                      Zap
-                    }
-                    title={`SOS / conforme necessidade · ${medsSOS.length}`}
-                  />
-
-                  {medsSOS.map(
-                    renderCard
-                  )}
-                </>
-              )}
-
-              {medsSuspensos.length >
-                0 && (
-                <>
-                  <SectionTitle
-                    icon={
-                      EyeOff
-                    }
-                    title={`Suspensos · ${medsSuspensos.length}`}
-                  />
-
-                  {medsSuspensos.map(
-                    renderCard
-                  )}
-                </>
-              )}
+              <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{medsPrioridade.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{medsEmDia.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{medsPlanejados.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"}>{medsSOS.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"}>{medsSuspensos.map(renderCard)}</ClinicalCollectionGroup>
             </div>
           )}
         </section>
