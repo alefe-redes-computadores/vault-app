@@ -1139,6 +1139,8 @@ export default function DocumentsPage() {
           ) =>
             document.person_id ===
               activePersonId &&
+            document.user_id ===
+              user?.id &&
             document.category_id ===
               "saude"
         );
@@ -1146,6 +1148,7 @@ export default function DocumentsPage() {
       [
         documents,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1187,12 +1190,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         tratamentos,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1210,12 +1215,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         cids,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1233,12 +1240,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         consultas,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1256,12 +1265,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         exames,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1279,12 +1290,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         cirurgias,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1302,12 +1315,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         renovacoes,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1325,12 +1340,14 @@ export default function DocumentsPage() {
             item
           ) =>
             item.person_id ===
-            activePersonId
+              activePersonId &&
+            item.user_id === user?.id
         );
       },
       [
         registros,
         activePersonId,
+        user?.id,
       ]
     );
 
@@ -1589,7 +1606,7 @@ export default function DocumentsPage() {
               ) =>
                 Boolean(
                   item.id
-                )
+                ) && item.user_id === user?.id
             )
             .map(
               (
@@ -1602,6 +1619,7 @@ export default function DocumentsPage() {
         ),
       [
         medicos,
+        user?.id,
       ]
     );
 

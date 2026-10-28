@@ -181,12 +181,10 @@ import {
 import {
   healthIntelligenceDecisionsRepository,
 } from "@/lib/repositories/healthIntelligenceDecisions";
+import { loadMedicationDetailRelations } from "@/lib/medication-detail-relations";
+import type { Cid, Tratamento } from "@/lib/types";
 
-import type {
-  Cid,
-  DoseLog,
-  Tratamento,
-} from "@/lib/types";
+const EMPTY_PHARMACY_NAME_MAP = new Map<string, string>();
 
 function normalizeMedicationQualityText(
   value:
@@ -1186,266 +1184,36 @@ function MedicamentoDetalhesContent() {
       ]
     );
 
-  // ==========================================================
-  // RELAÇÕES GLOBAIS
-  //
-  // Médico, hospital, local e farmácia são entidades globais
-  // da conta.
-  //
-  // Mantemos estas leituras diretas nesta etapa porque as APIs
-  // canônicas desses módulos não fazem parte desta tela.
-  // ==========================================================
-
-  const medico =
-    useLiveQuery(
-      () =>
-        med?.medico_id
-          ? db.medicos.get(
-              med.medico_id
-            )
-          : undefined,
-      [
-        med?.medico_id,
-      ]
-    );
-
-  const medicoDescontinuacao =
-    useLiveQuery(
-      () =>
-        med?.medico_descontinuacao_id
-          ? db.medicos.get(
-              med.medico_descontinuacao_id
-            )
-          : undefined,
-      [
-        med?.medico_descontinuacao_id,
-      ]
-    );
-
-  const hospital =
-    useLiveQuery(
-      () =>
-        med?.hospital_id
-          ? db.hospitais.get(
-              med.hospital_id
-            )
-          : undefined,
-      [
-        med?.hospital_id,
-      ]
-    );
-
-  const local =
-    useLiveQuery(
-      () =>
-        med?.local_id
-          ? db.locais.get(
-              med.local_id
-            )
-          : undefined,
-      [
-        med?.local_id,
-      ]
-    );
-
-  const farmacia =
-    useLiveQuery(
-      () =>
-        med?.farmacia_id
-          ? db.farmacias.get(
-              med.farmacia_id
-            )
-          : undefined,
-      [
-        med?.farmacia_id,
-      ]
-    );
-
-  // ==========================================================
-  // DOCUMENTO — PERSON SCOPED
-  // ==========================================================
-
-  const documento =
-    useLiveQuery(
-      async () => {
-        if (
-          !med?.document_id ||
-          !activePersonId
-        ) {
-          return undefined;
-        }
-
-        const doc =
-          await db.documents.get(
-            med.document_id
-          );
-
-        if (
-          !doc ||
-          doc.person_id !==
-            activePersonId
-        ) {
-          return undefined;
-        }
-
-        return doc;
-      },
-      [
-        med?.document_id,
-        activePersonId,
-      ]
-    );
-
-  // ==========================================================
-  // DOSE LOGS — PERSON SCOPED
-  //
-  // Aqui precisamos do histórico completo deste medicamento,
-  // e não apenas das doses de hoje.
-  // ==========================================================
-
-  const doseLogs =
-    useLiveQuery(
-      async () => {
-        if (
-          !id ||
-          !activePersonId ||
-          !med
-        ) {
-          return [];
-        }
-
-        const rows =
-          await db.doseLogs
-            .where(
-              "medicamento_id"
-            )
-            .equals(
-              id
-            )
-            .toArray();
-
-        return rows.filter(
-          (item) =>
-            item.person_id ===
-            activePersonId
-        );
-      },
-      [
-        id,
-        activePersonId,
-        med?.id,
-      ],
-      []
-    );
-
-  // ==========================================================
-  // TRATAMENTOS — PERSON SCOPED
-  // ==========================================================
-
-  const tratamentos =
-    useLiveQuery(
-      async () => {
-        if (
-          !activePersonId ||
-          !med?.tratamento_ids ||
-          med.tratamento_ids.length ===
-            0
-        ) {
-          return [];
-        }
-
-        const rows =
-          await db.tratamentos
-            .where(
-              "id"
-            )
-            .anyOf(
-              med.tratamento_ids
-            )
-            .toArray();
-
-        return rows.filter(
-          (item) =>
-            item.person_id ===
-            activePersonId
-        );
-      },
-      [
-        activePersonId,
-        med?.tratamento_ids,
-      ],
-      []
-    );
-
-  // ==========================================================
-  // CIDS — PERSON SCOPED
-  // ==========================================================
-
-  const cids =
-    useLiveQuery(
-      async () => {
-        if (
-          !activePersonId ||
-          !med?.cid_ids ||
-          med.cid_ids.length ===
-            0
-        ) {
-          return [];
-        }
-
-        const rows =
-          await db.cids
-            .where(
-              "id"
-            )
-            .anyOf(
-              med.cid_ids
-            )
-            .toArray();
-
-        return rows.filter(
-          (item) =>
-            item.person_id ===
-            activePersonId
-        );
-      },
-      [
-        activePersonId,
-        med?.cid_ids,
-      ],
-      []
-    );
-
-  // ==========================================================
-  // FARMÁCIAS PARA HISTÓRICO
-  // ==========================================================
-
-  const farmaciasMap =
-    useLiveQuery(
-      () =>
-        db.farmacias
-          .toArray()
-          .then(
-            (
-              rows
-            ) =>
-              new Map(
-                rows.map(
-                  (
-                    item
-                  ) => [
-                    item.id,
-                    item.nome,
-                  ]
-                )
-              )
-          ),
-      [],
-      new Map<
-        string,
-        string
-      >()
-    );
+  // Uma única assinatura Dexie acompanha as relações da tela. Além de reduzir
+  // re-renderizações, a projeção valida conta e pessoa antes de expor vínculos.
+  const relationSnapshot = useLiveQuery(
+    () => med?.id && med.user_id && activePersonId
+      ? loadMedicationDetailRelations({
+          medicationId: med.id,
+          userId: med.user_id,
+          personId: activePersonId,
+          doctorId: med.medico_id,
+          discontinuationDoctorId: med.medico_descontinuacao_id,
+          hospitalId: med.hospital_id,
+          locationId: med.local_id,
+          pharmacyId: med.farmacia_id,
+          documentId: med.document_id,
+          treatmentIds: med.tratamento_ids,
+          cidIds: med.cid_ids,
+        })
+      : undefined,
+    [med?.id, med?.user_id, activePersonId, med?.medico_id, med?.medico_descontinuacao_id, med?.hospital_id, med?.local_id, med?.farmacia_id, med?.document_id, med?.tratamento_ids, med?.cid_ids]
+  );
+  const medico = relationSnapshot?.medico;
+  const medicoDescontinuacao = relationSnapshot?.medicoDescontinuacao;
+  const hospital = relationSnapshot?.hospital;
+  const local = relationSnapshot?.local;
+  const farmacia = relationSnapshot?.farmacia;
+  const documento = relationSnapshot?.documento;
+  const doseLogs = relationSnapshot?.doseLogs ?? [];
+  const tratamentos = relationSnapshot?.tratamentos ?? [];
+  const cids = relationSnapshot?.cids ?? [];
+  const farmaciasMap = relationSnapshot?.farmaciasMap ?? EMPTY_PHARMACY_NAME_MAP;
 
   // ==========================================================
   // LOADING / NOT FOUND
