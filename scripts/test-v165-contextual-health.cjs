@@ -24,9 +24,18 @@ assert.match(avatar, /taperedBox/);
 assert.match(avatar, /capBrim|brim/);
 assert.match(avatar, /phone|telefone/i);
 
-// Receita e ação possuem coluna própria: a ação não volta à faixa flexível.
-assert.match(medicine, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
-assert.match(medicine, /min-w-\[6\.75rem\][\s\S]*careAction[\s\S]*quickDoseLabel/);
+// V299 R2: nome e dosagem ocupam a largura inteira; ações são botões
+// independentes abaixo da identidade, mantendo seus destinos e a dose rápida.
+const identityStart = medicine.indexOf("{/* IDENTIDADE */}");
+const identityEnd = medicine.indexOf("VAULT_MEDICATION_LIST_HIERARCHY_V98", identityStart);
+assert(identityStart > 0 && identityEnd > identityStart, "hierarquia do card presente");
+const identity = medicine.slice(identityStart, identityEnd);
+assert.match(identity, /flex min-w-0 flex-col gap-2/, "cabeçalho vertical preserva largura do nome");
+assert.match(identity, /min-h-\[2\.4rem\][^\n]*break-words font-display/, "nome não truncado");
+assert.doesNotMatch(identity, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "coluna rígida não pode retornar");
+assert.match(identity, /mt-1 flex min-h-10 min-w-0 flex-wrap items-center gap-1\.5/, "ações com faixa separada");
+assert.match(identity, /careAction && \(\s*[\s\S]*?<button[\s\S]*?router\.push\(\s*careAction\.href/, "pendência navega para seu destino");
+assert.match(identity, /canQuickDose &&[\s\S]*?quickDoseLabel[\s\S]*?<button[\s\S]*?setQuickDoseMedId\(/, "registro rápido continua independente");
 
 // Uma dose futura é pendência, não tomada: não movimenta estoque ao agendar.
 assert.match(quickDose, /willScheduleAdHoc/);

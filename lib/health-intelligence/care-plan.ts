@@ -110,8 +110,13 @@ export function buildBrainCarePlan(
       id:`documents:${entry.medicationId}`,
       lane:"prepare",
       evidenceKind:"recorded",
-      title:`${entry.medicationName}: preparar documento SUS`,
-      reason:`O processo público está registrado e ainda falta vincular: ${missing.map(item=>item.label).join(" e ")}. Receita regulatória e comprovante de compra não substituem esse documento.`,
+      // Mixed history is not proof that today's purchase requires SUS paperwork.
+      title:entry.routeLabel.includes("Comprado")
+        ? `${entry.medicationName}: conferir vínculo do processo SUS`
+        : `${entry.medicationName}: preparar documento SUS`,
+      reason:entry.routeLabel.includes("Comprado")
+        ? `Há rota pública ativa e histórico de compra particular. Confira qual rota será utilizada e a documentação vinculada ao processo antes de concluir que falta um documento SUS. Registros distintos não se substituem.`
+        : `O processo público está registrado e ainda falta vincular: ${missing.map(item=>item.label).join(" e ")}. Receita regulatória e comprovante de compra não substituem esse documento.`,
       evidence:[entry.routeLabel,...missing.flatMap(item=>item.evidence)].slice(0,6),
       href:entry.href,
       medicationId:entry.medicationId,

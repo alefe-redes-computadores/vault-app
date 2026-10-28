@@ -12,6 +12,7 @@ import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySu
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
@@ -1597,6 +1598,27 @@ function MedicamentoDetalhesContent() {
   };
 
 
+  // V299: React hooks must run on EVERY render, even while the medication loads.
+  // Previously useMemo was below the loading/not-found/deleting returns and
+  // crashed the details page as soon as the Dexie query returned a medication.
+  const journeyToday = getLocalTodayISO();
+  const journeySnapshot = useMemo(() => med ? buildMedicationJourneySnapshot({
+    medication: med,
+    renewals: renovacoes,
+    withdrawals: retiradas,
+    today: journeyToday,
+  }) : {
+    prescriptions: 0,
+    completedAcquisitions: 0,
+    plannedAcquisitions: 0,
+    pendingWithdrawals: 0,
+    overdueWithdrawals: 0,
+    latestPrescriptionDate: null,
+    latestAcquisitionDate: null,
+    nextPlannedAcquisitionDate: null,
+    nextWithdrawalDate: null,
+  }, [med, renovacoes, retiradas, journeyToday]);
+
   if (
     med ===
     undefined
@@ -1772,12 +1794,6 @@ function MedicamentoDetalhesContent() {
   const brainCareItem = healthIntelligence.careCommand?.plan.items.find(item => item.medicationId === med.id) ?? null;
   const supplyRoute = healthIntelligence.careCommand?.readiness.items.find(item => item.medicationId === med.id)?.route ?? null;
   const brainCareAction = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? brainCareItem : null;
-  const journeySnapshot = useMemo(() => buildMedicationJourneySnapshot({
-    medication: med,
-    renewals: renovacoes,
-    withdrawals: retiradas,
-    today: hoje,
-  }), [med, renovacoes, retiradas, hoje]);
 
   const seteDiasAtras =
     getDateDaysAgoISO(
@@ -3246,33 +3262,6 @@ function MedicamentoDetalhesContent() {
               HERO
               ================================================== */}
 
-          {(careDecision.stage !== "stable" || brainCareAction) && (
-            <section className="rounded-[20px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-4">
-              <div className="flex items-start gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${carePresentation.badgeClass}`}>
-                  <Activity size={17}/>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
-                  <h2 className="mt-1 text-sm font-bold text-ink-primary">{brainCareAction?.title || careDecision.label}</h2>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 text-[8px] text-ink-muted">{item}</span>)}
-                    {supplyRoute && supplyRoute.mode !== "none" && <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[8px] text-emerald-200">Origem: {supplyRoute.labels.join(" + ")}</span>}
-                  </div>
-                </div>
-              </div>
-              <button type="button" onClick={()=>router.push(brainCareAction?.href || careDecision.actionHref)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
-                {brainCareAction ? "Abrir próxima etapa" : careDecision.actionLabel}
-              </button>
-            </section>
-          )}
-          <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
-          <div id="medicamento-fornecimento" className="scroll-mt-24"><HealthSupplyEntry medicamentoId={med.id!}/></div>
-          {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
-          {med.id && activePersonId === med.person_id && (
-            <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
-          )}
           <section className="relative overflow-hidden rounded-[20px] border border-surface-border/70 bg-surface shadow-lg">
             <div
               className="absolute bottom-0 left-0 top-0 w-1.5"
@@ -3445,6 +3434,41 @@ function MedicamentoDetalhesContent() {
             </div>
           </section>
 
+          {(careDecision.stage !== "stable" || brainCareAction) && (
+            <section className="rounded-[20px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-4">
+              <div className="flex items-start gap-3">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${carePresentation.badgeClass}`}>
+                  <Activity size={17}/>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
+                  <h2 className="mt-1 text-sm font-bold text-ink-primary">{brainCareAction?.title || careDecision.label}</h2>
+                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 text-[8px] text-ink-muted">{item}</span>)}
+                    {supplyRoute && supplyRoute.mode !== "none" && <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[8px] text-emerald-200">Origem: {supplyRoute.labels.join(" + ")}</span>}
+                  </div>
+                </div>
+              </div>
+              <button type="button" onClick={()=>router.push(brainCareAction?.href || careDecision.actionHref)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
+                {brainCareAction ? "Abrir próxima etapa" : careDecision.actionLabel}
+              </button>
+            </section>
+          )}
+          {/* V300: details open with the medicine's identity, followed by
+              important action and progressively disclosed historical tools. */}
+          {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
+          <ClinicalDisclosure id="medicamento-jornada" title="Receitas, aquisições e retiradas" description="Histórico separado por evento, sem inferir entrada em estoque" icon={<CalendarDays size={18}/>}>
+            <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
+          </ClinicalDisclosure>
+          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>}>
+            <HealthSupplyEntry medicamentoId={med.id!}/>
+          </ClinicalDisclosure>
+          {med.id && activePersonId === med.person_id && (
+            <ClinicalDisclosure id="medicamento-lembretes" title="Alertas e lembretes" description="Preferências de aviso para este medicamento" icon={<Clock size={18}/>}>
+              <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
+            </ClinicalDisclosure>
+          )}
 
           {/* ==================================================
               INTELIGÊNCIA E ATENÇÃO — V72

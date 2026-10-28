@@ -33,16 +33,27 @@ export type CareDocumentReadinessPortfolio = {
  */
 export function buildCareDocumentReadiness(context: HealthInsightContext): CareDocumentReadinessPortfolio {
   const supply = context.fornecimento ?? { processos: [], ciclos: [], itens: [], documentos: [] };
-  const documentById = new Map(context.documentos.filter(row => row.id).map(row => [row.id!, row]));
+  const documentById = new Map(context.documentos
+    .filter(row => row.id && row.user_id === context.userId && row.person_id === context.personId)
+    .map(row => [row.id!, row]));
   const items = context.medicamentos
     .filter(med => med.id && med.person_id === context.personId && med.status !== "descontinuado")
     .map(med => {
       const medicationId = med.id!;
       const route = medicationSupplyRoute(medicationId, supply, context.renovacoes, context.personId, med.user_id);
-      const supplyItems = supply.itens.filter(row => row.medicamento_id === medicationId);
+      // V300: a past/closed or foreign process never creates today's SUS obligation.
+      const publicProcessIds = new Set(supply.processos
+        .filter(row => row.user_id === med.user_id && row.person_id === context.personId &&
+          row.status === "ativo" && row.origem !== "comprado" && row.origem !== "outro")
+        .map(row => row.id));
+      const supplyItems = supply.itens.filter(row => row.user_id === med.user_id &&
+        row.person_id === context.personId && row.medicamento_id === medicationId &&
+        publicProcessIds.has(row.processo_id));
       const processIds = new Set(supplyItems.map(row => row.processo_id));
       const cycleIds = new Set(supplyItems.map(row => row.ciclo_id));
-      const links = supply.documentos.filter(row => processIds.has(row.processo_id) || cycleIds.has(row.ciclo_id));
+      const links = supply.documentos.filter(row => row.user_id === med.user_id &&
+        row.person_id === context.personId &&
+        (processIds.has(row.processo_id) || cycleIds.has(row.ciclo_id)));
       const linked = links.map(row => documentById.get(row.document_id)).filter(Boolean);
       const prescriptions = context.renovacoes
         .filter(row => row.medicamento_id === medicationId && isPrescriptionOnly(row))
@@ -54,8 +65,11 @@ export function buildCareDocumentReadiness(context: HealthInsightContext): CareD
       const receiptLinked = linked.some(row => row?.type === "outro" && /comprovante|cupom|nota/i.test(row.title || ""));
       const publicRoute = route.mode === "public" || route.mode === "hybrid";
       const privateRoute = route.mode === "private" || route.mode === "hybrid";
-      const activeProcess = supply.processos.find(row => processIds.has(row.id) && row.status === "ativo");
-      const activeCycle = supply.ciclos.filter(row => cycleIds.has(row.id) && row.status !== "encerrado").sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||"")))[0];
+      const activeProcess = supply.processos.find(row => row.user_id === med.user_id &&
+        row.person_id === context.personId && processIds.has(row.id) && row.status === "ativo");
+      const activeCycle = supply.ciclos.filter(row => row.user_id === med.user_id &&
+        row.person_id === context.personId && cycleIds.has(row.id) && row.status !== "encerrado")
+        .sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||"")))[0];
       const requirements: CareDocumentRequirement[] = [
         {
           lane: "regulatory_prescription",

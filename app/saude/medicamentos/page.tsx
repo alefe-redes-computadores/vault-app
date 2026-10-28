@@ -1126,18 +1126,18 @@ export default function MedicamentosListPage() {
 
             {/* IDENTIDADE */}
 
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-1">
+            <div className="flex min-w-0 flex-col gap-2">
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                  <h3 title={med.nome} className="min-w-0 flex-1 truncate font-display text-[15px] font-bold leading-tight text-ink-primary">
+                  <div className="flex min-w-0 flex-col gap-1">
+                  <h3 title={med.nome} className="min-h-[2.4rem] min-w-0 break-words font-display text-[15px] font-bold leading-snug text-ink-primary">
                     {
                       med.nome
                     }
                   </h3>
 
                     {med.dosagem && (
-                      <span title={med.dosagem} className="max-w-[45%] shrink-0 whitespace-normal break-words text-[11px] font-semibold text-ink-muted">
+                      <span title={med.dosagem} className="inline-flex w-fit max-w-full break-words text-[11px] font-semibold leading-snug text-ink-muted">
                         {
                           med.dosagem
                         }
@@ -1148,7 +1148,7 @@ export default function MedicamentosListPage() {
 
                 {showActiveIngredient && (
                   <p
-                    className="mt-0.5 truncate text-[10px] font-medium text-ink-muted/80"
+                    className="sr-only"
                     title={`Princípio ativo: ${activeIngredient}`}
                   >
                     <span className="text-ink-muted/55">Princípio ativo · </span>
@@ -1156,7 +1156,7 @@ export default function MedicamentosListPage() {
                   </p>
                 )}
 
-                <div className="mt-1 flex min-h-8 min-w-0 flex-wrap items-center gap-1">
+                <div className="mt-1 flex min-h-7 min-w-0 flex-wrap items-center gap-1">
                   {catalogIdentity?.authorityState === "possible_divergence" && (
                     <span
                       title={catalogIdentity.authorityDetail}
@@ -1197,11 +1197,11 @@ export default function MedicamentosListPage() {
 
               </div>
 
-              <div className="flex min-w-[6.75rem] shrink-0 flex-col items-stretch gap-1.5">
+              <div className="mt-1 flex min-h-10 min-w-0 flex-wrap items-center gap-1.5">
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-7 items-center justify-center gap-1 rounded-lg border px-2 text-[9px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    className={`inline-flex min-h-9 max-w-full items-center justify-center gap-1 rounded-xl border px-2.5 text-[10px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
@@ -1221,7 +1221,8 @@ export default function MedicamentosListPage() {
                       size={11}
                     />
 
-                    {careAction.label}
+                    <span className="truncate">Ver pendência</span>
+                    <span className="sr-only">{careAction.label}</span>
                   </button>
                 )}
 
@@ -1242,7 +1243,7 @@ export default function MedicamentosListPage() {
                           med.id!
                         );
                       }}
-                      className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[9px] font-black transition-all active:scale-[0.97] ${
+                      className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[10px] font-black transition-all active:scale-[0.97] ${
                         isSOS
                           ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
                           : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
@@ -1268,7 +1269,7 @@ export default function MedicamentosListPage() {
 
             {/* PAINEL OPERACIONAL COMPACTO */}
 
-            <div className="rounded-xl border border-surface-border/30 bg-black/[0.04] px-2.5 py-2">
+            <div className="min-h-[4.5rem] rounded-xl border border-surface-border/30 bg-black/[0.04] px-2.5 py-2">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
