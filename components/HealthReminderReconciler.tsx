@@ -16,6 +16,8 @@ import {
   reconcileHealthEventNotifications,
   type HealthEventNotificationInput,
 } from "@/lib/health-reminders/event-scheduler";
+import { getLocalTodayISO } from "@/lib/health-utils";
+import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 
 export const HEALTH_REMINDERS_RECONCILE_EVENT =
   "vault:health-reminders-reconcile";
@@ -46,11 +48,12 @@ export function HealthReminderReconciler() {
         };
       }
 
-      const [reminders, consultas, exames, retiradas] = await Promise.all([
+      const [reminders, consultas, exames, retiradas, renovacoes] = await Promise.all([
         db.health_reminders.where("user_id").equals(user.id).toArray(),
         db.consultas.where("user_id").equals(user.id).toArray(),
         db.exames.where("user_id").equals(user.id).toArray(),
         db.retiradas.where("user_id").equals(user.id).toArray(),
+        db.renovacoes.where("user_id").equals(user.id).toArray(),
       ]);
 
       /*
@@ -124,6 +127,13 @@ export function HealthReminderReconciler() {
           status: item.status,
           targetRoute: `/saude/retiradas/detalhes?id=${encodeURIComponent(id)}`,
         });
+      }
+
+      const today = getLocalTodayISO();
+      for (const item of renovacoes) {
+        const id=item.id?.trim(), personId=item.person_id?.trim(), eventUserId=item.user_id?.trim();
+        if(!id||!personId||!eventUserId||isPrescriptionOnly(item)||!isFutureAcquisition(item,today))continue;
+        events.push({id,userId:eventUserId,personId,kind:"compra",title:item.medicamento_nome?.trim()||"Medicamento planejado",date:renewalEventDate(item).slice(0,10),status:"agendada",targetRoute:`/saude/renovacao/detalhes?id=${encodeURIComponent(id)}`});
       }
 
       return { reminders, events };

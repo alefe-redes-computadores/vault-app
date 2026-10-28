@@ -22,7 +22,7 @@ export type HealthEventNotificationInput = {
   id: string;
   userId: string;
   personId: string;
-  kind: "consulta" | "exame" | "retirada";
+  kind: "consulta" | "exame" | "retirada" | "compra";
   title: string;
   date: string;
   time?: string | null;
@@ -68,7 +68,7 @@ function parseEventDate(
 function isSchedulable(event: HealthEventNotificationInput): boolean {
   if (!event.id.trim() || !event.personId.trim() || !event.userId.trim()) return false;
 
-  if (event.kind === "retirada") {
+  if (event.kind === "retirada" || event.kind === "compra") {
     return event.status === "agendada";
   }
 
@@ -78,12 +78,13 @@ function isSchedulable(event: HealthEventNotificationInput): boolean {
 function labelFor(kind: HealthEventNotificationInput["kind"]): string {
   if (kind === "consulta") return "Consulta";
   if (kind === "exame") return "Exame";
+  if (kind === "compra") return "Compra planejada";
   return "Retirada";
 }
 
 function bodyFor(event: HealthEventNotificationInput, offsetMinutes: number): string {
   const label = labelFor(event.kind);
-  if (event.kind === "retirada" && !event.time) {
+  if ((event.kind === "retirada" || event.kind === "compra") && !event.time) {
     if (offsetMinutes >= 1440) return `${label} prevista para amanhã. ${event.title}`;
     return `${label} prevista para hoje. ${event.title}`;
   }
@@ -120,11 +121,13 @@ export async function reconcileHealthEventNotifications(
       if (event.kind === "exame") {
         return isVaultNotificationCategoryEnabled("exames");
       }
+      if (event.kind === "compra") return isVaultNotificationCategoryEnabled("renovacoes");
       return isVaultNotificationCategoryEnabled("retiradas");
     })
     .flatMap((event) => {
       const settings = getVaultNotificationBrainSettings();
-      const at = parseEventDate(event.date, event.time, event.kind === "retirada" ? settings.dateOnlyEventTime : "");
+      const fallbackTime = event.kind === "retirada" ? settings.dateOnlyEventTime : event.kind === "compra" ? settings.plannedPurchaseTime : "";
+      const at = parseEventDate(event.date, event.time, fallbackTime);
       if (!at || at <= now) return [];
 
       const offsets = settings.eventOffsets[event.kind];

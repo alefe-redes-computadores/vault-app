@@ -1,11 +1,12 @@
 // VAULT_NOTIFICATION_BRAIN_V52
-export type EventReminderKind = "consulta" | "exame" | "retirada";
+export type EventReminderKind = "consulta" | "exame" | "retirada" | "compra";
 
 export type VaultNotificationBrainSettings = {
   eventOffsets: Record<EventReminderKind, number[]>;
   doseOverdueOffsets: number[];
   dateOnlyEventTime: string;
   stockReviewTime: string;
+  plannedPurchaseTime: string;
 };
 
 const KEY = "vault_notification_brain_v52";
@@ -34,10 +35,12 @@ export const DEFAULT_NOTIFICATION_BRAIN_SETTINGS: VaultNotificationBrainSettings
     consulta: [1440, 60],
     exame: [1440, 60],
     retirada: [1440, 60],
+    compra: [1440, 0],
   },
   doseOverdueOffsets: [30, 60, 120],
   dateOnlyEventTime: "09:00",
   stockReviewTime: "10:00",
+  plannedPurchaseTime: "12:00",
 };
 
 function validTime(value: unknown, fallback: string): string {
@@ -65,10 +68,12 @@ export function getVaultNotificationBrainSettings(): VaultNotificationBrainSetti
         consulta: uniqueSorted(parsed.eventOffsets?.consulta, eventAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.eventOffsets.consulta),
         exame: uniqueSorted(parsed.eventOffsets?.exame, eventAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.eventOffsets.exame),
         retirada: uniqueSorted(parsed.eventOffsets?.retirada, eventAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.eventOffsets.retirada),
+        compra: uniqueSorted(parsed.eventOffsets?.compra, eventAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.eventOffsets.compra),
       },
       doseOverdueOffsets: uniqueSorted(parsed.doseOverdueOffsets, doseAllowed, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.doseOverdueOffsets),
       dateOnlyEventTime: validTime(parsed.dateOnlyEventTime, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.dateOnlyEventTime),
       stockReviewTime: validTime(parsed.stockReviewTime, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.stockReviewTime),
+      plannedPurchaseTime: validTime(parsed.plannedPurchaseTime, DEFAULT_NOTIFICATION_BRAIN_SETTINGS.plannedPurchaseTime),
     };
   } catch {
     return structuredClone(DEFAULT_NOTIFICATION_BRAIN_SETTINGS);

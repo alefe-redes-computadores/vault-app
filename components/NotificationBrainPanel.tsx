@@ -18,6 +18,7 @@ const EVENT_GROUPS: Array<{ kind: EventReminderKind; label: string }> = [
   { kind: "consulta", label: "Consultas" },
   { kind: "exame", label: "Exames" },
   { kind: "retirada", label: "Retiradas" },
+  { kind: "compra", label: "Compras planejadas" },
 ];
 
 export function NotificationBrainPanel() {
@@ -52,7 +53,7 @@ export function NotificationBrainPanel() {
     save({ ...settings, doseOverdueOffsets: nextValues });
   };
 
-  const saveTime = (field: "dateOnlyEventTime" | "stockReviewTime", value: string) => {
+  const saveTime = (field: "dateOnlyEventTime" | "stockReviewTime" | "plannedPurchaseTime", value: string) => {
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return;
     save({ ...settings, [field]: value });
   };
@@ -99,6 +100,10 @@ export function NotificationBrainPanel() {
           <label className="text-xs font-semibold text-ink-primary">Conferência de estoque
             <HealthTimePicker value={settings.stockReviewTime} onChange={(value) => saveTime("stockReviewTime", value)} className="mt-2" />
             <span className="mt-1 block text-[10px] font-normal leading-relaxed text-ink-muted">Evita cobrar estoque zerado no mesmo horário clínico da dose.</span>
+          </label>
+          <label className="text-xs font-semibold text-ink-primary">Compra planejada
+            <HealthTimePicker value={settings.plannedPurchaseTime} onChange={(value) => saveTime("plannedPurchaseTime", value)} className="mt-2" />
+            <span className="mt-1 block text-[10px] font-normal leading-relaxed text-ink-muted">Avisa sobre o planejamento. Não confirma compra, gasto ou entrada no estoque.</span>
           </label>
         </div>
       </div>
