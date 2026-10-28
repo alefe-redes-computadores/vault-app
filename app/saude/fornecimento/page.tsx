@@ -11,6 +11,7 @@ import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import {
   catalogIndications,
   catalogSourceVersion,
@@ -45,7 +46,7 @@ import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useTratamentos } from "@/hooks/useTratamentos";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { useRetiradas } from "@/hooks/useRetiradas";
-import { useDocuments } from "@/hooks/useDocuments";
+import { useDocumentsState } from "@/hooks/useDocuments";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useLocais } from "@/hooks/useLocais";
@@ -980,15 +981,16 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   const {user}=useAuth();
   const params = useSearchParams(),
     { data, personId, loading } = supply,
-    { medicamentosIncluindoDescontinuados: medicamentos } = useMedicamentos(),
-    { tratamentos } = useTratamentos(),
-    { cids } = useCids(),
-    { retiradas } = useRetiradas(),
-    { renovacoes } = useRenovacoes(),
-    documents = useDocuments(),
-    { farmacias } = useFarmacias(),
-    { locais } = useLocais(),
+    { medicamentosIncluindoDescontinuados: medicamentos, isLoading: medicationsLoading } = useMedicamentos(),
+    { tratamentos, isLoading: treatmentsLoading } = useTratamentos(),
+    { cids, isLoading: cidsLoading } = useCids(),
+    { retiradas, isLoading: withdrawalsLoading } = useRetiradas(),
+    { renovacoes, isLoading: renewalsLoading } = useRenovacoes(),
+    { documents, isLoading: documentsLoading } = useDocumentsState(),
+    { farmacias, isLoading: pharmaciesLoading } = useFarmacias(),
+    { locais, isLoading: placesLoading } = useLocais(),
     { showToast } = useToast();
+  const contextLoading = loading || medicationsLoading || treatmentsLoading || cidsLoading || withdrawalsLoading || renewalsLoading || documentsLoading || pharmaciesLoading || placesLoading;
   const [selected, setSelected] = useState(params.get("id") || ""),
     [creating, setCreating] = useState(params.get("action") === "novo"),
     [editing, setEditing] = useState(false),
@@ -1155,8 +1157,11 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           Salvando…
         </p>
       ) : null}
-      {loading ? (
-        <p className="text-xs text-ink-muted">Carregando fornecimentos…</p>
+      {contextLoading ? (
+        <section aria-busy="true" aria-label="Carregando contexto de fornecimento">
+          <p role="status" className="sr-only">Carregando processos, medicamentos, documentos e locais da pessoa selecionada.</p>
+          <CardListSkeleton />
+        </section>
       ) : (
         <>
           {/* V156: a treatment is not a funding source; each process retains its own origin. */}

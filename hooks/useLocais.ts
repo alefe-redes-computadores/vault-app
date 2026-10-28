@@ -50,7 +50,6 @@ export function useLocais() {
     useLiveQuery(
       () =>
         locaisRepository.getAll(),
-      [],
       []
     );
 
@@ -138,7 +137,8 @@ export function useLocais() {
     );
 
   return {
-    locais,
+    locais: locais || [],
+    isLoading: locais === undefined,
     getLocal,
     addLocal,
     updateLocal,

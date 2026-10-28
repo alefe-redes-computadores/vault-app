@@ -78,8 +78,7 @@ export function useCids() {
       },
       [
         activePersonId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================
@@ -220,7 +219,8 @@ export function useCids() {
     );
 
   return {
-    cids,
+    cids: cids || [],
+    isLoading: Boolean(activePersonId) && cids === undefined,
     getCid,
     addCid,
     updateCid,

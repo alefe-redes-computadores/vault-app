@@ -58,7 +58,6 @@ export function useFarmacias() {
     useLiveQuery(
       () =>
         db.farmacias.toArray(),
-      [],
       []
     );
 
@@ -146,7 +145,8 @@ export function useFarmacias() {
     );
 
   return {
-    farmacias,
+    farmacias: farmacias || [],
+    isLoading: farmacias === undefined,
     getFarmacia,
     addFarmacia,
     updateFarmacia,
