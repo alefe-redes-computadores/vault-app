@@ -762,7 +762,7 @@ function DetalhesRenovacaoContent() {
                   Vault
                 </p>
 
-                <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+                <h1 className="mt-0.5 min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                   Detalhes da Renovação
                 </h1>
               </div>
@@ -1021,7 +1021,7 @@ function DetalhesRenovacaoContent() {
 
               <div className="min-w-0 flex-1 pt-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="min-w-0 truncate font-display text-xl font-bold text-ink-primary">
+                  <h2 className="min-w-0 break-words font-display text-xl font-bold leading-tight text-ink-primary">
                     {medicamento
                       ?.nome ||
                       "Medicamento"}

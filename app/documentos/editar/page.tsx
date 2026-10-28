@@ -1770,7 +1770,7 @@ export default function EditarDocumentoPage() {
             </div>
           </header>
 
-          <div className="mx-auto max-w-3xl space-y-4 px-5 pt-6">
+          <div className="mx-auto max-w-3xl space-y-5 px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
             <div className="h-20 animate-pulse rounded-[22px] bg-surface" />
 
             <div className="h-40 animate-pulse rounded-[24px] bg-surface" />
@@ -2102,7 +2102,7 @@ export default function EditarDocumentoPage() {
                 Cofre Pessoal
               </p>
 
-              <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">
+              <h1 className="mt-1 break-words font-display text-lg font-semibold leading-tight text-ink-primary">
                 Editar documento
               </h1>
             </div>
@@ -2166,7 +2166,7 @@ export default function EditarDocumentoPage() {
                     }}
                   />
 
-                  <p className="truncate text-xs font-semibold text-ink-primary">
+                  <p className="break-words text-xs font-semibold leading-snug text-ink-primary">
                     {selectedPerson?.name ||
                       "Pessoa ativa"}
                   </p>
@@ -2235,7 +2235,7 @@ export default function EditarDocumentoPage() {
                   </span>
                 </div>
 
-                <h2 className="mt-3 truncate font-display text-lg font-semibold text-ink-primary">
+                <h2 className="mt-3 break-words font-display text-lg font-semibold leading-tight text-ink-primary">
                   {formData.title.trim() ||
                     "Documento sem título"}
                 </h2>
@@ -2374,7 +2374,7 @@ export default function EditarDocumentoPage() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink-primary">
+                    <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                       {
                         selectedTypeLabel
                       }
@@ -2499,7 +2499,7 @@ export default function EditarDocumentoPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <button
                 type="button"
                 disabled={
@@ -2716,7 +2716,7 @@ export default function EditarDocumentoPage() {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold text-ink-primary">
+                            <p className="break-words text-xs font-semibold leading-snug text-ink-primary">
                               {
                                 attachment.name
                               }

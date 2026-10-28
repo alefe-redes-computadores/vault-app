@@ -17,11 +17,13 @@ interface ListFiltersProps {
 export function ListFilters({ children, showIcon = true, onClear, clearLabel = "Limpar", className = "", activeCount = 0, title = "Filtros" }: ListFiltersProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const clearRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => clearRef.current?.focus({ preventScroll: true }));
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -30,6 +32,7 @@ export function ListFilters({ children, showIcon = true, onClear, clearLabel = "
     document.addEventListener("keydown", onEscape);
     return () => {
       document.removeEventListener("keydown", onEscape);
+      window.cancelAnimationFrame(frame);
       document.body.style.overflow = previous;
       // Devolver o foco após fechar o bottom sheet, inclusive por Escape.
       if (triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
@@ -50,11 +53,11 @@ export function ListFilters({ children, showIcon = true, onClear, clearLabel = "
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-surface-border" />
             <div className="flex items-center justify-between gap-3">
               <div><p className="text-sm font-semibold text-ink-primary">{title}</p><p className="text-[10px] text-ink-muted">Escolha os critérios e aplique</p></div>
-              <button type="button" onClick={() => setOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-raised text-ink-muted active:scale-95" aria-label="Fechar"><X size={16} /></button>
+              <button type="button" onClick={() => setOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted active:scale-95" aria-label="Fechar"><X size={16} /></button>
             </div>
-            <div className="mt-4 flex max-h-[55vh] flex-wrap items-center gap-2 overflow-y-auto rounded-2xl border border-surface-border/40 bg-void/25 p-3">{children}</div>
+            <div className="mt-4 flex max-h-[55dvh] min-w-0 flex-wrap items-center gap-2 overflow-y-auto rounded-2xl border border-surface-border/40 bg-void/25 p-3">{children}</div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => onClear?.()} disabled={!onClear} className="min-h-11 rounded-2xl border border-surface-border bg-surface-raised text-xs font-semibold text-ink-muted disabled:opacity-40">{clearLabel}</button>
+              <button ref={clearRef} type="button" onClick={() => onClear?.()} disabled={!onClear} className="min-h-11 rounded-2xl border border-surface-border bg-surface-raised text-xs font-semibold text-ink-muted disabled:opacity-40">{clearLabel}</button>
               <button type="button" onClick={() => setOpen(false)} className="min-h-11 rounded-2xl bg-ice text-xs font-bold text-void">Aplicar filtros</button>
             </div>
           </div>

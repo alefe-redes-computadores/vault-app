@@ -1054,7 +1054,7 @@ function TratamentoContent() {
                   Painel Clínico
                 </p>
 
-                <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">
+                <h1 className="mt-1 min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                   Visão Geral
                 </h1>
               </div>
@@ -1267,7 +1267,7 @@ function TratamentoContent() {
                           </span>
                         )}
 
-                        <span className="max-w-[190px] truncate text-[10px] opacity-80">
+                        <span className="min-w-0 break-words text-[10px] leading-snug opacity-80">
                           {cid.descricao}
                         </span>
 
@@ -1461,7 +1461,7 @@ function TratamentoContent() {
                       </span>
 
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-ink-primary">
+                        <span className="block break-words text-sm font-semibold leading-snug text-ink-primary">
                           {event.titulo}
                         </span>
 

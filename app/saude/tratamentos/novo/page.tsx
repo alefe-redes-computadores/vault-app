@@ -1237,7 +1237,7 @@ export default function NovoTratamentoPage() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           {
                             medicamento.nome
                           }
@@ -1332,7 +1332,7 @@ export default function NovoTratamentoPage() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           Dr(a).{" "}
                           {
                             medico.nome
@@ -1424,7 +1424,7 @@ export default function NovoTratamentoPage() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           {
                             hospital.nome
                           }
@@ -1515,7 +1515,7 @@ export default function NovoTratamentoPage() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           {
                             local.nome
                           }
@@ -1731,7 +1731,7 @@ export default function NovoTratamentoPage() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     {
                       item.nome
                     }
@@ -1818,7 +1818,7 @@ export default function NovoTratamentoPage() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     Dr(a).{" "}
                     {
                       item.nome
@@ -1898,7 +1898,7 @@ export default function NovoTratamentoPage() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     {
                       item.nome
                     }
@@ -1977,7 +1977,7 @@ export default function NovoTratamentoPage() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     {
                       item.nome
                     }

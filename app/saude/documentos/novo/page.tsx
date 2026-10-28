@@ -4328,7 +4328,7 @@ export default function NovoDocumentoSaudePage() {
           </div>
         </header>
 
-        <section className="relative mx-auto max-w-3xl px-5 pt-6">
+        <section className="relative mx-auto max-w-3xl px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
           <AnimatePresence
             initial={
               false
@@ -4375,7 +4375,7 @@ export default function NovoDocumentoSaudePage() {
                         Pessoa ativa
                       </p>
 
-                      <p className="mt-1 truncate text-sm font-semibold text-ink-primary">
+                      <p className="mt-1 break-words text-sm font-semibold leading-snug text-ink-primary">
                         {activePersonId
                           ? "Perfil clínico selecionado"
                           : "Nenhuma pessoa ativa"}
@@ -4532,14 +4532,14 @@ export default function NovoDocumentoSaudePage() {
                           </div>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-ink-primary">
+                            <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                               {
                                 selectedClinicalEntity.label
                               }
                             </p>
 
                             {selectedClinicalEntity.description && (
-                              <p className="mt-0.5 truncate text-xs text-ink-muted">
+                              <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">
                                 {
                                   selectedClinicalEntity.description
                                 }
@@ -4971,7 +4971,7 @@ export default function NovoDocumentoSaudePage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
                     <Button
                       variant="secondary"
                       className="flex items-center justify-center gap-2"
@@ -5344,14 +5344,14 @@ export default function NovoDocumentoSaudePage() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-ink-primary">
+                    <p className="break-words font-medium text-ink-primary">
                       {
                         item.label
                       }
                     </p>
 
                     {item.description && (
-                      <p className="mt-0.5 truncate text-xs text-ink-muted">
+                      <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">
                         {
                           item.description
                         }
@@ -5425,14 +5425,14 @@ export default function NovoDocumentoSaudePage() {
               item
             ) => (
               <div className="min-w-0">
-                <p className="truncate font-medium text-ink-primary">
+                <p className="break-words font-medium text-ink-primary">
                   {
                     item.label
                   }
                 </p>
 
                 {item.description && (
-                  <p className="mt-0.5 truncate text-xs text-ink-muted">
+                  <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">
                     {
                       item.description
                     }

@@ -1189,7 +1189,7 @@ function DetalhesExameContent() {
                   Prontuário
                 </p>
 
-                <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
+                <h1 className="min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                   {exame.nome}
                 </h1>
 
@@ -1399,7 +1399,7 @@ function DetalhesExameContent() {
                       `/saude/medicos/detalhes?id=${medico!.id}`
                     );
                   }}
-                  className="flex max-w-full items-center gap-1 truncate text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
+                  className="flex min-w-0 max-w-full flex-wrap items-center gap-1 break-words text-sm font-semibold leading-snug text-ink-primary transition-colors hover:text-ice"
                 >
                   <span className="truncate">
                     Dr(a).{" "}
@@ -1477,7 +1477,7 @@ function DetalhesExameContent() {
                       `/saude/locais/detalhes?id=${local!.id}`
                     );
                   }}
-                  className="flex max-w-full items-center gap-1 truncate text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
+                  className="flex min-w-0 max-w-full flex-wrap items-center gap-1 break-words text-sm font-semibold leading-snug text-ink-primary transition-colors hover:text-ice"
                 >
                   <span className="truncate">
                     {

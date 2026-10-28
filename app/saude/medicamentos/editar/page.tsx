@@ -5415,7 +5415,7 @@ function EditarMedicamentoContent() {
               </div>
 
               <div className="flex items-center justify-between">
-                <h1 className="mt-0.5 truncate text-xl font-bold uppercase text-ink-primary">
+                <h1 className="mt-0.5 break-words text-xl font-bold uppercase leading-snug text-ink-primary">
                   {editIntent ===
                   "menu"
                     ? nome ||
@@ -6363,7 +6363,7 @@ function EditarMedicamentoContent() {
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ice/80">Prévia ao vivo</p>
-                      <p className="mt-1 truncate text-sm font-semibold text-ink-primary">{nome || "Medicamento"}</p>
+                      <p className="mt-1 break-words text-sm font-semibold leading-snug text-ink-primary">{nome || "Medicamento"}</p>
                       <p className="mt-0.5 text-[10px] text-ink-muted">Formato e cores exatamente como aparecerão no Vault.</p>
                     </div>
                   </div>
@@ -6455,7 +6455,7 @@ function EditarMedicamentoContent() {
                         size={20}
                       />
 
-                      <span className="max-w-full truncate px-1 text-[10px] font-medium">
+                      <span className="max-w-full break-words px-1 text-center text-[10px] font-medium leading-tight">
                         {
                           FORMATOS_ADICIONAIS.find(
                             (

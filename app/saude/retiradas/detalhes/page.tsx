@@ -662,7 +662,7 @@ function DetalhesRetiradaContent() {
                   Retirada de medicamento
                 </p>
 
-                <h1 className="mt-1 truncate font-display text-xl font-bold text-ink-primary">
+                <h1 className="mt-1 min-w-0 break-words font-display text-xl font-bold leading-tight text-ink-primary">
                   {
                     retirada.medicamento_nome ||
                     "Medicamento"

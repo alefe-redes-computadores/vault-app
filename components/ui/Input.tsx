@@ -32,12 +32,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             aria-invalid={Boolean(error)}
-            aria-describedby={error ? errorId : props["aria-describedby"]}
+            aria-describedby={error ? [props["aria-describedby"], errorId].filter(Boolean).join(" ") : props["aria-describedby"]}
             className={`
-              w-full rounded-xl bg-surface-raised border border-surface-border/50 
+              w-full rounded-xl bg-surface-raised border border-surface-border/50
               px-4 py-3 text-ink-primary placeholder:text-ink-muted/50
               focus:outline-none focus:border-ice/50 focus:ring-2 focus:ring-ice/20
-              transition-all duration-150
+              min-h-11 transition-colors duration-150
               ${icon ? "pl-10" : ""}
               ${error ? "border-coral/50 focus:border-coral/50 focus:ring-coral/20" : ""}
               ${className}

@@ -5493,7 +5493,7 @@ export default function NovoMedicamentoPage() {
                         }
                       />
 
-                      <span className="max-w-full truncate px-1 text-[10px] font-medium">
+                      <span className="max-w-full break-words px-1 text-center text-[10px] font-medium leading-tight">
                         {
                           FORMATOS_ADICIONAIS.find(
                             (

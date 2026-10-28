@@ -1674,7 +1674,7 @@ function EditarConsultaContent() {
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="mx-auto max-w-3xl space-y-5 px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
           {errors.person_id && (
             <div className="rounded-2xl border border-coral/30 bg-coral/10 px-4 py-3">
               <p className="text-xs text-coral">
@@ -2103,7 +2103,7 @@ function EditarConsultaContent() {
                   className="shrink-0 text-ice"
                 />
 
-                <span className="truncate text-ink-primary">
+                <span className="min-w-0 break-words text-ink-primary">
                   {selectedMedico
                     ? `Dr(a). ${selectedMedico.nome} (${selectedMedico.especialidade || "Geral"})`
                     : "Selecionar médico"}
@@ -2317,7 +2317,7 @@ function EditarConsultaContent() {
             }}
             className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-ink-primary">
                   Data{" "}

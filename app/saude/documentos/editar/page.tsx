@@ -4754,7 +4754,7 @@ function EditarDocumentoSaudeContent() {
           </div>
         </header>
 
-        <section className="relative mx-auto max-w-3xl px-5 pt-6">
+        <section className="relative mx-auto max-w-3xl px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
           <AnimatePresence
             initial={
               false
@@ -4942,14 +4942,14 @@ function EditarDocumentoSaudeContent() {
                           </div>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-ink-primary">
+                            <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                               {
                                 selectedClinicalEntity.label
                               }
                             </p>
 
                             {selectedClinicalEntity.description && (
-                              <p className="mt-0.5 truncate text-xs text-ink-muted">
+                              <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">
                                 {
                                   selectedClinicalEntity.description
                                 }
@@ -5295,7 +5295,7 @@ function EditarDocumentoSaudeContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
                     <Button
                       variant="secondary"
                       onClick={
@@ -5630,14 +5630,14 @@ function EditarDocumentoSaudeContent() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-ink-primary">
+                    <p className="break-words font-medium text-ink-primary">
                       {
                         item.label
                       }
                     </p>
 
                     {item.description && (
-                      <p className="mt-0.5 truncate text-xs text-ink-muted">
+                      <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">
                         {
                           item.description
                         }
@@ -5711,14 +5711,14 @@ function EditarDocumentoSaudeContent() {
               item
             ) => (
               <div className="min-w-0">
-                <p className="truncate font-medium text-ink-primary">
+                <p className="break-words font-medium text-ink-primary">
                   {
                     item.label
                   }
                 </p>
 
                 {item.description && (
-                  <p className="mt-0.5 truncate text-xs text-ink-muted">
+                  <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">
                     {
                       item.description
                     }

@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const summary=read('components/saude/ClinicalListSummary.tsx');
+const group=read('components/saude/ClinicalCollectionGroup.tsx');
+const filters=read('components/list/ListFilters.tsx');
+const search=read('components/list/ListSearch.tsx');
+const sheet=read('components/ui/BottomSheet.tsx');
+const button=read('components/ui/Button.tsx');
+const card=read('components/list/ListCard.tsx');
+assert(summary.includes('break-words text-sm font-semibold')&&summary.includes('divide-x divide-surface-border')&&summary.includes('break-all font-mono'),'summary keeps long data visible');
+assert(group.includes('line-clamp-2 break-words')&&group.includes('onToggle')&&group.includes('[content-visibility:auto]'),'clinical groups remain progressive with legible titles');
+assert(filters.includes('clearRef.current?.focus')&&filters.includes('document.body.style.overflow = previous')&&filters.includes('triggerRef.current.focus'),'filter sheet focus and scroll recovery');
+assert(search.includes('role="search"')&&search.includes('enterKeyHint="search"')&&search.includes('onChange(event.target.value)'),'search accessible and reactive');
+assert(sheet.includes('previousFocusRef.current?.isConnected')&&sheet.includes('role="dialog"')&&sheet.includes('aria-modal="true"'),'bottom sheet returns keyboard focus');
+assert(button.includes('aria-busy={loading || undefined}')&&button.includes('disabled={disabled || loading}'),'loading blocks duplicate submissions');
+assert(card.includes('initial={false}')&&card.includes('contentVisibility: "auto"')&&card.includes('interactiveContent'),'large lists avoid per-item entrance animation');
+console.log('V302 GLOBAL MACRO: seven UI subsystems validated');

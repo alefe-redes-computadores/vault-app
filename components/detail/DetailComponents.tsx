@@ -38,20 +38,20 @@ export function SectionTitle({
   action,
 }: SectionTitleProps) {
   return (
-    <div className="flex items-center justify-between gap-3 px-1">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-start justify-between gap-2.5 px-1 sm:items-center">
+      <div className="flex min-w-0 flex-1 items-start gap-2">
         {icon && (
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-raised text-ice">
             {icon}
           </span>
         )}
 
-        <h2 className="truncate text-sm font-semibold text-ink-primary">
+        <h2 className="min-w-0 break-words text-sm font-semibold leading-snug text-ink-primary">
           {title}
         </h2>
       </div>
 
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -68,20 +68,20 @@ export function DetailInfoRow({
   action,
 }: DetailInfoRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-surface-border/60 bg-surface p-4">
-      <div className="flex min-w-0 items-center gap-3.5">
+    <div className="flex min-w-0 items-start justify-between gap-2.5 rounded-[20px] border border-surface-border/60 bg-surface p-3 sm:gap-4 sm:p-4">
+      <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3.5">
         <div
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${iconClassName}`}
         >
           {icon}
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-muted">
             {label}
           </p>
 
-          <div className="min-w-0">{children}</div>
+          <div className="min-w-0 break-words [overflow-wrap:anywhere]">{children}</div>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export function StatCard({
   description,
 }: StatCardProps) {
   return (
-    <div className="rounded-[24px] border border-surface-border/60 bg-surface p-4 shadow-sm">
+    <div className="min-w-0 rounded-[20px] border border-surface-border/60 bg-surface p-3.5 shadow-sm sm:p-4">
       <div className="mb-1.5 flex items-center gap-1.5 text-ice">
         {icon}
 
@@ -114,7 +114,7 @@ export function StatCard({
         </span>
       </div>
 
-      <p className="font-mono text-xl font-bold text-ink-primary">
+      <p className="break-words font-mono text-lg font-bold leading-snug text-ink-primary [overflow-wrap:anywhere] sm:text-xl">
         {value}
       </p>
 

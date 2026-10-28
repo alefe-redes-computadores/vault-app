@@ -1170,7 +1170,7 @@ function DetalhesConsultaContent() {
                   Painel Clínico
                 </p>
 
-                <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
+                <h1 className="min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                   Detalhes do Atendimento
                 </h1>
               </div>
@@ -1341,7 +1341,7 @@ function DetalhesConsultaContent() {
                       )}
                   </div>
 
-                  <h2 className="mt-1 truncate font-display text-xl font-bold text-ink-primary">
+                  <h2 className="mt-1 min-w-0 break-words font-display text-xl font-bold leading-tight text-ink-primary">
                     {medico
                       ? `Dr(a). ${medico.nome}`
                       : consulta.medico

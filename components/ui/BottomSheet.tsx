@@ -56,6 +56,7 @@ export function BottomSheet({
     useRef<HTMLDivElement>(
       null
     );
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(
     () => {
@@ -67,6 +68,7 @@ export function BottomSheet({
 
       const previousOverflow =
         document.body.style.overflow;
+      previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
       const handleEscape =
         (
@@ -101,6 +103,7 @@ export function BottomSheet({
 
         document.body.style.overflow =
           previousOverflow;
+        if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus({ preventScroll: true });
       };
     },
     [
@@ -171,7 +174,7 @@ export function BottomSheet({
           <div className="absolute -top-3 left-1/2 mx-auto h-1 w-10 -translate-x-1/2 rounded-full bg-ice/30" />
 
           {title && (
-            <h2 className="font-display text-lg text-ink-primary">
+            <h2 className="min-w-0 flex-1 break-words font-display text-base font-semibold text-ink-primary sm:text-lg">
               {
                 title
               }
@@ -190,7 +193,7 @@ export function BottomSheet({
                 onClose();
               }
             }
-            className="ml-auto rounded-full p-1 transition-colors hover:bg-ice/10 hover:text-ice"
+            className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-ice/10 hover:text-ice"
           >
             <X
               size={

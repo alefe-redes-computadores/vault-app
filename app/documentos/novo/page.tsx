@@ -2106,7 +2106,7 @@ export default function NovoDocumentoPage() {
           </div>
         </header>
 
-        <section className="relative mx-auto max-w-3xl px-5 pt-6">
+        <section className="relative mx-auto max-w-3xl px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
           <AnimatePresence
             initial={false}
             custom={
@@ -2151,7 +2151,7 @@ export default function NovoDocumentoPage() {
 
                         <span className="h-1 w-1 rounded-full bg-ice/60" />
 
-                        <p className="truncate text-xs font-semibold text-ink-primary">
+                        <p className="break-words text-xs font-semibold leading-snug text-ink-primary">
                           {selectedPerson
                             ? selectedPerson.name
                             : activePersonId
@@ -2533,7 +2533,7 @@ export default function NovoDocumentoPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
                     <Button
                       variant="secondary"
                       onClick={() =>
@@ -2640,7 +2640,7 @@ export default function NovoDocumentoPage() {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-semibold text-ink-primary">
+                            <p className="break-words text-xs font-semibold leading-snug text-ink-primary">
                               {attachment.name}
                             </p>
 

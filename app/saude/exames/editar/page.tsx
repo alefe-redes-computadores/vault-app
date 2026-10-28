@@ -1739,7 +1739,7 @@ function EditarExameContent() {
           </div>
         </header>
 
-        <section className="space-y-4 px-5 pt-6">
+        <section className="mx-auto max-w-3xl space-y-5 px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
           <motion.div
             variants={fadeUp}
             initial="initial"
@@ -2105,7 +2105,7 @@ function EditarExameContent() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-ink-primary">
                   Data da Coleta{" "}
@@ -2320,7 +2320,7 @@ function EditarExameContent() {
                       className="shrink-0 text-ice"
                     />
 
-                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink-primary">
+                    <p className="min-w-0 flex-1 break-words text-sm font-medium leading-snug text-ink-primary">
                       {anexoUrl}
                     </p>
 
@@ -2336,7 +2336,7 @@ function EditarExameContent() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
                     <Button
                       variant="secondary"
                       onClick={() =>
@@ -2359,7 +2359,7 @@ function EditarExameContent() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
                   <Button
                     variant="secondary"
                     onClick={() =>

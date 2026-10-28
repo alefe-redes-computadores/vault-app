@@ -1302,7 +1302,7 @@ function EditarTratamentoContent() {
             </button>
 
             <div className="min-w-0">
-              <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">
+              <h1 className="mt-1 min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                 Editar Tratamento
               </h1>
             </div>
@@ -1706,7 +1706,7 @@ function EditarTratamentoContent() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           {
                             medicamento.nome
                           }
@@ -1805,7 +1805,7 @@ function EditarTratamentoContent() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           Dr(a).{" "}
                           {
                             medico.nome
@@ -1897,7 +1897,7 @@ function EditarTratamentoContent() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           {
                             hospital.nome
                           }
@@ -1988,7 +1988,7 @@ function EditarTratamentoContent() {
                         }
                         className="flex items-center gap-2 rounded-full border border-surface-border/50 bg-surface-raised py-1 pl-3 pr-1"
                       >
-                        <span className="max-w-[180px] truncate text-xs font-semibold text-ink-primary">
+                        <span className="min-w-0 max-w-full break-words text-xs font-semibold leading-snug text-ink-primary">
                           {
                             local.nome
                           }
@@ -2333,7 +2333,7 @@ function EditarTratamentoContent() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     Dr(a).{" "}
                     {
                       item.nome
@@ -2413,7 +2413,7 @@ function EditarTratamentoContent() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     {
                       item.nome
                     }
@@ -2492,7 +2492,7 @@ function EditarTratamentoContent() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     {
                       item.nome
                     }
@@ -2571,7 +2571,7 @@ function EditarTratamentoContent() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink-primary">
+                  <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                     {
                       item.nome
                     }

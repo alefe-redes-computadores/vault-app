@@ -534,7 +534,7 @@ function NovaReceitaContent() {
                 </p>
               </div>
 
-              <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
+              <h1 className="break-words font-display text-lg font-semibold leading-tight text-ink-primary">
                 {planOnly ? "Planejar próxima receita" : "Registrar receita recebida"}
               </h1>
             </div>
@@ -740,7 +740,7 @@ function NovaReceitaContent() {
             </div>
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(event) => handleAttachment(event)} />
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => handleAttachment(event, true)} />
-            {attachmentName ? <div className="mt-3 truncate rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-xs font-semibold text-emerald-200">{attachmentName}</div> : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] text-xs font-semibold text-violet-200"><Upload size={15}/>Escolher arquivo</button><button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] text-xs font-semibold text-emerald-200"><Camera size={15}/>Fotografar</button></div>}
+            {attachmentName ? <div className="mt-3 break-all rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-xs font-semibold text-emerald-200">{attachmentName}</div> : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] text-xs font-semibold text-violet-200"><Upload size={15}/>Escolher arquivo</button><button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] text-xs font-semibold text-emerald-200"><Camera size={15}/>Fotografar</button></div>}
           </div>
 
           {selectedMedicamento && (

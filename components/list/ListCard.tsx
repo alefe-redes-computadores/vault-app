@@ -63,11 +63,11 @@ export function ListCard({
   return (
     <motion.article
       key={id}
-      initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{
         duration: reducedMotion ? 0 : 0.18,
-        delay: reducedMotion ? 0 : Math.min(delay, 0.2),
+        delay: reducedMotion ? 0 : Math.min(delay, 0.08),
       }}
       className={`
         group relative
@@ -76,7 +76,7 @@ export function ListCard({
         border
         bg-surface
         ${isCompact ? "shadow-sm" : "shadow-md"}
-        transition-all
+        transition-colors
         ${
           isDisabled
             ? `${disabledBorderColor} opacity-60`

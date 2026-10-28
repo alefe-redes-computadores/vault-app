@@ -2067,7 +2067,7 @@ function DocumentoSaudeDetalhesContent() {
                   </p>
                 </div>
 
-                <h1 className="truncate font-display text-base font-semibold text-ink-primary">
+                <h1 className="min-w-0 break-words font-display text-base font-semibold leading-snug text-ink-primary">
                   Detalhes do documento
                 </h1>
               </div>
@@ -2253,7 +2253,7 @@ function DocumentoSaudeDetalhesContent() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink-primary">
+                    <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                       {
                         clinicalEntity.label
                       }
@@ -2460,7 +2460,7 @@ function DocumentoSaudeDetalhesContent() {
                           </div>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-ink-primary">
+                            <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                               {
                                 attachment.name
                               }
@@ -2515,7 +2515,7 @@ function DocumentoSaudeDetalhesContent() {
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-ink-primary">
+                          <p className="break-words text-sm font-semibold leading-snug text-ink-primary">
                             {
                               attachment.name
                             }

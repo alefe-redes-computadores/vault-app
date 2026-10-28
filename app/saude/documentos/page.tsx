@@ -4420,7 +4420,7 @@ export default function DocumentsPage() {
                   </p>
                 </div>
 
-                <h1 className="truncate font-display text-lg font-semibold text-ink-primary">
+                <h1 className="break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                   Documentos
                 </h1>
               </div>
@@ -4724,7 +4724,7 @@ export default function DocumentsPage() {
                               </div>
 
                               <div className="flex min-w-0 items-center gap-2">
-                                <h2 className="truncate font-display text-sm font-semibold text-ink-primary">
+                                <h2 className="break-words font-display text-sm font-semibold leading-snug text-ink-primary">
                                   {
                                     domain.label
                                   }
@@ -4887,7 +4887,7 @@ export default function DocumentsPage() {
 
                                               <div className="min-w-0 flex-1">
                                                 <div className="flex min-w-0 items-center gap-2">
-                                                  <p className="truncate text-[13px] font-semibold text-ink-primary">
+                                                  <p className="break-words text-[13px] font-semibold leading-snug text-ink-primary">
                                                     {
                                                       parent.name
                                                     }

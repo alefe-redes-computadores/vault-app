@@ -37,9 +37,9 @@ export function ListSearch({ value, onChange, placeholder = "Buscar...", classNa
   }
 
   return (
-    <div className={`relative min-w-0 flex-1 ${className}`}>
+    <div role="search" className={`relative min-w-0 flex-1 ${className}`}>
       <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
-      <Input ref={inputRef} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-2xl bg-surface-raised/70 pl-10 pr-10 text-sm" />
+      <Input ref={inputRef} aria-label={placeholder} enterKeyHint="search" placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-2xl bg-surface-raised/70 pl-10 pr-10 text-sm" />
       <button type="button" onClick={() => { if (value && showClear) { onChange(""); return; } setExpanded(false); }} className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-surface-raised active:scale-95" aria-label={value && showClear ? "Limpar busca" : "Fechar busca"}>
         <X size={14} />
       </button>

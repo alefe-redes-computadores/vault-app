@@ -1431,7 +1431,7 @@ function DetalhesMedicoContent() {
                 Rede médica
               </p>
 
-              <h1 className="mt-0.5 truncate font-display text-lg font-semibold text-ink-primary">
+              <h1 className="mt-0.5 min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                 Perfil Médico
               </h1>
             </div>
@@ -1661,7 +1661,7 @@ function DetalhesMedicoContent() {
                 </div>
 
                 <div className="min-w-0 pt-1">
-                  <h2 className="truncate font-display text-xl font-bold text-ink-primary">
+                  <h2 className="min-w-0 break-words font-display text-xl font-bold leading-tight text-ink-primary">
                     Dr(a).{" "}
                     {
                       medico.nome

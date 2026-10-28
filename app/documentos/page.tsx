@@ -1893,7 +1893,7 @@ export default function DocumentsPage() {
                           </div>
 
                           <div className="min-w-0 px-1 pb-1 pt-2.5">
-                            <p className="truncate text-xs font-semibold text-ink-primary">
+                            <p className="line-clamp-2 break-words text-xs font-semibold leading-snug text-ink-primary">
                               {
                                 document.title
                               }

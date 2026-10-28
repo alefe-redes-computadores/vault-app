@@ -424,7 +424,7 @@ function ItemEditor({
         {med ? <MedicationFormatIcon formato={med.formato} cores={med.cores} size={24} /> : null}
         {med?.nome || "Medicamento"}
       </p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
         <label className="text-[11px] text-ink-muted">
           Dose no processo
           <input
@@ -449,7 +449,7 @@ function ItemEditor({
       <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Este campo não agenda nem antecipa retiradas. A quantidade total recebida e a próxima data ficam no registro de Retirada, separado da referência mensal.</p>
       <details className="mt-3 rounded-xl border border-surface-border p-3">
         <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Recebo para mais de um mês · calcular referência</summary>
-        <div className="mt-2 grid grid-cols-2 gap-2"><label className="text-xs text-ink-muted">Total por retirada<input className={input} type="number" min="0.01" step="any" value={pickupAmount} onChange={e=>setPickupAmount(e.target.value)}/></label><label className="text-xs text-ink-muted">Meses informados<input className={input} type="number" min="1" max="24" step="1" value={coverageMonths} onChange={e=>setCoverageMonths(e.target.value)}/></label></div>
+        <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2"><label className="text-xs text-ink-muted">Total por retirada<input className={input} type="number" min="0.01" step="any" value={pickupAmount} onChange={e=>setPickupAmount(e.target.value)}/></label><label className="text-xs text-ink-muted">Meses informados<input className={input} type="number" min="1" max="24" step="1" value={coverageMonths} onChange={e=>setCoverageMonths(e.target.value)}/></label></div>
         <p className="mt-2 text-[11px] text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
         <button type="button" className={button+" mt-2"} disabled={monthlyReference===null} onClick={()=>{if(monthlyReference!==null)setQuantity(String(monthlyReference));}}>Usar referência {monthlyReference!==null?monthlyReference.toLocaleString('pt-BR'):''}</button>
       </details>
@@ -1121,7 +1121,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   setCreating(false);
                 }}
               >
-                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="truncate text-ink-primary">{p.titulo}</span><span className={`shrink-0 text-[9px] font-normal ${hasPrivateRoute&&p.origem!=="comprado"?"text-amber-300":"text-ink-muted"}`}>{routeLabel}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
+                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="min-w-0 break-words text-ink-primary">{p.titulo}</span><span className={`shrink-0 text-[9px] font-normal ${hasPrivateRoute&&p.origem!=="comprado"?"text-amber-300":"text-ink-muted"}`}>{routeLabel}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
               </button>
     );
   };
@@ -1171,7 +1171,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
               <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
               <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
-              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-wider text-rose-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 truncate">{m.nome} · {m.dosagem}</span><span className="text-rose-300">Compra ›</span></Link>)}</div>:null}
+              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-wider text-rose-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 break-words leading-snug">{m.nome} · {m.dosagem}</span><span className="text-rose-300">Compra ›</span></Link>)}</div>:null}
               <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
@@ -1254,7 +1254,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Medicamentos vinculados</p>
                       {linkedMeds.map(m => {const route=medicationSupplyRoute(m.id||"",data,renovacoes,personId,process.user_id);return <Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id || "")}`} className={`flex min-h-11 items-center gap-3 rounded-xl border bg-surface-raised px-3 py-2 ${route.mode==='hybrid'?'border-amber-300/25':'border-surface-border/60'}`}>
                         <MedicationFormatIcon formato={m.formato} cores={m.cores} size={26}/>
-                        <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">{m.nome} · {m.dosagem}</span><span className={`mt-1 block text-[9px] ${route.mode==='hybrid'?'text-amber-300':'text-ink-muted'}`}>{route.labels.length?route.labels.join(" + "):"Origem ainda não organizada"}{route.mode==='hybrid'?" · rotas independentes":""}</span></span><span className="text-ink-muted">›</span>
+                        <span className="min-w-0 flex-1"><span className="block break-words text-xs font-semibold leading-snug text-ink-primary">{m.nome} · {m.dosagem}</span><span className={`mt-1 block text-[9px] ${route.mode==='hybrid'?'text-amber-300':'text-ink-muted'}`}>{route.labels.length?route.labels.join(" + "):"Origem ainda não organizada"}{route.mode==='hybrid'?" · rotas independentes":""}</span></span><span className="text-ink-muted">›</span>
                       </Link>})}
                     </div>
                     {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="inline-flex min-h-11 items-center rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="inline-flex min-h-11 items-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
@@ -1265,7 +1265,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     {processWithdrawals.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Retiradas vinculadas a este processo</p>
                       {processWithdrawals.slice(0, 5).map(r => <Link key={r.id} href={`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-surface-raised p-3 text-xs text-ink-primary">
-                        <span className="min-w-0 truncate">{r.medicamento_nome || "Retirada"} · {fmt(r.data)} · {r.status}</span><span className="shrink-0 text-emerald-300">Ver ›</span>
+                        <span className="min-w-0 break-words leading-snug">{r.medicamento_nome || "Retirada"} · {fmt(r.data)} · {r.status}</span><span className="shrink-0 text-emerald-300">Ver ›</span>
                       </Link>)}
                       {processWithdrawals.length > 5 && <p className="text-[11px] text-ink-muted">Mais {processWithdrawals.length - 5} retirada(s) no histórico.</p>}
                     </div>}
@@ -1275,7 +1275,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       {processDocs.slice(0, 8).map(link => {
                         const doc = relationalIndex.documentById.get(link.document_id);
                         return doc ? <Link key={link.id} href={`/saude/documentos/detalhes?id=${encodeURIComponent(doc.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-violet-400/15 bg-violet-400/5 p-3 text-xs">
-                          <span className="min-w-0"><span className="block truncate font-semibold text-ink-primary">{doc.title}</span><span className="block text-[10px] text-ink-muted">{link.tipo.toUpperCase()} · {link.estado}</span></span><span className="shrink-0 text-violet-300">Ver ›</span>
+                          <span className="min-w-0"><span className="block break-words font-semibold leading-snug text-ink-primary">{doc.title}</span><span className="block text-[10px] text-ink-muted">{link.tipo.toUpperCase()} · {link.estado}</span></span><span className="shrink-0 text-violet-300">Ver ›</span>
                         </Link> : <p key={link.id} className="rounded-xl border border-amber-400/20 p-3 text-xs text-amber-200">{link.tipo.toUpperCase()} · documento vinculado indisponível</p>;
                       })}
                       {processDocs.length > 8 && <p className="text-[11px] text-ink-muted">Mais {processDocs.length - 8} documento(s) nos ciclos.</p>}
@@ -1293,7 +1293,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       <p className="mt-1 text-[10px] text-ink-muted">Estas compras são uma rota separada, inclusive quando o medicamento também está vinculado a um processo SUS. Não representam custo do SUS, retirada gratuita nem custo específico deste processo.</p>
                     </div>}
                     {/* V133 CONTEXTUAL LINKS: deep links use real records; index links remain clearly general. */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="grid grid-cols-1 gap-2 text-xs min-[390px]:grid-cols-2">
                       <Link className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-3 text-center font-semibold text-emerald-300" href="/saude/retiradas">Todas as retiradas ↗</Link>
                       <Link className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-3 py-3 text-center font-semibold text-violet-300" href="/saude/documentos">Todos os documentos ↗</Link>
                       <Link className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-3 py-3 text-center font-semibold text-violet-300" href="/saude/medicamentos">Medicamentos ↗</Link>

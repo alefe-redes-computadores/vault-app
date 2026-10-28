@@ -62,6 +62,7 @@ function ButtonComponent(
       ref={ref}
       onClick={handleClick}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`
         ${variants[variant]}
         ${loading ? loadingStates[variant] : ""}
@@ -76,7 +77,7 @@ function ButtonComponent(
     >
       {loading ? (
         <span className="flex items-center justify-center gap-2">
-          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <span aria-hidden="true" className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
           {loadingLabel}
         </span>
       ) : (

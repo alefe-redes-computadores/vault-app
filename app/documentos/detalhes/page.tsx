@@ -1744,7 +1744,7 @@ export default function DocumentDetailPage() {
                 Cofre Pessoal
               </p>
 
-              <h1 className="mt-1 truncate font-display text-lg font-semibold text-ink-primary">
+              <h1 className="mt-1 min-w-0 break-words font-display text-lg font-semibold leading-snug text-ink-primary">
                 Detalhes do documento
               </h1>
             </div>
@@ -1854,7 +1854,7 @@ export default function DocumentDetailPage() {
                     }}
                   />
 
-                  <p className="truncate text-xs font-semibold text-ink-primary">
+                  <p className="break-words text-xs font-semibold leading-snug text-ink-primary">
                     {person?.name ||
                       "Pessoa ativa"}
                   </p>
@@ -2218,7 +2218,7 @@ export default function DocumentDetailPage() {
                         )}
 
                         <div className="px-1 pb-0.5 pt-2.5">
-                          <p className="truncate text-xs font-semibold text-ink-primary">
+                          <p className="break-words text-xs font-semibold leading-snug text-ink-primary">
                             {
                               attachment.name
                             }

@@ -1113,7 +1113,7 @@ export default function RenovacoesPage() {
                         ======================================== */}
 
                     <div className="flex min-w-0 items-baseline gap-2">
-                      <h3 className="min-w-0 flex-1 truncate font-display text-base font-bold text-ink-primary">
+                      <h3 className="min-w-0 flex-1 break-words font-display text-base font-bold leading-snug text-ink-primary">
                         {
                           renovacao.medicamentoNome
                         }
@@ -1309,7 +1309,7 @@ export default function RenovacoesPage() {
                       {/* OBS */}
 
                       {renovacao.observacoes && (
-                        <span className="flex max-w-[180px] items-center gap-1 truncate text-ink-muted">
+                        <span className="flex min-w-0 max-w-full flex-wrap items-center gap-1 break-words text-ink-muted">
                           <MessageCircle
                             size={
                               11

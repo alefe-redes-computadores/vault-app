@@ -273,7 +273,7 @@ function HealthDashboard({
                   <UserRound size={24} className="text-emerald-400" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-semibold">
+                  <h2 className="min-w-0 break-words font-semibold leading-snug">
                     {person?.name || "Seu perfil"}
                   </h2>
                   <p className="text-xs text-ink-muted">
@@ -428,7 +428,7 @@ function HealthDashboard({
                     className="flex min-h-11 max-w-full items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2 text-xs"
                   >
                     <HealthDeviceIcon kind={d.kind} color={d.color} />
-                    <span className="truncate">{d.name}</span>
+                    <span className="min-w-0 break-words leading-snug">{d.name}</span>
                   </button>
                 ))}
 
@@ -481,8 +481,8 @@ function HealthDashboard({
                     className="flex min-h-[68px] w-full items-center gap-3 border-b border-surface-border/70 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-raised/50 active:bg-surface-raised"
                   >
                     <span className={`grid size-9 shrink-0 place-items-center rounded-xl bg-surface-raised ${METRIC_TONES[type]}`}><HealthMetricIcon type={type} size={18} /></span>
-                    <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">{METRICS[type].label}</span><span className="mt-0.5 block truncate text-[10px] text-ink-muted">{latest(type)?`Atualizado em ${latest(type)!.data.split("-").reverse().join("/")}`:"Sem registro"}</span></span>
-                    <strong className="max-w-[36%] truncate text-right text-xs font-semibold text-ink-primary">{loading || isLoading ? "Carregando…" : value(type)}</strong>
+                    <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">{METRICS[type].label}</span><span className="mt-0.5 block break-words text-[10px] leading-snug text-ink-muted">{latest(type)?`Atualizado em ${latest(type)!.data.split("-").reverse().join("/")}`:"Sem registro"}</span></span>
+                    <strong className="min-w-0 max-w-[48%] break-words text-right text-xs font-semibold leading-snug text-ink-primary">{loading || isLoading ? "Carregando…" : value(type)}</strong>
                     <ChevronRight size={15} className="shrink-0 text-ink-muted" />
                   </button>
                 ))}
@@ -562,7 +562,7 @@ function HealthDashboard({
                 </button>
               </div>
               <div className="mb-3"><CustomDatePicker label="Dia do histórico" value={historyDate} maxDate={today} onChange={v => setHistoryDate(v || today)} /></div>
-              <div className="mb-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
                 <button type="button" disabled={!adjacentDays.previous} onClick={()=>{if(adjacentDays.previous)setHistoryDate(adjacentDays.previous);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Anterior com dados</button>
                 <button type="button" disabled={historyDate===today} onClick={()=>setHistoryDate(today)} className="min-h-11 rounded-xl border border-emerald-400/25 px-2 text-xs text-emerald-300 disabled:opacity-40">Hoje</button>
                 <button type="button" disabled={!adjacentDays.next} onClick={()=>{if(adjacentDays.next)setHistoryDate(adjacentDays.next);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Próximo com dados</button>
