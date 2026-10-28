@@ -13,6 +13,7 @@ import { ContextualHealthIntelligence } from "@/components/vault-intelligence/Co
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -50,32 +51,13 @@ import { DetailSkeleton } from "@/components/loading/DetailSkeleton";
 
 import { DocumentCard } from "@/components/DocumentCard";
 
-import { useTratamentos } from "@/hooks/useTratamentos";
-
-import { useRenovacoes } from "@/hooks/useRenovacoes";
-
-import { useCids } from "@/hooks/useCids";
-
-import { useMedicos } from "@/hooks/useMedicos";
-
-import { useHospitais } from "@/hooks/useHospitais";
-
-import { useLocais } from "@/hooks/useLocais";
-
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
-import { useConsultas } from "@/hooks/useConsultas";
-
-import { useExames } from "@/hooks/useExames";
-
-import { useCirurgias } from "@/hooks/useCirurgias";
-
-import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
-
-import { useDocuments, useDocumentActions } from "@/hooks/useDocuments";
+import { useDocumentActions } from "@/hooks/useDocuments";
+import { loadTreatmentDetailRelations } from "@/lib/treatment-detail-relations";
 
 import { useMounted } from "@/hooks/useMounted";
 
@@ -286,31 +268,6 @@ function TratamentoContent() {
   const {retiradas}=useRetiradas();
   const supply=useHealthSupply();
 
-  const {
-    getTratamento,
-    getMedicamentosDoTratamento,
-  } = useTratamentos();
-
-  const { renovacoes = [] } = useRenovacoes();
-
-  const { cids = [] } = useCids();
-
-  const { medicos = [] } = useMedicos();
-
-  const { hospitais = [] } = useHospitais();
-
-  const { locais = [] } = useLocais();
-
-  const { consultas = [] } = useConsultas();
-
-  const { exames = [] } = useExames();
-
-  const { cirurgias = [] } = useCirurgias();
-
-  const { registros = [] } = useRegistrosSaude();
-
-  const documentosDaPessoa = useDocuments();
-
   const { favoriteDocument } = useDocumentActions();
 
   const mounted = useMounted();
@@ -319,185 +276,29 @@ function TratamentoContent() {
   // ESTADO
   // ==========================================================
 
-  const [tratamento, setTratamento] =
-    useState<Tratamento | null>(
-      null
-    );
-
-  /*
-   * Estado próprio dos medicamentos vinculados.
-   *
-   * Não usamos mais [] da lista global como sinônimo de
-   * "nenhum medicamento", porque [] também pode significar
-   * "useLiveQuery ainda não terminou".
-   */
-  const [
-    linkedMedicamentos,
-    setLinkedMedicamentos,
-  ] =
-    useState<
-      Medicamento[]
-    >(
-      []
-    );
-
-  const [isLoading, setIsLoading] =
-    useState(
-      true
-    );
+  const relationSnapshot = useLiveQuery(
+    () => id && activePersonId && user?.id
+      ? loadTreatmentDetailRelations({ treatmentId: id, userId: user.id, personId: activePersonId })
+      : undefined,
+    [id, activePersonId, user?.id],
+  );
+  const isLoading = Boolean(id && activePersonId && user?.id && relationSnapshot === undefined);
+  const tratamento = relationSnapshot?.tratamento ?? null;
+  const linkedMedicamentos = relationSnapshot?.medicamentos ?? [];
+  const renovacoes = relationSnapshot?.renovacoes ?? [];
+  const cids = relationSnapshot?.cids ?? [];
+  const medicos = relationSnapshot?.medicos ?? [];
+  const hospitais = relationSnapshot?.hospitais ?? [];
+  const locais = relationSnapshot?.locais ?? [];
+  const consultas = relationSnapshot?.consultas ?? [];
+  const exames = relationSnapshot?.exames ?? [];
+  const cirurgias = relationSnapshot?.cirurgias ?? [];
+  const registros = relationSnapshot?.registros ?? [];
+  const documentosDaPessoa = relationSnapshot?.documentos ?? [];
 
   const [isMenuFlutuanteOpen, setIsMenuFlutuanteOpen] = useState(false);
 
   const [dismissEconomia, setDismissEconomia] = useState(false);
-
-  // ==========================================================
-  // CARREGAR TRATAMENTO
-  // ==========================================================
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchTratamento =
-      async () => {
-        setIsLoading(
-          true
-        );
-
-        setTratamento(
-          null
-        );
-
-        setLinkedMedicamentos(
-          []
-        );
-
-        if (
-          !id ||
-          !activePersonId
-        ) {
-          if (
-            !cancelled
-          ) {
-            setIsLoading(
-              false
-            );
-          }
-
-          return;
-        }
-
-        try {
-          /*
-           * Tratamento e vínculos são uma única unidade
-           * visual para esta tela.
-           *
-           * A página só sai do skeleton quando os dois
-           * terminaram de carregar.
-           */
-          const [
-            data,
-            medicamentosVinculados,
-          ] =
-            await Promise.all([
-              getTratamento(
-                id
-              ),
-
-              getMedicamentosDoTratamento(
-                id
-              ),
-            ]);
-
-          if (
-            cancelled
-          ) {
-            return;
-          }
-
-          if (
-            !data ||
-            data.person_id !==
-              activePersonId
-          ) {
-            setTratamento(
-              null
-            );
-
-            setLinkedMedicamentos(
-              []
-            );
-
-            return;
-          }
-
-          /*
-           * Defesa adicional:
-           * mesmo que o repository/hook já seja person-scoped,
-           * a tela não aceita vínculo de outra pessoa.
-           */
-          const safeMedicamentos =
-            medicamentosVinculados.filter(
-              (
-                medicamento
-              ) =>
-                medicamento.person_id ===
-                activePersonId &&
-                medicamento.tratamento_ids?.includes(
-                  id
-                ) ===
-                  true
-            );
-
-          setTratamento(
-            data
-          );
-
-          setLinkedMedicamentos(
-            safeMedicamentos
-          );
-        } catch (
-          error
-        ) {
-          console.error(
-            "[TratamentoDetalhes] Erro ao carregar tratamento e medicamentos:",
-            error
-          );
-
-          if (
-            !cancelled
-          ) {
-            setTratamento(
-              null
-            );
-
-            setLinkedMedicamentos(
-              []
-            );
-          }
-        } finally {
-          if (
-            !cancelled
-          ) {
-            setIsLoading(
-              false
-            );
-          }
-        }
-      };
-
-    void fetchTratamento();
-
-    return () => {
-      cancelled =
-        true;
-    };
-  }, [
-    id,
-    activePersonId,
-    getTratamento,
-    getMedicamentosDoTratamento,
-  ]);
-
 
   // ==========================================================
   // PREFERÊNCIA LOCAL DO CARD DE ECONOMIA
