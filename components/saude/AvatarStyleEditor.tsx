@@ -17,6 +17,12 @@ const sections: { key: Key; title: string; options: Option[] }[] = [
   { key: 'glasses', title: 'Óculos de grau', options: [{value:'none',label:'Sem óculos'},{value:'rectangular',label:'Retangular'},{value:'round',label:'Redondo'}] },
   { key: 'sneakers', title: 'Tênis', options: [{value:'classic',label:'Clássico'},{value:'runner',label:'Esportivo'},{value:'high-top',label:'Cano alto'}] },
 ];
+const LOOK_PRESETS:Array<{name:string;description:string;style:Partial<AvatarStyle>}>= [
+  {name:"Essencial",description:"Visual limpo e neutro",style:{topStyle:"tee",topColor:"#0f766e",bottomColor:"#1e293b",sneakers:"classic",sneakersColor:"#e5e7eb",hat:"none"}},
+  {name:"Esportivo",description:"Leve para a rotina",style:{topStyle:"tank",topColor:"#2563eb",bottomColor:"#111827",sneakers:"runner",sneakersColor:"#f8fafc",hat:"baseball",hatColor:"#111827"}},
+  {name:"Urbano",description:"Contraste e presença",style:{topStyle:"hoodie",topColor:"#7c3aed",bottomColor:"#171717",sneakers:"high-top",sneakersColor:"#ef4444",hat:"flat",hatColor:"#171717"}},
+  {name:"Natural",description:"Tons suaves e quentes",style:{topStyle:"tee",topColor:"#b45309",bottomColor:"#334155",sneakers:"classic",sneakersColor:"#d6d3d1",hat:"none"}},
+];
 function ColorSelector({value, onChange, label}:{value:string;onChange:(color:string)=>void;label:string}) {
   return <fieldset className="mt-2"><legend className="mb-2 text-[11px] text-ink-muted">{label}</legend>
     <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
@@ -35,10 +41,14 @@ export function AvatarStyleEditor({value,onChange,onPreview,name,onNameChange}:{
       <span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">É apenas um apelido visual. Não altera o nome da pessoa nem qualquer registro de saúde.</span>
       <input value={name} maxLength={32} onChange={event=>onNameChange(event.target.value)} placeholder="Meu Avatar" aria-label="Nome do Avatar" className="mt-3 min-h-11 w-full rounded-xl border border-surface-border bg-void px-3 text-sm text-ink-primary outline-none focus:border-emerald-300/50"/>
     </label>
-    <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-5" role="group" aria-label="Parte do visual para personalizar">
-      {([['outfit','Roupa',Palette],['face','Rosto',UserRound],['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>{setCategory(key);if(key!=='outfit')onPreview?.(key==='sneakers'?'shoes':'face');}} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-1 text-[11px] ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}><Icon size={19}/>{label}</button>)}
+    <div className="sticky top-[66px] z-20 -mx-1 mb-4 flex gap-2 overflow-x-auto rounded-2xl border border-surface-border/70 bg-void/90 p-1.5 shadow-lg backdrop-blur-xl [scrollbar-width:none]" role="group" aria-label="Parte do visual para personalizar">
+      {([['outfit','Roupa',Palette],['face','Rosto',UserRound],['hat','Boné',Shirt],['glasses','Óculos',Glasses],['sneakers','Tênis',Footprints]] as const).map(([key,label,Icon])=><button key={key} type="button" aria-pressed={category===key} onClick={()=>{setCategory(key);if(key!=='outfit')onPreview?.(key==='sneakers'?'shoes':'face');}} className={`flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] ${category===key?'border-emerald-300/40 bg-emerald-300/10 text-emerald-200':'border-transparent text-ink-muted'}`}><Icon size={17}/>{label}</button>)}
     </div>
     {category==='outfit'?<div className="mb-4 rounded-xl border border-surface-border/70 bg-surface-raised/30 p-3">
+      <p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><Shirt size={15}/> Looks rápidos</p>
+      <p className="mt-1 text-[10px] text-ink-muted">Comece por um conjunto e ajuste cada detalhe depois.</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">{LOOK_PRESETS.map(preset=><button key={preset.name} type="button" onClick={()=>onChange(normalizeAvatarStyle({...value,...preset.style}))} className="min-h-16 rounded-xl border border-surface-border bg-void/30 px-3 py-2 text-left transition-colors hover:border-emerald-300/30"><strong className="block text-xs text-ink-primary">{preset.name}</strong><span className="mt-1 block text-[9px] text-ink-muted">{preset.description}</span><span className="mt-2 flex gap-1" aria-hidden="true"><i className="size-3 rounded-full border border-white/10" style={{backgroundColor:preset.style.topColor}}/><i className="size-3 rounded-full border border-white/10" style={{backgroundColor:preset.style.bottomColor}}/><i className="size-3 rounded-full border border-white/10" style={{backgroundColor:preset.style.sneakersColor}}/></span></button>)}</div>
+      <div className="my-4 h-px bg-surface-border/70"/>
       <p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><Palette size={15}/> Cores da roupa</p>
       <div className="mt-3 grid grid-cols-3 gap-2">{sections.find(section=>section.key==='topStyle')?.options.map(item=><button key={item.value} type="button" aria-pressed={value.topStyle===item.value} onClick={()=>change('topStyle',item.value)} className={`min-h-11 rounded-xl border px-2 text-xs font-semibold ${value.topStyle===item.value?'border-emerald-300/40 bg-emerald-400/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>{item.label}</button>)}</div>
       <ColorSelector label="Camiseta" value={value.topColor} onChange={color=>change('topColor',color)}/>

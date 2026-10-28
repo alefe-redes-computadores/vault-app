@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -15,6 +15,10 @@ import {
   Watch,
   Bell,
   UserRound,
+  BarChart3,
+  Database,
+  ListChecks,
+  CalendarRange,
 } from "lucide-react";
 import { useHealthProfile } from "@/hooks/useHealthProfile";
 import {avatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
@@ -24,7 +28,6 @@ import { useSharedHealthIntelligence as useHealthIntelligence } from "@/contexts
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
-import { HealthConnectPanel } from "@/components/saude/HealthConnectPanel";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { MetricHistoryLink } from "@/components/saude/MetricHistoryLink";
 import {clearMetricInsightQuery,type MetricInsightTarget} from "@/lib/health-profile/metric-link";
@@ -73,9 +76,23 @@ import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
 import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
-import { MedicationSafetyCoverage } from "@/components/saude/MedicationSafetyCoverage";
 import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
+const HealthConnectPanel = dynamic(() => import("@/components/saude/HealthConnectPanel").then(m => m.HealthConnectPanel), { loading: () => <p className="p-3 text-xs text-ink-muted">Preparando sincronização…</p> });
+const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/MedicationSafetyCoverage").then(m => m.MedicationSafetyCoverage));
+
+function DeferredHealthSection({id,title,description,badge,icon,children}:{id:string;title:string;description:string;badge?:string;icon:ReactNode;children:ReactNode}) {
+  const [open,setOpen]=useState(false);
+  return <section id={id} className="scroll-mt-24 overflow-hidden rounded-2xl border border-surface-border bg-surface/80">
+    <button type="button" aria-expanded={open} aria-controls={`${id}-content`} onClick={()=>setOpen(value=>!value)} className="flex min-h-[72px] w-full items-center gap-3 px-3 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-raised text-emerald-200">{icon}</span>
+      <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">{title}</strong><span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">{description}</span></span>
+      {badge?<span className="shrink-0 rounded-full border border-surface-border px-2 py-1 font-mono text-[9px] text-ink-muted">{badge}</span>:null}
+      <ChevronDown size={16} className={`shrink-0 text-ink-muted transition-transform ${open?"rotate-180":""}`}/>
+    </button>
+    {open?<div id={`${id}-content`} className="vault-deferred space-y-3 border-t border-surface-border/60 p-3">{children}</div>:null}
+  </section>;
+}
 export default function MyHealthPage() {
   const data = useHealthProfile();
   return <HealthDashboard key={data.personId || "none"} data={data} />;
@@ -222,6 +239,9 @@ function HealthDashboard({
             <Bell size={20} />
           </button>
         </header>
+        <nav aria-label="Áreas de Minha Saúde" className="sticky top-2 z-20 -mx-1 flex gap-2 overflow-x-auto rounded-2xl border border-surface-border/70 bg-void/90 p-1.5 shadow-lg backdrop-blur-xl [scrollbar-width:none]">
+          {[{href:"#meu-avatar",label:"Avatar",icon:<UserRound size={14}/>},{href:"#analises",label:"Análises",icon:<BarChart3 size={14}/>},{href:"#fontes",label:"Fontes",icon:<Database size={14}/>},{href:"#indicadores",label:"Indicadores",icon:<ListChecks size={14}/>},{href:"#historico",label:"Histórico",icon:<CalendarRange size={14}/>}].map(item=><a key={item.href} href={item.href} className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[10px] font-semibold text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{item.icon}{item.label}</a>)}
+        </nav>
         {error && (
           <p
             role="alert"
@@ -242,7 +262,7 @@ function HealthDashboard({
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
               </div>
             )}
-            <section className="overflow-hidden rounded-2xl border border-surface-border border-l-2 border-l-emerald-300/40 bg-gradient-to-br from-emerald-400/[.035] to-surface p-3">
+            <section id="meu-avatar" className="scroll-mt-24 overflow-hidden rounded-[24px] border border-emerald-300/20 border-l-2 border-l-emerald-300/40 bg-[radial-gradient(circle_at_12%_8%,rgba(110,231,183,.09),transparent_38%),linear-gradient(145deg,rgba(110,231,183,.035),rgba(8,12,19,.72))] p-3 shadow-[0_18px_50px_rgba(0,0,0,.16)]">
               <div className="flex items-center gap-3">
                 {person?.avatar_url ? (
                   <img
@@ -258,7 +278,7 @@ function HealthDashboard({
                     {person?.name || "Seu perfil"}
                   </h2>
                   <p className="text-xs text-ink-muted">
-                    {age !== null ? `${age} anos · ` : ""}Seu espaço de saúde
+                    {age !== null ? `${age} anos · ` : ""}Avatar, corpo e medidas principais
                   </p>
                 </div>
                 <button
@@ -279,25 +299,24 @@ function HealthDashboard({
                   <Settings size={18} />
                 </button>
               </div>
-              {/* V156 compact health identity: model at left, evidence to the right. */}
-              <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-start gap-3">
-                <div className="min-w-0 overflow-hidden rounded-lg bg-emerald-300/[0.025]">
+              <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-center gap-3">
+                <div className="min-w-0 overflow-hidden rounded-2xl border border-emerald-300/10 bg-emerald-300/[0.025] shadow-inner">
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{if(brainPulse.top){goFromHealth(`/inteligencia/alertas?insight=${encodeURIComponent(brainPulse.top.insight_id)}`);return;}const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error||brainPulse.isLoading||!brainPulse.top?0:avatarContext.rank} expanded />
                 </div>
-                <div className="min-w-0 flex-1 space-y-3 self-center">
-                  <div>
-                    <p className="text-[11px] text-ink-muted">Altura</p>
-                    <p className="text-lg font-semibold">
+                <div className="min-w-0 flex-1 space-y-2 self-center">
+                  <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
+                    <p className="text-[9px] uppercase tracking-wide text-ink-faint">Altura</p>
+                    <p className="mt-0.5 text-base font-semibold">
                       {profile?.height_cm ? `${profile.height_cm} cm` : "—"}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => open("peso")}
-                    className="block min-h-14 w-full rounded-lg text-left focus-visible:outline focus-visible:outline-emerald-300"
+                    className="block min-h-14 w-full rounded-xl border border-emerald-300/15 bg-emerald-300/[.04] px-3 py-2 text-left focus-visible:outline focus-visible:outline-emerald-300"
                   >
-                    <p className="text-[11px] text-ink-muted">Último peso</p>
-                    <p className="text-lg font-semibold">
+                    <p className="text-[9px] uppercase tracking-wide text-ink-faint">Último peso</p>
+                    <p className="mt-0.5 text-base font-semibold">
                       {weight?.valor_numerico
                         ? `${weight.valor_numerico} kg`
                         : "Registrar"}
@@ -308,9 +327,9 @@ function HealthDashboard({
                       </p>
                     )}
                   </button>
-                  <div>
-                    <p className="text-[11px] text-ink-muted">IMC calculado</p>
-                    <p className="text-lg font-semibold">{index ?? "—"}</p>
+                  <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
+                    <p className="text-[9px] uppercase tracking-wide text-ink-faint">IMC calculado</p>
+                    <p className="mt-0.5 text-base font-semibold">{index ?? "—"}</p>
                   </div>
                 </div>
               </div>
@@ -378,8 +397,11 @@ function HealthDashboard({
               </button>
             </section>
             <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
-            {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}
-            <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
+            <DeferredHealthSection id="analises" title="Análises e tendências" description="Evolução das medidas e cobertura dos dados usados pelo Brain" icon={<BarChart3 size={18}/>} badge={intelligence.isLoading?"analisando":"sob demanda"}>
+              {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}
+              <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>
+            </DeferredHealthSection>
+            <DeferredHealthSection id="fontes" title="Fontes e sincronização" description="Aparelhos, Samsung Health, Health Connect e origem das medidas" icon={<Database size={18}/>} badge={`${active.length} ativo${active.length===1?"":"s"}`}>
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div><h2 className="font-semibold">Minha rede de dados</h2><p className="mt-0.5 text-[10px] text-ink-muted">{active.length} {active.length===1?'aparelho ativo':'aparelhos ativos'}</p></div>
@@ -440,28 +462,15 @@ function HealthDashboard({
                 </details>
               )}
             </section>
+            <HealthConnectPanel key={personId} personId={personId} personName={person?.name || "esta pessoa"} devices={devices} />
+            </DeferredHealthSection>
             {panel === "device" && (
-              <div ref={deviceEditorRef} tabIndex={-1} className="space-y-2 scroll-mt-24 focus:outline-none">
-                <HealthDeviceEditor
-                  key={editDevice || "new"}
-                  personId={personId}
-                  device={deviceById.get(editDevice || "")}
-                  onClose={() => setPanel(null)}
-                />
-                {editDevice && (
-                  <button
-                    type="button"
-                    onClick={() => setArchive(editDevice)}
-                    className="w-full rounded-xl border border-surface-border p-3 text-xs text-ink-muted"
-                  >
-                    {deviceById.get(editDevice)?.active
-                      ? "Arquivar aparelho, preservando histórico"
-                      : "Reativar aparelho"}
-                  </button>
-                )}
+              <div ref={deviceEditorRef} tabIndex={-1} className="scroll-mt-24 space-y-2 rounded-2xl border border-emerald-300/20 bg-surface p-3 focus:outline-none">
+                <HealthDeviceEditor key={editDevice || "new"} personId={personId} device={deviceById.get(editDevice || "")} onClose={() => setPanel(null)}/>
+                {editDevice?<button type="button" onClick={() => setArchive(editDevice)} className="w-full rounded-xl border border-surface-border p-3 text-xs text-ink-muted">{deviceById.get(editDevice)?.active?"Arquivar aparelho, preservando histórico":"Reativar aparelho"}</button>:null}
               </div>
             )}
-            <HealthConnectPanel key={personId} personId={personId} personName={person?.name || "esta pessoa"} devices={devices} />
+            <DeferredHealthSection id="indicadores" title="Indicadores de saúde" description="Últimos valores registrados e acesso ao histórico de cada medida" icon={<ListChecks size={18}/>} badge={`${Object.keys(METRICS).length} tipos`}>
             <section className="space-y-3">
               <div className="flex items-end justify-between gap-3"><div><h2 className="font-semibold">Meus registros</h2><p className="mt-1 text-[11px] text-ink-muted">Valores recentes e acesso ao histórico</p></div><button type="button" onClick={()=>goFromHealth('/saude/registros')} className="min-h-11 shrink-0 text-xs font-semibold text-emerald-400">Ver todos</button></div>
               <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface">
@@ -480,6 +489,7 @@ function HealthDashboard({
                 ))}
               </div>
             </section>
+            </DeferredHealthSection>
             {bodyPart?<AvatarBodyEvidence surgeryMarkerKey={bodyMarkerKey} onShowAllSurgeries={()=>selectBody("surgery")} part={bodyPart} context={bodyContext} onClose={()=>selectBody(null)} onWeight={()=>{selectBody(null);setMetric('peso');}} onEquipment={()=>{selectBody(null);setEditDevice(null);open('device');}}/>:null}
             <MetricHistoryLink personId={loading||isLoading||!person?.user_id?"":personId} today={today} onOpen={target=>{setInsightTarget(target);setMetric(target.type);}}/>
             {metric && <HealthMetricDetails key={metric+(insightTarget?.since||"")+(insightTarget?.until||"")} initialRange={insightTarget?.type===metric?insightTarget:undefined} type={metric} records={records} devices={devices} today={today} onClose={closeMetric} onAdd={() => { closeMetric(); open(metric); }} onRecord={id => goFromHealth(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`)} />}
@@ -540,7 +550,8 @@ function HealthDashboard({
                 <ChevronRight size={16} className="text-emerald-300" />
               </button>
             </div>
-            <section className="rounded-[24px] border border-surface-border bg-surface p-4">
+            <DeferredHealthSection id="historico" title="Histórico por dia" description="Navegue pelas datas, filtre medidas e abra cada registro" icon={<CalendarRange size={18}/>} badge={`${daySummary.total} no dia`}>
+            <section className="rounded-2xl bg-surface-raised/20 p-1">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-semibold">Registros do dia</h2>
                 <button
@@ -645,6 +656,7 @@ function HealthDashboard({
                 </p>
               )}
             </section>
+            </DeferredHealthSection>
           </>
         )}
       </div>

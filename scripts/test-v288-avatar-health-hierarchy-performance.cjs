@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const health=fs.readFileSync('app/saude/minha-saude/page.tsx','utf8');
+const editor=fs.readFileSync('components/saude/AvatarStyleEditor.tsx','utf8');
+for(const id of ['meu-avatar','analises','fontes','indicadores','historico'])assert(health.includes(`id="${id}"`),`missing hierarchy ${id}`);
+for(const label of ['Avatar','Análises','Fontes','Indicadores','Histórico'])assert(health.includes(`label:"${label}"`),`missing navigation ${label}`);
+assert(health.includes('function DeferredHealthSection'),'progressive disclosure is shared');
+assert(health.includes('{open?<div'),'deferred content only mounts when opened');
+assert(health.includes('import { HealthTrendsExplorer }'),'historical trends contract remains canonical');
+assert(health.includes('dynamic(() => import("@/components/saude/HealthConnectPanel")'),'sync integration is split');
+assert(health.indexOf('id="meu-avatar"')<health.indexOf('id="analises"'),'avatar remains the primary surface');
+assert(health.includes('AvatarCareWorkspace context={intelligence.context}'),'shared care context remains available');
+assert(editor.includes('LOOK_PRESETS')&&editor.includes('Looks rápidos'),'avatar gains quick visual presets');
+assert(editor.includes('sticky top-[66px]'),'appearance categories stay reachable');
+assert(editor.includes('normalizeAvatarStyle({...value,...preset.style})'),'presets retain canonical normalization');
+console.log('VAULT V288 — AVATAR + HIERARQUIA + PERFORMANCE: OK');
