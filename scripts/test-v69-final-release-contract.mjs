@@ -22,8 +22,10 @@ ok(
 
 ok(
   pull.includes("finishPullDiagnostics();") &&
-    /finally \{\s*finishPullDiagnostics\(\);\s*isPullingGlobal = false;\s*\}/.test(pull),
-  "diagnóstico finaliza e trava global é liberada"
+    pull.includes("pullInFlight = performPullAllData(userId).finally") &&
+    pull.includes("pullInFlight = null;") &&
+    pull.includes("pullInFlightUser = null;"),
+  "diagnóstico finaliza e a promessa global compartilhada é liberada"
 );
 
 ok(

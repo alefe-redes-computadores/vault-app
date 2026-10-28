@@ -25,6 +25,7 @@ import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 import { pullAllData } from "@/lib/sync/pull";
 import { db } from "@/lib/db";
 import { runManualVaultSync } from "@/lib/sync/manual-sync";
+import { summarizeSyncQueue } from "@/lib/sync/queue-health";
 import {
   getPullDiagnostics,
   type VaultPullRun,
@@ -51,7 +52,7 @@ export default function RecoveryCenterPage() {
   const { user } = useAuth();
   const syncRuntime = useVaultSyncRuntime();
   const { processQueue, isOnline } = useSyncQueue();
-  const pending = useLiveQuery(() => db.syncQueue.count(), []) ?? 0;
+  const queueHealth = useLiveQuery(async () => summarizeSyncQueue(await db.syncQueue.toArray()), []) ?? { total: 0, ready: 0, deferred: 0, failed: 0 };
   const [diagnostics, setDiagnostics] = useState<VaultPullRun>(() => getPullDiagnostics());
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -160,8 +161,9 @@ export default function RecoveryCenterPage() {
               <Database size={15} className="text-ice" />
               <p className="mt-2 text-[9px] uppercase tracking-wide text-ink-faint">Fila local</p>
               <p className="mt-1 text-xs font-semibold">
-                {pending === 0 ? "Sem pendências" : `${pending} aguardando`}
+                {queueHealth.total === 0 ? "Sem pendências" : `${queueHealth.total} preservado(s)`}
               </p>
+              {queueHealth.total > 0 ? <p className="mt-1 text-[9px] leading-relaxed text-ink-faint">{queueHealth.ready} pronto(s) · {queueHealth.deferred} em espera · {queueHealth.failed} para revisar</p> : null}
             </div>
           </div>
 

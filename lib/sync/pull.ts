@@ -16,7 +16,8 @@ import type { SyncQueueItem } from "@/lib/types";
 // TRAVA GLOBAL DE MÓDULO
 // ============================================================
 
-let isPullingGlobal = false;
+let pullInFlight: Promise<void> | null = null;
+let pullInFlightUser: string | null = null;
 
 // ============================================================
 // TIPOS INTERNOS
@@ -144,18 +145,22 @@ async function runPullTasks(
 // PULL
 // ============================================================
 
-export async function pullAllData(
-  userId: string
-): Promise<void> {
-  if (isPullingGlobal) {
-    console.warn(
-      "⚠️ [Pull] Tentativa de execução simultânea bloqueada pela trava global."
-    );
-
-    return;
+export function pullAllData(userId: string): Promise<void> {
+  if (pullInFlight) {
+    if (pullInFlightUser !== userId) {
+      return Promise.reject(new Error("Outra conta possui um pull em andamento."));
+    }
+    return pullInFlight;
   }
+  pullInFlightUser = userId;
+  pullInFlight = performPullAllData(userId).finally(() => {
+    pullInFlight = null;
+    pullInFlightUser = null;
+  });
+  return pullInFlight;
+}
 
-  isPullingGlobal = true;
+async function performPullAllData(userId: string): Promise<void> {
 
   try {
     console.log(
@@ -1731,6 +1736,5 @@ export async function pullAllData(
     throw error;
   } finally {
     finishPullDiagnostics();
-    isPullingGlobal = false;
   }
 }

@@ -49,8 +49,11 @@ import type {
 } from "@/lib/types";
 
 import {
+  buildSyncFailureUpdate,
   getSyncQueueState,
+  getSyncRetryDelayMs,
   resetSyncFailure,
+  SYNC_MAX_BACKOFF_MS,
   SYNC_MAX_RETRIES,
 } from "@/lib/sync/queue-health";
 import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
@@ -62,8 +65,7 @@ import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
 const MAX_RETRIES =
   SYNC_MAX_RETRIES;
 
-const MAX_BACKOFF_MS =
-  60_000;
+const MAX_BACKOFF_MS = SYNC_MAX_BACKOFF_MS;
 
 // ============================================================
 // TRAVA GLOBAL
@@ -5595,15 +5597,7 @@ export function useSyncQueue() {
                   ) {
                     await db.syncQueue.update(
                       item.id,
-                      {
-                        retry_count:
-                          nextRetryCount,
-
-                        failed,
-
-                        error:
-                          errorMessage,
-                      }
+                      buildSyncFailureUpdate(nextRetryCount, errorMessage)
                     );
                   }
 
@@ -5671,15 +5665,7 @@ export function useSyncQueue() {
                   );
                 }
 
-                const delay =
-                  Math.min(
-                    5000 *
-                      Math.pow(
-                        2,
-                        highestRetry
-                      ),
-                    MAX_BACKOFF_MS
-                  );
+                const delay = getSyncRetryDelayMs(highestRetry + 1);
 
                 timeoutRef.current =
                   setTimeout(
