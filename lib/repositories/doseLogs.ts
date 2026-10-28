@@ -1021,6 +1021,15 @@ export const doseLogsRepository = {
 
         if(onlyIfPending && existing?.tomado_em) throw new Error("Esta dose já foi tomada. Atualize as pendências antes de confirmar o motivo.");
 
+        if (onlyIfPending && existing?.ignorado_em) {
+          const requestedReason = motivo?.trim() || "nao_realizada";
+          const existingReason = existing.motivo?.trim() || "nao_realizada";
+          if (status === "ignored" && requestedReason === existingReason && existing.id) {
+            return existing.id;
+          }
+          throw new Error("Esta dose já foi revisada. Atualize as pendências antes de alterar o motivo.");
+        }
+
         // ====================================================
         // CLEAR
         // ====================================================
@@ -1227,7 +1236,7 @@ export const doseLogsRepository = {
                   )
                 : undefined,
 
-            motivo: status === "ignored" ? (motivo?.trim() || existing?.motivo) : undefined,
+            motivo: status === "ignored" ? (motivo?.trim() || existing?.motivo || "nao_realizada") : undefined,
 
             ignorado_em:
               status ===

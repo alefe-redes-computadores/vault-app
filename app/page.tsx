@@ -84,6 +84,7 @@ import {
 } from "@/lib/health-intelligence/home-signal-orchestration";
 import { normalizedMedicationSchedules } from "@/lib/medication-dose-history";
 import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
+import { buildPendingDoseBacklog } from "@/lib/pending-dose-backlog";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -692,6 +693,17 @@ export default function HomePage() {
     []
   );
 
+  // Uma única leitura reativa sustenta a fila limitada de revisão (7 dias).
+  // Ausência de log continua sendo apenas "sem desfecho", nunca não adesão.
+  const reviewDoseLogs = useLiveQuery(
+    () => activePersonId && user?.id
+      ? db.doseLogs.where("[user_id+person_id]").equals([user.id, activePersonId]).filter(log =>
+          log.data >= addDaysToLocalDate(hoje, -6) && log.data <= hoje).toArray()
+      : [],
+    [activePersonId, user?.id, hoje],
+    []
+  );
+
   // ==========================================================
   // ENTIDADES CLÍNICAS PERSON-SCOPED
   // ==========================================================
@@ -804,116 +816,28 @@ export default function HomePage() {
         const lista:
           PendingDose[] = [];
         const medicationById = new Map(medicamentosAtivos.filter(med => med.id && med.person_id === activePersonId && med.user_id === user?.id).map(med => [med.id!, med]));
-        const todaySlots=buildDoseSlotIndex(doseLogs,{userId:user?.id,personId:activePersonId||undefined});
-        const yesterdaySlots=buildDoseSlotIndex(doseLogsOntem,{userId:user?.id,personId:activePersonId||undefined});
-
-        const appendPendingSlots =
-          ({
-            data,
-            diaLabel,
-            respectCurrentTime,
-            slotIndex,
-          }: {
-            data:
-              string;
-
-            diaLabel:
-              "Hoje" |
-              "Ontem";
-
-            respectCurrentTime:
-              boolean;
-            slotIndex: ReturnType<typeof buildDoseSlotIndex>;
-          }) => {
-            for (
-              const med of
-                medicamentosAtivos
-            ) {
-              if (
-                !med.id ||
-                med.tipo_uso !==
-                  "continuo"
-              ) {
-                continue;
-              }
-
-              const horarios =
-                (
-                  med.estoque_horarios ||
-                  []
-                )
-                  .filter(
-                    Boolean
-                  )
-                  .sort();
-
-              for (
-                const horario of
-                  horarios
-              ) {
-                if (
-                  respectCurrentTime &&
-                  horario >
-                    horaAtual
-                ) {
-                  continue;
-                }
-
-                const slot=resolveDoseSlot(slotIndex,med.id,data,horario);
-                if (doseSlotIsResolved(slot)) {
-                  continue;
-                }
-
-                lista.push({
-                  stockUnavailable: hasKnownEmptyMedicationStock(med),
-                  medicamentoId:
-                    med.id,
-
-                  nome:
-                    med.nome,
-
-                  formato:
-                    med.formato,
-
-                  cores:
-                    med.cores,
-
-                  data,
-
-                  horario,
-
-                  diaLabel,
-                });
-              }
-            }
-          };
-
-        /*
-         * Pendências antigas aparecem primeiro.
-         */
-        appendPendingSlots({
-          data:
-            ontem,
-
-          diaLabel:
-            "Ontem",
-
-          respectCurrentTime:
-            false,
-          slotIndex:yesterdaySlots,
-        });
-
-        appendPendingSlots({
-          data:
-            hoje,
-
-          diaLabel:
-            "Hoje",
-
-          respectCurrentTime:
-            true,
-          slotIndex:todaySlots,
-        });
+        for (const slot of buildPendingDoseBacklog({
+          medications: medicamentosAtivos,
+          logs: reviewDoseLogs,
+          userId: user?.id,
+          personId: activePersonId || undefined,
+          today: hoje,
+          currentTime: horaAtual,
+          lookbackDays: 7,
+        })) {
+          const med = medicationById.get(slot.medicamentoId);
+          if (!med) continue;
+          lista.push({
+            stockUnavailable: hasKnownEmptyMedicationStock(med),
+            medicamentoId: slot.medicamentoId,
+            nome: med.nome,
+            formato: med.formato,
+            cores: med.cores,
+            data: slot.data,
+            horario: slot.horario,
+            diaLabel: slot.diaLabel,
+          });
+        }
 
         for (const log of plannedEarlier) {
           if (!log.id || !log.medicamento_id ||
@@ -954,6 +878,7 @@ export default function HomePage() {
         activePersonId,
         doseLogs,
         doseLogsOntem,
+        reviewDoseLogs,
         plannedEarlier,
         user?.id,
         horaAtual,
@@ -1691,13 +1616,15 @@ export default function HomePage() {
           (medicamentoId: string, horario: string, tomadoEm: string, quantidade?: number, requireRegisteredStock = false) => {
             if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
             return doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId,
-              data: dose.data, horario, status: "taken", tomadoEm, quantidade, requireRegisteredStock });
+              data: dose.data, horario, status: "taken", tomadoEm, quantidade, requireRegisteredStock,
+              onlyIfPending: true, adjustStock: false });
           };
         const ignorar = isToday ? ignorarDoseHoje : isYesterday ? ignorarDoseOntem :
           (medicamentoId: string, horario: string, quantidade?: number, motivo?: string, _semEstoque?: boolean) => {
             if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
             return doseLogsRepository.setStatus({ personId: activePersonId, medicamentoId,
-              data: dose.data, horario, status: "ignored", quantidade, motivo });
+              data: dose.data, horario, status: "ignored", quantidade, motivo,
+              onlyIfPending: true, adjustStock: false });
           };
 
         switch (
@@ -1742,7 +1669,7 @@ export default function HomePage() {
           case "ignored": {
             await ignorar(
               dose.medicamentoId,
-              dose.horario, undefined, resolution.motivo, resolution.motivo === "sem_estoque"
+              dose.horario, undefined, resolution.motivo, true
             );
 
             break;

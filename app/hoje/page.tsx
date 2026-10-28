@@ -2416,16 +2416,17 @@ export default function HojePage() {
     const ownerAtStart = batchOwnerRef.current;
     let interrompidoPorTrocaDePessoa = false;
 
-    // Serial de propósito: protege duas doses do mesmo medicamento
-    // contra disputa de leitura/gravação do saldo.
-    for (const dose of snapshotLote) {
-      if (batchOwnerRef.current !== ownerAtStart) {
-        interrompidoPorTrocaDePessoa = true;
-        break;
-      }
-      if (!dose.medicamentoId) continue;
+    try {
+      // Serial de propósito: protege duas doses do mesmo medicamento
+      // contra disputa de leitura/gravação do saldo.
+      for (const dose of snapshotLote) {
+        if (batchOwnerRef.current !== ownerAtStart) {
+          interrompidoPorTrocaDePessoa = true;
+          break;
+        }
+        if (!dose.medicamentoId) continue;
 
-      try {
+        try {
         let takenAt: Date;
 
         if (mode === "scheduled") {
@@ -2449,20 +2450,21 @@ export default function HojePage() {
           dose.unidadePorDose, true
         );
 
-        confirmadas.push(dose);
-      } catch (error) {
-        falhas += 1;
-        console.error(
-          "Erro ao registrar dose no lote temporal:",
-          error
-        );
+          confirmadas.push(dose);
+        } catch (error) {
+          falhas += 1;
+          console.error(
+            "Erro ao registrar dose no lote temporal:",
+            error
+          );
+        }
       }
+    } finally {
+      // Nenhuma exceção inesperada pode deixar a tela travada em processamento.
+      setLoteConfirmado(batchOwnerRef.current === ownerAtStart ? confirmadas : []);
+      setProcessandoTodos(false);
+      batchOperationLock.current = false;
     }
-
-    // Never expose undo operations for an old person after a profile switch.
-    setLoteConfirmado(batchOwnerRef.current === ownerAtStart ? confirmadas : []);
-    setProcessandoTodos(false);
-    batchOperationLock.current = false;
 
     if (confirmadas.length > 0) {
       setIsBatchTimeModalOpen(false);
@@ -2522,26 +2524,28 @@ export default function HojePage() {
 
     const naoDesfeitas: DoseItemExt[] = [];
 
-    for (const dose of loteConfirmado) {
-      if (!dose.medicamentoId) continue;
+    try {
+      for (const dose of loteConfirmado) {
+        if (!dose.medicamentoId) continue;
 
-      try {
-        await desmarcarDose(
-          dose.medicamentoId,
-          dose.horario
-        );
-      } catch (error) {
-        naoDesfeitas.push(dose);
-        console.error(
-          "Erro ao desfazer dose do lote:",
-          error
-        );
+        try {
+          await desmarcarDose(
+            dose.medicamentoId,
+            dose.horario
+          );
+        } catch (error) {
+          naoDesfeitas.push(dose);
+          console.error(
+            "Erro ao desfazer dose do lote:",
+            error
+          );
+        }
       }
+    } finally {
+      setLoteConfirmado(naoDesfeitas);
+      setProcessandoTodos(false);
+      batchOperationLock.current = false;
     }
-
-    setLoteConfirmado(naoDesfeitas);
-    setProcessandoTodos(false);
-    batchOperationLock.current = false;
 
     if (naoDesfeitas.length === 0) {
       trigger("vibrate");

@@ -176,23 +176,25 @@ export function PendingDosesModal({
     isProcessingAll;
 
   const { availableDoses, unavailableDoses, doseGroups, dosesOntem } = useMemo(() => {
-    const available: PendingDose[] = [], unavailable: PendingDose[] = [], yesterday: PendingDose[] = [], today: PendingDose[] = [];
+    const available: PendingDose[] = [], unavailable: PendingDose[] = [], earlier: PendingDose[] = [], yesterday: PendingDose[] = [], today: PendingDose[] = [];
     for (const dose of doses) {
       (dose.stockUnavailable ? unavailable : available).push(dose);
-      (dose.diaLabel === "Hoje" ? today : yesterday).push(dose);
+      (dose.diaLabel === "Hoje" ? today : dose.diaLabel === "Ontem" ? yesterday : earlier).push(dose);
     }
     return {
       availableDoses: available,
       unavailableDoses: unavailable,
       dosesOntem: yesterday.length,
       doseGroups: [
-        { key: "ontem", label: "Pendências anteriores", doses: yesterday },
+        { key: "anteriores", label: "Dias anteriores", doses: earlier },
+        { key: "ontem", label: "Ontem", doses: yesterday },
         { key: "hoje", label: "Hoje", doses: today },
       ].filter(group => group.doses.length > 0),
     };
   }, [doses]);
   const [stockConfirmationOpen, setStockConfirmationOpen] = useState(false);
   const resolutionLock = useRef(false);
+  const resolvedKeysRef = useRef(new Set<string>());
   const dialogRef = useRef<HTMLDivElement>(null);
   const [batchError, setBatchError] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -211,6 +213,7 @@ export function PendingDosesModal({
       setBatchError("");
       setSelectedDose(null);
       setResolvedInSession(0);
+      resolvedKeysRef.current.clear();
 
       setCustomTakenAt(
         ""
@@ -318,6 +321,7 @@ export function PendingDosesModal({
     try {
       for (const dose of unavailableDoses) {
         await onResolveDose(dose, {kind:"ignored", motivo:"sem_estoque"});
+        resolvedKeysRef.current.add(pendingDoseKey(dose));
         setResolvedInSession(value => value + 1);
       }
       setStockConfirmationOpen(false);
@@ -397,6 +401,7 @@ export function PendingDosesModal({
       for (const dose of availableDoses) {
         try {
           await onResolveDose(dose, {...resolution, requireRegisteredStock:true});
+          resolvedKeysRef.current.add(pendingDoseKey(dose));
           successCount += 1;
           setResolvedInSession(value => value + 1);
         } catch (error) {
@@ -469,7 +474,11 @@ export function PendingDosesModal({
       finally { resolutionLock.current = false; }
 
       setResolvedInSession(value => value + 1);
-      const next = nextPendingDose(resolvedDose, doses);
+      resolvedKeysRef.current.add(pendingDoseKey(resolvedDose));
+      const next = nextPendingDose(
+        resolvedDose,
+        doses.filter(dose => !resolvedKeysRef.current.has(pendingDoseKey(dose)))
+      );
       setSelectedDose(next ? {...next} : null);
       if (next) setCustomTakenAt(getDefaultCustomValue(next));
 
@@ -827,6 +836,8 @@ export function PendingDosesModal({
                     void handleResolve({
                       kind:
                         "ignored",
+                      motivo:
+                        "nao_realizada",
                     })
                 }
                 className="flex w-full items-center gap-3 rounded-2xl border border-coral/25 bg-coral/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"

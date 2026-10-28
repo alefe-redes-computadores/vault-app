@@ -6,7 +6,7 @@ const avatar = fs.readFileSync("components/saude/HealthAvatar3D.tsx", "utf8");
 
 // The command sheet must summarize and group the routine without changing dose semantics.
 assert(pending.includes('aria-label="Resumo das doses pendentes"'));
-assert(pending.includes('label: "Pendências anteriores"') && pending.includes('label: "Hoje"'));
+assert(pending.includes('label: "Dias anteriores"') && pending.includes('label: "Ontem"') && pending.includes('label: "Hoje"'));
 assert(pending.includes('className="sticky -top-3'));
 assert(pending.includes('aria-live="polite"'));
 assert(pending.includes('requireRegisteredStock:true'));
