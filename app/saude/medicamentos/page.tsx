@@ -223,8 +223,8 @@ const SectionTitle = ({
 
 export default function MedicamentosListPage() {
   const healthIntelligence = useSharedHealthIntelligence();
-  const { retiradas } = useRetiradas();
-  const { renovacoes = [] } = useRenovacoes();
+  const { retiradas, isLoading: withdrawalsLoading } = useRetiradas();
+  const { renovacoes = [], isLoading: renewalsLoading } = useRenovacoes();
   const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
   const renewalsByMedication = useMemo(() => indexMedicationRenewals(renovacoes), [renovacoes]);
   const router =
@@ -238,6 +238,7 @@ export default function MedicamentosListPage() {
   const {
     medicamentosIncluindoDescontinuados:
       medicamentosTodas,
+    isLoading: medicationsLoading,
   } =
     useMedicamentos();
 
@@ -258,6 +259,7 @@ export default function MedicamentosListPage() {
 
   const {
     doseLogs,
+    isLoading: doseLogsLoading,
   } =
     useDoseLogs(
       hojeString
@@ -1396,13 +1398,16 @@ export default function MedicamentosListPage() {
   // ==========================================================
 
   if (
-    medicamentosTodas ===
-      undefined ||
-    doseLogs ===
-      undefined
+    medicationsLoading ||
+    doseLogsLoading ||
+    withdrawalsLoading ||
+    renewalsLoading
   ) {
     return (
-      <CardListSkeleton />
+      <main className="min-h-screen bg-void px-5 pb-28 pt-6" aria-busy="true" aria-label="Carregando medicamentos">
+        <p role="status" className="sr-only">Carregando medicamentos e contexto de cuidado da pessoa selecionada.</p>
+        <CardListSkeleton />
+      </main>
     );
   }
 

@@ -142,8 +142,7 @@ export function useRenovacoes(
       [
         activePersonId,
         medicamentoId,
-      ],
-      []
+      ]
     );
 
   // ==========================================================
@@ -269,6 +268,10 @@ export function useRenovacoes(
     renovacoes:
       renovacoes ||
       [],
+
+    isLoading:
+      Boolean(activePersonId) &&
+      renovacoes === undefined,
 
     getRenovacao,
 

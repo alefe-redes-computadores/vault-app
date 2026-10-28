@@ -23,8 +23,7 @@ export function useRetiradas(medicamentoId?: string) {
         ? retiradasRepository.getByMedicamento(user.id, activePersonId, medicamentoId)
         : retiradasRepository.getAll(user.id, activePersonId);
     },
-    [user?.id, activePersonId, medicamentoId],
-    []
+    [user?.id, activePersonId, medicamentoId]
   );
 
   const linkReceipt = useCallback(
@@ -89,6 +88,7 @@ export function useRetiradas(medicamentoId?: string) {
     linkReceipt,
     rescheduleRetiradas,
     retiradas: retiradas ?? [],
+    isLoading: Boolean(user?.id && activePersonId) && retiradas === undefined,
     getRetirada,
     getRetiradasByDate,
     addRetirada,
