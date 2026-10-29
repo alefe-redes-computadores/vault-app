@@ -6,7 +6,7 @@ const avatar = fs.readFileSync("components/saude/HealthAvatar3D.tsx", "utf8");
 
 for (const marker of [
   "ListPageHeader",
-  "ClinicalListSummary",
+  "AccessCommandOverview",
   "useReturnContext",
   "activeProcesses",
   "cyclesInProgress",
@@ -14,6 +14,8 @@ for (const marker of [
   "Ajuda e catálogo SUS",
   "<SusCatalogBrowser compact />",
 ]) assert(supply.includes(marker), `V189 supply command missing: ${marker}`);
+
+assert(supply.indexOf("<AccessCommandOverview") < supply.indexOf("<ClinicalSectionNav"), "supply command must precede section navigation");
 
 for (const preserved of [
   "ProcessForm",

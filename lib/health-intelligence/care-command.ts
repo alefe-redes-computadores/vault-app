@@ -5,6 +5,7 @@ import { buildBrainCarePlan, type BrainCarePlan } from "./care-plan";
 import { buildCareDocumentReadiness, type CareDocumentReadinessPortfolio } from "./care-document-readiness";
 import { buildMedicationPortfolio, type MedicationPortfolio } from "./medication-portfolio";
 import { buildPersonalHealthPortfolio, type PersonalHealthPortfolio } from "./personal-health-portfolio";
+import { buildAccessPortfolio, type AccessPortfolio } from "./access-portfolio";
 
 export type CareCommandSnapshot = {
   forecast: CareForecast;
@@ -17,6 +18,7 @@ export type CareCommandSnapshot = {
   documents: CareDocumentReadinessPortfolio;
   medications: MedicationPortfolio;
   health: PersonalHealthPortfolio;
+  access: AccessPortfolio;
 };
 
 /**
@@ -43,5 +45,6 @@ export function buildCareCommandSnapshot(context: HealthInsightContext): CareCom
   const plan = buildBrainCarePlan(context, forecast, readiness, documents);
   const medications = buildMedicationPortfolio(context, plan, readiness);
   const health = buildPersonalHealthPortfolio(context);
-  return { forecast, readiness, documents, medications, health, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan, decision: plan.decision };
+  const access = buildAccessPortfolio(context, documents);
+  return { forecast, readiness, documents, medications, health, access, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan, decision: plan.decision };
 }

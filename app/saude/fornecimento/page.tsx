@@ -7,9 +7,9 @@ import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { triggerHaptic } from "@/lib/haptics";
 import { SusCatalogBrowser } from "@/components/saude/SusCatalogBrowser";
 import { SupplyPreparation } from "@/components/saude/SupplyPreparation";
-import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationAuthorityMap } from "@/components/saude/MedicationAuthorityMap";
+import { AccessCommandOverview } from "@/components/saude/AccessCommandOverview";
 import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -1145,11 +1145,11 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         backUrl={backTarget}
       />
       <div className="min-w-0 space-y-3 px-4 pt-4 sm:px-5">
-      <ClinicalSectionNav label="Áreas do fornecimento" items={[{id:"fornecimento-agora",label:"Agora",icon:<PackageCheck size={14}/>,badge:processView.cyclesInProgress},{id:"processos",label:"Processos",icon:<FolderHeart size={14}/>,badge:processView.activeProcesses.length},{id:"processo-atual",label:"Processo atual",icon:<CheckCircle2 size={14}/>},{id:"ciclo-atual",label:"Ciclo",icon:<FileText size={14}/>,badge:cycles.length}]}/>
       <div id="fornecimento-agora" className="scroll-mt-24">
-      {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={processView.cyclesInProgress ? `${processView.cyclesInProgress} ciclo${processView.cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:processView.activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processView.cycles},{label:"Documentos",value:processView.documents}]}/> : null}
+      <AccessCommandOverview command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)}/>
       </div>
-      <MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} onNavigate={(href)=>router.push(href)}/>
+      <ClinicalSectionNav label="Áreas do fornecimento" items={[{id:"fornecimento-agora",label:"Agora",icon:<PackageCheck size={14}/>,badge:processView.cyclesInProgress},{id:"processos",label:"Processos",icon:<FolderHeart size={14}/>,badge:processView.activeProcesses.length},{id:"processo-atual",label:"Processo atual",icon:<CheckCircle2 size={14}/>},{id:"ciclo-atual",label:"Ciclo",icon:<FileText size={14}/>,badge:cycles.length}]}/>
+      <MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} access={healthIntelligence.careCommand?.access} onNavigate={(href)=>router.push(href)}/>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…
