@@ -1655,6 +1655,7 @@ function EditarMedicamentoContent() {
   ] =
     useState<
       | "continuo"
+      | "temporario"
       | "esporadico"
       | "sos"
     >(
@@ -2418,8 +2419,9 @@ function EditarMedicamentoContent() {
               const note = futureLogs.at(-1)?.motivo || courseLogs.at(-1)?.motivo || "";
               const currentCourseLogs = courseLogs.filter(log => log.motivo === note);
               const match = /^Tratamento temporário · (\d{4}-\d{2}-\d{2}) · (\d+) dia\(s\)$/.exec(note);
+              if (match && (item.tipo_uso === "esporadico" || item.tipo_uso === "sos")) setTipoUso("temporario");
               setHasExistingTemporaryCourse(futureLogs.length > 0);
-              setTemporaryCourse(match ? { enabled: futureLogs.length > 0, start: match[1], days: match[2], times: [...new Set(currentCourseLogs.map(log => log.horario))].sort() } : emptyTemporaryCourseDraft);
+              setTemporaryCourse(match ? { enabled: futureLogs.length > 0, start: match[1], days: match[2], times: [...new Set(currentCourseLogs.map(log => log.horario))].sort(), quantityPerDose: String(currentCourseLogs.find(log => log.quantidade)?.quantidade ?? item.estoque_unidade_por_dose ?? "") } : emptyTemporaryCourseDraft);
             }
 
             setMedicoNome(
@@ -3888,8 +3890,8 @@ function EditarMedicamentoContent() {
 
           const safePersonId =
             activePersonId;
-          const course = tipoUso === "continuo" ? null : readTemporaryCourseDraft(temporaryCourse);
-          if (temporaryCourse.enabled && tipoUso === "continuo") throw new Error("Selecione uso eventual para o tratamento com prazo definido.");
+          const course = tipoUso === "temporario" ? readTemporaryCourseDraft({ ...temporaryCourse, enabled: true }) : null;
+          if (tipoUso === "temporario" && !course) throw new Error("Informe o período e os horários do tratamento temporário.");
 
           const horariosFiltrados =
             tipoUso ===
@@ -6573,7 +6575,7 @@ function EditarMedicamentoContent() {
                     </h3>
                   </div>
 
-                  <div className="mb-5 grid grid-cols-2 gap-3">
+                  <div className="mb-5 grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={
@@ -6601,6 +6603,14 @@ function EditarMedicamentoContent() {
 
                     <button
                       type="button"
+                      onClick={() => { trigger("vibrate"); setTipoUso("temporario"); setTemporaryCourse(current => ({ ...current, enabled: true })); markChanged(); }}
+                      className={`rounded-xl border px-1 py-3 text-xs font-bold transition-all ${tipoUso === "temporario" ? "border-violet-400 bg-violet-400/10 text-violet-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                    >
+                      Por período
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={
                         () => {
                           trigger(
@@ -6619,8 +6629,8 @@ function EditarMedicamentoContent() {
                         }
                       }
                       className={`rounded-xl border py-3 text-sm font-bold transition-all ${
-                        tipoUso !==
-                        "continuo"
+                        tipoUso ===
+                        "esporadico" || tipoUso === "sos"
                           ? "border-amber-400 bg-amber-400/10 text-amber-400"
                           : "border-surface-border/50 bg-surface-raised text-ink-muted"
                       }`}
@@ -6630,7 +6640,7 @@ function EditarMedicamentoContent() {
                   </div>
 
                   {!statusAtivo &&
-                    tipoUso !== "continuo" && (
+                    (tipoUso === "esporadico" || tipoUso === "sos") && (
                     <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] px-3.5 py-3">
                       <p className="text-xs font-semibold text-amber-300">
                         Disponível como SOS sem reabrir o tratamento
@@ -6832,17 +6842,17 @@ function EditarMedicamentoContent() {
                     </div>
                   )}
 
-                  {tipoUso !==
-                    "continuo" && (
+                  {tipoUso === "temporario" && (
                     <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-5">
-                      <TemporaryCourseFields value={temporaryCourse} onChange={next => { setTemporaryCourse(next); markChanged(); }} existing={hasExistingTemporaryCourse} />
+                      <TemporaryCourseFields value={{ ...temporaryCourse, enabled: true }} onChange={next => { setTemporaryCourse(next); markChanged(); }} existing={hasExistingTemporaryCourse} />
                       <p className="text-xs leading-relaxed text-ink-muted">
-                        Como este medicamento é de uso eventual, não há horários diários obrigatórios. Cada tomada será registrada individualmente no histórico
-                        {estoqueAtivo
-                          ? " e o estoque será ajustado quando houver dados suficientes para calcular o consumo."
-                          : "."}
+                        O plano usa somente período, horários e quantidade informados. Alterações preservam tomadas e doses ignoradas já registradas.
                       </p>
-
+                    </div>
+                  )}
+                  {(tipoUso === "esporadico" || tipoUso === "sos") && (
+                    <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-5">
+                      <p className="text-xs leading-relaxed text-ink-muted">Sem rotina obrigatória. Cada uso é registrado individualmente como SOS/conforme necessidade.</p>
                       <button
                         onClick={
                           () =>

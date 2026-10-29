@@ -1321,7 +1321,7 @@ export const doseLogsRepository = {
     const reason = course ? temporaryCourseNote(course) : "";
     return db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
       const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
-      if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso eventual para um tratamento de duração definida.");
+      if (medication.tipo_uso === "continuo" && course) throw new Error("Selecione uso temporário para um tratamento de duração definida.");
       const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
         .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id);
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
@@ -1356,7 +1356,7 @@ export const doseLogsRepository = {
         const timestamp = new Date().toISOString();
         const log: DoseLog = { id: crypto.randomUUID(), user_id: user.id, person_id: safePersonId,
           medicamento_id: safeMedicamentoId, data: slot.date, horario: slot.time,
-          quantidade: resolveDoseQuantity(medication, undefined), dose_kind: "planned", motivo: reason,
+          quantidade: resolveDoseQuantity(medication, course?.quantityPerDose), dose_kind: "planned", motivo: reason,
           tomado_em: undefined, ignorado_em: undefined, created_at: timestamp, updated_at: timestamp, synced: false };
         await db.doseLogs.add(log);
         await enfileirarOperacao("doseLogs", "add", log);

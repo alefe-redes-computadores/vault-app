@@ -5101,6 +5101,8 @@ export function processarListaMedicamentos(
 
     quantidade?:
       number;
+
+    dose_kind?: "scheduled" | "sos" | "extra" | "planned";
   }>
 ): ProcessedMed[] {
   const lista =
@@ -5111,6 +5113,7 @@ export function processarListaMedicamentos(
             "esporadico" ||
           medicamento.tipo_uso ===
             "sos";
+        const isTemporary = medicamento.tipo_uso === "temporario";
 
         // VAULT_SOS_AFTER_DISCONTINUATION_V94
         // O encerramento permanece histórico, mas SOS pode continuar operacional.
@@ -5161,12 +5164,11 @@ export function processarListaMedicamentos(
             isDoseIgnored
           );
 
-        const horariosPlanejados =
-          uniqueStrings(
-            medicamento
-              .estoque_horarios ||
-              []
-          );
+        const horariosPlanejados = uniqueStrings(
+          isTemporary
+            ? logsMedicamento.filter(log => log.dose_kind === "planned").map(log => log.horario || "")
+            : medicamento.estoque_horarios || []
+        );
 
         const horariosTomados =
           new Set(

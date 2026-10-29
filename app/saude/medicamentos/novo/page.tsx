@@ -1674,6 +1674,7 @@ export default function NovoMedicamentoPage() {
   ] =
     useState<
       | "continuo"
+      | "temporario"
       | "esporadico"
       | "sos"
     >(
@@ -3145,8 +3146,8 @@ export default function NovoMedicamentoPage() {
 
           const personId =
             activePersonId;
-          const course = readTemporaryCourseDraft(temporaryCourse);
-          if (course && tipoUso === "continuo") throw new Error("Selecione uso eventual para o tratamento com prazo definido.");
+          const course = tipoUso === "temporario" ? readTemporaryCourseDraft({ ...temporaryCourse, enabled: true }) : null;
+          if (tipoUso === "temporario" && !course) throw new Error("Informe o período e os horários do tratamento temporário.");
 
           const today =
             getLocalTodayISO();
@@ -5585,7 +5586,7 @@ export default function NovoMedicamentoPage() {
                     </h3>
                   </div>
 
-                  <div className="mb-5 grid grid-cols-2 gap-3">
+                  <div className="mb-5 grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={
@@ -5606,7 +5607,15 @@ export default function NovoMedicamentoPage() {
                           : "border-surface-border/50 bg-surface-raised text-ink-muted"
                       }`}
                     >
-                      Contínuo (Diário)
+                      Contínuo
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { trigger("vibrate"); setTipoUso("temporario"); setTemporaryCourse(current => ({ ...current, enabled: true })); }}
+                      className={`rounded-xl border px-1 py-3 text-xs font-bold transition-all ${tipoUso === "temporario" ? "border-violet-400 bg-violet-400/10 text-violet-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}
+                    >
+                      Por período
                     </button>
 
                     <button
@@ -5623,13 +5632,13 @@ export default function NovoMedicamentoPage() {
                         }
                       }
                       className={`rounded-xl border py-3 text-sm font-bold transition-all ${
-                        tipoUso !==
-                        "continuo"
+                        tipoUso ===
+                        "esporadico" || tipoUso === "sos"
                           ? "border-amber-400 bg-amber-400/10 text-amber-400"
                           : "border-surface-border/50 bg-surface-raised text-ink-muted"
                       }`}
                     >
-                      Esporádico / SOS
+                      SOS
                     </button>
                   </div>
 
@@ -5744,13 +5753,13 @@ export default function NovoMedicamentoPage() {
                     </div>
                   )}
 
-                  {tipoUso !==
-                    "continuo" && (
+                  {tipoUso === "temporario" && (
                     <div className="space-y-3">
-                      <TemporaryCourseFields value={temporaryCourse} onChange={setTemporaryCourse} />
-                      <p className="rounded-xl bg-surface-raised p-3 text-center text-xs text-ink-muted">Sem prazo informado, o app não cria uma rotina automática. Com o período acima, agenda somente as doses futuras explicitadas.</p>
+                      <TemporaryCourseFields value={{ ...temporaryCourse, enabled: true }} onChange={setTemporaryCourse} />
+                      <p className="rounded-xl bg-surface-raised p-3 text-center text-xs text-ink-muted">O Vault calcula o plano a partir da prescrição informada; ele não sugere posologia. Estoque só muda ao confirmar cada tomada.</p>
                     </div>
                   )}
+                  {(tipoUso === "esporadico" || tipoUso === "sos") && <p className="rounded-xl bg-surface-raised p-3 text-center text-xs text-ink-muted">Sem rotina automática. Registre somente quando houver uso conforme necessidade.</p>}
                 </div>
               </motion.div>
             )}

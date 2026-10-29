@@ -1447,9 +1447,8 @@ function MedicamentoDetalhesContent() {
   // DADOS DERIVADOS
   // ==========================================================
 
-  const isSOS =
-    med.tipo_uso !==
-    "continuo";
+  const isTemporary = med.tipo_uso === "temporario";
+  const isSOS = med.tipo_uso === "esporadico" || med.tipo_uso === "sos";
 
   const estoqueInfo =
     computeEstoqueInfo(
@@ -1623,37 +1622,22 @@ function MedicamentoDetalhesContent() {
       )[0] ||
     null;
 
-  const horariosConfigurados =
-    med.tipo_uso ===
-      "continuo" &&
-    Array.isArray(
-      med.estoque_horarios
-    )
-      ? Array.from(
-          new Set(
-            med.estoque_horarios
-              .map(
-                (
-                  horario
-                ) =>
-                  String(
-                    horario ||
-                      ""
-                  ).trim()
-              )
-              .filter(
-                Boolean
-              )
-          )
-        )
-      : [];
-
   const logsHoje =
     doseLogs.filter(
       (log) =>
         log.data ===
         hoje
     );
+
+  const horariosConfigurados = Array.from(new Set(
+    (isTemporary
+      ? logsHoje.filter(log => log.dose_kind === "planned").map(log => log.horario)
+      : med.tipo_uso === "continuo" && Array.isArray(med.estoque_horarios)
+        ? med.estoque_horarios
+        : [])
+      .map(horario => String(horario || "").trim())
+      .filter(Boolean)
+  ));
 
   const horariosTomadosHoje =
     new Set(
@@ -1698,8 +1682,7 @@ function MedicamentoDetalhesContent() {
     );
 
   const dosesEsperadasHoje =
-    med.tipo_uso ===
-    "continuo"
+    (med.tipo_uso === "continuo" || isTemporary)
       ? horariosConfigurados.length
       : 0;
 
@@ -2522,9 +2505,7 @@ function MedicamentoDetalhesContent() {
         `Dosagem: ${med.dosagem}`,
 
         `Uso: ${
-          isSOS
-            ? "Esporádico / SOS"
-            : "Contínuo"
+          isTemporary ? "Temporário / por período" : isSOS ? "Esporádico / SOS" : "Contínuo"
         }`,
       ];
 
@@ -2578,9 +2559,7 @@ function MedicamentoDetalhesContent() {
         `Dosagem: ${med.dosagem}`,
 
         `Uso: ${
-          isSOS
-            ? "Esporádico / SOS"
-            : "Contínuo"
+          isTemporary ? "Temporário / por período" : isSOS ? "Esporádico / SOS" : "Contínuo"
         }`,
       ];
 
@@ -3100,7 +3079,7 @@ function MedicamentoDetalhesContent() {
                     {med.dosagem}
                     <span>
                       {" "}•{" "}
-                      {isSOS ? "Uso Esporádico / SOS" : "Uso Contínuo"}
+                      {isTemporary ? "Uso Temporário / Por período" : isSOS ? "Uso Esporádico / SOS" : "Uso Contínuo"}
                     </span>
                   </p>
 

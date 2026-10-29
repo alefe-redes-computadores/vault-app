@@ -773,6 +773,7 @@ export default function MedicamentosListPage() {
         isEstoqueCritico,
       } =
         item;
+      const isTemporary = med.tipo_uso === "temporario";
 
       if (
         !med.id
@@ -1121,6 +1122,7 @@ export default function MedicamentosListPage() {
                   </button>
                 )}
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">SOS</span>}
+                {isTemporary && <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-300">POR PERÍODO</span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Revisar identidade</span>
                 )}

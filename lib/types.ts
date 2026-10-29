@@ -795,7 +795,7 @@ export interface Medicamento {
   tipo_receita?: TipoReceita;
   lembrete_receita_modo?: ModoLembreteReceita;
   lembrete_receita_data?: string;
-  tipo_uso?: "continuo" | "esporadico" | "sos";
+  tipo_uso?: "continuo" | "temporario" | "esporadico" | "sos";
 
   tipo_aquisicao?: "comprado" | "sus" | "gratuito";
   data_retorno_sus?: string;
