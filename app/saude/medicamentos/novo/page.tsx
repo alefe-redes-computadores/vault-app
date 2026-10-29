@@ -56,25 +56,7 @@ import {
   useAuth,
 } from "@/hooks/useAuth";
 
-import {
-  useMedicos,
-} from "@/hooks/useMedicos";
-
-import {
-  useFarmacias,
-} from "@/hooks/useFarmacias";
-
-import {
-  useHospitais,
-} from "@/hooks/useHospitais";
-
-import {
-  useLocais,
-} from "@/hooks/useLocais";
-
-import {
-  useCids,
-} from "@/hooks/useCids";
+import { useMedicationFormDossier } from "@/hooks/useMedicationFormDossier";
 
 import {
   useActivePersonId,
@@ -1507,31 +1489,14 @@ export default function NovoMedicamentoPage() {
   const {
     medicos,
     addMedico,
-  } =
-    useMedicos();
-
-  const {
     farmacias,
     addFarmacia,
-  } =
-    useFarmacias();
-
-  const {
     hospitais,
     addHospital,
-  } =
-    useHospitais();
-
-  const {
     locais,
     addLocal,
-  } =
-    useLocais();
-
-  const {
     cids,
-  } =
-    useCids();
+  } = useMedicationFormDossier();
 
   const {
     run,

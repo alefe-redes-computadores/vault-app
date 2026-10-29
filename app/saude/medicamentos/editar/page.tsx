@@ -68,29 +68,8 @@ import {
 
 } from "lucide-react";
 
-import {
-  useMedicamentos,
-} from "@/hooks/useMedicamentos";
+import { useMedicationFormDossier } from "@/hooks/useMedicationFormDossier";
 
-import {
-  useMedicos,
-} from "@/hooks/useMedicos";
-
-import {
-  useFarmacias,
-} from "@/hooks/useFarmacias";
-
-import {
-  useHospitais,
-} from "@/hooks/useHospitais";
-
-import {
-  useLocais,
-} from "@/hooks/useLocais";
-
-import {
-  useCids,
-} from "@/hooks/useCids";
 
 import {
   useAuth,
@@ -1443,52 +1422,16 @@ function EditarMedicamentoContent() {
     getMedicamento,
     updateMedicamento,
     deleteMedicamento,
-    medicamentos:
-      medicamentosList,
-  } =
-    useMedicamentos();
-
-  const {
     medicos,
-  } =
-    useMedicos();
-
-  const {
     farmacias,
-  } =
-    useFarmacias();
-
-  const {
     hospitais:
       hospitaisLocais,
     addHospital,
-  } =
-    useHospitais();
-
-  const {
     locais,
     addLocal,
-  } =
-    useLocais();
-
-  const {
     cids,
-  } =
-    useCids();
-
-  const medicamentosAtivos =
-    (
-      medicamentosList ||
-      []
-    ).filter(
-      (
-        medicamento
-      ) =>
-        medicamento.id !==
-          id &&
-        medicamento.status !==
-          "descontinuado"
-    );
+    medicamentosAtivos,
+  } = useMedicationFormDossier(id);
 
   const fileInputRef =
     useRef<HTMLInputElement>(
