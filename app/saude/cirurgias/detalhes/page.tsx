@@ -36,7 +36,7 @@ import {
   useLiveQuery,
 } from "dexie-react-hooks";
 
-import { db } from "@/lib/db";
+import { loadSurgeryDetailDossier } from "@/lib/surgery-detail-dossier";
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
@@ -51,6 +51,7 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
 import {
   useMounted,
 } from "@/hooks/useMounted";
@@ -268,29 +269,24 @@ function DetalhesCirurgiaContent() {
     useActivePersonId();
 
   const {
-    getCirurgia,
     updateCirurgia,
     deleteCirurgia,
   } =
     useCirurgias();
+  const { user } = useAuth();
 
   // ==========================================================
   // STATE
   // ==========================================================
 
-  const [
-    cirurgia,
-    setCirurgia,
-  ] =
-    useState<Cirurgia | null>(
-      null
-    );
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
-    useState(true);
+  const dossier = useLiveQuery(
+    () => id && activePersonId && user?.id
+      ? loadSurgeryDetailDossier({ surgeryId: id, userId: user.id, personId: activePersonId })
+      : undefined,
+    [id, activePersonId, user?.id],
+  );
+  const isLoading = Boolean(id && activePersonId && user?.id && dossier === undefined);
+  const cirurgia = dossier?.cirurgia ?? null;
 
   const [
     showDeleteModal,
@@ -310,285 +306,23 @@ function DetalhesCirurgiaContent() {
   ] =
     useState(false);
 
-  // ==========================================================
-  // GLOBAL ENTITIES
-  // ==========================================================
-
-  const medicos =
-    useLiveQuery(
-      () =>
-        db.medicos.toArray(),
-      [],
-      []
-    ) || [];
-
-  const hospitais =
-    useLiveQuery(
-      () =>
-        db.hospitais.toArray(),
-      [],
-      []
-    ) || [];
-
-  const locais =
-    useLiveQuery(
-      () =>
-        db.locais.toArray(),
-      [],
-      []
-    ) || [];
-
-  // ==========================================================
-  // PERSON-OWNED ENTITIES
-  // ==========================================================
-
-  const tratamentos =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.tratamentos
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ],
-      []
-    ) || [];
-
-  const cids =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.cids
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ],
-      []
-    ) || [];
-
-  /*
-   * Por enquanto mantemos leitura direta dessas tabelas,
-   * mas o filtro por pessoa acontece ANTES de cruzar relações.
-   *
-   * Quando os módulos de Medicamentos/Exames forem refatorados,
-   * isso pode migrar para hooks/repositories próprios.
-   */
-  const medicamentos =
-    useLiveQuery(
-      () =>
-        db.medicamentos.toArray(),
-      [],
-      []
-    ) || [];
-
-  const exames =
-    useLiveQuery(
-      () =>
-        db.exames.toArray(),
-      [],
-      []
-    ) || [];
-
-  // ==========================================================
-  // LOAD CIRURGIA
-  // ==========================================================
-
   useEffect(() => {
-    if (!id) {
-      router.replace(
-        "/saude/cirurgias"
-      );
-
-      return;
-    }
-
-    if (
-      !activePersonId
-    ) {
-      setCirurgia(
-        null
-      );
-
-      setIsLoading(
-        false
-      );
-
-      return;
-    }
-
-    let cancelled =
-      false;
-
-    const load =
-      async () => {
-        setIsLoading(
-          true
-        );
-
-        try {
-          const data =
-            await getCirurgia(
-              id
-            );
-
-          if (
-            cancelled
-          ) {
-            return;
-          }
-
-          if (!data) {
-            router.replace(
-              "/saude/cirurgias"
-            );
-
-            return;
-          }
-
-          setCirurgia(
-            data
-          );
-        } catch (
-          error
-        ) {
-          console.error(
-            "Erro ao buscar detalhes da cirurgia:",
-            error
-          );
-
-          if (
-            !cancelled
-          ) {
-            router.replace(
-              "/saude/cirurgias"
-            );
-          }
-        } finally {
-          if (
-            !cancelled
-          ) {
-            setIsLoading(
-              false
-            );
-          }
-        }
-      };
-
-    void load();
-
-    return () => {
-      cancelled =
-        true;
-    };
-  }, [
-    id,
-    activePersonId,
-    getCirurgia,
-    router,
-  ]);
+    if (!id) router.replace("/saude/cirurgias");
+  }, [id, router]);
 
   // ==========================================================
   // DIRECT GLOBAL RELATIONS
   // ==========================================================
 
-  const medico =
-    useMemo<
-      Medico | null
-    >(() => {
-      if (
-        !cirurgia?.medico_id
-      ) {
-        return null;
-      }
+  const medico = dossier?.medico ?? null;
 
-      return (
-        medicos.find(
-          (
-            item
-          ) =>
-            item.id ===
-            cirurgia.medico_id
-        ) ||
-        null
-      );
-    }, [
-      cirurgia?.medico_id,
-      medicos,
-    ]);
+  const hospital = dossier?.hospital ?? null;
 
-  const hospital =
-    useMemo<
-      Hospital | null
-    >(() => {
-      if (
-        !cirurgia?.hospital_id
-      ) {
-        return null;
-      }
-
-      return (
-        hospitais.find(
-          (
-            item
-          ) =>
-            item.id ===
-            cirurgia.hospital_id
-        ) ||
-        null
-      );
-    }, [
-      cirurgia?.hospital_id,
-      hospitais,
-    ]);
-
-  const local =
-    useMemo<
-      LocalSaude | null
-    >(() => {
-      if (
-        !cirurgia?.local_id
-      ) {
-        return null;
-      }
-
-      return (
-        locais.find(
-          (
-            item
-          ) =>
-            item.id ===
-            cirurgia.local_id
-        ) ||
-        null
-      );
-    }, [
-      cirurgia?.local_id,
-      locais,
-    ]);
+  const local = dossier?.local ?? null;
+  const tratamentos = dossier?.tratamentos ?? [];
+  const cids = dossier?.cids ?? [];
+  const medicamentos = dossier?.medicamentos ?? [];
+  const exames = dossier?.exames ?? [];
 
   // ==========================================================
   // DIRECT PERSON RELATIONS
@@ -852,20 +586,6 @@ function DetalhesCirurgiaContent() {
             status:
               novoStatus,
           }
-        );
-
-        setCirurgia(
-          (
-            previous
-          ) =>
-            previous
-              ? {
-                  ...previous,
-
-                  status:
-                    novoStatus,
-                }
-              : previous
         );
 
         trigger(

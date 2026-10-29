@@ -5,6 +5,7 @@ const contracts = [
   "scripts/test-v311-structural-clinical-pages.cjs",
   "scripts/test-v312-treatment-dossier-continuity.cjs",
   "scripts/test-v313-renewal-event-graph.cjs",
+  "scripts/test-v314-surgery-dossier-authority.cjs",
   "scripts/test-v310-sync-offline-continuity.cjs",
   "scripts/test-v309-brain-avatar-continuity.cjs",
   "scripts/test-v308-today-dose-360.cjs",
