@@ -39,7 +39,7 @@ import {
   useLiveQuery,
 } from "dexie-react-hooks";
 
-import { db } from "@/lib/db";
+import { loadExamDetailDossier } from "@/lib/exam-detail-dossier";
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
@@ -54,6 +54,7 @@ import {
 import {
   useActivePersonId,
 } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
 import {
   useExames,
 } from "@/hooks/useExames";
@@ -194,11 +195,11 @@ function DetalhesExameContent() {
     useActivePersonId();
 
   const {
-    getExame,
     updateExame,
     deleteExame,
   } =
     useExames();
+  const { user } = useAuth();
 
   /*
    * Médicos e Locais são entidades globais por conta.
@@ -227,19 +228,14 @@ function DetalhesExameContent() {
   // STATE
   // ==========================================================
 
-  const [
-    exame,
-    setExame,
-  ] =
-    useState<Exame | null>(
-      null
-    );
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
-    useState(true);
+  const dossier = useLiveQuery(
+    () => id && activePersonId && user?.id
+      ? loadExamDetailDossier({ examId: id, userId: user.id, personId: activePersonId })
+      : undefined,
+    [id, activePersonId, user?.id],
+  );
+  const exame = dossier?.exame ?? null;
+  const isLoading = Boolean(id && activePersonId && user?.id && dossier === undefined);
 
   const [
     showDeleteModal,
@@ -293,184 +289,20 @@ function DetalhesExameContent() {
   // ACTIVE PERSON
   // ==========================================================
 
-  const person =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return undefined;
-        }
-
-        return db.persons.get(
-          activePersonId
-        );
-      },
-      [
-        activePersonId,
-      ]
-    );
+  const person = dossier?.person;
 
   // ==========================================================
   // PERSON-OWNED RELATIONS
   // ==========================================================
 
-  const tratamentos =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.tratamentos
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ],
-      []
-    ) || [];
-
-  const cids =
-    useLiveQuery(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return db.cids
-          .where(
-            "person_id"
-          )
-          .equals(
-            activePersonId
-          )
-          .toArray();
-      },
-      [
-        activePersonId,
-      ],
-      []
-    ) || [];
+  const tratamentos = dossier?.tratamentos ?? [];
+  const cids = dossier?.cids ?? [];
 
   // ==========================================================
   // LOAD EXAME
   // ==========================================================
 
-  useEffect(() => {
-    if (!id) {
-      router.replace(
-        "/saude/exames"
-      );
-
-      return;
-    }
-
-    if (
-      !activePersonId
-    ) {
-      setExame(
-        null
-      );
-
-      setIsLoading(
-        false
-      );
-
-      return;
-    }
-
-    let cancelled =
-      false;
-
-    const loadExame =
-      async () => {
-        setIsLoading(
-          true
-        );
-
-        try {
-          const data =
-            await getExame(
-              id
-            );
-
-          if (
-            cancelled
-          ) {
-            return;
-          }
-
-          if (!data) {
-            showToast(
-              "Exame não encontrado para a pessoa ativa.",
-              "error"
-            );
-
-            router.replace(
-              "/saude/exames"
-            );
-
-            return;
-          }
-
-          setExame(
-            data
-          );
-        } catch (
-          error
-        ) {
-          console.error(
-            "Erro ao carregar exame:",
-            error
-          );
-
-          if (
-            !cancelled
-          ) {
-            showToast(
-              "Não foi possível carregar o exame.",
-              "error"
-            );
-
-            router.replace(
-              "/saude/exames"
-            );
-          }
-        } finally {
-          if (
-            !cancelled
-          ) {
-            setIsLoading(
-              false
-            );
-          }
-        }
-      };
-
-    void loadExame();
-
-    return () => {
-      cancelled =
-        true;
-    };
-  }, [
-    id,
-    activePersonId,
-    getExame,
-    router,
-    showToast,
-  ]);
+  useEffect(() => { if (!id) router.replace("/saude/exames"); }, [id, router]);
 
   // ==========================================================
   // DIRECT GLOBAL RELATIONS
@@ -612,64 +444,7 @@ function DetalhesExameContent() {
   // HISTORY
   // ==========================================================
 
-  const historicoExames =
-    useLiveQuery(
-      async () => {
-        if (
-          !exame?.nome ||
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        const all =
-          await db.exames
-            .where(
-              "person_id"
-            )
-            .equals(
-              activePersonId
-            )
-            .toArray();
-
-        const normalizedCurrentName =
-          normalizeName(
-            exame.nome
-          );
-
-        return all
-          .filter(
-            (
-              item
-            ) =>
-              item.id !==
-                exame.id &&
-              normalizeName(
-                item.nome
-              ) ===
-                normalizedCurrentName
-          )
-          .sort(
-            (
-              first,
-              second
-            ) =>
-              (
-                second.data ||
-                ""
-              ).localeCompare(
-                first.data ||
-                  ""
-              )
-          );
-      },
-      [
-        exame?.id,
-        exame?.nome,
-        activePersonId,
-      ],
-      []
-    ) || [];
+  const historicoExames = dossier?.historico ?? [];
 
   // ==========================================================
   // RETURN DATE
@@ -761,25 +536,7 @@ function DetalhesExameContent() {
   // REFRESH
   // ==========================================================
 
-  const refreshExame =
-    async () => {
-      if (
-        !exameId
-      ) {
-        return;
-      }
-
-      const updated =
-        await getExame(
-          exameId
-        );
-
-      if (updated) {
-        setExame(
-          updated
-        );
-      }
-    };
+  const refreshExame = async () => { /* Dexie live query owns refresh. */ };
 
   // ==========================================================
   // SELECT MEDICO

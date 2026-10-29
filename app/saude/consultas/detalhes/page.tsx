@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 
 import {
   useRouter,
@@ -48,9 +49,9 @@ import {
   getDaysUntil,
 } from "@/lib/health-utils";
 
-import {
-  useConsultas,
-} from "@/hooks/useConsultas";
+import { useConsultaActions } from "@/hooks/useConsultaActions";
+import { useAuth } from "@/hooks/useAuth";
+import { loadConsultationDetailDossier } from "@/lib/consultation-detail-dossier";
 
 import {
   useActivePersonId,
@@ -59,34 +60,6 @@ import {
 import {
   useMounted,
 } from "@/hooks/useMounted";
-
-import {
-  useTratamentos,
-} from "@/hooks/useTratamentos";
-
-import {
-  useCids,
-} from "@/hooks/useCids";
-
-import {
-  useMedicamentos,
-} from "@/hooks/useMedicamentos";
-
-import {
-  useExames,
-} from "@/hooks/useExames";
-
-import {
-  useMedicos,
-} from "@/hooks/useMedicos";
-
-import {
-  useHospitais,
-} from "@/hooks/useHospitais";
-
-import {
-  useLocais,
-} from "@/hooks/useLocais";
 
 import {
   PageTransition,
@@ -354,70 +327,24 @@ function DetalhesConsultaContent() {
     useActivePersonId();
 
   const {
-    getConsulta,
     updateConsulta,
     deleteConsulta,
   } =
-    useConsultas();
-
-  // ==========================================================
-  // DOMAIN DATA
-  // ==========================================================
-
-  const {
-    tratamentos = [],
-  } =
-    useTratamentos();
-
-  const {
-    cids = [],
-  } =
-    useCids();
-
-  const {
-    medicamentos = [],
-  } =
-    useMedicamentos();
-
-  const {
-    exames = [],
-  } =
-    useExames();
-
-  const {
-    medicos = [],
-  } =
-    useMedicos();
-
-  const {
-    hospitais = [],
-  } =
-    useHospitais();
-
-  const {
-    locais = [],
-  } =
-    useLocais();
+    useConsultaActions();
+  const { user } = useAuth();
 
   // ==========================================================
   // STATE
   // ==========================================================
 
-  const [
-    consulta,
-    setConsulta,
-  ] =
-    useState<Consulta | null>(
-      null
-    );
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
-    useState(
-      true
-    );
+  const dossier = useLiveQuery(
+    () => id && activePersonId && user?.id
+      ? loadConsultationDetailDossier({ consultationId: id, userId: user.id, personId: activePersonId })
+      : undefined,
+    [id, activePersonId, user?.id],
+  );
+  const isLoading = Boolean(id && activePersonId && user?.id && dossier === undefined);
+  const consulta = dossier?.consulta ?? null;
 
   const [
     showDeleteModal,
@@ -444,296 +371,24 @@ function DetalhesConsultaContent() {
   // uma segunda barreira explícita antes de qualquer relação.
   // ==========================================================
 
-  const scopedTratamentos =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return tratamentos.filter(
-          (
-            tratamento
-          ) =>
-            tratamento.person_id ===
-            activePersonId
-        );
-      },
-      [
-        tratamentos,
-        activePersonId,
-      ]
-    );
-
-  const scopedCids =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return cids.filter(
-          (
-            cid
-          ) =>
-            cid.person_id ===
-            activePersonId
-        );
-      },
-      [
-        cids,
-        activePersonId,
-      ]
-    );
-
-  const scopedMedicamentos =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return medicamentos.filter(
-          (
-            medicamento
-          ) =>
-            medicamento.person_id ===
-            activePersonId
-        );
-      },
-      [
-        medicamentos,
-        activePersonId,
-      ]
-    );
-
-  const scopedExames =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return exames.filter(
-          (
-            exame
-          ) =>
-            exame.person_id ===
-            activePersonId
-        );
-      },
-      [
-        exames,
-        activePersonId,
-      ]
-    );
+  const scopedTratamentos = dossier?.tratamentos ?? [];
+  const scopedCids = dossier?.cids ?? [];
+  const scopedMedicamentos = dossier?.medicamentos ?? [];
+  const scopedExames = dossier?.exames ?? [];
 
   // ==========================================================
   // LOAD CONSULTA
   // ==========================================================
 
-  useEffect(
-    () => {
-      if (
-        !id
-      ) {
-        router.replace(
-          "/saude/consultas"
-        );
-
-        return;
-      }
-
-      if (
-        !activePersonId
-      ) {
-        setConsulta(
-          null
-        );
-
-        setIsLoading(
-          false
-        );
-
-        return;
-      }
-
-      let cancelled =
-        false;
-
-      const load =
-        async () => {
-          setIsLoading(
-            true
-          );
-
-          try {
-            const data =
-              await getConsulta(
-                id
-              );
-
-            if (
-              cancelled
-            ) {
-              return;
-            }
-
-            /*
-             * getConsulta() já é person-scoped, porém a tela
-             * mantém uma segunda validação de ownership.
-             */
-            if (
-              !data ||
-              data.person_id !==
-                activePersonId
-            ) {
-              router.replace(
-                "/saude/consultas"
-              );
-
-              return;
-            }
-
-            setConsulta(
-              data
-            );
-          } catch (
-            error
-          ) {
-            console.error(
-              "Erro ao buscar detalhes da consulta:",
-              error
-            );
-
-            if (
-              !cancelled
-            ) {
-              router.replace(
-                "/saude/consultas"
-              );
-            }
-          } finally {
-            if (
-              !cancelled
-            ) {
-              setIsLoading(
-                false
-              );
-            }
-          }
-        };
-
-      void load();
-
-      return () => {
-        cancelled =
-          true;
-      };
-    },
-    [
-      id,
-      activePersonId,
-      getConsulta,
-      router,
-    ]
-  );
+  useEffect(() => { if (!id) router.replace("/saude/consultas"); }, [id, router]);
 
   // ==========================================================
   // GLOBAL RELATIONS
   // ==========================================================
 
-  const medico =
-    useMemo<
-      Medico | null
-    >(
-      () => {
-        if (
-          !consulta?.medico_id
-        ) {
-          return null;
-        }
-
-        return (
-          medicos.find(
-            (
-              item
-            ) =>
-              item.id ===
-              consulta.medico_id
-          ) ||
-          null
-        );
-      },
-      [
-        consulta?.medico_id,
-        medicos,
-      ]
-    );
-
-  const hospital =
-    useMemo<
-      Hospital | null
-    >(
-      () => {
-        if (
-          !consulta?.hospital_id
-        ) {
-          return null;
-        }
-
-        return (
-          hospitais.find(
-            (
-              item
-            ) =>
-              item.id ===
-              consulta.hospital_id
-          ) ||
-          null
-        );
-      },
-      [
-        consulta?.hospital_id,
-        hospitais,
-      ]
-    );
-
-  const local =
-    useMemo<
-      LocalSaude | null
-    >(
-      () => {
-        if (
-          !consulta?.local_id
-        ) {
-          return null;
-        }
-
-        return (
-          locais.find(
-            (
-              item
-            ) =>
-              item.id ===
-              consulta.local_id
-          ) ||
-          null
-        );
-      },
-      [
-        consulta?.local_id,
-        locais,
-      ]
-    );
+  const medico = dossier?.medico ?? null;
+  const hospital = dossier?.hospital ?? null;
+  const local = dossier?.local ?? null;
 
   // ==========================================================
   // DIRECT RELATION IDS
@@ -1044,22 +699,6 @@ function DetalhesConsultaContent() {
             status:
               novoStatus,
           }
-        );
-
-        setConsulta(
-          (
-            previous
-          ) =>
-            previous &&
-            previous.person_id ===
-              activePersonId
-              ? {
-                  ...previous,
-
-                  status:
-                    novoStatus,
-                }
-              : previous
         );
 
         trigger(
