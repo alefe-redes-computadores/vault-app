@@ -82,6 +82,7 @@ import {
 import {
   TextArea,
 } from "@/components/ui/TextArea";
+import { formatPrescriptionAttachmentSize, validatePrescriptionAttachment } from "@/lib/health-documents/prescription-attachment";
 
 function NovaReceitaContent() {
   const router =
@@ -298,6 +299,9 @@ function NovaReceitaContent() {
 
   const selectAttachment = (file: File, nameOverride?: string) => {
     trigger("vibrate");
+    const attachmentError=validatePrescriptionAttachment(file);
+    if(attachmentError){setLocalFile(null);setAttachmentName("");setFormError(attachmentError);trigger("error");return;}
+    setFormError("");
     setLocalFile(file);
     setAttachmentName(nameOverride || file.name);
   };
@@ -740,7 +744,8 @@ function NovaReceitaContent() {
             </div>
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(event) => handleAttachment(event)} />
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => handleAttachment(event, true)} />
-            {attachmentName ? <div className="mt-3 break-all rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-xs font-semibold text-emerald-200">{attachmentName}</div> : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] text-xs font-semibold text-violet-200"><Upload size={15}/>Escolher arquivo</button><button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] text-xs font-semibold text-emerald-200"><Camera size={15}/>Fotografar</button></div>}
+            {attachmentName ? <div className="mt-3 break-all rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-xs font-semibold text-emerald-200">{attachmentName}{localFile?<span className="mt-1 block text-[9px] font-normal text-emerald-200/70">{formatPrescriptionAttachmentSize(localFile.size)} · validado antes do envio</span>:null}</div> : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] text-xs font-semibold text-violet-200"><Upload size={15}/>Escolher arquivo</button><button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] text-xs font-semibold text-emerald-200"><Camera size={15}/>Fotografar</button></div>}
+            <p className="mt-2 text-[9px] text-ink-faint">Imagem ou PDF · máximo de 15 MB.</p>
           </div>
 
           {selectedMedicamento && (
@@ -787,6 +792,7 @@ function NovaReceitaContent() {
                   <p className="mt-2 text-[10px] leading-4 text-emerald-300">
                     Estoque, farmácia, preço, quantidade e retirada agendada permanecem intactos.
                   </p>
+                  {dataReceita>getLocalTodayISO()?<p className="mt-2 text-[10px] leading-4 text-violet-200">A data informada é futura. O registro continuará sendo apenas receita/documento e não confirmará recebimento, aquisição ou estoque.</p>:null}
                 </div>
               </div>
             </div>

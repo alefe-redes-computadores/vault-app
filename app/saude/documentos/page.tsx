@@ -60,6 +60,8 @@ import {
 } from "@/hooks/useDocuments";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { DocumentArchiveOverview } from "@/components/saude/DocumentArchiveOverview";
+import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 
 import {
   useMedicamentos,
@@ -946,6 +948,7 @@ function documentSearchFields(item: DocumentViewModel): unknown[] {
 // ============================================================
 
 export default function DocumentsPage() {
+  const healthIntelligence=useSharedHealthIntelligence();
   const { user } = useAuth();
   const router =
     useRouter();
@@ -4658,6 +4661,7 @@ export default function DocumentsPage() {
                 </motion.div>
               ) : (
                 <div className="space-y-4">
+                  <DocumentArchiveOverview command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)}/>
                   <ClinicalSectionNav label="Domínios do acervo" items={documentNavItems}/>
                   <div className="flex items-center gap-2 px-1">
                     <LayersSummary
