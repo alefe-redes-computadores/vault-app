@@ -8,6 +8,7 @@ const contracts = [
   "scripts/test-v314-surgery-dossier-authority.cjs",
   "scripts/test-v315-consultation-exam-dossiers.cjs",
   "scripts/test-v316-medication-form-dossier.cjs",
+  "scripts/test-v317-general-document-form-dossier.cjs",
   "scripts/test-v310-sync-offline-continuity.cjs",
   "scripts/test-v309-brain-avatar-continuity.cjs",
   "scripts/test-v308-today-dose-360.cjs",

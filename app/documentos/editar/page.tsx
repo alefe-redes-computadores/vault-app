@@ -41,11 +41,10 @@ import {
 } from "@/lib/supabase/storage";
 
 import { useAuth } from "@/hooks/useAuth";
-import { usePersons } from "@/hooks/usePersons";
 import {
-  useDocument,
   useDocumentActions,
 } from "@/hooks/useDocuments";
+import { useGeneralDocumentFormDossier } from "@/hooks/useGeneralDocumentFormDossier";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useToast } from "@/components/ToastProvider";
 
@@ -57,7 +56,6 @@ import {
   type CategoryId,
   type DocumentField,
   type DocumentType,
-  type Person,
 } from "@/lib/types";
 
 import { Button } from "@/components/ui/Button";
@@ -445,9 +443,6 @@ export default function EditarDocumentoPage() {
   } =
     useDocumentActions();
 
-  const persons =
-    usePersons() as Person[];
-
   const id =
     searchParams.get(
       "id"
@@ -460,10 +455,11 @@ export default function EditarDocumentoPage() {
    * undefined = não encontrado para a pessoa ativa
    * Document  = documento válido da pessoa ativa
    */
-  const doc =
-    useDocument(
-      id
-    );
+  const {
+    persons,
+    document: doc,
+    isLoading: isDossierLoading,
+  } = useGeneralDocumentFormDossier(id);
 
   const fileInputRef =
     useRef<HTMLInputElement>(
@@ -1757,10 +1753,7 @@ export default function EditarDocumentoPage() {
   // LOADING
   // ==========================================================
 
-  if (
-    doc ===
-    null
-  ) {
+  if (isDossierLoading) {
     return (
       <PageTransition>
         <main className="min-h-[100dvh] bg-void">

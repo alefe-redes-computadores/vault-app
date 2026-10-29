@@ -16,7 +16,6 @@ import {
   AnimatePresence,
   motion,
 } from "framer-motion";
-import { useLiveQuery } from "dexie-react-hooks";
 import type { LucideIcon } from "lucide-react";
 
 import {
@@ -46,7 +45,6 @@ import {
   X,
 } from "lucide-react";
 
-import { db } from "@/lib/db";
 import {
   deleteFile,
   uploadFile,
@@ -56,12 +54,7 @@ import {
 } from "@/lib/notifications";
 
 import { useAuth } from "@/hooks/useAuth";
-import {
-  usePersons,
-} from "@/hooks/usePersons";
-import {
-  useActivePersonId,
-} from "@/hooks/useActivePersonId";
+import { useGeneralDocumentFormDossier } from "@/hooks/useGeneralDocumentFormDossier";
 import {
   useDocumentActions,
 } from "@/hooks/useDocuments";
@@ -83,7 +76,6 @@ import {
   type CategoryId,
   type DocumentField,
   type DocumentType,
-  type Person,
   type Vault,
 } from "@/lib/types";
 
@@ -488,16 +480,14 @@ export default function NovoDocumentoPage() {
 
   const {
     activePersonId,
-  } =
-    useActivePersonId();
+    persons,
+    userVaults,
+  } = useGeneralDocumentFormDossier();
 
   const {
     createDocument,
   } =
     useDocumentActions();
-
-  const persons =
-    usePersons() as Person[];
 
   const {
     run,
@@ -693,43 +683,6 @@ export default function NovoDocumentoPage() {
   }, [
     activePersonId,
   ]);
-
-  // ==========================================================
-  // VAULTS DA PESSOA ATIVA
-  // ==========================================================
-
-  const userVaults =
-    useLiveQuery(
-      async () => {
-        if (
-          !user?.id ||
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        const vaults =
-          await db.vaults
-            .where(
-              "user_id"
-            )
-            .equals(
-              user.id
-            )
-            .toArray();
-
-        return vaults.filter(
-          (vault) =>
-            vault.person_id ===
-            activePersonId
-        );
-      },
-      [
-        user?.id,
-        activePersonId,
-      ],
-      []
-    ) || [];
 
   // ==========================================================
   // LIMPEZA DOS PREVIEWS
