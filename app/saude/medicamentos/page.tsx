@@ -96,11 +96,13 @@ import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-vis
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGroup";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
 
 type MedicationListFilter =
   | "todos"
   | "atencao"
   | "continuos"
+  | "temporarios"
   | "sos"
   | "controlados"
   | "encerrados";
@@ -445,6 +447,8 @@ export default function MedicamentosListPage() {
         if (medicationFilter === "continuos") {
           return !item.isSOS && item.med.tipo_uso === "continuo";
         }
+
+        if (medicationFilter === "temporarios") return item.med.tipo_uso === "temporario";
 
         if (medicationFilter === "sos") return item.isSOS;
 
@@ -1400,6 +1404,7 @@ export default function MedicamentosListPage() {
                 ["todos", "Todos"],
                 ["atencao", "Atenção"],
                 ["continuos", "Contínuos"],
+                ["temporarios", "Por período"],
                 ["sos", "SOS"],
                 ["controlados", "Controlados"],
                 ["encerrados", "Encerrados"],
@@ -1429,98 +1434,8 @@ export default function MedicamentosListPage() {
 
         {/* CONTEÚDO */}
         <section className="px-5 pt-3">
+          <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} onNavigate={(href)=>router.push(href)}/>
           {listaProcessada.length>0?<ClinicalSectionNav label="Grupos de medicamentos" items={[...(medsPrioridade.length?[{id:"medicamentos-atencao",label:"Atenção",icon:<AlertTriangle size={14}/>,badge:medsPrioridade.length}]:[]),...(medsEmDia.length?[{id:"medicamentos-em-dia",label:"Em dia",icon:<CheckCircle2 size={14}/>,badge:medsEmDia.length}]:[]),...(medsPlanejados.length?[{id:"medicamentos-planejados",label:"Próximas",icon:<Calendar size={14}/>,badge:medsPlanejados.length}]:[]),...(medsSOS.length?[{id:"medicamentos-sos",label:"SOS",icon:<Zap size={14}/>,badge:medsSOS.length}]:[]),...(medsSuspensos.length?[{id:"medicamentos-suspensos",label:"Suspensos",icon:<EyeOff size={14}/>,badge:medsSuspensos.length}]:[])]}/>:null}
-          <div className="mb-3 rounded-[18px] border border-surface-border/45 bg-surface px-3 py-2.5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-ink-faint">
-                  Rotina de hoje
-                </p>
-
-                <p className="mt-0.5 text-sm font-bold text-ink-primary">
-                  {statsProgresso.total > 0
-                    ? `${statsProgresso.completados} de ${statsProgresso.total} doses tomadas`
-                    : "Nenhuma dose programada"}
-                </p>
-              </div>
-
-              <div
-                className={`shrink-0 rounded-xl px-2.5 py-1.5 text-xs font-black tabular-nums ${
-                  statsProgresso.total > 0 &&
-                  statsProgresso.completados >=
-                    statsProgresso.total
-                    ? "bg-emerald-400/10 text-emerald-400"
-                    : "bg-ice/10 text-ice"
-                }`}
-              >
-                {statsProgresso.total > 0
-                  ? `${Math.round(
-                      (
-                        statsProgresso.completados /
-                        statsProgresso.total
-                      ) * 100
-                    )}%`
-                  : "—"}
-              </div>
-            </div>
-
-            {statsProgresso.total > 0 && (
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised">
-                <div
-                  className="h-full rounded-full bg-emerald-400 transition-[width]"
-                  style={{
-                    width:
-                      `${Math.min(
-                        100,
-                        (
-                          statsProgresso.completados /
-                          statsProgresso.total
-                        ) * 100
-                      )}%`,
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-semibold">
-              <span className="text-amber-400">
-                {medsPrioridade.length} precisam de atenção
-              </span>
-
-              <span className="text-emerald-400">
-                {medsEmDia.length} em dia
-              </span>
-
-              {medsPlanejados.length > 0 && <span className="text-ice">{medsPlanejados.length} planejado(s)</span>}
-
-              {statsProgresso.ignoradas > 0 && <span className="text-amber-400">{statsProgresso.ignoradas} ignorada(s) · não contam como tomadas</span>}
-              <span className="text-violet-400">
-                {medsSOS.length} SOS
-              </span>
-            </div>
-          </div>
-
-          <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[8px] font-semibold text-ink-faint">
-            <span className="inline-flex items-center gap-1">
-              <i className="h-1.5 w-1.5 rounded-full bg-coral" />
-              ação importante
-            </span>
-
-            <span className="inline-flex items-center gap-1">
-              <i className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              pendência
-            </span>
-
-            <span className="inline-flex items-center gap-1">
-              <i className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              concluído
-            </span>
-
-            <span className="inline-flex items-center gap-1">
-              <i className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-              SOS
-            </span>
-          </div>
 
           {listaProcessada.length ===
           0 ? (

@@ -9,6 +9,7 @@ import { SusCatalogBrowser } from "@/components/saude/SusCatalogBrowser";
 import { SupplyPreparation } from "@/components/saude/SupplyPreparation";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { MedicationAuthorityMap } from "@/components/saude/MedicationAuthorityMap";
 import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -73,6 +74,8 @@ import type {
 import { estimatedCycleEnd, supplyChecklist } from "@/lib/health-supply/rules";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { buildSupplyProcessView, buildSupplyRelationshipIndex } from "@/lib/health-supply/relationship-index";
+import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
+import { useRouter } from "next/navigation";
 const input =
   "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const button =
@@ -978,6 +981,8 @@ function CyclePanel({
   );
 }
 function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
+  const router=useRouter();
+  const healthIntelligence=useSharedHealthIntelligence();
   const {user}=useAuth();
   const params = useSearchParams(),
     { data, personId, loading } = supply,
@@ -1144,6 +1149,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       <div id="fornecimento-agora" className="scroll-mt-24">
       {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={processView.cyclesInProgress ? `${processView.cyclesInProgress} ciclo${processView.cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:processView.activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processView.cycles},{label:"Documentos",value:processView.documents}]}/> : null}
       </div>
+      <MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} onNavigate={(href)=>router.push(href)}/>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…

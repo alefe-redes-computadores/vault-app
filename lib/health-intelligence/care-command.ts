@@ -3,6 +3,7 @@ import { buildCareForecast, type CareForecast, type CareForecastAction } from ".
 import { buildCareReadiness, type CareReadinessPortfolio } from "./care-readiness";
 import { buildBrainCarePlan, type BrainCarePlan } from "./care-plan";
 import { buildCareDocumentReadiness, type CareDocumentReadinessPortfolio } from "./care-document-readiness";
+import { buildMedicationPortfolio, type MedicationPortfolio } from "./medication-portfolio";
 
 export type CareCommandSnapshot = {
   forecast: CareForecast;
@@ -13,6 +14,7 @@ export type CareCommandSnapshot = {
   plan: BrainCarePlan;
   decision: BrainCarePlan["focus"][number] | null;
   documents: CareDocumentReadinessPortfolio;
+  medications: MedicationPortfolio;
 };
 
 /**
@@ -37,5 +39,6 @@ export function buildCareCommandSnapshot(context: HealthInsightContext): CareCom
     return acc;
   }, { now: 0, next: 0, follow_up: 0, review_data: 0 });
   const plan = buildBrainCarePlan(context, forecast, readiness, documents);
-  return { forecast, readiness, documents, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan, decision: plan.decision };
+  const medications = buildMedicationPortfolio(context, plan, readiness);
+  return { forecast, readiness, documents, medications, surfaceActions, primary: surfaceActions[0] ?? null, counts, plan, decision: plan.decision };
 }

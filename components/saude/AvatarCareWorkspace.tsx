@@ -5,7 +5,6 @@ import type { HealthInsightContext } from "@/lib/health-insights";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 import { CareContinuityAvatarSummary } from "./CareContinuityAvatarSummary";
 import { MedicationContinuityAvatarSummary } from "./MedicationContinuityAvatarSummary";
-import { TemporaryCourseAvatarSummary } from "./TemporaryCourseAvatarSummary";
 import { AvatarAssociationSummary } from "./AvatarAssociationSummary";
 import { AvatarCareReadiness } from "./AvatarCareReadiness";
 import { PlannedRealizedBrief } from "./PlannedRealizedBrief";
@@ -46,7 +45,6 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
         <MedicationPurchaseRhythmBrief context={context} onNavigate={onNavigate}/>
         <CareContinuityAvatarSummary context={context} onNavigate={onNavigate}/>
         <MedicationContinuityAvatarSummary context={context} command={command} onNavigate={onNavigate}/>
-        <TemporaryCourseAvatarSummary context={context} onNavigate={onNavigate}/>
         <AvatarAssociationSummary context={context} onNavigate={onNavigate}/>
       </div>
     </details> : null}
