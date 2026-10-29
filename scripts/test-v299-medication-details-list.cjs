@@ -33,12 +33,12 @@ assert.equal((details.match(/const journeySnapshot\s*=/g)||[]).length,1,'Somente
 assert.match(list,/density="compact"/,'Listagem ainda usa cards compactos');
 assert.match(list,/interactiveContent/,'Navegacao e botoes independentes preservados');
 assert.match(list,/navigationLabel=\{`Ver detalhes de \$\{med\.nome\}`\}/,'Nome completo acessivel no card');
-assert.match(list,/min-h-\[2\.4rem\].*break-words font-display/,'Nome principal sem truncate no mobile');
+assert.match(list,/line-clamp-2 break-words font-display/,'Nome principal sem truncate no mobile');
 assert.doesNotMatch(list,/grid-cols-\[minmax\(0,1fr\)_auto\] items-start/,'Acoes nao disputam largura com nome');
-assert.match(list,/Ver pendência/,'Acao curta, contexto completo mantido em aria-label');
+assert.match(list,/contextualActionLabel/,'Acao contextual real, contexto completo mantido em aria-label');
 assert.match(list,/\{careAction\.label\}/,'Rótulo completo permanece acessivel');
 assert.match(list,/const careAction = brainAction \?\?/,'Prioridade do Brain preservada');
-assert.match(list,/min-h-\[4\.5rem\]/,'Painel hoje e estoque com altura minima consistente');
+assert.match(list,/VAULT_V318_OPERATIONAL_STRIP/,'Hoje e estoque em faixa curta, sem painel repetido');
 assert.match(list,/setSelectedRegulatory\(regulatoryProfile\)/,'Modal regulatorio e classificação preservados');
 assert.match(routeError,/não conseguiu renderizar esta tela/,'Erro generico sem atribuir causa prematura ao PWA');
 console.log('V299 OK: ordem de hooks com AST TypeScript, memoizacao, nome, acoes, estoque, segurança e erro de rota.');

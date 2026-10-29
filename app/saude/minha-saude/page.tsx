@@ -84,6 +84,17 @@ const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/Medica
 
 function DeferredHealthSection({id,title,description,badge,icon,children}:{id:string;title:string;description:string;badge?:string;icon:ReactNode;children:ReactNode}) {
   const [open,setOpen]=useState(false);
+  // VAULT_V321_HEALTH_DEEP_LINK: navigation opens lazy sections, not empty anchors.
+  useEffect(() => {
+    const reveal = () => {
+      let target = window.location.hash.slice(1);
+      try { target = decodeURIComponent(target); } catch { /* invalid fragment */ }
+      if (target === id) setOpen(true);
+    };
+    reveal();
+    window.addEventListener("hashchange", reveal);
+    return () => window.removeEventListener("hashchange", reveal);
+  }, [id]);
   return <section id={id} className="scroll-mt-24 overflow-hidden rounded-2xl border border-surface-border bg-surface/80">
     <button type="button" aria-expanded={open} aria-controls={`${id}-content`} onClick={()=>setOpen(value=>!value)} className="flex min-h-[72px] w-full items-center gap-3 px-3 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-raised text-emerald-200">{icon}</span>
@@ -395,7 +406,10 @@ function HealthDashboard({
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
-            <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
+            {/* VAULT_V321_AVATAR_CARE: Avatar and urgent summary remain in the first fold. */}
+            <DeferredHealthSection id="avatar-care-workspace" title="Acompanhamento do Avatar" description="Plano contextual, vínculos clínicos e preparação detalhada" icon={<Brain size={18}/>} badge="explorar">
+              <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
+            </DeferredHealthSection>
             <DeferredHealthSection id="analises" title="Análises e tendências" description="Evolução das medidas e cobertura dos dados usados pelo Brain" icon={<BarChart3 size={18}/>} badge={intelligence.isLoading?"analisando":"sob demanda"}>
               {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}
               <HealthTrendsExplorer records={records} userId={person?.user_id||""} personId={personId||""} today={today}/>

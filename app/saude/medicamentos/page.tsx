@@ -1028,6 +1028,15 @@ export default function MedicamentosListPage() {
       const carePresentation = medicationCarePresentation(careDecision, insight?.urgencia);
       const careActionClass = brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : brainCareItem?.lane === "prepare" ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300" : carePresentation.actionClass;
 
+      // VAULT_V318_CONTEXTUAL_ACTION: visual text only; never reinterpret the care decision.
+      const contextualActionLabel = careAction
+        ? /retirad/i.test(careAction.href) ? "Abrir retirada"
+          : /aquisi|compra/i.test(`${careAction.label} ${careAction.href}`) ? "Registrar aquisição"
+          : /receita|renova/i.test(`${careAction.label} ${careAction.href}`) ? "Renovar receita"
+          : /document/i.test(`${careAction.label} ${careAction.href}`) ? "Preparar documentos"
+          : careAction.label
+        : "";
+
       // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
         <ListCard
@@ -1055,67 +1064,16 @@ export default function MedicamentosListPage() {
             isSuspenso
           }
           density="compact"
+          compactTight
           interactiveContent
           navigationLabel={`Ver detalhes de ${med.nome}`}
-          rail={
-            (regulatoryProfile || receita) ? (
-              <button
-                type="button"
-                aria-label={`Ver classificação da receita: ${
-                  regulatoryProfile?.label ||
-                  receita?.sigla ||
-                  "Receita"
-                }`}
-                aria-haspopup={regulatoryProfile ? "dialog" : undefined}
-                title={regulatoryMeaning}
-                className="relative flex h-full w-full items-center justify-center overflow-hidden text-black/80 transition-colors hover:bg-white/10 active:bg-black/10"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-
-                  if (!regulatoryProfile) return;
-
-                  trigger("vibrate");
-                  setSelectedRegulatory(regulatoryProfile);
-                }}
-              >
-                {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2 */}
-                <span
-                  className="max-h-[92px] overflow-hidden text-[7px] font-black uppercase leading-none tracking-[0.09em]"
-                  style={{
-                    writingMode: "vertical-rl",
-                    transform: "rotate(180deg)",
-                  }}
-                >
-                  {regulatoryProfile && !regulatoryProfile.verified
-                    ? "Receita n/c"
-                    : (
-                        regulatoryProfile?.label ||
-                        receita?.sigla ||
-                        "Receita"
-                      )
-                        .replace(/^Receita\s+/i, "")
-                        .replace(/^Notificação\s+/i, "Notif. ")}
-                </span>
-
-                {regulatoryProfile && (
-                  <span
-                    className="absolute bottom-2 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-black/40 bg-black/10 text-[7px] font-black leading-none"
-                    aria-hidden="true"
-                  >
-                    i
-                  </span>
-                )}
-              </button>
-            ) : undefined
-          }
           icon={
             <span
-              className={`flex h-10 w-10 items-center justify-center rounded-[13px] border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
               title={regulatoryMeaning}
             >
               <SelectedFormatIcon
-                size={20}
+                size={18}
                 fill={fillValue}
                 stroke={strokeValue}
               />
@@ -1124,142 +1082,95 @@ export default function MedicamentosListPage() {
         >
           <div className="relative flex min-w-0 flex-col gap-1">
 
-            {/* IDENTIDADE */}
-
-            <div className="flex min-w-0 flex-col gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex min-w-0 flex-col gap-1">
-                  <h3 title={med.nome} className="min-h-[2.4rem] min-w-0 break-words font-display text-[15px] font-bold leading-snug text-ink-primary">
-                    {
-                      med.nome
-                    }
-                  </h3>
-
-                    {med.dosagem && (
-                      <span title={med.dosagem} className="inline-flex w-fit max-w-full break-words text-[11px] font-semibold leading-snug text-ink-muted">
-                        {
-                          med.dosagem
-                        }
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {showActiveIngredient && (
-                  <p
-                    className="sr-only"
-                    title={`Princípio ativo: ${activeIngredient}`}
-                  >
-                    <span className="text-ink-muted/55">Princípio ativo · </span>
-                    {activeIngredient}
-                  </p>
+            {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY */}
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[14px] font-bold leading-tight text-ink-primary">
+                  {med.nome}
+                </h3>
+                {med.dosagem && (
+                  <span title={med.dosagem} className="min-w-0 max-w-full text-[11px] font-semibold leading-tight text-ink-muted">
+                    {med.dosagem}
+                  </span>
                 )}
-
-                <div className="mt-1 flex min-h-7 min-w-0 flex-wrap items-center gap-1">
-                  {catalogIdentity?.authorityState === "possible_divergence" && (
-                    <span
-                      title={catalogIdentity.authorityDetail}
-                      className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.07] px-2 text-[9px] font-bold text-amber-300"
-                    >
-                      Revisar identidade
-                    </span>
-                  )}
-                  {isSOS && (
-                    <span className="inline-flex h-6 shrink-0 items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.07] px-2 text-[9px] font-bold uppercase tracking-wide text-amber-400">
-                      SOS
-                    </span>
-                  )}
-
-                  {careDecision.stage !== "stable" && !careAction && (
-                    <span title={careDecision.explanation} className={`inline-flex min-h-6 max-w-full items-center rounded-lg border px-2 py-1 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
-                      {careDecision.label}
-                    </span>
-                  )}
-
-                  {supplyRoute?.mode === "hybrid" && (
-                    <span title="Origem baseada nos vínculos e aquisições registrados" className="inline-flex min-h-6 max-w-full items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[9px] font-semibold text-emerald-200">
-                      {supplyRoute.labels.join(" + ")}
-                    </span>
-                  )}
-
-                  {textoDose && (
-                    <span className="inline-flex min-h-6 max-w-full items-center whitespace-normal break-words rounded-lg border border-surface-border/40 bg-surface-raised/55 px-2 py-1 text-[9px] font-semibold text-ink-muted">
-                      Dose&nbsp;
-                      <strong className="font-bold text-ink-primary">
-                        {
-                          textoDose
-                        }
-                      </strong>
-                    </span>
-                  )}
-                </div>
-
               </div>
-
-              <div className="mt-1 flex min-h-10 min-w-0 flex-wrap items-center gap-1.5">
+              {showActiveIngredient && (
+                <p className="sr-only" title={`Princípio ativo: ${activeIngredient}`}>
+                  Princípio ativo: {activeIngredient}
+                </p>
+              )}
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px]">
+                {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classification remains interactive */}
+                {(regulatoryProfile || receita) && (
+                  <button
+                    type="button"
+                    title={regulatoryMeaning}
+                    aria-label={`Ver classificação da receita: ${regulatoryProfile?.label || receita?.sigla || "Receita"}`}
+                    aria-haspopup={regulatoryProfile ? "dialog" : undefined}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!regulatoryProfile) return;
+                      trigger("vibrate");
+                      setSelectedRegulatory(regulatoryProfile);
+                    }}
+                    className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-lg border border-surface-border/50 bg-surface-raised/60 px-2 text-[10px] font-semibold text-ink-muted"
+                  >
+                    <span aria-hidden="true">ⓘ</span>
+                    <span className="max-w-[10rem] truncate">{regulatoryProfile?.verified === false ? "Receita n/c" : regulatoryProfile?.label || receita?.sigla || "Receita"}</span>
+                  </button>
+                )}
+                {isSOS && <span className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">SOS</span>}
+                {catalogIdentity?.authorityState === "possible_divergence" && (
+                  <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Revisar identidade</span>
+                )}
+                {supplyRoute?.mode === "hybrid" && (
+                  <span title="Origem baseada nos vínculos e aquisições registrados" className="max-w-full truncate rounded-md bg-emerald-300/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-emerald-200">
+                    {supplyRoute.labels.join(" + ")}
+                  </span>
+                )}
+                {textoDose && <span title={`Dose ${textoDose}`} className="text-[10px] text-ink-muted">Dose {textoDose}</span>}
+                {careDecision.stage !== "stable" && !careAction && (
+                  <span title={careDecision.explanation} className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
+                    {careDecision.label}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-9 max-w-full items-center justify-center gap-1 rounded-xl border px-2.5 text-[10px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    className={`inline-flex min-h-9 max-w-full items-center justify-center gap-1 rounded-xl border px-2.5 py-1 text-[11px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
-
-                      trigger(
-                        "vibrate"
-                      );
-
-                      router.push(
-                        careAction.href
-                      );
+                      trigger("vibrate");
+                      router.push(careAction.href);
                     }}
                   >
-                    <AlertTriangle
-                      size={11}
-                    />
-
-                    <span className="truncate">Ver pendência</span>
+                    <AlertTriangle size={12} className="shrink-0" />
+                    <span className="min-w-0 line-clamp-2 break-words">{contextualActionLabel}</span>
                     <span className="sr-only">{careAction.label}</span>
                   </button>
                 )}
-
-                {!isSuspenso &&
-                  canQuickDose &&
-                  quickDoseLabel ? (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-
-                        trigger(
-                          "vibrate"
-                        );
-
-                        setQuickDoseMedId(
-                          med.id!
-                        );
-                      }}
-                      className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[10px] font-black transition-all active:scale-[0.97] ${
-                        isSOS
-                          ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400"
-                          : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"
-                      }`}
-                      aria-label={`${quickDoseLabel} ${med.nome}`}
-                    >
-                      <Zap
-                        size={9}
-                        fill="currentColor"
-                      />
-
-                      {
-                        quickDoseLabel
-                      }
-                    </button>
-                  ) : null}
+                {!isSuspenso && canQuickDose && quickDoseLabel ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      trigger("vibrate");
+                      setQuickDoseMedId(med.id!);
+                    }}
+                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border px-2.5 text-[11px] font-black transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
+                    aria-label={`${quickDoseLabel} ${med.nome}`}
+                  >
+                    <Zap size={12} fill="currentColor" />
+                    {quickDoseLabel}
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -1267,101 +1178,21 @@ export default function MedicamentosListPage() {
                 Indicações, médico e tratamentos ficam nos Detalhes.
                 A lista preserva apenas identidade, rotina, estoque e exceções. */}
 
-            {/* PAINEL OPERACIONAL COMPACTO */}
-
-            <div className="min-h-[4.5rem] rounded-xl border border-surface-border/30 bg-black/[0.04] px-2.5 py-2">
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    {dosesIgnoradasHoje > 0 && !isSOS ? (
-                      <MinusCircle size={12} className="shrink-0 text-amber-400" />
-                    ) : rotinaConcluida ||
-                    sosTomadoHoje ? (
-                      <CheckCircle2
-                        size={
-                          12
-                        }
-                        className="shrink-0 text-emerald-400"
-                      />
-                    ) : (
-                      <Circle
-                        size={
-                          10
-                        }
-                        className="shrink-0 text-ink-faint"
-                      />
-                    )}
-
-                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
-                      Hoje
-                    </span>
-                  </div>
-
-                  <p
-                    className={`mt-1 whitespace-normal break-words text-[10px] font-bold leading-snug ${todayStatus.tone}`}
-                  >
-                    {
-                      todayStatus.label
-                    }
-                  </p>
-
-                  {todayStatus.detail && todayStatus.detail !== "Tudo certo hoje" && (
-                    <p className="mt-0.5 line-clamp-1 text-[8px] font-medium leading-snug text-ink-faint">
-                      {
-                        todayStatus.detail
-                      }
-                    </p>
-                  )}
-
-
-                </div>
-
-                <div className="h-9 w-px shrink-0 bg-surface-border/35" />
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <Droplet
-                      size={
-                        9
-                      }
-                      className={
-                        isEstoqueZerado
-                          ? "text-coral"
-                          : isEstoqueCritico
-                            ? "text-amber-400"
-                            : "text-emerald-400"
-                      }
-                    />
-
-                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-ink-faint">
-                      Estoque
-                    </span>
-                  </div>
-
-                  <p
-                    className={`mt-1 whitespace-normal break-words text-[10px] font-black leading-snug ${
-                      isEstoqueZerado
-                        ? "text-coral"
-                        : isEstoqueCritico
-                          ? "text-amber-400"
-                          : "text-emerald-400"
-                    }`}
-                  >
-                    {
-                      humanizeStockText(
-                        textoEstoquePrincipal
-                      )
-                    }
-                  </p>
-
-                  <p className="mt-0.5 line-clamp-1 text-[8px] font-semibold leading-snug text-ink-faint">
-                    {
-                      textoEstoqueSecundario ||
-                      estoqueStatus
-                    }
-                  </p>
-                </div>
-              </div>
+            {/* VAULT_V318_OPERATIONAL_STRIP: summary only, no repeated mini-dashboard */}
+            <div
+              className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-surface-border/25 bg-void/20 px-2 py-1.5 text-[10px] leading-snug"
+              aria-label={`Hoje: ${todayStatus.label}. Estoque: ${humanizeStockText(textoEstoquePrincipal)}. ${textoEstoqueSecundario || estoqueStatus}`}
+              title={`${todayStatus.detail} · ${textoEstoqueSecundario || estoqueStatus}`}
+            >
+              <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${todayStatus.tone}`}>
+                {dosesIgnoradasHoje > 0 && !isSOS ? <MinusCircle size={12} className="shrink-0" /> : rotinaConcluida || sosTomadoHoje ? <CheckCircle2 size={12} className="shrink-0" /> : <Circle size={11} className="shrink-0" />}
+                <span className="min-w-0 break-words">{todayStatus.label}</span>
+              </span>
+              <span className="text-ink-faint" aria-hidden="true">·</span>
+              <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${isEstoqueZerado ? "text-coral" : isEstoqueCritico ? "text-amber-400" : "text-emerald-400"}`}>
+                <Droplet size={11} className="shrink-0" />
+                <span className="min-w-0 break-words">{humanizeStockText(textoEstoquePrincipal)}</span>
+              </span>
             </div>
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1

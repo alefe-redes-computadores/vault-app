@@ -1144,14 +1144,6 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       <div id="fornecimento-agora" className="scroll-mt-24">
       {processes.length > 0 ? <ClinicalListSummary icon={PackageCheck} eyebrow="Comando de fornecimento" title={processView.cyclesInProgress ? `${processView.cyclesInProgress} ciclo${processView.cyclesInProgress === 1 ? "" : "s"} em andamento` : "Processos organizados"} detail="SUS, compras e documentos mantêm suas origens independentes." metrics={[{label:"Ativos",value:processView.activeProcesses.length,tone:"positive"},{label:"Ciclos",value:processView.cycles},{label:"Documentos",value:processView.documents}]}/> : null}
       </div>
-      <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
-        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Ajuda e catálogo SUS</summary>
-        <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
-          Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
-        </p>
-        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
-        <div className="pb-3 pt-2"><SusCatalogBrowser compact /></div>
-      </details>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…
@@ -1175,9 +1167,25 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
               <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
+          {/* VAULT_V321_SUPPLY_FOCUS: no synthetic SUS/private funding classification. */}
+          {processView.activeProcesses.length > 0 && !creating && (
+            <div className="mb-2 flex min-h-12 items-center justify-between gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] px-3 py-2">
+              <span className="text-[11px] font-medium text-ink-muted">{processView.activeProcesses.length} processo{processView.activeProcesses.length === 1 ? "" : "s"} ativo{processView.activeProcesses.length === 1 ? "" : "s"}</span>
+              <button type="button" disabled={busy} onClick={() => {setSeed(null);setEditing(false);setCycleId("");setCreating(true);}} className="min-h-10 shrink-0 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-300 disabled:opacity-50">Novo fornecimento</button>
+            </div>
+          )}
           <div id="processos" className="mb-3 grid min-w-0 scroll-mt-24 grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Selecionar fornecimento">
             {processView.activeProcesses.map(renderProcess)}
           </div>
+      <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Ajuda e catálogo SUS</summary>
+        <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
+          Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
+        </p>
+        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
+        <div className="pb-3 pt-2"><SusCatalogBrowser compact /></div>
+      </details>
+
             {processView.archivedProcesses.length > 0 && <details className="w-full rounded-2xl border border-surface-border p-3" open={process?.status === "encerrado"}>
               <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-muted">Arquivados · histórico ({processView.archivedProcesses.length})</summary>
               <div className="flex flex-wrap gap-2">{processView.archivedProcesses.map(renderProcess)}</div>

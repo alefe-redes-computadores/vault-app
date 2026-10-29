@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const ts=require('typescript');
+const page=fs.readFileSync('app/saude/medicamentos/detalhes/page.tsx','utf8');
+const parsed=ts.createSourceFile('detail-v319.tsx',page,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(parsed.parseDiagnostics.length,0,'Detalhes continuam TSX sintaticamente válido');
+const titleIndex=page.indexOf('Identidade farmacêutica');
+const before=page.slice(Math.max(0,titleIndex-1500),titleIndex);
+const after=page.slice(titleIndex,titleIndex+2000);
+assert(titleIndex>0,'Identidade do catálogo permanece visível');
+assert(before.includes('<details className="group mt-2 rounded-xl'), 'ficha extensa recolhida por padrão');
+assert(before.includes('<summary className="flex min-h-11 cursor-pointer'), 'resumo acessível com área de toque');
+assert(after.includes('group-open:hidden') && after.includes('Ver ficha'),'rótulo de abertura explícito');
+assert(after.includes('catalogIdentity.activeIngredients.join(" + ")'),'princípios ativos preservados');
+assert(page.includes('catalogIdentity.registrationNumber'),'número de registro preservado');
+assert(page.includes('catalogIdentity.sourceLabel'),'fonte preservada');
+assert(page.includes('Quantidade registrada hoje'),'quantidade de dose distinta do estoque');
+assert(page.includes('Menor preço médio por farmácia:'),'indicador financeiro sem confundir melhor e média geral');
+assert(page.includes('medicamento-rotina')&&page.includes('medicamento-financeiro')&&page.includes('medicamento-receita'),'âncoras de navegação mantidas');
+assert(page.includes('setQuickDoseMedId') || page.includes('setSosModalOpen') || page.includes('Registrar dose'),'registro operacional mantido');
+console.log('V319 OK: ficha farmacêutica progressiva, quantidade contextual e preço de referência claro.');

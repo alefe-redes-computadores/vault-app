@@ -97,6 +97,14 @@ export default function VaultIntelligencePage() {
 
     {!health.isLoading && health.careCommand ? <BrainCarePlan plan={health.careCommand.plan} onNavigate={(href) => router.push(preserveReturn(href))}/> : null}
 
+    {/* VAULT_V320_BRAIN_EVIDENCE: primary care decisions remain above; extra lenses below. */}
+    {!health.isLoading && (
+      <details className="group mx-auto mt-3 max-w-2xl rounded-[18px] border border-violet-400/15 bg-violet-400/[0.025] px-3 py-1">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 text-left">
+          <span className="min-w-0"><strong className="block text-xs font-semibold text-ink-primary">Explorar planejamento e evidências</strong><span className="block text-[10px] text-ink-muted">Documentos, doses, aquisições e horizonte financeiro</span></span>
+          <ChevronRight size={16} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
+        </summary>
+        <div className="space-y-3 border-t border-surface-border/50 py-3">
     {!health.isLoading && health.careCommand ? <section className="mx-auto mt-4 max-w-2xl"><CareAccessBrief portfolio={health.careCommand.documents} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
 
     {!health.isLoading ? <section className="mx-auto mt-4 max-w-2xl"><DoseEvidenceBrief context={health.context} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
@@ -106,6 +114,9 @@ export default function VaultIntelligencePage() {
     {!health.isLoading ? <section className="mx-auto mt-4 max-w-2xl"><PrescriptionPlanningBrief context={health.context} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
 
     {!health.isLoading&&health.careCommand?<CareFinancialOutlook command={health.careCommand} realized30={coverage?.financialSpend30d||0} realized90={coverage?.financialSpend90d||0}/>:null}
+        </div>
+      </details>
+    )}
 
     <section className="mx-auto mt-6 max-w-2xl">
       <div className="flex items-end justify-between gap-3"><div><h2 className="font-bold">Saúde agora</h2><p className="text-xs text-ink-muted">Sinais priorizados pelo histórico da pessoa ativa.</p></div><div className="rounded-full border border-violet-400/20 bg-violet-400/[0.07] px-3 py-1.5 font-mono text-[9px] text-violet-300">{health.maturity.score}% contexto</div></div>

@@ -3030,7 +3030,7 @@ function MedicamentoDetalhesContent() {
               HERO
               ================================================== */}
 
-          <section className="relative overflow-hidden rounded-[20px] border border-surface-border/70 bg-surface shadow-lg">
+          <section className="relative overflow-hidden rounded-[18px] border border-surface-border/70 bg-surface shadow-sm">
             <div
               className="absolute bottom-0 left-0 top-0 w-1.5"
               style={{
@@ -3042,8 +3042,8 @@ function MedicamentoDetalhesContent() {
               }}
             />
 
-            <div className="p-4 pl-5 sm:p-5 sm:pl-6">
-              <div className="flex items-start gap-4">
+            <div className="p-3 pl-4 sm:p-4 sm:pl-5">
+              <div className="flex min-w-0 items-start gap-3">
                 <ListIcon
                   color={
                     color1
@@ -3105,8 +3105,8 @@ function MedicamentoDetalhesContent() {
                   </p>
 
                   {catalogIdentity && catalogIdentity.authorityState !== "unvalidated" && (
-                    <div className="mt-3 rounded-2xl border border-surface-border/70 bg-void/25 px-3.5 py-3">
-                      <div className="flex flex-wrap items-center gap-2">
+                    <details className="group mt-2 rounded-xl border border-surface-border/60 bg-void/20 px-3 py-1">
+                      <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-2 py-2 text-left">
                         <span className="text-[9px] font-black uppercase tracking-[0.14em] text-ice">
                           Identidade farmacêutica
                         </span>
@@ -3117,7 +3117,8 @@ function MedicamentoDetalhesContent() {
                         }`}>
                           {catalogIdentity.authorityLabel}
                         </span>
-                      </div>
+                      <span className="ml-auto text-[10px] font-medium text-ice/80 group-open:hidden">Ver ficha</span>
+                      </summary>
 
                       {catalogIdentity.activeIngredients.length > 0 && (
                         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
@@ -3132,7 +3133,7 @@ function MedicamentoDetalhesContent() {
                         {catalogIdentity.presentationCount > 0 && <span>{catalogIdentity.presentationCount} apresentação{catalogIdentity.presentationCount === 1 ? "" : "ões"}</span>}
                         {catalogIdentity.sourceLabel && <span>Fonte · {catalogIdentity.sourceLabel}</span>}
                       </div>
-                    </div>
+                    </details>
                   )}
 
                   {tratamentos.length >
@@ -3201,6 +3202,28 @@ function MedicamentoDetalhesContent() {
               </div>
             </div>
           </section>
+
+          {/* VAULT_V320_QUICK_DOSE_TOP: same clinical owner/handler, moved above analytic sections */}
+          {(med.status !== "descontinuado" || isSOS) && (
+            <div className="rounded-[16px] border border-emerald-400/15 bg-emerald-400/[0.035] p-2">
+                <button
+                  type="button"
+                  onClick={
+                    abrirQuickDose
+                  }
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-void transition-all active:scale-[0.98]"
+                >
+                  <Zap
+                    size={
+                      18
+                    }
+                    fill="currentColor"
+                  />
+
+                  Registrar dose
+                </button>
+            </div>
+          )}
 
           {(careDecision.stage !== "stable" || brainCareAction) && (
             <section className="rounded-[20px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-4">
@@ -3570,6 +3593,11 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           {comportamento && (
+            <details open={comportamento.tipo === "alerta_adesao"} className="group rounded-[18px] border border-violet-400/20 bg-violet-400/[0.035] px-3 py-1">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-left text-xs font-semibold text-violet-300">
+                <span className="min-w-0 break-words">{comportamento.tipo === "alerta_adesao" ? "Atenção ao registro" : "Padrão observado"} · {comportamento.titulo}</span>
+                <ChevronRight size={15} className="shrink-0 transition-transform group-open:rotate-90"/>
+              </summary>
             <motion.div
               initial={{
                 opacity:
@@ -3653,6 +3681,7 @@ function MedicamentoDetalhesContent() {
                 </div>
               </div>
             </motion.div>
+            </details>
           )}
           </div>
 
@@ -3693,7 +3722,7 @@ function MedicamentoDetalhesContent() {
 
                       <div className="rounded-2xl bg-surface-raised p-3">
                         <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                          Quantidade conhecida
+                          Quantidade registrada hoje
                         </p>
 
                         <p className="mt-1 text-xl font-bold text-ink-primary">
@@ -3907,22 +3936,7 @@ function MedicamentoDetalhesContent() {
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={
-                    abrirQuickDose
-                  }
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3.5 font-bold text-void shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
-                >
-                  <Zap
-                    size={
-                      18
-                    }
-                    fill="currentColor"
-                  />
 
-                  Registrar dose
-                </button>
 
                 {!temEstoque && (
                   <p className="mt-2 text-center text-[9px] leading-relaxed text-ink-faint">
@@ -4297,7 +4311,7 @@ function MedicamentoDetalhesContent() {
               />
 
               <p className="text-xs text-ink-primary">
-                Melhor preço médio no histórico:{" "}
+                Menor preço médio por farmácia:{" "}
                 <span className="font-bold text-emerald-400">
                   R${" "}
                   {melhorFarmacia.media_preco.toFixed(
@@ -4479,7 +4493,16 @@ function MedicamentoDetalhesContent() {
                   <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{medicationCosts.planned.length} aquisição(ões) futura(s). Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
                 </div>
               )}
-              <MedicationPurchaseRhythmCard events={renovacoes} medicationId={med.id!} todayISO={diaFinanceiro}/>
+              {/* VAULT_V320_FINANCE_PROGRESSIVE: calculations retained, advanced projection optional */}
+              <details className="group rounded-xl border border-surface-border/60 bg-surface/40 px-3 py-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary">
+                  <span>Ritmo de aquisição e previsão</span>
+                  <ChevronRight size={15} className="text-ink-muted transition group-open:rotate-90"/>
+                </summary>
+                <div className="border-t border-surface-border/50 py-3">
+                  <MedicationPurchaseRhythmCard events={renovacoes} medicationId={med.id!} todayISO={diaFinanceiro}/>
+                </div>
+              </details>
             </section>
           )}
 

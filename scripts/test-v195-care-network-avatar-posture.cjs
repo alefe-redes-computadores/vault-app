@@ -37,7 +37,8 @@ for (const [detail, fallback] of [
 
 assert(listCard.includes('isCompact ? "rounded-[20px]" : "rounded-[24px]"'));
 assert(listCard.includes('contentVisibility: "auto"'));
-assert(listCard.includes('containIntrinsicSize: isCompact ? "148px" : "190px"'));
+assert(listCard.includes('containIntrinsicSize: isTight ? "116px" : isCompact ? "148px" : "190px"'));
+assert(listCard.includes("const isTight = isCompact && compactTight;"));
 
 assert(avatar.includes("V195: postura assimétrica discreta"));
 assert(avatar.includes("holdsPhone?.11:.08"));

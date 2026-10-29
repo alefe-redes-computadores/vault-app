@@ -18,12 +18,16 @@ for(const [name,code,tsx] of [
 }
 assert(details.indexOf('const journeySnapshot = useMemo(')<details.indexOf('  if (\n    med ===\n    undefined'),'V299 React hook-order fix preserved');
 const main=details.indexOf('<ClinicalSectionNav label="Áreas do medicamento"');
-const identity=details.indexOf('<section className="relative overflow-hidden rounded-[20px] border border-surface-border/70 bg-surface shadow-lg">',main);
+const identity=details.indexOf('VAULT_MEDICATION_HIERARCHY_V72',main);
+const hero=details.indexOf('<section className="relative overflow-hidden',identity);
 const action=details.indexOf('{(careDecision.stage !== "stable" || brainCareAction) && (',main);
 const journal=details.indexOf('<ClinicalDisclosure id="medicamento-jornada"',main);
 const supply=details.indexOf('<ClinicalDisclosure id="medicamento-fornecimento"',main);
-assert(main>=0 && identity>main && action>identity && journal>action && supply>journal,
-  'Medication identity and next action precede progressive history and supply');
+assert(main>=0 && identity>main && hero>identity && action>hero && journal>action && supply>journal &&
+  details.slice(hero,action).includes('med.nome') &&
+  details.slice(hero,action).includes('med.dosagem') &&
+  details.slice(hero,action).includes('regulatoryProfile'),
+  'Medication identity, dose and regulatory status precede next action, history and supply');
 assert.equal(details.split('<MedicationJourneySummary snapshot={journeySnapshot}').length-1,1,'no duplicate journey');
 assert.equal(details.split('<HealthSupplyEntry medicamentoId={med.id!}/>').length-1,1,'canonical supply surface preserved');
 assert(details.includes('id="medicamento-lembretes"'),'notifications are an accessible on-demand section');

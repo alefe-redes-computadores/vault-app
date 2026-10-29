@@ -34,6 +34,8 @@ export interface ListCardProps {
   showChevron?: boolean;
   /** Densidade visual opt-in. O padrão preserva todos os demais cards. */
   density?: "default" | "compact";
+  /** V318: very compact medication list; opt-in, not a global size change. */
+  compactTight?: boolean;
   /** Conteúdo com ações próprias; navegação vira um botão irmão. */
   interactiveContent?: boolean;
   navigationLabel?: string;
@@ -54,10 +56,12 @@ export function ListCard({
   contentClassName = "",
   showChevron = true,
   density = "default",
+  compactTight = false,
   interactiveContent = false,
   navigationLabel = "Ver detalhes",
 }: ListCardProps) {
   const isCompact = density === "compact";
+  const isTight = isCompact && compactTight;
   const reducedMotion = useReducedMotion();
 
   return (
@@ -72,7 +76,7 @@ export function ListCard({
       className={`
         group relative
         overflow-hidden
-        ${isCompact ? "rounded-[20px]" : "rounded-[24px]"}
+        ${isTight ? "rounded-[16px]" : isCompact ? "rounded-[20px]" : "rounded-[24px]"}
         border
         bg-surface
         ${isCompact ? "shadow-sm" : "shadow-md"}
@@ -87,7 +91,7 @@ export function ListCard({
       style={{
         borderColor: isDisabled ? undefined : `${color}40`,
         contentVisibility: "auto",
-        containIntrinsicSize: isCompact ? "148px" : "190px",
+        containIntrinsicSize: isTight ? "116px" : isCompact ? "148px" : "190px",
       }}
     >
       <div
@@ -109,7 +113,7 @@ export function ListCard({
               ? "p-3 pl-8"
               : "p-4 pl-10"
             : isCompact
-            ? "p-3 pl-4"
+            ? (isTight ? "p-2.5 pl-3.5" : "p-3 pl-4")
             : "p-4 pl-5"
         }
       >
@@ -129,7 +133,7 @@ export function ListCard({
               <div
                 className={`
               flex
-              ${isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
+              ${isTight ? "h-9 w-9 rounded-xl" : isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
               shrink-0
               items-center
               justify-center
@@ -175,7 +179,7 @@ export function ListCard({
             <div
               className={`
               flex
-              ${isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
+              ${isTight ? "h-9 w-9 rounded-xl" : isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
               shrink-0
               items-center
               justify-center

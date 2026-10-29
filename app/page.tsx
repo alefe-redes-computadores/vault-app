@@ -87,6 +87,7 @@ import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/d
 import { buildPendingDoseBacklog } from "@/lib/pending-dose-backlog";
 
 import { PageTransition } from "@/components/PageTransition";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {
@@ -2438,6 +2439,16 @@ export default function HomePage() {
                 </button>
               </div>
 
+              {/* VAULT_V321_HOME_EVIDENCE: urgent evidence defaults open; routine analysis stays optional. */}
+              {longitudinalHighlights.length > 0 && (
+                <ClinicalDisclosure
+                  key={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") ? "priority" : "routine"}
+                  id="home-health-evidence"
+                  title="Sinais e evidências do Brain"
+                  description={`${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"} · abrir para consultar`}
+                  icon={<Activity size={18}/>}
+                  defaultOpen={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao")}
+                >
               <div className="-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {longitudinalHighlights.map(
                   (
@@ -2521,6 +2532,9 @@ export default function HomePage() {
 
               {longitudinalHighlights.length > 1 && (
                 <div className="flex items-center justify-between px-1"><span className="text-[9px] text-ink-faint">Deslize para ver outros sinais</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
+              )}
+
+                </ClinicalDisclosure>
               )}
 
               {longitudinalHighlights.length === 0 && brainV5Pulse.top && (
