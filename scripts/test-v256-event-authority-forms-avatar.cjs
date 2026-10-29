@@ -4,6 +4,7 @@ const ok=(value,label)=>{if(!value)throw Error(`V256: ${label}`);console.log('OK
 const model=read('lib/health-supply/renewal-event-presentation.ts');
 const list=read('app/saude/renovacao/page.tsx');
 const detail=read('app/saude/renovacao/detalhes/page.tsx');
+const detailGraph=read('lib/renewal-detail-relations.ts');
 const boundary=read('components/saude/MedicationEventBoundary.tsx');
 const recipe=read('app/saude/renovacao/nova-receita/page.tsx');
 const acquisition=read('app/saude/renovacao/nova/page.tsx');
@@ -15,7 +16,7 @@ ok(model.includes('realizedAcquisitions: privateAcquisitions + publicAcquisition
 ok(list.includes('summarizeRenewalEvents')&&list.includes('aquisição(ões) planejada(s)'),'listagem separa realizado de planejado');
 ok(list.includes('filtroAquisicao === "planejada"')&&list.includes('eventPresentation.planned'),'filtro planejado tem semântica própria');
 ok(detail.includes('eventPresentation?.attachmentLabel')&&detail.includes('Relações comprovadas'),'detalhe nomeia anexo e relações pelo evento real');
-ok(detail.includes('renovacao_origem_id')&&detail.includes('renovacao_realizada_id'),'detalhe reconhece origem e recebimento da retirada');
+ok(detail.includes('linkedWithdrawals')&&detailGraph.includes('renovacao_origem_id')&&detailGraph.includes('renovacao_realizada_id'),'detalhe reconhece origem e recebimento da retirada');
 ok(boundary.includes('autoridade do registro')&&recipe.includes('<MedicationEventBoundary')&&acquisition.includes('<MedicationEventBoundary'),'formulários explicam limites antes de salvar');
 ok(avatar.includes('<details')&&avatar.includes('group-open:rotate-90'),'Avatar mantém continuidade em divulgação progressiva');
 console.log('\nVAULT V256 — AUTORIDADE DE EVENTOS + FORMULÁRIOS + AVATAR: OK');

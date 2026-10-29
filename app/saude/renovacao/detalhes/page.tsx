@@ -1,7 +1,6 @@
 // app/saude/renovacao/detalhes/page.tsx
 "use client";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
-import {useRetiradas} from "@/hooks/useRetiradas";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
 import { presentRenewalEvent } from "@/lib/health-supply/renewal-event-presentation";
@@ -13,6 +12,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 
 import {
   useRouter,
@@ -52,29 +52,10 @@ import {
   useHapticFeedback,
 } from "@/lib/haptics";
 
-import {
-  useRenovacoes,
-} from "@/hooks/useRenovacoes";
-
-import {
-  useMedicamentos,
-} from "@/hooks/useMedicamentos";
-
-import {
-  useMedicos,
-} from "@/hooks/useMedicos";
-
-import {
-  useFarmacias,
-} from "@/hooks/useFarmacias";
-
-import {
-  useHospitais,
-} from "@/hooks/useHospitais";
-
-import {
-  useLocais,
-} from "@/hooks/useLocais";
+import { useRenovacaoActions } from "@/hooks/useRenovacaoActions";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+import { useAuth } from "@/hooks/useAuth";
+import { loadRenewalDetailRelations } from "@/lib/renewal-detail-relations";
 
 import {
   analisarValidadeReceita,
@@ -193,7 +174,6 @@ function getPriceLabel(
 // ============================================================
 
 function DetalhesRenovacaoContent() {
- const {retiradas}=useRetiradas();
   const hojeISO=useLocalDay();
   const router =
     useRouter();
@@ -217,64 +197,22 @@ function DetalhesRenovacaoContent() {
   } =
     useHapticFeedback();
 
-  const {
-    getRenovacao,
-    deleteRenovacao,
-  } =
-    useRenovacoes();
-
-  const {
-    medicamentos,
-  } =
-    useMedicamentos();
-
-  const {
-    medicos,
-  } =
-    useMedicos();
-
-  const {
-    farmacias,
-  } =
-    useFarmacias();
-
-  const {
-    hospitais,
-  } =
-    useHospitais();
-
-  const {
-    locais,
-  } =
-    useLocais();
+  const { deleteRenovacao } = useRenovacaoActions();
+  const { activePersonId } = useActivePersonId();
+  const { user } = useAuth();
 
   // ==========================================================
   // STATE
   // ==========================================================
 
-  const [
-    renovacao,
-    setRenovacao,
-  ] =
-    useState<Renovacao | null>(
-      null
-    );
-
-  const [
-    medicamentoId,
-    setMedicamentoId,
-  ] =
-    useState(
-      ""
-    );
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
-    useState(
-      true
-    );
+  const relationSnapshot = useLiveQuery(
+    () => id && activePersonId && user?.id
+      ? loadRenewalDetailRelations({ renewalId: id, userId: user.id, personId: activePersonId })
+      : undefined,
+    [id, activePersonId, user?.id],
+  );
+  const isLoading = Boolean(id && activePersonId && user?.id && relationSnapshot === undefined);
+  const renovacao = relationSnapshot?.renovacao ?? null;
 
   const [
     showDeleteModal,
@@ -300,113 +238,9 @@ function DetalhesRenovacaoContent() {
       false
     );
 
-  // ==========================================================
-  // HISTÓRICO PERSON-SCOPED
-  // ==========================================================
-
-  const {
-    renovacoes:
-      historicoDoMedicamento,
-  } =
-    useRenovacoes(
-      medicamentoId ||
-        undefined
-    );
-
-  // ==========================================================
-  // LOAD
-  // ==========================================================
-
-  useEffect(
-    () => {
-      let cancelled =
-        false;
-
-      const loadData =
-        async () => {
-          if (
-            !id
-          ) {
-            router.replace(
-              "/saude/renovacao"
-            );
-
-            return;
-          }
-
-          setIsLoading(
-            true
-          );
-
-          try {
-            const data =
-              await getRenovacao(
-                id
-              );
-
-            if (
-              cancelled
-            ) {
-              return;
-            }
-
-            if (
-              !data
-            ) {
-              setRenovacao(
-                null
-              );
-
-              return;
-            }
-
-            setRenovacao(
-              data
-            );
-
-            setMedicamentoId(
-              data.medicamento_id ||
-                ""
-            );
-          } catch (
-            error
-          ) {
-            console.error(
-              "[DetalhesRenovacao] Falha ao carregar renovação:",
-              error
-            );
-
-            if (
-              !cancelled
-            ) {
-              setRenovacao(
-                null
-              );
-            }
-          } finally {
-            if (
-              !cancelled
-            ) {
-              setIsLoading(
-                false
-              );
-            }
-          }
-        };
-
-      void loadData();
-
-      return () => {
-        cancelled =
-          true;
-      };
-    },
-    [
-      id,
-      getRenovacao,
-      router,
-    ]
-  );
+  useEffect(() => {
+    if (!id) router.replace("/saude/renovacao");
+  }, [id, router]);
 
   // ==========================================================
   // MENU
@@ -455,71 +289,12 @@ function DetalhesRenovacaoContent() {
   // DERIVADOS
   // ==========================================================
 
-  const medicamento =
-    medicamentos.find(
-      (
-        item
-      ) =>
-        item.id ===
-        renovacao?.medicamento_id
-    );
-
-  const medico =
-    medicos.find(
-      (
-        item
-      ) =>
-        item.id ===
-        renovacao?.medico_id
-    );
-
-  const farmacia =
-    farmacias.find(
-      (
-        item
-      ) =>
-        item.id ===
-        renovacao?.farmacia_id
-    );
-
-  const hospital =
-    hospitais.find(
-      (
-        item
-      ) =>
-        item.id ===
-        renovacao?.hospital_id
-    );
-
-  const local =
-    locais.find(
-      (
-        item
-      ) =>
-        item.id ===
-        renovacao?.local_id
-    );
-
-  const historicoRenovacoes =
-    useMemo(
-      () =>
-        historicoDoMedicamento
-          .filter(
-            (
-              item
-            ) =>
-              item.id !==
-              renovacao?.id
-          )
-          .slice(
-            0,
-            5
-          ),
-      [
-        historicoDoMedicamento,
-        renovacao?.id,
-      ]
-    );
+  const medicamento = relationSnapshot?.medicamento;
+  const medico = relationSnapshot?.medico;
+  const farmacia = relationSnapshot?.farmacia;
+  const hospital = relationSnapshot?.hospital;
+  const local = relationSnapshot?.local;
+  const historicoRenovacoes = relationSnapshot?.historico ?? [];
 
   /*
    * A validade histórica não é mais calculada nesta página.
@@ -580,7 +355,7 @@ function DetalhesRenovacaoContent() {
     );
 
   const eventPresentation = renovacao ? presentRenewalEvent(renovacao, hojeISO) : null;
-  const linkedWithdrawals = useMemo(() => retiradas.filter(item => item.renovacao_origem_id === renovacao?.id || item.renovacao_realizada_id === renovacao?.id), [retiradas, renovacao?.id]);
+  const linkedWithdrawals = relationSnapshot?.retiradas ?? [];
 
   const tipoAquisicaoLabel =
     eventPresentation?.title || "Evento de medicamento";
@@ -1699,7 +1474,7 @@ function DetalhesRenovacaoContent() {
           </motion.div>
         </section>
 
-        {(renovacao.document_id || linkedWithdrawals.length > 0) && <section aria-label="Relações deste evento" className="mx-5 mt-4 space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4"><div><p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Relações comprovadas</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Documento e retiradas</h2></div>{renovacao.document_id && <button type="button" onClick={()=>router.push(`/saude/documentos/detalhes?id=${encodeURIComponent(renovacao.document_id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.06] px-3 text-left text-xs font-semibold text-violet-200"><FileText size={14}/><span className="flex-1">Abrir documento de saúde vinculado</span><ChevronRight size={14}/></button>}{linkedWithdrawals.map(item=><button type="button" key={item.id} onClick={()=>router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(item.id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 text-left text-xs font-semibold text-emerald-300"><Receipt size={14}/><span className="flex-1">{item.renovacao_realizada_id===renovacao.id?"Recebimento":"Origem"} · retirada de {formatDateDisplay(item.data)}</span><ChevronRight size={14}/></button>)}</section>}
+        {(relationSnapshot?.documento || linkedWithdrawals.length > 0) && <section aria-label="Relações deste evento" className="mx-5 mt-4 space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4"><div><p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Relações comprovadas</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Documento e retiradas</h2></div>{relationSnapshot?.documento?.id && <button type="button" onClick={()=>router.push(`/saude/documentos/detalhes?id=${encodeURIComponent(relationSnapshot.documento!.id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.06] px-3 text-left text-xs font-semibold text-violet-200"><FileText size={14}/><span className="flex-1">Abrir documento de saúde vinculado</span><ChevronRight size={14}/></button>}{linkedWithdrawals.map(item=><button type="button" key={item.id} onClick={()=>router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(item.id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 text-left text-xs font-semibold text-emerald-300"><Receipt size={14}/><span className="flex-1">{item.renovacao_realizada_id===renovacao.id?"Recebimento":"Origem"} · retirada de {formatDateDisplay(item.data)}</span><ChevronRight size={14}/></button>)}</section>}
         <div className="px-5 pt-4"><HealthSupplyEntry medicamentoId={renovacao.medicamento_id}/></div>
 
         <ContextualHealthIntelligence
