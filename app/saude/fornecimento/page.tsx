@@ -39,6 +39,7 @@ import {
   FileText,
   CheckCircle2,
   PackageCheck,
+  ChevronRight,
 } from "lucide-react";
 import { prescriptionConfigurationReview } from "@/lib/health-supply/process-integrity";
 import { withdrawalSupplySuggestions } from "@/lib/health-supply/withdrawal-suggestions";
@@ -1058,6 +1059,11 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     setCreating(requestedCreate); setEditing(false); setSeed(null); setWithdrawalId(requestedWithdrawalId);
   }, [requestedProcessId, requestedCycleId, requestedWithdrawalId, requestedCreate, medId]);
   const process = resolveProcessSelection(processes, requestChanged ? requestedProcessId || "" : selected);
+  useEffect(() => {
+    if (typeof window === "undefined" || !process?.id || window.location.hash !== "#processo-atual") return;
+    const timer = window.setTimeout(() => document.getElementById("processo-atual")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    return () => window.clearTimeout(timer);
+  }, [process?.id]);
   const missingProcess = !!(requestChanged ? requestedProcessId : selected) && !process;
   const cycles = (relationalIndex.cyclesByProcess.get(process?.id || "") || [])
     .slice()
@@ -1078,6 +1084,28 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     ) ||
     cycles[0];
   const processView = useMemo(() => buildSupplyProcessView(relationalIndex, processes), [relationalIndex, processes]);
+  // V329 DOCUMENT WORKSPACE: only explicit missing SUS requirements are shown.
+  // Unknown, optional receipts and private purchases must never be fabricated as debts.
+  const missingDocumentItems = healthIntelligence.careCommand?.documents.items
+    .flatMap(item => item.requirements
+      .filter(requirement => requirement.status === "missing")
+      .map(requirement => ({ ...item, requirement }))) ?? [];
+  const navigateSupplyAction = (href: string) => {
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin === window.location.origin && url.pathname === "/saude/fornecimento" && url.hash) {
+          const focus = decodeURIComponent(url.hash.slice(1));
+          // Same-page destinations must respond even when Next would no-op.
+          if (!url.search || url.search === window.location.search) {
+            document.getElementById(focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+        }
+      } catch { /* The route handler below owns malformed paths. */ }
+    }
+    router.push(href);
+  };
   const run: Run = async (action, message = "Salvo") => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -1146,10 +1174,28 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
       />
       <div className="min-w-0 space-y-3 px-4 pt-4 sm:px-5">
       <div id="fornecimento-agora" className="scroll-mt-24">
-      <AccessCommandOverview command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)}/>
+      <AccessCommandOverview command={healthIntelligence.careCommand} onNavigate={navigateSupplyAction}/>
       </div>
       <ClinicalSectionNav label="Áreas do fornecimento" items={[{id:"fornecimento-agora",label:"Agora",icon:<PackageCheck size={14}/>,badge:processView.cyclesInProgress},{id:"processos",label:"Processos",icon:<FolderHeart size={14}/>,badge:processView.activeProcesses.length},{id:"processo-atual",label:"Processo atual",icon:<CheckCircle2 size={14}/>},{id:"ciclo-atual",label:"Ciclo",icon:<FileText size={14}/>,badge:cycles.length}]}/>
-      <MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} access={healthIntelligence.careCommand?.access} onNavigate={(href)=>router.push(href)}/>
+      {/* VAULT_V329_DOCUMENT_FOCUS: a real list of unmet linked requirements. */}
+      <section id="documentos-pendentes" className={`scroll-mt-28 rounded-[20px] border p-3 ${missingDocumentItems.length ? "border-amber-300/25 bg-amber-300/[0.035]" : "border-surface-border/60 bg-surface/60"}`} aria-label="Documentos que exigem conferência">
+        <div className="flex items-start gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><FileText size={17}/></span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xs font-bold text-ink-primary">Documentos que exigem conferência</h2>
+            <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{missingDocumentItems.length ? `${missingDocumentItems.length} vínculo(s) documental(is) explicitamente ausente(s). Toque para localizar o processo e verificar o documento.` : "Nenhuma exigência documental explicitamente ausente nos processos conhecidos."}</p>
+          </div>
+          <span className="rounded-full border border-amber-300/15 px-2 py-1 text-[10px] font-bold text-amber-200">{missingDocumentItems.length}</span>
+        </div>
+        {missingDocumentItems.length > 0 && <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{missingDocumentItems.map(item => (
+          <button key={`${item.medicationId}-${item.requirement.lane}`} type="button"
+            onClick={() => navigateSupplyAction(item.href.startsWith("/saude/fornecimento") ? `${item.href}#processo-atual` : item.href)}
+            className="flex min-h-16 w-full items-center gap-2 rounded-xl border border-amber-300/15 bg-surface p-3 text-left transition-colors hover:border-amber-300/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300"
+            aria-label={`Ver ${item.requirement.label} de ${item.medicationName}`}>
+            <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{item.medicationName}</strong><span className="mt-0.5 block text-[10px] font-semibold text-amber-200">{item.requirement.label}</span><span className="mt-1 block text-[10px] leading-snug text-ink-muted">{item.requirement.detail}</span><span className="mt-1 block text-[9px] text-ink-faint">Origem: {item.routeLabel}</span></span><ChevronRight size={15} className="shrink-0 text-amber-300"/>
+          </button>))}</div>}
+      </section>
+      <MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} access={healthIntelligence.careCommand?.access} onNavigate={navigateSupplyAction}/>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…
@@ -1256,6 +1302,18 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
+                    {/* V329: keep missing requirements visible on the selected process, not buried in closed history. */}
+                    {missingDocumentItems.filter(item => {
+                      try { return new URL(item.href, "https://vault.local").searchParams.get("id") === process.id; }
+                      catch { return false; }
+                    }).map(item => (
+                      <div key={`doc-requirement-${item.medicationId}`} id={`documento-${item.medicationId}`} className="rounded-xl border border-amber-300/30 bg-amber-300/[0.055] p-3" role="status">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Conferir vínculo documental</p>
+                        <p className="mt-1 text-xs font-semibold text-ink-primary">{item.medicationName} · {item.requirement.label}</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.requirement.detail}</p>
+                        <p className="mt-1 text-[10px] text-ink-faint">Consulte os vínculos no histórico deste processo ou adicione o documento no ciclo correspondente.</p>
+                      </div>
+                    ))}
                     {related.length > 0 && <div className="space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Tratamentos relacionados</p>
                       {related.map(t => { const theme = getClinicalTheme(t.nome); const Icon = getVaultTreatmentIcon(t.nome); const color = /^#[0-9a-f]{6}$/i.test(t.cor || "") ? t.cor! : theme.hex; const codes = cids.filter(c => c.person_id === personId && c.user_id === process.user_id && t.cid_ids?.includes(c.id || "")).map(c => c.codigo); return <Link key={t.id} href={`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id || "")}`} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised p-3" style={{borderLeftColor:color,borderLeftWidth:3}}>

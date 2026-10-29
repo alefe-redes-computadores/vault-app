@@ -110,7 +110,7 @@ export function ListCard({
         className={
           rail
             ? isCompact
-              ? "p-3 pl-8"
+              ? (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
               : "p-4 pl-10"
             : isCompact
             ? (isTight ? "p-2.5 pl-3.5" : "p-3 pl-4")

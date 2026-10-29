@@ -8,7 +8,10 @@ for (const [file,src] of [['components/saude/HealthAvatar.tsx',shell],['componen
   const syntax = ts.createSourceFile(file,src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   assert.equal(syntax.parseDiagnostics.length,0,`Syntax error in ${file}: ${syntax.parseDiagnostics.map(d=>d.messageText).join('; ')}`);
 }
-assert(shell.includes("const shouldMount3D=expanded&&mode==='3d'&&size==='expanded'"),'compact surface can mount WebGL before explicit expansion');
+assert(shell.includes("const shouldMount3D=ready&&expanded&&mode==='3d'&&documentVisible&&!unavailable&&"),'3D preview only renders after preference load and when foreground/available');
+assert(shell.includes("size==='expanded'||previewVisible"),'compact GPU only mounts on visible preview');
+assert(shell.includes("IntersectionObserver")&&shell.includes("observer.disconnect()"),'intersection observer is disconnected to avoid leaked GPU listeners');
+assert(shell.includes("compact={size!=='expanded'}"),'GPU budget uses reduced compact mode');
 assert(shell.includes('framing={framing}'),'expanded 3D inspection lost its selected framing');
 assert(shell.includes("setFraming('body')"),'close must reset stored inspection framing');
 assert(shell.includes("setSize('compact')"),'opening page must normalize legacy size without resurrecting expanded modal');

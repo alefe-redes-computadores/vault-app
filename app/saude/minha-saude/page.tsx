@@ -268,7 +268,7 @@ function HealthDashboard({
           <>
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>
-            <ClinicalSectionNav label="Áreas de Minha Saúde" items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>},{id:"fontes",label:"Fontes",icon:<Database size={14}/>},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>}]}/>
+            <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>},{id:"fontes",label:"Fontes",icon:<Database size={14}/>},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>}]}/>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
@@ -311,11 +311,12 @@ function HealthDashboard({
                   <Settings size={18} />
                 </button>
               </div>
-              <div className="mt-3 grid grid-cols-[minmax(0,46%)_minmax(0,1fr)] items-center gap-3">
+              {/* VAULT_V330_HEALTH_AVATAR_HIERARCHY: full-width 3D preview on narrow phones. */}
+              <div className="mt-3 grid grid-cols-1 items-start gap-3 min-[480px]:grid-cols-[minmax(0,46%)_minmax(0,1fr)]">
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-emerald-300/10 bg-emerald-300/[0.025] shadow-inner">
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{if(brainPulse.top){goFromHealth(`/inteligencia/alertas?insight=${encodeURIComponent(brainPulse.top.insight_id)}`);return;}const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight)setSelectedInsight(insight);else setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error||brainPulse.isLoading||!brainPulse.top?0:avatarContext.rank} expanded />
                 </div>
-                <div className="min-w-0 flex-1 space-y-2 self-center">
+                <div className="grid min-w-0 grid-cols-3 gap-2 self-center min-[480px]:block min-[480px]:space-y-2" aria-label="Medidas principais do perfil">
                   <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
                     <p className="text-[9px] uppercase tracking-wide text-ink-faint">Altura</p>
                     <p className="mt-0.5 text-base font-semibold">
@@ -345,6 +346,7 @@ function HealthDashboard({
                   </div>
                 </div>
               </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">O 3D é o modo padrão quando disponível. Toque no avatar para ampliar e ajustar aparência, enquadramento e acessórios. A ilustração continua como escolha manual ou fallback técnico.</p>
               <details className="mt-3 rounded-xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
                 <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Corpo e sinais · explorar regiões</summary>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>

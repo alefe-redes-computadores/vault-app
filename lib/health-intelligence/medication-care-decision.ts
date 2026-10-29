@@ -99,8 +99,12 @@ export function decideMedicationCarePath(input: {
   const planned = events.filter(event => isFutureAcquisition(event, today));
   const latestPrescription = prescriptions[0] ?? null;
   const latestAcquisition = acquisitions[0] ?? null;
+  // V329: registered history is not proof of present regulatory validity.
+  // A prescription older than the last purchase must not disappear from the UI,
+  // and must not be automatically declared current either.
   const prescriptionOnFile = Boolean(latestPrescription &&
     (!latestAcquisition || renewalEventDate(latestPrescription) >= renewalEventDate(latestAcquisition)));
+  const hasRegisteredPrescription = Boolean(latestPrescription);
   const plannedAcquisition = planned[0] ?? null;
   const detail = `/saude/medicamentos/detalhes?id=${encodeURIComponent(id)}`;
   const acquisition = `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(id)}&mode=acquisition&return_to=${encodeURIComponent(detail)}`;
@@ -140,12 +144,31 @@ export function decideMedicationCarePath(input: {
     };
   }
 
-  if (input.needsStock && prescriptionOnFile) {
+  if (input.needsStock && hasRegisteredPrescription) {
+    const currentByHistory = prescriptionOnFile;
     return {
-      stage: "acquisition_needed", label: "Receita pronta · falta adquirir",
-      explanation: "A receita mais recente já está registrada. A próxima etapa é registrar a compra ou retirada quando ela realmente acontecer.",
-      actionLabel: "Registrar aquisição", actionHref: acquisition, evidence,
-      prescriptionOnFile: true, plannedAcquisition: false,
+      stage: "acquisition_needed",
+      label: currentByHistory ? "Receita registrada · falta adquirir" : "Receita registrada · conferir aquisição",
+      explanation: currentByHistory
+        ? "Existe receita registrada no histórico. Confira a validade e a exigência do canal antes de adquirir; registre uma aquisição somente se ela realmente ocorreu."
+        : "Já existe uma receita registrada, anterior à última aquisição. Isso não comprova que esteja válida agora. Confira a exigência aplicável e registre uma nova aquisição somente se ela realmente ocorreu; não duplique a receita por causa do alerta de estoque.",
+      actionLabel: currentByHistory ? "Registrar aquisição" : "Conferir aquisição",
+      actionHref: acquisition,
+      evidence: [...evidence, currentByHistory ? "Receita registrada · conferir validade" : "Receita registrada anteriormente · validade não inferida"],
+      prescriptionOnFile: currentByHistory,
+      plannedAcquisition: false,
+    };
+  }
+
+  // With a prior recorded prescription, a general renewal hint is not enough
+  // evidence to demand the same document again. Offer review, not duplication.
+  if (input.needsPrescription && !prescriptionOnFile && hasRegisteredPrescription) {
+    return {
+      stage: "stock_review", label: "Receita no histórico · revisar validade",
+      explanation: "Existe receita registrada anteriormente. Confira a validade e as exigências atuais antes de decidir por nova prescrição ou aquisição; a data isolada não comprova validade.",
+      actionLabel: "Conferir receita", actionHref: detail,
+      evidence: [...evidence, "Receita anterior registrada; validade atual não inferida"],
+      prescriptionOnFile: false, plannedAcquisition: false,
     };
   }
 

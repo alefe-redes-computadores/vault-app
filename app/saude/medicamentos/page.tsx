@@ -1039,6 +1039,9 @@ export default function MedicamentosListPage() {
           : /aquisi|compra/i.test(`${careAction.label} ${careAction.href}`) ? "Registrar aquisição"
           : /receita|renova/i.test(`${careAction.label} ${careAction.href}`) ? "Renovar receita"
           : /document/i.test(`${careAction.label} ${careAction.href}`) ? "Preparar documentos"
+          : /conferir vínculo do processo SUS|vínculo do processo SUS/i.test(careAction.label) ? "Conferir SUS"
+          : /revisar continuidade/i.test(careAction.label) ? "Revisar continuidade"
+          : careAction.label.startsWith(`${med.nome}: `) ? careAction.label.slice(med.nome.length + 2)
           : careAction.label
         : "";
 
@@ -1072,9 +1075,35 @@ export default function MedicamentosListPage() {
           compactTight
           interactiveContent
           navigationLabel={`Ver detalhes de ${med.nome}`}
+          rail={(regulatoryProfile || receita) ? (
+            <button
+              type="button"
+              title={regulatoryMeaning}
+              aria-label={`Ver classificação da receita: ${regulatoryProfile?.label || receita?.sigla || "Receita"}`}
+              aria-haspopup={regulatoryProfile ? "dialog" : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                trigger("vibrate");
+                if (regulatoryProfile) {
+                  setSelectedRegulatory(regulatoryProfile);
+                } else {
+                  router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-agora`);
+                }
+              }}
+              className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-1 text-[9px] font-bold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ice"
+            >
+              <span
+                className={`block max-h-full overflow-hidden text-center tracking-[0.02em] ${regulatoryProfile?.verified === false || regulatoryProfile?.tone === "unknown" ? "text-white" : "text-void"}`}
+                style={{writingMode: "vertical-rl", transform: "rotate(180deg)"}}
+              >
+                {regulatoryProfile?.verified === false ? "Receita n/c" : regulatoryProfile?.label || receita?.sigla || "Receita"}
+              </span>
+            </button>
+          ) : null}
           icon={
             <span
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
               title={regulatoryMeaning}
             >
               <SelectedFormatIcon
@@ -1085,7 +1114,7 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="relative flex min-w-0 flex-col gap-1">
+          <div className="relative flex min-w-0 flex-col gap-0.5">
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-1">
@@ -1105,26 +1134,7 @@ export default function MedicamentosListPage() {
                 </p>
               )}
               <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px]">
-                {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classification remains interactive */}
-                {(regulatoryProfile || receita) && (
-                  <button
-                    type="button"
-                    title={regulatoryMeaning}
-                    aria-label={`Ver classificação da receita: ${regulatoryProfile?.label || receita?.sigla || "Receita"}`}
-                    aria-haspopup={regulatoryProfile ? "dialog" : undefined}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      if (!regulatoryProfile) return;
-                      trigger("vibrate");
-                      setSelectedRegulatory(regulatoryProfile);
-                    }}
-                    className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-lg border border-surface-border/50 bg-surface-raised/60 px-2 text-[10px] font-semibold text-ink-muted"
-                  >
-                    <span aria-hidden="true">ⓘ</span>
-                    <span className="max-w-[10rem] truncate">{regulatoryProfile?.verified === false ? "Receita n/c" : regulatoryProfile?.label || receita?.sigla || "Receita"}</span>
-                  </button>
-                )}
+                {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classificação acessível na faixa lateral V328 */}
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-300">POR PERÍODO</span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
@@ -1146,7 +1156,7 @@ export default function MedicamentosListPage() {
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-9 max-w-full items-center justify-center gap-1 rounded-xl border px-2.5 py-1 text-[11px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    className={`inline-flex min-h-9 max-w-full items-center justify-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
@@ -1157,7 +1167,7 @@ export default function MedicamentosListPage() {
                     }}
                   >
                     <AlertTriangle size={12} className="shrink-0" />
-                    <span className="min-w-0 line-clamp-2 break-words">{contextualActionLabel}</span>
+                    <span className="min-w-0 line-clamp-1 break-words">{contextualActionLabel}</span>
                     <span className="sr-only">{careAction.label}</span>
                   </button>
                 )}
@@ -1170,7 +1180,7 @@ export default function MedicamentosListPage() {
                       trigger("vibrate");
                       setQuickDoseMedId(med.id!);
                     }}
-                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-xl border px-2.5 text-[11px] font-black transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
+                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border px-2 text-[10px] font-black transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
                     aria-label={`${quickDoseLabel} ${med.nome}`}
                   >
                     <Zap size={12} fill="currentColor" />
@@ -1186,7 +1196,7 @@ export default function MedicamentosListPage() {
 
             {/* VAULT_V318_OPERATIONAL_STRIP: summary only, no repeated mini-dashboard */}
             <div
-              className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-surface-border/25 bg-void/20 px-2 py-1.5 text-[10px] leading-snug"
+              className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-surface-border/25 bg-void/20 px-2 py-1 text-[10px] leading-snug"
               aria-label={`Hoje: ${todayStatus.label}. Estoque: ${humanizeStockText(textoEstoquePrincipal)}. ${textoEstoqueSecundario || estoqueStatus}`}
               title={`${todayStatus.detail} · ${textoEstoqueSecundario || estoqueStatus}`}
             >

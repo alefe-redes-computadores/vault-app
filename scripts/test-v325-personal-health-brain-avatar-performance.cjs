@@ -17,8 +17,10 @@ assert.equal(result.records7d,3);assert.equal(result.records30d,5);assert.equal(
 const command=read('lib/health-intelligence/care-command.ts'),health=read('app/saude/minha-saude/page.tsx'),avatar=read('components/saude/HealthAvatar.tsx'),overview=read('components/saude/PersonalHealthOverview.tsx'),readiness=read('components/saude/AvatarCareReadiness.tsx');
 assert(command.includes('buildPersonalHealthPortfolio(context)')&&command.includes('health: PersonalHealthPortfolio'));
 assert(health.includes('<PersonalHealthOverview')&&health.indexOf('<PersonalHealthOverview')<health.indexOf('<ClinicalSectionNav'));
-assert(avatar.includes("const shouldMount3D=expanded&&mode==='3d'&&size==='expanded'")&&avatar.includes('shouldMount3D?<Avatar3DBoundary'));
-assert(avatar.includes('ampliar{mode===\'3d\'?" em 3D":""}'));
+assert(avatar.includes("const shouldMount3D=ready&&expanded&&mode==='3d'&&documentVisible&&!unavailable&&")&&avatar.includes('shouldMount3D?<Avatar3DBoundary'));
+assert(avatar.includes("size==='expanded'||previewVisible")&&avatar.includes('visibilitychange'),'compact preview unmounts GPU out of viewport and when backgrounded');
+assert(avatar.includes('chooseMode(\'illustration\')'),'explicit illustration preference remains available');
+assert(avatar.includes('Ampliar{mode===\'3d\'?" em 3D":""}'),'avatar expansion remains visible in compact controls');
 assert(overview.includes('Cobertura descreve')===false&&overview.includes('Visão longitudinal')&&overview.includes('Brain · foco atual'));
 assert(readiness.includes('healthSignal?.records7d'));
 console.log('V325: portfólio longitudinal, hierarquia Minha Saúde, Brain compartilhado e WebGL sob demanda no Avatar OK');

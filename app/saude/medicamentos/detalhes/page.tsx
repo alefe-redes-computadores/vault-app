@@ -14,6 +14,7 @@ import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurch
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
+import { resolveMedicationCareNavigation } from "@/lib/health-intelligence/medication-care-navigation";
 // VAULT_MEDICATION_BACK_CONTRACT_V65
 // VAULT_MEDICATION_NAV_RELIABILITY_V70
 // Detalhes de medicamento sempre retornam à lista de medicamentos.
@@ -1561,6 +1562,24 @@ function MedicamentoDetalhesContent() {
   const brainCareItem = healthIntelligence.careCommand?.plan.items.find(item => item.medicationId === med.id) ?? null;
   const supplyRoute = healthIntelligence.careCommand?.readiness.items.find(item => item.medicationId === med.id)?.route ?? null;
   const brainCareAction = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? brainCareItem : null;
+  // VAULT_V328_CARE_NAVIGATION: a self-referencing Brain action reveals a useful
+  // detail section instead of router.push() silently re-opening this same URL.
+  const navigateCareAction = (href: string, title: string, reason: string) => {
+    const destination = resolveMedicationCareNavigation({ href, currentMedicationId: med.id!, title, reason });
+    trigger("vibrate");
+    if (destination.kind === "route") {
+      router.push(destination.href);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      if (window.location.hash === `#${destination.sectionId}`) {
+        window.dispatchEvent(new Event("hashchange"));
+      } else {
+        window.location.hash = destination.sectionId;
+      }
+      document.getElementById(destination.sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   const seteDiasAtras =
     getDateDaysAgoISO(
@@ -3220,7 +3239,7 @@ function MedicamentoDetalhesContent() {
                   </div>
                 </div>
               </div>
-              <button type="button" onClick={()=>router.push(brainCareAction?.href || careDecision.actionHref)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
+              <button type="button" onClick={() => navigateCareAction(brainCareAction?.href || careDecision.actionHref, brainCareAction?.title || careDecision.label, brainCareAction?.reason || careDecision.explanation)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
                 {brainCareAction ? "Abrir próxima etapa" : careDecision.actionLabel}
               </button>
             </section>
@@ -3551,7 +3570,7 @@ function MedicamentoDetalhesContent() {
 
                       <button
                         type="button"
-                        onClick={() => router.push(accessAction.href)}
+                        onClick={() => navigateCareAction(accessAction.href, accessAction.cta, alertaInteligente.mensagem)}
                         className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold transition-transform active:scale-95 ${
                           alertaInteligente.urgencia ===
                           "alta"
