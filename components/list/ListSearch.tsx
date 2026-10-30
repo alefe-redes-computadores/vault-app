@@ -29,8 +29,10 @@ export function ListSearch({ value, onChange, placeholder = "Buscar...", classNa
   if (!expanded && !value) {
     return (
       <div className={`flex shrink-0 justify-end ${className}`}>
-        <button type="button" onClick={() => { focusOnExpand.current=true; setExpanded(true); }} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-all hover:border-ice/30 hover:text-ice active:scale-95" aria-label="Abrir busca">
-          <Search size={17} />
+        {/* V334_VISIBLE_SEARCH_TRIGGER: discovery without guessing the magnifier. */}
+        <button type="button" onClick={() => { focusOnExpand.current=true; setExpanded(true); }} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-surface-border/50 bg-surface-raised px-3 text-ink-secondary transition-colors hover:border-ice/30 hover:text-ice active:scale-[0.98]" aria-label="Abrir busca">
+          <Search size={15} className="shrink-0" />
+          <span className="text-[11px] font-semibold">Buscar</span>
         </button>
       </div>
     );

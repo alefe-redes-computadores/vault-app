@@ -26,10 +26,12 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
     context.medicamentos?.length,
     context.registrosSaude?.length,
   ].filter(value => Number(value) > 0).length;
+  const hasCommandEvidence=Boolean(command?.documents || command?.plan?.items?.length || command?.readiness?.items?.length);
 
   return <section aria-label="Contexto integrado do Avatar" className="space-y-2">
     <AvatarCareReadiness context={context} command={command} onNavigate={onNavigate}/>
-    {secondaryCount > 0 ? <details className="group rounded-2xl border border-surface-border/70 bg-surface px-3 py-1">
+    {command?.readiness?.items?.length?<div className="grid grid-cols-3 gap-1.5" aria-label="Situação contextual do cuidado"><div className="rounded-xl border border-rose-300/15 bg-rose-300/[.035] p-2 text-center"><strong className="block text-sm text-rose-200">{command.readiness.counts.overdue}</strong><span className="text-[8px] text-ink-muted">Decidir</span></div><div className="rounded-xl border border-amber-300/15 bg-amber-300/[.035] p-2 text-center"><strong className="block text-sm text-amber-200">{command.readiness.counts.prepare}</strong><span className="text-[8px] text-ink-muted">Preparar</span></div><div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[.035] p-2 text-center"><strong className="block text-sm text-cyan-200">{command.readiness.counts.unknown}</strong><span className="text-[8px] text-ink-muted">Definir</span></div></div>:null}
+    {(secondaryCount > 0 || hasCommandEvidence) ? <details className="group rounded-2xl border border-surface-border/70 bg-surface px-3 py-1">
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 py-2">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-300/10 text-emerald-300"><Layers3 size={16}/></span>
         <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Contexto e evidências do Avatar</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Cuidado, medicamentos, rotinas e associações registradas</span></span>

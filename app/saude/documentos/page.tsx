@@ -4477,18 +4477,16 @@ export default function DocumentsPage() {
                     );
                   }
                 }
-                className={`flex h-10 w-10 items-center justify-center rounded-full border transition-all active:scale-95 ${
+                className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[11px] font-semibold transition-all active:scale-[0.98] ${
                   hasActiveFilters
                     ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
                 aria-label="Filtrar documentos"
               >
-                <SlidersHorizontal
-                  size={
-                    16
-                  }
-                />
+                <SlidersHorizontal size={15} className="shrink-0" />
+                <span>Filtros</span>
+                {hasActiveFilters ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-label="Filtros ativos"/> : null}
               </button>
             </div>
           </div>

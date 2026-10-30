@@ -15,7 +15,7 @@ assert(central.includes("createLocalSearchIndex") && central.includes("filterLoc
 assert(central.includes('useReturnContext("/inteligencia")'));
 assert(central.includes("router.push(preserveReturn(href))"));
 assert(central.includes('role="dialog"') && central.includes('aria-labelledby="brain-filters-title"'));
-assert(central.includes('overflow-x-auto') && central.includes('laneCounts[key]'), "decision lanes remain compact and reachable");
+assert(central.includes('flex flex-wrap gap-2') && central.includes('laneCounts[key]') && central.includes('Filtrar por momento da decisão'), "decision lanes remain visible, compact and reachable");
 assert(central.includes('contentVisibility:"auto"'));
 
 assert(hub.includes('useReturnContext("/mais")'));

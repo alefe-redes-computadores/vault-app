@@ -11,7 +11,7 @@ const avatar = read("components/saude/HealthAvatar3D.tsx");
 assert(medications.includes("V197: uma única passagem alimenta resumo"));
 assert(medications.includes("const totalAtivos = statsProgresso.ativos"));
 assert(!medications.includes("const continuos =\n          listaBase.filter"));
-assert(medications.includes("rounded-lg border px-3 py-1.5"));
+assert(medications.includes("V334_VISIBLE_MEDICATION_FILTERS") && medications.includes("grid grid-cols-3 gap-1.5 min-[430px]:grid-cols-4") && medications.includes("aria-pressed={medicationFilter === value}") && medications.includes("selectMedicationFilter(value)"), "V197: filtros de medicamentos visíveis, com seleção e navegação preservadas");
 
 assert(treatments.includes("V197: o comando clínico é calculado em uma única passagem"));
 assert(!treatments.includes("listaEnriquecida.reduce((total, item)"));

@@ -1408,8 +1408,9 @@ export default function MedicamentosListPage() {
 
         {/* VAULT_MEDICATION_FILTERS_V97 */}
         <div className="border-b border-surface-border/20 px-5 py-2.5">
-          <div className="-mx-1 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max items-center gap-1.5">
+          <div className="min-w-0" aria-label="Filtrar medicamentos por categoria">
+            {/* V334_VISIBLE_MEDICATION_FILTERS: all categories remain discoverable without horizontal scroll. */}
+            <div className="grid grid-cols-3 gap-1.5 min-[430px]:grid-cols-4">
               {([
                 ["todos", "Todos"],
                 ["atencao", "Atenção"],
@@ -1423,7 +1424,8 @@ export default function MedicamentosListPage() {
                   key={value}
                   type="button"
                   onClick={() => selectMedicationFilter(value)}
-                  className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold transition-all active:scale-[0.97] ${
+                  aria-pressed={medicationFilter === value}
+                  className={`min-h-9 min-w-0 rounded-lg border px-1.5 py-1.5 text-center text-[10px] font-bold leading-snug transition-all active:scale-[0.97] ${
                     medicationFilter === value
                       ? value === "atencao"
                         ? "border-amber-400/35 bg-amber-400/10 text-amber-300"

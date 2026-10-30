@@ -93,7 +93,7 @@ export function WithdrawalPreparationView({
             {prep.label}
           </p>
           {prep.pending.length ? (
-            <ul className="space-y-1 text-xs text-ink-muted">
+            <ul aria-label="Pendências documentais desta retirada" className="space-y-1 text-xs text-ink-muted">
               {prep.pending.map((x) => (
                 <li key={x}>• {x}</li>
               ))}
@@ -102,6 +102,7 @@ export function WithdrawalPreparationView({
           {prep.recipe ? (
             <p className="text-[11px] text-ink-muted">{prep.recipe}</p>
           ) : null}
+          <p className="text-[10px] leading-relaxed text-ink-faint">Conferir documentos não registra retirada, não altera estoque e não substitui a confirmação do atendimento.</p>
           <Link
             href={`/saude/fornecimento?medicamento_id=${encodeURIComponent(
               r.medicamento_id

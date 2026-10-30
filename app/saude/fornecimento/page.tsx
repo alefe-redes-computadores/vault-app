@@ -11,6 +11,7 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationAuthorityMap } from "@/components/saude/MedicationAuthorityMap";
 import { AccessCommandOverview } from "@/components/saude/AccessCommandOverview";
 import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
+import { summarizeWithdrawalProgress } from "@/lib/health-intelligence/operational-triage";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import {
@@ -1234,7 +1235,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
           Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
         </p>
-        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
+        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">SUS, compras e documentos mantêm suas origens independentes. Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
         <div className="pb-3 pt-2"><SusCatalogBrowser compact /></div>
       </details>
 
@@ -1295,7 +1296,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
                   return <div className="space-y-3">
-                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"}/>
+                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"} withdrawalProgress={process.origem==="comprado"?undefined:summarizeWithdrawalProgress(processWithdrawals,getLocalTodayISO())}/>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{processRouteLabel}</span>
                       {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Rotas independentes</span>}

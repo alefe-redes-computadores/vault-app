@@ -17,6 +17,12 @@ export function PlannedRealizedBrief({context,onNavigate,compact=false}:{context
       <Metric value={summary.unresolvedPast} label="sem desfecho" tone={summary.unresolvedPast?"text-amber-300":"text-ink-muted"}/>
       {!compact?<Metric value={summary.future} label="futuras" tone="text-violet-300"/>:null}
     </div>
+    <details className="mt-2 rounded-lg border border-surface-border/60 px-2.5 py-1.5 text-[10px] text-ink-muted">
+      <summary className="flex min-h-10 cursor-pointer items-center font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2">Entenda os números dos últimos 30 dias</summary>
+      <p className="mt-1.5 leading-relaxed">Tomadas são doses confirmadas. Hoje mostra pendências que ainda precisam de decisão. Futuras são apenas programações: não entram como tomadas.</p>
+      <p className="mt-1.5 leading-relaxed">Sem desfecho é ausência de confirmação no período anterior, não uma conclusão médica. Registros ignorados não contam como doses tomadas.</p>
+      {summary.conflicts>0?<p className="mt-1.5 text-amber-200">{summary.conflicts} conflito(s) legado(s) exigem conferência no histórico.</p>:null}
+    </details>
     <div className="mt-2 flex items-end gap-2"><p className="min-w-0 flex-1 text-[9px] leading-snug text-ink-muted">Sem desfecho significa sem confirmação registrada — não presume falha clínica.{summary.conflicts?` ${summary.conflicts} conflito(s) legado(s) isolado(s).`:""}</p><button type="button" onClick={()=>onNavigate("/saude/medicamentos/historico")} className="flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2">Histórico <ChevronRight size={12}/></button></div>
   </div>;
 }

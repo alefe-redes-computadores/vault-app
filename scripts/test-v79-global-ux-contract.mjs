@@ -9,13 +9,13 @@ const docs = read('app/documentos/page.tsx');
 const network = read('app/saude/rede/page.tsx');
 const sync = read('components/GlobalSyncIssueAlert.tsx');
 
-ok(search.includes('aria-label="Abrir busca"') && !search.includes('<span>Buscar</span>'), 'busca fechada é apenas uma lupa');
-ok(filters.includes('role="dialog"') && filters.includes('Aplicar filtros'), 'filtros usam bottom sheet com aplicar');
+ok(search.includes('aria-label="Abrir busca"') && search.includes('V334_VISIBLE_SEARCH_TRIGGER') && search.includes('>Buscar</span>'), 'busca compacta mantém rótulo visível e acessível');
+ok(filters.includes('role="dialog"') && filters.includes('Aplicar filtros') && filters.includes('V334_VISIBLE_FILTER_TRIGGER') && filters.includes('<span>Filtros</span>'), 'filtros visíveis preservam bottom sheet e aplicar');
 ok(more.includes('VAULT_MORE_INFORMATION_ARCHITECTURE_V79'), 'Mais separa conta, perfis, preferências e nuvem');
 ok(more.includes('<PersonSelector mode="identity"'), 'pessoa ativa possui área própria e identidade visível');
 ok(more.includes('"Sincronizado"'), 'estado normal de sincronização permanece visível em Mais');
 ok(sync.includes('runtime.phase !== "error"') && sync.includes('/diagnostico'), 'falha de sincronização é global e abre diagnóstico');
-ok(withdrawals.includes('VAULT_COMPACT_SEARCH_FILTER_V79') && !withdrawals.includes('Filtrar retiradas{'), 'Retiradas usa toolbar compacta');
+ok(withdrawals.includes('import { ListSearch }') && withdrawals.includes('import { ListFilters }') && withdrawals.includes('<ListSearch value={search} onChange={setSearch}') && withdrawals.includes('<ListFilters className="order-2" title="Filtrar retiradas"') && withdrawals.includes('activeCount={status === "todos" ? 0 : 1}') && withdrawals.includes('onClear={() => setStatus("todos")}'), 'Retiradas mantém busca e filtros compartilhados com contagem e limpeza');
 ok(docs.includes('VAULT_DOCUMENT_TOOLBAR_V79'), 'Documentos usa lupa e filtro adjacentes');
 ok(network.includes('VAULT_HEALTH_NETWORK_DISCOVERY_V79'), 'Minha Rede expõe todas as categorias sem carrossel oculto');
 ok(network.includes('/inteligencia/saude'), 'Minha Rede oferece acesso à inteligência de saúde');

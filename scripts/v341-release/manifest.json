@@ -1,0 +1,58 @@
+{
+  "app/saude/fornecimento/page.tsx": {
+    "before": "3c5178c19a284205cecdfa84a2575bc1542b3bc0e304b64413ffeaf034503ea3",
+    "after": "7344d0d4e390a92cba9112f19a73b30c507593d5bb6229823f9a822ea2703fd6"
+  },
+  "components/saude/AvatarAssociationSummary.tsx": {
+    "before": "0bba540dd794d889df6b1e011534d144c38765b382dd6648dbca8102673a0697",
+    "after": "32f18dd2ddb1452ef92570daa1dad06556965da92c70e691e1b8f0a1673e8941"
+  },
+  "components/saude/AvatarCareWorkspace.tsx": {
+    "before": "1fa7d33ed5f8dfabc64eee3820d0e595e5e4c7772c7fc46dae5e3c5327d43711",
+    "after": "046d395ccd5c9207dec06385a9a848eacd5b2f9af52d498b55ca0ad2448a558a"
+  },
+  "components/saude/CareAccessBrief.tsx": {
+    "before": "1c07f103c0aa35152a1d5ef828c4c622570b2477a046353fb6645aaa21eaa762",
+    "after": "81fbf13a74c3043d13016c50adb7d070d193ac4d2aabdfab7d36a87b2bb016c2"
+  },
+  "components/saude/CareCommandStrip.tsx": {
+    "before": "c212046b5a7a442ae5cb763572cb47022320fc75a6158d0f8ddda137f1c459d8",
+    "after": "7d183591fa9e9f4e16bbc336952bc547e256671fab80e38a52f4bf9e367bcff7"
+  },
+  "components/saude/CareDocumentReadiness.tsx": {
+    "before": "d60569ab81b70825069dd583b7971a11ef47530eea3885f225097c84feb135d9",
+    "after": "29bf3f38b1a3f24b304e502ed12ee695514291df1bd360bcbf218c24a723f832"
+  },
+  "components/saude/CareFinancialOutlook.tsx": {
+    "before": "8e4f0361270d0d657de1aaa745218e8186e341f897141fa87a99cb98766c379d",
+    "after": "1c76442d2f7c6f8d0bf02ae4330c56e9adec1b98fd6ee22b9832b5068ec6feb2"
+  },
+  "components/saude/CareReadinessSummary.tsx": {
+    "before": "6ed34ba19609015850585652471e86df39ce8c3822189bc6829a363bde3cffca",
+    "after": "170c41d176871c3b0a802e52a8e4ca7e68ad51d7b8cdd81fcf004a7f9fc4ee65"
+  },
+  "components/saude/MedicationJourneySummary.tsx": {
+    "before": "48867e613bdd77fce86707f16ee43a7d6274d8cfaca9f409249da5979306e9c8",
+    "after": "a9e7f483603b63c8dc291c3def16a49ec3c398422c51a8f6870e2bb699c9501f"
+  },
+  "components/saude/MedicationPurchaseRhythmBrief.tsx": {
+    "before": "96f0dd7f995b8c3709c5c1b55508c3fcc610b1e56b054d2edffe9888589c6f30",
+    "after": "d05a9ed8d1c227d51aa3e0da1ebd6341ea98bc66c08d7b12c50253699504e7c5"
+  },
+  "components/saude/MedicationSafetyCoverage.tsx": {
+    "before": "3669cc31e266b4a6f117d42a44239d776d885a0233e733a530d4428fe10733c4",
+    "after": "126f9c630c45ff14b5fb5d727a595e46c0e01ed14e09f9977cd171c3ceeb8c04"
+  },
+  "components/saude/SupplyProcessJourney.tsx": {
+    "before": "e2231f932af3e9bf6bb241d46428cadda20f778932ab62161dc57afa4707d51a",
+    "after": "2537779d03e8a0f1a09942c81f9992e1b124b63aa4745602b3b182c6bd266e2a"
+  },
+  "components/saude/TreatmentCareLinks.tsx": {
+    "before": "f7e8007492cf2858b80e9435b69d21a04bfe809086f8e0e4f65d4e154ebf3f15",
+    "after": "6cd533dacbaa9320f0c94c70450aeb8d060aa267f2c3eb5d9a64702e4b50935b"
+  },
+  "lib/health-intelligence/operational-triage.ts": {
+    "before": null,
+    "after": "1648ccf5bfe82f41204af002914d2ef894c06ee4d7328772b61f53450b07508c"
+  }
+}
