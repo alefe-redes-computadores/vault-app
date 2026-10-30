@@ -3020,8 +3020,8 @@ function MedicamentoDetalhesContent() {
 
 
 
-        <div className="mx-auto max-w-3xl space-y-4 px-5 pt-4">
-          <ClinicalSectionNav label="Áreas do medicamento" items={[{id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>},{id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>},{id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]}/>
+        <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
+          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" items={[{id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>},{id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>},{id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]}/>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
@@ -3203,7 +3203,7 @@ function MedicamentoDetalhesContent() {
 
           {/* VAULT_V320_QUICK_DOSE_TOP: same clinical owner/handler, moved above analytic sections */}
           {(med.status !== "descontinuado" || isSOS) && (
-            <div className="rounded-[16px] border border-emerald-400/15 bg-emerald-400/[0.035] p-2">
+            <div className="rounded-[14px] border border-emerald-400/15 bg-emerald-400/[0.025] p-1.5">
                 <button
                   type="button"
                   onClick={
@@ -3224,7 +3224,7 @@ function MedicamentoDetalhesContent() {
           )}
 
           {(careDecision.stage !== "stable" || brainCareAction) && (
-            <section className="rounded-[20px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-4">
+            <section className="rounded-[18px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-surface p-3">
               <div className="flex items-start gap-3">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${carePresentation.badgeClass}`}>
                   <Activity size={17}/>
@@ -3233,13 +3233,18 @@ function MedicamentoDetalhesContent() {
                   <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
                   <h2 className="mt-1 text-sm font-bold text-ink-primary">{brainCareAction?.title || careDecision.label}</h2>
                   <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-full border border-surface-border/70 bg-surface-raised px-2 py-1 text-[8px] text-ink-muted">{item}</span>)}
-                    {supplyRoute && supplyRoute.mode !== "none" && <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[8px] text-emerald-200">Origem: {supplyRoute.labels.join(" + ")}</span>}
-                  </div>
+                  {/* V332_CARE_EVIDENCE_DISCLOSURE: full evidence stays available, action stays visible. */}
+                  <details className="mt-2 rounded-xl border border-surface-border/40 bg-surface/30 px-2.5 py-1.5">
+                    <summary className="min-h-9 cursor-pointer py-1.5 text-[10px] font-semibold text-ink-secondary">Ver evidências e origem</summary>
+                    <div className="flex flex-wrap gap-1.5 border-t border-surface-border/40 py-2">
+{(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-lg border border-surface-border/70 bg-surface-raised px-2 py-1 text-[9px] text-ink-muted">{item}</span>)}
+                      {(brainCareAction?.evidence || careDecision.evidence).slice(3).map((item,index)=><span key={`${index + 3}-${item}`} className="rounded-lg border border-surface-border/70 bg-surface-raised px-2 py-1 text-[9px] text-ink-muted">{item}</span>)}
+                      {supplyRoute && supplyRoute.mode !== "none" && <span className="rounded-lg border border-emerald-300/15 bg-emerald-300/[0.045] px-2 py-1 text-[9px] text-emerald-200">Origem: {supplyRoute.labels.join(" + ")}</span>}
+                    </div>
+                  </details>
                 </div>
               </div>
-              <button type="button" onClick={() => navigateCareAction(brainCareAction?.href || careDecision.actionHref, brainCareAction?.title || careDecision.label, brainCareAction?.reason || careDecision.explanation)} className={`mt-3 min-h-10 w-full rounded-xl border px-3 text-[10px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
+              <button type="button" onClick={() => navigateCareAction(brainCareAction?.href || careDecision.actionHref, brainCareAction?.title || careDecision.label, brainCareAction?.reason || careDecision.explanation)} className={`mt-2 min-h-11 w-full rounded-xl border px-3 text-[11px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
                 {brainCareAction ? "Abrir próxima etapa" : careDecision.actionLabel}
               </button>
             </section>

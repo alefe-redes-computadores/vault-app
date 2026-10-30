@@ -6,7 +6,7 @@ const scene=read('components/saude/HealthAvatar3D.tsx');
 const page=read('app/saude/minha-saude/page.tsx');
 assert(avatar.includes('Visualização e controles')||avatar.includes('Ajustar visualização'));
 assert(avatar.includes('toggleExpanded'));
-assert(avatar.includes('onEmptyTap={toggleExpanded}'));
+assert(avatar.includes("onEmptyTap={size==='expanded'?undefined:toggleExpanded}"),'compact avatar opens; expanded avatar cannot dismiss on empty tap');
 assert(avatar.includes('AvatarStyleEditor value={appearance}'));
 assert(editor.includes('Toque para personalizar'));
 assert(editor.includes('group-open:rotate-180'));

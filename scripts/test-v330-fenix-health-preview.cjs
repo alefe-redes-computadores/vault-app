@@ -16,7 +16,7 @@ const tokens=[
   "aria-pressed={mode==='illustration'}", "chooseMode('3d')", "chooseMode('illustration')",
   'onUnavailable={fallback}', 'AvatarStyleEditor', 'setFraming(\'body\')',
   'avatarPreferencePayload(requestedMode.current', 'localStorage.getItem(preferenceKey)',
-  'onEmptyTap={toggleExpanded}', 'role={expanded&&size===\'expanded\'?\'dialog\':undefined}',
+  "onEmptyTap={size==='expanded'?undefined:toggleExpanded}", 'role={expanded&&size===\'expanded\'?\'dialog\':undefined}',
 ];
 for(const needle of tokens)assert(avatar.includes(needle),'Fenix missing: '+needle);
 assert(health.includes('VAULT_V330_HEALTH_AVATAR_HIERARCHY'));

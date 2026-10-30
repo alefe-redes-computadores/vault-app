@@ -51,7 +51,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const element = host.current;
     if (!element) return;
     let renderer: THREE.WebGLRenderer;
-    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" }); }
+    try { renderer = new THREE.WebGLRenderer({ antialias: !compactRef.current, alpha: true, powerPreference: "low-power" }); }
     catch { onUnavailable(); return; }
     const displayRatio=window.devicePixelRatio||1;
     const navigatorWithMemory=navigator as Navigator&{deviceMemory?:number};
@@ -671,7 +671,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
   return <div className="mx-auto w-full max-w-[440px]">
     {!compact&&onFramingChange?<div className="mb-2 grid grid-cols-3 gap-2" role="group" aria-label="Enquadramento do avatar">{([['body','Corpo inteiro'],['face','Rosto'],['shoes','Tênis']] as const).map(([id,label])=><button type="button" key={id} aria-pressed={framing===id} onClick={()=>onFramingChange(id)} className={`min-h-11 rounded-xl border px-2 text-[11px] font-semibold ${framing===id?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>:null}
     <div ref={host} style={{height:compact?"clamp(210px, 29dvh, 250px)":"clamp(330px, 52dvh, 470px)"}} tabIndex={0} onKeyDown={keyboard} role="group" aria-label={`Avatar 3D estilizado. ${description}. Acessórios pessoais são cosméticos, separados dos aparelhos de saúde. Celular ilustrativo.`} className="w-full cursor-grab overflow-hidden rounded-2xl border border-emerald-300/10 bg-[radial-gradient(circle_at_50%_18%,rgba(110,231,183,.09),transparent_44%),linear-gradient(180deg,rgba(110,231,183,.035),rgba(2,6,12,.2)_65%)] shadow-[inset_0_-32px_70px_rgba(0,0,0,.28)] active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" />
-    {compact?null:<p className="py-1.5 text-center text-[10px] text-ink-muted">Arraste para girar · toque no corpo, Brain ou aparelho para explorar</p>}
+    {compact?null:<p className="py-1.5 text-center text-[10px] text-ink-muted">Arraste para girar · selecione Frente/Costas · toque nas regiões para explorar · use Voltar para fechar</p>}
     {controlsContainer===undefined?controls:controlsContainer?createPortal(controls,controlsContainer):null}
   </div>;
 }

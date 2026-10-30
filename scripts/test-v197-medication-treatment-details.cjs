@@ -25,8 +25,8 @@ assert(!treatmentDetail.includes("const medicamento = linkedMedicamentos.find"))
 assert((treatmentDetail.match(/vault-deferred/g) || []).length >= 8);
 
 assert((medicationDetail.match(/vault-deferred/g) || []).length >= 7);
-assert(medicationDetail.includes('space-y-4 px-5 pt-4'));
-assert(medicationDetail.includes('rounded-[20px] border border-surface-border/70'));
+assert(medicationDetail.includes('space-y-3 px-4 pt-3 sm:px-5'));
+assert(medicationDetail.includes('rounded-[18px] border border-surface-border/70'));
 assert(medicationDetail.includes("temEstoque"));
 assert(medicationDetail.includes("estoqueStatus"));
 

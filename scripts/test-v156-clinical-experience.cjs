@@ -4,7 +4,7 @@ const three=fs.readFileSync('components/saude/HealthAvatar3D.tsx','utf8');
 const health=fs.readFileSync('app/saude/minha-saude/page.tsx','utf8');
 const supply=fs.readFileSync('app/saude/fornecimento/page.tsx','utf8');
 const supplyIndex=fs.readFileSync('lib/health-supply/relationship-index.ts','utf8');
-assert(av.includes('onEmptyTap={toggleExpanded}'),'3D not interactive');
+assert(av.includes("onEmptyTap={size==='expanded'?undefined:toggleExpanded}"),'3D preview opens inspection without tapping empty space to close it');
 assert(!av.includes('Ampliar avatar</button>'),'redundant button still exists');
 assert(!av.includes('Ocultar avatar</button>'),'redundant hide button');
 assert(av.includes('fixed inset-0 z-[110]')&&av.includes('sm:inset-3'),'expanded modal absent');

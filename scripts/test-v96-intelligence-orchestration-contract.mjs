@@ -12,5 +12,5 @@ ok(home.includes("rawLongitudinalHighlights")&&home.includes("suppressOperationa
 ok(selector.includes("healthSignalSemanticKey"),"seletor usa entidade + fenômeno");
 ok(!selector.includes("entityKeys.has"),"mesma medicação não é deduplicada cegamente");
 ok(brain.includes("occurrences")&&brain.includes("feedback")&&brain.includes("episode"),"ledger Brain V5 preservado");
-ok(home.includes("Vault Intelligence")&&home.includes("Deslize para ver outros sinais"),"nomenclatura e rail preservados");
+ok(home.includes("Vault Intelligence")&&home.includes("Sinais do Brain organizados por prioridade")&&home.includes("suppressOperationalOverlap"),"nomenclatura, Brain e grade acessível preservados");
 console.log("VAULT V96 INTELLIGENCE ORCHESTRATION: CONTRATOS OK");

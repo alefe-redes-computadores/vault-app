@@ -30,13 +30,13 @@ assert(shell.includes("parseAvatarFraming(stored)"));
 assert(shell.includes("onFramingChange={chooseFraming}"));
 assert(shell.includes("Sua representação pessoal e de saúde"));
 assert(shell.includes("Ajustar visualização"));
-assert(!shell.includes("<details open className=\"group mx-auto mt-3 max-w-[520px]"));
+assert(shell.includes('<details open className="group mx-auto mt-3 max-w-[520px]') && shell.includes("onEmptyTap={size==='expanded'?undefined:toggleExpanded}"));
 assert(scene.includes('max-w-[440px]'));
 assert(scene.includes("touchAction = \"pan-y\""));
 assert(scene.includes("IntersectionObserver"));
 assert(scene.includes("renderer.forceContextLoss()"));
 assert(scene.includes("Aparelhos representados · {slots.length}"));
-assert(scene.includes("Arraste para girar · toque no corpo, Brain ou aparelho para explorar"));
+assert(scene.includes("Arraste para girar · selecione Frente/Costas · toque nas regiões para explorar · use Voltar para fechar"));
 // V197 mantém modelos distintos e contém a aba dentro da largura facial.
 assert(scene.includes('appearance.hat==="flat"?.292:.278'));
 assert(scene.includes('appearance.hat==="flat"?.258:.246'));
