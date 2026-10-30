@@ -9,6 +9,7 @@ import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-wo
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
+  useDeferredValue,
   useMemo,
   useRef,
   useState,
@@ -252,6 +253,7 @@ export default function MedicamentosListPage() {
     useState(
       ""
     );
+  const deferredSearchQuery=useDeferredValue(searchQuery);
 
   /*
    * MEDICATION_LIST_VISUAL_V25_3
@@ -425,7 +427,7 @@ export default function MedicamentosListPage() {
     const identity=catalogIdentities[item.med.id||""];
     return [item.med.nome,item.med.medico,item.med.dosagem,identity?.canonicalName,identity?.activeIngredient,...(identity?.activeIngredients||[])];
   }),[listaBase,catalogIdentities]);
-  const medicationSearchMatches=useMemo(()=>new Set(filterLocalSearchIndex(medicationSearchIndex,searchQuery)),[medicationSearchIndex,searchQuery]);
+  const medicationSearchMatches=useMemo(()=>new Set(filterLocalSearchIndex(medicationSearchIndex,deferredSearchQuery)),[medicationSearchIndex,deferredSearchQuery]);
 
   const listaProcessada =
     useMemo(() => {
@@ -1477,11 +1479,11 @@ export default function MedicamentosListPage() {
             />
           ) : (
             <div className="space-y-2.5 pb-8">
-              <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{medsPrioridade.map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{medsEmDia.map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{medsPlanejados.map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"}>{medsSOS.map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"}>{medsSuspensos.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{()=>medsPrioridade.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{()=>medsEmDia.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"}>{()=>medsPlanejados.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"}>{()=>medsSOS.map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"}>{()=>medsSuspensos.map(renderCard)}</ClinicalCollectionGroup>
             </div>
           )}
         </section>

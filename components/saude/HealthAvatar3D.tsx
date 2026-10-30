@@ -89,6 +89,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .85 }),
       eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
+      glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .11, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .48, metalness: .015 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
@@ -574,8 +575,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
           const minute=mesh(new THREE.BoxGeometry(.004,.043,.003),materials.watchAccent,x+.009,watchY+.011,faceDepth+.009);minute.rotation.z=.62;minute.raycast=()=>{};
           const statusDot=mesh(new THREE.CircleGeometry(.0045,12),materials.watchAccent,x+.028,watchY-.029,faceDepth+.008);statusDot.raycast=()=>{};
         }
+        // V342: reflexo estático sugere vidro sem manter renderização contínua.
+        const watchGlass=mesh(roundFace?new THREE.CircleGeometry(.064,24):new THREE.PlaneGeometry(width*.68,height*.68),materials.glass,x-.016,watchY+.024,faceDepth+.014);watchGlass.rotation.z=-.28;watchGlass.scale.y=.22;watchGlass.raycast=()=>{};
         const crown=new THREE.MeshStandardMaterial({color:shape==='ultra'?'#fb923c':'#94a3b8',metalness:.45,roughness:.3});
-        mesh(new THREE.BoxGeometry(.022,.036,.028),crown,x+width/2+.006,watchY,.155);
+        const crownMesh=mesh(new THREE.CylinderGeometry(.014,.014,.028,12),crown,x+width/2+.006,watchY,.155);crownMesh.rotation.x=Math.PI/2;
       }else{
         const ring=mesh(new THREE.TorusGeometry(.042,.012,8,24),metal,x,1.43,.008);ring.rotation.x=Math.PI/2;
       }
@@ -588,6 +591,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // o visor fica à frente e a palma continua atrás, sem dedos sobre a tela.
     const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.119);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.128);screen.rotation.z=phoneAngle;screen.userData.action="brain";
+    const phoneGlass=mesh(new THREE.PlaneGeometry(.125,.218),materials.glass,phoneX-.018,1.414,.132);phoneGlass.rotation.z=phoneAngle-.08;phoneGlass.scale.x=.24;phoneGlass.raycast=()=>{};
     const speaker=mesh(new THREE.CapsuleGeometry(.003,.025,2,6),materials.white,phoneX,1.493,.132);speaker.rotation.z=Math.PI/2+phoneAngle;speaker.raycast=()=>{};
     const screenDot=mesh(new THREE.CircleGeometry(.004,10),materials.watchAccent,phoneX+.035,1.493,.133);screenDot.raycast=()=>{};
     // The thenar pad and side contact make the device rest inside the hand instead of floating beside it.
@@ -600,6 +604,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       finger.rotation.z=Math.PI/2+phoneAngle;finger.rotation.y=gripSign*.12;finger.raycast=()=>{};
     }
     const phoneThumb=mesh(new THREE.CapsuleGeometry(.012,.050,3,7),materials.skin,phoneX-gripSign*.099,1.408,.07);phoneThumb.rotation.z=gripSign*.48+phoneAngle;phoneThumb.rotation.y=-gripSign*.08;phoneThumb.raycast=()=>{};
+    const thumbNail=mesh(new THREE.CapsuleGeometry(.004,.017,2,6),materials.white,phoneX-gripSign*.105,1.421,.079);thumbNail.rotation.z=gripSign*.48+phoneAngle;thumbNail.scale.x=.58;thumbNail.raycast=()=>{};
     const gripKnuckle=mesh(new THREE.CapsuleGeometry(.004,.098,2,7),materials.skinShade,phoneX+gripSign*.101,1.388,.092);gripKnuckle.rotation.z=phoneAngle;gripKnuckle.raycast=()=>{};
     const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
     const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
