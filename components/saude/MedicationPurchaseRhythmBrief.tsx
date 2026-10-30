@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CalendarClock, ShieldCheck, ChevronRight } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import type { Renovacao } from "@/lib/types";
@@ -7,7 +8,7 @@ import { analyzeMedicationPurchaseRhythm, analyzePurchaseRhythms } from "@/lib/h
 
 const dateLabel=(value:string)=>value.split("-").reverse().join("/");
 
-export function MedicationPurchaseRhythmBrief({context,onNavigate}:{context:HealthInsightContext;onNavigate:(href:string)=>void}){
+export const MedicationPurchaseRhythmBrief = memo(function MedicationPurchaseRhythmBrief({context,onNavigate}:{context:HealthInsightContext;onNavigate:(href:string)=>void}){
   const today=context.hoje??new Date().toISOString().slice(0,10);
   const rhythms=analyzePurchaseRhythms(context.renovacoes,context.medicamentos.map(item=>item.id).filter((id):id is string=>Boolean(id)),today);
   if(!rhythms.length)return null;
@@ -23,7 +24,7 @@ export function MedicationPurchaseRhythmBrief({context,onNavigate}:{context:Heal
     {rhythms.length>1?<details className="mt-2 rounded-lg border border-surface-border/60"><summary className="flex min-h-11 cursor-pointer items-center px-2.5 text-[10px] font-semibold text-cyan-200 focus-visible:outline focus-visible:outline-2">Ver todos os {rhythms.length} medicamentos acompanhados</summary><div className="space-y-1 border-t border-surface-border/60 p-1.5">{rhythms.slice(1).map(item=><button key={item.medicationId} type="button" onClick={()=>onNavigate(`/saude/medicamentos/detalhes?id=${encodeURIComponent(item.medicationId)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"><span className="min-w-0 flex-1"><span className="block truncate text-[10px] font-semibold text-ink-primary">{nameFor(item.medicationId)}</span><span className="block text-[9px] text-ink-muted">{rhythmLabel(item)}</span></span><ChevronRight size={13}/></button>)}</div></details>:null}
     <p className="mt-2 flex items-center gap-1 text-[9px] text-ink-faint"><ShieldCheck size={11}/>Sugestão não confirma compra, gasto ou estoque.</p>
   </section>;
-}
+});
 
 export function MedicationPurchaseRhythmCard({events,medicationId,todayISO}:{events:readonly Renovacao[];medicationId:string;todayISO:string}){
   const rhythm=analyzeMedicationPurchaseRhythm(events,medicationId,todayISO);

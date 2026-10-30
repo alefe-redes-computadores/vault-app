@@ -175,6 +175,7 @@ import {
   MEDICATION_PRIMARY_FORMATS as FORMATOS_PRINCIPAIS,
   type CatalogPresentationSuggestion,
 } from "@/lib/medications/form-presentation";
+import { MedicationIdentityPreview } from "@/components/saude/MedicationIdentityPreview";
 
 // ============================================================
 // ANIMAÇÃO
@@ -4105,6 +4106,8 @@ export default function NovoMedicamentoPage() {
                       Identidade Visual
                     </h3>
                   </div>
+
+                  <MedicationIdentityPreview name={nome} format={formato} colors={cores} />
 
                   <div className="mb-5 grid grid-cols-4 gap-2">
                     {FORMATOS_PRINCIPAIS.map(

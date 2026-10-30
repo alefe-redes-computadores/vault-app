@@ -1,10 +1,11 @@
 "use client";
 
+import { memo } from "react";
 import { AlertOctagon, CheckCircle2, ChevronRight, Clock3, Pill } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildDoseMonthMetrics } from "@/lib/health-intelligence/dose-month-metrics";
 
-export function DoseEvidenceBrief({context,onNavigate,compact=false}:{
+export const DoseEvidenceBrief = memo(function DoseEvidenceBrief({context,onNavigate,compact=false}:{
   context:HealthInsightContext|null|undefined;
   onNavigate:(href:string)=>void;
   compact?:boolean;
@@ -21,4 +22,4 @@ export function DoseEvidenceBrief({context,onNavigate,compact=false}:{
       <ChevronRight size={14} className="mt-2 shrink-0 text-ink-faint"/>
     </span>
   </button>;
-}
+});

@@ -303,6 +303,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       for(let fingerIndex=0;!holdsPhone&&fingerIndex<4;fingerIndex+=1){
         const finger=mesh(new THREE.CapsuleGeometry(.015,.071-fingerIndex*.004,3,6),materials.skin,sign*(.456+fingerIndex*.023),1.318,.067);
         finger.rotation.z=sign*(.03+fingerIndex*.025);finger.raycast=()=>{};
+        const nail=mesh(new THREE.CapsuleGeometry(.0045,.018-fingerIndex*.001,2,6),materials.white,sign*(.456+fingerIndex*.023),1.287+fingerIndex*.001,.079);
+        nail.rotation.z=sign*(.03+fingerIndex*.025);nail.scale.x=.62;nail.raycast=()=>{};
       }
       for(let knuckleIndex=0;!holdsPhone&&knuckleIndex<3;knuckleIndex+=1)oval(materials.skin,sign*(.462+knuckleIndex*.027),1.356,.087,[.017,.014,.016]).raycast=()=>{};
       const stance=sign*.008;
@@ -552,6 +554,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         // instead of floating ahead of a strap buried inside the forearm.
         const strapWidth=shape==='band'?.078:shape==='ultra'?.14:.115;
         const strap=mesh(softBox(strapWidth,.285,.025,.016),metal,x,watchY,.112);strap.raycast=()=>{};
+        // Two recessed strap channels keep the accessory attached to the wrist
+        // without the old appearance of a flat plate floating over the arm.
+        for(const offset of [-.09,.09]){const strapChannel=mesh(softBox(strapWidth*.72,.018,.006,.004),materials.dark,x,watchY+offset,.128);strapChannel.raycast=()=>{};}
         // V343: lugs visually connect case and strap; no animation or extra listener.
         for(const side of [-1,1])for(const vertical of [-1,1]){const lug=mesh(softBox(.026,.038,.025,.008),titanium,x+side*(width*.42),watchY+vertical*(height*.43),.137);lug.raycast=()=>{};}
         if(shape==='round'){
@@ -600,6 +605,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // The thenar pad and side contact make the device rest inside the hand instead of floating beside it.
     const phoneGripPad=mesh(taperedBox(.075,.095,.145,.052),materials.skin,phoneX-gripSign*.054,1.376,.065);phoneGripPad.rotation.z=phoneAngle+gripSign*.08;phoneGripPad.raycast=()=>{};
     const phoneSideContact=mesh(new THREE.CapsuleGeometry(.014,.13,3,7),materials.skin,phoneX+gripSign*.095,1.382,.084);phoneSideContact.rotation.z=phoneAngle;phoneSideContact.raycast=()=>{};
+    const phonePalmFold=mesh(new THREE.CapsuleGeometry(.0035,.052,2,7),materials.skinShade,phoneX-gripSign*.073,1.365,.088);phonePalmFold.rotation.z=gripSign*.36+phoneAngle;phonePalmFold.raycast=()=>{};
     // V183: the dedicated grip replaces the generic fingers on this hand, avoiding an eight-finger overlap.
     for(let fingerIndex=0;fingerIndex<4;fingerIndex+=1){
       // A ponta fica atrás da moldura: a mão segura o aparelho sem cobrir o visor.

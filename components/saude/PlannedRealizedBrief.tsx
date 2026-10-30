@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { CalendarClock, ChevronRight } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildPlannedRealizedSummary } from "@/lib/health-intelligence/planned-realized";
 
-export function PlannedRealizedBrief({context,onNavigate,compact=false}:{context:HealthInsightContext|null|undefined;onNavigate:(href:string)=>void;compact?:boolean}){
+export const PlannedRealizedBrief = memo(function PlannedRealizedBrief({context,onNavigate,compact=false}:{context:HealthInsightContext|null|undefined;onNavigate:(href:string)=>void;compact?:boolean}){
   const summary=useMemo(()=>context?buildPlannedRealizedSummary(context,30):null,[context]);
   if(!summary||summary.planned===0)return null;
   const attention=summary.unresolvedPast+summary.conflicts;
@@ -25,5 +25,5 @@ export function PlannedRealizedBrief({context,onNavigate,compact=false}:{context
     </details>
     <div className="mt-2 flex items-end gap-2"><p className="min-w-0 flex-1 text-[9px] leading-snug text-ink-muted">Sem desfecho significa sem confirmação registrada — não presume falha clínica.{summary.conflicts?` ${summary.conflicts} conflito(s) legado(s) isolado(s).`:""}</p><button type="button" onClick={()=>onNavigate("/saude/medicamentos/historico")} className="flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2">Histórico <ChevronRight size={12}/></button></div>
   </div>;
-}
+});
 function Metric({value,label,tone}:{value:number;label:string;tone:string}){return <span className="rounded-lg bg-void/25 px-1 py-1.5"><strong className={`block text-sm tabular-nums ${tone}`}>{value}</strong><span className="block truncate text-[8px] text-ink-muted">{label}</span></span>}
