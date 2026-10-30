@@ -9,7 +9,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
   title: string;
   description: string;
   icon: ReactNode;
-  children: ReactNode;
+  children: ReactNode | (() => ReactNode);
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -47,7 +47,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
       </h2>
       {open && (
         <div id={`${id}-panel`} className="space-y-3 border-t border-surface-border/50 bg-void/15 p-2.5 sm:p-3">
-          {children}
+          {typeof children === "function" ? children() : children}
         </div>
       )}
     </section>

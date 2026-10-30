@@ -552,6 +552,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
         // instead of floating ahead of a strap buried inside the forearm.
         const strapWidth=shape==='band'?.078:shape==='ultra'?.14:.115;
         const strap=mesh(softBox(strapWidth,.285,.025,.016),metal,x,watchY,.112);strap.raycast=()=>{};
+        // V343: lugs visually connect case and strap; no animation or extra listener.
+        for(const side of [-1,1])for(const vertical of [-1,1]){const lug=mesh(softBox(.026,.038,.025,.008),titanium,x+side*(width*.42),watchY+vertical*(height*.43),.137);lug.raycast=()=>{};}
         if(shape==='round'){
           const caseMesh=mesh(new THREE.CylinderGeometry(.086,.086,.055,24),titanium,x,watchY,.15);caseMesh.rotation.x=Math.PI/2;
         }else{
@@ -590,6 +592,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // A moldura acompanha a face do aparelho. Atrás da caixa ela desaparecia;
     // o visor fica à frente e a palma continua atrás, sem dedos sobre a tela.
     const phoneRim=mesh(softBox(.181,.311,.012,.019),materials.white,phoneX,1.39,.119);phoneRim.rotation.z=phoneAngle;phoneRim.raycast=()=>{};
+    const phoneSideButton=mesh(softBox(.008,.058,.012,.004),materials.white,phoneX+gripSign*.094,1.425,.111);phoneSideButton.rotation.z=phoneAngle;phoneSideButton.raycast=()=>{};
     const screen=mesh(new THREE.PlaneGeometry(.14,.24),label("VAULT",""),phoneX,1.39,.128);screen.rotation.z=phoneAngle;screen.userData.action="brain";
     const phoneGlass=mesh(new THREE.PlaneGeometry(.125,.218),materials.glass,phoneX-.018,1.414,.132);phoneGlass.rotation.z=phoneAngle-.08;phoneGlass.scale.x=.24;phoneGlass.raycast=()=>{};
     const speaker=mesh(new THREE.CapsuleGeometry(.003,.025,2,6),materials.white,phoneX,1.493,.132);speaker.rotation.z=Math.PI/2+phoneAngle;speaker.raycast=()=>{};

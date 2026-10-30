@@ -2113,6 +2113,8 @@ function MedicamentoDetalhesContent() {
   const custoHistoricoRenovacoes = medicationCosts.realizedTotal;
 
   const precoMedioRenovacoes = medicationCosts.realizedAverage ?? 0;
+  const hasFinancialSection = renovacoesPagas.length > 0 || medicationCosts.planned.length > 0 || typeof med.preco === "number";
+  const hasRoutineSection = med.status !== "descontinuado" || isSOS;
 
   // ==========================================================
   // IDENTIDADE
@@ -3021,7 +3023,15 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
-          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" items={[{id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>},{id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>},{id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]}/>
+          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" items={[
+            {id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},
+            ...(hasRoutineSection?[{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>}]:[]),
+            {id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},
+            {id:"medicamento-rede",label:"Rede",icon:<Stethoscope size={14}/>},
+            ...(hasFinancialSection?[{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>}]:[]),
+            {id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},
+            ...(renovacoes.length?[{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]:[]),
+          ]}/>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
@@ -3218,7 +3228,7 @@ function MedicamentoDetalhesContent() {
                     fill="currentColor"
                   />
 
-                  Registrar dose
+                  {isSOS ? "Registrar uso SOS" : isTemporary ? "Registrar dose do período" : "Registrar dose"}
                 </button>
             </div>
           )}
@@ -4422,21 +4432,9 @@ function MedicamentoDetalhesContent() {
               FINANCEIRO
               ================================================== */}
 
-          {(renovacoesPagas.length >
-            0 || medicationCosts.planned.length > 0 ||
-            typeof med.preco ===
-              "number") && (
-            <section id="medicamento-financeiro" className="vault-deferred scroll-mt-24 space-y-3">
-              <SectionTitle
-                icon={
-                  <LineChart
-                    size={
-                      15
-                    }
-                  />
-                }
-                title="Financeiro"
-              />
+          {hasFinancialSection && (
+            <ClinicalDisclosure id="medicamento-financeiro" title="Financeiro" description="Compras realizadas, valores informados e planejamento futuro" icon={<LineChart size={18}/> }>
+              {()=><>
 
               {renovacoesPagas.length >
               0 ? (
@@ -4506,25 +4504,16 @@ function MedicamentoDetalhesContent() {
                   <MedicationPurchaseRhythmCard events={renovacoes} medicationId={med.id!} todayISO={diaFinanceiro}/>
                 </div>
               </details>
-            </section>
+              </>}
+            </ClinicalDisclosure>
           )}
 
           {/* ==================================================
               REDE
               ================================================== */}
 
-          <section id="medicamento-rede" className="vault-deferred scroll-mt-24 space-y-3">
-            <SectionTitle
-              icon={
-                <Stethoscope
-                  size={
-                    15
-                  }
-                />
-              }
-              title="Prescrição & Rede"
-            />
-
+          <ClinicalDisclosure id="medicamento-rede" title="Prescrição e rede de cuidado" description="Profissionais, locais e farmácias vinculados" icon={<Stethoscope size={18}/> }>
+            {()=><>
             <div className="space-y-2">
               <DetailInfoRow
                 icon={
@@ -4790,7 +4779,8 @@ function MedicamentoDetalhesContent() {
                   </div>
                 )}
             </div>
-          </section>
+            </>}
+          </ClinicalDisclosure>
 
           {/* ==================================================
               RECEITA
