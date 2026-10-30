@@ -80,11 +80,12 @@ export function ListCard({
         border
         bg-surface
         ${isCompact ? "shadow-sm" : "shadow-md"}
-        transition-colors
+        transition-[background-color,border-color,box-shadow] duration-200
+        focus-within:border-ice/45
         ${
           isDisabled
             ? `${disabledBorderColor} opacity-60`
-            : "border-surface-border hover:bg-surface-raised"
+            : "border-surface-border hover:bg-surface-raised/80 hover:shadow-lg"
         }
         ${className}
       `}
@@ -95,6 +96,7 @@ export function ListCard({
       }}
     >
       <div
+        aria-hidden={!rail}
         className={`
           absolute
           bottom-0 left-0 top-0
@@ -123,7 +125,7 @@ export function ListCard({
               type="button"
               onClick={onClick}
               aria-label={navigationLabel}
-              className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+              className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:bg-ice/[0.035]"
             />
             <div
               className={`pointer-events-none relative z-10 flex w-full items-start text-left [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-20 ${
@@ -139,6 +141,7 @@ export function ListCard({
               justify-center
               border
               shadow-inner
+              transition-colors
             `}
                 style={{
                   backgroundColor: `${color}15`,
@@ -173,6 +176,7 @@ export function ListCard({
             ${isCompact ? "gap-2.5" : "gap-3.5"}
             text-left
             outline-none
+            focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-ice/75 focus-visible:ring-offset-2 focus-visible:ring-offset-surface
             ${contentClassName}
           `}
           >
@@ -185,6 +189,7 @@ export function ListCard({
               justify-center
               border
               shadow-inner
+              transition-colors
             `}
               style={{
                 backgroundColor: `${color}15`,
@@ -214,8 +219,8 @@ export function ListCard({
           <div
             className={
               isCompact
-                ? "mt-2 flex flex-wrap items-center gap-1.5 border-t border-surface-border/40 pt-1.5"
-                : "mt-3 flex flex-wrap items-center gap-2 border-t border-surface-border/40 pt-2"
+                ? "mt-2 flex flex-wrap items-center gap-1.5 border-t border-surface-border/40 pt-2 [&_button]:min-h-9"
+                : "mt-3 flex flex-wrap items-center gap-2 border-t border-surface-border/40 pt-2.5 [&_button]:min-h-10"
             }
           >
             {actions}

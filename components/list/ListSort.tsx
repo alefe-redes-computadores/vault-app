@@ -43,16 +43,25 @@ export function ListSort({
   const { trigger } = useHapticFeedback();
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); setIsOpen(false); }
+      if (event.key === "Escape") { event.preventDefault(); setIsOpen(false); return; }
+      if (event.key !== "Tab") return;
+      const candidates = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? []);
+      if (!candidates.length) return;
+      const first = candidates[0], last = candidates[candidates.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", onEscape);
+    const frame = window.requestAnimationFrame(() => { const chosen = dialogRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]') || dialogRef.current?.querySelector<HTMLButtonElement>("button"); chosen?.focus({ preventScroll: true }); });
     return () => {
       document.removeEventListener("keydown", onEscape);
+      window.cancelAnimationFrame(frame);
       document.body.style.overflow = previous;
       if (triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
     };
@@ -81,16 +90,16 @@ export function ListSort({
         aria-label="Ordenar lista"
         disabled={disabled}
         className={`
-          flex h-11 items-center gap-1.5
+          flex min-h-11 items-center gap-2
           rounded-2xl
           border border-surface-border/60
           bg-surface-raised
           px-3
           text-xs font-semibold
-          text-ink-muted
+          text-ink-secondary
           outline-none
           transition-all
-          hover:border-surface-border/80
+          hover:border-ice/40 hover:text-ice
           active:scale-[0.98]
           disabled:opacity-50
           disabled:cursor-not-allowed
@@ -123,6 +132,7 @@ export function ListSort({
 
             {/* Menu */}
             <motion.div
+              role="dialog" aria-modal="true" aria-label="Ordenar lista" ref={dialogRef}
               initial={{
                 opacity: 0,
                 y: 8,
@@ -144,13 +154,15 @@ export function ListSort({
               className="
                 fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[101]
                 mx-auto w-auto max-w-lg overflow-hidden
-                rounded-[24px]
+                rounded-[28px]
                 border border-surface-border/60
                 bg-surface
-                p-1.5
+                p-2.5
                 shadow-xl
               "
             >
+              <div className="px-3 pb-2 pt-1"><p className="text-sm font-semibold text-ink-primary">Ordenar lista</p><p className="mt-0.5 text-xs text-ink-muted">Escolha como deseja visualizar os registros</p></div>
+              <div role="radiogroup" aria-label="Opções de ordenação" className="max-h-[60dvh] overflow-y-auto overscroll-contain">
               {options.map((option) => {
                 const isSelected = value === option.value;
 
@@ -160,12 +172,13 @@ export function ListSort({
                       key={option.value}
                       type="button"
                       onClick={() => handleSelect(option.value)}
+                      role="radio" aria-checked={isSelected}
                       className={`
-                        flex w-full
+                        flex min-h-12 w-full
                         items-center
                         justify-between
                         rounded-2xl
-                        px-3 py-2.5
+                        px-3 py-3
                         text-left
                         text-sm
                         transition-colors
@@ -191,7 +204,7 @@ export function ListSort({
                       items-center
                       justify-between
                       rounded-2xl
-                      px-3 py-2.5
+                      px-3 py-3
                       text-left
                       text-sm
                       transition-colors
@@ -209,6 +222,7 @@ export function ListSort({
                   </button>
                 );
               })}
+              </div>
             </motion.div>
           </>
         )}

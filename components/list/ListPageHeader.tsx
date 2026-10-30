@@ -107,11 +107,12 @@ export function ListPageHeader({
     <header
       className={`
         sticky top-0 z-30
-        border-b border-surface-border/30
-        bg-void/85
-        px-4 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-4
+        border-b border-surface-border/45
+        bg-void/90
+        px-3.5 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-4
         header-safe-top
         backdrop-blur-xl
+        shadow-[0_9px_26px_-23px_rgba(0,0,0,0.85)]
         ${className}
       `}
     >
@@ -122,7 +123,7 @@ export function ListPageHeader({
               type="button"
               onClick={handleBack}
               aria-label="Voltar"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-primary transition-transform active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-surface-border/70 bg-surface-raised/85 text-ink-primary shadow-sm transition-all hover:border-ice/35 hover:bg-surface-raised active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/70"
             >
               <ArrowLeft size={18} />
             </button>
@@ -132,14 +133,14 @@ export function ListPageHeader({
             {(badgeLabel || icon) && (
               <div className="flex items-center gap-2">
                 {icon && (
-                  <span className={iconColor}>
+                  <span className={`grid size-7 shrink-0 place-items-center rounded-lg border border-surface-border/60 bg-surface-raised/60 ${iconColor}`} aria-hidden="true">
                     {icon}
                   </span>
                 )}
 
                 {badgeLabel && (
                   <span
-                    className={`font-mono text-[11px] uppercase tracking-[0.28em] ${badgeColor}`}
+                    className={`max-w-full break-words font-mono text-[10px] font-semibold uppercase tracking-[0.15em] ${badgeColor}`}
                   >
                     {badgeLabel}
                   </span>
@@ -147,12 +148,12 @@ export function ListPageHeader({
               </div>
             )}
 
-            <h1 className="break-words font-display text-lg font-semibold leading-snug text-ink-primary sm:text-xl">
+            <h1 className="break-words font-display text-xl font-semibold leading-tight tracking-tight text-ink-primary sm:text-2xl">
               {title}
             </h1>
 
             {subtitle && (
-              <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted sm:text-sm">
+              <p className="mt-0.5 break-words text-[13px] leading-relaxed text-ink-muted sm:text-sm">
                 {subtitle}
               </p>
             )}
@@ -167,7 +168,7 @@ export function ListPageHeader({
       </div>
 
       {children && (
-        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+        <div role="group" aria-label={`Ferramentas de ${title}`} className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
           {children}
         </div>
       )}

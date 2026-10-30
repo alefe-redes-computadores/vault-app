@@ -1,7 +1,7 @@
 // components/list/ListIcon.tsx
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, type CSSProperties } from "react";
 
 interface ListIconProps {
   /** Ícone a ser renderizado */
@@ -28,11 +28,11 @@ export function ListIcon({
 }: ListIconProps) {
   const containerStyle = isGradient && color2
     ? {
-        background: `linear-gradient(135deg, ${color}25 50%, ${color2}25 50%)`,
+        background: `linear-gradient(135deg, ${color}28, ${color2}22)`,
         borderColor: `${color}55`,
       }
     : {
-        backgroundColor: `${color}15`,
+        backgroundColor: `${color}14`,
         borderColor: `${color}40`,
       };
 
@@ -46,12 +46,16 @@ export function ListIcon({
         rounded-2xl
         border
         shadow-inner
+        transition-colors
         ${className}
       `}
-      style={containerStyle}
+      style={{ ...containerStyle, color }}
     >
-      {/* Clona o ícone e aplica a cor */}
-      {icon}
+      <span
+        className="inline-flex items-center justify-center [&_svg]:h-[var(--vault-list-icon-size)] [&_svg]:w-[var(--vault-list-icon-size)]"
+        style={{ "--vault-list-icon-size": `${Math.max(12, Math.min(40, size))}px` } as CSSProperties}
+        aria-hidden="true"
+      >{icon}</span>
     </div>
   );
 }
