@@ -8,6 +8,6 @@ assert(command.includes('decision: plan.focus[0] ?? null')||command.includes('de
 assert(today.includes('command?.decision')&&today.includes('priorityScore'),'Hoje deve usar decisão explicável');
 assert(avatar.includes('command?.decision')&&avatar.includes('planFocus.priorityScore'),'Avatar deve usar a mesma decisão');
 assert(home.includes('careCommand?.decision?.lane')&&!home.includes('careCommand?.primary?.lane'),'Home deve usar a decisão canônica');
-assert(today.includes('confidence === "high"')&&avatar.includes('confidence === "high"'),'superfícies devem mostrar confiança');
+assert(today.includes('confidenceLabel[action.confidence]')&&today.includes('high: "alta"')&&avatar.includes('confidence === "high"'),'superfícies devem mostrar confiança');
 assert(/BRAIN_VERSION = "6\.[0-9]+"/.test(r('lib/health-intelligence/version.ts')),'Brain deve permanecer na linha canônica 6.x');
 console.log('VAULT V263 — decisão compartilhada Home/Hoje/Avatar: OK');

@@ -4,6 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typ
 const read=p=>fs.readFileSync(p,'utf8');
 const home=read('app/page.tsx');
 const today=read('app/hoje/page.tsx');
+const todayActions=read('components/hoje/TodayActionCenter.tsx');
 const detail=read('app/saude/medicamentos/detalhes/page.tsx');
 for(const [name,src] of [['Home',home],['Hoje',today],['Detalhes',detail]]){
  const parsed=ts.createSourceFile(name+'.tsx',src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
@@ -17,7 +18,7 @@ assert(home.includes('defaultOpen={longitudinalHighlights.some('),'urgent eviden
 assert(home.includes('suppressOperationalOverlap('),'Home keeps dedup source of truth');
 assert(home.includes('primaryMedicationCareOpportunity.actionHref'),'Home preserves real operational action');
 assert(today.includes('label="Áreas de Hoje" layout="grid"'),'all Today areas visible');
-assert(today.includes('totalPendentes > 0') && today.includes('getElementById("hoje-doses")'),'pending jump preserved');
+assert(today.includes('pendingDoses={totalPendentes}') && today.includes('getElementById("hoje-doses")') && todayActions.includes('pendingDoses > 0'),'pending jump preserved');
 assert(today.includes('DoseMonthOverview userId={user.id} personId={activePersonId}'),'owner-safe monthly analysis');
 assert(today.includes('dosesElegiveisLote.length > 1') && today.includes('handleTomarTodos()'),'dose batch preserved');
 assert(today.includes('setMostrarConcluidas'),'past doses review preserved');

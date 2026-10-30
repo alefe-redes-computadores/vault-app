@@ -82,7 +82,7 @@ import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } 
 import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/health-intelligence/medication-care-decision";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
-import { CareCommandStrip } from "@/components/saude/CareCommandStrip";
+import { TodayActionCenter } from "@/components/hoje/TodayActionCenter";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
@@ -3006,33 +3006,7 @@ export default function HojePage() {
           {isHoje ? <ClinicalSectionNav label="Áreas de Hoje" layout="grid" items={[{id:"hoje-agora",label:"Agora",icon:<Activity size={14}/>},{id:"hoje-agenda",label:"Agenda",icon:<Bell size={14}/>,badge:remindersDoDia.length},{id:"hoje-doses",label:"Doses",icon:<Pill size={14}/>,badge:totalPendentes},{id:"hoje-diario",label:"Diário",icon:<ListChecks size={14}/>},{id:"hoje-mes",label:"Mês",icon:<Calendar size={14}/>}]} /> : null}
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
-          {isHoje && totalPendentes > 0 && (
-            <button
-              type="button"
-              onClick={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-              className="flex min-h-12 w-full items-center justify-between gap-2 rounded-[16px] border border-amber-400/25 bg-amber-400/[0.055] px-3 py-2 text-left transition-colors active:bg-amber-400/10"
-              aria-label={`Ir para ${totalPendentes} dose${totalPendentes === 1 ? "" : "s"} pendente${totalPendentes === 1 ? "" : "s"} de hoje`}
-            >
-              <span className="min-w-0"><span className="block text-xs font-bold text-amber-300">{totalPendentes} dose{totalPendentes === 1 ? "" : "s"} pendente{totalPendentes === 1 ? "" : "s"}</span><span className="block text-[10px] text-ink-muted">Ver horários e registrar individualmente</span></span>
-              <ChevronRight size={18} className="shrink-0 text-amber-300"/>
-            </button>
-          )}
-          {isHoje ? <CareCommandStrip command={healthIntelligence.careCommand} onNavigate={(href) => router.push(href)}/> : null}
-          {isHoje && !healthIntelligence.careCommand?.decision && !brainPulse.isLoading && brainPulse.brief.primary && (
-            <button
-              type="button"
-              onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainPulse.brief.primary!.insight_id)}&return_to=${encodeURIComponent("/hoje")}`)}
-              className="flex w-full items-center gap-3 rounded-[18px] border border-violet-400/20 bg-gradient-to-r from-violet-400/[0.07] to-surface p-3 text-left active:scale-[0.985]"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={17}/></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[9px] font-bold uppercase tracking-[.14em] text-violet-300">Briefing do cuidado</span>
-                <span className="mt-0.5 block line-clamp-1 text-xs font-bold text-ink-primary">{brainPulse.brief.headline}</span>
-                <span className="mt-0.5 block line-clamp-1 text-[9px] text-ink-muted">{brainPulse.brief.primary.snapshot.titulo}{brainPulse.brief.supporting?` · ${brainPulse.brief.supporting} sinal(is) agrupado(s)`:""}</span>
-              </span>
-              <ChevronRight size={15} className="shrink-0 text-violet-300"/>
-            </button>
-          )}
+          {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
           {/* VAULT_V321_MONTH_DEFERRED: keep original owner and onNavigate; mount only when requested. */}
           {user?.id && activePersonId && isHoje && (
             <ClinicalDisclosure

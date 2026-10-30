@@ -8,6 +8,7 @@ const hook=read('hooks/useHealthIntelligence.ts');
 const central=read('app/inteligencia/page.tsx');
 const home=read('app/page.tsx');
 const today=read('app/hoje/page.tsx');
+const todayActions=read('components/hoje/TodayActionCenter.tsx');
 const strip=read('components/saude/CareCommandStrip.tsx');
 const avatar=read('components/saude/AvatarCareReadiness.tsx');
 ok(command.includes('buildCareCommandSnapshot')&&command.includes('buildCareReadiness(context, forecast.generatedFor, forecast)'),'previsão e prontidão compartilham o mesmo snapshot');
@@ -21,6 +22,6 @@ ok(forecast.includes('item.id ? `/saude/retiradas/detalhes')&&forecast.includes(
 ok(forecast.includes('event.id ? `/saude/renovacao/detalhes')&&forecast.includes('/saude/renovacao?medicamento_id='),'planejamento sem id usa listagem segura');
 ok(central.includes('forecast={health.careCommand?.forecast}'),'Central reutiliza previsão compartilhada');
 ok(home.includes('primaryCareCommand')&&home.includes('primaryCareCommand.reason'),'Home explica a próxima ação real');
-ok(today.includes('<CareCommandStrip')&&(strip.includes('action.lane !== "now" && action.lane !== "next"')||strip.includes('action.lane !== "now" && action.lane !== "prepare"')),'Hoje mostra somente ação operacional atual ou próxima');
+ok(today.includes('<TodayActionCenter')&&todayActions.includes('<CareCommandStrip')&&(strip.includes('action.lane !== "now" && action.lane !== "next"')||strip.includes('action.lane !== "now" && action.lane !== "prepare"')),'Hoje mostra somente ação operacional atual ou próxima');
 ok(avatar.includes('command?.readiness')&&avatar.includes("(!portfolio.items.length && !forecast?.actions.length)"),'Avatar não esconde ação sem processo formal');
 console.log('\nVAULT V258 — COMANDO COMPARTILHADO + HOME/HOJE + AVATAR: OK');

@@ -17,7 +17,7 @@ assert.equal(brief.signals,3);assert.equal(brief.supporting,1);assert.match(brie
 const legacy={...rows[0],key:'legacy-a',snapshot:{...rows[0].snapshot,entidade_tipo:undefined,entidade_id:undefined,entidade_ids:undefined,relacoes_contextuais:undefined}};
 assert.equal(v5.brainV5Journeys([legacy,{...legacy,key:'legacy-b'}]).length,2,'histórico legado não é unido por suposição');
 const central=read('app/inteligencia/alertas/page.tsx');assert(central.includes('brainV5JourneyKey'));assert(central.includes('brain.portfolio.visibleJourneys')&&central.includes('jornadas'));assert(central.includes('relacionado'));
-const today=read('app/hoje/page.tsx');assert(today.includes('useBrainV5Pulse'));assert(today.includes('Briefing do cuidado'));assert(today.includes('brainPulse.brief.supporting'));
+const today=read('app/hoje/page.tsx'),todayActions=read('components/hoje/TodayActionCenter.tsx');assert(today.includes('useBrainV5Pulse'));assert(todayActions.includes('Briefing do cuidado'));assert(today.includes('brainPulse.brief.supporting'));
 const home=read('app/page.tsx');assert(home.includes('decisões em atenção'));assert(home.includes('decisões acompanhadas'));
 const avatar=read('components/saude/HealthAvatar3D.tsx');assert(avatar.includes('sign*.083-.003'));assert(avatar.includes('[.0016,.0016,.0011]'));
 console.log('V245 CARE JOURNEYS + TODAY + AVATAR: OK');

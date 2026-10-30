@@ -9,6 +9,7 @@ const ok = (value, label) => {
 const central = read("app/inteligencia/alertas/page.tsx");
 const insight = read("app/inteligencia/page.tsx");
 const today = read("app/hoje/page.tsx");
+const todayActions = read("components/hoje/TodayActionCenter.tsx");
 const forecast = read("components/saude/CareForecastAgenda.tsx");
 const avatar = read("components/saude/HealthAvatar3D.tsx");
 
@@ -16,7 +17,7 @@ ok(central.includes("Cobertura e qualidade") && central.includes("<details"), "C
 ok(!central.includes('aria-label="Resumo da inteligência"'), "Central remove contadores duplicados");
 ok(insight.includes("health.experienceHighlights.slice(0, 2)"), "Vault Insight limita destaques antes da Central");
 ok(insight.includes("itens analisados sem abrir dados sensíveis"), "inventário sensível usa resumo progressivo");
-ok(today.includes("!healthIntelligence.careCommand?.decision"), "Hoje não duplica comando e briefing");
+ok(today.includes("command={healthIntelligence.careCommand}") && todayActions.includes("!command?.decision && brainFallback"), "Hoje não duplica comando e briefing");
 ok(today.includes('aria-label="Diário rápido do dia"') && today.includes("<details"), "diário rápido permanece acessível e recolhível");
 ok(forecast.includes("agenda.slice(0, 2)") && forecast.includes("Ver próximas"), "previsão mostra foco antes da cauda");
 ok(avatar.includes("opacity: .42") && avatar.includes("opacity:.075"), "Avatar suaviza brilho ocular e reflexo das lentes");

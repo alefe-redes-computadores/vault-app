@@ -1,23 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Network, UserRound, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 
-type Props = {
-  gastoMes: number;
-  diferencaMes: number;
-  totalRede: number;
-};
+type Props = { gastoMes: number; diferencaMes: number; totalRede: number };
 
 const clinical = [
-  {label:"Minha saúde",sub:"Perfil, sono e medidas",path:"/saude/minha-saude",icon:HeartPulse,tone:"border-emerald-400/20 bg-emerald-400/8 text-emerald-400"},
+  { label: "Minha saúde", sub: "Perfil, sono e medidas", path: "/saude/minha-saude", icon: HeartPulse, tone: "border-emerald-400/20 bg-emerald-400/8 text-emerald-400" },
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-ice/20 bg-ice/8 text-ice" },
   { label: "Exames", sub: "Pedidos e resultados", path: "/saude/exames", icon: FlaskConical, tone: "border-emerald-400/20 bg-emerald-400/8 text-emerald-400" },
   { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-cyan-400/20 bg-cyan-400/8 text-cyan-400" },
   { label: "Lembretes", sub: "Sua agenda de saúde", path: "/saude/lembretes", icon: Bell, tone: "border-amber-400/20 bg-amber-400/8 text-amber-400" },
   { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/8 text-coral" },
-];
+] as const;
 
 export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) {
   const router = useRouter();
@@ -25,37 +22,41 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
 
   return (
-    <section className="vault-deferred-lg space-y-5" aria-label="Central do Vault">
-      <div>
-        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações frequentes em um só lugar</p></div><Stethoscope size={16} className="text-ice" /></div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-emerald-400/25 bg-gradient-to-r from-emerald-400/10 to-surface p-3.5 text-left">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Pill size={21} /></div>
-            <div className="min-w-0 flex-1"><p className="font-semibold text-ink-primary">Medicamentos</p><p className="mt-0.5 text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</p></div><ChevronRight size={17} className="text-emerald-300" />
-          </button>
-
-          <button type="button" onClick={() => go("/saude/retiradas")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-amber-400/20 bg-amber-400/[0.055] px-4 py-3 text-left">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/12 text-amber-400"><Store size={17} /></div><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-ink-primary">Retiradas de medicamentos</p><p className="mt-0.5 text-[9px] text-ink-muted">Programações, locais e histórico de retirada</p></div><ChevronRight size={15} className="text-amber-400" />
-          </button>
-
-          <button type="button" onClick={() => go("/saude/fornecimento")} className="col-span-2 flex min-h-[64px] items-center gap-3 rounded-[20px] border border-surface-border bg-surface px-4 py-3 text-left"><FolderHeart size={20} className="shrink-0 text-violet-300"/><span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-ink-primary">Fornecimento SUS e documentos</span><span className="mt-0.5 block text-[9px] text-ink-muted">Processos, autorizações e renovação</span></span><ChevronRight size={15} className="text-ink-muted"/></button>
-
-          {clinical.map(({ label, sub, path, icon: Icon, tone }) => <button type="button" key={path} onClick={() => go(path)} className={`flex min-h-[88px] items-center gap-3 rounded-[20px] border p-3 text-left ${tone}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17} /></div><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">{label}</p><p className="mt-0.5 line-clamp-2 text-[9px] text-ink-muted">{sub}</p></div></button>)}
-
-          <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-400/20 bg-rose-400/8 p-3 text-left"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17} /></div><div><p className="text-xs font-semibold text-ink-primary">Cirurgias</p><p className="mt-0.5 text-[9px] text-ink-muted">Procedimentos</p></div></button>
-          <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-300/20 bg-rose-300/[0.055] p-3 text-left"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-200"><BookHeart size={17} /></div><div><p className="text-xs font-semibold text-ink-primary">Plano de segurança</p><p className="mt-0.5 text-[9px] text-ink-muted">Apoio e contatos</p></div></button>
-        </div>
+    <section className="vault-deferred-lg space-y-3" aria-label="Central do Vault">
+      <div className="flex items-end justify-between gap-3">
+        <div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações principais primeiro; demais áreas sob demanda</p></div>
+        <Stethoscope size={16} className="text-ice"/>
       </div>
 
-      <div>
-        <div className="mb-3 flex items-center gap-2"><FileText size={15} className="text-ice" /><div><h2 className="font-display text-sm font-semibold text-ink-primary">Organização</h2><p className="text-[10px] text-ink-muted">Arquivos, custos e rede de cuidado</p></div></div>
-        <div className="overflow-hidden rounded-[20px] border border-surface-border/60 bg-surface">
-          <button type="button" onClick={() => go("/saude/documentos")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><FileText size={18} className="text-ice" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Documentos de saúde</p><p className="text-[10px] text-ink-muted">Receitas, exames, laudos e acervo clínico</p></div><ChevronRight size={16} className="text-ink-faint" /></button>
-          <button type="button" onClick={() => go("/saude/renovacao")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><ReceiptText size={18} className="text-emerald-400" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Compras de medicamentos</p><p className="text-[10px] text-ink-muted">R$ {gastoMes.toFixed(2).replace(".", ",")} no mês {diferencaMes ? `· ${diferencaMes > 0 ? "+" : "-"} R$ ${Math.abs(diferencaMes).toFixed(2).replace(".", ",")}` : ""}</p></div><ChevronRight size={16} className="text-ink-faint" /></button>
-          <button type="button" onClick={() => go("/saude/rede")} className="flex w-full items-center gap-3 p-4 text-left"><Network size={18} className="text-cyan-400" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Sua rede</p><p className="text-[10px] text-ink-muted">{totalRede} profissionais e locais cadastrados</p></div><ChevronRight size={16} className="text-ink-faint" /></button>
-        </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-emerald-400/25 bg-gradient-to-r from-emerald-400/10 to-surface p-3.5 text-left">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Pill size={21}/></span>
+          <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</span></span><ChevronRight size={17} className="text-emerald-300"/>
+        </button>
+        <button type="button" onClick={() => go("/saude/retiradas")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-amber-400/20 bg-amber-400/[0.055] px-4 py-3 text-left">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/12 text-amber-400"><Store size={17}/></span>
+          <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Retiradas de medicamentos</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Programações, locais e histórico</span></span><ChevronRight size={15} className="text-amber-400"/>
+        </button>
+        <button type="button" onClick={() => go("/saude/fornecimento")} className="col-span-2 flex min-h-[64px] items-center gap-3 rounded-[20px] border border-surface-border bg-surface px-4 py-3 text-left">
+          <FolderHeart size={20} className="shrink-0 text-violet-300"/><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Fornecimento SUS e documentos</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Processos, autorizações e renovação</span></span><ChevronRight size={15} className="text-ink-muted"/>
+        </button>
       </div>
+
+      <ClinicalDisclosure id="home-outras-areas" title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>}>
+        {() => <div className="grid grid-cols-2 gap-2.5">
+          {clinical.map(({ label, sub, path, icon: Icon, tone }) => <button type="button" key={path} onClick={() => go(path)} className={`flex min-h-[88px] items-center gap-3 rounded-[20px] border p-3 text-left ${tone}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17}/></span><span className="min-w-0"><strong className="block truncate text-xs text-ink-primary">{label}</strong><span className="mt-0.5 block line-clamp-2 text-[9px] text-ink-muted">{sub}</span></span></button>)}
+          <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-400/20 bg-rose-400/8 p-3 text-left"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17}/></span><span><strong className="block text-xs text-ink-primary">Cirurgias</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Procedimentos</span></span></button>
+          <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-300/20 bg-rose-300/[0.055] p-3 text-left"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-200"><BookHeart size={17}/></span><span><strong className="block text-xs text-ink-primary">Plano de segurança</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Apoio e contatos</span></span></button>
+        </div>}
+      </ClinicalDisclosure>
+
+      <ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>}>
+        {() => <div className="overflow-hidden rounded-[20px] border border-surface-border/60 bg-surface">
+          <button type="button" onClick={() => go("/saude/documentos")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><FileText size={18} className="text-ice"/><span className="min-w-0 flex-1"><strong className="block text-sm">Documentos de saúde</strong><span className="text-[10px] text-ink-muted">Receitas, exames, laudos e acervo clínico</span></span><ChevronRight size={16} className="text-ink-faint"/></button>
+          <button type="button" onClick={() => go("/saude/renovacao")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><ReceiptText size={18} className="text-emerald-400"/><span className="min-w-0 flex-1"><strong className="block text-sm">Compras de medicamentos</strong><span className="text-[10px] text-ink-muted">R$ {gastoMes.toFixed(2).replace(".", ",")} no mês {diferencaMes ? `· ${diferencaMes > 0 ? "+" : "-"} R$ ${Math.abs(diferencaMes).toFixed(2).replace(".", ",")}` : ""}</span></span><ChevronRight size={16} className="text-ink-faint"/></button>
+          <button type="button" onClick={() => go("/saude/rede")} className="flex w-full items-center gap-3 p-4 text-left"><Network size={18} className="text-cyan-400"/><span className="min-w-0 flex-1"><strong className="block text-sm">Sua rede</strong><span className="text-[10px] text-ink-muted">{totalRede} profissionais e locais cadastrados</span></span><ChevronRight size={16} className="text-ink-faint"/></button>
+        </div>}
+      </ClinicalDisclosure>
     </section>
   );
 }

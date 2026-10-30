@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Layers3 } from "lucide-react";
+import { Layers3 } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 import { CareContinuityAvatarSummary } from "./CareContinuityAvatarSummary";
@@ -14,6 +14,7 @@ import { UpcomingDoseAgenda } from "./UpcomingDoseAgenda";
 import { PrescriptionPlanningBrief } from "./PrescriptionPlanningBrief";
 import { CareFinancialOutlook } from "./CareFinancialOutlook";
 import { MedicationPurchaseRhythmBrief } from "./MedicationPurchaseRhythmBrief";
+import { ClinicalDisclosure } from "./ClinicalDisclosure";
 
 export function AvatarCareWorkspace({ context, command, onNavigate }: {
   context: HealthInsightContext | null | undefined;
@@ -31,13 +32,8 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
   return <section aria-label="Contexto integrado do Avatar" className="space-y-2">
     <AvatarCareReadiness context={context} command={command} onNavigate={onNavigate}/>
     {command?.readiness?.items?.length?<div className="grid grid-cols-3 gap-1.5" aria-label="Situação contextual do cuidado"><div className="rounded-xl border border-rose-300/15 bg-rose-300/[.035] p-2 text-center"><strong className="block text-sm text-rose-200">{command.readiness.counts.overdue}</strong><span className="text-[8px] text-ink-muted">Decidir</span></div><div className="rounded-xl border border-amber-300/15 bg-amber-300/[.035] p-2 text-center"><strong className="block text-sm text-amber-200">{command.readiness.counts.prepare}</strong><span className="text-[8px] text-ink-muted">Preparar</span></div><div className="rounded-xl border border-cyan-300/15 bg-cyan-300/[.035] p-2 text-center"><strong className="block text-sm text-cyan-200">{command.readiness.counts.unknown}</strong><span className="text-[8px] text-ink-muted">Definir</span></div></div>:null}
-    {(secondaryCount > 0 || hasCommandEvidence) ? <details className="group rounded-2xl border border-surface-border/70 bg-surface px-3 py-1">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 py-2">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-300/10 text-emerald-300"><Layers3 size={16}/></span>
-        <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Contexto e evidências do Avatar</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Cuidado, medicamentos, rotinas e associações registradas</span></span>
-        <ChevronRight size={14} className="shrink-0 text-ink-muted transition group-open:rotate-90"/>
-      </summary>
-      <div className="vault-deferred space-y-2 border-t border-surface-border/50 py-3">
+    {(secondaryCount > 0 || hasCommandEvidence) ? <ClinicalDisclosure id="avatar-contexto-evidencias" title="Contexto e evidências do Avatar" description="Cuidado, medicamentos, rotinas e associações registradas" icon={<Layers3 size={16}/> }>
+      {() => <div className="vault-deferred space-y-2">
         {command?.documents?<CareAccessBrief portfolio={command.documents} onNavigate={onNavigate} compact/>:null}
         <DoseEvidenceBrief context={context} onNavigate={onNavigate} compact/>
         <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>
@@ -48,7 +44,7 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
         <CareContinuityAvatarSummary context={context} onNavigate={onNavigate}/>
         <MedicationContinuityAvatarSummary context={context} command={command} onNavigate={onNavigate}/>
         <AvatarAssociationSummary context={context} onNavigate={onNavigate}/>
-      </div>
-    </details> : null}
+      </div>}
+    </ClinicalDisclosure> : null}
   </section>;
 }

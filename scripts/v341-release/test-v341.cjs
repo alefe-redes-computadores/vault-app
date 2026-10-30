@@ -46,7 +46,7 @@ for(const token of ['view==="pending"','view==="history"','withdrawalProgress.ov
 const financial=read('components/saude/CareFinancialOutlook.tsx');
 assert(financial.includes('realized30===undefined?"Não informado"'),'realizado ausente não pode virar zero');
 const brain=read('components/saude/CareCommandStrip.tsx');
-assert(brain.includes('evidenceKind')&&brain.includes('Base: projeção'),'Brain: fonte da decisão');
+assert(brain.includes('action.evidenceKind === "projected" ? "projeção"')&&brain.includes('Base: {evidenceLabel}'),'Brain: fonte da decisão');
 const avatar=read('components/saude/AvatarAssociationSummary.tsx');
 assert(avatar.includes('items.slice(1)')&&avatar.includes('aria-expanded={showAll}'),'Avatar: ver outras associações');
 console.log(`V341: ${Object.keys(manifest).length} arquivos; sintaxe; busca pt-BR; seis estados de retiradas; filtros; Brain/Avatar; finanças desconhecidas OK`);

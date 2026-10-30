@@ -25,7 +25,7 @@ assert(today.includes('className="vault-deferred-lg space-y-2"'));
 assert(today.includes("rounded-[20px] border p-3.5"));
 
 assert(more.match(/className="vault-deferred/g)?.length >= 5);
-assert(command.includes('className="vault-deferred-lg space-y-5"'));
+assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.includes('<ClinicalDisclosure'));
 assert(command.includes("rounded-[20px]"));
 
 assert(avatar.includes("V196: o mesmo orçamento de meshes"));

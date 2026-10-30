@@ -2449,6 +2449,7 @@ export default function HomePage() {
                   icon={<Activity size={18}/>}
                   defaultOpen={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao")}
                 >
+              {() => <>
               <div className="grid grid-cols-1 gap-2 min-[620px]:grid-cols-2" aria-label="Sinais do Brain organizados por prioridade">
                 {longitudinalHighlights.map(
                   (
@@ -2533,6 +2534,8 @@ export default function HomePage() {
               {longitudinalHighlights.length > 1 && (
                 <div className="flex items-center justify-between px-1"><span className="text-[9px] text-ink-faint">Todos os sinais ficam acessíveis acima</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
               )}
+
+              </>}
 
                 </ClinicalDisclosure>
               )}

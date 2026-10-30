@@ -22,8 +22,9 @@ const care=fs.readFileSync(path.join(root,'components/saude/CareForecastAgenda.t
 const avatar=fs.readFileSync(path.join(root,'components/saude/MedicationContinuityAvatarSummary.tsx'),'utf8');
 const native=fs.readFileSync(path.join(root,'components/saude/NativeDoseAgendaInspection.tsx'),'utf8');
 const home=fs.readFileSync(path.join(root,'app/page.tsx'),'utf8'),today=fs.readFileSync(path.join(root,'app/hoje/page.tsx'),'utf8');
+const todayActions=fs.readFileSync(path.join(root,'components/hoje/TodayActionCenter.tsx'),'utf8');
 assert(care.includes('buildCareCommitmentAgenda(forecast)')&&care.includes('sem misturar os registros'));
 assert(avatar.includes('Próximo compromisso registrado')&&avatar.includes('evidenceKind === "recorded"'));
 assert(native.includes('Ver horário e destino')&&native.includes('item.target'));
-assert(home.includes('healthIntelligence.careCommand?.decision')&&today.includes('CareCommandStrip'),'Home and Today retain the shared canonical decision');
+assert(home.includes('healthIntelligence.careCommand?.decision')&&today.includes('command={healthIntelligence.careCommand}')&&todayActions.includes('CareCommandStrip'),'Home and Today retain the shared canonical decision');
 console.log('VAULT V284 — AGENDA ÚNICA + AVATAR + INSPEÇÃO ANDROID: OK');
