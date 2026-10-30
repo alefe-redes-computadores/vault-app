@@ -1,11 +1,11 @@
 "use client";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Activity, ChevronRight } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildHealthWeekCoverage } from "@/lib/health-profile/health-week-coverage";
 
 /** Mini trilha documental do Avatar: sete dias, sem novos listeners, Dexie ou Supabase. */
-export function AvatarWeekCoverage({ context, onNavigate }: {
+export const AvatarWeekCoverage = memo(function AvatarWeekCoverage({ context, onNavigate }: {
   context: HealthInsightContext | null | undefined;
   onNavigate: (href: string) => void;
 }) {
@@ -29,4 +29,4 @@ export function AvatarWeekCoverage({ context, onNavigate }: {
       <button type="button" onClick={() => onNavigate("/saude/registros")} className="flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2">Histórico <ChevronRight size={12}/></button>
     </div>
   </div>;
-}
+});

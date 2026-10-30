@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import { BadgeDollarSign, ChevronRight, FileCheck2, FileClock, Landmark } from "lucide-react";
 import type { CareDocumentReadinessPortfolio } from "@/lib/health-intelligence/care-document-readiness";
 
-export function CareAccessBrief({portfolio,onNavigate,compact=false}:{portfolio:CareDocumentReadinessPortfolio;onNavigate:(href:string)=>void;compact?:boolean}){
+export const CareAccessBrief = memo(function CareAccessBrief({portfolio,onNavigate,compact=false}:{portfolio:CareDocumentReadinessPortfolio;onNavigate:(href:string)=>void;compact?:boolean}){
   if(!portfolio.items.length)return null;
   const prescription=portfolio.laneCounts.regulatory_prescription;
   const sus=portfolio.laneCounts.sus_process;
@@ -23,4 +24,4 @@ export function CareAccessBrief({portfolio,onNavigate,compact=false}:{portfolio:
     </span>
     <span className="mt-2 block text-[8px] leading-relaxed text-ink-faint">{explicitMissing ? `${explicitMissing} medicamento(s) com falta documental explícita. ` : ""}{needsInformation ? `${needsInformation} com situação documental a informar. ` : ""}{focus?`${focus.medicationName}: há documento do processo para organizar.`:"Nenhuma falta documental explícita nos processos estruturados."}</span>
   </button>;
-}
+});
