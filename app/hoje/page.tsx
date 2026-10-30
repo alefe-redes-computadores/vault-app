@@ -57,14 +57,10 @@ import {
 import { EmptyState } from "@/components/EmptyState";
 import {
   addDaysToLocalDate,
-  computeEstoqueInfo,
   getLocalTodayISO,
-  getDaysUntil,
 } from "@/lib/health-utils";
 import {
-  isReceitaAtualVencida,sugerirRenovacao,
   isReceitaVencidaSegura,
-  analisarComportamentoUso,
   analisarRotinaDiaria,
 } from "@/lib/health-insights";
 import { useToast } from "@/components/ToastProvider";
@@ -84,8 +80,8 @@ import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContex
 import { TodayActionCenter } from "@/components/hoje/TodayActionCenter";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
-import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 import { filterTimelineItems, groupTimelineItems, summarizeTimeline, visibleTimelineItems } from "@/lib/today/timeline-summary";
+import { buildTodayTimelineItems, type TodayTimelineItem as DoseItemExt } from "@/lib/today/build-timeline-items";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -142,59 +138,6 @@ function getDiasRestantesEstilo(
     label: "Tranquilo",
     pulse: false,
   };
-}
-
-interface DoseItemExt {
-  medicamentoId?: string;
-  medicamentoNome?: string;
-  dosagem?: string;
-  formato?: string;
-  cores?: string[];
-  horario: string;
-  tomada: boolean;
-  ignorada: boolean;
-  cor: string;
-  estoqueRestante?: number;
-  estoqueTotal?: number;
-  unidadeMedida?: string;
-  unidadePorDose?: number;
-  unidadeDose?: string;
-  medicoNome?: string;
-  medicoId?: string;
-  tratamentoNome?: string;
-  tratamentoId?: string;
-  tratamentoCor?: string;
-  farmaciaNome?: string;
-  farmaciaId?: string;
-  estabelecimentoNome?: string;
-  estabelecimentoId?: string;
-  proximaRenovacao?: string;
-  diasRestantes?: number | null;
-  insight?: {
-    deveRenovar: boolean;
-    mensagem: string;
-    urgencia: "alta" | "media" | "nenhuma";
-  };
-  receitaVencida?: boolean;
-  comportamento?: any;
-  isAvulsa?: boolean;
-  motivoAvulsa?: string;
-  doseKind?: "sos" | "extra" | "planned";
-  logId?: string;
-
-  /**
-   * Slot previsto sem DoseLog real em um dia diferente de hoje.
-   * É informativo e não entra nas métricas de adesão.
-   */
-  isExpectedUnconfirmed?: boolean;
-  isDataConflict?: boolean;
-
-  isSintoma?: boolean;
-  sintomaId?: string;
-  sintomaNome?: string;
-  sintomaTipo?: string;
-  intensidade?: number;
-  observacoesSintoma?: string;
 }
 
 export default function HojePage() {
@@ -1182,352 +1125,23 @@ export default function HojePage() {
     String(agora.getMinutes()).padStart(2, "0"),
   ].join(":");
 
-  const doses = useMemo<DoseItemExt[]>(() => {
-    const list: DoseItemExt[] = [];
-    const chavesProgramadas = new Set<string>();
-    const slotIndex=buildDoseSlotIndex(doseLogs||[],{userId:user?.id,personId:activePersonId||undefined});
-
-    for (const med of medicamentos || []) {
-      if (
-        retroReviewMode &&
-        retroReviewMedicationId &&
-        med.id !==
-          retroReviewMedicationId
-      ) {
-        continue;
-      }
-
-      if (
-        !med.id ||
-        med.status === "descontinuado" ||
-        med.tipo_uso === "sos" ||
-        med.tipo_uso === "esporadico"
-      ) {
-        continue;
-      }
-
-      // Horários são normalizados e deduplicados antes de formar slots.
-      // Um medicamento sem horário continua visível na seção de qualidade
-      // da rotina, mas jamais vira uma dose fictícia.
-      const horariosProgramados = Array.from(
-        new Set(
-          (med.estoque_horarios || [])
-            .map((horario: string) =>
-              String(horario || "").trim()
-            )
-            .filter((horario: string) =>
-              /^([01]\d|2[0-3]):[0-5]\d$/.test(horario)
-            )
-        )
-      ).sort();
-
-      if (horariosProgramados.length === 0) {
-        continue;
-      }
-
-      const acquisitionDates =
-        renovacoes
-          .filter(
-            (
-              renovacao:
-                any
-            ) =>
-              renovacao.medicamento_id ===
-              med.id
-          )
-          .map(
-            (
-              renovacao:
-                any
-            ) =>
-              String(
-                renovacao.data_aquisicao ||
-                renovacao.data ||
-                ""
-              ).slice(
-                0,
-                10
-              )
-          )
-          .filter(
-            (
-              value:
-                string
-            ) =>
-              /^\d{4}-\d{2}-\d{2}$/.test(
-                value
-              )
-          )
-          .sort();
-
-      const createdDate =
-        String(
-          (med as any).created_at ||
-          ""
-        ).slice(
-          0,
-          10
-        );
-
-      const knownStartDate =
-        acquisitionDates[0] ||
-        (
-          /^\d{4}-\d{2}-\d{2}$/.test(
-            createdDate
-          )
-            ? createdDate
-            : null
-        ) ||
-        med.estoque_data_referencia ||
-        med.data_receita ||
-        null;
-
-      if (
-        knownStartDate &&
-        dataSelecionada <
-          knownStartDate
-      ) {
-        continue;
-      }
-
-      const estoqueInfo =
-        computeEstoqueInfo(
-          med
-        );
-
-      const medicoObj = medicos.find(
-        (m) => m.id === med.medico_id
-      );
-
-      const tratamentoObj =
-        tratamentos.find(
-          (t) =>
-            t.id ===
-            (med.tratamento_ids || [])[0]
-        );
-
-      const farmaciaObj =
-        farmacias.find(
-          (f) => f.id === med.farmacia_id
-        );
-
-      const estabelecimentoObj =
-        hospitais.find(
-          (h) => h.id === med.local_id
-        );
-
-      const insight =
-        sugerirRenovacao(med);
-
-      const receitaVencida =
-        isReceitaAtualVencida(med);
-
-      const comportamento =
-        analisarComportamentoUso(
-          med,
-          historicoDosesCompleto.filter(
-            (d) =>
-              d.medicamento_id === med.id
-          )
-        );
-
-      for (const horario of horariosProgramados) {
-        if (!horario) continue;
-
-        chavesProgramadas.add(
-          `${med.id}-${horario}`
-        );
-
-        const slot=resolveDoseSlot(slotIndex,med.id,dataSelecionada,horario);
-        const tomada=slot.state==="taken";
-        const ignorada=slot.state==="ignored";
-
-        list.push({
-          medicamentoId: med.id,
-          medicamentoNome: med.nome,
-          dosagem: med.dosagem,
-          formato: med.formato,
-          cores: med.cores,
-          horario,
-          tomada,
-          ignorada,
-          isDataConflict:slot.state==="conflict",
-          cor:
-            tratamentoObj?.cor ||
-            med.cor_principal ||
-            "#8B5CF6",
-          estoqueRestante:
-            estoqueInfo?.quantidadeRestante ?? 0,
-          estoqueTotal:
-            med.estoque_quantidade || 0,
-          unidadeMedida:
-            med.estoque_unidade_medida ||
-            "unidades",
-          unidadePorDose:
-            med.estoque_unidade_por_dose,
-          unidadeDose:
-            String(med.forma_farmaceutica || med.formato || "")
-              .toLocaleLowerCase("pt-BR")
-              .includes("gota")
-              ? "gotas"
-              : med.estoque_unidade_medida || "unidades",
-          medicoNome:
-            medicoObj?.nome || med.medico,
-          medicoId: medicoObj?.id,
-          tratamentoNome:
-            tratamentoObj?.nome,
-          tratamentoId:
-            tratamentoObj?.id,
-          tratamentoCor:
-            tratamentoObj?.cor,
-          farmaciaNome:
-            farmaciaObj?.nome,
-          farmaciaId:
-            farmaciaObj?.id,
-          estabelecimentoNome:
-            estabelecimentoObj?.nome,
-          estabelecimentoId:
-            estabelecimentoObj?.id,
-          proximaRenovacao:
-            med.proxima_renovacao,
-          diasRestantes:
-            getDaysUntil(
-              med.proxima_renovacao
-            ),
-          insight,
-          receitaVencida,
-          comportamento,
-
-          isAvulsa:
-            false,
-
-          isExpectedUnconfirmed:
-            !isHoje &&
-            slot.state === "absent",
-        });
-      }
-    }
-
-    for (const log of doseLogs || []) {
-      if (!log.medicamento_id) continue;
-
-      const med = medicamentosById.get(log.medicamento_id);
-
-      if (!med) continue;
-
-      const chaveProgramada = `${med.id}-${log.horario}`;
-      const isOficialTomada =
-        chavesProgramadas.has(chaveProgramada);
-
-      if (
-        (!isOficialTomada ||
-          log.dose_kind === "extra" ||
-          log.dose_kind === "sos" ||
-          log.dose_kind === "planned") &&
-        (log.tomado_em || log.dose_kind === "planned")
-      ) {
-        const jaExisteAvulsa =
-          list.some(
-            (item) => item.logId === log.id
-          );
-
-        if (!jaExisteAvulsa) {
-          const tratamentoObj =
-            tratamentos.find(
-              (t) =>
-                t.id ===
-                (med.tratamento_ids || [])[0]
-            );
-
-          const medicoObj =
-            medicos.find(
-              (m) =>
-                m.id === med.medico_id
-            );
-
-          list.push({
-            medicamentoId: med.id!,
-            medicamentoNome: med.nome,
-            dosagem: med.dosagem,
-            formato: med.formato,
-            cores: med.cores,
-            horario:
-              log.horario || "00:00",
-            tomada: Boolean(log.tomado_em),
-            ignorada: false,
-            cor:
-              tratamentoObj?.cor ||
-              med.cor_principal ||
-              "#8B5CF6",
-            estoqueRestante:
-              med.estoque_quantidade ?? 0,
-            estoqueTotal:
-              med.estoque_quantidade || 0,
-            unidadeMedida:
-              med.estoque_unidade_medida ||
-              "unidades",
-            unidadePorDose:
-              log.quantidade ??
-              med.estoque_unidade_por_dose,
-            unidadeDose:
-              String(med.forma_farmaceutica || med.formato || "")
-                .toLocaleLowerCase("pt-BR")
-                .includes("gota")
-                ? "gotas"
-                : med.estoque_unidade_medida || "unidades",
-            medicoNome:
-              medicoObj?.nome ||
-              med.medico,
-            tratamentoNome:
-              tratamentoObj?.nome,
-            tratamentoId:
-              tratamentoObj?.id,
-            tratamentoCor:
-              tratamentoObj?.cor,
-            isAvulsa: true,
-            motivoAvulsa:
-              log.motivo ||
-              (log.dose_kind === "planned"
-                ? "Dose avulsa agendada"
-                : log.dose_kind === "extra"
-                ? "Dose extra"
-                : "Dose avulsa / SOS"),
-            doseKind:
-              log.dose_kind === "planned"
-                ? "planned"
-                : log.dose_kind === "extra" ? "extra" : "sos",
-            logId: log.id,
-          });
-        }
-      }
-    }
-
-    for (const reg of registrosHoje) {
-      if (reg.categoria === "sintoma") {
-        list.push({
-          horario:
-            reg.horario || "00:00",
-          tomada: true,
-          ignorada: false,
-          cor: "#F59E0B",
-          isSintoma: true,
-          sintomaId: reg.id,
-          sintomaNome:
-            reg.nome ||
-            reg.tipo ||
-            "Sintoma registrado",
-          sintomaTipo: reg.tipo,
-          intensidade: reg.intensidade,
-          observacoesSintoma:
-            reg.observacoes,
-        });
-      }
-    }
-
-    return list.sort((a, b) =>
-      a.horario.localeCompare(b.horario)
-    );
-  }, [
+  const doses = useMemo<DoseItemExt[]>(() => buildTodayTimelineItems({
+    medicamentos,
+    doseLogs: doseLogs || [],
+    medicos,
+    tratamentos,
+    farmacias,
+    hospitais,
+    historicoDoses: historicoDosesCompleto,
+    registros: registrosHoje,
+    renovacoes,
+    dataSelecionada,
+    isHoje,
+    userId: user?.id,
+    personId: activePersonId || undefined,
+    retroReviewMode,
+    retroReviewMedicationId,
+  }), [
     medicamentos,
     doseLogs,
     medicos,
@@ -1539,6 +1153,8 @@ export default function HojePage() {
     renovacoes,
     dataSelecionada,
     isHoje,
+    user?.id,
+    activePersonId,
     retroReviewMode,
     retroReviewMedicationId,
   ]);

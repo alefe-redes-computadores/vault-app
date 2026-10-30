@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -179,11 +179,11 @@ function HealthDashboard({
   const adjacentDays=useMemo(()=>adjacentHealthDays(records,historyDate,today),[records,historyDate,today]);
   const dayGroups=useMemo(()=>filter?new Map([[filter,daySummary.groups.get(filter)||[]]]):daySummary.groups,[daySummary,filter]);
   const visible=useMemo(()=>Array.from(dayGroups.values()).flat(),[dayGroups]);
-  const go = (path: string) => {
+  const go = useCallback((path: string) => {
     trigger("vibrate");
     router.push(path);
-  };
-  const goFromHealth = (path: string) => go(withReturnTarget(path,"/saude/minha-saude"));
+  }, [router, trigger]);
+  const goFromHealth = useCallback((path: string) => go(withReturnTarget(path,"/saude/minha-saude")), [go]);
   const open = (next: typeof panel) => {
     trigger("vibrate");
     setPanel(next);

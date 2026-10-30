@@ -21,7 +21,8 @@ for (const bad of [ { ...course, start: '2026-02-30' }, { ...course, days: 0 }, 
 }
 const required = {
   'app/saude/renovacao/editar/page.tsx': ['createDocument({', 'category_id: "saude"', 'type: "receita"', 'uploadedStorageUrl', 'document_id: createdDocumentId', 'somenteReceita ? undefined : renovacao.tipo_aquisicao', 'capture="environment"'],
-  'app/hoje/page.tsx': ['Programadas para depois', 'dose_kind === "planned"'],
+  'app/hoje/page.tsx': ['Programadas para depois', 'buildTodayTimelineItems'],
+  'lib/today/build-timeline-items.ts': ['dose_kind === "planned"', 'isExpectedUnconfirmed'],
   'app/page.tsx': ['dose_kind !== "planned"', 'activePersonId'],
   'lib/repositories/doseLogs.ts': ['async replaceTemporaryCourse(', 'getMedicamentoForPerson(', 'row.user_id === user.id', 'await enfileirarOperacao("doseLogs", "delete"', 'dose_kind: "planned"'],
   'app/saude/medicamentos/novo/page.tsx': ['TemporaryCourseFields', 'replaceTemporaryCourse({'],

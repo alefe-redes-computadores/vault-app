@@ -82,7 +82,6 @@ import {
 import {
   suppressOperationalOverlap,
 } from "@/lib/health-intelligence/home-signal-orchestration";
-import { normalizedMedicationSchedules } from "@/lib/medication-dose-history";
 import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
 import { buildPendingDoseBacklog } from "@/lib/pending-dose-backlog";
 
@@ -98,6 +97,7 @@ import {
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
+import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 
 // ============================================================
 // HELPERS
@@ -901,94 +901,13 @@ export default function HomePage() {
       [doseLogs]
     );
 
-  const totalDosesPlanejadasHoje =
-    useMemo(
-      () =>
-        medicamentosAtivos.reduce(
-          (
-            total,
-            medicamento
-          ) =>
-            medicamento.tipo_uso ===
-            "continuo"
-              ? total +
-                normalizedMedicationSchedules(
-                  medicamento
-                ).length
-              : total,
-          0
-        ),
-      [medicamentosAtivos]
-    );
-
-  const dosesTomadasDaRotinaHoje =
-    useMemo(
-      () =>
-        medicamentosAtivos.reduce(
-          (
-            total,
-            medicamento
-          ) => {
-            if (
-              !medicamento.id ||
-              medicamento.tipo_uso !==
-                "continuo"
-            ) {
-              return total;
-            }
-
-            const horarios =
-              normalizedMedicationSchedules(
-                medicamento
-              );
-
-            return (
-              total +
-              horarios.filter(
-                (
-                  horario
-                ) =>
-                  doseLogs.some(
-                    (
-                      log
-                    ) =>
-                      log.medicamento_id ===
-                        medicamento.id &&
-                      log.horario ===
-                        horario &&
-                      log.dose_kind !==
-                        "sos" &&
-                      log.dose_kind !==
-                        "extra" &&
-                      Boolean(
-                        log.tomado_em
-                      )
-                  )
-              ).length
-            );
-          },
-          0
-        ),
-      [
-        medicamentosAtivos,
-        doseLogs,
-      ]
-    );
-
-  const progressoDosesHoje =
-    totalDosesPlanejadasHoje >
-    0
-      ? Math.min(
-          100,
-          Math.round(
-            (
-              dosesTomadasDaRotinaHoje /
-              totalDosesPlanejadasHoje
-            ) *
-              100
-          )
-        )
-      : 0;
+  const doseProgress = useMemo(
+    () => buildHomeDoseProgress(medicamentosAtivos, doseLogs),
+    [medicamentosAtivos, doseLogs]
+  );
+  const totalDosesPlanejadasHoje = doseProgress.planned;
+  const dosesTomadasDaRotinaHoje = doseProgress.taken;
+  const progressoDosesHoje = doseProgress.percentage;
 
   // ==========================================================
   // MOTOR CANÔNICO DE ALERTAS

@@ -17,7 +17,7 @@ import { CareFinancialOutlook } from "./CareFinancialOutlook";
 import { MedicationPurchaseRhythmBrief } from "./MedicationPurchaseRhythmBrief";
 import { ClinicalDisclosure } from "./ClinicalDisclosure";
 
-export function AvatarCareWorkspace({ context, command, onNavigate }: {
+export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, command, onNavigate }: {
   context: HealthInsightContext | null | undefined;
   command?: CareCommandSnapshot | null;
   onNavigate: (href: string) => void;
@@ -37,7 +37,7 @@ export function AvatarCareWorkspace({ context, command, onNavigate }: {
       {() => <AvatarEvidenceWorkspace context={context} command={command} onNavigate={onNavigate}/>}
     </ClinicalDisclosure> : null}
   </section>;
-}
+});
 
 const AvatarEvidenceWorkspace = memo(function AvatarEvidenceWorkspace({ context, command, onNavigate }: {
   context: HealthInsightContext;
