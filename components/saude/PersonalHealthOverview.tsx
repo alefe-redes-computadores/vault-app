@@ -1,8 +1,9 @@
 "use client";
+import { memo } from "react";
 import { Activity, BrainCircuit, CalendarDays, ChevronRight, Database, Watch } from "lucide-react";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 
-export function PersonalHealthOverview({ command, onNavigate }: { command: CareCommandSnapshot | null | undefined; onNavigate:(href:string)=>void }) {
+export const PersonalHealthOverview = memo(function PersonalHealthOverview({ command, onNavigate }: { command: CareCommandSnapshot | null | undefined; onNavigate:(href:string)=>void }) {
   if (!command) return null;
   const health=command.health, decision=command.decision;
   const coverageLabel=health.coverage==="recent"?"Cobertura recente":health.coverage==="limited"?"Cobertura parcial":"Sem cobertura recente";
@@ -12,4 +13,4 @@ export function PersonalHealthOverview({ command, onNavigate }: { command: CareC
     {decision?.href?<button type="button" onClick={()=>onNavigate(decision.href)} className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-xl border border-violet-300/15 bg-violet-300/[.035] px-3 text-left"><BrainCircuit size={15} className="shrink-0 text-violet-300"/><span className="min-w-0 flex-1"><span className="block text-[8px] font-bold uppercase tracking-wider text-violet-200">Brain · foco atual</span><strong className="mt-0.5 block truncate text-xs text-ink-primary">{decision.title}</strong></span><ChevronRight size={14} className="text-ink-muted"/></button>:null}
     <p className="mt-2 text-[9px] leading-relaxed text-ink-muted">{health.note}</p>
   </section>;
-}
+});

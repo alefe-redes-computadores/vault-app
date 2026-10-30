@@ -1,7 +1,6 @@
 // app/page.tsx
 "use client";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
-import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 import {brainV5PriorityReason} from "@/lib/health-intelligence/brain-v5";
@@ -83,7 +82,6 @@ import {
   suppressOperationalOverlap,
 } from "@/lib/health-intelligence/home-signal-orchestration";
 import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
-import { buildPendingDoseBacklog } from "@/lib/pending-dose-backlog";
 
 import { PageTransition } from "@/components/PageTransition";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
@@ -98,6 +96,7 @@ import { HealthInsightExplanationSheet } from "@/components/health-intelligence/
 import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
+import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
 
 // ============================================================
 // HELPERS
@@ -810,84 +809,29 @@ export default function HomePage() {
   // DOSES PENDENTES
   // ==========================================================
 
-  const dosesPendentesAtrasadas =
-    useMemo<
-      PendingDose[]
-    >(
-      () => {
-        const lista:
-          PendingDose[] = [];
-        const medicationById = new Map(medicamentosAtivos.filter(med => med.id && med.person_id === activePersonId && med.user_id === user?.id).map(med => [med.id!, med]));
-        for (const slot of buildPendingDoseBacklog({
-          medications: medicamentosAtivos,
-          logs: reviewDoseLogs,
-          userId: user?.id,
-          personId: activePersonId || undefined,
-          today: hoje,
-          currentTime: horaAtual,
-          lookbackDays: 7,
-        })) {
-          const med = medicationById.get(slot.medicamentoId);
-          if (!med) continue;
-          lista.push({
-            stockUnavailable: hasKnownEmptyMedicationStock(med),
-            medicamentoId: slot.medicamentoId,
-            nome: med.nome,
-            formato: med.formato,
-            cores: med.cores,
-            data: slot.data,
-            horario: slot.horario,
-            diaLabel: slot.diaLabel,
-          });
-        }
-
-        for (const log of plannedEarlier) {
-          if (!log.id || !log.medicamento_id ||
-              lista.some(entry => entry.medicamentoId === log.medicamento_id && entry.data === log.data && entry.horario === log.horario)) continue;
-          const med = medicationById.get(log.medicamento_id);
-          if (!med || med.person_id !== activePersonId || med.user_id !== user?.id) continue;
-          lista.push({ stockUnavailable: hasKnownEmptyMedicationStock(med),
-            medicamentoId: med.id!, nome: med.nome, formato: med.formato,
-            cores: med.cores, data: log.data, horario: log.horario, diaLabel: "Anterior" });
-        }
-
-        // Doses SOS agendadas só entram nas pendências depois do horário.
-        // O DoseLog existente é resolvido pelo mesmo slot, sem criar outro
-        // registro nem consumir estoque antes da confirmação.
-        for (const [data, logs, diaLabel] of [
-          [ontem, doseLogsOntem, "Ontem"],
-          [hoje, doseLogs, "Hoje"],
-        ] as const) {
-          for (const log of logs) {
-            if (log.dose_kind !== "planned" || log.tomado_em || log.ignorado_em ||
-                !log.id || !log.medicamento_id || log.data !== data ||
-                (data === hoje && log.horario > horaAtual) ||
-                lista.some((entry) => entry.medicamentoId === log.medicamento_id && entry.data === data && entry.horario === log.horario)) continue;
-            const med = medicationById.get(log.medicamento_id);
-            if (!med || med.person_id !== activePersonId) continue;
-            lista.push({
-              stockUnavailable: hasKnownEmptyMedicationStock(med),
-              medicamentoId: med.id!, nome: med.nome, formato: med.formato,
-              cores: med.cores, data, horario: log.horario, diaLabel,
-            });
-          }
-        }
-
-        return lista;
-      },
-      [
-        medicamentosAtivos,
-        activePersonId,
-        doseLogs,
-        doseLogsOntem,
-        reviewDoseLogs,
-        plannedEarlier,
-        user?.id,
-        horaAtual,
-        hoje,
-        ontem,
-      ]
-    );
+  const dosesPendentesAtrasadas = useMemo<PendingDose[]>(() => buildHomePendingDoseProjection({
+    medications: medicamentosAtivos,
+    reviewLogs: reviewDoseLogs,
+    plannedEarlier,
+    yesterdayLogs: doseLogsOntem,
+    todayLogs: doseLogs,
+    userId: user?.id,
+    personId: activePersonId || undefined,
+    today: hoje,
+    yesterday: ontem,
+    currentTime: horaAtual,
+  }), [
+    medicamentosAtivos,
+    reviewDoseLogs,
+    plannedEarlier,
+    doseLogsOntem,
+    doseLogs,
+    user?.id,
+    activePersonId,
+    hoje,
+    ontem,
+    horaAtual,
+  ]);
 
   const dosesTomadasHoje =
     useMemo(

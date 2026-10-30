@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs");
+const home=fs.readFileSync("app/page.tsx","utf8");
+const pending=fs.readFileSync("lib/home/pending-dose-projection.ts","utf8");
+const today=fs.readFileSync("app/hoje/page.tsx","utf8");
+const agenda=fs.readFileSync("lib/today/appointment-projection.ts","utf8");
+const overview=fs.readFileSync("components/saude/PersonalHealthOverview.tsx","utf8");
+const gate=fs.readFileSync("scripts/test-v63-release-gate.mjs","utf8");
+assert(home.includes("buildHomePendingDoseProjection({"),"Home delegates pending-dose projection");
+assert(pending.includes("const seen = new Set")&&pending.includes("const medicationById = new Map"),"pending projection is indexed");
+assert(pending.includes('log.dose_kind !== "planned"')&&pending.includes("log.tomado_em")&&pending.includes("log.ignorado_em"),"planned dose remains unresolved-only");
+assert(pending.includes("date === input.today && log.horario > input.currentTime"),"future planned dose is not overdue");
+assert(pending.includes("med.person_id === input.personId")&&pending.includes("med.user_id === input.userId"),"projection isolates account and person");
+assert(today.includes("buildTodayAppointmentProjection({"),"Hoje delegates appointment projection");
+for(const kind of ['["consultas", "consulta"','["cirurgias", "cirurgia"','["exames", "exame"','["retiradas", "retirada"']) assert(agenda.includes(kind),`agenda preserves ${kind}`);
+assert(agenda.includes('.sort((a, b) => (a.horario || "00:00").localeCompare'),"agenda remains chronological");
+assert(overview.includes("export const PersonalHealthOverview = memo"),"Brain longitudinal overview avoids unchanged rerenders");
+assert(gate.includes("scripts/test-v347-pending-agenda-brain-avatar.cjs"),"V347 belongs to release gate");
+console.log("VAULT V347 — PENDÊNCIAS + AGENDA + BRAIN/AVATAR PERFORMANCE: OK");

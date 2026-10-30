@@ -82,6 +82,7 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { filterTimelineItems, groupTimelineItems, summarizeTimeline, visibleTimelineItems } from "@/lib/today/timeline-summary";
 import { buildTodayTimelineItems, type TodayTimelineItem as DoseItemExt } from "@/lib/today/build-timeline-items";
+import { buildTodayAppointmentProjection } from "@/lib/today/appointment-projection";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -1180,78 +1181,13 @@ export default function HojePage() {
     [medicamentos]
   );
 
-  const compromissosFiltrados = useMemo(() => {
-    let items: any[] = [];
-
-    if (
-      filtroCompromisso === "todos" ||
-      filtroCompromisso === "consultas"
-    ) {
-      items = [
-        ...items,
-        ...consultasHoje.map((c) => ({
-          ...c,
-          tipo: "consulta",
-        })),
-      ];
-    }
-
-    if (
-      filtroCompromisso === "todos" ||
-      filtroCompromisso === "cirurgias"
-    ) {
-      items = [
-        ...items,
-        ...cirurgiasHoje.map((c) => ({
-          ...c,
-          tipo: "cirurgia",
-        })),
-      ];
-    }
-
-    if (
-      filtroCompromisso === "todos" ||
-      filtroCompromisso === "exames"
-    ) {
-      items = [
-        ...items,
-        ...examesHoje.map((e) => ({
-          ...e,
-          tipo: "exame",
-        })),
-      ];
-    }
-
-    if (
-      filtroCompromisso === "todos" ||
-      filtroCompromisso === "retiradas"
-    ) {
-      items = [
-        ...items,
-        ...retiradasHoje.map(
-          (
-            retirada
-          ) => ({
-            ...retirada,
-            tipo:
-              "retirada",
-          })
-        ),
-      ];
-    }
-
-    return items.sort((a, b) =>
-      (a.horario || "00:00").localeCompare(
-        b.horario || "00:00"
-      )
-    );
-  }, [
-    consultasHoje,
-    cirurgiasHoje,
-    examesHoje,
-    retiradasHoje,
-    filtroCompromisso,
-  ]);
+  const compromissosFiltrados = useMemo(() => buildTodayAppointmentProjection({
+    consultas: consultasHoje,
+    cirurgias: cirurgiasHoje,
+    exames: examesHoje,
+    retiradas: retiradasHoje,
+    filter: filtroCompromisso,
+  }), [consultasHoje, cirurgiasHoje, examesHoje, retiradasHoje, filtroCompromisso]);
 
   const assistenteDiario = useMemo(
     () => {
