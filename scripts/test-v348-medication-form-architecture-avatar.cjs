@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs"),vm=require("node:vm"),ts=require("typescript");
+const source=fs.readFileSync("lib/medications/form-utils.ts","utf8");
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const mod={exports:{}};vm.runInNewContext(`(function(exports,module){${js}\n})(module.exports,module)`,{module:mod});
+const u=mod.exports;
+assert.equal(u.mascaraData("31122026"),"31/12/2026");
+assert.equal(u.isoParaBr("2026-10-30T12:00:00Z"),"30/10/2026");
+assert.equal(u.brParaIso("29/02/2028"),"2028-02-29");
+assert.equal(u.brParaIso("29/02/2027"),"");
+assert.equal(u.handleCurrencyMask("20529"),"205,29");
+assert.equal(u.parseCurrency("1.205,29"),1205.29);
+assert.equal(u.handleTimeMask("2330"),"23:30");
+assert.equal(u.isValidTime("23:59"),true);assert.equal(u.isValidTime("24:00"),false);
+assert.equal(u.parsePositiveOptionalNumber("1,5"),1.5);assert.equal(u.getPositiveNumberOrNull("0"),null);
+assert.deepEqual(Array.from(u.normalizeHorarios(["08:00"," 08:00 ","20:00"])),["08:00","20:00"]);
+const create=fs.readFileSync("app/saude/medicamentos/novo/page.tsx","utf8");
+const edit=fs.readFileSync("app/saude/medicamentos/editar/page.tsx","utf8");
+assert(create.includes('from "@/lib/medications/form-utils"')&&!create.includes("function mascaraData("),"creation uses shared form authority");
+assert(edit.includes('from "@/lib/medications/form-utils"')&&!edit.includes("function mascaraData("),"editing uses shared form authority");
+const avatar=fs.readFileSync("components/saude/MedicationContinuityAvatarSummary.tsx","utf8");
+assert(avatar.includes("export const MedicationContinuityAvatarSummary = memo"),"medication Avatar summary avoids unchanged rerenders");
+const gate=fs.readFileSync("scripts/test-v63-release-gate.mjs","utf8");
+assert(gate.includes("scripts/test-v348-medication-form-architecture-avatar.cjs"),"V348 belongs to release gate");
+console.log("VAULT V348 — MEDICATION FORM ARCHITECTURE + AVATAR PERFORMANCE: OK");

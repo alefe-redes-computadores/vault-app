@@ -1,12 +1,12 @@
 "use client";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { CalendarClock, ChevronRight, Pill } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildMedicationContinuityPortfolio } from "@/lib/health-intelligence/medication-workspace";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 
-export function MedicationContinuityAvatarSummary({ context, command, onNavigate }: { context: HealthInsightContext | null | undefined; command?: CareCommandSnapshot | null; onNavigate: (href: string) => void }) {
+export const MedicationContinuityAvatarSummary = memo(function MedicationContinuityAvatarSummary({ context, command, onNavigate }: { context: HealthInsightContext | null | undefined; command?: CareCommandSnapshot | null; onNavigate: (href: string) => void }) {
   const portfolio = useMemo(() => context ? buildMedicationContinuityPortfolio({ medications: context.medicamentos, renewals: context.renovacoes, withdrawals: context.retiradas, today: context.hoje || getLocalTodayISO() }) : null, [context]);
   const routes = useMemo(() => {
     const counts={public:0,private:0,hybrid:0,unknown:0};
@@ -26,4 +26,4 @@ export function MedicationContinuityAvatarSummary({ context, command, onNavigate
       <button type="button" onClick={() => onNavigate("/saude/medicamentos")} className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-left text-xs font-semibold text-ink-primary"><span className="flex-1">Abrir medicamentos</span><ChevronRight size={14}/></button>
       <p className="mt-2 text-[9px] leading-relaxed text-ink-muted">{medicationPortfolio?.note ?? "Ausência de registro não é falha clínica. Receita, compra e retirada permanecem separadas."}</p></div>
   </details>;
-}
+});
