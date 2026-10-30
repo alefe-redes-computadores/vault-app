@@ -76,7 +76,6 @@ import { useHealthReminders } from "@/hooks/useHealthReminders";
 import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
-import { classifyClinicalSchedule } from "@/lib/health-intelligence/clinical-time";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
 import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/health-intelligence/medication-care-decision";
@@ -86,6 +85,7 @@ import { TodayActionCenter } from "@/components/hoje/TodayActionCenter";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
+import { filterTimelineItems, groupTimelineItems, summarizeTimeline, visibleTimelineItems } from "@/lib/today/timeline-summary";
 
 type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
 type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
@@ -96,35 +96,6 @@ type FiltroCompromisso =
   | "exames"
   | "retiradas";
 
-function getPeriodoDoDia(horario: string) {
-  const safeHorario = horario || "00:00";
-  const [h] = safeHorario.split(":").map(Number);
-
-  if (h >= 5 && h < 12) {
-    return {
-      key: "manha",
-      label: "Manhã",
-      sub: "Comece o dia com foco",
-      icon: Sunrise,
-    };
-  }
-
-  if (h >= 12 && h < 18) {
-    return {
-      key: "tarde",
-      label: "Tarde",
-      sub: "Manutenção e constância",
-      icon: Sun,
-    };
-  }
-
-  return {
-    key: "noite",
-    label: "Noite",
-    sub: "Encerramento e descanso",
-    icon: Moon,
-  };
-}
 
 function getDiasRestantesEstilo(
   dias: number | null | undefined
@@ -1686,158 +1657,42 @@ export default function HojePage() {
     ]
   );
 
-  const dosesFiltradas = useMemo(() => {
-    let result = doses;
+  const dosesFiltradas = useMemo(
+    () => filterTimelineItems(doses, filtroStatus, filtroPeriodo, isHoje),
+    [doses, filtroStatus, filtroPeriodo, isHoje]
+  );
 
-    if (filtroStatus === "tomados") {
-      result = result.filter(
-        (d) => d.tomada
-      );
-    } else if (
-      filtroStatus === "pendentes"
-    ) {
-      result =
-        isHoje
-          ? result.filter(
-              (d) =>
-                !d.tomada &&
-                !d.ignorada &&
-                !d.isDataConflict &&
-                !d.isSintoma &&
-                !d.isExpectedUnconfirmed
-            )
-          : result.filter(
-              (d) =>
-                !d.tomada &&
-                !d.ignorada &&
-                !d.isDataConflict &&
-                !d.isSintoma &&
-                d.isExpectedUnconfirmed
-            );
-    } else if (
-      filtroStatus === "ignorados"
-    ) {
-      result = result.filter(
-        (d) => d.ignorada
-      );
-    }
-
-    if (filtroPeriodo !== "todos") {
-      result = result.filter(
-        (d) =>
-          getPeriodoDoDia(d.horario).key ===
-          filtroPeriodo
-      );
-    }
-
-    return result;
-  }, [
-    doses,
-    filtroStatus,
-    filtroPeriodo,
-    isHoje,
-  ]);
-
-  const dosesParaExibir = useMemo(() => {
-    if (!isHoje || filtroStatus !== "todos" || mostrarConcluidas) return dosesFiltradas;
-    return dosesFiltradas.filter((dose) => !dose.tomada && !dose.ignorada && !dose.isDataConflict);
-  }, [dosesFiltradas, filtroStatus, isHoje, mostrarConcluidas]);
+  const dosesParaExibir = useMemo(
+    () => visibleTimelineItems(dosesFiltradas, { isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas }),
+    [dosesFiltradas, filtroStatus, isHoje, mostrarConcluidas]
+  );
 
   const concluidasOcultas = isHoje && filtroStatus === "todos" && !mostrarConcluidas
     ? dosesFiltradas.filter((dose) => dose.tomada || dose.ignorada || dose.isDataConflict).length
     : 0;
 
   const dosesAgrupadas = useMemo(() => {
-    const grupos: Record<string, { label: string; sub: string; icon: any; items: DoseItemExt[] }> = isHoje
-      ? {
-          // VAULT_TODAY_V3_V49 — prioridade operacional:
-          // agora → atrasadas → próximas → SOS/extra → concluído.
-          agora: { label: "Agora", sub: "No horário ou muito próximo dele", icon: Clock, items: [] },
-          atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle, items: [] },
-          depois: { label: "Depois", sub: "Programadas para depois · ainda não estão atrasadas", icon: ChevronRight, items: [] },
-          avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap, items: [] },
-          revisao: { label: "Revisar dados", sub: "Registros contraditórios não entram nas métricas", icon: AlertOctagon, items: [] },
-          concluidas: { label: "Tomadas", sub: "Doses com tomada registrada hoje", icon: CheckCircle2, items: [] },
-          ignoradas: { label: "Ignoradas", sub: "Não contam como tomadas", icon: XCircle, items: [] },
-        }
-      : {
-          manha: { label: "Manhã", sub: "Início do dia", icon: Sunrise, items: [] },
-          tarde: { label: "Tarde", sub: "Período da tarde", icon: Sun, items: [] },
-          noite: { label: "Noite", sub: "Final do dia", icon: Moon, items: [] },
-        };
-
-    dosesParaExibir.forEach((dose) => {
-      if (!isHoje) {
-        const periodo = getPeriodoDoDia(dose.horario);
-        grupos[periodo.key]?.items.push(dose);
-        return;
-      }
-      if (dose.isDataConflict) { grupos.revisao.items.push(dose); return; }
-      if (dose.tomada) { grupos.concluidas.items.push(dose); return; }
-      if (dose.ignorada) { grupos.ignoradas.items.push(dose); return; }
-      if (dose.isAvulsa && dose.doseKind !== "planned") { grupos.avulsas.items.push(dose); return; }
-      const temporalBucket = classifyClinicalSchedule({
-        eventDate: dataSelecionada,
-        scheduledTime: dose.horario,
-        today: hoje,
-        nowTime: horaAtual,
-        nowWindowMinutes: 15,
-      });
-
-      if (temporalBucket === "now") grupos.agora.items.push(dose);
-      else if (temporalBucket === "past" || temporalBucket === "past-day") grupos.atrasadas.items.push(dose);
-      else grupos.depois.items.push(dose);
-    });
-    for (const grupo of Object.values(grupos)) grupo.items.sort((a,b)=>a.horario.localeCompare(b.horario));
-    return Object.entries(grupos).filter(([, grupo]) => grupo.items.length > 0);
+    const metadata = {
+      agora: { label: "Agora", sub: "No horário ou muito próximo dele", icon: Clock },
+      atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle },
+      depois: { label: "Depois", sub: "Programadas para depois · ainda não estão atrasadas", icon: ChevronRight },
+      avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap },
+      revisao: { label: "Revisar dados", sub: "Registros contraditórios não entram nas métricas", icon: AlertOctagon },
+      concluidas: { label: "Tomadas", sub: "Doses com tomada registrada hoje", icon: CheckCircle2 },
+      ignoradas: { label: "Ignoradas", sub: "Não contam como tomadas", icon: XCircle },
+      manha: { label: "Manhã", sub: "Início do dia", icon: Sunrise },
+      tarde: { label: "Tarde", sub: "Período da tarde", icon: Sun },
+      noite: { label: "Noite", sub: "Final do dia", icon: Moon },
+    } as const;
+    return groupTimelineItems(dosesParaExibir, { isToday: isHoje, selectedDate: dataSelecionada, today: hoje, nowTime: horaAtual })
+      .map(([key, items]) => [key, { ...metadata[key], items }] as const);
   }, [dosesParaExibir, horaAtual, isHoje, hoje, dataSelecionada]);
 
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
   // inflam nem derrubam artificialmente o progresso da rotina.
-  const metricItems =
-    doses.filter(
-      (dose) =>
-        !dose.isExpectedUnconfirmed &&
-        !dose.isDataConflict &&
-        !dose.isAvulsa &&
-        !dose.isSintoma
-    );
-
-  const totalTomadas =
-    metricItems.filter(
-      (
-        dose
-      ) =>
-        dose.tomada
-    ).length;
-
-  const totalPendentes =
-    metricItems.filter(
-      (
-        dose
-      ) =>
-        !dose.tomada &&
-        !dose.ignorada &&
-        !dose.isDataConflict &&
-        !dose.isSintoma
-    ).length;
-
-  const totalEsperadasSemConfirmacao =
-    doses.filter(
-      (
-        dose
-      ) =>
-        dose.isExpectedUnconfirmed
-    ).length;
-
-  const totalIgnoradas =
-    metricItems.filter(
-      (
-        dose
-      ) =>
-        dose.ignorada
-    ).length;
+  const metricItems = doses.filter(dose => !dose.isExpectedUnconfirmed && !dose.isDataConflict && !dose.isAvulsa && !dose.isSintoma);
+  const { totalTomadas, totalPendentes, totalEsperadasSemConfirmacao, totalIgnoradas } = useMemo(() => summarizeTimeline(doses), [doses]);
 
   const totalRegistros =
     metricItems.length;

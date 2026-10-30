@@ -14,7 +14,7 @@ ok(journey.includes("divide-y")&&journey.includes("ChevronRight"),"detalhe usa j
 ok(journey.includes("Receita, aquisição e retirada são eventos independentes"),"autoridades operacionais continuam separadas");
 ok(supply.includes("Histórico e relações do processo")&&supply.includes("vault-deferred"),"fornecimento recolhe histórico pesado sem removê-lo");
 ok(workspace.includes("AvatarCareReadiness")&&workspace.includes("CareContinuityAvatarSummary")&&workspace.includes("AvatarAssociationSummary"),"Avatar consolida ação e evidências em um workspace");
-ok(workspace.includes("Contexto e evidências do Avatar")&&workspace.includes("<ClinicalDisclosure")&&workspace.includes("{() => <div"),"evidências secundárias usam divulgação progressiva e montagem sob demanda");
+ok(workspace.includes("Contexto e evidências do Avatar")&&workspace.includes("<ClinicalDisclosure")&&workspace.includes("{() => <AvatarEvidenceWorkspace"),"evidências secundárias usam divulgação progressiva e montagem sob demanda");
 ok(health.includes("<AvatarCareWorkspace")&&!health.includes("<TemporaryCourseAvatarSummary"),"página do Avatar não empilha painéis paralelos");
 
 console.log("\nVAULT V274 — MEDICAMENTOS + FORNECIMENTO + AVATAR WORKSPACE: OK");

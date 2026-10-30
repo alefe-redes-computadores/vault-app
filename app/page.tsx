@@ -97,6 +97,7 @@ import {
 } from "@/components/PendingDosesModal";
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
+import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 
 // ============================================================
 // HELPERS
@@ -1417,131 +1418,10 @@ export default function HomePage() {
   // FINANCEIRO
   // ==========================================================
 
-  const metricasFinanceiras =
-    useMemo(() => {
-      const agora =
-        new Date();
-
-      const mesAtual =
-        agora.getMonth();
-
-      const anoAtual =
-        agora.getFullYear();
-
-      const mesAnterior =
-        mesAtual === 0
-          ? 11
-          : mesAtual - 1;
-
-      const anoMesAnterior =
-        mesAtual === 0
-          ? anoAtual - 1
-          : anoAtual;
-
-      let gastoMesAtual = 0;
-
-      let gastoMesAnterior =
-        0;
-
-      for (
-        const renovacao of
-          renovacoes
-      ) {
-        if (
-          renovacao.tipo_aquisicao ===
-            "sus" ||
-          renovacao.tipo_aquisicao ===
-            "gratuito"
-        ) {
-          continue;
-        }
-
-        const preco =
-          Number(
-            renovacao.preco
-          );
-
-        const dataFinanceira =
-          renovacao.data_aquisicao?.trim() ||
-          renovacao.data?.trim();
-
-        if (
-          !Number.isFinite(
-            preco
-          ) ||
-          preco <= 0 ||
-          !dataFinanceira
-        ) {
-          continue;
-        }
-
-        const parts =
-          dataFinanceira.split(
-            "-"
-          );
-
-        if (
-          parts.length !== 3
-        ) {
-          continue;
-        }
-
-        const year =
-          Number(
-            parts[0]
-          );
-
-        const month =
-          Number(
-            parts[1]
-          ) - 1;
-
-        if (
-          !Number.isInteger(
-            year
-          ) ||
-          !Number.isInteger(
-            month
-          )
-        ) {
-          continue;
-        }
-
-        if (
-          month ===
-            mesAtual &&
-          year ===
-            anoAtual
-        ) {
-          gastoMesAtual +=
-            preco;
-
-          continue;
-        }
-
-        if (
-          month ===
-            mesAnterior &&
-          year ===
-            anoMesAnterior
-        ) {
-          gastoMesAnterior +=
-            preco;
-        }
-      }
-
-      return {
-        gastoMesAtual,
-
-        gastoMesAnterior,
-
-        diff:
-          gastoMesAtual -
-          gastoMesAnterior,
-      };
-    }, [renovacoes]);
-
-  // ==========================================================
+  const metricasFinanceiras = useMemo(
+    () => buildHomeFinancialSummary(renovacoes),
+    [renovacoes]
+  );
   // MODAL DE DOSES
   // ==========================================================
 

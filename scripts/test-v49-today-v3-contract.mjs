@@ -1,7 +1,8 @@
 import fs from "node:fs";
 const h=fs.readFileSync("app/hoje/page.tsx","utf8");
+const timeline=fs.readFileSync("lib/today/timeline-summary.ts","utf8");
 const ok=(v,m)=>{if(!v)throw Error("V49: "+m)};
-ok(h.includes("VAULT_TODAY_V3_V49"),"marker ausente");
+ok(h.includes("groupTimelineItems")&&timeline.includes("canonicalOrder"),"autoridade de agrupamento ausente");
 const now=h.indexOf('agora: { label: "Agora"');
 const late=h.indexOf('atrasadas: { label: "Atrasadas"');
 const next=h.indexOf('depois: { label: "Depois"');
@@ -9,7 +10,7 @@ const extra=h.indexOf('avulsas: { label: "SOS e extras"');
 const done=h.indexOf('concluidas: { label: "Tomadas"');
 const ignored=h.indexOf('ignoradas: { label: "Ignoradas"');
 ok(now>=0&&now<late&&late<next&&next<extra&&extra<done&&done<ignored,"ordem operacional incorreta");
-ok(h.includes("grupos.ignoradas.items.push(dose)"),"ignoradas devem ficar separadas das tomadas");
+ok(timeline.includes('if (item.tomada) { add("concluidas", item)')&&timeline.includes('if (item.ignorada) { add("ignoradas", item)'),"ignoradas devem ficar separadas das tomadas");
 ok(h.includes("mostrarConcluidas"),"concluídos deixaram de ser recolhíveis");
 ok(h.includes("dosesElegiveisLote"),"Tomar todas perdido");
 ok(h.includes("handleDesfazerLote"),"desfazer lote perdido");

@@ -20,6 +20,6 @@ assert(command.includes("Abrir esta etapa não registra automaticamente dose, re
 assert(home.includes('id="home-outras-areas"') && home.includes('id="home-organizacao"'), "Home separates primary actions from secondary domains");
 assert((home.match(/\{\(\) =>/g) || []).length >= 2, "Home secondary domains mount lazily");
 assert(homePage.includes("{() => <>") && homePage.includes('id="home-health-evidence"'), "Home Brain evidence list mounts only when disclosed");
-assert(avatar.includes('id="avatar-contexto-evidencias"') && avatar.includes("{() => <div"), "Avatar evidence workspace mounts on demand");
+assert(avatar.includes('id="avatar-contexto-evidencias"') && avatar.includes("{() => <AvatarEvidenceWorkspace"), "Avatar evidence workspace mounts on demand");
 assert(gate.includes("scripts/test-v344-today-home-brain-avatar-performance.cjs"), "V344 belongs to release gate");
 console.log("VAULT V344 — HOJE + HOME + BRAIN + AVATAR + PERFORMANCE: OK");
