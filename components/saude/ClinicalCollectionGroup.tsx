@@ -28,10 +28,10 @@ export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,ch
   const visible=forceOpen||open;
   if(count===0)return null;
   return <details id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface/60 [content-visibility:auto] [contain-intrinsic-size:180px]">
-    <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3.5 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-      <span className={`grid size-9 shrink-0 place-items-center rounded-xl border ${tones[tone]}`}><Icon size={16}/></span>
-      <span className="min-w-0 flex-1"><span className="block text-xs font-bold text-ink-primary">{title}</span><span className="mt-0.5 block line-clamp-2 break-words text-[10px] leading-snug text-ink-muted">{description}</span></span>
-      <span className="shrink-0 rounded-full bg-surface-raised px-2 py-1 font-mono text-[10px] tabular-nums text-ink-muted">{count}</span>
+    <summary className="flex min-h-[64px] cursor-pointer list-none items-center gap-3 px-3.5 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      <span className={`grid size-10 shrink-0 place-items-center rounded-xl border ${tones[tone]}`}><Icon size={16}/></span>
+      <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink-primary">{title}</span><span className="mt-0.5 block line-clamp-2 break-words text-xs leading-relaxed text-ink-muted">{description}</span></span>
+      <span className="shrink-0 rounded-full bg-surface-raised px-2 py-1 font-mono text-xs tabular-nums text-ink-muted">{count}</span>
       <ChevronDown size={15} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/>
     </summary>
     {visible?<div className="space-y-2.5 border-t border-surface-border/40 bg-void/20 p-2.5">{typeof children==="function"?children():children}</div>:null}
