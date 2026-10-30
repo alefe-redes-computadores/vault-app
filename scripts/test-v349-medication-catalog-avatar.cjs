@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs"),vm=require("node:vm"),ts=require("typescript");
+const source=fs.readFileSync("lib/medications/catalog-presentation.ts","utf8");
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const mod={exports:{}};vm.runInNewContext(`(function(exports,module){${js}\n})(module.exports,module)`,{module:mod});
+const c=mod.exports;
+assert.equal(c.extractCatalogPresentationDosage("SOL OR 30 mg / 5 ml FR 100 ml"),"30 mg/5 ml");
+assert.equal(c.extractCatalogPresentationDosage("CREME 2 %"),"2%");
+for(const [label,expected] of [["COM REV CT 30","comprimido"],["CAP DURA CT 20","capsula"],["SOL INJ AMP 2ML","injecao"],["SOL OR GOT 20ML","gota"],["SUSP OR 100ML","suspensao"],["COLIRIO 5ML","colirio"]]) assert.equal(c.inferVaultFormatFromOfficialPresentation(label),expected,label);
+assert.equal(c.formatMatchesCatalog("capsula",["CAP DURA CT 30"]),true);
+assert.equal(c.formatMatchesCatalog("comprimido",["CAP DURA CT 30"]),false);
+assert.equal(c.getCatalogFormatLabel("sache"),"Sachê");
+assert.equal(c.getEstoqueUnidadePorFormato("spray"),"jato(s)");
+assert.equal(c.getEstoqueUnidadePorFormato("injecao"),"dose(s)");
+assert.equal(c.getEstoqueUnidadePorFormato("capsula"),"cápsula(s)");
+const create=fs.readFileSync("app/saude/medicamentos/novo/page.tsx","utf8"),edit=fs.readFileSync("app/saude/medicamentos/editar/page.tsx","utf8");
+for(const page of [create,edit]) assert(page.includes('from "@/lib/medications/catalog-presentation"')&&!page.includes("function inferVaultFormatFromOfficialPresentation("));
+const care=fs.readFileSync("components/saude/CareContinuityAvatarSummary.tsx","utf8"),associations=fs.readFileSync("components/saude/AvatarAssociationSummary.tsx","utf8");
+assert(care.includes("export const CareContinuityAvatarSummary = memo")&&associations.includes("export const AvatarAssociationSummary = memo"),"Avatar evidence summaries avoid unchanged rerenders");
+const gate=fs.readFileSync("scripts/test-v63-release-gate.mjs","utf8");assert(gate.includes("scripts/test-v349-medication-catalog-avatar.cjs"));
+console.log("VAULT V349 — MEDICATION CATALOG AUTHORITY + AVATAR PERFORMANCE: OK");

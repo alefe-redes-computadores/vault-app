@@ -1,12 +1,12 @@
 "use client";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { CalendarClock, ChevronRight, Network, Stethoscope } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildCareContinuityOverview } from "@/lib/health-network/care-continuity";
 import { AvatarWeekCoverage } from "@/components/saude/AvatarWeekCoverage";
 
 /** Light, factual bridge from Avatar to the care network; no new Dexie or Supabase query. */
-export function CareContinuityAvatarSummary({context,onNavigate}:{context:HealthInsightContext|null|undefined;onNavigate:(href:string)=>void}) {
+export const CareContinuityAvatarSummary = memo(function CareContinuityAvatarSummary({context,onNavigate}:{context:HealthInsightContext|null|undefined;onNavigate:(href:string)=>void}) {
   const overview=useMemo(()=>context?buildCareContinuityOverview(context):null,[context]);
   if(!overview || overview.total===0)return null;
   const closest=overview.ready.flatMap(x=>x.upcoming.map(c=>({treatment:x.treatment,consultation:c}))).sort((a,b)=>a.consultation.data.localeCompare(b.consultation.data))[0];
@@ -19,4 +19,4 @@ export function CareContinuityAvatarSummary({context,onNavigate}:{context:Health
     <AvatarWeekCoverage context={context} onNavigate={onNavigate}/>
     <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Os números representam relações salvas, não a qualidade clínica do tratamento. Nenhum compartilhamento automático.</p>
   </section>;
-}
+});
