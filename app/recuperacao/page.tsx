@@ -2,6 +2,7 @@
 // VAULT_RECOVERY_CENTER_V68
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { P13DeviceDoseAudit } from "@/components/saude/P13DeviceDoseAudit";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -254,6 +255,7 @@ export default function RecoveryCenterPage() {
         <p className="mx-auto mt-4 max-w-2xl px-1 text-[10px] leading-relaxed text-ink-faint">
           Esta central é diagnóstica. Ela não considera ausência de internet como perda de dados e não executa limpeza, sobrescrita forçada ou restauração destrutiva.
         </p>
+        <P13DeviceDoseAudit />
       </main>
     </PageTransition>
   );

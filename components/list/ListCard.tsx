@@ -80,7 +80,7 @@ export function ListCard({
         border
         bg-surface
         ${isCompact ? "shadow-sm" : "shadow-md"}
-        transition-[background-color,border-color,box-shadow] duration-200
+        transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none
         focus-within:border-ice/45
         ${
           isDisabled

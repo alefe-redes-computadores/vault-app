@@ -24,11 +24,13 @@ for(const mood of ['neutral','happy','reflective']) {
   const pupil={position:{y:2.819},scale:{y:.006}};
   const brow={rotation:{z:0},position:{y:2.861}};
   const mesh=()=>({visible:true,rotation:{z:0},position:{y:0}});
+  const model={rotation:{z:0},position:{y:0}};
   const lidScaleMap=new WeakMap([[lid,.012]]);
   const eyeScaleMap=new WeakMap([[pupil,.006]]);
-  const run=new Function('expressionBrows','expressionLids','expressionEyes','expressionLidScaleY','expressionEyeScaleY','mouth','neutralMouth','lowerLip', expression+'\nreturn setExpression;')(
-    [{object:brow,sign:1}],[{object:lid,sign:1}],[{object:pupil,restY:2.819}],lidScaleMap,eyeScaleMap,mesh(),mesh(),mesh());
+  const run=new Function('model','expressionBrows','expressionLids','expressionEyes','expressionLidScaleY','expressionEyeScaleY','expressionHighlights','expressionHighlightScale','mouth','neutralMouth','lowerLip', expression+'\nreturn setExpression;')(
+    model,[{object:brow,sign:1}],[{object:lid,sign:1}],[{object:pupil,restY:2.819}],lidScaleMap,eyeScaleMap,[],new WeakMap(),mesh(),mesh(),mesh());
   run(mood);
+  assert.equal(model.rotation.z,mood==='reflective'?.006:mood==='happy'?-.003:0,'postura preservada');
   const factor=mood==='reflective'?.72:mood==='happy'?.84:1;
   assert.equal(lid.scale.y,.012*factor,`pálpebra: ${mood}`);
   assert.equal(pupil.scale.y,.006*(mood==='reflective'?.88:1),`pupila: ${mood}`);
