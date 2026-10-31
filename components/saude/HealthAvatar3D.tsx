@@ -72,7 +72,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const rim = new THREE.DirectionalLight(0x8debd1, 1.65); rim.position.set(3,3,-3); scene.add(rim);
     const stageMaterial=new THREE.MeshStandardMaterial({color:0x16372f,transparent:true,opacity:.34,roughness:.72,metalness:.12,depthWrite:false});
     const stage=new THREE.Mesh(new THREE.BoxGeometry(1.18,.025,.68),stageMaterial);stage.position.set(0,.075,.015);scene.add(stage);
-    const stageRingMaterial=new THREE.MeshBasicMaterial({color:0x89f3d4,transparent:true,opacity:.2,depthWrite:false});
+    // P14 R3: iluminação do palco menos neon; sem mudanças de geometria.
+    const stageRingMaterial=new THREE.MeshBasicMaterial({color:0x89f3d4,transparent:true,opacity:.12,depthWrite:false});
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
       // P8: pele e olhos menos plastificados, sem geometria, luz ou GPU extras.
@@ -80,10 +81,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .675, metalness: .005 }),
       skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .79, transparent:true, opacity:.22 }),
       // P12: tecidos com difusão fosca sutil. Reutiliza materiais, sem malha ou render loop adicional.
-      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .82 }),
+      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .86 }),
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.58), roughness: .87 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .84 }),
-      hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .93 }),
+      hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .90 }),
       // P10: pelos e lábios com transição menos dura; materiais existentes, sem malhas extras.
       // P11: acabamento fosco dos lábios e dos fios; preserva GPU, olhos e lentes homologados.
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .96, transparent:true, opacity:.82 }),
@@ -98,7 +99,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .47, metalness: .01 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
-      glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .38, metalness: .3 }),
+      glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .46, metalness: .24 }),
       sneakers: new THREE.MeshStandardMaterial({ color: appearance.sneakersColor, roughness: .73 }),
     };
     const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, scale?: [number,number,number]) => {

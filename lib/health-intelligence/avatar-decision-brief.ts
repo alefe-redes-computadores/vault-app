@@ -10,7 +10,7 @@ export type AvatarDecisionBriefInput = {
   overdueWithdrawals?: number | null;
   missingDocuments?: number | null;
 };
-export type AvatarDecisionBrief = {title:string; explanation:string; authority:string};
+export type AvatarDecisionBrief = {title:string; explanation:string; authority:string; posture:string};
 const clean=(value:string|null|undefined)=>typeof value==="string"?value.trim().replace(/\s+/g," ").slice(0,260):"";
 const count=(value:number|null|undefined)=>typeof value==="number"&&Number.isFinite(value)?Math.max(0,Math.trunc(value)):0;
 export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): AvatarDecisionBrief {
@@ -27,5 +27,7 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
   const counts=input.counts;
   const fallback=!reason&&!situation&&counts&&(count(counts.overdue)||count(counts.prepare)||count(counts.unknown))
     ? `${count(counts.overdue)} para decidir · ${count(counts.prepare)} para preparar · ${count(counts.unknown)} para esclarecer.`:"";
-  return {title, authority, explanation: [safeReason,situation||fallback].filter(Boolean).join(" ").slice(0,370)};
+  // P14 R3: linguagem de prioridade deriva exclusivamente da lane canônica.
+  const posture=input.lane==="now"?"revisar agora":input.lane==="prepare"?"preparar":input.lane==="discuss"?"levar à consulta":input.lane==="observe"?"acompanhar":"próxima etapa";
+  return {title, authority, posture, explanation: [safeReason,situation||fallback].filter(Boolean).join(" ").slice(0,370)};
 }

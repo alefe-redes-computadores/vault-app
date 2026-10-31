@@ -100,6 +100,7 @@ import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
+import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 
 // ============================================================
 // HELPERS
@@ -1775,100 +1776,12 @@ export default function HomePage() {
             }}
             className="relative overflow-hidden rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-[0_14px_38px_rgba(0,0,0,0.16)]"
           >
-            <button
-              type="button"
-              onClick={() => {
-                trigger(
-                  "vibrate"
-                );
-
-                router.push(
-                  "/hoje"
-                );
-              }}
-              className="flex w-full items-center justify-between gap-4 px-5 pb-3 pt-5 text-left transition-all active:bg-surface-raised/40"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <CalendarDays
-                    size={
-                      14
-                    }
-                    className="text-ice"
-                  />
-
-                  <p
-                    className="font-mono text-[9px] uppercase tracking-[0.22em]"
-                    style={{
-                      color:
-                        resumoContextual.color,
-                    }}
-                  >
-                    {resumoContextual.eyebrow}
-                  </p>
-                </div>
-
-                <p className="mt-1 font-display text-xl font-semibold leading-tight text-ink-primary">
-                  {resumoContextual.title}
-                </p>
-
-                <p className="mt-1 max-w-[250px] text-[11px] leading-relaxed text-ink-muted">
-                  {resumoContextual.description}
-                </p>
-              </div>
-
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border"
-                style={{
-                  borderColor:
-                    `${resumoContextual.color}35`,
-
-                  backgroundColor:
-                    `${resumoContextual.color}14`,
-
-                  color:
-                    resumoContextual.color,
-                }}
-              >
-                <HeartPulse
-                  size={
-                    19
-                  }
-                />
-              </div>
-            </button>
-
-            <div className="px-5 pb-4">
-              <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-medium text-ink-muted">
-                <span>
-                  Rotina programada
-                </span>
-
-                <span className="font-mono text-ink-primary">
-                  {dosesTomadasDaRotinaHoje}/
-                  {totalDosesPlanejadasHoje}
-                </span>
-              </div>
-
-              <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised">
-                <motion.div
-                  initial={{
-                    width:
-                      0,
-                  }}
-                  animate={{
-                    width:
-                      `${progressoDosesHoje}%`,
-                  }}
-                  transition={{
-                    duration:
-                      0.45,
-                  }}
-                  className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400"
-                />
-              </div>
-            </div>
-
+            {/* P14 R3: hero puramente visual isolado; contadores continuam na Home. */}
+            <HomeDailyHero eyebrow={resumoContextual.eyebrow} title={resumoContextual.title}
+              description={resumoContextual.description} color={resumoContextual.color}
+              completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
+              progress={progressoDosesHoje}
+              onOpen={() => { trigger("vibrate"); router.push("/hoje"); }} />
             <HomeQuickMetrics
               appointments={totalCompromissosHoje}
               className="min-[380px]:grid-cols-4"

@@ -42,7 +42,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
     className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-200"><BrainCircuit size={19}/></span>
     <span className="min-w-0 flex-1 space-y-1">
-      <strong className="block text-[11px] font-semibold uppercase tracking-wide text-violet-200">Brain · próxima etapa</strong>
+      <strong className="block text-[11px] font-semibold uppercase tracking-wide text-violet-200">Brain · {brief.posture}</strong>
       <span className="block text-sm font-semibold leading-snug text-ink-primary">{planFocus ? brief.title : nextAction ? nextAction.title : brief.title}</span>
       <span className="block line-clamp-2 text-xs leading-relaxed text-ink-muted">{brief.explanation}</span>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-[10px] text-ink-faint">

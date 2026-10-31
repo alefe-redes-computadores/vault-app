@@ -1,5 +1,6 @@
 // app/hoje/page.tsx
 "use client";
+import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
@@ -2193,27 +2194,7 @@ export default function HojePage() {
               )}
             </div>
 
-            <div className="shrink-0 text-right">
-              <span className="inline-flex items-center rounded-full border border-ice/20 bg-ice/10 px-3 py-1.5 font-mono text-[10px] font-bold text-ice">
-                {isFuturo ? (
-                  <>
-                    {totalItensPlanejados}{" "}
-                    {totalItensPlanejados ===
-                    1
-                      ? "item"
-                      : "itens"}{" "}
-                    previstos
-                  </>
-                ) : (
-                  <>
-                    {totalTomadas}{" "}
-                    {totalTomadas === 1
-                      ? "dose"
-                      : "doses"}
-                  </>
-                )}
-              </span>
-            </div>
+            <span className="shrink-0 rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 text-[10px] font-semibold text-ice">{isFuturo ? "Planejado" : isPassado ? "Histórico" : "Hoje"}</span>
           </div>
 
           {/* NAVEGAÇÃO TEMPORAL */}
@@ -2290,47 +2271,11 @@ export default function HojePage() {
             </div>
           )}
 
-          {/* VAULT_TODAY_COMMAND_SUMMARY_V97 */}
-          <div className="mt-3 rounded-2xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2.5">
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-semibold">
-                  <span className="inline-flex items-center gap-1 text-coral">
-                    <AlertTriangle size={11} />
-                    {isHoje
-                      ? `${totalPendentes} pendente${totalPendentes === 1 ? "" : "s"}`
-                      : `${totalEsperadasSemConfirmacao} ${isPassado ? "sem confirmação" : "previstas"}`}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-emerald-400">
-                    <CheckCircle2 size={11} />
-                    {totalTomadas} concluída{totalTomadas === 1 ? "" : "s"}
-                  </span>
-                  {totalIgnoradas > 0 && (
-                    <span className="inline-flex items-center gap-1 text-ink-muted">
-                      <XCircle size={11} />
-                      {totalIgnoradas} ignorada{totalIgnoradas === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </div>
-                {!isFuturo && totalRegistros > 0 && (
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-void/60">
-                    <div
-                      className="h-full rounded-full bg-emerald-400 transition-[width]"
-                      style={{ width: `${Math.min(100, percentualConclusao)}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="font-mono text-base font-black text-ice">
-                  {isFuturo ? totalItensPlanejados : `${percentualConclusao}%`}
-                </p>
-                <p className="text-[8px] font-semibold uppercase tracking-wider text-ink-faint">
-                  {isFuturo ? "previstos" : "rotina"}
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* VAULT_TODAY_COMMAND_SUMMARY_V97 · P14 R3: painel independente de registro. */}
+          <TodayRoutinePulse isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo}
+            pending={totalPendentes} unconfirmed={totalEsperadasSemConfirmacao}
+            completed={totalTomadas} ignored={totalIgnoradas} recorded={totalRegistros}
+            projected={totalItensPlanejados} percentage={percentualConclusao} />
 
           {/* VAULT_TODAY_FILTERS_V97 */}
           <div className="mt-2 -mx-1 px-1 pb-1">
@@ -2431,17 +2376,6 @@ export default function HojePage() {
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
           {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
-          {/* VAULT_V321_MONTH_DEFERRED: keep original owner and onNavigate; mount only when requested. */}
-          {user?.id && activePersonId && isHoje && (
-            <ClinicalDisclosure
-              id="hoje-mes"
-              title="Mês · doses e planejamento"
-              description="Consultar o mês sob demanda · sem antecipar tomadas futuras"
-              icon={<Calendar size={18}/>}
-            >
-              <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} context={healthIntelligence.context} onNavigate={(href)=>router.push(href)} />
-            </ClinicalDisclosure>
-          )}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
@@ -2468,21 +2402,6 @@ export default function HojePage() {
                 {processandoTodos ? "Registrando..." : "Tomar todas"}
               </button>
             </motion.div>
-          )}
-
-          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
-          {isHoje && !retroReviewMode && (
-            <details id="hoje-diario" aria-label="Diário rápido do dia" className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-[10px] text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
-                <ChevronRight size={15} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
-              </summary>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
-                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
-              </div>
-              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-[10px] font-semibold text-violet-300">Ver resumo longitudinal</button>
-            </details>
           )}
 
           {isHoje && medicamentosSemHorario.length > 0 && (
@@ -4100,6 +4019,32 @@ export default function HojePage() {
                 );
               }
             )
+          )}
+
+          {/* VAULT_V321_MONTH_DEFERRED: keep original owner and onNavigate; mount only when requested. */}
+          {user?.id && activePersonId && isHoje && (
+            <ClinicalDisclosure
+              id="hoje-mes"
+              title="Mês · doses e planejamento"
+              description="Consultar o mês sob demanda · sem antecipar tomadas futuras"
+              icon={<Calendar size={18}/>}
+            >
+              <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} context={healthIntelligence.context} onNavigate={(href)=>router.push(href)} />
+            </ClinicalDisclosure>
+          )}
+          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
+          {isHoje && !retroReviewMode && (
+            <details id="hoje-diario" aria-label="Diário rápido do dia" className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-[10px] text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
+                <ChevronRight size={15} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
+              </summary>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
+              </div>
+              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-[10px] font-semibold text-violet-300">Ver resumo longitudinal</button>
+            </details>
           )}
 
           {isHoje && (
