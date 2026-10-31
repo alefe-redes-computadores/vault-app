@@ -99,6 +99,7 @@ import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
+import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
 
 // ============================================================
 // HELPERS
@@ -1164,7 +1165,7 @@ export default function HomePage() {
 
             color:
               "#FB7185",
-            href: "/hoje",
+            href: "/?open=pending-doses",
           };
         }
 
@@ -1731,7 +1732,12 @@ export default function HomePage() {
                   "vibrate"
                 );
 
-                router.push(resumoContextual.href);
+                if (resumoContextual.href === "/?open=pending-doses") {
+                  // P10: deep link works even when Home is already mounted.
+                  window.dispatchEvent(new Event("vault:open-pending-doses"));
+                } else {
+                  router.push(resumoContextual.href);
+                }
               }}
               className="flex shrink-0 items-center gap-2 rounded-full border border-surface-border/50 bg-surface px-3 py-2 text-[10px] font-semibold text-ink-muted shadow-sm transition-all active:scale-95"
             >
@@ -1863,141 +1869,15 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 border-t border-surface-border/40 min-[380px]:grid-cols-4">
-              <button
-                type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/hoje"
-                  );
-                }}
-                className="border-b border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50 min-[380px]:border-b-0"
-              >
-                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
-                  <Calendar
-                    size={
-                      13
-                    }
-                    className="text-ice"
-                  />
-
-                  Compromissos
-                </div>
-
-                <p className="mt-1 font-mono text-base font-bold text-ink-primary">
-                  {
-                    totalCompromissosHoje
-                  }
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  setModalPendenciasAberto(
-                    true
-                  );
-                }}
-                className="border-b border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50 min-[380px]:border-b-0 min-[380px]:border-r"
-              >
-                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
-                  <Clock
-                    size={
-                      13
-                    }
-                    className={
-                      dosesPendentesAtrasadas.length >
-                      0
-                        ? "text-coral"
-                        : "text-emerald-400"
-                    }
-                  />
-
-                  Pendentes
-                </div>
-
-                <p
-                  className={`mt-1 font-mono text-base font-bold ${
-                    dosesPendentesAtrasadas.length >
-                    0
-                      ? "text-coral"
-                      : "text-ink-primary"
-                  }`}
-                >
-                  {
-                    dosesPendentesAtrasadas.length
-                  }
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/saude/medicamentos"
-                  );
-                }}
-                className="border-r border-surface-border/40 px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
-              >
-                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
-                  <Pill
-                    size={
-                      13
-                    }
-                    className="text-emerald-400"
-                  />
-
-                  Medicamentos
-                </div>
-
-                <p className="mt-1 font-mono text-base font-bold text-ink-primary">
-                  {
-                    medicamentosAtivos.length
-                  }
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  router.push(
-                    "/hoje"
-                  );
-                }}
-                className="px-2 py-3 text-center transition-colors active:bg-surface-raised/50"
-              >
-                <div className="flex flex-col items-center gap-1 text-[8px] text-ink-muted">
-                  <CheckCircle2
-                    size={
-                      13
-                    }
-                    className="text-violet-400"
-                  />
-
-                  SOS / extra
-                </div>
-
-                <p className="mt-1 font-mono text-base font-bold text-ink-primary">
-                  {Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
-                </p>
-              </button>
-            </div>
+            <HomeQuickMetrics
+              appointments={totalCompromissosHoje}
+              className="min-[380px]:grid-cols-4"
+              pendingDoses={dosesPendentesAtrasadas.length}
+              medications={medicamentosAtivos.length}
+              extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
+              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
+              onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
+            />
           </motion.section>
 
           {/* ===================================================

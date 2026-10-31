@@ -1247,7 +1247,10 @@ export default function HojePage() {
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
   // inflam nem derrubam artificialmente o progresso da rotina.
-  const metricItems = doses.filter(dose => !dose.isExpectedUnconfirmed && !dose.isDataConflict && !dose.isAvulsa && !dose.isSintoma);
+  // P10: esta projeção não deve ser recalculada a cada interação na tela.
+  const metricItems = useMemo(() => doses.filter(dose =>
+    !dose.isExpectedUnconfirmed && !dose.isDataConflict && !dose.isAvulsa && !dose.isSintoma
+  ), [doses]);
   const { totalTomadas, totalPendentes, totalEsperadasSemConfirmacao, totalIgnoradas } = useMemo(() => summarizeTimeline(doses), [doses]);
 
   // P7: um lembrete de dose navega até o grupo real, após renderização dos dados.
@@ -1288,7 +1291,9 @@ export default function HojePage() {
   // A chave medicamento+horário impede baixa dupla por dado legado.
   useEffect(() => { if(!isBatchTimeModalOpen)setBatchTargetKeys(null); }, [isBatchTimeModalOpen]);
 
-  const dosesElegiveisLote =
+  // P10: confirmações só consultam slots elegíveis já resolvidos pelo Hoje.
+  // O lote nunca inclui SOS avulso, dose futura, tomada, ignorada ou conflito.
+  const dosesElegiveisLote = useMemo(() =>
     isHoje
       ? Array.from(
           metricItems
@@ -1307,15 +1312,15 @@ export default function HojePage() {
             }, new Map<string, DoseItemExt>())
             .values()
         )
-      : [];
+      : [], [isHoje, metricItems, batchTargetKeys, horaAtual]);
 
   // V141: pending stockless doses are visible, but never silently marked taken or ignored.
   // P9: uma passagem para separar lote com/sem saldo, sem inferir tomada.
-  const { withoutStock: dosesSemEstoqueNoLote, withStock: dosesComEstoqueNoLote } = partitionDoseBatchByStock(
+  const { withoutStock: dosesSemEstoqueNoLote, withStock: dosesComEstoqueNoLote } = useMemo(() => partitionDoseBatchByStock(
     dosesElegiveisLote,
     d => { const med=d.medicamentoId ? medicamentosById.get(d.medicamentoId) : undefined;
       return med ? hasKnownEmptyMedicationStock(med) : false; }
-  );
+  ), [dosesElegiveisLote, medicamentosById]);
 
   const isLoading =
     rawMedicamentos === undefined ||

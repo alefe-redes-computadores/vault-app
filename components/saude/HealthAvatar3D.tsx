@@ -83,8 +83,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.55), roughness: .82 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
       hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .9 }),
-      facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .94, transparent:true, opacity:.88 }),
-      lips: new THREE.MeshStandardMaterial({ color: appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':'#6b3e35', roughness: .78, transparent:true, opacity:appearance.lips==='natural'?.4:.72 }),
+      // P10: pelos e lábios com transição menos dura; materiais existentes, sem malhas extras.
+      facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .96, transparent:true, opacity:.82 }),
+      lips: new THREE.MeshStandardMaterial({ color: appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':'#6b3e35', roughness: .83, transparent:true, opacity:appearance.lips==='natural'?.37:.68 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
@@ -92,7 +93,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
       glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .11, depthWrite: false }),
-      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .38, metalness: .012 }),
+      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .44, metalness: .009 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .38, metalness: .3 }),
