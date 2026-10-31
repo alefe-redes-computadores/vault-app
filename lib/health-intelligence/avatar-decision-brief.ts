@@ -15,7 +15,7 @@ const clean=(value:string|null|undefined)=>typeof value==="string"?value.trim().
 const count=(value:number|null|undefined)=>typeof value==="number"&&Number.isFinite(value)?Math.max(0,Math.trunc(value)):0;
 export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): AvatarDecisionBrief {
   // P14 R2: sem título registrado, o fallback respeita a etapa real; não inventa execução.
-  const fallbackTitle=input.lane==="now"?"Revisar atenção registrada":input.lane==="prepare"?"Preparar próxima etapa":input.lane==="discuss"?"Levar questão à consulta":input.lane==="observe"?"Acompanhar evolução":"Acompanhar o cuidado registrado";
+  const fallbackTitle=input.evidenceKind==="missing_data"?"Conferir dados antes de concluir":input.lane==="now"?"Revisar atenção registrada":input.lane==="prepare"?"Preparar próxima etapa":input.lane==="discuss"?"Levar questão à consulta":input.lane==="observe"?"Acompanhar evolução":"Acompanhar o cuidado registrado";
   const title=clean(input.title) || fallbackTitle;
   const authority=input.evidenceKind==="recorded"?"Fato registrado":input.evidenceKind==="projected"?"Projeção, não confirmação":input.evidenceKind==="association"?"Associação temporal, não causal":input.evidenceKind==="missing_data"?"Dados ainda incompletos":"Resumo de registros";
   const reason=clean(input.reason);
@@ -29,5 +29,6 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
     ? `${count(counts.overdue)} para decidir · ${count(counts.prepare)} para preparar · ${count(counts.unknown)} para esclarecer.`:"";
   // P14 R3: linguagem de prioridade deriva exclusivamente da lane canônica.
   const posture=input.lane==="now"?"revisar agora":input.lane==="prepare"?"preparar":input.lane==="discuss"?"levar à consulta":input.lane==="observe"?"acompanhar":"próxima etapa";
-  return {title, authority, posture, explanation: [safeReason,situation||fallback].filter(Boolean).join(" ").slice(0,370)};
+  // P14 R4: pendências verificáveis ficam legíveis antes de explicações extensas.
+  return {title, authority, posture, explanation: [situation||fallback,safeReason].filter(Boolean).join(" ").slice(0,370)};
 }

@@ -1,6 +1,9 @@
 // app/hoje/page.tsx
 "use client";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
+import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
+import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
+import { TodayUnscheduledRoutine } from "@/components/hoje/TodayUnscheduledRoutine";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
@@ -2197,79 +2200,11 @@ export default function HojePage() {
             <span className="shrink-0 rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 text-[10px] font-semibold text-ice">{isFuturo ? "Planejado" : isPassado ? "Histórico" : "Hoje"}</span>
           </div>
 
-          {/* NAVEGAÇÃO TEMPORAL */}
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={
-                () =>
-                  navegarData(
-                    -1
-                  )
-              }
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95"
-              aria-label="Dia anterior"
-            >
-              <ChevronLeft
-                size={
-                  16
-                }
-              />
-            </button>
-
-            <div className="min-w-0 flex-1 rounded-xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2 text-center">
-              <p className="truncate text-[10px] font-semibold text-ink-primary">Navegar por data</p>
-
-              <p className="mt-0.5 font-mono text-[8px] text-ink-faint">{isHoje ? "Hoje" : dataSelecionadaDescricao}</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                () =>
-                  navegarData(
-                    1
-                  )
-              }
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-all active:scale-95"
-              aria-label="Próximo dia"
-            >
-              <ChevronRight
-                size={
-                  16
-                }
-              />
-            </button>
-
-            {!isHoje && (
-              <button
-                type="button"
-                onClick={
-                  voltarParaHoje
-                }
-                className="shrink-0 rounded-xl border border-ice/25 bg-ice/10 px-3 py-2 font-mono text-[9px] font-bold text-ice transition-all active:scale-95"
-              >
-                Hoje
-              </button>
-            )}
-          </div>
-
-          {!isHoje && (
-            <div className="mt-2 flex items-start gap-2 rounded-xl border border-ice/15 bg-ice/5 px-3 py-2.5">
-              <Info
-                size={
-                  13
-                }
-                className="mt-0.5 shrink-0 text-ice"
-              />
-
-              <p className="text-[9px] leading-relaxed text-ink-muted">
-                {isPassado
-                  ? "Visualização histórica. Slots sem registro são apenas previsões da rotina e não contam como tomada, falta ou adesão."
-                  : "Planejamento futuro. As doses aparecem como previstas e não podem ser registradas antecipadamente."}
-              </p>
-            </div>
-          )}
+          {/* P14 R4: navegação e aviso temporal extraídos; mesmo calendário e handlers. */}
+          <TodayDateNavigation label="Navegar por data" isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo}
+            description={dataSelecionadaDescricao}
+            onPrevious={() => navegarData(-1)} onNext={() => navegarData(1)}
+            onToday={voltarParaHoje} />
 
           {/* VAULT_TODAY_COMMAND_SUMMARY_V97 · P14 R3: painel independente de registro. */}
           <TodayRoutinePulse isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo}
@@ -2376,66 +2311,21 @@ export default function HojePage() {
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
           {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
+          {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
           {isHoje && dosesElegiveisLote.length > 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-3 rounded-[18px] border border-emerald-400/20 bg-gradient-to-r from-emerald-400/[0.07] to-surface p-3"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/12 text-emerald-400">
-                <ListChecks size={17} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-ink-primary">
-                  {dosesElegiveisLote.length} doses vencidas ou para agora
-                </p>
-                <p className="mt-0.5 text-[9px] leading-snug text-ink-muted">
-                  SOS e doses futuras ficam de fora.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleTomarTodos()}
-                disabled={processandoTodos || Boolean(processandoDoseId)}
-                className="min-h-11 shrink-0 rounded-xl bg-emerald-400 px-3 py-2 text-[10px] font-black text-void active:scale-[0.97] disabled:opacity-50"
-              >
-                {processandoTodos ? "Registrando..." : "Tomar todas"}
-              </button>
-            </motion.div>
+            <TodayBatchAction count={dosesElegiveisLote.length}
+              processing={processandoTodos}
+              disabled={Boolean(processandoTodos || processandoDoseId)}
+              onClick={() => void handleTomarTodos()} />
           )}
 
+          {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
           {isHoje && medicamentosSemHorario.length > 0 && (
-            <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/5 p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-400" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-ink-primary">
-                    Rotina sem horário
-                  </p>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                    Estes medicamentos estão ativos, mas não geram doses pendentes porque nenhum horário válido foi configurado.
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {medicamentosSemHorario.map((med) => (
-                      <button
-                        key={med.id}
-                        type="button"
-                        onClick={() => {
-                          trigger("vibrate");
-                          router.push(
-                            `/saude/medicamentos/editar?id=${med.id}`
-                          );
-                        }}
-                        className="rounded-full border border-amber-400/20 bg-void/30 px-3 py-1.5 text-[10px] font-semibold text-amber-300"
-                      >
-                        {med.nome} · configurar
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <TodayUnscheduledRoutine medications={medicamentosSemHorario}
+              onEdit={(medicationId) => {
+                trigger("vibrate");
+                router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(medicationId)}`);
+              }} />
           )}
 
           {retroReviewMode && (

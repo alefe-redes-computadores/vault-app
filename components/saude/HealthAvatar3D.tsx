@@ -59,7 +59,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const constrainedDevice=avatarConstrainedDevice({hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigatorWithMemory.deviceMemory,reducedMotion});
     renderer.setPixelRatio(avatarAdaptiveRatio(displayRatio,element.clientWidth,element.clientHeight,false,compactRef.current,constrainedDevice));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+    // P14 R4: menos brilho artificial na pele sem novas geometrias ou render loops.
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.03;
     element.appendChild(renderer.domElement);
     renderer.domElement.style.touchAction = "pan-y";
     const scene = new THREE.Scene(), model = new THREE.Group();
@@ -68,8 +69,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const cameraFrame=avatarCameraFrame(framingRef.current);
     camera.position.set(0, cameraFrame.height, cameraFrame.distance); camera.lookAt(0, cameraFrame.height, 0);
     scene.add(new THREE.HemisphereLight(0xdbeafe, 0x101820, 2.05));
-    const key = new THREE.DirectionalLight(0xffffff, 3.25); key.position.set(-3,5,4); scene.add(key);
-    const rim = new THREE.DirectionalLight(0x8debd1, 1.65); rim.position.set(3,3,-3); scene.add(rim);
+    const key = new THREE.DirectionalLight(0xffffff, 3.12); key.position.set(-3,5,4); scene.add(key);
+    const rim = new THREE.DirectionalLight(0xb1dbd5, 1.28); rim.position.set(3,3,-3); scene.add(rim);
     const stageMaterial=new THREE.MeshStandardMaterial({color:0x16372f,transparent:true,opacity:.34,roughness:.72,metalness:.12,depthWrite:false});
     const stage=new THREE.Mesh(new THREE.BoxGeometry(1.18,.025,.68),stageMaterial);stage.position.set(0,.075,.015);scene.add(stage);
     // P14 R3: iluminação do palco menos neon; sem mudanças de geometria.

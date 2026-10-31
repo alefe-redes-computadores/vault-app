@@ -26,13 +26,13 @@ export const HomeDailyHero = memo(function HomeDailyHero({
       <span className="min-w-0">
         <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>
         <strong className="mt-1 block text-lg font-semibold leading-snug text-ink-primary">{title}</strong>
-        <span className="mt-1 block max-w-[280px] text-[11px] leading-relaxed text-ink-muted">{description}</span>
+        <span className="mt-1 block max-w-[280px] line-clamp-2 text-[11px] leading-relaxed text-ink-muted">{description}</span>
       </span>
       <span className="grid size-10 shrink-0 place-items-center rounded-xl border" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
     </button>
     <div className="px-4 pb-3">
       <div className="mb-1.5 flex items-center justify-between gap-3 text-[10px] text-ink-muted">
-        <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{completed}/{scheduled}</span>
+        <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${completed}/${scheduled}` : "Sem horários"}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress}>
         <div className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400 transition-[width] duration-300" style={{width:`${safeProgress}%`}} />
