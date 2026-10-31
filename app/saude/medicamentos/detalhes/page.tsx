@@ -3023,13 +3023,13 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
-          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" density="compact" items={[
+          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" density="compact" priorityCount={4} items={[
             {id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},
             ...(hasRoutineSection?[{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>}]:[]),
+            {id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},
             {id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},
             {id:"medicamento-rede",label:"Rede",icon:<Stethoscope size={14}/>},
             ...(hasFinancialSection?[{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>}]:[]),
-            {id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},
             ...(renovacoes.length?[{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]:[]),
           ]}/>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
@@ -3262,7 +3262,7 @@ function MedicamentoDetalhesContent() {
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
-          <ClinicalDisclosure id="medicamento-jornada" title="Receitas, aquisições e retiradas" description="Histórico separado por evento, sem inferir entrada em estoque" icon={<CalendarDays size={18}/>}>
+          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>}>
             <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
           </ClinicalDisclosure>
           <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>}>
@@ -4961,7 +4961,7 @@ function MedicamentoDetalhesContent() {
 
           {renovacoes.length >
             0 && (
-            <ClinicalDisclosure id="historico-aquisicoes" title="Histórico de receitas e aquisições" description={`${renovacoes.length} registros · consultar quando necessário`} icon={<CalendarDays size={18}/>}>
+            <ClinicalDisclosure id="historico-aquisicoes" title="Movimentações anteriores" description={`${renovacoes.length} receitas e aquisições registradas · consultar sob demanda`} icon={<CalendarDays size={18}/>}>
               {() => <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div>

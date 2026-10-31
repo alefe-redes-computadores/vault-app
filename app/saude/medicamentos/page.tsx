@@ -99,6 +99,8 @@ import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGr
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
+import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
+import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
 import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
 
 type MedicationListFilter =
@@ -1249,6 +1251,8 @@ export default function MedicamentosListPage() {
   }
 
   const totalAtivos = statsProgresso.ativos;
+  // P14 R2: projeção textual pura; dados permanecem nos hooks existentes.
+  const listPresentation = medicationListPresentation(medicationFilter,searchQuery,listaProcessada.length);
 
   // ==========================================================
   // RENDER
@@ -1468,6 +1472,7 @@ export default function MedicamentosListPage() {
 
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">
+          <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={medsPrioridade.length > 0}>
             {() => <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} onNavigate={(href)=>router.push(href)}/>}
           </ClinicalDisclosure>
@@ -1486,24 +1491,9 @@ export default function MedicamentosListPage() {
                 Pill
               }
               title="Nenhum medicamento encontrado"
-              description={
-                searchQuery
-                  ? "Nenhum medicamento corresponde à busca."
-                  : "Nenhum medicamento cadastrado para esta pessoa."
-              }
-              actionLabel={
-                searchQuery
-                  ? "Limpar"
-                  : undefined
-              }
-              onAction={
-                searchQuery
-                  ? () =>
-                      setSearchQuery(
-                        ""
-                      )
-                  : undefined
-              }
+              description={listPresentation.emptyDescription}
+              actionLabel={listPresentation.active ? listPresentation.clearLabel : undefined}
+              onAction={listPresentation.active ? () => { setSearchQuery(""); selectMedicationFilter("todos"); } : undefined}
             />
           ) : (
             <div className="space-y-2.5 pb-8">

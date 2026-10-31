@@ -14,11 +14,13 @@ export type AvatarDecisionBrief = {title:string; explanation:string; authority:s
 const clean=(value:string|null|undefined)=>typeof value==="string"?value.trim().replace(/\s+/g," ").slice(0,260):"";
 const count=(value:number|null|undefined)=>typeof value==="number"&&Number.isFinite(value)?Math.max(0,Math.trunc(value)):0;
 export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): AvatarDecisionBrief {
-  const title=clean(input.title) || "Acompanhar o cuidado registrado";
+  // P14 R2: sem título registrado, o fallback respeita a etapa real; não inventa execução.
+  const fallbackTitle=input.lane==="now"?"Revisar atenção registrada":input.lane==="prepare"?"Preparar próxima etapa":input.lane==="discuss"?"Levar questão à consulta":input.lane==="observe"?"Acompanhar evolução":"Acompanhar o cuidado registrado";
+  const title=clean(input.title) || fallbackTitle;
   const authority=input.evidenceKind==="recorded"?"Fato registrado":input.evidenceKind==="projected"?"Projeção, não confirmação":input.evidenceKind==="association"?"Associação temporal, não causal":input.evidenceKind==="missing_data"?"Dados ainda incompletos":"Resumo de registros";
   const reason=clean(input.reason);
   // Never transform an unknown or projected stage into a completed clinical event.
-  const safeReason=reason || (input.evidenceKind==="projected"?"Estimativa para planejamento; confirme os registros antes de agir.":input.evidenceKind==="missing_data"?"Faltam dados para explicar uma próxima etapa.":"Abra os registros vinculados para conferir a situação.");
+  const safeReason=reason || (input.evidenceKind==="projected"?"Estimativa para planejamento; confirme os registros antes de agir.":input.evidenceKind==="missing_data"?"Faltam dados para explicar uma próxima etapa.":input.evidenceKind==="association"?"Associação temporal observada; não demonstra causa nem diagnóstico.":"Abra os registros vinculados para conferir a situação.");
   const overdue=count(input.overdueWithdrawals), missing=count(input.missingDocuments);
   // P14: uma pendência nunca oculta outra no resumo da Fênix. São eventos distintos e verificáveis.
   const situation=[overdue?`${overdue} retirada(s) com data vencida ainda exigem revisão.`:"",missing?`${missing} documento(s) sinalizado(s) como ausente(s) pedem conferência.`:""].filter(Boolean).join(" ");

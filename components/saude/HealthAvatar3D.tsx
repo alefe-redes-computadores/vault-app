@@ -77,8 +77,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const materials = {
       // P8: pele e olhos menos plastificados, sem geometria, luz ou GPU extras.
       // P9: transição de luz no rosto menos plástica, sem novas malhas nem loops GPU.
-      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .64, metalness: .005 }),
-      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .77, transparent:true, opacity:.25 }),
+      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .675, metalness: .005 }),
+      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .79, transparent:true, opacity:.22 }),
       // P12: tecidos com difusão fosca sutil. Reutiliza materiais, sem malha ou render loop adicional.
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .82 }),
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.58), roughness: .87 }),
@@ -170,7 +170,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.06;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
-    const noseTip=oval(materials.skin,0,2.727,.231,[.027,.018,.023]);noseTip.raycast=()=>{};
+    // P14 R2: ponta nasal menos esférica; reaproveita a geometria compartilhada, sem malhas extras.
+    const noseTip=oval(materials.skin,0,2.727,.231,[.026,.017,.023]);noseTip.raycast=()=>{};
     for(const sign of [-1,1]){
       oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
       oval(materials.skinShade,sign*.018,2.711,.259,[.006,.004,.003]).raycast=()=>{};
