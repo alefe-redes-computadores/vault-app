@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, type LucideIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type ClinicalCollectionGroupProps = {
   id: string;
@@ -25,6 +25,17 @@ const tones = {
 /** Progressive hierarchy for large clinical lists. Keeps secondary groups out of the first viewport. */
 export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,children,defaultOpen=false,forceOpen=false,tone="neutral"}:ClinicalCollectionGroupProps){
   const [open,setOpen]=useState(defaultOpen);
+  // P14 R6: direct #medicamentos-* links cannot leave an eligible group collapsed.
+  useEffect(() => {
+    const revealHash = () => {
+      let hash = window.location.hash.slice(1);
+      try { hash = decodeURIComponent(hash); } catch { return; }
+      if (hash === id) setOpen(true);
+    };
+    revealHash();
+    window.addEventListener("hashchange", revealHash);
+    return () => window.removeEventListener("hashchange", revealHash);
+  }, [id]);
   const visible=forceOpen||open;
   if(count===0)return null;
   return <details id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface/60 [content-visibility:auto] [contain-intrinsic-size:180px]">

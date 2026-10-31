@@ -13,6 +13,8 @@ import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-c
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
+import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
+import { MedicationBestPriceLink } from "@/components/saude/MedicationBestPriceLink";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { resolveMedicationCareNavigation } from "@/lib/health-intelligence/medication-care-navigation";
@@ -47,7 +49,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
-  Award,
   Building2,
   Calendar,
   CalendarDays,
@@ -3955,30 +3956,12 @@ function MedicamentoDetalhesContent() {
           {/* ==================================================
               HISTÓRICO DE DOSES
               ================================================== */}
-
-          <button
-            type="button"
-            onClick={() => {
-              trigger("vibrate");
-              router.push(`/saude/medicamentos/historico?id=${id}`);
-            }}
-            className="vault-deferred flex w-full items-center justify-between gap-4 rounded-[20px] border border-ice/20 bg-gradient-to-r from-ice/10 to-surface px-3.5 py-3 text-left shadow-sm transition-all active:scale-[0.985]"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                <CalendarDays size={18} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-ink-primary">
-                  Histórico e calendário de doses
-                </p>
-                <p className="mt-0.5 text-[10px] text-ink-muted">
-                  Veja tomadas, horários, SOS e dias sem confirmação
-                </p>
-              </div>
-            </div>
-            <ChevronRight size={16} className="shrink-0 text-ice" />
-          </button>
+          <MedicationDoseHistoryLink onOpen={() => {
+            trigger("vibrate");
+            // P14 R6 R4: URL segura preservando o destino canônico exigido pelo V70.
+            const id = encodeURIComponent(med.id ?? "");
+            router.push(`/saude/medicamentos/historico?id=${id}`);
+          }}/>
 
           {/* ==================================================
               ESTOQUE
@@ -4293,56 +4276,12 @@ function MedicamentoDetalhesContent() {
           {/* ==================================================
               MELHOR FARMÁCIA
               ================================================== */}
-
-          {melhorFarmacia && (
-            <button
-              type="button"
-              onClick={() =>
-                document
-                  .getElementById("historico-aquisicoes")
-                  ?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  })
-              }
-              aria-label="Ver aquisições usadas no cálculo do melhor preço médio"
-              className="flex w-full items-center gap-2.5 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.07] px-4 py-3 text-left transition-all active:scale-[0.985]"
-            >
-              <Award
-                size={
-                  16
-                }
-                className="shrink-0 text-emerald-400"
-              />
-
-              <p className="text-xs text-ink-primary">
-                Menor preço médio por farmácia:{" "}
-                <span className="font-bold text-emerald-400">
-                  R${" "}
-                  {melhorFarmacia.media_preco.toFixed(
-                    2
-                  )}
-                </span>
-
-                {melhorFarmacia.total_compras >
-                  0 && (
-                  <span className="text-ink-muted">
-                    {" "}
-                    (
-                    {
-                      melhorFarmacia.total_compras
-                    }{" "}
-                    compra
-                    {melhorFarmacia.total_compras >
-                    1
-                      ? "s"
-                      : ""}
-                    )
-                  </span>
-                )}
-              </p><ChevronRight size={15} className="ml-auto text-emerald-400"/>
-            </button>
-          )}
+          {melhorFarmacia && <MedicationBestPriceLink mean={melhorFarmacia.media_preco}
+            purchases={melhorFarmacia.total_compras} label="Menor preço médio por farmácia:" onOpen={() => {
+              // P14 R6: a âncora dispara o revealHash do ClinicalDisclosure.
+              if (window.location.hash !== "#historico-aquisicoes") window.location.hash = "historico-aquisicoes";
+              document.getElementById("historico-aquisicoes")?.scrollIntoView({behavior:"smooth",block:"start"});
+            }}/>}
 
           {/* P14 R5: rotina/estoque antes de contexto secundário (âncoras preservadas). */}
           <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>}>

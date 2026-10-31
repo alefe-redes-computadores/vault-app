@@ -32,5 +32,9 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
   // P14 R5: reason de associação não é prova de causa; previsão não é tomada.
   const caution = reason && input.evidenceKind==="association" ? "Associação temporal não demonstra causa." :
     reason && input.evidenceKind==="projected" ? "Projeção não confirma realização." : "";
-  return {title, authority, posture, explanation: [situation||fallback,safeReason,caution].filter(Boolean).join(" ").slice(0,370)};
+  // P14 R6: reserve space for the safety qualifier rather than silently truncating it.
+  const context=[situation||fallback,safeReason].filter(Boolean).join(" ");
+  const suffix=caution ? ` ${caution}` : "";
+  const explanation=context.slice(0,Math.max(0,370-suffix.length)).trimEnd()+suffix;
+  return {title, authority, posture, explanation};
 }

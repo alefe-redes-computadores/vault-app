@@ -144,7 +144,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const outerEar=mesh(taperedBox(.038,.048,.091,.044),materials.skin,sign*.202,2.77,.004);outerEar.rotation.z=-sign*.07;outerEar.raycast=()=>{};
       const earRim=mesh(taperedBox(.013,.019,.054,.021),materials.skinShade,sign*.205,2.77,.036);earRim.rotation.z=-sign*.06;earRim.raycast=()=>{};
       const cheekbone=mesh(new THREE.CapsuleGeometry(.0055,.053,3,8),materials.skinShade,sign*.101,2.752,.197);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
-      const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
+      // P14 R6: o relevo da orelha reutiliza a mesma malha, mas sem o anel preto artificial.
+      const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.skinShade,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
     const chin=oval(materials.skin,0,2.548,.056,[.070,.034,.067]);chin.rotation.x=.08;chin.raycast=()=>{};
     // V208: expression controls reuse the existing brow and eyelid meshes. This

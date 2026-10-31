@@ -36,8 +36,8 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
           {!isFuturo && ignored > 0 && <span className="inline-flex items-center gap-1 text-ink-muted"><XCircle size={12} aria-hidden="true" />{ignored} ignorada{ignored === 1 ? "" : "s"}</span>}
         </div>
         <div className="shrink-0 text-right">
-          <strong className="font-mono text-sm font-bold tabular-nums text-ice">{isFuturo ? projected : `${safePercentage}%`}</strong>
-          <span className="ml-1 text-[9px] text-ink-faint">{isFuturo ? "previstas" : "rotina"}</span>
+          <strong className="font-mono text-sm font-bold tabular-nums text-ice">{isFuturo ? projected : isPassado && recorded===0 ? "—" : `${safePercentage}%`}</strong>
+          <span className="ml-1 text-[9px] text-ink-faint">{isFuturo ? "previstas" : isPassado && recorded===0 ? "sem registros" : "rotina"}</span>
         </div>
       </div>
       {!isFuturo && recorded > 0 && (

@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript');
+const read=p=>fs.readFileSync(p,'utf8');
+const detail=read('app/saude/medicamentos/detalhes/page.tsx');
+const history=read('components/saude/MedicationDoseHistoryLink.tsx');
+const best=read('components/saude/MedicationBestPriceLink.tsx');
+const v70=read('scripts/test-v70-final-completeness-contract.mjs');
+const gate=read('scripts/test-v63-release-gate.mjs');
+const tree=ts.createSourceFile('detalhes.tsx',detail,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+assert.equal(tree.parseDiagnostics.length,0,'detalhes sintaticamente válidos');
+assert(detail.includes('`/saude/medicamentos/historico?id=${id}`'),'V70: rota histórica permanece identificável nos detalhes');
+assert(detail.includes('const id = encodeURIComponent(med.id ?? "");'),'id real é protegido para URL');
+assert(detail.includes('router.push(`/saude/medicamentos/historico?id=${id}`)'),'navegação permanece funcional');
+assert(detail.includes('<MedicationDoseHistoryLink onOpen='),'botão é renderizado no detalhe');
+assert(history.includes('onClick={onOpen}')&&history.includes('Histórico e calendário de doses'),'botão acionável e acessível');
+assert(detail.includes('getElementById("historico-aquisicoes")'),'V70: navegação para melhor preço preservada no detalhe');
+assert(detail.includes('window.location.hash = "historico-aquisicoes"'),'o histórico recolhido é aberto antes do scroll');
+assert(detail.includes('label="Menor preço médio por farmácia:"'),'V319/V320: indicador financeiro preservado');
+assert(best.includes('{label} <strong')&&best.includes('onClick={onOpen}'),'link financeiro realmente funcional');
+assert(v70.includes('`/saude/medicamentos/historico?id=${id}`')&&v70.includes('getElementById("historico-aquisicoes")'),'verifica o contrato V70 original, sem alterá-lo');
+assert(gate.includes('scripts/test-p14-r6-r4-v70-navigation.cjs'),'contrato R4 no release gate');
+console.log('P14 R6 R4 OK: V70 final preservado com ações reais e id codificado');

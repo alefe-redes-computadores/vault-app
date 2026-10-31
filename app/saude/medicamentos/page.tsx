@@ -9,6 +9,7 @@ import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-wo
 import { ownedMedicationRenewals } from "@/lib/health-intelligence/medication-owner-events";
 import { hasConfirmedControlledRegime } from "@/lib/medication-intelligence/controlled-filter";
 import { MedicationListRouteLabel } from "@/components/saude/MedicationListRouteLabel";
+import { MedicationOperationalStrip } from "@/components/saude/MedicationOperationalStrip";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -1209,21 +1210,11 @@ export default function MedicamentosListPage() {
                 A lista preserva apenas identidade, rotina, estoque e exceções. */}
 
             {/* VAULT_V318_OPERATIONAL_STRIP: summary only, no repeated mini-dashboard */}
-            <div
-              className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-surface-border/25 bg-void/20 px-2 py-1 text-[10px] leading-snug"
-              aria-label={`Hoje: ${todayStatus.label}. Estoque: ${humanizeStockText(textoEstoquePrincipal)}. ${textoEstoqueSecundario || estoqueStatus}`}
-              title={`${todayStatus.detail} · ${textoEstoqueSecundario || estoqueStatus}`}
-            >
-              <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${todayStatus.tone}`}>
-                {dosesIgnoradasHoje > 0 && !isSOS ? <MinusCircle size={12} className="shrink-0" /> : rotinaConcluida || sosTomadoHoje ? <CheckCircle2 size={12} className="shrink-0" /> : <Circle size={11} className="shrink-0" />}
-                <span className="min-w-0 break-words">{todayStatus.label}</span>
-              </span>
-              <span className="text-ink-faint" aria-hidden="true">·</span>
-              <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${isEstoqueZerado ? "text-coral" : isEstoqueCritico ? "text-amber-400" : "text-emerald-400"}`}>
-                <Droplet size={11} className="shrink-0" />
-                <span className="min-w-0 break-words">{humanizeStockText(textoEstoquePrincipal)}</span>
-              </span>
-            </div>
+            <MedicationOperationalStrip today={todayStatus}
+              stockLabel={humanizeStockText(textoEstoquePrincipal)}
+              stockDetail={textoEstoqueSecundario || estoqueStatus}
+              stockTone={isEstoqueZerado?"empty":isEstoqueCritico?"low":"known"}
+              doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1
                 Ações rápidas ficam junto da dose, antes do painel operacional.
