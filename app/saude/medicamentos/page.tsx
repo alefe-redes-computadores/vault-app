@@ -98,6 +98,7 @@ import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContex
 import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGroup";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
+import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
 
 type MedicationListFilter =
   | "todos"
@@ -1028,12 +1029,18 @@ export default function MedicamentosListPage() {
       const careDecision = careDecisionsByMedication.get(med.id!) ?? decideMedicationCarePath({ medication: med, renewals: [], today: hojeString, needsPrescription: false, needsStock: false });
       const brainCareItem = brainCareByMedication.get(med.id!);
       const supplyRoute = supplyRouteByMedication.get(med.id!);
-      const brainAction = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason } : null;
+      // V299: preservar prioridade Brain, exceto contradicao com aquisicao/retirada comprovada.
+      const brainSuggestion = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare")
+        ? { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason }
+        : null;
+      const brainAction = brainSuggestion
+        ? resolveMedicationCardAction(careDecision, brainSuggestion, null)
+        : null;
       const careAction = brainAction ?? (careDecision.stage !== "stable"
         ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
         : accessAction);
       const carePresentation = medicationCarePresentation(careDecision, insight?.urgencia);
-      const careActionClass = brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : brainCareItem?.lane === "prepare" ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300" : carePresentation.actionClass;
+      const careActionClass = careAction === brainSuggestion && brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : careAction === brainSuggestion && brainCareItem?.lane === "prepare" ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300" : carePresentation.actionClass;
 
       // VAULT_V318_CONTEXTUAL_ACTION: visual text only; never reinterpret the care decision.
       const contextualActionLabel = careAction
@@ -1154,11 +1161,11 @@ export default function MedicamentosListPage() {
                   </span>
                 )}
               </div>
-              <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+              <div aria-label="Ações do medicamento" className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 border-t border-surface-border/25 pt-1.5">
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-9 max-w-full items-center justify-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-2.5 py-1 text-[11px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
@@ -1182,7 +1189,7 @@ export default function MedicamentosListPage() {
                       trigger("vibrate");
                       setQuickDoseMedId(med.id!);
                     }}
-                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border px-2 text-[10px] font-black transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
+                    className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border px-2.5 text-[11px] font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
                     aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
                   >
                     <Zap size={12} fill="currentColor" />
@@ -1437,7 +1444,7 @@ export default function MedicamentosListPage() {
                   {label}
                 </button>
               ))}
-              <details className="group min-w-0 flex-1 basis-full sm:basis-auto" open={!["todos", "atencao", "sos"].includes(medicationFilter)}>
+              <details className="group min-w-[110px] flex-1 basis-auto" open={!["todos", "atencao", "sos"].includes(medicationFilter)}>
                 <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                   <span>Mais filtros{!["todos", "atencao", "sos"].includes(medicationFilter) ? " · selecionado" : ""}</span>
                   <span aria-hidden="true" className="text-ice">▾</span>

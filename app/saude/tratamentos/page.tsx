@@ -717,6 +717,8 @@ function TratamentoListContent() {
           )}
 
           <ListFilters
+            title="Filtrar tratamentos"
+            activeCount={filtroStatus === "todos" ? 0 : 1}
             onClear={
               hasFilters
                 ? handleClearFilters

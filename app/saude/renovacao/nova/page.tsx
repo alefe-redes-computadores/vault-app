@@ -4,6 +4,7 @@ import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRetiradas} from "@/hooks/useRetiradas";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {MedicationEventBoundary} from "@/components/saude/MedicationEventBoundary";
+import { MedicationAcquisitionQuantityGuide } from "@/components/saude/MedicationAcquisitionQuantityGuide";
 
 import {
   Suspense,
@@ -2524,6 +2525,7 @@ function NovaRenovacaoContent() {
                   }
                 />
 
+                <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
                 <p className="mt-1.5 text-[11px] text-ink-muted">
                   Se informada, essa quantidade será adicionada ao saldo atual do medicamento.
                 </p>
@@ -2696,6 +2698,7 @@ function NovaRenovacaoContent() {
                   }
                 />
 
+                <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
                 <p className="mt-1.5 text-[11px] text-ink-muted">
                   Se informada, essa quantidade será adicionada ao saldo atual do medicamento.
                 </p>
