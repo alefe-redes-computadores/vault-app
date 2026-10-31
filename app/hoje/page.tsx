@@ -2237,17 +2237,9 @@ export default function HojePage() {
             </button>
 
             <div className="min-w-0 flex-1 rounded-xl border border-surface-border/40 bg-surface-raised/70 px-3 py-2 text-center">
-              <p className="truncate text-[10px] font-semibold capitalize text-ink-primary">
-                {
-                  dataSelecionadaLabel
-                }
-              </p>
+              <p className="truncate text-[10px] font-semibold text-ink-primary">Navegar por data</p>
 
-              <p className="mt-0.5 font-mono text-[8px] text-ink-faint">
-                {
-                  dataSelecionadaDescricao
-                }
-              </p>
+              <p className="mt-0.5 font-mono text-[8px] text-ink-faint">{isHoje ? "Hoje" : dataSelecionadaDescricao}</p>
             </div>
 
             <button
@@ -2341,8 +2333,9 @@ export default function HojePage() {
           </div>
 
           {/* VAULT_TODAY_FILTERS_V97 */}
-          <div className="mt-2 -mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max items-center gap-1.5">
+          <div className="mt-2 -mx-1 px-1 pb-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="button" aria-pressed={filtroStatus === "todos"} onClick={() => {trigger("vibrate");setFiltroStatus("todos");}} className={`rounded-full border px-2.5 py-1.5 text-[10px] font-bold ${filtroStatus === "todos" ? "border-ice/40 bg-ice/10 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}>Todas</button>
               <button
                 type="button"
                 onClick={() => {
@@ -2391,7 +2384,9 @@ export default function HojePage() {
                   Ignoradas · {totalIgnoradas}
                 </button>
               )}
-              <span className="mx-0.5 h-5 w-px shrink-0 bg-surface-border/40" />
+              <details className="group w-full rounded-xl border border-surface-border/40 bg-surface/40 px-2.5 py-1.5">
+                <summary className="flex min-h-8 cursor-pointer items-center justify-between text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Período {filtroPeriodo !== "todos" ? `· ${filtroPeriodo === "manha" ? "Manhã" : filtroPeriodo === "tarde" ? "Tarde" : "Noite"}` : "· todos"}<span aria-hidden="true">▾</span></summary>
+                <div className="mt-2 flex flex-wrap gap-1.5">
               {([
                 ["manha", "Manhã"],
                 ["tarde", "Tarde"],
@@ -2413,6 +2408,8 @@ export default function HojePage() {
                   {label}
                 </button>
               ))}
+                </div>
+              </details>
               {hasFiltrosAtivos && (
                 <button
                   type="button"
@@ -2430,7 +2427,7 @@ export default function HojePage() {
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-3 px-4 pt-3">
-          {isHoje ? <ClinicalSectionNav label="Áreas de Hoje" layout="grid" items={[{id:"hoje-agora",label:"Agora",icon:<Activity size={14}/>},{id:"hoje-agenda",label:"Agenda",icon:<Bell size={14}/>,badge:remindersDoDia.length},{id:"hoje-doses",label:"Doses",icon:<Pill size={14}/>,badge:totalPendentes},{id:"hoje-diario",label:"Diário",icon:<ListChecks size={14}/>},{id:"hoje-mes",label:"Mês",icon:<Calendar size={14}/>}]} /> : null}
+          {isHoje ? <ClinicalSectionNav label="Áreas de Hoje" layout="grid" density="compact" items={[{id:"hoje-agora",label:"Agora",icon:<Activity size={14}/>},{id:"hoje-agenda",label:"Agenda",icon:<Bell size={14}/>,badge:remindersDoDia.length},{id:"hoje-doses",label:"Doses",icon:<Pill size={14}/>,badge:totalPendentes},{id:"hoje-diario",label:"Diário",icon:<ListChecks size={14}/>},{id:"hoje-mes",label:"Mês",icon:<Calendar size={14}/>}]} /> : null}
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
           {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}

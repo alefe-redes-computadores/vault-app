@@ -126,7 +126,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // but no longer reads as a sphere stacked over a cylinder.
     // V194: o volume craniano fica mais estreito na frente e mais profundo de perfil;
     // o rosto ganha leitura humana sem aumentar a contagem de malhas.
-    oval(materials.skin,0,2.825,-.016,[.188,.268,.184]);
+    // P14: crânio e mandíbula com transição de perfil mais natural, usando a malha já existente.
+    oval(materials.skin,0,2.825,-.016,[.186,.268,.186]);
     const jawShape=new THREE.Shape();
     jawShape.moveTo(-.153,.087);jawShape.lineTo(.153,.087);jawShape.lineTo(.128,-.045);jawShape.lineTo(.066,-.111);jawShape.lineTo(0,-.132);jawShape.lineTo(-.066,-.111);jawShape.lineTo(-.128,-.045);jawShape.closePath();
     const jawGeometry=new THREE.ExtrudeGeometry(jawShape,{depth:.166,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});jawGeometry.translate(0,0,-.083);
@@ -139,10 +140,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // têmpora e mandíbula com a mesma contagem de malhas e sem custo por quadro.
       const outerEar=mesh(taperedBox(.038,.048,.091,.044),materials.skin,sign*.202,2.77,.004);outerEar.rotation.z=-sign*.07;outerEar.raycast=()=>{};
       const earRim=mesh(taperedBox(.013,.019,.054,.021),materials.skinShade,sign*.205,2.77,.036);earRim.rotation.z=-sign*.06;earRim.raycast=()=>{};
-      const cheekbone=mesh(new THREE.CapsuleGeometry(.006,.053,3,8),materials.skinShade,sign*.101,2.752,.197);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
+      const cheekbone=mesh(new THREE.CapsuleGeometry(.0055,.053,3,8),materials.skinShade,sign*.101,2.752,.197);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
       const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.dark,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
-    const chin=oval(materials.skin,0,2.548,.056,[.073,.038,.069]);chin.rotation.x=.08;chin.raycast=()=>{};
+    const chin=oval(materials.skin,0,2.548,.056,[.070,.034,.067]);chin.rotation.x=.08;chin.raycast=()=>{};
     // V208: expression controls reuse the existing brow and eyelid meshes. This
     // gives the face a readable mood without a facial animation loop.
     const expressionBrows: Array<{object:THREE.Mesh;sign:number}> = [];
@@ -167,7 +168,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       expressionLids.push({object:upperLid,sign}); expressionLidScaleY.set(upperLid,upperLid.scale.y);
       const lowerLid=mesh(new THREE.CapsuleGeometry(.003,.051,2,7),materials.skinShade,sign*.083,2.807,.226);lowerLid.rotation.z=Math.PI/2;lowerLid.raycast=()=>{};
     }
-    const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.08;noseBridge.raycast=()=>{};
+    const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.06;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
     const noseTip=oval(materials.skin,0,2.727,.231,[.027,.018,.023]);noseTip.raycast=()=>{};
     for(const sign of [-1,1]){

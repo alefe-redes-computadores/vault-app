@@ -32,7 +32,7 @@ export const HomeQuickMetrics = memo(function HomeQuickMetrics({
     {metrics.map(({key,label,value,Icon,accent,action}, index) => (
       <button key={key} type="button" onClick={action}
         aria-label={`${label}: ${value}. ${key === "pendentes" ? "Abrir revisão de doses" : "Abrir seção"}`}
-        className={`flex min-h-[67px] min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-center transition-colors active:bg-surface-raised/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${index === 0
+        className={`flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-center transition-colors active:bg-surface-raised/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${index === 0
           ? "border-r border-b border-surface-border/40 min-[380px]:border-b-0"
           : index === 1
             ? "border-b border-surface-border/40 min-[380px]:border-b-0 min-[380px]:border-r"

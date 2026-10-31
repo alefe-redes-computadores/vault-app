@@ -33,6 +33,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Pill size={21}/></span>
           <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</span></span><ChevronRight size={17} className="text-emerald-300"/>
         </button>
+        <div className="col-span-2"><ClinicalDisclosure id="home-acessos-medicamentos" title="Retiradas e fornecimento" description="SUS, compras, documentos e histórico" icon={<Store size={18}/>}>
+          {() => <div className="space-y-2">
         <button type="button" onClick={() => go("/saude/retiradas")} className="col-span-2 flex items-center gap-3 rounded-[20px] border border-amber-400/20 bg-amber-400/[0.055] px-4 py-3 text-left">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/12 text-amber-400"><Store size={17}/></span>
           <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Retiradas de medicamentos</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Programações, locais e histórico</span></span><ChevronRight size={15} className="text-amber-400"/>
@@ -40,6 +42,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <button type="button" onClick={() => go("/saude/fornecimento")} className="col-span-2 flex min-h-[64px] items-center gap-3 rounded-[20px] border border-surface-border bg-surface px-4 py-3 text-left">
           <FolderHeart size={20} className="shrink-0 text-violet-300"/><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Fornecimento SUS e documentos</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Processos, autorizações e renovação</span></span><ChevronRight size={15} className="text-ink-muted"/>
         </button>
+          </div>}
+        </ClinicalDisclosure></div>
       </div>
 
       <ClinicalDisclosure id="home-outras-areas" title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>}>

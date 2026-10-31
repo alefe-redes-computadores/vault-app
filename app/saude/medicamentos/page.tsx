@@ -97,6 +97,7 @@ import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-vis
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGroup";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
 import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
 
@@ -1467,7 +1468,9 @@ export default function MedicamentosListPage() {
 
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">
-          <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} onNavigate={(href)=>router.push(href)}/>
+          <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={medsPrioridade.length > 0}>
+            {() => <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} onNavigate={(href)=>router.push(href)}/>}
+          </ClinicalDisclosure>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
             <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">

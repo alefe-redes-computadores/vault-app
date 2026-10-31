@@ -3023,7 +3023,7 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
-          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" items={[
+          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" density="compact" items={[
             {id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},
             ...(hasRoutineSection?[{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>}]:[]),
             {id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},
@@ -4961,7 +4961,8 @@ function MedicamentoDetalhesContent() {
 
           {renovacoes.length >
             0 && (
-            <section id="historico-aquisicoes" className="scroll-mt-24 space-y-3">
+            <ClinicalDisclosure id="historico-aquisicoes" title="Histórico de receitas e aquisições" description={`${renovacoes.length} registros · consultar quando necessário`} icon={<CalendarDays size={18}/>}>
+              {() => <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-ink-muted">
@@ -5197,7 +5198,8 @@ function MedicamentoDetalhesContent() {
                   )}
                 </AnimatePresence>
               </div>
-            </section>
+              </div>}
+            </ClinicalDisclosure>
           )}
         </div>
 
