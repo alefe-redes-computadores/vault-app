@@ -31,7 +31,8 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
   const posture=input.lane==="now"?"revisar agora":input.lane==="prepare"?"preparar":input.lane==="discuss"?"levar à consulta":input.lane==="observe"?"acompanhar":"próxima etapa";
   // P14 R5: reason de associação não é prova de causa; previsão não é tomada.
   const caution = reason && input.evidenceKind==="association" ? "Associação temporal não demonstra causa." :
-    reason && input.evidenceKind==="projected" ? "Projeção não confirma realização." : "";
+    reason && input.evidenceKind==="projected" ? "Projeção não confirma realização." :
+    reason && input.evidenceKind==="missing_data" ? "Dados incompletos: confirme os registros." : "";
   // P14 R6: reserve space for the safety qualifier rather than silently truncating it.
   const context=[situation||fallback,safeReason].filter(Boolean).join(" ");
   const suffix=caution ? ` ${caution}` : "";

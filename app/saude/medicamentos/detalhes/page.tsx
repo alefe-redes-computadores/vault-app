@@ -13,6 +13,7 @@ import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-c
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
+import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
 import { MedicationBestPriceLink } from "@/components/saude/MedicationBestPriceLink";
@@ -148,7 +149,6 @@ import {
 import {
   DetailInfoRow,
   SectionTitle,
-  StatCard,
 } from "@/components/detail/DetailComponents";
 
 import {
@@ -4309,58 +4309,10 @@ function MedicamentoDetalhesContent() {
             <ClinicalDisclosure id="medicamento-financeiro" title="Financeiro" description="Compras realizadas, valores informados e planejamento futuro" icon={<LineChart size={18}/> }>
               {()=><>
 
-              {renovacoesPagas.length >
-              0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <StatCard
-                    icon={
-                      <LineChart
-                        size={
-                          14
-                        }
-                      />
-                    }
-                    label="Compras registradas"
-                    value={`R$ ${custoHistoricoRenovacoes.toFixed(
-                      2
-                    )}`}
-                    description={`${renovacoesPagas.length} aquisição(ões) pagas`}
-                  />
-
-                  <StatCard
-                    icon={
-                      <DollarSign
-                        size={
-                          14
-                        }
-                      />
-                    }
-                    label="Preço médio"
-                    value={`R$ ${precoMedioRenovacoes.toFixed(
-                      2
-                    )}`}
-                    description="Média das aquisições registradas"
-                  />
-                </div>
-              ) : (
-                <StatCard
-                  icon={
-                    <DollarSign
-                      size={
-                        14
-                      }
-                    />
-                  }
-                  label="Valor informado"
-                  value={`R$ ${Number(
-                    med.preco ||
-                      0
-                  ).toFixed(
-                    2
-                  )}`}
-                  description="Valor de referência salvo no medicamento"
-                />
-              )}
+              {/* P15 R2: compras realizadas e médias são visuais; planejamento segue separado. */}
+              <MedicationPaidCostCards paidCount={renovacoesPagas.length}
+                paidTotal={custoHistoricoRenovacoes} paidAverage={precoMedioRenovacoes}
+                referencePrice={med.preco}/>
               {medicationCosts.planned.length > 0 && (
                 <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
                   <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Planejado · não realizado</span><strong className="text-xs text-ink-primary">{medicationCosts.plannedWithPrice ? `R$ ${medicationCosts.plannedKnownTotal.toFixed(2)}` : "Valor não informado"}</strong></div>

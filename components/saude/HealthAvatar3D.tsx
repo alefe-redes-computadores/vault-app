@@ -97,7 +97,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .81 }),
       eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
-      glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .11, depthWrite: false }),
+      // P15 R2: lentes mais discretas sem nova geometria nem efeito de pós-processamento.
+      glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .095, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .53, metalness: .01 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),

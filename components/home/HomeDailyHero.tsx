@@ -35,7 +35,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
         <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${completed}/${scheduled}` : "Sem horários"}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${completed} tomadas registradas de ${scheduled} doses previstas` : "Sem horários programados"}>
-        <div className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400 transition-[width] duration-300" style={{width:`${safeProgress}%`}} />
+        <div className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />
       </div>
     </div>
   </>;

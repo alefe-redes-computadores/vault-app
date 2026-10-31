@@ -42,7 +42,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
       </div>
       {!isFuturo && recorded > 0 && (
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-void/60" role="progressbar" aria-label="Progresso de doses registradas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safePercentage}>
-          <div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width: `${safePercentage}%` }} />
+          <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{ width: `${safePercentage}%` }} />
         </div>
       )}
     </div>
