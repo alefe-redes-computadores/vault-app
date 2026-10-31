@@ -17,7 +17,7 @@ import {
 
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { decideMedicationAlerts } from "@/lib/health-intelligence/medication-alert-policy";
-import { indexScheduledWithdrawals, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { summarizeMedicationContinuity, continuityEvidenceMessage } from "@/lib/health-intelligence/medication-continuity";
 import { decideMedicationCarePath, medicationCareStageIsPlanning, type MedicationCareStage } from "@/lib/health-intelligence/medication-care-decision";
@@ -359,7 +359,7 @@ export function buildMedicationCareOpportunities({
   const opportunities:
     MedicationCareOpportunity[] =
     [];
-  const scheduledWithdrawals = indexScheduledWithdrawals(retiradas);
+  const scheduledWithdrawals = indexScheduledWithdrawalsByOwner(retiradas);
   const renewalsByMedication = indexMedicationRenewals(renovacoes);
   const treatmentsById = indexTreatments(tratamentos);
   const today = getLocalTodayISO();
@@ -419,7 +419,8 @@ export function buildMedicationCareOpportunities({
         dosesRemaining <= 5
       );
 
-    const candidateWithdrawal = scheduledWithdrawals.get(medicamento.id) ?? null;
+    const ownerWithdrawalKey = medicationWithdrawalKey(medicamento);
+    const candidateWithdrawal = ownerWithdrawalKey ? scheduledWithdrawals.get(ownerWithdrawalKey) ?? null : null;
     const decision = decideMedicationAlerts({medication:medicamento,withdrawals:candidateWithdrawal?[candidateWithdrawal]:[],today});
     const scheduledWithdrawal = decision.withdrawal;
     const overdueWithdrawal = decision.withdrawalOverdue;

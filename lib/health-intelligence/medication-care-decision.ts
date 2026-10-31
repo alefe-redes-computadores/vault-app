@@ -109,7 +109,12 @@ export function decideMedicationCarePath(input: {
   const detail = `/saude/medicamentos/detalhes?id=${encodeURIComponent(id)}`;
   const acquisition = `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(id)}&mode=acquisition&return_to=${encodeURIComponent(detail)}`;
   const prescription = `/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(id)}&return_to=${encodeURIComponent(detail)}`;
-  const withdrawal = input.withdrawal && input.withdrawal.status === "agendada" ? input.withdrawal : null;
+  // A withdrawal from another person must never hide the correct next step.
+  const withdrawal = input.withdrawal && input.withdrawal.status === "agendada" &&
+    input.withdrawal.medicamento_id === id &&
+    input.withdrawal.user_id === medication.user_id &&
+    input.withdrawal.person_id === medication.person_id
+    ? input.withdrawal : null;
   const journey = buildMedicationJourneySnapshot({
     medication,
     renewals: input.renewals,

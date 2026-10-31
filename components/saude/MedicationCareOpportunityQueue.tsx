@@ -44,6 +44,17 @@ export function MedicationCareOpportunityQueue({ items, onNavigate }: Props) {
                 {item.actionLabel}
               </button>
             </div>
+            {item.evidence.length > 0 && (
+              <details className="border-t border-surface-border/30 px-3 py-1.5">
+                <summary className="min-h-9 cursor-pointer py-2 text-[10px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Por que esta ação aparece?</summary>
+                <ul className="space-y-1 pb-2 text-[10px] leading-relaxed text-ink-muted">
+                  {Array.from(new Set(item.evidence.map(value => value.trim()).filter(Boolean))).slice(0, 3).map((evidence, index) => (
+                    <li key={`${item.id}-evidence-${index}`} className="flex gap-2"><span aria-hidden="true" className="text-ice">•</span><span>{evidence}</span></li>
+                  ))}
+                </ul>
+                <p className="pb-1 text-[9px] text-ink-faint">Evidências de registros, não confirmação de tomada, compra ou retirada.</p>
+              </details>
+            )}
           </li>
         ))}
       </ul>

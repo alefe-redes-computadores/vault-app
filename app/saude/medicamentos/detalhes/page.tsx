@@ -3,7 +3,7 @@
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
-import { medicationAccessAction, scheduledWithdrawalForMedication } from "@/lib/medication-access-action";
+import { medicationAccessAction, scheduledWithdrawalForOwnedMedication } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { decideMedicationCarePath, medicationCarePresentation } from "@/lib/health-intelligence/medication-care-decision";
@@ -1526,7 +1526,7 @@ function MedicamentoDetalhesContent() {
     {
       tipoUso: med.tipo_uso,
       tipoAquisicao: med.tipo_aquisicao,
-      scheduledWithdrawalId: scheduledWithdrawalForMedication(retiradas, med.id!)?.id,
+      scheduledWithdrawalId: scheduledWithdrawalForOwnedMedication(retiradas, med)?.id,
     }
   );
 
@@ -1553,7 +1553,7 @@ function MedicamentoDetalhesContent() {
   const careDecision = decideMedicationCarePath({
     medication: med,
     renewals: renovacoes,
-    withdrawal: scheduledWithdrawalForMedication(retiradas, med.id!) ?? null,
+    withdrawal: scheduledWithdrawalForOwnedMedication(retiradas, med),
     today: hoje,
     needsPrescription: Boolean(alertaInteligente.deveRenovar && alertaInteligente.motivo === "receita"),
     needsStock: saldoRegistrado !== null && saldoRegistrado <= 5,
