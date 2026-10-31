@@ -11,7 +11,7 @@ export type AvatarDecisionBriefInput = {
   missingDocuments?: number | null;
 };
 export type AvatarDecisionBrief = {title:string; explanation:string; authority:string; posture:string};
-const clean=(value:string|null|undefined)=>typeof value==="string"?value.trim().replace(/\s+/g," ").slice(0,260):"";
+const clean=(value:string|null|undefined)=>typeof value==="string"?value.replace(/[\u0000-\u001f\u007f]/g," ").trim().replace(/\s+/g," ").slice(0,260):"";
 const count=(value:number|null|undefined)=>typeof value==="number"&&Number.isFinite(value)?Math.max(0,Math.trunc(value)):0;
 export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): AvatarDecisionBrief {
   // P14 R2: sem título registrado, o fallback respeita a etapa real; não inventa execução.

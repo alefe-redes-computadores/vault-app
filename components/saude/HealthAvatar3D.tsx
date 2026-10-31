@@ -96,7 +96,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // P14 R5: esclerótica menos brilhante, sem alteração de escala ou novas malhas.
       eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .81 }),
       eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
-      watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
+      // P15 R3: contraste de pulseira menos artificial, sem criar malhas ou renderizações.
+      watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .49, depthWrite: false }),
       // P15 R2: lentes mais discretas sem nova geometria nem efeito de pós-processamento.
       glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .095, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .53, metalness: .01 }),

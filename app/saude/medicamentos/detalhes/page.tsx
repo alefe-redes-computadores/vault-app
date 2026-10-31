@@ -13,6 +13,7 @@ import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-c
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
+import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
@@ -51,7 +52,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
-  Building2,
   Calendar,
   CalendarDays,
   Check,
@@ -71,15 +71,12 @@ import {
   Gift,
   Info,
   LineChart,
-  MapPin,
   MoreHorizontal,
   Package,
-  Phone,
   Pill,
   Plus,
   Share2,
   StickyNote,
-  Store,
   Stethoscope,
   Syringe,
   Trash2,
@@ -147,7 +144,6 @@ import {
 } from "@/components/list/ListIcon";
 
 import {
-  DetailInfoRow,
   SectionTitle,
 } from "@/components/detail/DetailComponents";
 
@@ -4334,277 +4330,16 @@ function MedicamentoDetalhesContent() {
           )}
 
           {/* ==================================================
-              REDE
+              REDE — P15 R3: relações selecionadas na página, apresentação modular.
               ================================================== */}
-
           <ClinicalDisclosure id="medicamento-rede" title="Prescrição e rede de cuidado" description="Profissionais, locais e farmácias vinculados" icon={<Stethoscope size={18}/> }>
-            {()=><>
-            <div className="space-y-2">
-              <DetailInfoRow
-                icon={
-                  <Stethoscope
-                    size={
-                      19
-                    }
-                  />
-                }
-                iconClassName="bg-ice/10 text-ice"
-                label="Médico Prescritor"
-                action={medico?.id ? (
-                  <button type="button" onClick={() => router.push(`/saude/medicos/detalhes?id=${medico.id}`)} aria-label="Abrir detalhes do médico" className="flex h-10 w-10 items-center justify-center rounded-xl bg-ice/10 text-ice active:scale-95">
-                    <ChevronRight size={17} />
-                  </button>
-                ) : undefined}
-              >
-                <p className="truncate text-sm font-bold text-ink-primary">
-                  {medico?.nome ||
-                    med.medico ||
-                    "Não informado"}
-                </p>
-
-                {outrosMedsDesteMedico.length >
-                  0 && (
-                  <span className="mt-1 inline-block rounded-md bg-ice/10 px-2 py-0.5 text-[9px] font-medium text-ice">
-                    Também vinculado a{" "}
-                    {
-                      outrosMedsDesteMedico.length
-                    }{" "}
-                    outro
-                    {outrosMedsDesteMedico.length ===
-                    1
-                      ? ""
-                      : "s"}{" "}
-                    medicamento
-                    {outrosMedsDesteMedico.length ===
-                    1
-                      ? ""
-                      : "s"}{" "}
-                    desta pessoa
-                  </span>
-                )}
-              </DetailInfoRow>
-
-              {hospital && (
-                <DetailInfoRow
-                  icon={
-                    <Building2
-                      size={
-                        19
-                      }
-                    />
-                  }
-                  iconClassName="bg-violet-400/10 text-violet-400"
-                  label="Hospital"
-                  action={
-                    <>
-                    <button type="button" onClick={() => router.push(`/saude/hospitais/detalhes?id=${hospital.id}`)} aria-label="Abrir detalhes do hospital" className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400 active:scale-95">
-                      <ChevronRight size={17} />
-                    </button>
-                    {hospital.endereco ? (
-                      <button
-                        type="button"
-                        onClick={
-                          () =>
-                            abrirNoMapa(
-                              hospital.endereco
-                            )
-                        }
-                        aria-label="Abrir hospital no mapa"
-                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400 transition-all active:scale-95"
-                      >
-                        <MapPin
-                          size={
-                            17
-                          }
-                        />
-                      </button>
-                    ) : null}
-                    </>
-                  }
-                >
-                  <p className="truncate text-sm font-bold text-ink-primary">
-                    {
-                      hospital.nome
-                    }
-                  </p>
-
-                  {hospital.endereco && (
-                    <p className="mt-0.5 truncate text-[11px] text-ink-muted">
-                      {
-                        hospital.endereco
-                      }
-                    </p>
-                  )}
-                </DetailInfoRow>
-              )}
-
-              {local && (
-                <DetailInfoRow
-                  icon={
-                    <MapPin
-                      size={
-                        19
-                      }
-                    />
-                  }
-                  iconClassName="bg-emerald-400/10 text-emerald-400"
-                  label="Local de Saúde"
-                  action={
-                    <>
-                    <button type="button" onClick={() => router.push(`/saude/locais/detalhes?id=${local.id}`)} aria-label="Abrir detalhes do local" className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400 active:scale-95">
-                      <ChevronRight size={17} />
-                    </button>
-                    {local.endereco ? (
-                      <button
-                        type="button"
-                        onClick={
-                          () =>
-                            abrirNoMapa(
-                              local.endereco
-                            )
-                        }
-                        aria-label="Abrir local no mapa"
-                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400 transition-all active:scale-95"
-                      >
-                        <MapPin
-                          size={
-                            17
-                          }
-                        />
-                      </button>
-                    ) : null}
-                    </>
-                  }
-                >
-                  <p className="truncate text-sm font-bold text-ink-primary">
-                    {
-                      local.nome
-                    }
-                  </p>
-
-                  <p className="mt-0.5 truncate text-[11px] text-ink-muted">
-                    {local.tipo ||
-                      "Local de saúde"}
-                  </p>
-                </DetailInfoRow>
-              )}
-
-              {(farmacia ||
-                med.farmacia) && (
-                <DetailInfoRow
-                  icon={
-                    <Store
-                      size={
-                        19
-                      }
-                    />
-                  }
-                  iconClassName="bg-amber-400/10 text-amber-400"
-                  label="Farmácia Vinculada"
-                  action={
-                    <>
-                      {farmacia?.id && (
-                        <button type="button" onClick={() => router.push(`/saude/farmacias/detalhes?id=${farmacia.id}`)} aria-label="Abrir detalhes da farmácia" className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 active:scale-95">
-                          <ChevronRight size={17} />
-                        </button>
-                      )}
-                      {farmacia?.telefone && (
-                        <button
-                          type="button"
-                          onClick={
-                            () =>
-                              ligar(
-                                farmacia.telefone
-                              )
-                          }
-                          aria-label="Ligar para farmácia"
-                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 transition-all active:scale-95"
-                        >
-                          <Phone
-                            size={
-                              17
-                            }
-                          />
-                        </button>
-                      )}
-
-                      {farmacia?.endereco && (
-                        <button
-                          type="button"
-                          onClick={
-                            () =>
-                              abrirNoMapa(
-                                farmacia.endereco
-                              )
-                          }
-                          aria-label="Abrir farmácia no mapa"
-                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 transition-all active:scale-95"
-                        >
-                          <MapPin
-                            size={
-                              17
-                            }
-                          />
-                        </button>
-                      )}
-                    </>
-                  }
-                >
-                  <p className="truncate text-sm font-bold text-ink-primary">
-                    {farmacia?.nome ||
-                      med.farmacia}
-                  </p>
-
-                  {farmacia?.endereco && (
-                    <p className="mt-0.5 truncate text-[11px] text-ink-muted">
-                      {
-                        farmacia.endereco
-                      }
-                    </p>
-                  )}
-                </DetailInfoRow>
-              )}
-
-              {ultimaRenovacao &&
-                ultimaRenovacaoSemCusto && (
-                  <div className="flex items-start gap-3 rounded-[22px] border border-emerald-500/30 bg-emerald-500/10 p-4">
-                    <Gift
-                      size={
-                        17
-                      }
-                      className="mt-0.5 shrink-0 text-emerald-400"
-                    />
-
-                    <div className="text-xs">
-                      <p className="font-semibold text-emerald-400">
-                        Última aquisição registrada via SUS / sem custo
-                      </p>
-
-                      {ultimaRenovacao.data_proxima_retirada && (
-                        <p className="mt-1 text-ink-muted">
-                          Próxima retirada informada:{" "}
-                          {formatDate(
-                            ultimaRenovacao.data_proxima_retirada
-                          )}
-                        </p>
-                      )}
-
-                      {ultimaRenovacao.exige_nova_receita && (
-                        <p className="mt-1 flex items-center gap-1 text-amber-400">
-                          <AlertCircle
-                            size={
-                              12
-                            }
-                          />
-
-                          Registro indica necessidade de nova receita.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-            </div>
-            </>}
+            {() => <MedicationCareNetworkDetails
+              doctor={{id:medico?.id,name:medico?.nome || med.medico || "Não informado",otherMedicationCount:outrosMedsDesteMedico.length}}
+              hospital={hospital ? {id:hospital.id,name:hospital.nome,address:hospital.endereco,phone:hospital.telefone} : null}
+              location={local ? {id:local.id,name:local.nome,address:local.endereco,phone:local.telefone,kind:local.tipo} : null}
+              pharmacy={farmacia || med.farmacia ? {id:farmacia?.id,name:farmacia?.nome || med.farmacia || "Não informado",address:farmacia?.endereco,phone:farmacia?.telefone} : null}
+              latestPublicAcquisition={ultimaRenovacao && ultimaRenovacaoSemCusto ? {nextWithdrawalDate:ultimaRenovacao.data_proxima_retirada,needsPrescription:ultimaRenovacao.exige_nova_receita} : null}
+              onNavigate={href=>router.push(href)} onMap={abrirNoMapa} onCall={ligar} formatDay={formatDate}/>}
           </ClinicalDisclosure>
 
           {/* ==================================================
