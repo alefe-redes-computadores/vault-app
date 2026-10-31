@@ -2,6 +2,7 @@
 import { spawnSync, execFileSync } from "node:child_process";
 
 const contracts = [
+  "scripts/test-p15-r4-prescription-history-stability.cjs",
   "scripts/test-p15-r3-care-network-ownership-avatar-brain.cjs",
   "scripts/test-p15-r2-clinical-cost-detail-adaptive.cjs",
   "scripts/test-p15-r1-r2-v197-rescue.cjs",

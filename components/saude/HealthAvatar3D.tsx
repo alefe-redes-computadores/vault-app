@@ -74,7 +74,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const stageMaterial=new THREE.MeshStandardMaterial({color:0x16372f,transparent:true,opacity:.34,roughness:.72,metalness:.12,depthWrite:false});
     const stage=new THREE.Mesh(new THREE.BoxGeometry(1.18,.025,.68),stageMaterial);stage.position.set(0,.075,.015);scene.add(stage);
     // P14 R3: iluminação do palco menos neon; sem mudanças de geometria.
-    const stageRingMaterial=new THREE.MeshBasicMaterial({color:0x89f3d4,transparent:true,opacity:.12,depthWrite:false});
+    // P15 R4: reflexo do palco menos dominante no modo escuro; sem malhas, luzes ou loop adicional.
+    const stageRingMaterial=new THREE.MeshBasicMaterial({color:0x89f3d4,transparent:true,opacity:.10,depthWrite:false});
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
       // P8: pele e olhos menos plastificados, sem geometria, luz ou GPU extras.

@@ -14,6 +14,8 @@ import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurch
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
 import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
+import { MedicationPrescriptionCard } from "@/components/saude/MedicationPrescriptionCard";
+import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
@@ -4383,136 +4385,18 @@ function MedicamentoDetalhesContent() {
               }
             />
 
-            <div className="rounded-[20px] border border-surface-border bg-surface p-3.5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-ink-primary">
-                    <FileText
-                      size={
-                        14
-                      }
-                    />
-
-                    {
-                      tipoReceitaLabel
-                    }
-                  </span>
-
-                  {receitaBadge && (
-                    <span
-                      className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${receitaBadge.colorClass}`}
-                    >
-                      {
-                        receitaBadge.label
-                      }
-                    </span>
-                  )}
-                </div>
-
-                {!med.data_receita ? (
-                  <span className="rounded-full bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase text-ink-muted">
-                    Sem emissão
-                  </span>
-                ) : !validadeReceitaAtual.dataValidade ? (
-                  <span className="rounded-full bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase text-ink-muted">
-                    Sem prazo calculado
-                  </span>
-                ) : validadeReceitaAtual.vencida ? (
-                  <span className="rounded-full bg-coral/10 px-2 py-1 text-[9px] font-bold uppercase text-coral">Referência vencida</span>
-                ) : validadeReceitaAtual.status === "vence_hoje" ? (
-                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-bold uppercase text-amber-300">Vence hoje</span>
-                ) : (
-                  <span className="rounded-full bg-emerald-500 px-2 py-1 text-[9px] font-bold uppercase text-void">
-                    Referência vigente
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-surface-border/50 pt-3">
-                <div>
-                  <p className="text-[9px] font-bold uppercase text-ink-muted">
-                    Emissão
-                  </p>
-
-                  <p className="mt-0.5 text-sm font-bold text-ink-primary">
-                    {formatDate(
-                      med.data_receita
-                    )}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-[9px] font-bold uppercase text-ink-muted">
-                    Validade de referência
-                  </p>
-
-                  <p className="mt-0.5 text-sm font-bold text-ink-primary">
-                    {formatDate(
-                      validadeReceitaAtual.dataValidade
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface-raised/60 px-3 py-2.5">
-                <div>
-                  <p className="text-[9px] font-bold uppercase text-ink-muted">Próxima solicitação planejada</p>
-                  <p className="mt-0.5 text-xs font-semibold text-ink-primary">
-                    {formatDate(med.lembrete_receita_modo === "data_personalizada" && med.lembrete_receita_data
-                      ? med.lembrete_receita_data : med.proxima_renovacao)}
-                  </p>
-                </div>
-                <button type="button" onClick={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&mode=plan&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)} className="min-h-9 rounded-xl border border-violet-400/20 bg-violet-400/[0.06] px-3 text-[10px] font-semibold text-violet-200">Ajustar data</button>
-              </div>
-
-              <div className="mt-4 space-y-2 border-t border-surface-border/50 pt-3">
-                {documento?.attachments &&
-                documento.attachments.length >
-                  0 ? (
-                  <button
-                    type="button"
-                    onClick={
-                      abrirAnexo
-                    }
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2.5 text-xs font-bold text-ice transition-colors hover:bg-ice/15"
-                  >
-                    <ExternalLink
-                      size={
-                        14
-                      }
-                    />
-
-                    Ver anexo da receita
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={
-                      () =>
-                        router.push(
-                          `/saude/medicamentos/editar?id=${id}&intent=rede`
-                        )
-                    }
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2.5 text-xs font-bold text-ice transition-colors hover:bg-ice/15"
-                  >
-                    <Plus
-                      size={
-                        14
-                      }
-                    />
-
-                    Vincular receita
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
-                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 text-xs font-bold text-emerald-200"
-                >
-                  <FileText size={14} /> Registrar receita recebida
-                </button>
-              </div>
-            </div>
+            <MedicationPrescriptionCard
+              typeLabel={tipoReceitaLabel} badge={receitaBadge}
+              status={!med.data_receita ? "missing" : !validadeReceitaAtual.dataValidade ? "undetermined" : validadeReceitaAtual.vencida ? "expired" : validadeReceitaAtual.status === "vence_hoje" ? "due_today" : "current"}
+              issuedAt={formatDate(med.data_receita)} expiresAt={formatDate(validadeReceitaAtual.dataValidade)}
+              nextAt={formatDate(med.lembrete_receita_modo === "data_personalizada" && med.lembrete_receita_data ? med.lembrete_receita_data : med.proxima_renovacao)}
+              validityLabel="Validade de referência" nextLabel="Próxima solicitação planejada"
+              hasAttachment={Boolean(documento?.attachments?.length)}
+              onPlan={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&mode=plan&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
+              onAttachment={abrirAnexo}
+              onLink={() => router.push(`/saude/medicamentos/editar?id=${id}&intent=rede`)}
+              onReceived={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
+            />
           </section>
 
           {/* ==================================================
@@ -4547,7 +4431,9 @@ function MedicamentoDetalhesContent() {
                             !previous
                         )
                     }
-                    className="flex items-center gap-1 rounded-lg bg-ice/10 px-2.5 py-1.5 text-[9px] font-bold text-ice"
+                    aria-expanded={showAllRenovacoes}
+                    aria-controls="medicamento-historico-aquisicoes-lista"
+                    className="flex min-h-11 items-center gap-1 rounded-lg bg-ice/10 px-2.5 py-1.5 text-[9px] font-bold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
                   >
                     {showAllRenovacoes ? (
                       <>
@@ -4578,7 +4464,7 @@ function MedicamentoDetalhesContent() {
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div id="medicamento-historico-aquisicoes-lista" className="space-y-2">
                 <AnimatePresence initial={false}>
                   {displayedRenovacoes.map(
                     (
@@ -4598,161 +4484,19 @@ function MedicamentoDetalhesContent() {
                         (renovacao.tipo_aquisicao === "gratuito" || renovacao.tipo_aquisicao === "sus");
 
                       return (
-                        <motion.button
-                          type="button"
-                          onClick={() => renovacao.id && router.push(`/saude/renovacao/detalhes?id=${renovacao.id}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`)}
-                          aria-label={`Abrir ${somenteReceita ? "receita" : aquisicaoFutura ? "aquisição prevista" : "aquisição"} de ${formatDate(renovacao.data || renovacao.created_at)}`}
-                          key={
-                            renovacao.id ||
-                            index
-                          }
-                          initial={{
-                            opacity:
-                              0,
-
-                            height:
-                              0,
-                          }}
-                          animate={{
-                            opacity:
-                              1,
-
-                            height:
-                              "auto",
-                          }}
-                          exit={{
-                            opacity:
-                              0,
-
-                            height:
-                              0,
-                          }}
-                          className={`w-full rounded-[22px] border bg-surface p-3.5 text-left transition-transform active:scale-[0.99] ${
-                            semCusto
-                              ? "border-emerald-500/30 bg-emerald-500/5"
-                              : "border-surface-border"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted">
-                                <Calendar
-                                  size={
-                                    14
-                                  }
-                                />
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-ink-primary">
-                                  {formatDate(
-                                    somenteReceita ? (renovacao.data || renovacao.created_at) : renewalEventDate(renovacao)
-                                  )}
-                                </p>
-
-                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                  {nomeFarmacia && (
-                                    <span className="max-w-[180px] truncate text-[10px] text-ink-muted">
-                                      {
-                                        nomeFarmacia
-                                      }
-                                    </span>
-                                  )}
-
-                                  {somenteReceita ? (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase text-violet-300">
-                                      <FileText size={9} /> Receita
-                                    </span>
-                                  ) : aquisicaoFutura ? (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-300">
-                                      <Clock size={9} /> Aquisição prevista
-                                    </span>
-                                  ) : semCusto ? (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-emerald-400">
-                                      <Gift
-                                        size={
-                                          9
-                                        }
-                                      />
-
-                                      {renovacao.tipo_aquisicao ===
-                                      "sus"
-                                        ? "SUS"
-                                        : "Sem custo"}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-ice/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-ice">
-                                      <DollarSign
-                                        size={
-                                          9
-                                        }
-                                      />
-
-                                      Comprado
-                                    </span>
-                                  )}
-
-                                  {!somenteReceita && typeof renovacao.quantidade ===
-                                    "number" && (
-                                    <span className="rounded-full bg-surface-raised px-1.5 py-0.5 text-[8px] font-bold text-ink-muted">
-                                      Qtd.{" "}
-                                      {
-                                        formatQuantidade(
-                                          renovacao.quantidade
-                                        )
-                                      }
-                                    </span>
-                                  )}
-
-                                  {renovacao.exige_nova_receita && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400">
-                                      <AlertCircle
-                                        size={
-                                          9
-                                        }
-                                      />
-
-                                      Nova receita
-                                    </span>
-                                  )}
-
-                                  {renovacao.data_proxima_retirada && (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full bg-ice/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-ice">
-                                      <Calendar
-                                        size={
-                                          9
-                                        }
-                                      />
-
-                                      Retorno:{" "}
-                                      {formatDate(
-                                        renovacao.data_proxima_retirada
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            <p
-                              className={`shrink-0 rounded-lg px-2 py-1 font-mono text-xs font-bold ${
-                                semCusto
-                                  ? "bg-emerald-400/10 text-emerald-400"
-                                  : "bg-ice/10 text-ice"
-                              }`}
-                            >
-                              {somenteReceita
-                                ? "Receita"
-                                : aquisicaoFutura
-                                  ? "Prevista"
-                                  : semCusto
-                                    ? "R$ 0,00"
-                                    : typeof renovacao.preco === "number" && Number.isFinite(renovacao.preco)
-                                      ? `R$ ${renovacao.preco.toFixed(2)}`
-                                      : "—"}
-                            </p>
-                          </div>
-                        </motion.button>
+                        <MedicationAcquisitionHistoryCard
+                          key={renovacao.id || index}
+                          kind={somenteReceita ? ("prescription") : aquisicaoFutura ? ("planned") : semCusto ? ("public") : "private"}
+                          dateLabel={formatDate(somenteReceita ? (renovacao.data || renovacao.created_at) : renewalEventDate(renovacao))}
+                          pharmacyName={nomeFarmacia}
+                          publicKind={renovacao.tipo_aquisicao === "sus" ? "sus" : renovacao.tipo_aquisicao === "gratuito" ? "gratuito" : null}
+                          quantityLabel={typeof renovacao.quantidade === "number" ? formatQuantidade(renovacao.quantidade) : null}
+                          requiresPrescription={Boolean(renovacao.exige_nova_receita)}
+                          nextWithdrawalLabel={renovacao.data_proxima_retirada ? formatDate(renovacao.data_proxima_retirada) : null}
+                          price={typeof renovacao.preco === "number" && Number.isFinite(renovacao.preco) ? renovacao.preco : null}
+                          enabled={Boolean(renovacao.id)}
+                          onOpen={() => renovacao.id && router.push(`/saude/renovacao/detalhes?id=${encodeURIComponent(renovacao.id)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${id}`)}`)}
+                        />
                       );
                     }
                   )}
