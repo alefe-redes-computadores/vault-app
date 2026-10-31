@@ -12,7 +12,7 @@ const clinicalDisclosure = read("components/saude/ClinicalDisclosure.tsx");
 assert(medications.includes("V197: uma única passagem alimenta resumo"));
 assert(medications.includes("const totalAtivos = statsProgresso.ativos"));
 assert(!medications.includes("const continuos =\n          listaBase.filter"));
-assert(medications.includes("V334_VISIBLE_MEDICATION_FILTERS") && medications.includes("grid grid-cols-3 gap-1.5 min-[430px]:grid-cols-4") && medications.includes("aria-pressed={medicationFilter === value}") && medications.includes("selectMedicationFilter(value)"), "V197: filtros de medicamentos visíveis, com seleção e navegação preservadas");
+assert(medications.includes("V334_VISIBLE_MEDICATION_FILTERS") && medications.includes("aria-pressed={medicationFilter === value}") && medications.includes("selectMedicationFilter(value)") && medications.includes("Mais filtros") && medications.includes("Outras categorias de medicamentos") && medications.includes("aria-pressed={medicationFilter===value}") && ["Todos", "Atenção", "Contínuos", "Por período", "SOS", "Controlados", "Encerrados"].every(label => medications.includes(`"${label}"`)), "V197: sete filtros acessíveis, seleção e navegação preservadas");
 
 assert(treatments.includes("V197: o comando clínico é calculado em uma única passagem"));
 assert(!treatments.includes("listaEnriquecida.reduce((total, item)"));

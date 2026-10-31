@@ -1005,7 +1005,7 @@ export default function MedicamentosListPage() {
 
       const canQuickDose =
         !isSuspenso &&
-        !isEstoqueZerado;
+        (!isEstoqueZerado || isSOS);
 
       const quickDoseLabel =
         isSOS
@@ -1183,10 +1183,11 @@ export default function MedicamentosListPage() {
                       setQuickDoseMedId(med.id!);
                     }}
                     className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border px-2 text-[10px] font-black transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
-                    aria-label={`${quickDoseLabel} ${med.nome}`}
+                    aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
                   >
                     <Zap size={12} fill="currentColor" />
                     {quickDoseLabel}
+                    {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
                   </button>
                 ) : null}
               </div>
@@ -1412,15 +1413,11 @@ export default function MedicamentosListPage() {
         <div className="border-b border-surface-border/20 px-5 py-2.5">
           <div className="min-w-0" aria-label="Filtrar medicamentos por categoria">
             {/* V334_VISIBLE_MEDICATION_FILTERS: all categories remain discoverable without horizontal scroll. */}
-            <div className="grid grid-cols-3 gap-1.5 min-[430px]:grid-cols-4">
+            <div className="flex flex-wrap items-center gap-1.5">
               {([
                 ["todos", "Todos"],
                 ["atencao", "Atenção"],
-                ["continuos", "Contínuos"],
-                ["temporarios", "Por período"],
                 ["sos", "SOS"],
-                ["controlados", "Controlados"],
-                ["encerrados", "Encerrados"],
               ] as const).map(([value, label]) => (
                 <button
                   key={value}
@@ -1433,15 +1430,30 @@ export default function MedicamentosListPage() {
                         ? "border-amber-400/35 bg-amber-400/10 text-amber-300"
                         : value === "sos"
                           ? "border-violet-400/35 bg-violet-400/10 text-violet-300"
-                          : value === "encerrados"
-                            ? "border-ink-muted/30 bg-surface-raised text-ink-muted"
-                            : "border-ice/35 bg-ice/10 text-ice"
+                          : "border-ice/35 bg-ice/10 text-ice"
                       : "border-surface-border/40 bg-surface text-ink-muted"
                   }`}
                 >
                   {label}
                 </button>
               ))}
+              <details className="group min-w-0 flex-1 basis-full sm:basis-auto" open={!["todos", "atencao", "sos"].includes(medicationFilter)}>
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                  <span>Mais filtros{!["todos", "atencao", "sos"].includes(medicationFilter) ? " · selecionado" : ""}</span>
+                  <span aria-hidden="true" className="text-ice">▾</span>
+                </summary>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Outras categorias de medicamentos">
+                  {([[
+                    "continuos", "Contínuos"
+                  ], ["temporarios", "Por período"], ["controlados", "Controlados"], ["encerrados", "Encerrados"]] as const).map(([value,label]) => (
+                    <button key={value} type="button" aria-pressed={medicationFilter===value}
+                      onClick={() => selectMedicationFilter(value)}
+                      className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${medicationFilter===value ? "border-ice/40 bg-ice/10 text-ice" : "border-surface-border/50 bg-surface text-ink-muted"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </details>
             </div>
           </div>
         </div>
