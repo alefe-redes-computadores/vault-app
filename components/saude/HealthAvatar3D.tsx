@@ -93,11 +93,12 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
-      eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .74 }),
+      // P14 R5: esclerótica menos brilhante, sem alteração de escala ou novas malhas.
+      eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .81 }),
       eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
       glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .11, depthWrite: false }),
-      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .47, metalness: .01 }),
+      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .53, metalness: .01 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .46, metalness: .24 }),

@@ -1,11 +1,14 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 
-import { indexScheduledWithdrawals, medicationAccessAction } from "@/lib/medication-access-action";
+import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { decideMedicationCarePath, medicationCarePresentation, medicationCareStageIsPlanning, medicationCareStageNeedsAttention } from "@/lib/health-intelligence/medication-care-decision";
 import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
+import { ownedMedicationRenewals } from "@/lib/health-intelligence/medication-owner-events";
+import { hasConfirmedControlledRegime } from "@/lib/medication-intelligence/controlled-filter";
+import { MedicationListRouteLabel } from "@/components/saude/MedicationListRouteLabel";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -210,7 +213,8 @@ export default function MedicamentosListPage() {
   const healthIntelligence = useSharedHealthIntelligence();
   const { retiradas, isLoading: withdrawalsLoading } = useRetiradas();
   const { renovacoes = [], isLoading: renewalsLoading } = useRenovacoes();
-  const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawals(retiradas), [retiradas]);
+  // P14 R5: conta + pessoa + medicamento — nunca por ID isolado.
+  const scheduledWithdrawals = useMemo(() => indexScheduledWithdrawalsByOwner(retiradas), [retiradas]);
   const renewalsByMedication = useMemo(() => indexMedicationRenewals(renovacoes), [renovacoes]);
   const router =
     useRouter();
@@ -329,7 +333,7 @@ export default function MedicamentosListPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("@vault:meds_filter_v97") as MedicationListFilter | null;
-    if (saved && ["todos","atencao","continuos","sos","controlados","encerrados"].includes(saved)) {
+    if (saved && ["todos","atencao","continuos","temporarios","sos","controlados","encerrados"].includes(saved)) {
       setMedicationFilter(saved);
     }
   }, []);
@@ -407,8 +411,8 @@ export default function MedicamentosListPage() {
       if (!id || item.isSuspenso) continue;
       decisions.set(id, decideMedicationCarePath({
         medication: item.med,
-        renewals: renewalsByMedication.get(id) ?? [],
-        withdrawal: scheduledWithdrawals.get(id) ?? null,
+        renewals: ownedMedicationRenewals(renewalsByMedication.get(id) ?? [], item.med),
+        withdrawal: scheduledWithdrawals.get(medicationWithdrawalKey(item.med) ?? "") ?? null,
         today: hojeString,
         needsPrescription: Boolean(item.insight?.deveRenovar && item.insight.motivo === "receita"),
         needsStock: item.isEstoqueZerado || item.isEstoqueCritico,
@@ -459,9 +463,8 @@ export default function MedicamentosListPage() {
         if (medicationFilter === "sos") return item.isSOS;
 
         if (medicationFilter === "controlados") {
-          return Boolean(
-            regulatoryProfile?.verified
-          );
+          // P14 R5: receita comum verificada não significa medicamento controlado.
+          return hasConfirmedControlledRegime(regulatoryProfile);
         }
 
         return true;
@@ -1026,7 +1029,7 @@ export default function MedicamentosListPage() {
         ? medicationAccessAction(insight, med.id!, "/saude/medicamentos", {
             tipoUso: med.tipo_uso,
             tipoAquisicao: med.tipo_aquisicao,
-            scheduledWithdrawalId: scheduledWithdrawals.get(med.id!)?.id,
+            scheduledWithdrawalId: scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "")?.id,
           })
         : null;
       const careDecision = careDecisionsByMedication.get(med.id!) ?? decideMedicationCarePath({ medication: med, renewals: [], today: hojeString, needsPrescription: false, needsStock: false });
@@ -1152,10 +1155,8 @@ export default function MedicamentosListPage() {
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Revisar identidade</span>
                 )}
-                {supplyRoute?.mode === "hybrid" && (
-                  <span title="Origem baseada nos vínculos e aquisições registrados" className="max-w-full truncate rounded-md bg-emerald-300/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-emerald-200">
-                    {supplyRoute.labels.join(" + ")}
-                  </span>
+                {(supplyRoute?.mode === "hybrid" || supplyRoute?.mode === "private" || supplyRoute?.mode === "public") && (
+                  <MedicationListRouteLabel route={supplyRoute} label={supplyRoute.labels.join(" + ")} />
                 )}
                 {textoDose && <span title={`Dose ${textoDose}`} className="text-[10px] text-ink-muted">Dose {textoDose}</span>}
                 {careDecision.stage !== "stable" && !careAction && (

@@ -29,6 +29,8 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
     ? `${count(counts.overdue)} para decidir · ${count(counts.prepare)} para preparar · ${count(counts.unknown)} para esclarecer.`:"";
   // P14 R3: linguagem de prioridade deriva exclusivamente da lane canônica.
   const posture=input.lane==="now"?"revisar agora":input.lane==="prepare"?"preparar":input.lane==="discuss"?"levar à consulta":input.lane==="observe"?"acompanhar":"próxima etapa";
-  // P14 R4: pendências verificáveis ficam legíveis antes de explicações extensas.
-  return {title, authority, posture, explanation: [situation||fallback,safeReason].filter(Boolean).join(" ").slice(0,370)};
+  // P14 R5: reason de associação não é prova de causa; previsão não é tomada.
+  const caution = reason && input.evidenceKind==="association" ? "Associação temporal não demonstra causa." :
+    reason && input.evidenceKind==="projected" ? "Projeção não confirma realização." : "";
+  return {title, authority, posture, explanation: [situation||fallback,safeReason,caution].filter(Boolean).join(" ").slice(0,370)};
 }

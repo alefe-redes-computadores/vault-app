@@ -12,6 +12,7 @@ import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySu
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { resolveMedicationCareNavigation } from "@/lib/health-intelligence/medication-care-navigation";
@@ -3240,7 +3241,10 @@ function MedicamentoDetalhesContent() {
                   <Activity size={17}/>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
+                    <MedicationDecisionAuthority stage={careDecision.stage} />
+                  </div>
                   <h2 className="mt-1 text-sm font-bold text-ink-primary">{brainCareAction?.title || careDecision.label}</h2>
                   <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
                   {/* V332_CARE_EVIDENCE_DISCLOSURE: full evidence stays available, action stays visible. */}
@@ -3262,18 +3266,6 @@ function MedicamentoDetalhesContent() {
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
-          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>}>
-            <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
-          </ClinicalDisclosure>
-          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>}>
-            <HealthSupplyEntry medicamentoId={med.id!}/>
-          </ClinicalDisclosure>
-          {med.id && activePersonId === med.person_id && (
-            <ClinicalDisclosure id="medicamento-lembretes" title="Alertas e lembretes" description="Preferências de aviso para este medicamento" icon={<Clock size={18}/>}>
-              <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
-            </ClinicalDisclosure>
-          )}
-
           {/* ==================================================
               INTELIGÊNCIA E ATENÇÃO — V72
               A identidade essencial permanece sempre primeiro.
@@ -4351,6 +4343,20 @@ function MedicamentoDetalhesContent() {
               </p><ChevronRight size={15} className="ml-auto text-emerald-400"/>
             </button>
           )}
+
+          {/* P14 R5: rotina/estoque antes de contexto secundário (âncoras preservadas). */}
+          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>}>
+            <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
+          </ClinicalDisclosure>
+          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>}>
+            <HealthSupplyEntry medicamentoId={med.id!}/>
+          </ClinicalDisclosure>
+          {med.id && activePersonId === med.person_id && (
+            <ClinicalDisclosure id="medicamento-lembretes" title="Alertas e lembretes" description="Preferências de aviso para este medicamento" icon={<Clock size={18}/>}>
+              <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
+            </ClinicalDisclosure>
+          )}
+
 
           {/* ==================================================
               EVOLUÇÃO
