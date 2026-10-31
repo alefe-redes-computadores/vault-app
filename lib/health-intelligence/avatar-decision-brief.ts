@@ -42,6 +42,8 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
   const visible=context.slice(0,budget);
   const lastSpace=visible.lastIndexOf(" ");
   const concise=context.length>budget&&lastSpace>0?visible.slice(0,lastSpace):visible;
-  const explanation=concise.trimEnd()+suffix;
+  // P15 R5: um resumo abreviado mostra reticências, mas preserva a ressalva de segurança.
+  const shortened=concise.length<context.length;
+  const explanation=(shortened ? concise.slice(0,Math.max(0,budget-1)).trimEnd()+"…" : concise.trimEnd())+suffix;
   return {title, authority, posture, explanation};
 }

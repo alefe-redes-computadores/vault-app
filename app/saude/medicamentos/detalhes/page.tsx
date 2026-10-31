@@ -15,6 +15,8 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
 import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
 import { MedicationPrescriptionCard } from "@/components/saude/MedicationPrescriptionCard";
+import { MedicationStockOverview } from "@/components/saude/MedicationStockOverview";
+import { MedicationSuspensionSummary } from "@/components/saude/MedicationSuspensionSummary";
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
@@ -3966,194 +3968,21 @@ function MedicamentoDetalhesContent() {
               <section
                 className={`vault-deferred overflow-hidden rounded-[22px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
               >
-                <div className="rounded-[18px] bg-surface p-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-                        <Package
-                          size={
-                            14
-                          }
-                        />
-
-                        Estoque Atual
-                      </p>
-
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[8px] font-bold uppercase ${estoqueStatus.color} ${estoqueStatus.bg}`}
-                      >
-                        <EstoqueStatusIcon
-                          size={
-                            10
-                          }
-                        />
-
-                        {
-                          estoqueStatus.label
-                        }
-                      </span>
-                    </div>
-
-                    <div className="mt-1 flex flex-wrap items-baseline gap-2">
-                      <p
-                        className={`font-display text-3xl font-bold ${estoqueStatus.color}`}
-                      >
-                        {
-                          formatQuantidade(
-                            quantidadeDisponivel
-                          )
-                        }
-                      </p>
-
-                      <span className="text-sm font-medium uppercase text-ink-muted">
-                        {med.estoque_unidade_medida ||
-                          "unidade(s)"}
-                      </span>
-
-                      {estoqueEquivalenteMl !==
-                        null && (
-                        <span className="text-xs text-ink-faint">
-                          ≈{" "}
-                          {
-                            formatQuantidade(
-                              estoqueEquivalenteMl
-                            )
-                          }{" "}
-                          ml
-                        </span>
-                      )}
-                    </div>
-
-                    {estoqueNegativo &&
-                      saldoRegistrado !==
-                        null && (
-                        <div className="mt-3 flex items-start gap-2 rounded-xl border border-coral/20 bg-coral/10 p-3">
-                          <AlertTriangle
-                            size={
-                              14
-                            }
-                            className="mt-0.5 shrink-0 text-coral"
-                          />
-
-                          <p className="text-[10px] leading-relaxed text-coral/90">
-                            Os registros de uso ultrapassaram o saldo informado. O saldo interno é{" "}
-                            <b>
-                              {
-                                formatQuantidade(
-                                  saldoRegistrado
-                                )
-                              }{" "}
-                              {med.estoque_unidade_medida ||
-                                "unidade(s)"}
-                            </b>
-                            . Revise o estoque físico para reconciliar o valor.
-                          </p>
-                        </div>
-                      )}
-
-                    {!isSOS &&
-                      estoqueInfo?.diasRestantes !==
-                        null &&
-                      estoqueInfo?.diasRestantes !==
-                        undefined && (
-                        <p className="mt-2 text-xs text-ink-muted">
-                          Estimativa:{" "}
-                          <b className="text-ink-primary">
-                            {
-                              estoqueInfo.diasRestantes
-                            }{" "}
-                            dia
-                            {estoqueInfo.diasRestantes ===
-                            1
-                              ? ""
-                              : "s"}
-                          </b>{" "}
-                          na rotina configurada
-                        </p>
-                      )}
-
-                    {isSOS &&
-                      dosesDisponiveis !==
-                        null && (
-                        <p className="mt-2 text-xs text-ink-muted">
-                          Aproximadamente{" "}
-                          <b className="text-ink-primary">
-                            {
-                              formatQuantidade(
-                                dosesDisponiveis
-                              )
-                            }
-                          </b>{" "}
-                          dose
-                          {dosesDisponiveis ===
-                          1
-                            ? ""
-                            : "s"}{" "}
-                          pela configuração atual.
-                        </p>
-                      )}
-
-                    {estoqueInfo &&
-                      !estoqueInfo.estimativaDosesDisponivel &&
-                      quantidadeDisponivel >
-                        0 && (
-                        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                          O saldo está registrado, mas faltam dados para estimar quantas doses ele representa.
-                        </p>
-                      )}
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-1.5 border-t border-surface-border/50 pt-4 text-[10px] text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-                    <span>
-                      Quantidade por dose:{" "}
-                      <b className="text-ink-primary">
-                        {unidadePorDose !==
-                        null
-                          ? `${formatQuantidade(
-                              unidadePorDose
-                            )} ${
-                              med.estoque_unidade_medida ||
-                              "unidade(s)"
-                            }`
-                          : "Não configurada"}
-                      </b>
-                    </span>
-
-                    <span>
-                      Saldo informado em:{" "}
-                      <b className="text-ink-primary">
-                        {formatDate(
-                          med.estoque_data_referencia
-                        )}
-                      </b>
-                    </span>
-                  </div>
-
-                  {isGota &&
-                    (
-                      unidadeEstoque.includes(
-                        "ml"
-                      ) ||
-                      unidadeEstoque.includes(
-                        "frasco"
-                      )
-                    ) &&
-                    gotasPorMl ===
-                      null && (
-                      <div className="mt-3 flex items-start gap-2 rounded-xl bg-surface-raised p-3">
-                        <Info
-                          size={
-                            13
-                          }
-                          className="mt-0.5 shrink-0 text-ice"
-                        />
-
-                        <p className="text-[10px] leading-relaxed text-ink-muted">
-                          Gotas por ml não está configurado. O Vault não fará conversão automática entre gotas e ml.
-                        </p>
-                      </div>
-                    )}
-                </div>
+                <MedicationStockOverview
+                  statusLabel={estoqueStatus.label} statusColor={estoqueStatus.color}
+                  statusBackground={estoqueStatus.bg} statusIcon={<EstoqueStatusIcon size={10}/>}
+                  quantity={quantidadeDisponivel} unit={med.estoque_unidade_medida || "unidade(s)"}
+                  equivalentMl={estoqueEquivalenteMl}
+                  negative={estoqueNegativo} registeredBalance={saldoRegistrado}
+                  sos={isSOS} daysRemaining={estoqueInfo?.diasRestantes ?? null}
+                  dosesAvailable={dosesDisponiveis ?? null}
+                  hasStockProjection={Boolean(estoqueInfo)}
+                  doseEstimatePossible={Boolean(estoqueInfo?.estimativaDosesDisponivel)}
+                  doseQuantity={unidadePorDose}
+                  referenceDay={formatDate(med.estoque_data_referencia)}
+                  dropsConversionMissing={isGota && (unidadeEstoque.includes("ml") || unidadeEstoque.includes("frasco")) && gotasPorMl === null}
+                  formatQuantity={formatQuantidade}
+                />
               </section>
             )}
 
@@ -4175,93 +4004,17 @@ function MedicamentoDetalhesContent() {
                 title="Suspensão"
               />
 
-              <div className="space-y-3 rounded-[20px] border border-coral/20 bg-coral/5 p-4">
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-wide text-coral">
-                    Medicamento suspenso
-                  </p>
-
-                  <p className="mt-1 text-sm font-semibold text-ink-primary">
-                    {formatDate(
-                      med.data_descontinuacao
-                    )}
-                  </p>
-                </div>
-
-                {med.motivo_descontinuacao && (
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                      Motivo registrado
-                    </p>
-
-                    <p className="mt-1 text-sm leading-relaxed text-ink-primary">
-                      {
-                        med.motivo_descontinuacao
-                      }
-                    </p>
-                  </div>
-                )}
-
-                {(medicoDescontinuacao ||
-                  med.medico_descontinuacao_nome) && (
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                      Médico relacionado
-                    </p>
-
-                    <p className="mt-1 text-sm font-semibold text-ink-primary">
-                      {medicoDescontinuacao
-                        ?.nome ||
-                        med.medico_descontinuacao_nome}
-                    </p>
-                  </div>
-                )}
-
-                {medicamentoSubstituto && (
-                  <button
-                    type="button"
-                    onClick={
-                      () =>
-                        router.push(
-                          `/saude/medicamentos/detalhes?id=${medicamentoSubstituto.id}`
-                        )
-                    }
-                    className="flex w-full items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-left transition-transform active:scale-[0.99]"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-400">
-                        <ArrowRightLeft
-                          size={
-                            16
-                          }
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-emerald-400">
-                          Substituído por
-                        </p>
-
-                        <p className="truncate text-sm font-bold text-ink-primary">
-                          {
-                            medicamentoSubstituto.nome
-                          }{" "}
-                          {
-                            medicamentoSubstituto.dosagem
-                          }
-                        </p>
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      size={
-                        17
-                      }
-                      className="shrink-0 text-emerald-400"
-                    />
-                  </button>
-                )}
-              </div>
+              <MedicationSuspensionSummary
+                discontinuedAt={formatDate(med.data_descontinuacao)}
+                reason={med.motivo_descontinuacao}
+                physician={medicoDescontinuacao?.nome || med.medico_descontinuacao_nome}
+                replacement={medicamentoSubstituto ? {
+                  id:medicamentoSubstituto.id,
+                  name:medicamentoSubstituto.nome,
+                  dosage:medicamentoSubstituto.dosagem,
+                } : null}
+                onOpenReplacement={() => medicamentoSubstituto?.id && router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicamentoSubstituto.id)}`)}
+              />
             </section>
           )}
 

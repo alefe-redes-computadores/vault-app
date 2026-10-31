@@ -18,7 +18,8 @@ type Props = {
 export const HomeDailyHero = memo(function HomeDailyHero({
   eyebrow, title, description, color, completed, scheduled, progress, onOpen,
 }: Props) {
-  const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
+  // P15 R5: 0 eventos previstos não produz barra cheia ou taxa de adesão implícita.
+  const safeProgress = scheduled > 0 && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
   return <>
     <button type="button" onClick={onOpen}
       className="flex w-full items-center justify-between gap-3 px-4 pb-2 pt-4 text-left transition-colors active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
