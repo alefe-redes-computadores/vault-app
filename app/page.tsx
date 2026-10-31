@@ -1300,6 +1300,19 @@ export default function HomePage() {
   ] =
     useState(false);
 
+  // P7: abertura explícita após biometria, sem confirmar tomada automaticamente.
+  useEffect(() => {
+    const open = () => setModalPendenciasAberto(true);
+    window.addEventListener("vault:open-pending-doses", open);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("open") === "pending-doses") {
+      open();
+      url.searchParams.delete("open");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
+    return () => window.removeEventListener("vault:open-pending-doses", open);
+  }, []);
+
   const [
     mostrarTodosAlertas,
     setMostrarTodosAlertas,

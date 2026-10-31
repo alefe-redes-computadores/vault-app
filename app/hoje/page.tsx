@@ -147,6 +147,7 @@ export default function HojePage() {
   const healthIntelligence=useSharedHealthIntelligence({includeAudit:false});
   const router = useRouter();
   const searchParams = useSearchParams();
+  const focusDoseQueue = searchParams.get("focus") === "doses";
 
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
@@ -1245,6 +1246,17 @@ export default function HojePage() {
   // inflam nem derrubam artificialmente o progresso da rotina.
   const metricItems = doses.filter(dose => !dose.isExpectedUnconfirmed && !dose.isDataConflict && !dose.isAvulsa && !dose.isSintoma);
   const { totalTomadas, totalPendentes, totalEsperadasSemConfirmacao, totalIgnoradas } = useMemo(() => summarizeTimeline(doses), [doses]);
+
+  // P7: um lembrete de dose navega até o grupo real, após renderização dos dados.
+  useEffect(() => {
+    if (!focusDoseQueue || !isHoje) return;
+    const focus = () => document.getElementById("hoje-doses")?.scrollIntoView({
+      behavior: "smooth", block: "start",
+    });
+    const frame = window.requestAnimationFrame(focus);
+    const late = window.setTimeout(focus, 450);
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(late); };
+  }, [focusDoseQueue, isHoje, totalPendentes]);
 
   const totalRegistros =
     metricItems.length;

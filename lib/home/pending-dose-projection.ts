@@ -1,5 +1,6 @@
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
 import { buildPendingDoseBacklog } from "@/lib/pending-dose-backlog";
+import { buildDoseSlotIndex, doseSlotIsResolved, resolveDoseSlot } from "@/lib/dose-slot-authority";
 
 type Entity = Record<string, any>;
 
@@ -54,20 +55,42 @@ export function buildHomePendingDoseProjection(input: Input): HomePendingDose[] 
     if (med) append(med, slot.data, slot.horario, slot.diaLabel);
   }
 
-  for (const log of input.plannedEarlier) {
-    if (!log.id || !log.medicamento_id) continue;
+  // P7: os logs explícitos são a autoridade para SOS/avulso planejado.
+  // Se dois medicamentos compartilham 23:00, cada ID mantém seu slot.
+  // Nunca fabricamos obrigação de SOS a partir de um simples horário no cadastro.
+  const explicitLogs = [
+    ...input.reviewLogs,
+    ...input.plannedEarlier,
+    ...input.yesterdayLogs,
+    ...input.todayLogs,
+  ];
+  const explicitIndex = buildDoseSlotIndex(explicitLogs as any, {
+    userId: input.userId, personId: input.personId,
+  });
+  const validDay = /^\d{4}-\d{2}-\d{2}$/;
+  const validTime = /^([01]\d|2[0-3]):[0-5]\d$/;
+  for (const log of explicitLogs) {
     const med = medicationById.get(log.medicamento_id);
-    if (med) append(med, log.data, log.horario, "Anterior");
+    if (!med || !validDay.test(String(log.data || ""))) continue;
+    const time = String(log.horario || "").slice(0, 5);
+    if (!validTime.test(time)) continue;
+    if (log.user_id !== input.userId || log.person_id !== input.personId) continue;
+    const isScheduledSOS = (med.tipo_uso === "sos" || med.tipo_uso === "esporadico")
+      && log.dose_kind === "scheduled";
+    // V347: planejada somente sem desfecho. SOS com slot scheduled explicito
+    // tambem entra, sem tornar todos os horarios de SOS obrigatorios.
+    if (log.dose_kind !== "planned" && !isScheduledSOS) continue;
+    if (log.tomado_em || log.ignorado_em) continue;
+    const date = log.data;
+    // V347: nenhum horario futuro deve entrar em Pendentes.
+    if (date > input.today || (date === input.today && log.horario > input.currentTime)) continue;
+    if (doseSlotIsResolved(resolveDoseSlot(explicitIndex, med.id, log.data, time))) continue;
+    const dayLabel: HomePendingDose["diaLabel"] = log.data === input.today
+      ? "Hoje" : log.data === input.yesterday ? "Ontem" : "Anterior";
+    append(med, log.data, time, dayLabel);
   }
-
-  for (const [date, logs, dayLabel] of [
-    [input.yesterday, input.yesterdayLogs, "Ontem"],
-    [input.today, input.todayLogs, "Hoje"],
-  ] as const) for (const log of logs) {
-    if (log.dose_kind !== "planned" || log.tomado_em || log.ignorado_em || !log.id || !log.medicamento_id
-      || log.data !== date || (date === input.today && log.horario > input.currentTime)) continue;
-    const med = medicationById.get(log.medicamento_id);
-    if (med) append(med, date, log.horario, dayLabel);
-  }
+  // Ordem previsível para a revisão e para toques de notificações agrupadas.
+  result.sort((a,b) => a.data.localeCompare(b.data)
+    || a.horario.localeCompare(b.horario) || a.medicamentoId.localeCompare(b.medicamentoId));
   return result;
 }

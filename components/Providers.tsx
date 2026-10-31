@@ -1,5 +1,6 @@
 "use client";
 import { isVaultNative } from "@/lib/native-runtime";
+import { resolveDoseNotificationDestination } from "@/lib/notification-dose-navigation";
 // components/Providers.tsx
 
 import {
@@ -840,6 +841,7 @@ export function Providers({
                     data.type === "dose_overdue_group"
                   ) {
                     destination = "/hoje";
+                    destination = resolveDoseNotificationDestination(data.type) ?? destination;
                   } else if (data.vaultHealthInsight === true) {
                     destination = data.insightId
                       ? `/inteligencia?healthInsight=${encodeURIComponent(data.insightId)}`
@@ -851,6 +853,9 @@ export function Providers({
                   }
 
                   runAfterVaultBiometricUnlock(() => {
+                    if (destination === "/?open=pending-doses") {
+                      window.dispatchEvent(new Event("vault:open-pending-doses"));
+                    }
                     router.push(destination!);
                   });
                 } catch (error) {
@@ -1005,7 +1010,8 @@ export function Providers({
               (data.type ===
                 "dose_reminder" ||
                data.type ===
-                "dose_overdue") &&
+                "dose_overdue" ||
+               data.type === "dose_planned") &&
               data.medicamentoId &&
               data.actionId !==
                 "TOMEI" &&
@@ -1049,10 +1055,12 @@ export function Providers({
                     }
 
                     runAfterVaultBiometricUnlock(() => {
-                      router.push(
-                        `/saude/medicamentos/detalhes?id=${encodeURIComponent(
-                          medicamentoId
-                        )}`
+                      const destination = resolveDoseNotificationDestination(data.type);
+                      if (destination === "/?open=pending-doses") {
+                        window.dispatchEvent(new Event("vault:open-pending-doses"));
+                      }
+                      router.push(destination ??
+                        `/saude/medicamentos/detalhes?id=${encodeURIComponent(medicamentoId)}`
                       );
                     });
                   } catch (
