@@ -26,7 +26,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
     : `${unconfirmed} ${isPassado ? "sem confirmação" : "previstas"}`;
   const safePercentage = Number.isFinite(percentage) ? Math.max(0, Math.min(100, percentage)) : 0;
   return (
-    <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/50 px-3 py-2" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
+    <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/50 px-3 py-2" aria-live="polite" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] font-semibold">
           <span className={isFuturo ? "inline-flex items-center gap-1 text-ice" : "inline-flex items-center gap-1 text-coral"}>

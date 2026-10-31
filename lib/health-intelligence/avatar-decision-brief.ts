@@ -35,6 +35,11 @@ export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): Avata
   // P14 R6: reserve space for the safety qualifier rather than silently truncating it.
   const context=[situation||fallback,safeReason].filter(Boolean).join(" ");
   const suffix=caution ? ` ${caution}` : "";
-  const explanation=context.slice(0,Math.max(0,370-suffix.length)).trimEnd()+suffix;
+  // P15 R1 R2: se precisar abreviar, evita cortar a palavra final; a ressalva fica intacta.
+  const budget=Math.max(0,370-suffix.length);
+  const visible=context.slice(0,budget);
+  const lastSpace=visible.lastIndexOf(" ");
+  const concise=context.length>budget&&lastSpace>0?visible.slice(0,lastSpace):visible;
+  const explanation=concise.trimEnd()+suffix;
   return {title, authority, posture, explanation};
 }

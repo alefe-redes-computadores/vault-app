@@ -13,6 +13,7 @@ import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-c
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
+import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
 import { MedicationBestPriceLink } from "@/components/saude/MedicationBestPriceLink";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
@@ -81,7 +82,6 @@ import {
   Stethoscope,
   Syringe,
   Trash2,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 
@@ -235,12 +235,6 @@ function formatMedicationDosageDisplay(
     /(\d+(?:[.,]\d+)?)\s*ng\b/gi,
     "$1 mg"
   );
-}
-
-interface HistDosagem {
-  dosagem_antiga: string;
-  data_mudanca: string;
-  medico_responsavel: string;
 }
 
 // ============================================================
@@ -4298,80 +4292,14 @@ function MedicamentoDetalhesContent() {
 
 
           {/* ==================================================
-              EVOLUÇÃO
+              EVOLUÇÃO — P15 R1 R2: visualização extraída, formato e dados canônicos preservados
               ================================================== */}
-
-          {med.historico_dosagens &&
-            med.historico_dosagens.length >
-              0 && (
-              <section className="vault-deferred space-y-3">
-                <SectionTitle
-                  icon={
-                    <TrendingUp
-                      size={
-                        15
-                      }
-                    />
-                  }
-                  title="Evolução da Dosagem"
-                />
-
-                <div className="rounded-[20px] border border-surface-border/60 bg-surface p-4">
-                  <div className="relative ml-3 space-y-6 border-l-2 border-surface-border pb-1">
-                    <div className="relative pl-6">
-                      <div className="absolute -left-[9px] top-0 flex h-4 w-4 items-center justify-center rounded-full border-2 border-ice bg-surface">
-                        <div className="h-1.5 w-1.5 rounded-full bg-ice" />
-                      </div>
-
-                      <p className="text-sm font-bold text-ice">
-                        {formatMedicationDosageDisplay(med.nome, med.dosagem)}
-
-                        <span className="ml-1.5 text-[9px] font-normal uppercase text-ink-muted">
-                          Atual
-                        </span>
-                      </p>
-                    </div>
-
-                    {[
-                      ...med.historico_dosagens,
-                    ]
-                      .reverse()
-                      .map(
-                        (
-                          hist:
-                            HistDosagem,
-                          index:
-                            number
-                        ) => (
-                          <div
-                            key={`${hist.data_mudanca}-${index}`}
-                            className="relative pl-6 opacity-70"
-                          >
-                            <div className="absolute -left-[9px] top-0 flex h-4 w-4 items-center justify-center rounded-full border-2 border-surface-border bg-surface">
-                              <div className="h-1.5 w-1.5 rounded-full bg-surface-border" />
-                            </div>
-
-                            <p className="text-sm font-semibold text-ink-primary">
-                              {formatMedicationDosageDisplay(med.nome, hist.dosagem_antiga)}
-                            </p>
-
-                            <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
-                              Alterado em{" "}
-                              {formatDate(
-                                hist.data_mudanca
-                              )}
-
-                              {hist.medico_responsavel
-                                ? ` · ${hist.medico_responsavel}`
-                                : ""}
-                            </p>
-                          </div>
-                        )
-                      )}
-                  </div>
-                </div>
-              </section>
-            )}
+          {med.historico_dosagens && med.historico_dosagens.length > 0 && (
+            <MedicationDoseEvolutionTimeline currentDose={med.dosagem}
+              className="vault-deferred" history={med.historico_dosagens}
+              formatDose={(dose)=>formatMedicationDosageDisplay(med.nome,dose)}
+              formatDay={formatDate}/>
+          )}
 
           {/* ==================================================
               FINANCEIRO

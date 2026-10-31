@@ -102,7 +102,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .46, metalness: .24 }),
-      sneakers: new THREE.MeshStandardMaterial({ color: appearance.sneakersColor, roughness: .73 }),
+      // P15 R1 R2: acabamento de calçado menos sintético; mesmo material e malha.
+      sneakers: new THREE.MeshStandardMaterial({ color: appearance.sneakersColor, roughness: .77 }),
     };
     const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, scale?: [number,number,number]) => {
       const object = new THREE.Mesh(geometry, material); object.position.set(x,y,z); if (scale) object.scale.set(...scale); model.add(object); return object;
