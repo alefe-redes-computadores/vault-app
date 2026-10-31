@@ -87,6 +87,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { MedicationCareOpportunityQueue } from "@/components/saude/MedicationCareOpportunityQueue";
 import {
   PendingDosesModal,
   type PendingDose,
@@ -1101,7 +1102,7 @@ export default function HomePage() {
           retiradas,
 
           limit:
-            3,
+            8,
         }),
       [
         medicamentosAtivos,
@@ -1163,9 +1164,13 @@ export default function HomePage() {
           };
         }
 
-        if (
-          primaryCareCommand
-        ) {
+        // Do not let a generic Brain prescription prompt override the
+        // evidence-based purchase step for the SAME medication.
+        if (primaryCareCommand && !medicationCareOpportunities.some(
+          item => item.medicamentoId === primaryCareCommand.medicationId &&
+            item.careStage === "acquisition_needed" &&
+            primaryCareCommand.href.includes("/nova-receita")
+        )) {
           return {
             eyebrow: primaryCareCommand.lane === "now" ? "Ação agora" : "Próxima etapa",
             title: primaryCareCommand.title,
@@ -1271,6 +1276,7 @@ export default function HomePage() {
         dosesPendentesAtrasadas.length,
         primaryCareCommand,
         primaryMedicationCareOpportunity,
+        medicationCareOpportunities,
         retiradasAtrasadas.length,
         totalCompromissosHoje,
         unifiedAlerts.length,
@@ -2720,7 +2726,11 @@ export default function HomePage() {
                   </button>
                 )}
 
-                <p className="mt-3 text-center text-[8px] leading-relaxed text-ink-faint">
+                <MedicationCareOpportunityQueue
+                  items={medicationCareOpportunities.slice(1)}
+                  onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
+                />
+                <p className="mt-3 text-center text-[10px] leading-relaxed text-ink-faint">
                   O Vault cruza seus próprios registros de estoque, renovação e tratamento. Isso não substitui orientação profissional.
                 </p>
               </div>

@@ -473,7 +473,9 @@ export function buildMedicationCareOpportunities({
       actionInsight, medicamento.id, "/",
       { tipoUso: medicamento.tipo_uso, tipoAquisicao: medicamento.tipo_aquisicao, scheduledWithdrawalId: scheduledWithdrawal?.id }
     );
-    if (!accessAction) continue;
+    // A derived generic access alert cannot discard a supported canonical
+    // acquisition/withdrawal decision. Stable entries are not pending actions.
+    if (careDecision.stage === "stable") continue;
 
     const score =
       scoreOpportunity({
@@ -531,7 +533,7 @@ export function buildMedicationCareOpportunities({
 
       title,
 
-      message: careDecision.stage === "acquisition_needed" || careDecision.stage === "acquisition_planned"
+      message: careDecision.stage === "acquisition_needed" || careDecision.stage === "acquisition_planned" || careDecision.stage === "prescription_needed" || careDecision.stage === "stock_review"
         ? careDecision.explanation
         : overdueWithdrawal && decision.isAsNeeded ? decision.explanation :
         buildMessage({
@@ -587,7 +589,7 @@ export function buildMedicationCareOpportunities({
         )}`,
 
       renewalHref:
-        accessAction.href,
+        accessAction?.href ?? careDecision.actionHref,
 
       actionHref: careDecision.actionHref,
 
