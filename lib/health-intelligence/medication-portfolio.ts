@@ -29,11 +29,14 @@ export function buildMedicationPortfolio(
 ): MedicationPortfolio {
   const active = context.medicamentos.filter(med => med.id && med.person_id === context.personId && med.status !== "descontinuado");
   const courses = temporaryCourseSummaries(context);
+  // P9: o Brain pode ter planos históricos; o card dos ativos só conta
+  // medicamentos ativos da pessoa atual, nunca ações de outra pessoa/suspensos.
+  const activeMedicationIds = new Set(active.map(med => med.id!));
   const actionMedicationIds = new Set(plan.items
-    .filter(item => item.medicationId && (item.lane === "now" || item.lane === "prepare"))
+    .filter(item => item.medicationId && activeMedicationIds.has(item.medicationId) && (item.lane === "now" || item.lane === "prepare"))
     .map(item => item.medicationId!));
   const plannedMedicationIds = new Set(plan.items
-    .filter(item => item.medicationId && item.lane === "discuss")
+    .filter(item => item.medicationId && activeMedicationIds.has(item.medicationId) && item.lane === "discuss")
     .map(item => item.medicationId!));
   const routes = { public: 0, private: 0, hybrid: 0, unknown: 0 };
   for (const item of readiness.items) {

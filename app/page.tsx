@@ -98,6 +98,7 @@ import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
+import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 
 // ============================================================
 // HELPERS
@@ -834,6 +835,9 @@ export default function HomePage() {
     horaAtual,
   ]);
 
+  // P9: explicação enxuta, somente evidência de slots já abertos.
+  const homePendingBrief = useMemo(() => buildHomePendingBrief(dosesPendentesAtrasadas), [dosesPendentesAtrasadas]);
+
   const dosesTomadasHoje =
     useMemo(
       () =>
@@ -1156,7 +1160,7 @@ export default function HomePage() {
                 : `${dosesPendentesAtrasadas.length} doses estão aguardando`,
 
             description:
-              "Resolva as pendências da rotina sem sair da Home.",
+              homePendingBrief.description,
 
             color:
               "#FB7185",
@@ -1274,6 +1278,7 @@ export default function HomePage() {
       },
       [
         dosesPendentesAtrasadas.length,
+        homePendingBrief.description,
         primaryCareCommand,
         primaryMedicationCareOpportunity,
         medicationCareOpportunities,

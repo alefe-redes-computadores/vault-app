@@ -76,8 +76,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
       // P8: pele e olhos menos plastificados, sem geometria, luz ou GPU extras.
-      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .61, metalness: .008 }),
-      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.76), roughness: .72, transparent:true, opacity:.29 }),
+      // P9: transição de luz no rosto menos plástica, sem novas malhas nem loops GPU.
+      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .64, metalness: .005 }),
+      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .77, transparent:true, opacity:.25 }),
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.55), roughness: .82 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),

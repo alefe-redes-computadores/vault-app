@@ -1417,7 +1417,7 @@ export default function MedicamentosListPage() {
         </ListPageHeader>
 
         {/* VAULT_MEDICATION_FILTERS_V97 */}
-        <div className="border-b border-surface-border/20 px-5 py-2.5">
+        <div className="border-b border-surface-border/20 px-4 py-1.5">
           <div className="min-w-0" aria-label="Filtrar medicamentos por categoria">
             {/* V334_VISIBLE_MEDICATION_FILTERS: all categories remain discoverable without horizontal scroll. */}
             <div className="flex flex-wrap items-center gap-1.5">
@@ -1445,7 +1445,7 @@ export default function MedicamentosListPage() {
                 </button>
               ))}
               <details className="group min-w-[110px] flex-1 basis-auto" open={!["todos", "atencao", "sos"].includes(medicationFilter)}>
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-surface-border/50 bg-surface-raised/40 px-2.5 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                   <span>Mais filtros{!["todos", "atencao", "sos"].includes(medicationFilter) ? " · selecionado" : ""}</span>
                   <span aria-hidden="true" className="text-ice">▾</span>
                 </summary>
@@ -1466,9 +1466,15 @@ export default function MedicamentosListPage() {
         </div>
 
         {/* CONTEÚDO */}
-        <section className="px-5 pt-3">
+        <section className="px-4 pt-2.5">
           <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} onNavigate={(href)=>router.push(href)}/>
-          {listaProcessada.length>0?<ClinicalSectionNav label="Grupos de medicamentos" items={[...(medsPrioridade.length?[{id:"medicamentos-atencao",label:"Atenção",icon:<AlertTriangle size={14}/>,badge:medsPrioridade.length}]:[]),...(medsEmDia.length?[{id:"medicamentos-em-dia",label:"Em dia",icon:<CheckCircle2 size={14}/>,badge:medsEmDia.length}]:[]),...(medsPlanejados.length?[{id:"medicamentos-planejados",label:"Próximas",icon:<Calendar size={14}/>,badge:medsPlanejados.length}]:[]),...(medsSOS.length?[{id:"medicamentos-sos",label:"SOS",icon:<Zap size={14}/>,badge:medsSOS.length}]:[]),...(medsSuspensos.length?[{id:"medicamentos-suspensos",label:"Suspensos",icon:<EyeOff size={14}/>,badge:medsSuspensos.length}]:[])]}/>:null}
+          {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
+          {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
+            <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+              Ir para um grupo <span aria-hidden="true" className="text-ice">▾</span>
+            </summary>
+            <ClinicalSectionNav label="Grupos de medicamentos" items={[...(medsPrioridade.length?[{id:"medicamentos-atencao",label:"Atenção",icon:<AlertTriangle size={14}/>,badge:medsPrioridade.length}]:[]),...(medsEmDia.length?[{id:"medicamentos-em-dia",label:"Em dia",icon:<CheckCircle2 size={14}/>,badge:medsEmDia.length}]:[]),...(medsPlanejados.length?[{id:"medicamentos-planejados",label:"Próximas",icon:<Calendar size={14}/>,badge:medsPlanejados.length}]:[]),...(medsSOS.length?[{id:"medicamentos-sos",label:"SOS",icon:<Zap size={14}/>,badge:medsSOS.length}]:[]),...(medsSuspensos.length?[{id:"medicamentos-suspensos",label:"Suspensos",icon:<EyeOff size={14}/>,badge:medsSuspensos.length}]:[])]}/>
+          </details>:null}
 
           {listaProcessada.length ===
           0 ? (

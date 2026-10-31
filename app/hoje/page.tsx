@@ -5,6 +5,7 @@ import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
 import { DoseMonthOverview } from "@/components/saude/DoseMonthOverview";
 import { eligibleGroupDoseKeys } from "@/lib/dose-schedule-groups";
+import { partitionDoseBatchByStock } from "@/lib/today/dose-batch-stock";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
@@ -1309,12 +1310,12 @@ export default function HojePage() {
       : [];
 
   // V141: pending stockless doses are visible, but never silently marked taken or ignored.
-  const dosesSemEstoqueNoLote = dosesElegiveisLote.filter(d=>{
-    const med=d.medicamentoId ? medicamentosById.get(d.medicamentoId) : undefined;
-    return med ? hasKnownEmptyMedicationStock(med) : false;
-  });
-  const chavesSemEstoqueNoLote = new Set(dosesSemEstoqueNoLote.map(d=>`${d.medicamentoId}-${d.horario}`));
-  const dosesComEstoqueNoLote = dosesElegiveisLote.filter(d=>!chavesSemEstoqueNoLote.has(`${d.medicamentoId}-${d.horario}`));
+  // P9: uma passagem para separar lote com/sem saldo, sem inferir tomada.
+  const { withoutStock: dosesSemEstoqueNoLote, withStock: dosesComEstoqueNoLote } = partitionDoseBatchByStock(
+    dosesElegiveisLote,
+    d => { const med=d.medicamentoId ? medicamentosById.get(d.medicamentoId) : undefined;
+      return med ? hasKnownEmptyMedicationStock(med) : false; }
+  );
 
   const isLoading =
     rawMedicamentos === undefined ||
