@@ -3533,8 +3533,9 @@ export default function HomePage() {
               false
             );
 
+            // P8: a expansão abre a área de doses, não o topo genérico do Hoje.
             router.push(
-              "/hoje"
+              "/hoje?focus=doses"
             );
           }}
         />

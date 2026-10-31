@@ -101,6 +101,9 @@ interface NotificationActionData {
   type?:
     string;
 
+  horario?:
+    string;
+
   docId?:
     string;
 
@@ -155,6 +158,12 @@ function getNotificationActionData(
       typeof record.type ===
       "string"
         ? record.type
+        : undefined,
+
+    // Keep only an exact 24-hour clock value from the notification payload.
+    horario:
+      typeof record.horario === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(record.horario)
+        ? record.horario
         : undefined,
 
     docId:
@@ -841,7 +850,8 @@ export function Providers({
                     data.type === "dose_overdue_group"
                   ) {
                     destination = "/hoje";
-                    destination = resolveDoseNotificationDestination(data.type) ?? destination;
+                    destination = resolveDoseNotificationDestination(data.type, data.horario)
+                      ?? resolveDoseNotificationDestination(data.type) ?? destination;
                   } else if (data.vaultHealthInsight === true) {
                     destination = data.insightId
                       ? `/inteligencia?healthInsight=${encodeURIComponent(data.insightId)}`
@@ -1055,7 +1065,8 @@ export function Providers({
                     }
 
                     runAfterVaultBiometricUnlock(() => {
-                      const destination = resolveDoseNotificationDestination(data.type);
+                      const destination = resolveDoseNotificationDestination(data.type, data.horario)
+                        ?? resolveDoseNotificationDestination(data.type);
                       if (destination === "/?open=pending-doses") {
                         window.dispatchEvent(new Event("vault:open-pending-doses"));
                       }

@@ -75,8 +75,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const stageRingMaterial=new THREE.MeshBasicMaterial({color:0x89f3d4,transparent:true,opacity:.2,depthWrite:false});
     const stageRing=new THREE.LineSegments(new THREE.EdgesGeometry(stage.geometry),stageRingMaterial);stageRing.position.copy(stage.position);scene.add(stageRing);
     const materials = {
-      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .58, metalness: .012 }),
-      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.76), roughness: .68, transparent:true, opacity:.34 }),
+      // P8: pele e olhos menos plastificados, sem geometria, luz ou GPU extras.
+      skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .61, metalness: .008 }),
+      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.76), roughness: .72, transparent:true, opacity:.29 }),
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.55), roughness: .82 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
@@ -86,11 +87,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.
-      eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .85 }),
+      eyeWhite: new THREE.MeshStandardMaterial({ color: "#cdd7d3", roughness: .74 }),
       eyeHighlight: new THREE.MeshBasicMaterial({ color: "#e8f5f3", transparent: true, opacity: .42, depthWrite: false }),
       watchAccent: new THREE.MeshBasicMaterial({ color: 0x69bda4, transparent: true, opacity: .56, depthWrite: false }),
       glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .11, depthWrite: false }),
-      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .48, metalness: .015 }),
+      iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .38, metalness: .012 }),
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .38, metalness: .3 }),

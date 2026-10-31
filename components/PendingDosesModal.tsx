@@ -1,6 +1,7 @@
 // components/PendingDosesModal.tsx
 "use client";
 import { nextPendingDose, pendingDoseCustomTime, pendingDoseKey } from "@/lib/pending-dose-review";
+import { summarizePendingTimeGroups } from "@/lib/health-intelligence/pending-dose-brief";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 
 import {
@@ -192,6 +193,8 @@ export function PendingDosesModal({
       ].filter(group => group.doses.length > 0),
     };
   }, [doses]);
+  // Evidência de horários compartilhados, independente de estoque/ação em lote.
+  const sameTimeGroups = useMemo(() => summarizePendingTimeGroups(doses).filter(group => group.medications > 1), [doses]);
   const [stockConfirmationOpen, setStockConfirmationOpen] = useState(false);
   const resolutionLock = useRef(false);
   const resolvedKeysRef = useRef(new Set<string>());
@@ -606,6 +609,15 @@ export function PendingDosesModal({
           <div className="px-3 py-2"><strong className="block font-mono text-base text-ink-primary">{doses.length}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Revisar</span></div>
           <div className="border-x border-surface-border/50 px-3 py-2"><strong className="block font-mono text-base text-coral">{dosesOntem}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Anteriores</span></div>
           <div className="px-3 py-2"><strong className={`block font-mono text-base ${unavailableDoses.length ? "text-amber-300" : "text-emerald-300"}`}>{unavailableDoses.length}</strong><span className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">Sem saldo</span></div>
+        </div>}
+
+        {!selectedDose && sameTimeGroups.length > 0 && <div aria-label="Medicamentos com o mesmo horário pendente" className="space-y-1.5 rounded-xl border border-ice/15 bg-ice/[.035] px-3 py-2.5">
+          <p className="text-[9px] font-bold uppercase tracking-[.12em] text-ice">Horários compartilhados · registros separados</p>
+          {sameTimeGroups.slice(0, 3).map(group => <div key={`${group.day}-${group.time}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[10px]">
+            <strong className="text-ink-primary">{group.dayLabel} · {group.time} · {group.medications} medicamentos</strong>
+            <span className="min-w-0 text-ink-muted">{group.medicationNames.join(" · ")}</span>
+          </div>)}
+          <p className="text-[9px] leading-relaxed text-ink-faint">Cada medicamento é revisado individualmente. Nenhuma tomada é registrada ao abrir este painel.</p>
         </div>}
 
         {resolvedInSession > 0 && <p role="status" aria-live="polite" className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] px-3 py-2 text-[10px] text-emerald-200"><CheckCircle2 size={13} className="mr-1.5 inline"/>{resolvedInSession} {resolvedInSession===1?"dose revisada":"doses revisadas"} nesta sessão. A lista acompanha os registros salvos.</p>}

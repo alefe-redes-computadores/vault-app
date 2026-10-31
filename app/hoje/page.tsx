@@ -148,6 +148,8 @@ export default function HojePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusDoseQueue = searchParams.get("focus") === "doses";
+  // P8: selecionar o grupo das 23:00, sem forçar confirmação de doses.
+  const focusDoseTime = focusDoseQueue ? searchParams.get("time") : null;
 
   const { trigger } = useHapticFeedback();
   const { showToast } = useToast();
@@ -3306,7 +3308,7 @@ export default function HojePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <DoseScheduleGroups items={grupo.items} renderItem={(item) => {
+                      <DoseScheduleGroups items={grupo.items} focusTime={focusDoseTime} renderItem={(item) => {
                           if (
                             item.isSintoma
                           ) {

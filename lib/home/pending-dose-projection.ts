@@ -64,12 +64,17 @@ export function buildHomePendingDoseProjection(input: Input): HomePendingDose[] 
     ...input.yesterdayLogs,
     ...input.todayLogs,
   ];
+  // P8: snapshots repetidos dos hooks não precisam percorrer a fila 2x.
+  // A autoridade de desfecho continua no índice canônico de slots.
+  const seenExplicitLogIds = new Set<string>();
   const explicitIndex = buildDoseSlotIndex(explicitLogs as any, {
     userId: input.userId, personId: input.personId,
   });
   const validDay = /^\d{4}-\d{2}-\d{2}$/;
   const validTime = /^([01]\d|2[0-3]):[0-5]\d$/;
   for (const log of explicitLogs) {
+    if (log.id && seenExplicitLogIds.has(String(log.id))) continue;
+    if (log.id) seenExplicitLogIds.add(String(log.id));
     const med = medicationById.get(log.medicamento_id);
     if (!med || !validDay.test(String(log.data || ""))) continue;
     const time = String(log.horario || "").slice(0, 5);

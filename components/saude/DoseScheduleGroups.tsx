@@ -1,15 +1,22 @@
 "use client";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Clock, ChevronDown, CheckCircle2, PackageX, ListChecks } from "lucide-react";
 import { MedicationFormatIcon } from "./MedicationFormatIcon";
 import { useHapticFeedback } from "@/lib/haptics";
 import { eligibleGroupDoseItems, groupScheduleSlots, type ScheduleSlot } from "@/lib/dose-schedule-groups";
 
 type Slot = ScheduleSlot & {medicamentoNome?:string;formato?:string;cores?:string[]};
-export function DoseScheduleGroups<T extends Slot>({items, renderItem, onTakeGroup, disabled}: {items:T[];renderItem:(item:T,index:number)=>ReactNode;onTakeGroup?:(items:T[])=>void;disabled?:boolean}) {
+export function DoseScheduleGroups<T extends Slot>({items, renderItem, onTakeGroup, disabled, focusTime}: {items:T[];renderItem:(item:T,index:number)=>ReactNode;onTakeGroup?:(items:T[])=>void;disabled?:boolean;focusTime?:string|null}) {
   const [expanded,setExpanded]=useState<string[]>([]);
   const {trigger}=useHapticFeedback();const groupId=useId();
   const groups=useMemo(()=>groupScheduleSlots(items),[items]);
+  // P8: toque na notificação abre diretamente o grupo de horário correto.
+  useEffect(() => {
+    if (!focusTime || !/^([01]\d|2[0-3]):[0-5]\d$/.test(focusTime)) return;
+    const keys = groups.filter(group => group.slots.length > 1 && group.slots[0]?.horario === focusTime).map(group => group.key);
+    if (!keys.length) return;
+    setExpanded(previous => keys.every(key => previous.includes(key)) ? previous : [...new Set([...previous, ...keys])]);
+  }, [groups, focusTime]);
   return <>{groups.map(({key,slots,entries,pending,resolved,unavailable},groupIndex)=>{
     if(slots.length<2)return <div key={key}>{renderItem(entries[0].item,entries[0].index)}</div>;
     const open=expanded.includes(key),complete=resolved===slots.length,panelId=`${groupId}-${groupIndex}`;
