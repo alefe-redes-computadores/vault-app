@@ -79,10 +79,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // P9: transição de luz no rosto menos plástica, sem novas malhas nem loops GPU.
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .64, metalness: .005 }),
       skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .77, transparent:true, opacity:.25 }),
-      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .76 }),
-      shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.55), roughness: .82 }),
-      bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .79 }),
-      hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .9 }),
+      // P12: tecidos com difusão fosca sutil. Reutiliza materiais, sem malha ou render loop adicional.
+      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .82 }),
+      shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.58), roughness: .87 }),
+      bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .84 }),
+      hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .93 }),
       // P10: pelos e lábios com transição menos dura; materiais existentes, sem malhas extras.
       // P11: acabamento fosco dos lábios e dos fios; preserva GPU, olhos e lentes homologados.
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .96, transparent:true, opacity:.82 }),
@@ -98,7 +99,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .38, metalness: .3 }),
-      sneakers: new THREE.MeshStandardMaterial({ color: appearance.sneakersColor, roughness: .67 }),
+      sneakers: new THREE.MeshStandardMaterial({ color: appearance.sneakersColor, roughness: .73 }),
     };
     const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, scale?: [number,number,number]) => {
       const object = new THREE.Mesh(geometry, material); object.position.set(x,y,z); if (scale) object.scale.set(...scale); model.add(object); return object;
