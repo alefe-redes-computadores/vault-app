@@ -17,6 +17,7 @@ import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareN
 import { MedicationPrescriptionCard } from "@/components/saude/MedicationPrescriptionCard";
 import { MedicationStockOverview } from "@/components/saude/MedicationStockOverview";
 import { MedicationSuspensionSummary } from "@/components/saude/MedicationSuspensionSummary";
+import { MedicationRoutineSummary } from "@/components/saude/MedicationRoutineSummary";
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
@@ -3704,246 +3705,28 @@ function MedicamentoDetalhesContent() {
                 title="Rotina & Uso"
               />
 
-              <div className="rounded-[20px] border border-surface-border/60 bg-surface p-4">
-                {isSOS ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl bg-surface-raised p-3">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                          Tomadas hoje
-                        </p>
-
-                        <p className="mt-1 text-xl font-bold text-ink-primary">
-                          {
-                            dosesTomadasHoje.length
-                          }
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-surface-raised p-3">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                          Quantidade registrada hoje
-                        </p>
-
-                        <p className="mt-1 text-xl font-bold text-ink-primary">
-                          {
-                            formatKnownQuantitySummary(
-                              quantidadeHoje
-                            )
-                          }
-                        </p>
-
-                        {!quantidadeHoje.complete &&
-                          quantidadeHoje.totalCount >
-                            0 && (
-                            <p className="mt-0.5 text-[9px] text-amber-400">
-                              * existem tomadas sem quantidade registrada
-                            </p>
-                          )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 border-t border-surface-border/50 pt-4 text-xs">
-                      <span className="text-ink-muted">
-                        Últimos 7 dias
-                      </span>
-
-                      <span className="text-right font-semibold text-ink-primary">
-                        {
-                          dosesTomadasUltimos7Dias.length
-                        }{" "}
-                        tomada
-                        {dosesTomadasUltimos7Dias.length ===
-                        1
-                          ? ""
-                          : "s"}
-
-                        {" · "}
-
-                        {formatKnownQuantitySummary(
-                          quantidadeUltimos7Dias
-                        )}{" "}
-                        un.
-                      </span>
-                    </div>
-
-                    {!quantidadeUltimos7Dias.complete &&
-                      quantidadeUltimos7Dias.totalCount >
-                        0 && (
-                        <p className="text-[9px] leading-relaxed text-ink-faint">
-                          A soma de quantidade é parcial porque nem todas as tomadas possuem quantidade registrada.
-                        </p>
-                      )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl bg-surface-raised p-3">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                          Hoje
-                        </p>
-
-                        <p className="mt-1 text-xl font-bold text-ink-primary">
-                          {
-                            dosesResolvidasHoje
-                          }
-                          /
-                          {
-                            dosesEsperadasHoje
-                          }
-                        </p>
-
-                        <p className="mt-0.5 text-[10px] text-ink-muted">
-                          slots programados resolvidos
-                        </p>
-
-                        {dosesEsperadasHoje >
-                          0 && (
-                          <p className="mt-1 text-[9px] text-ink-faint">
-                            {
-                              dosesTomadasProgramadasHoje
-                            }{" "}
-                            tomada
-                            {dosesTomadasProgramadasHoje ===
-                            1
-                              ? ""
-                              : "s"}{" "}
-                            ·{" "}
-                            {
-                              dosesIgnoradasProgramadasHoje
-                            }{" "}
-                            ignorada
-                            {dosesIgnoradasProgramadasHoje ===
-                            1
-                              ? ""
-                              : "s"}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="rounded-2xl bg-surface-raised p-3">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                          Por dose
-                        </p>
-
-                        <p className="mt-1 text-xl font-bold text-ink-primary">
-                          {unidadePorDose !==
-                          null
-                            ? formatQuantidade(
-                                unidadePorDose
-                              )
-                            : "—"}
-                        </p>
-
-                        <p className="mt-0.5 truncate text-[10px] text-ink-muted">
-                          {unidadePorDose !==
-                          null
-                            ? med.estoque_unidade_medida ||
-                              "unidade(s)"
-                            : "quantidade não configurada"}
-                        </p>
-                      </div>
-                    </div>
-
-                    {horariosConfigurados.length >
-                      0 ? (
-                      <div className="border-t border-surface-border/50 pt-4">
-                        <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-ink-muted">
-                          Horários configurados
-                        </p>
-
-                        <div className="flex flex-wrap gap-2">
-                          {horariosConfigurados.map(
-                            (
-                              horario
-                            ) => {
-                              const tomada =
-                                horariosTomadosHoje.has(
-                                  horario
-                                );
-
-                              const ignorada =
-                                horariosIgnoradosHoje.has(
-                                  horario
-                                );
-
-                              return (
-                                <span
-                                  key={
-                                    horario
-                                  }
-                                  className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-mono text-xs font-bold ${
-                                    tomada
-                                      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
-                                      : ignorada
-                                        ? "border-amber-400/20 bg-amber-400/10 text-amber-400"
-                                        : "border-surface-border bg-surface-raised text-ink-muted"
-                                  }`}
-                                >
-                                  {tomada && (
-                                    <Check
-                                      size={
-                                        11
-                                      }
-                                    />
-                                  )}
-
-                                  {ignorada &&
-                                    !tomada && (
-                                      <AlertCircle
-                                        size={
-                                          11
-                                        }
-                                      />
-                                    )}
-
-                                  {
-                                    horario
-                                  }
-                                </span>
-                              );
-                            }
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="border-t border-surface-border/50 pt-4 text-xs text-amber-400">
-                        Este medicamento está marcado como contínuo, mas não possui horários configurados.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {ultimaDose && (
-                  <div className="mt-4 flex items-center gap-1.5 border-t border-surface-border/50 pt-4 text-[10px] text-ink-muted">
-                    <Clock
-                      size={
-                        11
-                      }
-                      className="text-ice"
-                    />
-
-                    Última tomada registrada:{" "}
-                    <b className="text-ink-primary">
-                      {formatDate(
-                        ultimaDose.data
-                      )}{" "}
-                      às{" "}
-                      {
-                        ultimaDose.horario
-                      }
-                    </b>
-                  </div>
-                )}
-
-
-
-                {!temEstoque && (
-                  <p className="mt-2 text-center text-[9px] leading-relaxed text-ink-faint">
-                    A dose será registrada normalmente mesmo sem controle de estoque.
-                  </p>
-                )}
-              </div>
+              {/* P15 R6: toda a autoridade do slot e dos registros fica nesta página. */}
+              <MedicationRoutineSummary
+                sos={isSOS}
+                takenToday={dosesTomadasHoje.length}
+                todayQuantity={formatKnownQuantitySummary(quantidadeHoje)}
+                todayQuantityLabel="Quantidade registrada hoje"
+                todayQuantityPartial={!quantidadeHoje.complete && quantidadeHoje.totalCount > 0}
+                takenLast7Days={dosesTomadasUltimos7Dias.length}
+                last7DaysQuantity={formatKnownQuantitySummary(quantidadeUltimos7Dias)}
+                last7DaysQuantityPartial={!quantidadeUltimos7Dias.complete && quantidadeUltimos7Dias.totalCount > 0}
+                resolvedToday={dosesResolvidasHoje}
+                plannedToday={dosesEsperadasHoje}
+                takenScheduledToday={dosesTomadasProgramadasHoje}
+                ignoredScheduledToday={dosesIgnoradasProgramadasHoje}
+                quantityPerDose={unidadePorDose !== null ? formatQuantidade(unidadePorDose) : null}
+                doseUnit={med.estoque_unidade_medida || "unidade(s)"}
+                hours={horariosConfigurados}
+                takenHours={horariosTomadosHoje}
+                ignoredHours={horariosIgnoradosHoje}
+                lastDose={ultimaDose ? {date:formatDate(ultimaDose.data),time:ultimaDose.horario || ""} : null}
+                hasStockControl={temEstoque}
+              />
             </section>
           )}
 
