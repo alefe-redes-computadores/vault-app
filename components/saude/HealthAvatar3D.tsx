@@ -84,7 +84,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .79, transparent:true, opacity:.22 }),
       // P12: tecidos com difusão fosca sutil. Reutiliza materiais, sem malha ou render loop adicional.
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .86 }),
-      shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.58), roughness: .87 }),
+      // P15 R8: tecido com reflexo mais suave; material já existente, nenhuma malha a mais.
+      shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.58), roughness: .90 }),
       bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .84 }),
       hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .90 }),
       // P10: pelos e lábios com transição menos dura; materiais existentes, sem malhas extras.

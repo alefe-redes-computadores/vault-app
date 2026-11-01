@@ -2174,6 +2174,7 @@ export default function HojePage() {
               <button type="button" aria-pressed={filtroStatus === "todos"} onClick={() => {trigger("vibrate");setFiltroStatus("todos");}} className={`rounded-full border px-2.5 py-1.5 text-[10px] font-bold ${filtroStatus === "todos" ? "border-ice/40 bg-ice/10 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}>Todas</button>
               <button
                 type="button"
+                aria-pressed={filtroStatus === "pendentes"}
                 onClick={() => {
                   trigger("vibrate");
                   setFiltroStatus(filtroStatus === "pendentes" ? "todos" : "pendentes");
@@ -2192,6 +2193,7 @@ export default function HojePage() {
               </button>
               <button
                 type="button"
+                aria-pressed={filtroStatus === "tomados"}
                 onClick={() => {
                   trigger("vibrate");
                   setFiltroStatus(filtroStatus === "tomados" ? "todos" : "tomados");
@@ -2207,6 +2209,7 @@ export default function HojePage() {
               {totalIgnoradas > 0 && (
                 <button
                   type="button"
+                  aria-pressed={filtroStatus === "ignorados"}
                   onClick={() => {
                     trigger("vibrate");
                     setFiltroStatus(filtroStatus === "ignorados" ? "todos" : "ignorados");
@@ -2231,6 +2234,7 @@ export default function HojePage() {
                 <button
                   key={value}
                   type="button"
+                  aria-pressed={filtroPeriodo === value}
                   onClick={() => {
                     trigger("vibrate");
                     setFiltroPeriodo(filtroPeriodo === value ? "todos" : value);

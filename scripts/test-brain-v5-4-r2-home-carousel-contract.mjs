@@ -4,10 +4,10 @@ const h=r("app/page.tsx"),m=r("app/saude/medicamentos/detalhes/page.tsx"),s=r("l
 ok(h.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL"),"arquitetura R2");
 ok(!h.includes("Cérebro do Vault"),"card standalone removido");
 ok(h.includes("longitudinalHighlights.map(")&&!h.includes("longitudinalHighlights.slice(0, 1).map("),"campeão não é o único insight");
-ok(h.includes("overflow-x-auto")&&h.includes("snap-x")&&h.includes("snap-start"),"rail lateral com snap");
-ok(h.includes("w-[86%]")&&h.includes("min-w-[86%]"),"próximo card fica sugerido");
-ok(h.includes("Deslize para ver outros sinais"),"affordance lateral");
-ok(h.includes("brainV5Pulse.counters.attention")&&h.includes("brainV5Pulse.counters.new"),"pulso compacto");
+ok(h.includes("Sinais do Brain organizados por prioridade")&&h.includes("grid grid-cols-1 gap-2 min-[620px]:grid-cols-2"),"grade acessível dos sinais do Brain");
+ok(h.includes("longitudinalHighlights.length > 1")&&h.includes("Todos os sinais ficam acessíveis acima"),"todos os sinais permanecem acessíveis");
+ok(!h.includes("Deslize para ver outros sinais")&&h.includes("Sinais do Brain organizados por prioridade"),"interface não anuncia carrossel inexistente");
+ok(h.includes("brainV5Pulse.journeys.filter(item => item.requires_attention)")&&h.includes("brainV5Pulse.counters.new"),"pulso compacto com contadores reais");
 ok(h.includes('{" cobertura"}'),"cobertura/fontes");
 ok(h.includes('router.push("/inteligencia/alertas")')&&h.includes("Vault Intelligence"),"Central completa");
 ok(h.includes("O que merece prioridade agora"),"Atenção operacional");

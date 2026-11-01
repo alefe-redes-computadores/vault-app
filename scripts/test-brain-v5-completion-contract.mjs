@@ -1,14 +1,14 @@
 import fs from "node:fs";
 const r=p=>fs.readFileSync(p,"utf8"),ok=(v,m)=>{if(!v)throw Error("BRAIN V5 COMPLETION: "+m);console.log("OK:",m)};
-const brain=r("lib/health-intelligence/brain-v5.ts"),hook=r("hooks/useBrainV5Alerts.ts"),pulse=r("hooks/useBrainV5Pulse.ts"),ui=r("app/inteligencia/alertas/page.tsx"),home=r("app/page.tsx"),notify=r("lib/health-intelligence/notification-policy.ts"),knowledge=r("lib/health-intelligence/interaction-knowledge.ts"),safety=r("lib/health-intelligence/medication-safety.ts"),sync=r("hooks/useSyncQueue.ts");
+const brain=r("lib/health-intelligence/brain-v5.ts"),hook=r("hooks/useBrainV5Alerts.ts"),pulse=r("hooks/useBrainV5Pulse.ts"),ui=r("app/inteligencia/alertas/page.tsx"),home=r("app/page.tsx"),notify=r("lib/health-intelligence/notification-policy.ts"),knowledge=r("lib/health-intelligence/interaction-knowledge.ts"),safety=r("lib/health-intelligence/medication-safety.ts"),sync=r("hooks/useSyncQueue.ts"),ledger=r("lib/repositories/brainV5AlertLedger.ts"),sheet=r("components/vault-intelligence/BrainV5DetailSheet.tsx");
 ok(brain.includes("material_fingerprint")&&brain.includes("resurfaced"),"recorrência material + reabertura por novo episódio");
-ok(hook.includes("x.material_fingerprint")&&hook.includes("x.episode"),"persistência reage a mudança material sem render-loop");
+ok(hook.includes("repo.reconcile(user.id, activePersonId, health.insights)")&&ledger.includes("reconcileBrainV5(personId, insights, current)")&&ledger.includes('db.transaction("rw", [db.settings, db.syncQueue]')&&ledger.includes("if (JSON.stringify(next) === JSON.stringify(current)) return current;")&&ledger.includes('enfileirarOperacao("settings"'),"persistência atômica e idempotente reage a mudança material sem render-loop");
 ok(pulse.includes("db.settings")&&!pulse.includes("useHealthIntelligence"),"pulso da Home lê Ledger sem executar segundo cérebro");
-ok(home.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL")&&home.includes("brainV5Pulse.counters.attention"),"Home mostra pulso real do Brain V5");
+ok(home.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL")&&home.includes("brainV5Pulse.journeys.filter(item => item.requires_attention)")&&home.includes("brainV5Pulse.counters.new"),"Home mostra pulso real do Brain V5");
 ok(notify.includes('/inteligencia/alertas?insight='),"notificação abre Central V5 no insight exato");
 ok(ui.includes('new URLSearchParams(window.location.search).get("insight")'),"Central resolve deep-link exato");
 ok(ui.includes('setSeverity')&&ui.includes('setPeriod')&&ui.includes('setState'),"Central filtra gravidade, período e estado");
-ok(ui.includes("Por que o Vault mostrou isso?")&&ui.includes("fontes_externas"),"explicabilidade e fontes preservadas");
+ok(ui.includes("<BrainV5DetailSheet")&&sheet.includes("Por que está nesta posição:")&&sheet.includes("alert.snapshot.evidencias")&&sheet.includes("alert.snapshot.fontes_externas")&&sheet.includes("summarizeRegulatorySources"),"explicabilidade e fontes regulatórias no painel real preservadas");
 ok(knowledge.includes('closed-audited-rules-only')&&knowledge.includes('lisdexamfetamine-serotonergic'),"Interaction Knowledge é fechado e auditado");
 ok(safety.includes("OFFICIAL_LISDEXAMFETAMINE_LABEL")&&safety.includes("OFFICIAL_METHADONE_LABEL")&&safety.includes("OFFICIAL_ZOLPIDEM_LABEL"),"regras de interação mantêm fontes regulatórias explícitas");
 ok(sync.includes("VAULT_BRAIN_V5_SETTINGS_SYNC_R2")&&sync.includes('"brain_v5_alert_ledger"'),"sync R2 do Ledger preservado");

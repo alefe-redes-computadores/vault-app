@@ -20,6 +20,7 @@ import { MedicationSuspensionSummary } from "@/components/saude/MedicationSuspen
 import { MedicationRoutineSummary } from "@/components/saude/MedicationRoutineSummary";
 import { MedicationRenewalAttention } from "@/components/saude/MedicationRenewalAttention";
 import { MedicationBehaviorEvidence } from "@/components/saude/MedicationBehaviorEvidence";
+import { MedicationCatalogNameComparison } from "@/components/saude/MedicationCatalogNameComparison";
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
@@ -3334,78 +3335,11 @@ function MedicamentoDetalhesContent() {
                           O catálogo encontrou uma referência semelhante, mas isso pode representar marca, princípio ativo, alias ou outra identificação válida. Revise apenas se quiser padronizar o nome.
                         </p>
 
-                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-surface-border/50 bg-void/30 p-3">
-                            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">
-                              Cadastrado
-                            </p>
-
-                            <p className="mt-1 break-words text-sm font-semibold text-ink-primary">
-                              {
-                                med.nome
-                              }
-                            </p>
-                          </div>
-
-                          <div className="rounded-2xl border border-ice/20 bg-ice/5 p-3">
-                            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
-                              Referência encontrada
-                            </p>
-
-                            <p className="mt-1 break-words text-sm font-semibold text-ink-primary">
-                              {
-                                catalogNameSuggestion
-                                  .reference
-                                  .canonicalName
-                              }
-                            </p>
-
-                            {(
-                              catalogNameSuggestion
-                                .reference
-                                .activeIngredients
-                                ?.join(
-                                  " + "
-                                ) ??
-                              catalogNameSuggestion
-                                .reference
-                                .activeIngredient
-                            ) && (
-                              <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                                {
-                                  catalogNameSuggestion
-                                    .reference
-                                    .activeIngredients
-                                    ?.join(
-                                      " + "
-                                    ) ??
-                                  catalogNameSuggestion
-                                    .reference
-                                    .activeIngredient
-                                }
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-2 text-[10px] text-ink-faint">
-                          <Info
-                            size={
-                              12
-                            }
-                          />
-
-                          Compatibilidade aproximada:{" "}
-                          <span className="font-semibold text-ink-muted">
-                            {
-                              Math.round(
-                                catalogNameSuggestion.score *
-                                  100
-                              )
-                            }
-                            %
-                          </span>
-                        </div>
+                        {/* P15 R8: comparação isolada; decisão continua nos handlers autorizados. */}
+                        <MedicationCatalogNameComparison currentName={med.nome}
+                          referenceName={catalogNameSuggestion.reference.canonicalName}
+                          activeIngredients={catalogNameSuggestion.reference.activeIngredients?.join(" + ") ?? catalogNameSuggestion.reference.activeIngredient}
+                          score={catalogNameSuggestion.score} />
 
                         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <button

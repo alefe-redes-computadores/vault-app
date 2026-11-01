@@ -17,7 +17,9 @@ const count=(value:number|null|undefined)=>typeof value==="number"&&Number.isFin
 export function buildAvatarDecisionBrief(input: AvatarDecisionBriefInput): AvatarDecisionBrief {
   // P14 R2: sem título registrado, o fallback respeita a etapa real; não inventa execução.
   const fallbackTitle=input.evidenceKind==="missing_data"?"Conferir dados antes de concluir":input.lane==="now"?"Revisar atenção registrada":input.lane==="prepare"?"Preparar próxima etapa":input.lane==="discuss"?"Levar questão à consulta":input.lane==="observe"?"Acompanhar evolução":"Acompanhar o cuidado registrado";
-  const title=clean(input.title) || fallbackTitle;
+  // P15 R8: títulos longos são abreviados sem apagar a autoridade da evidência.
+  const rawTitle=clean(input.title) || fallbackTitle;
+  const title=rawTitle.length>120 ? rawTitle.slice(0,119).trimEnd()+"…" : rawTitle;
   const authority=input.evidenceKind==="recorded"?"Fato registrado":input.evidenceKind==="projected"?"Projeção, não confirmação":input.evidenceKind==="association"?"Associação temporal, não causal":input.evidenceKind==="missing_data"?"Dados ainda incompletos":"Resumo de registros";
   const reason=clean(input.reason);
   // Never transform an unknown or projected stage into a completed clinical event.

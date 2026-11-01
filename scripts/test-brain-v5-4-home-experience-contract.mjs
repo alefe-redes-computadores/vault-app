@@ -3,8 +3,8 @@ const r=p=>fs.readFileSync(p,"utf8"),ok=(v,m)=>{if(!v)throw Error("BRAIN V5.4 HO
 const h=r("app/page.tsx"),m=r("app/saude/medicamentos/detalhes/page.tsx"),s=r("lib/health-intelligence/medication-safety.ts");
 ok(h.includes("VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL")&&h.includes("Vault Intelligence"),"superfície única de inteligência");
 ok(!h.includes("Cérebro do Vault"),"card standalone removido");
-ok(h.includes("longitudinalHighlights.map")&&h.includes("Deslize para ver outros sinais"),"rail priorizado preserva múltiplos insights");
-ok(h.includes("brainV5Pulse.counters.attention")&&h.includes("brainV5Pulse.counters.new"),"pulso mostra atenção e novos");
+ok(h.includes("longitudinalHighlights.map")&&h.includes("Sinais do Brain organizados por prioridade")&&h.includes("Todos os sinais ficam acessíveis acima"),"grade priorizada preserva múltiplos insights");
+ok(h.includes("brainV5Pulse.journeys.filter(item => item.requires_attention)")&&h.includes("brainV5Pulse.counters.new"),"pulso mostra jornadas em atenção e novos");
 ok(h.includes('{" cobertura"}'),"cobertura/fontes acessível");
 ok(h.includes('router.push("/inteligencia/alertas")')&&h.includes("Vault Intelligence"),"Central completa a um toque");
 ok(h.includes("/inteligencia/alertas?insight="),"campeão persistente abre insight exato");

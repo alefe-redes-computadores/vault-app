@@ -13,5 +13,17 @@ ok("validador exige evidência comparável",validate.includes("comparablePresent
 ok("diferença nominal não é chamada de erro",validate.includes("Nome diferente da referência")&&validate.includes("não é tratado automaticamente como erro"));
 ok("Novo separa identidade e referência",novo.includes('Referência do catálogo{" "}')&&novo.includes("Usar nome da referência")&&novo.includes("Manter meu nome"));
 ok("Editar separa identidade e referência",editar.includes('Referência do catálogo{" "}')&&editar.includes("Usar nome da referência")&&editar.includes("Manter meu nome"));
-ok("proteção regulatória nominal exata preservada",hook.includes("normalizeMedicationText(item.matchedText) === key"));
+ok("proteção regulatória nominal exata preservada",
+  hook.includes("normalizeMedicationText(candidate.matchedText) === key") &&
+  hook.includes("normalizeMedicationText(candidate.canonicalName) === key") &&
+  hook.includes("normalizeMedicationText(matchedText) === key") &&
+  hook.includes("normalizeMedicationText(reference.canonicalName) === key") &&
+  hook.includes('matchKind: exact ? "exact" : "pharmaceutical_equivalence"')
+);
+ok("equivalência farmacêutica preservada sem equivaler à correspondência exata",
+  hook.includes("isPharmaceuticallyEquivalentName(candidate.matchedText, term)") &&
+  hook.includes("isPharmaceuticallyEquivalentName(candidate.canonicalName, term)") &&
+  hook.includes("authoritativeTerms.some") &&
+  hook.includes('matchKind: exact ? "exact" : "pharmaceutical_equivalence"')
+);
 console.log("\nVAULT V95 MEDICATION CATALOG AUTHORITY: CONTRATOS OK");

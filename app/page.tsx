@@ -101,6 +101,7 @@ import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projecti
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
+import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
 
 // ============================================================
 // HELPERS
@@ -1814,104 +1815,10 @@ export default function HomePage() {
               }}
               className="vault-deferred space-y-3"
             >
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Bell
-                      size={
-                        15
-                      }
-                      className="text-coral"
-                    />
-
-                    <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      Atenção
-                    </h2>
-                  </div>
-
-                  <p className="mt-0.5 text-[10px] text-ink-muted">
-                    O que merece prioridade agora
-                  </p>
-                </div>
-
-                <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-coral">
-                  {
-                    unifiedAlerts.length
-                  }
-                </span>
-              </div>
-
-              <div
-                className={
-                  (mostrarTodosAlertas || unifiedAlerts.length === 1)
-                    ? "space-y-2"
-                    : "-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                }
-              >
-                {(
-                  mostrarTodosAlertas
-                    ? unifiedAlerts
-                    : unifiedAlerts.slice(
-                        0,
-                        3
-                      )
-                ).map(
-                  (
-                    alert
-                  ) => (
-                    <div
-                      key={
-                        alert.id
-                      }
-                      className={
-                        (mostrarTodosAlertas || unifiedAlerts.length === 1)
-                          ? "w-full"
-                          : "flex w-[88%] shrink-0 snap-start [&>*]:h-full [&>*]:w-full sm:w-[72%]"
-                      }
-                    >
-                      <AlertRow
-                        alert={
-                          alert
-                        }
-                      />
-                    </div>
-                  )
-                )}
-
-                {unifiedAlerts.length >
-                  3 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      trigger(
-                        "vibrate"
-                      );
-
-                      setMostrarTodosAlertas(
-                        (
-                          previous
-                        ) =>
-                          !previous
-                      );
-                    }}
-                    className="flex w-full items-center justify-center gap-1 rounded-2xl border border-surface-border/40 bg-surface/50 py-2.5 text-[10px] font-semibold text-ice transition-all active:scale-[0.985]"
-                  >
-                    {mostrarTodosAlertas
-                      ? "Mostrar menos"
-                      : `Ver mais ${
-                          unifiedAlerts.length -
-                          3
-                        } lembrete${
-                          unifiedAlerts.length -
-                            3 ===
-                          1
-                            ? ""
-                            : "s"
-                        }`}
-                  </button>
-                )}
-
-              </div>
+              {/* P15 R8: renderização read-only; a autoridade e a ordem vêm de unifiedAlerts. */}
+              <HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}
+                onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}
+                renderAlert={alert => <AlertRow alert={alert} />} />
             </motion.section>
           )}
 
