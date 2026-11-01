@@ -42,8 +42,8 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
   });
   return <button type="button" onClick={() => onNavigate(destination)}
     aria-label={`Abrir contexto do Brain: ${brief.title}. ${authorityLabel ?? brief.authority}. ${carePosture.label}`}
-    className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3.5 text-left transition-colors hover:bg-violet-300/[.065] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-200"><BrainCircuit size={19}/></span>
+    className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3.5 text-left touch-manipulation transition-colors hover:bg-violet-300/[.065] motion-safe:active:scale-[.995] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-200"><BrainCircuit size={19} aria-hidden="true"/></span>
     <span className="min-w-0 flex-1 space-y-1">
       <strong className="block text-[11px] font-semibold uppercase tracking-wide text-violet-200">Brain · {brief.posture}</strong>
       <span className="block text-sm font-semibold leading-snug text-ink-primary">{planFocus ? brief.title : nextAction ? nextAction.title : brief.title}</span>
@@ -64,6 +64,6 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
       <AvatarEvidenceBoundary kind={planFocus?.evidenceKind} />
       <span className="block line-clamp-1 text-[10px] text-violet-200">Abrir explicação e evidências</span>
     </span>
-    <ChevronRight size={16} className="mt-2 shrink-0 text-violet-300"/>
+    <ChevronRight size={16} aria-hidden="true" className="mt-2 shrink-0 text-violet-300"/>
   </button>;
 });

@@ -17,7 +17,15 @@ ok(
   h.includes("minimumScore: 0.5") && h.includes("resolveBestReference"),
   "regulatório exige identidade exata ou equivalência farmacêutica determinística"
 );
-ok(l.includes("Princípio ativo ·")&&l.includes('authorityState === "possible_divergence"'),"lista mostra hierarquia farmacêutica");
+ok(
+  l.includes('showActiveIngredient && (') &&
+  l.includes('className="sr-only" title={`Princípio ativo: ${activeIngredient}`}') &&
+  l.includes('Princípio ativo: {activeIngredient}') &&
+  l.includes('catalogIdentity?.authorityState === "possible_divergence"') &&
+  l.includes('Revisar identidade') &&
+  l.includes('density="compact"'),
+  "V98: identidade farmacêutica acessível, divergência visível e densidade compacta preservadas"
+);
 ok(d.includes("Identidade farmacêutica")&&d.includes("Registro")&&d.includes("presentationCount"),"detalhes explicam produto, registro e apresentações");
 ok(n.includes("catalogAuthority.label")&&e.includes("catalogAuthority.label"),"novo/editar comunicam autoridade da referência");
 ok(!n.includes("Compatibilidade ${")&&!e.includes("Compatibilidade ${"),"porcentagem técnica não volta à UI");

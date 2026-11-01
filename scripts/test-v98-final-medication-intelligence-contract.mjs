@@ -4,6 +4,8 @@ const ok=(v,m)=>{if(!v)throw Error("V98 FINAL: "+m);console.log("OK:",m)};
 const hook=read("hooks/useMedicationRegulatoryProfiles.ts");
 const list=read("app/saude/medicamentos/page.tsx");
 const today=read("app/hoje/page.tsx");
+const timeline=read("lib/today/build-timeline-items.ts");
+const summary=read("lib/today/timeline-summary.ts");
 const home=read("lib/health-intelligence/home-signal-orchestration.ts");
 const health=read("app/inteligencia/saude/page.tsx");
 
@@ -17,10 +19,31 @@ ok(hook.includes("collectionSignature")&&hook.includes("useSyncExternalStore"),"
 ok(list.includes("useMedicationCatalogProfiles")&&!list.includes("useMedicationCatalogIdentities("),"listagem consome identidade e regulatório por uma única assinatura");
 ok(list.includes('? "Receita n/c"')&&list.includes('regulatoryProfile?.label')&&list.includes("Medicamento identificado no catálogo"),"rail e explicação distinguem identidade farmacêutica de receita não confirmada");
 ok(list.includes('authorityState === "possible_divergence"')&&!list.includes("catalogIdentity.authorityLabel}"),"identidade normal não compete com o regime; divergência continua visível");
-ok(list.includes("min-h-8")&&list.includes("setQuickDoseMedId"),"Tomar e SOS possuem alvo tátil sem faixa inferior");
+ok(
+  list.includes('className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border') &&
+  list.includes('aria-label={`${quickDoseLabel} ${med.nome}') &&
+  list.includes('setQuickDoseMedId(med.id!)') &&
+  list.includes('event.stopPropagation();') &&
+  list.includes('isSOS ? "border-amber-400/20'),
+  "V98: Tomar e SOS mantêm alvo tátil ampliado, rótulo acessível e ação existente"
+);
 ok(list.includes("VAULT_MEDICATION_LIST_HIERARCHY_V98")&&!list.includes("{/* CONTEXTO CLÍNICO */}"),"lista delega informação secundária aos detalhes");
-ok(today.includes('med.tipo_uso === "sos"')&&today.includes('med.tipo_uso === "esporadico"'),"SOS e esporádicos continuam fora da agenda programada");
-ok(today.includes('log.dose_kind === "extra"')&&today.includes('log.dose_kind === "sos"'),"SOS e extra continuam separados do progresso");
+ok(
+  timeline.includes('med.tipo_uso === "sos"') &&
+  timeline.includes('med.tipo_uso === "esporadico"') &&
+  today.includes('med.tipo_uso !== "continuo"'),
+  "V98: agenda exclui SOS/esporádicos pela autoridade extraída, e Hoje preserva filtro contínuo"
+);
+ok(
+  timeline.includes('log.dose_kind === "extra"') &&
+  timeline.includes('log.dose_kind === "sos"') &&
+  timeline.includes('isAvulsa: true') &&
+  summary.includes('item.isAvulsa && item.doseKind !== "planned"') &&
+  summary.includes('!item.isAvulsa && !item.isSintoma') &&
+  today.includes('item.doseKind === "planned" ? "Agendada" : "SOS / Avulsa"') &&
+  today.includes('!dose.isAvulsa'),
+  "V98: SOS/extra são avulsos e permanecem fora do progresso programado"
+);
 ok(
   home.includes("healthSignalSemanticKey") &&
   home.includes("healthSignalPhenomenon(insight)") &&

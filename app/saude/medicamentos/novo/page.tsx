@@ -1,5 +1,9 @@
 // app/saude/medicamentos/novo/page.tsx
 "use client";
+import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
+import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
+import { useMedicationCatalogDismiss } from "@/hooks/useMedicationCatalogDismiss";
+
 
 import {
   buildMedicationRegulatoryContext,
@@ -1085,51 +1089,10 @@ export default function NovoMedicamentoPage() {
   // HANDLERS
   // ==========================================================
 
-  const toggleCor =
-    (
-      hex: string
-    ) => {
-      trigger(
-        "vibrate"
-      );
-
-      setCores(
-        (
-          previous
-        ) => {
-          if (
-            previous.includes(
-              hex
-            )
-          ) {
-            return previous.filter(
-              (
-                color
-              ) =>
-                color !==
-                hex
-            );
-          }
-
-          if (
-            previous.length >=
-            2
-          ) {
-            return [
-              previous[
-                1
-              ],
-              hex,
-            ];
-          }
-
-          return [
-            ...previous,
-            hex,
-          ];
-        }
-      );
-    };
+  const toggleCor = (hex: string) => {
+    trigger("vibrate");
+    setCores(previous => toggleMedicationIdentityColor(previous, hex));
+  };
 
   const handleFormatoChange =
     (
@@ -2646,80 +2609,8 @@ export default function NovoMedicamentoPage() {
   const gradientId =
     "split-novo-bicolor";
 
-  // ==========================================================
-  // CATÁLOGO — FECHAR AUTOCOMPLETE
-  // ==========================================================
-
-  useEffect(
-    () => {
-      if (
-        !isCatalogOpen
-      ) {
-        return;
-      }
-
-      const handlePointerDown =
-        (
-          event:
-            PointerEvent
-        ) => {
-          const target =
-            event.target as Node;
-
-          if (
-            catalogPopoverRef.current?.contains(
-              target
-            )
-          ) {
-            return;
-          }
-
-          setIsCatalogOpen(
-            false
-          );
-        };
-
-      const handleKeyDown =
-        (
-          event:
-            KeyboardEvent
-        ) => {
-          if (
-            event.key ===
-            "Escape"
-          ) {
-            setIsCatalogOpen(
-              false
-            );
-          }
-        };
-
-      document.addEventListener(
-        "pointerdown",
-        handlePointerDown
-      );
-
-      document.addEventListener(
-        "keydown",
-        handleKeyDown
-      );
-
-      return () => {
-        document.removeEventListener(
-          "pointerdown",
-          handlePointerDown
-        );
-
-        document.removeEventListener(
-          "keydown",
-          handleKeyDown
-        );
-      };
-    },
-    [
-      isCatalogOpen,
-    ]
-  );
+  // M3: mesma política de fechar autocomplete ao tocar fora ou Escape.
+  useMedicationCatalogDismiss(isCatalogOpen, catalogPopoverRef, setIsCatalogOpen);
 
   // ==========================================================
   // RENDER
@@ -2816,42 +2707,7 @@ export default function NovoMedicamentoPage() {
       ?.presentations ??
     [];
 
-  const catalogForms =
-    Array.from(
-      new Set(
-        [
-          ...(
-            catalogReference
-              ?.pharmaceuticalForms ??
-            []
-          ),
-
-          ...catalogPresentations
-            .map(
-              (
-                presentation
-              ) =>
-                presentation
-                  .pharmaceuticalForm
-            )
-            .filter(
-              (
-                value
-              ): value is string =>
-                Boolean(
-                  value
-                )
-            ),
-
-          ...catalogPresentations.map(
-            (
-              presentation
-            ) =>
-              presentation.label
-          ),
-        ]
-      )
-    );
+  const { catalogForms, catalogPresentationSuggestions } = projectMedicationCatalogChoices(catalogReference, normalizeCatalogComparisonText);
 
   const dosageCanBeChecked =
     dosagem.trim().length >
@@ -2871,106 +2727,6 @@ export default function NovoMedicamentoPage() {
     catalogValidation?.issues.find(
       (issue) => issue.code === "presentation_not_found" && issue.confidence === "high"
     ) ?? null;
-
-  const catalogPresentationSuggestions =
-    Array.from(
-      new Map<
-        string,
-        CatalogPresentationSuggestion
-      >(
-        catalogPresentations
-          .map(
-            (
-              presentation
-            ):
-              CatalogPresentationSuggestion | null => {
-              const dosage =
-                extractCatalogPresentationDosage(
-                  presentation.label
-                );
-
-              if (
-                !dosage
-              ) {
-                return null;
-              }
-
-              const inferredFormat =
-                inferVaultFormatFromOfficialPresentation(
-                  [
-                    presentation.label,
-                    presentation.pharmaceuticalForm ??
-                      "",
-                  ].join(
-                    " "
-                  )
-                );
-
-              const formatLabel =
-                getCatalogFormatLabel(
-                  inferredFormat
-                );
-
-              const key =
-                [
-                  normalizeCatalogComparisonText(
-                    dosage
-                  ),
-                  inferredFormat ??
-                    "unknown",
-                ].join(
-                  "|"
-                );
-
-              return {
-                key,
-                dosage,
-                format:
-                  inferredFormat,
-                formatLabel,
-                officialLabel:
-                  presentation.label,
-                packageDescription:
-                  presentation.packageDescription ??
-                  null,
-              };
-            }
-          )
-          .filter(
-            (
-              item
-            ): item is CatalogPresentationSuggestion =>
-              item !==
-              null
-          )
-          .map(
-            (
-              item
-            ) => [
-              item.key,
-              item,
-            ]
-          )
-      ).values()
-    )
-      .sort(
-        (
-          a,
-          b
-        ) =>
-          a.dosage.localeCompare(
-            b.dosage,
-            "pt-BR",
-            {
-              numeric:
-                true,
-            }
-          )
-      )
-      .slice(
-        0,
-        10
-      );
 
   const selectedCatalogPresentation =
     catalogPresentationSuggestions.find(
