@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { CalendarDays, HeartPulse } from "lucide-react";
+import { homeRoutineSummaryNote } from "@/lib/home/routine-summary-note";
 
 type Props = {
   eyebrow: string;
@@ -40,6 +41,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas` : "Sem horários programados"}>
         <div className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />
       </div>
+      <p className="mt-1.5 text-[10px] leading-snug text-ink-muted" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)}</p>
     </div>
   </>;
 });

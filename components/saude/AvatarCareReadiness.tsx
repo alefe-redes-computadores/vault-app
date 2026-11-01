@@ -40,7 +40,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
     missingDocuments: command?.access?.documents.explicitMissing,
   });
   return <button type="button" onClick={() => onNavigate(destination)}
-    aria-label={`Abrir contexto do Brain: ${brief.title}. ${authorityLabel ?? brief.authority}`}
+    aria-label={`Abrir contexto do Brain: ${brief.title}. ${authorityLabel ?? brief.authority}. ${carePosture.label}`}
     className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3.5 text-left transition-colors hover:bg-violet-300/[.065] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-200"><BrainCircuit size={19}/></span>
     <span className="min-w-0 flex-1 space-y-1">

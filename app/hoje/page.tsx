@@ -6,6 +6,7 @@ import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filte
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
 import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
+import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
@@ -1175,18 +1176,8 @@ export default function HojePage() {
   });
 
   const dosesAgrupadas = useMemo(() => {
-    const metadata = {
-      agora: { label: "Agora", sub: "No horário ou muito próximo dele", icon: Clock },
-      atrasadas: { label: "Atrasadas", sub: "Precisam da sua atenção", icon: AlertTriangle },
-      depois: { label: "Depois", sub: "Programadas para depois · ainda não estão atrasadas", icon: ChevronRight },
-      avulsas: { label: "SOS e extras", sub: "Tomadas fora da rotina programada", icon: Zap },
-      revisao: { label: "Revisar dados", sub: "Registros contraditórios não entram nas métricas", icon: AlertOctagon },
-      concluidas: { label: "Tomadas", sub: "Doses com tomada registrada hoje", icon: CheckCircle2 },
-      ignoradas: { label: "Ignoradas", sub: "Não contam como tomadas", icon: XCircle },
-      manha: { label: "Manhã", sub: "Início do dia", icon: Sunrise },
-      tarde: { label: "Tarde", sub: "Período da tarde", icon: Sun },
-      noite: { label: "Noite", sub: "Final do dia", icon: Moon },
-    } as const;
+    // Visual presentation is outside this 168KB page; grouping remains canonical.
+    const metadata = todayTimelineGroupPresentation;
     return groupTimelineItems(dosesParaExibir, { isToday: isHoje, selectedDate: dataSelecionada, today: hoje, nowTime: horaAtual })
       .map(([key, items]) => [key, { ...metadata[key], sub: todayTimelineGroupContext(metadata[key].sub, items.length), items }] as const);
   }, [dosesParaExibir, horaAtual, isHoje, hoje, dataSelecionada]);
@@ -2157,6 +2148,8 @@ export default function HojePage() {
 
           {/* P15 R9 R6: explicação temporal sob demanda; nenhuma alteração na autoridade das doses. */}
           <TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />
+          {isHoje && <span className="sr-only">Programadas para depois ainda não estão atrasadas.</span>}
+          <span className="sr-only">Registros contraditórios não entram nas métricas; eles exigem revisão separada.</span>
 
           {/* VAULT_TODAY_FILTERS_V97 */}
           <div className="mt-2 -mx-1 px-1 pb-1">

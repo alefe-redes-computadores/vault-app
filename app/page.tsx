@@ -103,6 +103,7 @@ import { selectHomeDayEvents } from "@/lib/home/appointment-day-selection";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
+import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
 
@@ -1767,6 +1768,9 @@ export default function HomePage() {
               onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
               onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
             />
+            <HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
+              surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
+              onNavigate={(href) => { trigger("vibrate"); router.push(href); }} />
           </motion.section>
 
           {/* ===================================================
