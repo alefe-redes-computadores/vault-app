@@ -52,7 +52,12 @@ ok("mostrar concluídos e histórico mantêm todos os registros",
   selected({isToday:true,status:"todos",showResolved:true}).length === 4 &&
   selected({isToday:false,status:"todos",showResolved:false}).length === 4);
 ok("filtro explícito continua soberano", today.includes('filtroStatus !== "todos"'));
-ok("lembretes continuam fora da adesão", today.includes("não mede adesão"));
+const remindersPanel = read("components/hoje/TodayRemindersPanel.tsx");
+ok("lembretes continuam fora da adesão",
+  today.includes('<TodayRemindersPanel reminders={remindersDoDia}') &&
+  remindersPanel.includes('não mede adesão') &&
+  remindersPanel.includes('Lembretes não confirmam dose tomada') &&
+  !remindersPanel.includes('marcarDose('));
 ok("versículo permanece na Hoje", today.includes("<VersiculoDia"));
 
 for (const label of checks) console.log(`OK: ${label}`);

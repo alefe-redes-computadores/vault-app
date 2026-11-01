@@ -16,5 +16,7 @@ export function TodayTimelineGuide({ isHoje, isPassado, isFuturo }: { isHoje:boo
       <ChevronDown size={13} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
     </summary>
     <p className="pb-2 leading-relaxed">{note}</p>
+    {isFuturo && <p className="pb-2 text-amber-200">A previsão não altera estoque e não confirma tomada.</p>}
+    {isPassado && <p className="pb-2 text-ice/80">Registros antigos podem exigir revisão manual, sem preencher lacunas automaticamente.</p>}
   </details>;
 }

@@ -4,6 +4,7 @@ import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filter-intent";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
+import { TodayRemindersPanel } from "@/components/hoje/TodayRemindersPanel";
 import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
 import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
 import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
@@ -2573,38 +2574,10 @@ export default function HojePage() {
           )}
 
           <span id="hoje-agenda" className="block scroll-mt-24" aria-hidden="true"/>
-          {remindersDoDia.length > 0 && (
-            <section className="vault-deferred space-y-3" aria-label="Lembretes de saúde do dia">
-              <div className="flex items-center justify-between gap-3 px-1">
-                <div className="flex items-center gap-2">
-                  <Bell size={16} className="text-ice" />
-                  <div>
-                    <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">Lembretes do dia</h2>
-                    <p className="mt-0.5 text-[9px] text-ink-faint">Agenda pessoal — não mede adesão</p>
-                  </div>
-                </div>
-                <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 font-mono text-[9px] font-bold text-ice">{remindersDoDia.length}</span>
-              </div>
 
-              <div className="space-y-2.5">
-                {remindersDoDia.map((reminder) => (
-                  <motion.button
-                    key={reminder.id}
-                    type="button"
-                    whileTap={{ scale: 0.985 }}
-                    onClick={() => router.push(reminder.target_route)}
-                    className="flex w-full items-center gap-3 rounded-[22px] border border-ice/25 bg-ice/[0.055] p-3.5 text-left"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/12 text-ice"><Bell size={18} /></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-ink-primary">{reminder.title}</p>
-                      <p className="mt-1 text-[10px] text-ink-muted">Programado para {reminder.time} · toque para registrar</p>
-                    </div>
-                    <ChevronRight size={16} className="shrink-0 text-ice" />
-                  </motion.button>
-                ))}
-              </div>
-            </section>
+
+          {remindersDoDia.length > 0 && (
+            <TodayRemindersPanel reminders={remindersDoDia} onNavigate={(href) => router.push(href)} />
           )}
 
           {/* =======================================================
