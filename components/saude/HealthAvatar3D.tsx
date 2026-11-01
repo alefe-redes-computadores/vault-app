@@ -1,4 +1,5 @@
 "use client";
+import { avatarSoftBoxGeometry, avatarSafeTaperedBoxGeometry, createAvatarGroundShadowTexture } from "@/lib/health-profile/avatar-scene-geometry";
 import { useEffect, useId, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import * as THREE from "three";
@@ -120,17 +121,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const mesh = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number, scale?: [number,number,number]) => {
       const object = new THREE.Mesh(geometry, material); object.position.set(x,y,z); if (scale) object.scale.set(...scale); model.add(object); return object;
     };
-    const softBox=(width:number,height:number,depth:number,radius=.02)=>{
-      const shape=new THREE.Shape(),w=width/2,h=height/2,r=Math.min(radius,w/2,h/2);
-      shape.moveTo(-w+r,-h);shape.lineTo(w-r,-h);shape.quadraticCurveTo(w,-h,w,-h+r);shape.lineTo(w,h-r);shape.quadraticCurveTo(w,h,w-r,h);shape.lineTo(-w+r,h);shape.quadraticCurveTo(-w,h,-w,h-r);shape.lineTo(-w,-h+r);shape.quadraticCurveTo(-w,-h,-w+r,-h);
-      const geometry=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:3});geometry.translate(0,0,-depth/2);return geometry;
-    };
-    const taperedBox=(backWidth:number,frontWidth:number,height:number,depth:number)=>{
-      // V230: Android WebGL ainda pode projetar vértices alterados manualmente
-      // como faixas atravessando o rosto. A peça usa só BoxGeometry nativa;
-      // não há BufferAttribute reescrito nem custo adicional por quadro.
-      return new THREE.BoxGeometry(Math.max(backWidth,frontWidth),height,depth);
-    };
+    // V230: geometria segura permanece nativa; M4 apenas isolou as fábricas.
+    const softBox=avatarSoftBoxGeometry;
+    const taperedBox=avatarSafeTaperedBoxGeometry;
     const sphereGeometry=new THREE.SphereGeometry(1,24,16);
     const oval = (m: THREE.Material,x:number,y:number,z:number,s:[number,number,number]) => mesh(sphereGeometry,m,x,y,z,s);
     const limb=(topRadius:number,bottomRadius:number,length:number,material:THREE.Material,x:number,y:number,z:number,rotation=0)=>{
@@ -640,10 +633,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const thumbNail=mesh(new THREE.CapsuleGeometry(.004,.017,2,6),materials.white,phoneX-gripSign*.105,1.421,.079);thumbNail.rotation.z=gripSign*.48+phoneAngle;thumbNail.scale.x=.58;thumbNail.raycast=()=>{};
     const gripKnuckle=mesh(new THREE.CapsuleGeometry(.004,.098,2,7),materials.skinShade,phoneX+gripSign*.101,1.388,.092);gripKnuckle.rotation.z=phoneAngle;gripKnuckle.raycast=()=>{};
     const phoneCamera=mesh(new THREE.CylinderGeometry(.017,.017,.008,12),materials.dark,phoneX-gripSign*.048,1.485,.073);phoneCamera.rotation.x=Math.PI/2;phoneCamera.raycast=()=>{};
-    const shadowCanvas=document.createElement("canvas");shadowCanvas.width=128;shadowCanvas.height=128;
-    const shadowContext=shadowCanvas.getContext("2d");
-    if(shadowContext){const gradient=shadowContext.createRadialGradient(64,64,8,64,64,64);gradient.addColorStop(0,"rgba(0,0,0,.4)");gradient.addColorStop(1,"rgba(0,0,0,0)");shadowContext.fillStyle=gradient;shadowContext.fillRect(0,0,128,128);}
-    const shadowTexture=new THREE.CanvasTexture(shadowCanvas);textures.push(shadowTexture);
+    const shadowTexture=createAvatarGroundShadowTexture();textures.push(shadowTexture);
     mesh(new THREE.PlaneGeometry(1.25,.85),new THREE.MeshBasicMaterial({map:shadowTexture,transparent:true,depthWrite:false}),0,.035,.06).rotation.x=-Math.PI/2;
     let disposed=false, visible=true, frame=0;
     let transition:{from:number;to:number;start:number}|null=null;

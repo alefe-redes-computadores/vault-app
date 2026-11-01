@@ -73,6 +73,7 @@ assert.match(plannedSos.href, /^\/saude\/retiradas\/nova\?/);
 
 const page = read("app/saude/rede/page.tsx");
 const avatar = read("components/saude/HealthAvatar3D.tsx");
+const avatarGeometry = read("lib/health-profile/avatar-scene-geometry.ts");
 const brain = read("app/inteligencia/page.tsx");
 const prescription = read("app/saude/renovacao/nova-receita/page.tsx");
 const insights = read("lib/health-insights.ts");
@@ -83,7 +84,10 @@ assert.doesNotMatch(page, /const filteredMedicamentos\s*=\s*useMemo/);
 assert.match(avatar, /V214: planos orbitais afunilados/);
 assert.match(avatar, /taperedBox\(\.041,\.061,\.016,\.017\)/);
 assert.doesNotMatch(avatar, /sign\*\.081,2\.826,\.237/);
-assert.match(avatar, /return new THREE.BoxGeometry\(Math.max\(backWidth,frontWidth\),height,depth\)/);
+assert.match(avatar, /const taperedBox=avatarSafeTaperedBoxGeometry;/);
+assert.match(avatar, /avatarSafeTaperedBoxGeometry/);
+assert.match(avatarGeometry, /return new THREE.BoxGeometry\(Math.max\(backWidth,frontWidth\),height,depth\)/);
+assert.doesNotMatch(avatarGeometry, /positions\.setX\(/);
 assert.doesNotMatch(avatar, /positions\.setX\(/);
 // V238 keeps the dedicated grip while moving the smaller fingers behind the screen edge.
 assert.match(avatar, /phoneX\+gripSign\*\.104,1\.326\+fingerIndex\*\.041,\.066/);
