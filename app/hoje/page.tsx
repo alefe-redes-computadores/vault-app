@@ -1,6 +1,7 @@
 // app/hoje/page.tsx
 "use client";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
+import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
@@ -2167,6 +2168,9 @@ export default function HojePage() {
             pending={totalPendentes} unconfirmed={totalEsperadasSemConfirmacao}
             completed={totalTomadas} ignored={totalIgnoradas} recorded={totalRegistros}
             projected={totalItensPlanejados} percentage={percentualConclusao} />
+
+          {/* P15 R9 R6: explicação temporal sob demanda; nenhuma alteração na autoridade das doses. */}
+          <TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />
 
           {/* VAULT_TODAY_FILTERS_V97 */}
           <div className="mt-2 -mx-1 px-1 pb-1">

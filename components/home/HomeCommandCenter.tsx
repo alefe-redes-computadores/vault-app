@@ -6,6 +6,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
 import { HomeSupplyAccessTiles } from "@/components/home/HomeSupplyAccessTiles";
+import { HomeCareOrganizationTiles } from "@/components/home/HomeCareOrganizationTiles";
 
 type Props = { gastoMes: number; diferencaMes: number; totalRede: number };
 
@@ -31,7 +32,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-xl border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none">
+        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-300"><Pill size={16}/></span>
           <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</span></span><ChevronRight size={17} className="text-emerald-300"/>
         </button>
@@ -49,11 +50,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
       </ClinicalDisclosure>
 
       <ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>}>
-        {() => <div className="overflow-hidden rounded-[20px] border border-surface-border/60 bg-surface">
-          <button type="button" onClick={() => go("/saude/documentos")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><FileText size={18} className="text-ice"/><span className="min-w-0 flex-1"><strong className="block text-sm">Documentos de saúde</strong><span className="text-[10px] text-ink-muted">Receitas, exames, laudos e acervo clínico</span></span><ChevronRight size={16} className="text-ink-faint"/></button>
-          <button type="button" onClick={() => go("/saude/renovacao")} className="flex w-full items-center gap-3 border-b border-surface-border/50 p-4 text-left"><ReceiptText size={18} className="text-emerald-400"/><span className="min-w-0 flex-1"><strong className="block text-sm">Compras de medicamentos</strong><span className="text-[10px] text-ink-muted">R$ {gastoMes.toFixed(2).replace(".", ",")} no mês {diferencaMes ? `· ${diferencaMes > 0 ? "+" : "-"} R$ ${Math.abs(diferencaMes).toFixed(2).replace(".", ",")}` : ""}</span></span><ChevronRight size={16} className="text-ink-faint"/></button>
-          <button type="button" onClick={() => go("/saude/rede")} className="flex w-full items-center gap-3 p-4 text-left"><Network size={18} className="text-cyan-400/70"/><span className="min-w-0 flex-1"><strong className="block text-sm">Sua rede</strong><span className="text-[10px] text-ink-muted">{totalRede} profissionais e locais cadastrados</span></span><ChevronRight size={16} className="text-ink-faint"/></button>
-        </div>}
+        {() => <HomeCareOrganizationTiles onNavigate={go} gastoMes={gastoMes} diferencaMes={diferencaMes} totalRede={totalRede}
+          documentPath="/saude/documentos" purchasePath="/saude/renovacao" networkPath="/saude/rede" networkTone="text-cyan-400/70" />}
       </ClinicalDisclosure>
     </section>
   );

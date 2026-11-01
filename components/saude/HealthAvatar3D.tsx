@@ -70,8 +70,10 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     camera.position.set(0, cameraFrame.height, cameraFrame.distance); camera.lookAt(0, cameraFrame.height, 0);
     scene.add(new THREE.HemisphereLight(0xdbeafe, 0x101820, 2.05));
     const key = new THREE.DirectionalLight(0xffffff, 3.12); key.position.set(-3,5,4); scene.add(key);
+    // P15 R9 R6: luz traseira e acabamento do palco menos sintéticos; sem novas malhas ou draw calls.
+    // R6 R4: intensidade P14 R4 preservada em 1.28; apenas o palco recebe tratamento mais fosco.
     const rim = new THREE.DirectionalLight(0xb1dbd5, 1.28); rim.position.set(3,3,-3); scene.add(rim);
-    const stageMaterial=new THREE.MeshStandardMaterial({color:0x16372f,transparent:true,opacity:.34,roughness:.72,metalness:.12,depthWrite:false});
+    const stageMaterial=new THREE.MeshStandardMaterial({color:0x16372f,transparent:true,opacity:.30,roughness:.78,metalness:.07,depthWrite:false});
     const stage=new THREE.Mesh(new THREE.BoxGeometry(1.18,.025,.68),stageMaterial);stage.position.set(0,.075,.015);scene.add(stage);
     // P14 R3: iluminação do palco menos neon; sem mudanças de geometria.
     // P15 R4: reflexo do palco menos dominante no modo escuro; sem malhas, luzes ou loop adicional.

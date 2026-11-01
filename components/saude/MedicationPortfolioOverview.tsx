@@ -3,6 +3,7 @@
 import { BrainCircuit, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Pill, Zap } from "lucide-react";
 import type { MedicationPortfolio } from "@/lib/health-intelligence/medication-portfolio";
 import type { BrainCarePlan } from "@/lib/health-intelligence/care-plan";
+import { medicationPortfolioCoherence } from "@/lib/health-intelligence/medication-portfolio-coherence";
 
 /**
  * P9 — compacto por padrão, evidências detalhadas por opção do usuário.
@@ -22,6 +23,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
   const ignored = Math.max(0, Math.min(total - completed, doses.ignored));
   const pending = Math.max(0, total - completed - ignored);
   const percent = total > 0 ? Math.round((completed / total) * 100) : null;
+  const coherence = medicationPortfolioCoherence(portfolio);
   return (
     <section aria-label="Resumo operacional dos medicamentos" className="mb-2.5 rounded-2xl border border-surface-border/50 bg-surface/70 px-3 py-2.5 shadow-sm">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -44,6 +46,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
           Lista: {listActiveCount} ativos · Brain: {portfolio.active} acompanhados. Há diferença de escopo ou atualização; confira antes de interpretar os totais.
         </p>
       )}
+      {coherence.hasUnknownType && <p role="note" className="mt-1.5 text-[10px] leading-relaxed text-violet-200">{coherence.explanation}</p>}
       {total > 0 && <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-raised" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}
       {(ignored > 0 || pending > 0) && <p className="mt-1.5 text-[10px] leading-snug text-ink-muted">
         {pending > 0 ? `${pending} a revisar` : ""}
