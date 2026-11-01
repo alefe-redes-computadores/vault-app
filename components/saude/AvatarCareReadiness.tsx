@@ -46,7 +46,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
     <span className="min-w-0 flex-1 space-y-1">
       <strong className="block text-[11px] font-semibold uppercase tracking-wide text-violet-200">Brain · {brief.posture}</strong>
       <span className="block text-sm font-semibold leading-snug text-ink-primary">{planFocus ? brief.title : nextAction ? nextAction.title : brief.title}</span>
-      <span className="block line-clamp-2 text-xs leading-relaxed text-ink-muted">{brief.explanation}</span>
+      <span className="block line-clamp-3 sm:line-clamp-2 text-xs leading-relaxed text-ink-muted" title={brief.explanation}>{brief.explanation}</span>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-[10px] text-ink-faint">
         <span>{authorityLabel ?? brief.authority}</span>
         {change && change.kind !== "stable" ? <span>{change.label}</span> : null}

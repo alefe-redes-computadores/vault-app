@@ -5,6 +5,7 @@ import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-
 import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filter-intent";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
+import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
@@ -1187,7 +1188,7 @@ export default function HojePage() {
       noite: { label: "Noite", sub: "Final do dia", icon: Moon },
     } as const;
     return groupTimelineItems(dosesParaExibir, { isToday: isHoje, selectedDate: dataSelecionada, today: hoje, nowTime: horaAtual })
-      .map(([key, items]) => [key, { ...metadata[key], items }] as const);
+      .map(([key, items]) => [key, { ...metadata[key], sub: todayTimelineGroupContext(metadata[key].sub, items.length), items }] as const);
   }, [dosesParaExibir, horaAtual, isHoje, hoje, dataSelecionada]);
 
   // Métricas de adesão contam somente slots programados.

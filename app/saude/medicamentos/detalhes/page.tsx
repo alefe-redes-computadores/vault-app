@@ -3254,6 +3254,7 @@ function MedicamentoDetalhesContent() {
                       source={brainCareAction ? "brain" : "record"}
                       routeRecorded={Boolean(supplyRoute && supplyRoute.mode !== "none")}
                       evidenceCount={(brainCareAction?.evidence || careDecision.evidence).length}
+                      stage={careDecision.stage}
                     />
                     <div className="flex flex-wrap gap-1.5 border-t border-surface-border/40 py-2">
 {(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-lg border border-surface-border/70 bg-surface-raised px-2 py-1 text-[9px] text-ink-muted">{item}</span>)}

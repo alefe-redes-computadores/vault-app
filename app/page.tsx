@@ -99,6 +99,7 @@ import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { countHomeTodayAppointments } from "@/lib/home/appointment-metrics";
+import { selectHomeDayEvents } from "@/lib/home/appointment-day-selection";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
@@ -735,13 +736,7 @@ export default function HomePage() {
   const consultasHoje =
     useMemo(
       () =>
-        consultas.filter(
-          (consulta: any) =>
-            consulta.data ===
-              hoje &&
-            consulta.status ===
-              "agendada"
-        ),
+        selectHomeDayEvents(consultas, hoje, true),
       [
         consultas,
         hoje,
@@ -751,10 +746,7 @@ export default function HomePage() {
   const examesHoje =
     useMemo(
       () =>
-        exames.filter(
-          (exame: any) =>
-            exame.data === hoje
-        ),
+        selectHomeDayEvents(exames, hoje, false),
       [
         exames,
         hoje,
@@ -764,13 +756,7 @@ export default function HomePage() {
   const cirurgiasHoje =
     useMemo(
       () =>
-        cirurgias.filter(
-          (cirurgia: any) =>
-            cirurgia.data ===
-              hoje &&
-            cirurgia.status ===
-              "agendada"
-        ),
+        selectHomeDayEvents(cirurgias, hoje, true),
       [
         cirurgias,
         hoje,

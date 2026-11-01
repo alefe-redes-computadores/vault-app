@@ -109,7 +109,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // P15 R2: lentes mais discretas sem nova geometria nem efeito de pós-processamento.
       glass: new THREE.MeshBasicMaterial({ color: 0xdffbf5, transparent: true, opacity: .095, depthWrite: false }),
       iris: new THREE.MeshStandardMaterial({ color: "#5b3824", roughness: .53, metalness: .01 }),
-      cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .84 }),
+      // R9 R9: tecido do boné menos brilhante; mesmo material, sem malhas ou GPU extra.
+      cap: new THREE.MeshStandardMaterial({ color: appearance.hatColor, roughness: .87 }),
       capShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.hatColor).multiplyScalar(.58), roughness: .9 }),
       glasses: new THREE.MeshStandardMaterial({ color: appearance.glassesColor, roughness: .46, metalness: .24 }),
       // P15 R1 R2: acabamento de calçado menos sintético; mesmo material e malha.
