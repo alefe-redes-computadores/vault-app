@@ -4,6 +4,7 @@ import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filter-intent";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
+import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
@@ -1167,9 +1168,10 @@ export default function HojePage() {
     [dosesFiltradas, filtroStatus, isHoje, mostrarConcluidas]
   );
 
-  const concluidasOcultas = isHoje && filtroStatus === "todos" && !mostrarConcluidas
-    ? dosesFiltradas.filter((dose) => dose.tomada || dose.ignorada || dose.isDataConflict).length
-    : 0;
+  // R9 R8: a contagem de itens recolhidos usa a mesma autoridade da timeline visível.
+  const concluidasOcultas = countHiddenTodayResolved(dosesFiltradas, {
+    isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas,
+  });
 
   const dosesAgrupadas = useMemo(() => {
     const metadata = {

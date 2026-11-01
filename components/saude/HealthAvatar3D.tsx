@@ -86,10 +86,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // P15 R9 R7: plano de sombra existente ligeiramente mais suave; mesmas malhas e reflexos oculares.
       skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.81), roughness: .79, transparent:true, opacity:.22 }),
       // P12: tecidos com difusão fosca sutil. Reutiliza materiais, sem malha ou render loop adicional.
-      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .86 }),
+      // R9 R8: tecido menos sintético — mesmo material, sem malhas, luzes ou loops extras.
+      top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .88 }),
       // P15 R8: tecido com reflexo mais suave; material já existente, nenhuma malha a mais.
       shirtDetail: new THREE.MeshStandardMaterial({ color: new THREE.Color(appearance.topColor).multiplyScalar(.58), roughness: .90 }),
-      bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .84 }),
+      bottom: new THREE.MeshStandardMaterial({ color: appearance.bottomColor, roughness: .86 }),
       hair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .90 }),
       // P10: pelos e lábios com transição menos dura; materiais existentes, sem malhas extras.
       // P11: acabamento fosco dos lábios e dos fios; preserva GPU, olhos e lentes homologados.

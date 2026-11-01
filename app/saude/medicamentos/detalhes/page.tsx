@@ -13,6 +13,7 @@ import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-c
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
+import { MedicationDecisionEvidenceContext } from "@/components/saude/MedicationDecisionEvidenceContext";
 import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
 import { MedicationPrescriptionCard } from "@/components/saude/MedicationPrescriptionCard";
 import { MedicationStockOverview } from "@/components/saude/MedicationStockOverview";
@@ -3249,6 +3250,11 @@ function MedicamentoDetalhesContent() {
                   {/* V332_CARE_EVIDENCE_DISCLOSURE: full evidence stays available, action stays visible. */}
                   <details className="mt-2 rounded-xl border border-surface-border/40 bg-surface/30 px-2.5 py-1.5">
                     <summary className="min-h-9 cursor-pointer py-1.5 text-[10px] font-semibold text-ink-secondary">Ver evidências e origem</summary>
+                    <MedicationDecisionEvidenceContext
+                      source={brainCareAction ? "brain" : "record"}
+                      routeRecorded={Boolean(supplyRoute && supplyRoute.mode !== "none")}
+                      evidenceCount={(brainCareAction?.evidence || careDecision.evidence).length}
+                    />
                     <div className="flex flex-wrap gap-1.5 border-t border-surface-border/40 py-2">
 {(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map(item=><span key={item} className="rounded-lg border border-surface-border/70 bg-surface-raised px-2 py-1 text-[9px] text-ink-muted">{item}</span>)}
                       {(brainCareAction?.evidence || careDecision.evidence).slice(3).map((item,index)=><span key={`${index + 3}-${item}`} className="rounded-lg border border-surface-border/70 bg-surface-raised px-2 py-1 text-[9px] text-ink-muted">{item}</span>)}

@@ -59,7 +59,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
         {medicationSignal?.temporaryCoursesOpen ? <span>{medicationSignal.temporaryCoursesOpen} período(s) temporário(s) em acompanhamento</span> : null}
       </span>
       {portfolio.counts.unknown > 0 ? <span className="block text-[10px] text-amber-200" title="Informação incompleta não constitui diagnóstico ou falha de tratamento">{portfolio.counts.unknown} etapa(s) ainda sem confirmação documental ou operacional</span> : null}
-      <span data-care-status={carePosture.tone} className={`block text-[10px] font-medium ${carePosture.tone === "urgent" ? "text-coral" : carePosture.tone === "planning" ? "text-amber-200" : "text-ink-muted"}`}>{carePosture.label}</span>
+      <span data-care-status={carePosture.tone} className={`inline-flex max-w-full items-center rounded-lg border border-surface-border/30 bg-surface/50 px-2 py-1 text-[10px] font-medium motion-reduce:transition-none ${carePosture.tone === "urgent" ? "text-coral" : carePosture.tone === "planning" ? "text-amber-200" : "text-ink-muted"}`}>{carePosture.label}</span>
       <span className="block line-clamp-1 text-[10px] text-violet-200">Abrir explicação e evidências</span>
     </span>
     <ChevronRight size={16} className="mt-2 shrink-0 text-violet-300"/>

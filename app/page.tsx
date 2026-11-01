@@ -98,6 +98,7 @@ import { HealthInsightExplanationSheet } from "@/components/health-intelligence/
 import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
+import { countHomeTodayAppointments } from "@/lib/home/appointment-metrics";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
@@ -790,11 +791,13 @@ export default function HomePage() {
     [retiradasHoje, hoje]
   );
 
-  const totalCompromissosHoje =
-    consultasHoje.length +
-    examesHoje.length +
-    cirurgiasHoje.length +
-    retiradasHoje.length;
+  // R9 R8: contabiliza apenas eventos já filtrados pelos repositórios; nenhuma nova leitura.
+  const totalCompromissosHoje = countHomeTodayAppointments({
+    consultations: consultasHoje,
+    exams: examesHoje,
+    surgeries: cirurgiasHoje,
+    withdrawals: retiradasHoje,
+  });
 
   // ==========================================================
   // DOSES PENDENTES
