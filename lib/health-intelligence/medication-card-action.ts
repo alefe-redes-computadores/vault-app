@@ -21,7 +21,10 @@ export function resolveMedicationCardAction(
   const registeredNextStep = decision.stage === "acquisition_needed" ||
     decision.stage === "acquisition_planned" ||
     decision.stage === "withdrawal_overdue" ||
-    decision.stage === "withdrawal_planned";
+    decision.stage === "withdrawal_planned" ||
+    // R9 R3: uma revisão documental comprovada não vira pedido automático
+    // de nova receita apenas por sugestão genérica do Brain.
+    (decision.stage === "stock_review" && decision.actionLabel === "Conferir receita");
   if (brainRequestsPrescription && registeredNextStep && canonical) return canonical;
   return brainAction ?? canonical ?? accessAction;
 }

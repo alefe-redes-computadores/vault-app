@@ -27,7 +27,7 @@ export function buildMedicationPortfolio(
   plan: BrainCarePlan,
   readiness: CareReadinessPortfolio,
 ): MedicationPortfolio {
-  const active = context.medicamentos.filter(med => med.id && med.person_id === context.personId && med.status !== "descontinuado");
+  const active = context.medicamentos.filter(med => med.id && med.person_id === context.personId && (!context.userId || med.user_id === context.userId) && med.status !== "descontinuado");
   const courses = temporaryCourseSummaries(context);
   // P9: o Brain pode ter planos históricos; o card dos ativos só conta
   // medicamentos ativos da pessoa atual, nunca ações de outra pessoa/suspensos.

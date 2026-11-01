@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, XCircle } from "lucide-react";
 
 type Props = {
   isHoje: boolean;
@@ -29,14 +29,14 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
     <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/50 px-3 py-2" aria-live="polite" aria-atomic="true" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] font-semibold">
-          <span className={isFuturo ? "inline-flex items-center gap-1 text-ice" : "inline-flex items-center gap-1 text-coral"}>
-            <AlertTriangle size={12} aria-hidden="true" />{pendingText}
+          <span className={isFuturo ? "inline-flex items-center gap-1 text-violet-300" : isPassado ? "inline-flex items-center gap-1 text-ink-muted" : "inline-flex items-center gap-1 text-amber-300"}>
+            {isHoje ? <AlertTriangle size={12} aria-hidden="true" /> : <CalendarDays size={12} aria-hidden="true" />}{pendingText}
           </span>
           {!isFuturo && <span className="inline-flex items-center gap-1 text-emerald-400"><CheckCircle2 size={12} aria-hidden="true" />{completed} concluída{completed === 1 ? "" : "s"}</span>}
           {!isFuturo && ignored > 0 && <span className="inline-flex items-center gap-1 text-ink-muted"><XCircle size={12} aria-hidden="true" />{ignored} ignorada{ignored === 1 ? "" : "s"}</span>}
         </div>
         <div className="shrink-0 text-right">
-          <strong className="font-mono text-sm font-bold tabular-nums text-ice">{isFuturo ? projected : isPassado && recorded===0 ? "—" : `${safePercentage}%`}</strong>
+          <strong className={`font-mono text-sm font-bold tabular-nums ${isFuturo ? "text-violet-300" : "text-ink-primary"}`}>{isFuturo ? projected : isPassado && recorded===0 ? "—" : `${safePercentage}%`}</strong>
           <span className="ml-1 text-[9px] text-ink-faint">{isFuturo ? "previstas" : isPassado && recorded===0 ? "sem registros" : "rotina"}</span>
         </div>
       </div>

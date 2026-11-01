@@ -8,11 +8,13 @@ import type { BrainCarePlan } from "@/lib/health-intelligence/care-plan";
  * P9 — compacto por padrão, evidências detalhadas por opção do usuário.
  * Contagens do Brain e do calendário clínico permanecem autoridades distintas.
  */
-export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavigate }: {
+export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavigate, listActiveCount }: {
   portfolio: MedicationPortfolio | null | undefined;
   decision?: BrainCarePlan["decision"];
   doses: { total: number; completed: number; ignored: number };
   onNavigate: (href: string) => void;
+  /** Contagem canônica da listagem (inclui SOS); diferenças ficam explícitas. */
+  listActiveCount?: number;
 }) {
   if (!portfolio) return null;
   const total = Math.max(0, doses.total);
@@ -37,6 +39,11 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
           <span className="block text-[9px] text-ink-muted">tomadas hoje</span>
         </div>
       </div>
+      {typeof listActiveCount === "number" && Number.isFinite(listActiveCount) && listActiveCount !== portfolio.active && (
+        <p className="mt-1.5 text-[10px] leading-relaxed text-amber-200" role="status">
+          Lista: {listActiveCount} ativos · Brain: {portfolio.active} acompanhados. Há diferença de escopo ou atualização; confira antes de interpretar os totais.
+        </p>
+      )}
       {total > 0 && <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-raised" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}
       {(ignored > 0 || pending > 0) && <p className="mt-1.5 text-[10px] leading-snug text-ink-muted">
         {pending > 0 ? `${pending} a revisar` : ""}

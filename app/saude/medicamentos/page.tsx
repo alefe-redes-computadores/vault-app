@@ -1160,7 +1160,15 @@ export default function MedicamentosListPage() {
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Revisar identidade</span>
                 )}
                 {supplyRoute?.mode === "hybrid" ? (
-                  <span title="Há vínculos públicos e compras particulares registrados. O histórico não comprova a origem de fornecimento atual." className="max-w-full truncate rounded-md border border-violet-300/15 bg-violet-300/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-violet-200">Origens históricas · conferir</span>
+                  // R9 R3: o medicamento informa a origem cadastrada; a rota híbrida
+                  // informa coexistência de evidências, nunca fornecimento simultâneo.
+                  med.tipo_aquisicao === "comprado" ? (
+                    <span title="Origem atual declarada no cadastro: comprado. Existem também vínculos SUS e compras no histórico; verifique os processos ativos nos detalhes." className="max-w-full truncate rounded-md border border-emerald-400/20 bg-emerald-400/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300">Comprado · cadastro</span>
+                  ) : med.tipo_aquisicao === "sus" ? (
+                    <span title="Origem cadastrada como SUS. Há compras particulares no histórico; confirme a etapa e o processo atual nos detalhes." className="max-w-full truncate rounded-md border border-violet-300/20 bg-violet-300/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-violet-200">SUS · cadastro</span>
+                  ) : (
+                    <span title="Há vínculos públicos e compras particulares registrados. O histórico não comprova a origem de fornecimento atual." className="max-w-full truncate rounded-md border border-violet-300/15 bg-violet-300/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-violet-200">Origens históricas · conferir</span>
+                  )
                 ) : (supplyRoute?.mode === "private" || supplyRoute?.mode === "public") && (
                   <MedicationListRouteLabel route={supplyRoute} label={supplyRoute.labels.join(" + ")} />
                 )}
@@ -1426,7 +1434,7 @@ export default function MedicamentosListPage() {
         <section className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={medsPrioridade.length > 0}>
-            {() => <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} onNavigate={(href)=>router.push(href)}/>}
+            {() => <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/>}
           </ClinicalDisclosure>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">

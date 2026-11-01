@@ -106,6 +106,9 @@ export function decideMedicationCarePath(input: {
   const prescriptionOnFile = Boolean(latestPrescription &&
     (!latestAcquisition || renewalEventDate(latestPrescription) >= renewalEventDate(latestAcquisition)));
   const hasRegisteredPrescription = Boolean(latestPrescription);
+  // R9 R3: a referência direta ao documento é uma pista para revisar,
+  // nunca uma prova de validade, natureza do arquivo ou titularidade documental.
+  const hasLinkedDocument = Boolean(medication.document_id?.trim());
   const plannedAcquisition = planned[0] ?? null;
   const detail = `/saude/medicamentos/detalhes?id=${encodeURIComponent(id)}`;
   const acquisition = `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(id)}&mode=acquisition&return_to=${encodeURIComponent(detail)}`;
@@ -163,6 +166,28 @@ export function decideMedicationCarePath(input: {
       evidence: [...evidence, currentByHistory ? "Receita registrada · conferir validade" : "Receita registrada anteriormente · validade não inferida"],
       prescriptionOnFile: currentByHistory,
       plannedAcquisition: false,
+    };
+  }
+
+  // R9 R3: vínculo de documento e receita histórica são evidências diferentes.
+  // O vínculo evita sugerir duplicação automática; sua validade precisa de revisão.
+  if (input.needsStock && hasLinkedDocument) {
+    return {
+      stage: "acquisition_needed", label: "Documento vinculado · conferir aquisição",
+      explanation: "Há referência documental vinculada ao medicamento. Confira se é a receita correta, a pessoa, a validade e o canal de fornecimento. O saldo exige revisão; compra planejada não é compra realizada.",
+      actionLabel: "Conferir aquisição", actionHref: acquisition,
+      evidence: [...evidence, "Documento vinculado no cadastro; conteúdo e validade não verificados"],
+      prescriptionOnFile: false, plannedAcquisition: false,
+    };
+  }
+
+  if (input.needsPrescription && hasLinkedDocument) {
+    return {
+      stage: "stock_review", label: "Documento vinculado · verificar receita",
+      explanation: "O cadastro tem um documento vinculado. Confira o tipo de documento, a titularidade, a validade e a exigência vigente antes de solicitar nova receita.",
+      actionLabel: "Conferir receita", actionHref: detail,
+      evidence: [...evidence, "Vínculo documental presente; validade e conteúdo não inferidos"],
+      prescriptionOnFile: false, plannedAcquisition: false,
     };
   }
 
