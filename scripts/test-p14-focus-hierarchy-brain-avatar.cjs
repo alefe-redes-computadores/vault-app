@@ -38,7 +38,13 @@ check(home.includes('"/saude/medicamentos"')&&home.includes('<ClinicalDisclosure
 check(metrics.includes('min-h-[58px]') && metrics.includes('onOpenPending') && metrics.includes('SOS / extra'), '4 métricas compactas com ação de doses');
 check(med.includes('medicamentos-panorama') && med.includes('defaultOpen={medsPrioridade.length > 0}') && med.includes('key={medsPrioridade.length > 0 ? "atencao" : "rotina"}'), 'panorama reage quando a lista assíncrona ganha prioridade');
 check(med.includes('medsPrioridade.map(renderCard)') && med.includes('medsEmDia.map(renderCard)') && med.includes('medsSOS.map(renderCard)'), 'listagem mantém prioridade, rotina e SOS');
-check(med.includes('medicationFilter === value') && med.includes('selectMedicationFilter(value)') && med.includes('isSearchOpen'), 'busca e filtros de medicamentos continuam funcionais');
+const medFilterBar = read('components/saude/MedicationFilterBar.tsx');
+check(med.includes('isSearchOpen') && med.includes('selectMedicationFilter("todos")')
+  && med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>')
+  && medFilterBar.includes('aria-pressed={value === key}')
+  && medFilterBar.includes('onClick={() => choose(key)}')
+  && medFilterBar.includes('onChange(next)'),
+  'busca e filtros de medicamentos continuam funcionais no componente extraído');
 check(detail.includes('label="Áreas do medicamento" layout="grid" density="compact"'), 'detalhes abre com navegação reduzida');
 check(detail.includes('ClinicalDisclosure id="historico-aquisicoes"') && detail.includes('{() => <div className="space-y-3">'), 'histórico carrega somente sob demanda');
 check(disclosure.includes('if (hash === id) setOpen(true)') && disclosure.includes('typeof children === "function"'), 'ancora de histórico abre o conteúdo lazy ao navegar');

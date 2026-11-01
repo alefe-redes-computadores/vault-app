@@ -21,7 +21,10 @@ assert.equal(result.needsAction,1);assert.equal(result.planned,1);assert.equal(r
 assert.deepEqual(result.routes,{public:1,private:1,hybrid:1,unknown:1});assert.equal(result.nextTemporaryCourse.medicationId,'t');
 const command=read('lib/health-intelligence/care-command.ts'),list=read('app/saude/medicamentos/page.tsx'),avatar=read('components/saude/MedicationContinuityAvatarSummary.tsx'),workspace=read('components/saude/AvatarCareWorkspace.tsx'),supply=read('app/saude/fornecimento/page.tsx'),authority=read('components/saude/MedicationAuthorityMap.tsx');
 assert(command.includes('buildMedicationPortfolio(context, plan, readiness)'));
-assert(list.includes('<MedicationPortfolioOverview')&&list.includes('["temporarios", "Por período"]'));
+const medFilter = read('components/saude/MedicationFilterBar.tsx');
+assert(list.includes('<MedicationPortfolioOverview') && list.includes('<MedicationFilterBar')
+  && medFilter.includes('["temporarios", "Por período"]')
+  && medFilter.includes('onChange(next)'));
 assert(avatar.includes('command?.medications')&&avatar.includes('nextTemporaryCourse'));
 assert(!workspace.includes('<TemporaryCourseAvatarSummary'));
 assert(supply.includes('<MedicationAuthorityMap')&&supply.includes('careCommand?.medications'));

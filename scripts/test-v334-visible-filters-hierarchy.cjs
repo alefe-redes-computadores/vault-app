@@ -9,6 +9,7 @@ const paths=[
   'components/list/ListSearch.tsx',
   'components/saude/ClinicalSectionNav.tsx',
   'app/saude/medicamentos/page.tsx',
+  'components/saude/MedicationFilterBar.tsx',
   'app/saude/documentos/page.tsx',
   'app/inteligencia/alertas/page.tsx',
 ];
@@ -16,7 +17,7 @@ for(const path of paths){
   const src=read(path),tree=ts.createSourceFile(path,src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   assert.equal(tree.parseDiagnostics.length,0,`${path}: sintaxe TSX: ${tree.parseDiagnostics.map(x=>x.messageText).join('; ')}`);
 }
-const filter=read(paths[0]),search=read(paths[1]),nav=read(paths[2]),med=read(paths[3]),docs=read(paths[4]),brain=read(paths[5]);
+const filter=read(paths[0]),search=read(paths[1]),nav=read(paths[2]),med=read(paths[3]),medBar=read(paths[4]),docs=read(paths[5]),brain=read(paths[6]);
 assert(filter.includes('V334_VISIBLE_FILTER_TRIGGER'),'gatilho global visível');
 assert(filter.includes('<span>Filtros</span>')&&filter.includes('aria-haspopup="dialog"'),'filtro textual, acessível e contextualizado');
 assert(filter.includes('activeCount > 0')&&filter.includes('aria-hidden="true"'),'contagem de filtros ativos');
@@ -29,9 +30,16 @@ assert(search.includes('role="search"')&&search.includes('onChange(event.target.
 assert(nav.includes('layout="grid"')&&nav.includes('layout?:"scroll"|"grid"'),'hierarquia visível por padrão com opção scroll');
 assert(nav.includes('min-[480px]:grid-cols-4')&&nav.includes('break-words text-center'),'rótulos completos responsivos');
 assert(nav.includes('hashchange')&&nav.includes('IntersectionObserver'),'deep-link e destaque de seção preservados');
-assert(med.includes('V334_VISIBLE_MEDICATION_FILTERS')&&med.includes('Filtrar medicamentos por categoria'),'medicamentos mostra 7 filtros');
-assert(med.includes('aria-pressed={medicationFilter === value}')&&med.includes('selectMedicationFilter(value)'),'filtro selecionado e handler canônico');
-for(const item of ['Por período','Controlados','Encerrados','Atenção','SOS'])assert(med.includes(item),'categoria preservada '+item);
+assert(med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>')
+  && medBar.includes('aria-label="Filtros de medicamentos"')
+  && medBar.includes('PRIMARY.map') && medBar.includes('ADDITIONAL.map')
+  && medBar.includes('aria-expanded={expanded}'), 'medicamentos mostra 7 filtros no componente compacto');
+assert(medBar.includes('aria-pressed={value === key}')
+  && medBar.includes('onClick={() => choose(key)}')
+  && medBar.includes('event.key === "Escape"')
+  && med.includes('setMedicationFilter(next)') && med.includes('localStorage.setItem("@vault:meds_filter_v97", next)'),
+  'filtro selecionado usa handler canônico, persiste e fecha via Escape');
+for(const item of ['Por período','Controlados','Encerrados','Atenção','SOS'])assert(medBar.includes(item),'categoria preservada '+item);
 assert(docs.includes('aria-label="Filtrar documentos"')&&docs.includes('<span>Filtros</span>'),'documentos mostra filtro textual');
 assert(docs.includes('setShowFilters(')&&docs.includes('hasActiveFilters'),'documentos mantém filtros originais');
 assert(brain.includes('<span className="inline">Filtros</span>')&&brain.includes('Filtrar por momento da decisão'),'central mostra os filtros sem rolagem oculta');

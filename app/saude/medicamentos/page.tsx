@@ -103,6 +103,7 @@ import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGr
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
+import { MedicationFilterBar } from "@/components/saude/MedicationFilterBar";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
 import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
@@ -1037,17 +1038,19 @@ export default function MedicamentosListPage() {
       const brainCareItem = brainCareByMedication.get(med.id!);
       const supplyRoute = supplyRouteByMedication.get(med.id!);
       // V299: preservar prioridade Brain, exceto contradicao com aquisicao/retirada comprovada.
-      const brainSuggestion = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare")
+      const brainSuggestion = brainCareItem && brainCareItem.lane === "now"
         ? { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason }
         : null;
       const brainAction = brainSuggestion
         ? resolveMedicationCardAction(careDecision, brainSuggestion, null)
         : null;
-      const careAction = brainAction ?? (careDecision.stage !== "stable"
+      const sosHasOperationalException = isEstoqueZerado || isEstoqueCritico || careDecision.stage === "withdrawal_overdue";
+      // V299: Brain NOW remains first; only the non-Brain fallback is quiet for stocked SOS.
+      const careAction = brainAction ?? (isSOS && !sosHasOperationalException ? null : (careDecision.stage !== "stable"
         ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
-        : accessAction);
+        : accessAction));
       const carePresentation = medicationCarePresentation(careDecision, insight?.urgencia);
-      const careActionClass = careAction === brainSuggestion && brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : careAction === brainSuggestion && brainCareItem?.lane === "prepare" ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300" : carePresentation.actionClass;
+      const careActionClass = brainAction && careAction === brainAction && brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass;
 
       // VAULT_V318_CONTEXTUAL_ACTION: visual text only; never reinterpret the care decision.
       const contextualActionLabel = careAction
@@ -1156,11 +1159,13 @@ export default function MedicamentosListPage() {
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Revisar identidade</span>
                 )}
-                {(supplyRoute?.mode === "hybrid" || supplyRoute?.mode === "private" || supplyRoute?.mode === "public") && (
+                {supplyRoute?.mode === "hybrid" ? (
+                  <span title="Há vínculos públicos e compras particulares registrados. O histórico não comprova a origem de fornecimento atual." className="max-w-full truncate rounded-md border border-violet-300/15 bg-violet-300/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-violet-200">Origens históricas · conferir</span>
+                ) : (supplyRoute?.mode === "private" || supplyRoute?.mode === "public") && (
                   <MedicationListRouteLabel route={supplyRoute} label={supplyRoute.labels.join(" + ")} />
                 )}
                 {textoDose && <span title={`Dose ${textoDose}`} className="text-[10px] text-ink-muted">Dose {textoDose}</span>}
-                {careDecision.stage !== "stable" && !careAction && (
+                {careDecision.stage !== "stable" && !careAction && (!isSOS || sosHasOperationalException) && (
                   <span title={careDecision.explanation} className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
                     {careDecision.label}
                   </span>
@@ -1413,54 +1418,9 @@ export default function MedicamentosListPage() {
           )}
         </ListPageHeader>
 
-        {/* VAULT_MEDICATION_FILTERS_V97 */}
-        <div className="border-b border-surface-border/20 px-4 py-1.5">
-          <div className="min-w-0" aria-label="Filtrar medicamentos por categoria">
-            {/* V334_VISIBLE_MEDICATION_FILTERS: all categories remain discoverable without horizontal scroll. */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {([
-                ["todos", "Todos"],
-                ["atencao", "Atenção"],
-                ["sos", "SOS"],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => selectMedicationFilter(value)}
-                  aria-pressed={medicationFilter === value}
-                  className={`min-h-9 min-w-0 rounded-lg border px-1.5 py-1.5 text-center text-[10px] font-bold leading-snug transition-all active:scale-[0.97] ${
-                    medicationFilter === value
-                      ? value === "atencao"
-                        ? "border-amber-400/35 bg-amber-400/10 text-amber-300"
-                        : value === "sos"
-                          ? "border-violet-400/35 bg-violet-400/10 text-violet-300"
-                          : "border-ice/35 bg-ice/10 text-ice"
-                      : "border-surface-border/40 bg-surface text-ink-muted"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-              <details className="group min-w-[110px] flex-1 basis-auto" open={!["todos", "atencao", "sos"].includes(medicationFilter)}>
-                <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-surface-border/50 bg-surface-raised/40 px-2.5 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                  <span>Mais filtros{!["todos", "atencao", "sos"].includes(medicationFilter) ? " · selecionado" : ""}</span>
-                  <span aria-hidden="true" className="text-ice">▾</span>
-                </summary>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Outras categorias de medicamentos">
-                  {([[
-                    "continuos", "Contínuos"
-                  ], ["temporarios", "Por período"], ["controlados", "Controlados"], ["encerrados", "Encerrados"]] as const).map(([value,label]) => (
-                    <button key={value} type="button" aria-pressed={medicationFilter===value}
-                      onClick={() => selectMedicationFilter(value)}
-                      className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${medicationFilter===value ? "border-ice/40 bg-ice/10 text-ice" : "border-surface-border/50 bg-surface text-ink-muted"}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </details>
-            </div>
-          </div>
-        </div>
+        {/* P15 R9: filtros compactos, com disclosure acessível e sem grid permanente no Android. */}
+        <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
+
 
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">

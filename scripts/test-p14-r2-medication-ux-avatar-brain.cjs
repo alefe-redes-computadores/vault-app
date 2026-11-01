@@ -38,7 +38,15 @@ check(detail.includes('navigateCareAction(')&&detail.includes('<QuickDoseModal')
 check(detail.includes('medicamento-lembretes')&&detail.includes('MedicationAlertPreferences'),'lembretes e escopo de pessoa preservados');
 check(list.includes('<MedicationListActiveFilter view={listPresentation}')&&list.includes('setSearchQuery("")'),'indicador de filtros e limpeza reais');
 check(list.includes('listPresentation.emptyDescription')&&list.includes('listPresentation.clearLabel'),'sem falsos estados vazios quando categoria está filtrada');
-check(list.includes('selectMedicationFilter("todos")')&&list.includes('selectMedicationFilter(value)'),'limpeza e filtros compartilham handler antigo');
+const medicationFilters = read('components/saude/MedicationFilterBar.tsx');
+check(list.includes('selectMedicationFilter("todos")')
+  && list.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>')
+  && list.includes('localStorage.setItem("@vault:meds_filter_v97", next)')
+  && medicationFilters.includes('onChange(next)')
+  && medicationFilters.includes('onClick={() => choose(key)}')
+  && medicationFilters.includes('aria-pressed={value === key}')
+  && !medicationFilters.includes('localStorage'),
+  'limpeza e filtros compartilham handler canônico, inclusive no componente extraído');
 check(list.includes('medsPrioridade.map(renderCard)')&&list.includes('medsEmDia.map(renderCard)')&&list.includes('medsSOS.map(renderCard)'),'categorias clínicas anteriores intactas');
 check(list.includes('density="compact"')&&list.includes('navigationLabel={`Ver detalhes de ${med.nome}`}'),'cards compactos e acessibilidade preservados');
 check(list.includes('interactiveContent')&&list.includes('VAULT_V318_OPERATIONAL_STRIP'),'ação e indicadores do medicamento preservados');

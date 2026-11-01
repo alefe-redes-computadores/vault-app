@@ -41,9 +41,10 @@ export function medicationCarePresentation(
   decision: Pick<MedicationCareDecision, "stage">,
   urgency?: "alta" | "media" | "baixa" | "nenhuma" | null,
 ): { tone: MedicationCareTone; actionClass: string; badgeClass: string } {
-  const critical = decision.stage === "withdrawal_overdue" || urgency === "alta";
   const planning = medicationCareStageIsPlanning(decision.stage);
   const stable = decision.stage === "stable";
+  // Future planning and stable states cannot be promoted to clinical emergency by a legacy hint.
+  const critical = decision.stage === "withdrawal_overdue" || (!planning && !stable && urgency === "alta");
   const tone: MedicationCareTone = critical ? "critical" : stable ? "stable" : planning ? "planning" : "attention";
   if (tone === "critical") return {
     tone,

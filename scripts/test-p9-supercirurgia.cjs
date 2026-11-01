@@ -23,8 +23,18 @@ for(const file of files){
 }
 const med=read(files[0]);const overview=read(files[1]);const portfolio=read(files[2]);const group=read(files[3]);
 const home=read(files[4]);const today=read(files[5]);const avatar=read(files[6]);
-assert(med.includes('V334_VISIBLE_MEDICATION_FILTERS')&&med.includes('Mais filtros')&&med.includes('Outras categorias de medicamentos'), 'seven medication filters retained');
-assert(med.includes('aria-pressed={medicationFilter === value}')&&med.includes('aria-pressed={medicationFilter===value}'), 'filter selection remains accessible');
+const medFilter = read('components/saude/MedicationFilterBar.tsx');
+assert(med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>')
+  && medFilter.includes('PRIMARY.map') && medFilter.includes('ADDITIONAL.map')
+  && medFilter.includes('aria-label="Filtros de medicamentos"')
+  && ['Todos','Atenção','Contínuos','Por período','SOS','Controlados','Encerrados'].every(label=>medFilter.includes('"'+label+'"')),
+  'seven medication filters retained in extracted component');
+assert(medFilter.includes('aria-pressed={value === key}')
+  && medFilter.includes('aria-expanded={expanded}')
+  && medFilter.includes('onClick={() => choose(key)}')
+  && medFilter.includes('event.key === "Escape"')
+  && med.includes('localStorage.setItem("@vault:meds_filter_v97", next)'),
+  'filter selection remains accessible and persisted');
 assert(med.includes('medicationFilter === "todos" ? <details')&&med.includes('Ir para um grupo'),'duplicate primary/secondary navigation collapsed');
 assert(med.includes('<MedicationPortfolioOverview')&&med.includes('medsSOS.map(renderCard)'),'care overview and real SOS cards kept');
 assert(med.includes('density="compact"')&&med.includes('rail={(regulatoryProfile || receita)'), 'compact cards and regulatory rail retained');

@@ -26,7 +26,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ice/10 text-ice"><Pill size={17}/></span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Seu cuidado</p>
-          <p className="mt-0.5 text-xs font-semibold leading-snug text-ink-primary">
+          <p title="Contagem do Brain por pessoa e estado de acompanhamento; pode diferir do filtro da lista." className="mt-0.5 text-xs font-semibold leading-snug text-ink-primary">
             {portfolio.active} ativo{portfolio.active===1?"":"s"}
             <span className="mx-1.5 text-ink-faint" aria-hidden="true">·</span>
             <span className={portfolio.needsAction>0?"text-amber-300":"text-emerald-300"}>{portfolio.needsAction} em atenção</span>
@@ -59,7 +59,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
             {total > 0 && <span className="rounded-full border border-emerald-300/15 px-2 py-1 text-emerald-200"><CheckCircle2 size={11} className="mr-1 inline"/>{completed}/{total} tomadas hoje</span>}
           </div>
           <p>Na visão do Brain: {portfolio.active} ativos · {portfolio.continuous} contínuos · {portfolio.temporary} por período · {portfolio.asNeeded} SOS. São critérios próprios de acompanhamento; não some essas categorias.</p>
-          <p>O percentual considera somente doses marcadas como tomadas. Ignoradas e pendentes não contam como tomadas. Quando não há doses programadas, o percentual não é estimado.</p>
+          <p>O percentual considera somente doses marcadas como tomadas. Ignoradas e pendentes não contam como tomadas. Doses SOS não entram nessa meta programada. Quando não há doses programadas, o percentual não é estimado.</p>
           <p>SUS/público {portfolio.routes.public} · comprado {portfolio.routes.private} · híbrido {portfolio.routes.hybrid} · sem origem comprovada {portfolio.routes.unknown}. {portfolio.note}</p>
         </div>
       </details>
