@@ -1,5 +1,6 @@
 // app/saude/medicamentos/page.tsx
 "use client";
+import { formatQuantidade } from "@/lib/health-intelligence/medication-detail-presenters";
 
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
@@ -174,37 +175,6 @@ function getMedicamentoIconComponent(
   }
 
   return Pill;
-}
-
-function formatQuantidade(
-  value: number
-): string {
-  if (
-    Number.isInteger(
-      value
-    )
-  ) {
-    return String(
-      value
-    );
-  }
-
-  return value
-    .toFixed(
-      2
-    )
-    .replace(
-      /\.00$/,
-      ""
-    )
-    .replace(
-      /(\.\d)0$/,
-      "$1"
-    )
-    .replace(
-      ".",
-      ","
-    );
 }
 
 // ============================================================

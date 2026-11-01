@@ -1,5 +1,7 @@
 // app/page.tsx
 "use client";
+import { selectHomeDocumentAlerts, countHomeTakenDoseLogs, selectHomeOverdueWithdrawals } from "@/lib/home/home-view-projections";
+import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -774,7 +776,7 @@ export default function HomePage() {
     );
 
   const retiradasAtrasadas = useMemo(
-    () => retiradasHoje.filter((retirada) => isOverdueWithdrawal(retirada, hoje)),
+    () => selectHomeOverdueWithdrawals(retiradasHoje, hoje),
     [retiradasHoje, hoje]
   );
 
@@ -817,17 +819,10 @@ export default function HomePage() {
   // P9: explicação enxuta, somente evidência de slots já abertos.
   const homePendingBrief = useMemo(() => buildHomePendingBrief(dosesPendentesAtrasadas), [dosesPendentesAtrasadas]);
 
-  const dosesTomadasHoje =
-    useMemo(
-      () =>
-        doseLogs.filter(
-          (log) =>
-            Boolean(
-              log.tomado_em
-            )
-        ).length,
-      [doseLogs]
-    );
+  const dosesTomadasHoje = useMemo(
+    () => countHomeTakenDoseLogs(doseLogs),
+    [doseLogs]
+  );
 
   const doseProgress = useMemo(
     () => buildHomeDoseProgress(medicamentosAtivos, doseLogs),
@@ -865,192 +860,19 @@ export default function HomePage() {
       ]
     );
 
-  const documentInsights =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
+  const documentInsights = useMemo(
+    () => !activePersonId ? [] : selectHomeDocumentAlerts(documents || [], activePersonId),
+    [documents, activePersonId]
+  );
 
-        return getDocumentAlerts(
-          documents || []
-        ).filter(
-          (alert) =>
-            alert.daysUntil <=
-              5 &&
-            alert.daysUntil >=
-              -7
-        );
-      },
-      [
-        documents,
-        activePersonId,
-      ]
-    );
-
-  const unifiedAlerts =
-    useMemo<
-      DashboardAlert[]
-    >(() => {
-      const result:
-        DashboardAlert[] =
-        [];
-
-      for (
-        const insight of
-          healthInsights
-      ) {
-        const level =
-          mapUrgenciaToAlertLevel(
-            insight.urgencia
-          );
-
-        result.push({
-          id:
-            insight.id,
-
-          title:
-            insight.titulo,
-
-          subtitle:
-            insight.mensagem,
-
-          level,
-
-          kind:
-            insight.tipo,
-
-          href:
-            insight.link,
-
-          daysUntil:
-            insight.dias ??
-            null,
-
-          icon:
-            getAlertIcon(
-              insight.tipo
-            ),
-
-          color:
-            alertLevelColor(
-              level
-            ),
-        });
-      }
-
-      for (
-        const alert of
-          documentInsights
-      ) {
-        /*
-         * Receita expirada continua no acervo clínico, mas não
-         * vira alerta operacional da Home por validade isolada.
-         *
-         * A continuidade medicamentosa é tratada pelo cérebro
-         * usando estoque, rotina e renovação.
-         */
-        const documentAlertText =
-          `${alert.title} ${alert.subtitle}`
-            .toLocaleLowerCase(
-              "pt-BR"
-            );
-
-        if (
-          documentAlertText.includes(
-            "receita"
-          )
-        ) {
-          continue;
-        }
-
-        result.push({
-          id:
-            `documento-${alert.id}`,
-
-          title:
-            alert.title,
-
-          subtitle:
-            alert.subtitle,
-
-          level:
-            alert.level,
-
-          kind:
-            "documento",
-
-          href:
-            alert.href,
-
-          daysUntil:
-            alert.daysUntil,
-
-          icon:
-            getAlertIcon(
-              "documento"
-            ),
-
-          color:
-            alertLevelColor(
-              alert.level
-            ),
-        });
-      }
-
-      const priority:
-        Record<
-          AlertLevel,
-          number
-        > = {
-          vencido: 0,
-          urgente: 1,
-          atencao: 2,
-          ok: 3,
-        };
-
-      return result
-        .sort(
-          (a, b) => {
-            const byLevel =
-              (
-                priority[
-                  a.level
-                ] ?? 4
-              ) -
-              (
-                priority[
-                  b.level
-                ] ?? 4
-              );
-
-            if (
-              byLevel !== 0
-            ) {
-              return byLevel;
-            }
-
-            const daysA =
-              a.daysUntil ??
-              99999;
-
-            const daysB =
-              b.daysUntil ??
-              99999;
-
-            return (
-              daysA -
-              daysB
-            );
-          }
-        )
-        .slice(0, 6);
-    }, [
-      healthInsights,
-      documentInsights,
-    ]);
+  const unifiedAlerts = useMemo<DashboardAlert[]>(
+    () => projectHomeDashboardAlerts(healthInsights, documentInsights, {
+      getLevel: mapUrgenciaToAlertLevel,
+      getIcon: getAlertIcon,
+      getColor: alertLevelColor,
+    }),
+    [healthInsights, documentInsights]
+  );
 
   /*
    * Alertas imediatos continuam no bloco Atenção.

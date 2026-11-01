@@ -1,5 +1,7 @@
 // app/hoje/page.tsx
 "use client";
+import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
+import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filter-intent";
@@ -143,95 +145,7 @@ export default function HojePage() {
       "medicamento"
     );
 
-  const requestedDateIsValid =
-    Boolean(
-      requestedDate &&
-      /^\d{4}-\d{2}-\d{2}$/.test(
-        requestedDate
-      ) &&
-      !Number.isNaN(
-        new Date(
-          `${requestedDate}T12:00:00`
-        ).getTime()
-      )
-    );
-
-  const dataSelecionada =
-    requestedDateIsValid &&
-    requestedDate
-      ? requestedDate
-      : hoje;
-
-  const isHoje =
-    dataSelecionada ===
-    hoje;
-
-  const isPassado =
-    dataSelecionada <
-    hoje;
-
-  const isFuturo =
-    dataSelecionada >
-    hoje;
-
-  const ontem =
-    addDaysToLocalDate(
-      hoje,
-      -1
-    );
-
-  const amanha =
-    addDaysToLocalDate(
-      hoje,
-      1
-    );
-
-  const dataSelecionadaLabel =
-    dataSelecionada ===
-    hoje
-      ? "Hoje"
-      : dataSelecionada ===
-          ontem
-        ? "Ontem"
-        : dataSelecionada ===
-            amanha
-          ? "Amanhã"
-          : new Intl.DateTimeFormat(
-              "pt-BR",
-              {
-                weekday:
-                  "long",
-
-                day:
-                  "2-digit",
-
-                month:
-                  "long",
-              }
-            ).format(
-              new Date(
-                `${dataSelecionada}T12:00:00`
-              )
-            );
-
-  const dataSelecionadaDescricao =
-    new Intl.DateTimeFormat(
-      "pt-BR",
-      {
-        day:
-          "2-digit",
-
-        month:
-          "2-digit",
-
-        year:
-          "numeric",
-      }
-    ).format(
-      new Date(
-        `${dataSelecionada}T12:00:00`
-      )
-    );
+  const { dataSelecionada, isHoje, isPassado, isFuturo, ontem, amanha, dataSelecionadaLabel, dataSelecionadaDescricao } = describeTodayDate(hoje, requestedDate);
 
   const buildTimelineUrl =
     (
@@ -332,17 +246,10 @@ export default function HojePage() {
 
   const { reminders: healthReminders } = useHealthReminders();
 
-  const remindersDoDia = useMemo(() => {
-    const [year, month, day] = dataSelecionada.split("-").map(Number);
-    const weekday = new Date(year, month - 1, day).getDay();
-
-    return healthReminders
-      .filter((reminder) =>
-        reminder.status === "active" &&
-        reminderRunsOnWeekday(reminder.frequency, reminder.weekdays || [], weekday)
-      )
-      .sort((a, b) => a.time.localeCompare(b.time));
-  }, [healthReminders, dataSelecionada]);
+  const remindersDoDia = useMemo(
+    () => projectRemindersForDay(healthReminders, dataSelecionada),
+    [healthReminders, dataSelecionada]
+  );
 
   // R9 R7: único critério de propriedade para Home e Hoje; sem nova leitura.
   const medicamentos = useMemo(
