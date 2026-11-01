@@ -3,6 +3,7 @@ import { buildCareForecast } from "@/lib/health-intelligence/care-forecast";
 import { indexMedicationSupplyRoutes, type MedicationSupplyRoute } from "@/lib/health-supply/route-authority";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { describeMedicationSupplyEvidence } from "@/lib/health-supply/medication-evidence";
 
 export type CareReadinessState = "ready" | "prepare" | "overdue" | "unknown";
 export type CareReadinessItem = {
@@ -44,10 +45,11 @@ export function buildCareReadiness(
     if (!current || withdrawal.date < current.date) withdrawalByMedication.set(withdrawal.medicationId, withdrawal);
   }
   const items = context.medicamentos
-    .filter(med => med.id && med.person_id === context.personId && med.status !== "descontinuado")
+    .filter(med => med.id && med.person_id === context.personId && (!context.userId || med.user_id === context.userId) && med.status !== "descontinuado")
     .map(med => {
       const id = med.id!;
       const route = routeIndex.get(id) ?? { origins: [], hasPrivatePurchase: false, labels: [], mode: "none" as const };
+      const routeEvidence = describeMedicationSupplyEvidence(med, route);
       const events = context.renovacoes
         .filter(row => row.medicamento_id === id && row.user_id === med.user_id && (!row.person_id || row.person_id === context.personId))
         .sort((a, b) => renewalEventDate(b).localeCompare(renewalEventDate(a)));
@@ -66,17 +68,35 @@ export function buildCareReadiness(
         headline = missing.length ? "Preparar retirada registrada" : "Retirada registrada com dados essenciais";
       } else if (plannedPurchase) {
         state = "prepare";
-        headline = "Compra particular planejada";
-      } else if (route.mode === "private" || route.mode === "hybrid") {
+        headline = "Aquisição planejada · não realizada";
+      } else if (routeEvidence.declared === "private") {
         state = prescription ? "ready" : "unknown";
-        headline = prescription ? "Receita registrada; compra continua independente" : "Compra particular sem data planejada";
+        headline = prescription ? "Receita registrada; aquisição particular ainda independente" : "Compra cadastrada sem próxima aquisição comprovada";
+      } else if (routeEvidence.declared === "public" && routeEvidence.hasActivePublicLink) {
+        state = "prepare";
+        headline = "Processo público vinculado; próxima etapa a conferir";
+        missing.push("Próxima retirada ou etapa do ciclo");
+      } else if (routeEvidence.declared === "public") {
+        state = "unknown";
+        headline = "SUS no cadastro; vínculo de processo ativo não comprovado";
+      } else if (routeEvidence.declared === "free") {
+        state = "unknown";
+        headline = "Fornecimento gratuito não identifica automaticamente SUS";
+      } else if (route.mode === "hybrid") {
+        state = "unknown";
+        headline = "Histórico público e particular; origem atual a conferir";
+      } else if (route.mode === "private") {
+        state = prescription ? "ready" : "unknown";
+        headline = prescription ? "Receita registrada; compra ainda independente" : "Compra particular sem data planejada";
       } else if (route.mode === "public") {
         state = "prepare";
         headline = "Fornecimento público sem próxima retirada vinculada";
         missing.push("Próxima retirada ou etapa do ciclo");
       }
       const evidence = [
-        `Rota: ${route.labels.join(" + ") || "não informada"}`,
+        `Cadastro: ${routeEvidence.declaredLabel}`,
+        `Vínculos históricos: ${route.labels.join(" + ") || "não informados"}`,
+        routeEvidence.detail,
         prescription ? `Receita registrada em ${renewalEventDate(prescription).slice(0, 10)}` : "Receita atual não comprovada pelo histórico",
         withdrawal ? `Retirada registrada em ${withdrawal.date}` : plannedPurchase ? `Compra planejada em ${renewalEventDate(plannedPurchase).slice(0, 10)}` : "Sem próximo evento registrado",
       ];
@@ -90,5 +110,5 @@ export function buildCareReadiness(
   const counts: Record<CareReadinessState, number> = { ready: 0, prepare: 0, overdue: 0, unknown: 0 };
   for (const item of items) counts[item.state] += 1;
   return { items, counts, generatedFor: today,
-    note: "Ausência de evento não significa falha clínica. O resumo separa compra, receita e fornecimento público e não altera estoque ou status." };
+    note: "Ausência de evento não significa falha clínica. Cadastro, processo público, receita, compra e retirada são autoridades independentes. Histórico híbrido não comprova fornecimento simultâneo. O resumo não altera estoque ou status." };
 }

@@ -7,8 +7,8 @@ export function MedicationListRouteLabel({route,label}:{route:MedicationSupplyRo
   const tone = route.mode === "hybrid" ? "text-violet-200 bg-violet-400/[0.065]" :
     route.mode === "private" ? "text-ice bg-ice/[0.065]" : "text-emerald-200 bg-emerald-400/[0.065]";
   return <span className={`max-w-full truncate rounded-md px-1.5 py-0.5 text-[9px] font-medium ${tone}`}
-    title={`Origem registrada: ${label}. Verificar a etapa atual nos detalhes.`}
-    aria-label={`Origem registrada: ${label}`}>
+    title={`Origem registrada no histórico ou processo: ${label}. Não confirma retirada, compra atual ou disponibilidade. Verifique a etapa nos detalhes.`}
+    aria-label={`Origem registrada: ${label}. Não é comprovação de fornecimento atual.`}>
     {label}
   </span>;
 }

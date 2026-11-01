@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
+import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
 
 type Props = { gastoMes: number; diferencaMes: number; totalRede: number };
 
@@ -48,9 +49,9 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
 
       <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>}>
         {() => <div className="grid grid-cols-2 gap-2.5">
-          {clinical.map(({ label, sub, path, icon: Icon, tone }) => <button type="button" key={path} onClick={() => go(path)} className={`flex min-h-[88px] items-center gap-3 rounded-[20px] border p-3 text-left ${tone}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17}/></span><span className="min-w-0"><strong className="block truncate text-xs text-ink-primary">{label}</strong><span className="mt-0.5 block line-clamp-2 text-[9px] text-ink-muted">{sub}</span></span></button>)}
-          <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-400/20 bg-rose-400/8 p-3 text-left"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17}/></span><span><strong className="block text-xs text-ink-primary">Cirurgias</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Procedimentos</span></span></button>
-          <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-[88px] items-center gap-3 rounded-[20px] border border-rose-300/20 bg-rose-300/[0.055] p-3 text-left"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-200"><BookHeart size={17}/></span><span><strong className="block text-xs text-ink-primary">Plano de segurança</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Apoio e contatos</span></span></button>
+          {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
+          <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[72px] items-center gap-2.5 rounded-2xl border border-rose-400/20 bg-rose-400/8 px-2.5 py-2.5 text-left motion-reduce:transition-none"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17}/></span><span><strong className="block text-xs text-ink-primary">Cirurgias</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Procedimentos</span></span></button>
+          <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-[72px] items-center gap-2.5 rounded-2xl border border-rose-300/20 bg-rose-300/[0.055] px-2.5 py-2.5 text-left motion-reduce:transition-none"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-200"><BookHeart size={17}/></span><span><strong className="block text-xs text-ink-primary">Plano de segurança</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Apoio e contatos</span></span></button>
         </div>}
       </ClinicalDisclosure>
 

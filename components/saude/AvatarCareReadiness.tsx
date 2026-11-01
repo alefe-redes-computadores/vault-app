@@ -38,8 +38,8 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
     missingDocuments: command?.access?.documents.explicitMissing,
   });
   return <button type="button" onClick={() => onNavigate(destination)}
-    aria-label={`Abrir contexto do Brain: ${brief.title}`}
-    className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+    aria-label={`Abrir contexto do Brain: ${brief.title}. ${authorityLabel ?? brief.authority}`}
+    className="flex min-h-14 w-full items-start gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3.5 text-left transition-colors hover:bg-violet-300/[.065] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-200"><BrainCircuit size={19}/></span>
     <span className="min-w-0 flex-1 space-y-1">
       <strong className="block text-[11px] font-semibold uppercase tracking-wide text-violet-200">Brain · {brief.posture}</strong>
@@ -48,7 +48,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-[10px] text-ink-faint">
         <span>{authorityLabel ?? brief.authority}</span>
         {change && change.kind !== "stable" ? <span>{change.label}</span> : null}
-        {planFocus?.supplyRoute && planFocus.supplyRoute !== "Origem não informada" ? <span>{planFocus.supplyRoute}</span> : null}
+        {planFocus?.supplyRoute && planFocus.supplyRoute !== "Origem não informada" ? <span title="Rota do cadastro ou histórico; não comprova retirada nem aquisição atual">{planFocus.supplyRoute} · origem a conferir</span> : null}
         {planFocus ? <span>prioridade {planFocus.priorityScore} · confiança {planFocus.confidence === "high" ? "alta" : planFocus.confidence === "moderate" ? "moderada" : "limitada"}</span> : null}
         {accessSignal?.withdrawals.overdue ? <span>{accessSignal.withdrawals.overdue} retirada(s) vencida(s)</span> : null}
         {accessSignal?.documents.explicitMissing ? <span>{accessSignal.documents.explicitMissing} documento(s) explícito(s)</span> : null}
@@ -56,6 +56,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
         {healthSignal?.records7d ? <span>{healthSignal.records7d} registro(s) de saúde nos últimos 7 dias</span> : null}
         {medicationSignal?.temporaryCoursesOpen ? <span>{medicationSignal.temporaryCoursesOpen} período(s) temporário(s) em acompanhamento</span> : null}
       </span>
+      {portfolio.counts.unknown > 0 ? <span className="block text-[10px] text-amber-200">{portfolio.counts.unknown} etapa(s) ainda sem confirmação documental ou operacional</span> : null}
       <span className="block line-clamp-1 text-[10px] text-violet-200">Abrir explicação e evidências</span>
     </span>
     <ChevronRight size={16} className="mt-2 shrink-0 text-violet-300"/>
