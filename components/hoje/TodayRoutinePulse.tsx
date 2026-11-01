@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { AlertTriangle, CalendarDays, CheckCircle2, XCircle } from "lucide-react";
+import { todayTemporalGuidance } from "@/lib/today/today-temporal-guidance";
 
 type Props = {
   isHoje: boolean;
@@ -25,6 +26,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
     ? `${pending} pendente${pending === 1 ? "" : "s"}`
     : `${unconfirmed} ${isPassado ? "sem confirmação" : "previstas"}`;
   const safePercentage = Number.isFinite(percentage) ? Math.max(0, Math.min(100, percentage)) : 0;
+  const temporalGuidance = todayTemporalGuidance({ isFuturo, isPassado, recorded, unconfirmed });
   return (
     <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/50 px-3 py-2" data-temporal-authority={isFuturo ? "projected" : isPassado ? "historical" : "today"} aria-live="polite" aria-atomic="true" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
       <div className="flex items-center justify-between gap-3">
@@ -41,6 +43,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
         </div>
       </div>
       <span className="sr-only">{isFuturo ? "Planejamento futuro não significa dose tomada." : isPassado ? "Sem confirmação histórica não significa dose ignorada." : "Doses ignoradas e pendentes não contam como tomadas."}</span>
+      {temporalGuidance && <p className="mt-1 text-[10px] leading-relaxed text-ink-muted" role="note">{temporalGuidance}</p>}
       {!isFuturo && recorded > 0 && (
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-void/60" role="progressbar" aria-label="Progresso de doses registradas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safePercentage} aria-valuetext={`${completed} concluídas, ${ignored} ignoradas, ${unconfirmed} sem confirmação`}>
           <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{ width: `${safePercentage}%` }} />

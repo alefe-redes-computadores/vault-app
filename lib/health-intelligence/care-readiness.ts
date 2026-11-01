@@ -3,6 +3,7 @@ import { buildCareForecast } from "@/lib/health-intelligence/care-forecast";
 import { indexMedicationSupplyRoutes, type MedicationSupplyRoute } from "@/lib/health-supply/route-authority";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { indexOwnedReadinessRenewals } from "@/lib/health-intelligence/readiness-renewal-index";
 import { describeMedicationSupplyEvidence } from "@/lib/health-supply/medication-evidence";
 
 export type CareReadinessState = "ready" | "prepare" | "overdue" | "unknown";
@@ -39,6 +40,8 @@ export function buildCareReadiness(
   const supply = context.fornecimento ?? { processos: [], ciclos: [], itens: [], documentos: [] };
   const routeUserId = context.userId || context.medicamentos.find(med => med.person_id === context.personId)?.user_id || "";
   const routeIndex = routeUserId ? indexMedicationSupplyRoutes(supply, context.renovacoes, context.personId, routeUserId) : new Map<string, MedicationSupplyRoute>();
+  // One pass for the owner, rather than scanning every event for every medication.
+  const renewalIndex = indexOwnedReadinessRenewals(context.renovacoes, context.personId, routeUserId);
   const withdrawalByMedication = new Map<string, (typeof forecast.withdrawals)[number]>();
   for (const withdrawal of forecast.withdrawals) {
     const current = withdrawalByMedication.get(withdrawal.medicationId);
@@ -50,12 +53,15 @@ export function buildCareReadiness(
       const id = med.id!;
       const route = routeIndex.get(id) ?? { origins: [], hasPrivatePurchase: false, labels: [], mode: "none" as const };
       const routeEvidence = describeMedicationSupplyEvidence(med, route);
-      const events = context.renovacoes
-        .filter(row => row.medicamento_id === id && row.user_id === med.user_id && (!row.person_id || row.person_id === context.personId))
+      // Copy before sorting: indexing never mutates the shared renewal collection.
+      const events = [...(renewalIndex.get(id) ?? [])]
+        .filter(row => row.user_id === med.user_id)
         .sort((a, b) => renewalEventDate(b).localeCompare(renewalEventDate(a)));
       const withdrawal = withdrawalByMedication.get(id);
       const plannedPurchase = events.find(row => !isPrescriptionOnly(row) && isFutureAcquisition(row, today));
       const prescription = events.find(row => isPrescriptionOnly(row) && renewalEventDate(row).slice(0, 10) <= today);
+      // A linked document is evidence to review, NOT proof of a valid prescription.
+      const linkedDocument = Boolean(med.document_id?.trim());
       const missing = withdrawal?.missing ? [...withdrawal.missing] : [];
       const nextDate = withdrawal?.date || (plannedPurchase ? renewalEventDate(plannedPurchase).slice(0, 10) : null);
       let state: CareReadinessState = "unknown";
@@ -71,7 +77,7 @@ export function buildCareReadiness(
         headline = "Aquisição planejada · não realizada";
       } else if (routeEvidence.declared === "private") {
         state = prescription ? "ready" : "unknown";
-        headline = prescription ? "Receita registrada; aquisição particular ainda independente" : "Compra cadastrada sem próxima aquisição comprovada";
+        headline = prescription ? "Receita registrada; aquisição particular ainda independente" : linkedDocument ? "Documento vinculado · conferir receita e aquisição" : "Compra cadastrada sem próxima aquisição comprovada";
       } else if (routeEvidence.declared === "public" && routeEvidence.hasActivePublicLink) {
         state = "prepare";
         headline = "Processo público vinculado; próxima etapa a conferir";
@@ -87,7 +93,7 @@ export function buildCareReadiness(
         headline = "Histórico público e particular; origem atual a conferir";
       } else if (route.mode === "private") {
         state = prescription ? "ready" : "unknown";
-        headline = prescription ? "Receita registrada; compra ainda independente" : "Compra particular sem data planejada";
+        headline = prescription ? "Receita registrada; compra ainda independente" : linkedDocument ? "Documento vinculado · conferir receita e compra" : "Compra particular sem data planejada";
       } else if (route.mode === "public") {
         state = "prepare";
         headline = "Fornecimento público sem próxima retirada vinculada";
@@ -97,6 +103,7 @@ export function buildCareReadiness(
         `Cadastro: ${routeEvidence.declaredLabel}`,
         `Vínculos históricos: ${route.labels.join(" + ") || "não informados"}`,
         routeEvidence.detail,
+        linkedDocument ? "Documento vinculado no cadastro; conferir tipo, titularidade e validade antes de concluir." : "Sem documento direto vinculado ao medicamento neste cadastro.",
         prescription ? `Receita registrada em ${renewalEventDate(prescription).slice(0, 10)}` : "Receita atual não comprovada pelo histórico",
         withdrawal ? `Retirada registrada em ${withdrawal.date}` : plannedPurchase ? `Compra planejada em ${renewalEventDate(plannedPurchase).slice(0, 10)}` : "Sem próximo evento registrado",
       ];

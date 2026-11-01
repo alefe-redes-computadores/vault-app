@@ -7,6 +7,7 @@ import { buildCareForecast } from "@/lib/health-intelligence/care-forecast";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 import { compareCarePlan, readCarePlanMemory, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
 import { buildAvatarDecisionBrief } from "@/lib/health-intelligence/avatar-decision-brief";
+import { avatarCarePosture } from "@/lib/health-intelligence/avatar-care-posture";
 
 export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, command, onNavigate }: { context: HealthInsightContext | null; command?: CareCommandSnapshot | null; onNavigate: (href: string) => void }) {
   const [change, setChange] = useState<CarePlanChange | null>(null);
@@ -22,6 +23,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
   }, [command?.plan]);
   if (!portfolio || (!portfolio.items.length && !forecast?.actions.length)) return null;
   const destination = planFocus?.href || nextAction?.href || "/saude/registros/relatorio";
+  const carePosture = avatarCarePosture(portfolio.counts);
   // P12: a prioridade é o fato/projeção da decisão canônica; métricas extras
   // continuam nas evidências recolhíveis, sem empilhar microtextos no Avatar.
   const accessSignal = command?.access; // V326: mantém acesso e documentos explícitos no Avatar.
@@ -57,6 +59,7 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
         {medicationSignal?.temporaryCoursesOpen ? <span>{medicationSignal.temporaryCoursesOpen} período(s) temporário(s) em acompanhamento</span> : null}
       </span>
       {portfolio.counts.unknown > 0 ? <span className="block text-[10px] text-amber-200">{portfolio.counts.unknown} etapa(s) ainda sem confirmação documental ou operacional</span> : null}
+      <span data-care-status={carePosture.tone} className={`block text-[10px] font-medium ${carePosture.tone === "urgent" ? "text-coral" : carePosture.tone === "planning" ? "text-amber-200" : "text-ink-muted"}`}>{carePosture.label}</span>
       <span className="block line-clamp-1 text-[10px] text-violet-200">Abrir explicação e evidências</span>
     </span>
     <ChevronRight size={16} className="mt-2 shrink-0 text-violet-300"/>

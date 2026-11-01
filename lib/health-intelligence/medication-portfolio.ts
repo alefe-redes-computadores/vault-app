@@ -40,6 +40,9 @@ export function buildMedicationPortfolio(
     .map(item => item.medicationId!));
   const routes = { public: 0, private: 0, hybrid: 0, unknown: 0 };
   for (const item of readiness.items) {
+    // R9 R5: route counters must describe the same active/owned portfolio.
+    // Legacy API callers can still provide items without medicationId.
+    if (item.medicationId && !activeMedicationIds.has(item.medicationId)) continue;
     if (item.route.mode === "public") routes.public += 1;
     else if (item.route.mode === "private") routes.private += 1;
     else if (item.route.mode === "hybrid") routes.hybrid += 1;
