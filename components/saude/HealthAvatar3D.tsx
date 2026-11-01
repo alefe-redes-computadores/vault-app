@@ -143,7 +143,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
       // V184: cheek volume follows the jaw plane instead of reading as a sphere attached to the face.
-      const cheek=mesh(taperedBox(.055,.068,.074,.034),materials.skin,sign*.104,2.738,.147);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.raycast=()=>{};
+      const cheek=mesh(taperedBox(.055,.068,.074,.034),materials.skin,sign*.104,2.738,.147);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.scale.z=.94;cheek.raycast=()=>{};
       const temple=mesh(taperedBox(.051,.063,.11,.032),materials.skin,sign*.158,2.824,.124);temple.rotation.z=sign*.08;temple.raycast=()=>{};
       // V198: a orelha deixa de ser uma esfera achatada. O plano afunilado acompanha
       // têmpora e mandíbula com a mesma contagem de malhas e sem custo por quadro.
@@ -181,7 +181,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.06;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
     // P14 R2: ponta nasal menos esférica; reaproveita a geometria compartilhada, sem malhas extras.
-    const noseTip=oval(materials.skin,0,2.727,.231,[.026,.017,.023]);noseTip.raycast=()=>{};
+    const noseTip=oval(materials.skin,0,2.727,.231,[.026,.017,.023]);noseTip.scale.x=.96;noseTip.raycast=()=>{};
     for(const sign of [-1,1]){
       oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
       oval(materials.skinShade,sign*.018,2.711,.259,[.006,.004,.003]).raycast=()=>{};

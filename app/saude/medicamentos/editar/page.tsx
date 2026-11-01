@@ -4,6 +4,8 @@ import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-revie
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
+import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
+import { MedicationCatalogFormatNotice } from "@/components/saude/MedicationCatalogFormatNotice";
 import { useMedicationCatalogDismiss } from "@/hooks/useMedicationCatalogDismiss";
 
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
@@ -206,7 +208,6 @@ import { arraysEqual, brParaIso, getPositiveNumberOrNull, handleCurrencyMask, ha
 import { extractCatalogPresentationDosage, formatMatchesCatalog, getCatalogFormatLabel, getEstoqueUnidadePorFormato, inferVaultFormatFromOfficialPresentation, normalizeCatalogText } from "@/lib/medications/catalog-presentation";
 import {
   CirclePillIcon,
-  MEDICATION_ADDITIONAL_FORMATS as FORMATOS_ADICIONAIS,
   MEDICATION_FORMATS as FORMATOS,
   type CatalogPresentationSuggestion,
 } from "@/lib/medications/form-presentation";
@@ -4955,39 +4956,12 @@ function EditarMedicamentoContent() {
                     onMore={() => { trigger("vibrate"); setIsFormatoModalOpen(true); }}
                   />
 
-                  {catalogReference &&
-                    formatCanBeChecked &&
-                    !catalogFormatMatches && (
-                      <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-3.5 py-3">
-                        <AlertTriangle
-                          size={15}
-                          className="mt-0.5 shrink-0 text-amber-400"
-                        />
-
-                        <div>
-                          <p className="text-xs font-semibold text-ink-primary">
-                            Formato não encontrado nas apresentações consultadas
-                          </p>
-
-                          <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
-                            O formato selecionado não apareceu entre as informações oficiais encontradas para{" "}
-                            <strong>
-                              {
-                                catalogReference.canonicalName
-                              }
-                            </strong>
-                            . Você pode manter esse formato e salvar normalmente.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                  {catalogReference &&
-                    !formatCanBeChecked && (
-                      <p className="mb-4 text-[10px] leading-relaxed text-ink-faint">
-                        O catálogo ainda não possui evidência atual suficiente para confirmar este formato.
-                      </p>
-                    )}
+                  {catalogReference && <MedicationCatalogFormatNotice
+                    canonicalName={catalogReference.canonicalName}
+                    formatCanBeChecked={formatCanBeChecked}
+                    formatMatches={catalogFormatMatches}
+                    mode="edit"
+                  />}
 
                   <p className="mb-2 text-xs font-medium text-ink-muted">
                     Cores
@@ -7065,148 +7039,12 @@ function EditarMedicamentoContent() {
           )}
         </div>
 
-        <AnimatePresence>
-          {isFormatoModalOpen && (
-            <>
-              <motion.button
-                type="button"
-                aria-label="Fechar seleção de formato"
-                initial={{
-                  opacity: 0,
-                }}
-                animate={{
-                  opacity: 1,
-                }}
-                exit={{
-                  opacity: 0,
-                }}
-                onClick={
-                  () =>
-                    setIsFormatoModalOpen(
-                      false
-                    )
-                }
-                className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
-              />
-
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  y: 28,
-                  scale: 0.98,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                  scale: 1,
-                }}
-                exit={{
-                  opacity: 0,
-                  y: 28,
-                  scale: 0.98,
-                }}
-                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-h-[78dvh] max-w-lg overflow-hidden rounded-[30px] border border-surface-border bg-surface shadow-2xl"
-              >
-                <div className="flex items-start justify-between border-b border-surface-border/50 px-5 py-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-ink-primary">
-                      Mais formatos
-                    </h3>
-
-                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                      Selecione outro formato. Divergências com o catálogo oficial geram aviso, nunca bloqueio.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={
-                      () =>
-                        setIsFormatoModalOpen(
-                          false
-                        )
-                    }
-                    className="ml-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-raised text-ink-muted"
-                  >
-                    <X
-                      size={18}
-                    />
-                  </button>
-                </div>
-
-                <div className="max-h-[60dvh] overflow-y-auto p-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    {FORMATOS_ADICIONAIS.map(
-                      (
-                        item
-                      ) => {
-                        const active =
-                          formato === item.id;
-
-                        const Icon =
-                          item.icon;
-
-                        return (
-                          <button
-                            type="button"
-                            key={
-                              item.id
-                            }
-                            onClick={
-                              () => {
-                                toggleFormato(
-                                  item.id
-                                );
-
-                                setIsFormatoModalOpen(
-                                  false
-                                );
-                              }
-                            }
-                            className={`flex min-h-[68px] items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all ${
-                              active
-                                ? "border-ice bg-ice/15 text-ice"
-                                : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                            }`}
-                          >
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-void/50">
-                              <Icon
-                                size={20}
-                                fill={
-                                  active
-                                    ? "currentColor"
-                                    : "none"
-                                }
-                                stroke={
-                                  active
-                                    ? "none"
-                                    : "currentColor"
-                                }
-                              />
-                            </span>
-
-                            <span className="min-w-0 flex-1 text-sm font-medium">
-                              {
-                                item.label
-                              }
-                            </span>
-
-                            {active && (
-                              <Check
-                                size={17}
-                                className="shrink-0"
-                              />
-                            )}
-                          </button>
-                        );
-                      }
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+        <MedicationAdditionalFormatsSheet
+          open={isFormatoModalOpen}
+          selectedFormat={formato}
+          onSelect={toggleFormato}
+          onClose={() => setIsFormatoModalOpen(false)}
+        />
 
         <SelectionModal<any>
           isOpen={
