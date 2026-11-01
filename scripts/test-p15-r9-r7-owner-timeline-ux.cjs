@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript'),Module=require('node:module');
+const read=p=>fs.readFileSync(p,'utf8');let checks=0;
+const check=(truth,label)=>{assert(truth,'R9 R7: '+label);console.log(`✓ ${++checks}: ${label}`);};
+function pure(path){const compiled=ts.transpileModule(read(path),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;const m=new Module(path,module);m._compile(compiled,path);return m.exports;}
+const files=['app/page.tsx','app/hoje/page.tsx','components/home/HomeDailyHero.tsx','components/saude/MedicationPortfolioOverview.tsx','components/saude/AvatarCareReadiness.tsx','components/saude/HealthAvatar3D.tsx','scripts/test-v63-release-gate.mjs','lib/health-intelligence/medication-owner-scope.ts','lib/today/timeline-filter-intent.ts','components/saude/MedicationScopeReconciliation.tsx'];
+for(const path of files){const parsed=ts.createSourceFile(path,read(path),ts.ScriptTarget.Latest,true,path.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);check(parsed.parseDiagnostics.length===0,'TS/TSX válido: '+path);}
+const owner=pure(files[7]).medicationsForOwner;
+const rows=[{id:'own',person_id:'p',user_id:'u'},{id:'foreign-person',person_id:'q',user_id:'u'},{id:'foreign-account',person_id:'p',user_id:'v'},{id:'no-person',user_id:'u'}, {id:'other',person_id:'p',user_id:'u'}];
+const snapshot=[...rows];
+check(owner(rows,'p','u').map(x=>x.id).join(',')==='own,other','conta + pessoa filtradas em ordem estável');
+check(owner(rows,'p','v').map(x=>x.id).join(',')==='foreign-account','sem herança entre contas');
+check(owner(rows,'','u').length===0&&owner(rows,null,'u').length===0,'pessoa ausente falha fechado');
+check(owner([], 'p','u').length===0&&owner(undefined,'p','u').length===0,'dados ausentes não geram registros');
+check(rows.every((x,i)=>x===snapshot[i]),'filtro não muta fonte');
+const toggle=pure(files[8]);
+check(toggle.toggleTodayStatus('todos','pendentes')==='pendentes'&&toggle.toggleTodayStatus('pendentes','pendentes')==='todos','filtro pendentes alterna e restaura Todos');
+check(toggle.toggleTodayStatus('tomados','ignorados')==='ignorados','status explícito não é engolido');
+check(toggle.toggleTodayPeriod('todos','noite')==='noite'&&toggle.toggleTodayPeriod('noite','noite')==='todos','período alterna sem recálculo clínico');
+const home=read(files[0]),today=read(files[1]),hero=read(files[2]),portfolio=read(files[3]),avatar=read(files[4]),mesh=read(files[5]),gate=read(files[6]);
+check(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)'),'Home usa autoridade compartilhada');
+check(home.includes('const medicamentosById')&&home.includes('medicamentosById.get(retirada.medicamento_id)'),'Home mantém índice legado e conexões');
+check(today.includes('medicationsForOwner(rawMedicamentos, activePersonId, user?.id)'),'Hoje usa mesma autoridade compartilhada');
+check(today.includes('new Map<string, any>')&&today.includes('visibleTimelineItems(dosesFiltradas'),'Hoje preserva índices e fila canônica');
+for(const status of ['pendentes','tomados','ignorados'])check(today.includes(`toggleTodayStatus(filtroStatus, "${status}")`)&&today.includes(`aria-pressed={filtroStatus === "${status}"}`),`status ${status} continua acessível`);
+check(today.includes('toggleTodayPeriod(filtroPeriodo, value)')&&today.includes('aria-pressed={filtroPeriodo === value}'),'períodos preservam aria-pressed');
+check(today.includes('Período {filtroPeriodo !== "todos"')&&today.includes('>Todas</button>'),'marcadores legados P14/P15 preservados');
+check(today.includes('DoseScheduleGroups')&&today.includes('QuickDoseModal')&&today.includes('await marcarDose('),'autoridade de doses não alterada');
+check(hero.includes('safeProgress')&&hero.includes('safeCompleted')&&hero.includes('scheduled > 0'),'Home evita taxa e numerador inválidos');
+check(hero.includes('Rotina programada')&&hero.includes('role="progressbar"')&&hero.includes('Sem horários'),'indicador e acessibilidade existentes preservados');
+check(portfolio.includes('listActiveCount !== portfolio.active')&&portfolio.includes('<MedicationScopeReconciliation'),'diferença Brain/lista explicável e visível');
+check(portfolio.includes('Doses SOS não entram nessa meta programada')&&portfolio.includes('medicationPortfolioCoherence(portfolio)'),'SOS e classificação preservados');
+const explain=read(files[9]);
+check(explain.includes('Lista: {listActiveCount} ativos')&&explain.includes('Brain: {brainActiveCount} acompanhados'),'apresenta os dois números sem mascarar');
+check(explain.includes('Por que os números podem variar?')&&explain.includes('nenhum registro foi alterado'),'reconciliação com transparência');
+check(!/fetch\(|supabase|db\./.test(explain),'componente não acessa banco');
+check(avatar.includes('avatarCarePosture(portfolio.counts)')&&avatar.includes('Informação incompleta não constitui diagnóstico'),'Fênix preserva postura e incerteza');
+check(mesh.includes('multiplyScalar(.81)')&&mesh.includes('opacity:.22')&&mesh.includes('P14 R5: esclerótica'),'sombra de rosto suave e olhos preservados');
+check(mesh.includes('DirectionalLight(0xb1dbd5, 1.28)')&&mesh.includes('toneMappingExposure=1.03')&&mesh.includes('roughness:.78,metalness:.07'),'luz P14 R4 e palco fosco intactos');
+check(!mesh.includes('requestAnimationFrame(animate)'),'nenhum loop GPU novo');
+check(gate.includes('test-p15-r9-r7-owner-timeline-ux.cjs')&&gate.includes('test-p15-r9-r6-modularity-brain-avatar.cjs'),'R7 e R6 inscritos no gate');
+for(const old of ['test-home-today-v9-contract.mjs','test-p14-r4-structural-hierarchy-brain-avatar.cjs','test-v196-progressive-shell-avatar.cjs','test-v253-brain-readiness-calibration-avatar.cjs','test-v165-contextual-health.cjs'])check(gate.includes(old),'gate legado '+old);
+console.log(`VAULT P15 R9 R7: ${checks} contratos aprovados.`);

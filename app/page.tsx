@@ -45,6 +45,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePersons } from "@/hooks/usePersons";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
+import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { useMedicos } from "@/hooks/useMedicos";
 import { useFarmacias } from "@/hooks/useFarmacias";
 import { useHospitais } from "@/hooks/useHospitais";
@@ -591,26 +592,11 @@ export default function HomePage() {
   } =
     useMedicamentos();
 
-  const medicamentos =
-    useMemo(
-      () =>
-        activePersonId
-          ? (
-              medicamentosTodas ||
-              []
-            ).filter(
-              (
-                medicamento: any
-              ) =>
-                medicamento.person_id ===
-                activePersonId
-            )
-          : [],
-      [
-        medicamentosTodas,
-        activePersonId,
-      ]
-    );
+  // R9 R7: a Home e Hoje compartilham o mesmo isolamento por conta e pessoa.
+  const medicamentos = useMemo(
+    () => medicationsForOwner(medicamentosTodas, activePersonId, user?.id),
+    [medicamentosTodas, activePersonId, user?.id],
+  );
 
   const medicamentosAtivos =
     useMemo(

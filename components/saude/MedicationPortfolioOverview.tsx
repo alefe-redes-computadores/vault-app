@@ -4,6 +4,7 @@ import { BrainCircuit, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, P
 import type { MedicationPortfolio } from "@/lib/health-intelligence/medication-portfolio";
 import type { BrainCarePlan } from "@/lib/health-intelligence/care-plan";
 import { medicationPortfolioCoherence } from "@/lib/health-intelligence/medication-portfolio-coherence";
+import { MedicationScopeReconciliation } from "@/components/saude/MedicationScopeReconciliation";
 
 /**
  * P9 — compacto por padrão, evidências detalhadas por opção do usuário.
@@ -42,9 +43,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
         </div>
       </div>
       {typeof listActiveCount === "number" && Number.isFinite(listActiveCount) && listActiveCount !== portfolio.active && (
-        <p className="mt-1.5 text-[10px] leading-relaxed text-amber-200" role="status">
-          Lista: {listActiveCount} ativos · Brain: {portfolio.active} acompanhados. Há diferença de escopo ou atualização; confira antes de interpretar os totais.
-        </p>
+        <MedicationScopeReconciliation listActiveCount={listActiveCount} brainActiveCount={portfolio.active} />
       )}
       {coherence.hasUnknownType && <p role="note" className="mt-1.5 text-[10px] leading-relaxed text-violet-200">{coherence.explanation}</p>}
       {total > 0 && <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-raised" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}

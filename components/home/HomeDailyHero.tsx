@@ -20,6 +20,8 @@ export const HomeDailyHero = memo(function HomeDailyHero({
 }: Props) {
   // P15 R5: 0 eventos previstos não produz barra cheia ou taxa de adesão implícita.
   const safeProgress = scheduled > 0 && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
+  // R9 R7: visual count cannot exceed the real planned denominator (SOS is separate).
+  const safeCompleted = scheduled > 0 && Number.isFinite(scheduled) && Number.isFinite(completed) ? Math.max(0, Math.min(Math.floor(scheduled), Math.floor(completed))) : 0;
   return <>
     <button type="button" onClick={onOpen}
       className="flex w-full items-center justify-between gap-3 px-4 pb-2 pt-4 text-left transition-colors motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
@@ -33,9 +35,9 @@ export const HomeDailyHero = memo(function HomeDailyHero({
     </button>
     <div className="px-4 pb-3">
       <div className="mb-1.5 flex items-center justify-between gap-3 text-[10px] text-ink-muted">
-        <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${completed}/${scheduled}` : "Sem horários"}</span>
+        <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${safeCompleted}/${scheduled}` : "Sem horários"}</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${completed} doses resolvidas de ${scheduled} previstas` : "Sem horários programados"}>
+      <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas` : "Sem horários programados"}>
         <div className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />
       </div>
     </div>

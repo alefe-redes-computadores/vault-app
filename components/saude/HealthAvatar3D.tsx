@@ -83,7 +83,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // P8: pele e olhos menos plastificados, sem geometria, luz ou GPU extras.
       // P9: transição de luz no rosto menos plástica, sem novas malhas nem loops GPU.
       skin: new THREE.MeshStandardMaterial({ color: avatarColor(skin), roughness: .675, metalness: .005 }),
-      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.79), roughness: .79, transparent:true, opacity:.22 }),
+      // P15 R9 R7: plano de sombra existente ligeiramente mais suave; mesmas malhas e reflexos oculares.
+      skinShade: new THREE.MeshStandardMaterial({ color: new THREE.Color(avatarColor(skin)).multiplyScalar(.81), roughness: .79, transparent:true, opacity:.22 }),
       // P12: tecidos com difusão fosca sutil. Reutiliza materiais, sem malha ou render loop adicional.
       top: new THREE.MeshStandardMaterial({ color: appearance.topColor, roughness: .86 }),
       // P15 R8: tecido com reflexo mais suave; material já existente, nenhuma malha a mais.

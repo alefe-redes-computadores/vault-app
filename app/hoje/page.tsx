@@ -1,6 +1,8 @@
 // app/hoje/page.tsx
 "use client";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
+import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
+import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filter-intent";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
@@ -338,30 +340,11 @@ export default function HojePage() {
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [healthReminders, dataSelecionada]);
 
-  const medicamentos =
-    useMemo(
-      () => {
-        if (
-          !rawMedicamentos ||
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return rawMedicamentos.filter(
-          (
-            medicamento:
-              any
-          ) =>
-            medicamento.person_id ===
-            activePersonId
-        );
-      },
-      [
-        rawMedicamentos,
-        activePersonId,
-      ]
-    );
+  // R9 R7: único critério de propriedade para Home e Hoje; sem nova leitura.
+  const medicamentos = useMemo(
+    () => medicationsForOwner(rawMedicamentos, activePersonId, user?.id),
+    [rawMedicamentos, activePersonId, user?.id],
+  );
 
   // V196: one indexed lookup shared by timeline, appointments and actions.
   // This avoids repeatedly scanning the full medication collection while rendering.
@@ -2181,7 +2164,7 @@ export default function HojePage() {
                 aria-pressed={filtroStatus === "pendentes"}
                 onClick={() => {
                   trigger("vibrate");
-                  setFiltroStatus(filtroStatus === "pendentes" ? "todos" : "pendentes");
+                  setFiltroStatus(toggleTodayStatus(filtroStatus, "pendentes"));
                 }}
                 className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
                   filtroStatus === "pendentes"
@@ -2200,7 +2183,7 @@ export default function HojePage() {
                 aria-pressed={filtroStatus === "tomados"}
                 onClick={() => {
                   trigger("vibrate");
-                  setFiltroStatus(filtroStatus === "tomados" ? "todos" : "tomados");
+                  setFiltroStatus(toggleTodayStatus(filtroStatus, "tomados"));
                 }}
                 className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
                   filtroStatus === "tomados"
@@ -2216,7 +2199,7 @@ export default function HojePage() {
                   aria-pressed={filtroStatus === "ignorados"}
                   onClick={() => {
                     trigger("vibrate");
-                    setFiltroStatus(filtroStatus === "ignorados" ? "todos" : "ignorados");
+                    setFiltroStatus(toggleTodayStatus(filtroStatus, "ignorados"));
                   }}
                   className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
                     filtroStatus === "ignorados"
@@ -2241,7 +2224,7 @@ export default function HojePage() {
                   aria-pressed={filtroPeriodo === value}
                   onClick={() => {
                     trigger("vibrate");
-                    setFiltroPeriodo(filtroPeriodo === value ? "todos" : value);
+                    setFiltroPeriodo(toggleTodayPeriod(filtroPeriodo, value));
                   }}
                   className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
                     filtroPeriodo === value
