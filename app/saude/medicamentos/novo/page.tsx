@@ -2,6 +2,8 @@
 "use client";
 import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
+import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
+import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
 import { useMedicationCatalogDismiss } from "@/hooks/useMedicationCatalogDismiss";
 
 
@@ -175,8 +177,6 @@ import {
   CirclePillIcon,
   MEDICATION_ADDITIONAL_FORMATS as FORMATOS_ADICIONAIS,
   MEDICATION_FORMATS as FORMATOS,
-  MEDICATION_IDENTITY_COLORS as CORES_DISPONIVEIS,
-  MEDICATION_PRIMARY_FORMATS as FORMATOS_PRINCIPAIS,
   type CatalogPresentationSuggestion,
 } from "@/lib/medications/form-presentation";
 import { MedicationIdentityPreview } from "@/components/saude/MedicationIdentityPreview";
@@ -3865,107 +3865,12 @@ export default function NovoMedicamentoPage() {
 
                   <MedicationIdentityPreview name={nome} format={formato} colors={cores} />
 
-                  <div className="mb-5 grid grid-cols-4 gap-2">
-                    {FORMATOS_PRINCIPAIS.map(
-                      (
-                        item
-                      ) => {
-                        const isActive =
-                          formato ===
-                          item.id;
-
-                        const Icon =
-                          item.icon;
-
-                        return (
-                          <button
-                            type="button"
-                            key={
-                              item.id
-                            }
-                            onClick={
-                              () =>
-                                handleFormatoChange(
-                                  item.id
-                                )
-                            }
-                            className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 transition-all ${
-                              isActive
-                                ? "border-ice bg-ice/15 text-ice"
-                                : "border-surface-border/40 bg-surface-raised text-ink-muted"
-                            }`}
-                          >
-                            <Icon
-                              size={
-                                20
-                              }
-                              fill={
-                                isActive
-                                  ? "currentColor"
-                                  : "none"
-                              }
-                              stroke={
-                                isActive
-                                  ? "none"
-                                  : "currentColor"
-                              }
-                            />
-
-                            <span className="text-[10px] font-medium">
-                              {
-                                item.label
-                              }
-                            </span>
-                          </button>
-                        );
-                      }
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={
-                        () => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          setIsFormatoModalOpen(
-                            true
-                          );
-                        }
-                      }
-                      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 transition-all ${
-                        FORMATOS_ADICIONAIS.some(
-                          (
-                            item
-                          ) =>
-                            item.id ===
-                            formato
-                        )
-                          ? "border-ice bg-ice/15 text-ice"
-                          : "border-surface-border/40 bg-surface-raised text-ink-muted"
-                      }`}
-                    >
-                      <Package
-                        size={
-                          20
-                        }
-                      />
-
-                      <span className="max-w-full break-words px-1 text-center text-[10px] font-medium leading-tight">
-                        {
-                          FORMATOS_ADICIONAIS.find(
-                            (
-                              item
-                            ) =>
-                              item.id ===
-                              formato
-                          )?.label ??
-                          "Mais formatos"
-                        }
-                      </span>
-                    </button>
-                  </div>
+                  <MedicationFormatPicker
+                    selectedFormat={formato}
+                    onSelect={handleFormatoChange}
+                    columns={4}
+                    onMore={() => { trigger("vibrate"); setIsFormatoModalOpen(true); }}
+                  />
 
                   {catalogReference &&
                     formatCanBeChecked &&
@@ -4007,42 +3912,7 @@ export default function NovoMedicamentoPage() {
                     Cores (Até 2 para pílulas e cápsulas)
                   </p>
 
-                  <div className="flex flex-wrap gap-3">
-                    {CORES_DISPONIVEIS.map(
-                      (
-                        hex
-                      ) => (
-                        <button
-                          type="button"
-                          key={
-                            hex
-                          }
-                          onClick={
-                            () =>
-                              toggleCor(
-                                hex
-                              )
-                          }
-                          className={`h-8 w-8 rounded-full border-2 transition-transform ${
-                            cores.includes(
-                              hex
-                            )
-                              ? "scale-110 border-ice"
-                              : "border-transparent"
-                          }`}
-                          style={{
-                            backgroundColor:
-                              hex,
-                          }}
-                          aria-label={`Selecionar cor ${hex}`}
-                        />
-                      )
-                    )}
-                    <label className="relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-surface-border/60 active:scale-95" style={{ background: "conic-gradient(#ef4444,#f97316,#facc15,#22c55e,#22d3ee,#3b82f6,#8b5cf6,#ec4899,#ef4444)" }} aria-label="Escolher cor personalizada" title="Cor personalizada">
-                      <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-void/80 text-[10px] font-bold text-white">+</span>
-                      <input type="color" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Cor personalizada do medicamento" onChange={(event) => toggleCor(event.target.value.toUpperCase())} />
-                    </label>
-                  </div>
+                  <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="regular" />
                   <p className="mt-2 text-[10px] text-ink-faint">Até 2 cores. Use o círculo multicolorido para qualquer tom.</p>
 
                   <div className="mt-4 flex justify-center">

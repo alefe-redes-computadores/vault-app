@@ -3,9 +3,13 @@ const r=p=>fs.readFileSync(p,"utf8"), ok=(c,m)=>{if(!c)throw Error("V94.3 R2: "+
 const t=r("components/ToastProvider.tsx"),n=r("app/saude/medicamentos/novo/page.tsx"),e=r("app/saude/medicamentos/editar/page.tsx");
 ok(t.includes("safe-area-inset-top"),"toast respeita safe-area");
 ok(!t.includes("fixed inset-x-0 top-4"),"top-4 antigo removido");
-ok(n.includes("VAULT_MEDICATION_IDENTITY_V94_3")&&e.includes("VAULT_MEDICATION_IDENTITY_V94_3"),"paleta idêntica em Novo e Editar");
-ok(n.includes("#F97316")&&e.includes("#F97316"),"laranja real nos dois fluxos");
-ok(n.includes('type="color"')&&e.includes('type="color"'),"cor personalizada nos dois fluxos");
-ok(n.includes("conic-gradient")&&e.includes("conic-gradient"),"círculo multicolorido nos dois fluxos");
+const palette=r("lib/medications/form-presentation.tsx");
+ok(n.includes('from "@/lib/medications/form-presentation"') && e.includes('from "@/lib/medications/form-presentation"') && palette.includes('MEDICATION_IDENTITY_COLORS'),"paleta canônica única em Novo e Editar");
+ok(palette.includes("#F97316") && palette.includes('MEDICATION_IDENTITY_COLORS'),"laranja real preservado na paleta compartilhada");
+const colorPicker=r("components/saude/MedicationIdentityColorPicker.tsx");
+const formatPicker=r("components/saude/MedicationFormatPicker.tsx");
+ok(n.includes('<MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor}') && e.includes('<MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor}') && colorPicker.includes('type="color"'),"cor personalizada compartilhada nos dois fluxos");
+ok(colorPicker.includes("conic-gradient") && colorPicker.includes('aria-pressed={active}') && colorPicker.includes('onToggleColor(event.target.value.toUpperCase())'),"círculo multicolorido acessível e personalizada normalizada");
+ok(n.includes('<MedicationFormatPicker') && e.includes('<MedicationFormatPicker') && formatPicker.includes('MEDICATION_PRIMARY_FORMATS.map') && formatPicker.includes('MEDICATION_ADDITIONAL_FORMATS.find'),"formatos compartilhados sem perder opções adicionais");
 ok(n.includes("FORMATOS_ADICIONAIS")&&e.includes("FORMATOS_ADICIONAIS"),"formatos preservados");
 console.log("VAULT V94.3 R2 — CONTRATO OK");
