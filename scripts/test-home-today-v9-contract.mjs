@@ -17,7 +17,16 @@ ok("retiradas explicam programação e histórico", hub.includes("<HomeSupplyAcc
   hub.includes('withdrawalPath="/saude/retiradas"') &&
   supplyTiles.includes("onNavigate(withdrawalPath)") &&
   supplyTiles.includes("Programações, locais e histórico de retirada"));
-ok("atalhos clínicos possuem cores semânticas", ["text-ice", "text-emerald-400", "text-cyan-400", "text-amber-400", "text-coral"].every((tone) => hub.includes(tone)));
+// M6: verifica cada categoria em sua rota, não a antiga lista global azul/ciano.
+const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));
+ok("atalhos clínicos possuem cores semânticas",
+  hasClinicalTone("/saude/minha-saude", "emerald-400") &&
+  hasClinicalTone("/saude/consultas", "violet-300") &&
+  hasClinicalTone("/saude/exames", "emerald-400") &&
+  hasClinicalTone("/saude/lembretes", "amber-400") &&
+  hasClinicalTone("/saude/registros", "coral") &&
+  hub.includes('networkTone="text-emerald-300/80"') &&
+  !hub.includes('networkTone="text-cyan-400/70"'));
 ok("cirurgias continuam acessíveis", hub.includes("/saude/cirurgias"));
 ok("arquivos, compras e rede foram preservados", ["/documentos", "/saude/renovacao", "/saude/rede"].every((path) => hub.includes(path)));
 ok("Hoje resume concluídos por padrão", today.includes("mostrarConcluidas") && today.includes("concluidasOcultas"));

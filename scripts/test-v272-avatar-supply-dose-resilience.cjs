@@ -9,7 +9,20 @@ ok(avatar.includes("expressionHighlightScale")&&avatar.includes("object.scale.co
 ok(!avatar.includes("expressionHighlights){object.position.y=restY")&&!avatar.includes("object.scale.setScalar(value===\"reflective\"?.82:1)"),"bolha gigante do Avatar não pode regressar");
 
 const nav=read("components/BottomNav.tsx");
-ok(nav.includes('normalizedPathname === "/saude/fornecimento"')&&nav.includes('/saude/fornecimento?action=novo'),"Fornecimento usa criação contextual da barra inferior");
+const compose=read("lib/navigation/bottom-nav-compose.ts");
+const ts=require("typescript");
+const compiled=ts.transpileModule(compose,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const box={exports:{}};
+new Function("module","exports","require",compiled)(box,box.exports,id=>{
+  if(id==="lucide-react")return new Proxy({},{get:(_target,key)=>String(key)});
+  throw Error("V272: dependência inesperada no catálogo FAB: "+id);
+});
+const supplyChoices=box.exports.getComposeOptions("/saude/fornecimento",new URLSearchParams());
+ok(nav.includes('from "@/lib/navigation/bottom-nav-compose"')&&
+   nav.includes('normalizeNavPathname(pathname),')&&
+   compose.includes('normalizedPathname === "/saude/fornecimento"')&&
+   supplyChoices.length===1&&supplyChoices[0].path==="/saude/fornecimento?action=novo",
+   "Fornecimento usa criação contextual funcional da barra inferior");
 ok(nav.includes('"/saude/fornecimento",'),"barra inferior permanece disponível no Fornecimento");
 
 const supply=read("app/saude/fornecimento/page.tsx");

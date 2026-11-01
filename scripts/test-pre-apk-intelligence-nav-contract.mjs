@@ -23,6 +23,8 @@ const health =
 
 const bottom =
   read("components/BottomNav.tsx");
+const compose =
+  read("lib/navigation/bottom-nav-compose.ts");
 
 const providers =
   read("components/Providers.tsx");
@@ -130,8 +132,11 @@ ok(
 );
 
 ok(
-  bottom.includes("/inteligencia"),
-  "Inteligência pertence ao contexto do menu inferior"
+  bottom.includes('from "@/lib/navigation/bottom-nav-compose"') &&
+  bottom.includes("getComposeOptions(") &&
+  compose.includes('normalizedPathname.startsWith("/inteligencia")') &&
+  compose.includes('return []'),
+  "Inteligência pertence ao contexto do menu inferior e não abre FAB de cadastro"
 );
 
 ok(

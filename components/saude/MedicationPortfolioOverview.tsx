@@ -28,7 +28,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
   return (
     <section aria-label="Resumo operacional dos medicamentos" className="mb-2.5 rounded-2xl border border-surface-border/50 bg-surface/70 px-3 py-2.5 shadow-sm">
       <div className="flex min-w-0 items-center gap-2.5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ice/10 text-ice"><Pill size={17}/></span>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-400/10 text-amber-300"><Pill size={17}/></span>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Seu cuidado</p>
           <p title="Contagem do Brain por pessoa e estado de acompanhamento; pode diferir do filtro da lista." className="mt-0.5 text-xs font-semibold leading-snug text-ink-primary">

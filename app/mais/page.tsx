@@ -855,7 +855,7 @@ export default function MaisPage() {
       icon: CreditCard,
       label: "Cartões",
       description: `${vaultOverview.cards} ${vaultOverview.cards === 1 ? "cartão" : "cartões"}`,
-      tone: "border-sky-400/20 bg-sky-400/10 text-sky-300",
+      tone: "border-rose-400/20 bg-rose-400/10 text-rose-300",
       onClick: () => {
         trigger("vibrate");
         router.replace("/cartoes");

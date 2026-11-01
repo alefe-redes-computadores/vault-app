@@ -1317,7 +1317,7 @@ export default function MedicamentosListPage() {
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 ${
                   isSearchOpen ||
                   searchQuery
-                    ? "border-ice/40 bg-ice/10 text-ice"
+                    ? "border-emerald-300/30 bg-emerald-300/[.06] text-emerald-200"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"
                 }`}
                 aria-label="Pesquisar medicamentos"
@@ -1332,7 +1332,7 @@ export default function MedicamentosListPage() {
                   trigger("vibrate");
                   router.push("/saude/retiradas");
                 }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ice/30 bg-ice/10 text-ice transition-all active:scale-95"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/[.07] text-amber-300 transition-all active:scale-95"
                 aria-label="Abrir retiradas de medicamentos"
                 title="Retiradas"
               >
@@ -1368,7 +1368,7 @@ export default function MedicamentosListPage() {
                   }
                   placeholder="Nome, princípio ativo, dose ou médico..."
                   aria-label="Buscar medicamento"
-                  className="h-11 w-full rounded-2xl border border-ice/20 bg-surface-raised pl-10 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-ice/45"
+                  className="h-11 w-full rounded-2xl border border-emerald-300/20 bg-surface-raised pl-10 pr-10 text-sm text-ink-primary outline-none transition-colors placeholder:text-ink-faint focus:border-emerald-300/45"
                 />
 
                 <button
@@ -1403,13 +1403,18 @@ export default function MedicamentosListPage() {
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
-          <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={medsPrioridade.length > 0}>
+          <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
+            <div className="min-w-0"><h2 className="text-xs font-bold text-ink-primary">Seus medicamentos</h2>
+              <p className="mt-0.5 text-[10px] leading-snug text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados</p></div>
+            {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
+          </div>
+          <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>
             {() => <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/>}
           </ClinicalDisclosure>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
             <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-              Ir para um grupo <span aria-hidden="true" className="text-ice">▾</span>
+              Ir para um grupo <span aria-hidden="true" className="text-ink-muted">▾</span>
             </summary>
             <ClinicalSectionNav label="Grupos de medicamentos" items={[...(medsPrioridade.length?[{id:"medicamentos-atencao",label:"Atenção",icon:<AlertTriangle size={14}/>,badge:medsPrioridade.length}]:[]),...(medsEmDia.length?[{id:"medicamentos-em-dia",label:"Em dia",icon:<CheckCircle2 size={14}/>,badge:medsEmDia.length}]:[]),...(medsPlanejados.length?[{id:"medicamentos-planejados",label:"Próximas",icon:<Calendar size={14}/>,badge:medsPlanejados.length}]:[]),...(medsSOS.length?[{id:"medicamentos-sos",label:"SOS",icon:<Zap size={14}/>,badge:medsSOS.length}]:[]),...(medsSuspensos.length?[{id:"medicamentos-suspensos",label:"Suspensos",icon:<EyeOff size={14}/>,badge:medsSuspensos.length}]:[])]}/>
           </details>:null}

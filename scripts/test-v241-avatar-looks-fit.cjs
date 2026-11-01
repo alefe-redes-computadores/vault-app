@@ -20,6 +20,9 @@ const framing=read('lib/health-profile/avatar-framing.ts');assert.match(framing,
 const context=read('lib/health-profile/avatar-context.ts'),avatar=read('components/saude/HealthAvatar.tsx');
 assert.match(context,/avatarAttentionLabel/);assert.match(context,/Revisão prioritária/);
 assert.match(scene,/Math\.min\(4,Math\.floor\(rank\)\)/);
-assert.match(avatar,/Prioridade baseada nos registros · não é diagnóstico/);
+// M6: a primeira interação expõe o contexto local; o rótulo informa a ação
+// e preserva a ressalva clínica. O clique fica conectado ao handler contextual.
+assert.match(avatar,/Ver contexto registrado · não é diagnóstico/);
+assert.match(avatar,/onClick=\{onBrainSelect\}/);
 assert.equal((avatar.match(/avatarAttentionLabel\(attention\)/g)||[]).length,1,'uma superfície explicativa do Brain');
 console.log('V241 AVATAR LOOKS + FIT: roupa, presets, encaixe, Brain explicável, 3D e fallback OK');
