@@ -22,7 +22,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
   const safeProgress = scheduled > 0 && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
   return <>
     <button type="button" onClick={onOpen}
-      className="flex w-full items-center justify-between gap-3 px-4 pb-2 pt-4 text-left transition-colors active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+      className="flex w-full items-center justify-between gap-3 px-4 pb-2 pt-4 text-left transition-colors motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
       aria-label={`${title}. Abrir página Hoje`}>
       <span className="min-w-0">
         <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>

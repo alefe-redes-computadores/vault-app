@@ -91,7 +91,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // P11: acabamento fosco dos lábios e dos fios; preserva GPU, olhos e lentes homologados.
       // P15 R6: fios faciais menos sólidos/plásticos, reutilizando o mesmo material e meshes.
       facialHair: new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: .96, transparent:true, opacity:.79 }),
-      lips: new THREE.MeshStandardMaterial({ color: appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':'#6b3e35', roughness: .87, transparent:true, opacity:appearance.lips==='natural'?.36:.67 }),
+      // P15 R7: lábios um pouco menos brilhantes, usando o mesmo material e as mesmas malhas.
+      lips: new THREE.MeshStandardMaterial({ color: appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':'#6b3e35', roughness: .89, transparent:true, opacity:appearance.lips==='natural'?.36:.67 }),
       dark: new THREE.MeshStandardMaterial({ color: "#09121d", roughness: .6 }),
       white: new THREE.MeshStandardMaterial({ color: "#e2e8f0", roughness: .65 }),
       // V221: a esclera nao compartilha o branco intenso dos tenis/boné.

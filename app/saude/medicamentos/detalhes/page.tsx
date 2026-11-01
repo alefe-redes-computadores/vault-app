@@ -18,6 +18,8 @@ import { MedicationPrescriptionCard } from "@/components/saude/MedicationPrescri
 import { MedicationStockOverview } from "@/components/saude/MedicationStockOverview";
 import { MedicationSuspensionSummary } from "@/components/saude/MedicationSuspensionSummary";
 import { MedicationRoutineSummary } from "@/components/saude/MedicationRoutineSummary";
+import { MedicationRenewalAttention } from "@/components/saude/MedicationRenewalAttention";
+import { MedicationBehaviorEvidence } from "@/components/saude/MedicationBehaviorEvidence";
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
@@ -3472,122 +3474,17 @@ function MedicamentoDetalhesContent() {
             {accessAction &&
               med.status !==
                 "descontinuado" && (
-                <motion.div
-                  initial={{
-                    opacity:
-                      0,
-
-                    y:
-                      -8,
-                  }}
-                  animate={{
-                    opacity:
-                      1,
-
-                    y:
-                      0,
-                  }}
-                  exit={{
-                    opacity:
-                      0,
-
-                    height:
-                      0,
-                  }}
-                  className={`rounded-[20px] border p-3.5 ${
-                    alertaInteligente.urgencia ===
-                    "alta"
-                      ? "border-coral/30 bg-coral/10"
-                      : "border-amber-400/30 bg-amber-400/10"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                        alertaInteligente.urgencia ===
-                        "alta"
-                          ? "bg-coral/10 text-coral"
-                          : "bg-amber-400/10 text-amber-400"
-                      }`}
-                    >
-                      <AlertTriangle
-                        size={
-                          19
-                        }
-                      />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p
-                          className={`text-sm font-bold ${
-                            alertaInteligente.urgencia ===
-                            "alta"
-                              ? "text-coral"
-                              : "text-amber-400"
-                          }`}
-                        >
-                          {alertaInteligente.motivo ===
-                          "receita"
-                            ? "Planejamento da receita"
-                            : alertaInteligente.motivo ===
-                                "sus"
-                              ? "Próxima retirada"
-                              : "Atenção ao estoque"}
-                        </p>
-
-                        {diasAteRenovacao !==
-                          null &&
-                          diasAteRenovacao >
-                            0 &&
-                          diasAteRenovacao <=
-                            30 && (
-                            <span
-                              className={`rounded-lg px-2 py-1 text-[9px] font-bold uppercase ${
-                                alertaInteligente.urgencia ===
-                                "alta"
-                                  ? "bg-coral/10 text-coral"
-                                  : "bg-amber-400/10 text-amber-400"
-                              }`}
-                            >
-                              {
-                                diasAteRenovacao
-                              }{" "}
-                              dias
-                            </span>
-                          )}
-                      </div>
-
-                      <p
-                        className={`mt-1 text-xs leading-relaxed ${
-                          alertaInteligente.urgencia ===
-                          "alta"
-                            ? "text-coral/80"
-                            : "text-amber-400/80"
-                        }`}
-                      >
-                        {
-                          alertaInteligente.mensagem
-                        }
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => navigateCareAction(accessAction.href, accessAction.cta, alertaInteligente.mensagem)}
-                        className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold transition-transform active:scale-95 ${
-                          alertaInteligente.urgencia ===
-                          "alta"
-                            ? "bg-coral text-void"
-                            : "bg-amber-400 text-void"
-                        }`}
-                      >
-                        {accessAction.cta}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
+                <MedicationRenewalAttention
+                  urgent={alertaInteligente.urgencia === "alta"}
+                  kind={alertaInteligente.motivo}
+                  message={alertaInteligente.mensagem}
+                  cta={accessAction.cta}
+                  daysRemaining={diasAteRenovacao}
+                  onOpen={() => navigateCareAction(accessAction.href, accessAction.cta, alertaInteligente.mensagem)}
+                />
               )}
           </AnimatePresence>
+
 
           {/* ==================================================
               COMPORTAMENTO
@@ -3599,90 +3496,16 @@ function MedicamentoDetalhesContent() {
                 <span className="min-w-0 break-words">{comportamento.tipo === "alerta_adesao" ? "Atenção ao registro" : "Padrão observado"} · {comportamento.titulo}</span>
                 <ChevronRight size={15} className="shrink-0 transition-transform group-open:rotate-90"/>
               </summary>
-            <motion.div
-              initial={{
-                opacity:
-                  0,
-
-                y:
-                  8,
-              }}
-              animate={{
-                opacity:
-                  1,
-
-                y:
-                  0,
-              }}
-              className={`rounded-[20px] border p-3.5 ${
-                comportamento.tipo ===
-                "alerta_adesao"
-                  ? "border-amber-400/30 bg-amber-400/10"
-                  : "border-violet-400/30 bg-violet-400/10"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    comportamento.tipo ===
-                    "alerta_adesao"
-                      ? "bg-amber-400/10 text-amber-400"
-                      : "bg-violet-400/10 text-violet-400"
-                  }`}
-                >
-                  <Activity
-                    size={
-                      18
-                    }
-                  />
-                </div>
-
-                <div>
-                  <p
-                    className={`text-sm font-bold ${
-                      comportamento.tipo ===
-                      "alerta_adesao"
-                        ? "text-amber-400"
-                        : "text-violet-400"
-                    }`}
-                  >
-                    {
-                      comportamento.titulo
-                    }
-                  </p>
-
-                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                    {
-                      comportamento.mensagem
-                    }
-                  </p>
-
-                  <p className="mt-1 text-[10px] text-ink-faint">
-                    Sugestão:{" "}
-                    {
-                      comportamento.acaoSugerida
-                    }
-                  </p>
-
-                  {comportamento.confianca &&
-                    comportamento.amostra !==
-                      undefined && (
-                      <p className="mt-2 text-[9px] font-medium uppercase tracking-wide text-ink-faint">
-                        Confiança{" "}
-                        {
-                          comportamento.confianca
-                        }{" "}
-                        ·{" "}
-                        {
-                          comportamento.amostra
-                        }{" "}
-                        registro(s)
-                      </p>
-                    )}
-                </div>
-              </div>
-            </motion.div>
+            <MedicationBehaviorEvidence
+              alert={comportamento.tipo === "alerta_adesao"}
+              title={comportamento.titulo}
+              message={comportamento.mensagem}
+              suggestedAction={comportamento.acaoSugerida}
+              confidence={comportamento.confianca}
+              sample={comportamento.amostra}
+            />
             </details>
+
           )}
           </div>
 
