@@ -6,6 +6,9 @@ import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicke
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
 import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
 import { MedicationCatalogFormatNotice } from "@/components/saude/MedicationCatalogFormatNotice";
+import { MedicationCatalogQuickOption } from "@/components/saude/MedicationCatalogQuickOption";
+import { MedicationCatalogIdentitySummary } from "@/components/saude/MedicationCatalogIdentitySummary";
+import { catalogUniquelyInferredFormats } from "@/lib/medications/catalog-unique-formats";
 import { useMedicationCatalogDismiss } from "@/hooks/useMedicationCatalogDismiss";
 
 
@@ -3069,12 +3072,7 @@ export default function NovoMedicamentoPage() {
                                       result.referenceId;
 
                                     return (
-                                      <button
-                                        type="button"
-                                        key={
-                                          `${result.referenceType}:${result.referenceId}`
-                                        }
-                                        onClick={
+                                      <MedicationCatalogQuickOption result={result} selected={isSelected} onSelect={
                                           async () => {
                                             trigger(
                                               "vibrate"
@@ -3130,48 +3128,7 @@ export default function NovoMedicamentoPage() {
                                                 hydrated
                                                   ?.reference
                                               ) {
-                                                const inferredFormats =
-                                                  Array.from(
-                                                    new Set(
-                                                      [
-                                                        ...(
-                                                          hydrated.reference
-                                                            .pharmaceuticalForms ??
-                                                          []
-                                                        ),
-
-                                                        ...(
-                                                          hydrated.reference
-                                                            .presentations ??
-                                                          []
-                                                        ).flatMap(
-                                                          (
-                                                            presentation
-                                                          ) => [
-                                                            presentation.label,
-                                                            presentation.pharmaceuticalForm ??
-                                                              "",
-                                                          ]
-                                                        ),
-                                                      ]
-                                                        .map(
-                                                          (
-                                                            value
-                                                          ) =>
-                                                            inferVaultFormatFromOfficialPresentation(
-                                                              value
-                                                            )
-                                                        )
-                                                        .filter(
-                                                          (
-                                                            value
-                                                          ): value is string =>
-                                                            Boolean(
-                                                              value
-                                                            )
-                                                        )
-                                                    )
-                                                  );
+                                                const inferredFormats = catalogUniquelyInferredFormats(hydrated.reference);
 
                                                 if (
                                                   inferredFormats.length ===
@@ -3205,46 +3162,7 @@ export default function NovoMedicamentoPage() {
                                               );
                                             }
                                           }
-                                        }
-                                        className={`flex w-full items-start gap-3 border-b border-surface-border/30 px-3.5 py-3 text-left transition-colors last:border-b-0 ${
-                                          isSelected
-                                            ? "bg-ice/10"
-                                            : "hover:bg-void/30"
-                                        }`}
-                                      >
-                                        <FileSearch
-                                          size={
-                                            16
-                                          }
-                                          className="mt-0.5 shrink-0 text-ice"
-                                        />
-
-                                        <span className="min-w-0 flex-1">
-                                          <span className="block text-sm font-semibold text-ink-primary">
-                                            {
-                                              result.canonicalName
-                                            }
-                                          </span>
-
-                                          <span className="mt-0.5 block text-[11px] text-ink-muted">
-                                            {
-                                              result.referenceType ===
-                                              "substance"
-                                                ? "Princípio ativo"
-                                                : "Referência do catálogo"
-                                            }
-                                          </span>
-                                        </span>
-
-                                        {isSelected && (
-                                          <Check
-                                            size={
-                                              16
-                                            }
-                                            className="mt-0.5 shrink-0 text-ice"
-                                          />
-                                        )}
-                                      </button>
+                                        } />
                                     );
                                   }
                                 )}
@@ -3279,44 +3197,13 @@ export default function NovoMedicamentoPage() {
                             />
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
-                                  Referência selecionada
-                                </p>
-                                <span className={`rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wide ${
-                                  catalogAuthority.state === "possible_divergence"
-                                    ? "border-amber-400/25 bg-amber-400/10 text-amber-300"
-                                    : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-300"
-                                }`}>
-                                  {catalogAuthority.label}
-                                </span>
-                              </div>
-
-                              <p className="mt-1 text-sm font-semibold text-ink-primary">
-                                {
-                                  catalogReference.canonicalName
-                                }
-                              </p>
-
-                              {(
-                                catalogReference.activeIngredients
-                                  ?.join(
-                                    " + "
-                                  ) ??
-                                catalogReference.activeIngredient
-                              ) && (
-                                <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
-                                  <span className="text-ink-muted/55">Princípio ativo · </span>
-                                  {
-                                    catalogReference.activeIngredients
-                                      ?.join(
-                                        " + "
-                                      ) ??
-                                    catalogReference.activeIngredient
-                                  }
-                                </p>
-                              )}
-
+                              <MedicationCatalogIdentitySummary
+                                canonicalName={catalogReference.canonicalName}
+                                activeIngredients={catalogReference.activeIngredients}
+                                activeIngredient={catalogReference.activeIngredient}
+                                authorityLabel={catalogAuthority.label}
+                                divergent={catalogAuthority.state === "possible_divergence"}
+                              />
 
                     {catalogRegulatoryIssues.length >
                       0 &&

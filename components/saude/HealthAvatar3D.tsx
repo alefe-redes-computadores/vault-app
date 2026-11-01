@@ -149,7 +149,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // têmpora e mandíbula com a mesma contagem de malhas e sem custo por quadro.
       const outerEar=mesh(taperedBox(.038,.048,.091,.044),materials.skin,sign*.202,2.77,.004);outerEar.rotation.z=-sign*.07;outerEar.raycast=()=>{};
       const earRim=mesh(taperedBox(.013,.019,.054,.021),materials.skinShade,sign*.205,2.77,.036);earRim.rotation.z=-sign*.06;earRim.raycast=()=>{};
-      const cheekbone=mesh(new THREE.CapsuleGeometry(.0055,.053,3,8),materials.skinShade,sign*.101,2.752,.197);cheekbone.rotation.z=sign*1.18;cheekbone.raycast=()=>{};
+      const cheekbone=mesh(new THREE.CapsuleGeometry(.0055,.053,3,8),materials.skinShade,sign*.101,2.752,.197);cheekbone.rotation.z=sign*1.18;cheekbone.scale.y=.95;cheekbone.raycast=()=>{};
       // P14 R6: o relevo da orelha reutiliza a mesma malha, mas sem o anel preto artificial.
       const innerEar=mesh(new THREE.TorusGeometry(.020,.004,5,12,Math.PI*1.35),materials.skinShade,sign*.207,2.77,.046);innerEar.rotation.y=sign*Math.PI/2;innerEar.raycast=()=>{};
     }
@@ -351,7 +351,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     }
     // V204: o plano central continua o dorso já existente sem sobrepor outro oval.
     // Isso reduz o nariz bulboso visto de frente e ainda economiza segmentos esféricos.
-    const noseContour=mesh(taperedBox(.018,.027,.061,.017),materials.skin,0,2.758,.216);noseContour.rotation.x=.04;noseContour.raycast=()=>{};
+    const noseContour=mesh(taperedBox(.018,.027,.061,.017),materials.skin,0,2.758,.216);noseContour.rotation.x=.04;noseContour.scale.x=.97;noseContour.raycast=()=>{};
     // V155: cosmetic accessories follow head/body geometry, not medical-device records.
     // They do not receive raycast actions and never alter clinical markers.
     if (appearance.hat !== "none") {
