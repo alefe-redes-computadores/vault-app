@@ -1769,6 +1769,7 @@ function NovaRenovacaoContent() {
                     : "Aguardando seleção..."}
                 </h2>
                 {selectedMedicamento?.dosagem ? <p className="mt-1 text-xs text-ink-muted">{selectedMedicamento.dosagem}</p> : null}
+                {selectedMedicamento?.data_receita ? <p className="mt-1 text-xs text-ink-muted">Receita cadastrada: {formatDateToDisplay(selectedMedicamento.data_receita)} · confira o documento</p> : null}
               </div>
             </div>
           </motion.div>
