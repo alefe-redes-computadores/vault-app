@@ -605,6 +605,10 @@ export default function HojePage() {
     String(agora.getMinutes()).padStart(2, "0"),
   ].join(":");
 
+  // M18: past/future timelines have no moving "now" bucket. Keep their
+  // projections stable during minute ticks; today still uses the live clock.
+  const operationalMinute = isHoje ? horaAtual : "00:00";
+
   const doses = useMemo<DoseItemExt[]>(() => buildTodayTimelineItems({
     medicamentos,
     doseLogs: doseLogs || [],
@@ -699,21 +703,21 @@ export default function HojePage() {
   );
 
   // R9 R8: a contagem de itens recolhidos usa a mesma autoridade da timeline visível.
-  const concluidasOcultas = countHiddenTodayResolved(dosesFiltradas, {
+  const concluidasOcultas = useMemo(() => countHiddenTodayResolved(dosesFiltradas, {
     isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas,
-  });
+  }), [dosesFiltradas, isHoje, filtroStatus, mostrarConcluidas]);
 
   const dosesAgrupadas = useMemo(() => {
     // Visual presentation is outside this 168KB page; grouping remains canonical.
     const metadata = todayTimelineGroupPresentation;
-    return groupTimelineItems(dosesParaExibir, { isToday: isHoje, selectedDate: dataSelecionada, today: hoje, nowTime: horaAtual })
+    return groupTimelineItems(dosesParaExibir, { isToday: isHoje, selectedDate: dataSelecionada, today: hoje, nowTime: operationalMinute })
       .map(([key, items]) => {
         const total = items.length;
         const completed = items.reduce((count, item) => count + (item.tomada ? 1 : 0), 0);
         return [key, { ...metadata[key], sub: todayTimelineGroupContext(metadata[key].sub, items.length), items, total, completed,
           progress: total > 0 ? Math.round((completed / total) * 100) : 0 }] as const;
       });
-  }, [dosesParaExibir, horaAtual, isHoje, hoje, dataSelecionada]);
+  }, [dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada]);
 
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
@@ -774,7 +778,7 @@ export default function HojePage() {
                 !dose.tomada &&
                 !dose.ignorada &&
                 !dose.isDataConflict &&
-                (batchTargetKeys ? batchTargetKeys.includes(`${dose.medicamentoId}-${dose.horario}`) : dose.horario <= horaAtual)
+                (batchTargetKeys ? batchTargetKeys.includes(`${dose.medicamentoId}-${dose.horario}`) : dose.horario <= operationalMinute)
             )
             .reduce((map, dose) => {
               const key = `${dose.medicamentoId}-${dose.horario}`;
@@ -783,7 +787,7 @@ export default function HojePage() {
             }, new Map<string, DoseItemExt>())
             .values()
         )
-      : [], [isHoje, metricItems, batchTargetKeys, horaAtual]);
+      : [], [isHoje, metricItems, batchTargetKeys, operationalMinute]);
 
   // V141: pending stockless doses are visible, but never silently marked taken or ignored.
   // P9: uma passagem para separar lote com/sem saldo, sem inferir tomada.

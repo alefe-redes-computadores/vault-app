@@ -40,7 +40,8 @@ ok(
   timeline.includes('log.dose_kind === "sos"') &&
   timeline.includes('isAvulsa: true') &&
   summary.includes('item.isAvulsa && item.doseKind !== "planned"') &&
-  summary.includes('!item.isAvulsa && !item.isSintoma') &&
+  summary.includes('if (item.isExpectedUnconfirmed) totalEsperadasSemConfirmacao++') &&
+  summary.includes('if (item.isExpectedUnconfirmed || item.isDataConflict || item.isAvulsa || item.isSintoma) continue;') &&
   today.includes('<TodayDoseTimelineCard item={item} scope={doseCardScope} />') &&
   card.includes('item.doseKind === "planned" ? "Agendada" : "SOS / Avulsa"') &&
   today.includes('!dose.isAvulsa'),

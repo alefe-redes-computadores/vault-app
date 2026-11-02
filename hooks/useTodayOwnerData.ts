@@ -3,6 +3,10 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 
+// M18: missing/loading owner rows share one inert identity across renders.
+// Account/person switches still fail closed while the indexed query refreshes.
+const EMPTY_TODAY_ROWS: never[] = [];
+
 /** Owner-scoped reads for Hoje. Day-bound tables stay indexed by selected date. */
 export function useTodayOwnerData(input: {
   userId?: string;
@@ -43,15 +47,15 @@ export function useTodayOwnerData(input: {
   return {
     ready,
     historyReady,
-    tratamentos: ready ? dayData!.tratamentos : [],
-    renovacoes: ready ? dayData!.renovacoes : [],
-    medicos: ready ? dayData!.medicos : [],
-    farmacias: ready ? dayData!.farmacias : [],
-    hospitais: ready ? dayData!.hospitais : [],
-    consultasHoje: ready ? dayData!.consultasHoje : [],
-    cirurgiasHoje: ready ? dayData!.cirurgiasHoje : [],
-    examesHoje: ready ? dayData!.examesHoje : [],
-    registrosHoje: ready ? dayData!.registrosHoje : [],
-    historicoDosesCompleto: historyReady ? historyData!.rows : [],
+    tratamentos: ready ? dayData!.tratamentos : EMPTY_TODAY_ROWS,
+    renovacoes: ready ? dayData!.renovacoes : EMPTY_TODAY_ROWS,
+    medicos: ready ? dayData!.medicos : EMPTY_TODAY_ROWS,
+    farmacias: ready ? dayData!.farmacias : EMPTY_TODAY_ROWS,
+    hospitais: ready ? dayData!.hospitais : EMPTY_TODAY_ROWS,
+    consultasHoje: ready ? dayData!.consultasHoje : EMPTY_TODAY_ROWS,
+    cirurgiasHoje: ready ? dayData!.cirurgiasHoje : EMPTY_TODAY_ROWS,
+    examesHoje: ready ? dayData!.examesHoje : EMPTY_TODAY_ROWS,
+    registrosHoje: ready ? dayData!.registrosHoje : EMPTY_TODAY_ROWS,
+    historicoDosesCompleto: historyReady ? historyData!.rows : EMPTY_TODAY_ROWS,
   };
 }
