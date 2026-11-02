@@ -33,7 +33,7 @@ check(modal.includes('closeRef.current?.focus()')&&modal.includes('previous?.isC
 check(notice.includes('O catálogo ainda não possui informação suficiente')&&notice.includes('O catálogo ainda não possui evidência atual suficiente'),'catálogo preserva os dois tipos de incerteza');
 check(notice.includes('cadastrar normalmente')&&notice.includes('salvar normalmente'),'divergência não impede cadastro nem edição manual');
 check(!/(?:\bdb\.|\bsupabase\b|fetch\(|\.insert\(|\.delete\(|\.put\(|updateMedicamento\()/.test(modal+'\n'+notice),'módulos de apresentação não acessam banco');
-check(scene.includes('cheek.scale.z=.94')&&scene.includes('noseTip.scale.x=.96'),'Fênix suaviza volumes existentes do rosto');
+check(scene.includes('cheek.scale.z=.94')&&scene.includes('noseTip.scale.x*=.96')&&!scene.includes('noseTip.scale.x=.96'),'Fênix mantém a escala original do nariz ao suavizar o rosto');
 check(scene.includes('taperedBox(.055,.068,.074,.034)')&&scene.includes('const noseTip=oval(materials.skin,0,2.727,.231,[.026,.017,.023])'),'Fênix preserva as geometrias originais de bochecha e nariz');
 check(scene.includes('avatarAdaptiveRatio(')&&scene.includes('renderer.forceContextLoss()')&&!scene.includes('requestAnimationFrame(animate)'),'Fênix preserva limpeza GPU e limite adaptativo');
 check(avatar.includes('Consultar contexto do Brain sem mudar de página')&&avatar.includes('Ver contexto registrado · não é diagnóstico')&&avatar.includes('onClick={onBrainSelect}'),'Brain mantém ação local e limite clínico');

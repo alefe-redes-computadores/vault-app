@@ -1753,11 +1753,7 @@ function NovaRenovacaoContent() {
               <div
                 className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-300 ${theme.bgClass} ${theme.textClass} ${theme.borderClass}`}
               >
-                <Receipt
-                  size={
-                    24
-                  }
-                />
+                {selectedMedicamento ? <MedicationFormatIcon formato={selectedMedicamento.formato} cores={selectedMedicamento.cores} size={24} /> : <Receipt size={24} />}
               </div>
 
               <div className="min-w-0 flex-1">
@@ -1772,6 +1768,7 @@ function NovaRenovacaoContent() {
                     ? selectedMedicamento.nome
                     : "Aguardando seleção..."}
                 </h2>
+                {selectedMedicamento?.dosagem ? <p className="mt-1 text-xs text-ink-muted">{selectedMedicamento.dosagem}</p> : null}
               </div>
             </div>
           </motion.div>

@@ -182,7 +182,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const noseBridge=mesh(taperedBox(.022,.029,.074,.025),materials.skin,0,2.778,.208);noseBridge.rotation.x=.06;noseBridge.raycast=()=>{};
     const nosePlane=mesh(taperedBox(.025,.036,.078,.026),materials.skinShade,0,2.779,.198);nosePlane.rotation.x=-.05;nosePlane.raycast=()=>{};
     // P14 R2: ponta nasal menos esférica; reaproveita a geometria compartilhada, sem malhas extras.
-    const noseTip=oval(materials.skin,0,2.727,.231,[.026,.017,.023]);noseTip.scale.x=.96;noseTip.raycast=()=>{};
+    const noseTip=oval(materials.skin,0,2.727,.231,[.026,.017,.023]);noseTip.scale.x*=.96;noseTip.raycast=()=>{};
     for(const sign of [-1,1]){
       oval(materials.skin,sign*.027,2.716,.229,[.019,.012,.019]).raycast=()=>{};
       oval(materials.skinShade,sign*.018,2.711,.259,[.006,.004,.003]).raycast=()=>{};

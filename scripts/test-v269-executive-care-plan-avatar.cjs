@@ -10,7 +10,7 @@ assert(plan.includes('const ranked')&&plan.includes('medication:${item.medicatio
 assert(plan.includes('dueDate: action.date')&&plan.includes('nextConsultation.data'),'datas operacionais e consulta entram no plano');
 assert(plan.includes('formatBrainCarePlan')&&plan.includes('não confirma diagnóstico, prescrição, aquisição, retirada ou adesão'),'exportação do plano preserva limites clínicos');
 assert(memory.includes('item.dueDate || ""')&&memory.includes('item.supplyRoute || ""')&&memory.includes('item.relatedCount'),'memória percebe mudança de prazo, origem e composição');
-assert(card.includes('expanded ? plan.items : plan.focus')&&card.includes('Ver plano completo'),'card compacto permite abrir plano completo');
+assert(card.includes('expanded && !compact ? plan.items : plan.focus.slice(0, 2)')&&card.includes('Ver plano completo'),'card apresenta duas prioridades e permite abrir o plano completo');
 assert(card.includes('item.supplyRoute')&&card.includes('item.relatedCount > 1'),'card explica origem e etapas consolidadas');
 assert(avatar.indexOf('useEffect(() =>') < avatar.indexOf('if (!portfolio'),'Avatar mantém ordem estável dos hooks');
 assert(avatar.includes('planFocus?.supplyRoute'),'Avatar mostra contexto da rota sem poluir o personagem');
