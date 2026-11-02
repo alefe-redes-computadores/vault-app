@@ -24,9 +24,19 @@ export function groupScheduleSlots<T extends ScheduleSlot>(items:readonly T[]) {
     let group=groups.get(key);if(!group){group={key,entries:[]};groups.set(key,group);}
     group.entries.push({item,index});
   });
+  // M19: summarize each time group in a single traversal. Preserve every
+  // original item, entry index, pending status and zero-stock warning.
   return [...groups.values()].map(group=>{
-    const slots=group.entries.map(entry=>entry.item);
-    const pending=slots.filter(item=>!item.tomada&&!item.ignorada);
-    return {...group,slots,pending,resolved:slots.length-pending.length,unavailable:pending.filter(item=>typeof item.estoqueRestante==='number'&&item.estoqueRestante<=0).length};
+    const slots:T[]=[];
+    const pending:T[]=[];
+    let unavailable=0;
+    for(const {item} of group.entries){
+      slots.push(item);
+      if(!item.tomada&&!item.ignorada){
+        pending.push(item);
+        if(typeof item.estoqueRestante==='number'&&item.estoqueRestante<=0)unavailable++;
+      }
+    }
+    return {...group,slots,pending,resolved:slots.length-pending.length,unavailable};
   });
 }

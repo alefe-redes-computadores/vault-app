@@ -120,6 +120,9 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     const insight = sugerirRenovacao(med as any);
     const receitaVencida = isReceitaAtualVencida(med as any);
     const comportamento = analisarComportamentoUso(med as any, (historyByMedication.get(med.id) || []) as any);
+    // M19: one medication-level derivation for all scheduled times.
+    const unidadeDose = doseUnit(med);
+    const diasRestantes = getDaysUntil(med.proxima_renovacao);
 
     for (const horario of horarios) {
       scheduledKeys.add(`${med.id}-${horario}`);
@@ -129,23 +132,26 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
         horario, tomada: slot.state === "taken", ignorada: slot.state === "ignored", isDataConflict: slot.state === "conflict",
         cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock?.quantidadeRestante ?? 0,
         estoqueTotal: med.estoque_quantidade || 0, unidadeMedida: med.estoque_unidade_medida || "unidades",
-        unidadePorDose: med.estoque_unidade_por_dose, unidadeDose: doseUnit(med), medicoNome: doctor?.nome || med.medico,
+        unidadePorDose: med.estoque_unidade_por_dose, unidadeDose, medicoNome: doctor?.nome || med.medico,
         medicoId: doctor?.id, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id, tratamentoCor: treatment?.cor,
         farmaciaNome: pharmacy?.nome, farmaciaId: pharmacy?.id, estabelecimentoNome: hospital?.nome,
         estabelecimentoId: hospital?.id, proximaRenovacao: med.proxima_renovacao,
-        diasRestantes: getDaysUntil(med.proxima_renovacao), insight, receitaVencida, comportamento,
+        diasRestantes, insight, receitaVencida, comportamento,
         isAvulsa: false, isExpectedUnconfirmed: !input.isHoje && slot.state === "absent",
       });
     }
   }
 
+  // M19: O(1) duplicate-log identity checks rather than scanning every card.
+  // Scheduled items begin with undefined logId; keep the old legacy-ID behavior.
+  const existingLogIds = new Set(list.map(item => item.logId));
   for (const log of input.doseLogs) {
     if (!log.medicamento_id) continue;
     const med = medicationById.get(log.medicamento_id);
     if (!med) continue;
     const scheduled = scheduledKeys.has(`${med.id}-${log.horario}`);
     const displaySeparately = !scheduled || log.dose_kind === "extra" || log.dose_kind === "sos" || log.dose_kind === "planned";
-    if (!displaySeparately || (!log.tomado_em && log.dose_kind !== "planned") || list.some(item => item.logId === log.id)) continue;
+    if (!displaySeparately || (!log.tomado_em && log.dose_kind !== "planned") || existingLogIds.has(log.id)) continue;
     const treatment = treatmentById.get((med.tratamento_ids || [])[0]);
     const doctor = doctorById.get(med.medico_id);
     list.push({
@@ -159,6 +165,7 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
       motivoAvulsa: log.motivo || (log.dose_kind === "planned" ? "Dose avulsa agendada" : log.dose_kind === "extra" ? "Dose extra" : "Dose avulsa / SOS"),
       doseKind: log.dose_kind === "planned" ? "planned" : log.dose_kind === "extra" ? "extra" : "sos", logId: log.id,
     });
+    existingLogIds.add(log.id);
   }
 
   for (const reg of input.registros) if (reg.categoria === "sintoma") list.push({
