@@ -26,7 +26,7 @@ export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) 
         <div className="h-full rounded-full bg-violet-400" style={{width:`${coveragePercent}%`}}/>
       </div>
       <p className="mt-1.5 text-[10px] text-violet-200">Cobertura: {coverageDays} de 7 dias ({coveragePercent}%) com relato explícito.</p>
-      <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Dias sem registro continuam desconhecidos — não são interpretados como humor neutro. O rosto não substitui o diário nem descreve seu estado atual.</p>
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">Dias sem registro continuam desconhecidos — não são interpretados como humor neutro. O rosto não substitui o diário nem descreve seu estado atual.</p>
     </div>
     {moods.length ? <>
       <p className="text-xs leading-relaxed text-ink-muted">Último relato: {MOOD_CHOICES[readMoodContext(moods[0].contexto)!]} em {formatDate(moods[0].data)}. A expressão resume seus relatos; não mede como você está agora.</p>

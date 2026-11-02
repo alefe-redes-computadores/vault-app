@@ -411,9 +411,8 @@ export default function MedicamentosListPage() {
 
   const listaProcessada =
     useMemo(() => {
-      let processados = [...listaBase];
-
-      processados = processados.filter((item) => {
+      const processados = listaBase.filter((item) => {
+        if (!medicationSearchMatches.has(item)) return false;
         const medId = item.med.id || "";
         const regulatoryProfile = regulatoryProfiles[medId];
 
@@ -441,8 +440,6 @@ export default function MedicamentosListPage() {
 
         return true;
       });
-
-      processados=processados.filter(item=>medicationSearchMatches.has(item));
 
       return processados;
     }, [

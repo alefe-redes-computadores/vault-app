@@ -21,7 +21,7 @@ export function HomeClinicalAreaTile({ label, description, path, Icon, tone, onN
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-black/10" aria-hidden="true"><Icon size={17}/></span>
       <span className="min-w-0 flex-1">
         <strong className="block break-words text-[11px] font-semibold leading-tight text-ink-primary">{label}</strong>
-        <span className="mt-0.5 block line-clamp-2 break-words text-[9px] leading-snug text-ink-muted">{description}</span>
+        <span className="mt-0.5 block line-clamp-2 break-words text-[11px] leading-snug text-ink-muted">{description}</span>
       </span>
     </button>
   );
