@@ -31,7 +31,7 @@ export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, 
   ].filter(value => Number(value) > 0).length;
   const hasCommandEvidence=Boolean(command?.documents?.items?.length || command?.plan?.items?.length || command?.readiness?.items?.length);
 
-  return <section aria-label="Contexto integrado do Avatar" className="space-y-2">
+  return <section aria-label="Contexto integrado do Avatar" className="space-y-3">
     <AvatarCareReadiness context={context} command={command} onNavigate={onNavigate}/>
     {command?.readiness?.items?.length ? <AvatarReadinessCounters counts={command.readiness.counts}/> : null}
     {(secondaryCount > 0 || hasCommandEvidence) ? <ClinicalDisclosure id="avatar-contexto-evidencias" title="Contexto e evidências do Avatar" description="Cuidado, medicamentos, rotinas e associações registradas" icon={<Layers3 size={16}/> }>
@@ -45,7 +45,7 @@ const AvatarEvidenceWorkspace = memo(function AvatarEvidenceWorkspace({ context,
   command?: CareCommandSnapshot | null;
   onNavigate: (href: string) => void;
 }) {
-  return <div className="vault-deferred space-y-2 [content-visibility:auto] [contain-intrinsic-size:760px]">
+  return <div className="vault-deferred space-y-3 [content-visibility:auto] [contain-intrinsic-size:760px]">
     {command?.documents?<CareAccessBrief portfolio={command.documents} onNavigate={onNavigate} compact/>:null}
     <DoseEvidenceBrief context={context} onNavigate={onNavigate} compact/>
     <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>

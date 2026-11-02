@@ -19,15 +19,15 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
   const hidden = Math.max(0, alerts.length - 1);
   return (
     <>
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 rounded-2xl border border-surface-border/35 bg-surface/45 px-3 py-3">
         <div>
           <div className="flex items-center gap-2">
             <Bell size={15} className="text-coral" aria-hidden="true" />
-            <h2 className="font-display text-sm font-semibold text-ink-primary">Atenção</h2>
+            <h2 className="font-display text-sm font-bold tracking-tight text-ink-primary">Atenção</h2>
           </div>
           <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{description}</p>
         </div>
-        <span className="rounded-full border border-coral/20 bg-coral/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-coral"
+        <span className="min-w-8 rounded-full border border-coral/25 bg-coral/10 px-2.5 py-1 text-center font-mono text-[11px] font-bold tabular-nums text-coral"
           aria-label={`${alerts.length} alertas registrados`}>
           {alerts.length}
         </span>
@@ -40,7 +40,7 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
         ))}
         {hidden > 0 && (
           <button type="button" onClick={onToggle} aria-expanded={expanded} aria-controls="home-attention-alerts"
-            className="flex min-h-11 w-full items-center justify-center gap-1 rounded-2xl border border-surface-border/40 bg-surface/50 px-3 py-2.5 text-xs font-semibold text-ice transition-all motion-reduce:transition-none active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+            className="flex min-h-11 w-full items-center justify-center gap-1 rounded-2xl border border-surface-border/60 bg-surface-raised/40 px-3 py-2.5 text-xs font-semibold text-ink-primary transition-colors hover:bg-surface-raised/70 motion-reduce:transition-none active:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
             {expanded ? "Mostrar menos" : `Ver mais ${hidden} alerta${hidden === 1 ? "" : "s"}`}
           </button>
         )}

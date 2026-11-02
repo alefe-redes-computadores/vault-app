@@ -25,21 +25,21 @@ export const HomeDailyHero = memo(function HomeDailyHero({
   const safeCompleted = scheduled > 0 && Number.isFinite(scheduled) && Number.isFinite(completed) ? Math.max(0, Math.min(Math.floor(scheduled), Math.floor(completed))) : 0;
   return <>
     <button type="button" onClick={onOpen}
-      className="flex w-full items-center justify-between gap-3 px-4 pb-2 pt-4 text-left transition-colors motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+      className="group flex min-h-[104px] w-full items-center justify-between gap-3 rounded-t-[22px] bg-gradient-to-r from-surface-raised/35 to-transparent px-4 pb-3 pt-4 text-left transition-colors hover:from-surface-raised/60 motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
       aria-label={`${title}. Abrir página Hoje`}>
       <span className="min-w-0">
         <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>
-        <strong className="mt-1 block text-lg font-semibold leading-snug text-ink-primary">{title}</strong>
-        <span className="mt-1 block max-w-[280px] line-clamp-2 text-xs leading-relaxed text-ink-muted">{description}</span>
+        <strong className="mt-1.5 block text-xl font-semibold leading-tight tracking-tight text-ink-primary">{title}</strong>
+        <span className="mt-1.5 block max-w-[320px] line-clamp-2 text-xs leading-relaxed text-ink-muted">{description}</span>
       </span>
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl border" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl border shadow-sm transition-transform motion-safe:group-active:scale-95" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
     </button>
-    <div className="px-4 pb-3">
+    <div className="px-4 pb-4">
       <div className="mb-1.5 flex items-center justify-between gap-3 text-xs text-ink-muted">
         <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${safeCompleted}/${scheduled}` : "Sem horários"}</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas` : "Sem horários programados"}>
-        <div className="h-full rounded-full bg-gradient-to-r from-ice to-emerald-400 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />
+      <div className="h-2 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas` : "Sem horários programados"}>
+        <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-300 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />
       </div>
       <p className="mt-1.5 text-xs leading-snug text-ink-muted" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)}</p>
     </div>

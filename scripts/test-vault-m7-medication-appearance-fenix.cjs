@@ -26,7 +26,7 @@ check(!/(?:\bdb\.|\bsupabase\b|\bfetch\(|\.insert\(|\.delete\(|\.put\()/.test(fo
 check(fenix.includes('Consultar contexto do Brain sem mudar de página')&&fenix.includes('onClick={onBrainSelect}')&&fenix.includes('Ver contexto registrado · não é diagnóstico'),'Brain contextual com ressalva e CTA real');
 check(fenix.includes('Toque na Fênix para ampliar.')&&fenix.includes('aria-label="Como usar o Avatar"'),'afordância de toque explícita');
 check(scene.includes('new THREE.BoxGeometry(Math.max(backWidth,frontWidth),height,depth)')&&scene.includes('shadowCanvas.width=128;shadowCanvas.height=128')&&scene.includes('gradient.addColorStop(0,"rgba(0,0,0,.37)")')&&scene.includes('gradient.addColorStop(.58,"rgba(0,0,0,.08)")'),'geometria Android preservada e sombra mais suave');
-check(today.includes('Doses futuras são previsões')&&today.includes('Somente uma confirmação registra tomada')&&today.includes('text-emerald-300/80'),'Hoje mantém autoridade clínica e tom visual equilibrado');
+check(today.includes('Doses futuras são previsões')&&today.includes('Somente uma confirmação registra tomada')&&today.includes('className="shrink-0 text-emerald-300"'),'Hoje mantém autoridade clínica e tom visual equilibrado');
 
 // Exercise real extracted components, including event callbacks and semantics,
 // with a deterministic JSX adapter (no React renderer or browser required).

@@ -17,11 +17,11 @@ export function HomeClinicalAreaTile({ label, description, path, Icon, tone, onN
   return (
     <button type="button" onClick={() => onNavigate(path)}
       aria-label={`${label}: ${description}`}
-      className={`flex min-h-[72px] w-full min-w-0 items-center gap-2.5 rounded-2xl border px-2.5 py-2.5 text-left transition-[background-color,transform] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${tone} ${primary ? "ring-1 ring-inset ring-emerald-400/10" : ""}`}>
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-black/10" aria-hidden="true"><Icon size={17}/></span>
+      className={`group flex min-h-[84px] w-full min-w-0 items-center gap-3 rounded-[18px] border px-3 py-3 text-left shadow-sm transition-[background-color,border-color,transform] hover:border-emerald-300/20 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${tone} ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-current/10 bg-black/10 transition-transform motion-safe:group-active:scale-95" aria-hidden="true"><Icon size={17}/></span>
       <span className="min-w-0 flex-1">
-        <strong className="block break-words text-[11px] font-semibold leading-tight text-ink-primary">{label}</strong>
-        <span className="mt-0.5 block line-clamp-2 break-words text-[11px] leading-snug text-ink-muted">{description}</span>
+        <strong className="block break-words text-xs font-bold leading-tight text-ink-primary">{label}</strong>
+        <span className="mt-1 block line-clamp-2 break-words text-[11px] leading-relaxed text-ink-muted">{description}</span>
       </span>
     </button>
   );

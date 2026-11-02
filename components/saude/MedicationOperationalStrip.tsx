@@ -15,15 +15,14 @@ type Props = {
 /** P14 R6 — UI-only summary: never interprets a dose as taken or changes stock. */
 export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome}:Props) {
   const tone=stockTone==="empty"?"text-coral":stockTone==="low"?"text-amber-400":"text-emerald-400";
-  return <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-0.5 py-1 text-[10px] leading-snug"
+  return <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 py-1 text-[11px] leading-snug"
     aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`}
     title={`${today.detail} · ${stockDetail}`}>
-    <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${today.tone}`}>
+    <span className={`inline-flex min-h-7 min-w-0 items-center gap-1.5 rounded-lg border border-surface-border/55 bg-surface-raised/45 px-2 py-1 font-semibold ${today.tone}`}>
       {doseOutcome==="ignored"?<MinusCircle size={12} className="shrink-0"/>:doseOutcome==="completed"?<CheckCircle2 size={12} className="shrink-0"/>:<Circle size={11} className="shrink-0"/>}
       <span className="min-w-0 break-words">{today.label}</span>
     </span>
-    <span className="text-ink-faint" aria-hidden="true">·</span>
-    <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${tone}`}>
+    <span className={`inline-flex min-h-7 min-w-0 items-center gap-1.5 rounded-lg border border-surface-border/55 bg-surface-raised/45 px-2 py-1 font-semibold ${tone}`}>
       <Droplet size={11} className="shrink-0"/>
       <span className="min-w-0 break-words">{stockLabel}</span>
     </span>

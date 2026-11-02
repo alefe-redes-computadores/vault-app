@@ -14,10 +14,10 @@ type Props = {
 export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
   if (reminders.length === 0) return null;
   return (
-    <section className="vault-deferred space-y-2.5" aria-label="Lembretes de saúde do dia">
-      <header className="flex items-center justify-between gap-2 rounded-xl px-1">
+    <section className="vault-deferred space-y-3" aria-label="Lembretes de saúde do dia">
+      <header className="flex items-center justify-between gap-2 rounded-2xl border border-surface-border/45 bg-surface-raised/35 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-ice/10 text-ice" aria-hidden="true">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-400/20 bg-emerald-400/[.07] text-emerald-300" aria-hidden="true">
             <Bell size={17}/>
           </span>
           <div className="min-w-0">
@@ -25,7 +25,7 @@ export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
             <p className="text-[10px] text-ink-muted">Agenda pessoal · não mede adesão</p>
           </div>
         </div>
-        <span className="rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 font-mono text-[10px] font-bold tabular-nums text-ice" aria-label={`${reminders.length} lembrete(s) programado(s)`}>
+        <span className="rounded-full border border-surface-border/65 bg-surface px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums text-ink-primary" aria-label={`${reminders.length} lembrete(s) programado(s)`}>
           {reminders.length}
         </span>
       </header>
@@ -34,13 +34,13 @@ export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
           <li key={reminder.id}>
             <button type="button" onClick={() => onNavigate(reminder.target_route)}
               aria-label={`${reminder.title}, às ${reminder.time}. Abrir ação do lembrete`}
-              className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-ice/20 bg-surface/75 px-3 py-2.5 text-left transition-[background-color,transform] active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-              <span className="flex shrink-0 items-center gap-1.5 rounded-xl bg-ice/10 px-2 py-1.5 text-[11px] font-semibold tabular-nums text-ice"><Clock3 size={13} aria-hidden="true"/>{reminder.time}</span>
+              className="flex min-h-[68px] w-full items-center gap-3 rounded-2xl border border-surface-border/60 bg-surface/85 px-3 py-3 text-left transition-[background-color,border-color] hover:border-emerald-300/25 hover:bg-surface-raised/50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+              <span className="flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] px-2.5 py-2 text-[11px] font-bold tabular-nums text-emerald-200"><Clock3 size={13} aria-hidden="true"/>{reminder.time}</span>
               <span className="min-w-0 flex-1">
                 <strong className="block truncate text-xs font-semibold text-ink-primary">{reminder.title}</strong>
                 <span className="mt-0.5 block text-[10px] text-ink-muted">Abrir lembrete · registro manual</span>
               </span>
-              <ChevronRight size={15} className="shrink-0 text-ice" aria-hidden="true"/>
+              <ChevronRight size={15} className="shrink-0 text-ink-muted" aria-hidden="true"/>
             </button>
           </li>
         ))}

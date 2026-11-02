@@ -20,13 +20,19 @@ export const timelinePeriod = (time: string): Exclude<TimelinePeriod, "todos"> =
   return hour >= 5 && hour < 12 ? "manha" : hour >= 12 && hour < 18 ? "tarde" : "noite";
 };
 
+/** M24: one pass for status+period, retaining the old filtering semantics. */
 export function filterTimelineItems<T extends TimelineItemShape>(items: T[], status: TimelineStatus, period: TimelinePeriod, isToday: boolean): T[] {
-  let result = items;
-  if (status === "tomados") result = result.filter(item => item.tomada && !item.isDataConflict);
-  else if (status === "pendentes") result = result.filter(item => !item.tomada && !item.ignorada && !item.isDataConflict && !item.isSintoma && (isToday ? !item.isExpectedUnconfirmed : item.isExpectedUnconfirmed));
-  else if (status === "ignorados") result = result.filter(item => item.ignorada && !item.isDataConflict);
-  if (period !== "todos") result = result.filter(item => timelinePeriod(item.horario) === period);
-  return result;
+  if (status === "todos" && period === "todos") return items;
+  const filtered: T[] = [];
+  for (const item of items) {
+    if (status === "tomados" && (!item.tomada || item.isDataConflict)) continue;
+    if (status === "pendentes" && (item.tomada || item.ignorada || item.isDataConflict || item.isSintoma ||
+      (isToday ? item.isExpectedUnconfirmed : !item.isExpectedUnconfirmed))) continue;
+    if (status === "ignorados" && (!item.ignorada || item.isDataConflict)) continue;
+    if (period !== "todos" && timelinePeriod(item.horario) !== period) continue;
+    filtered.push(item);
+  }
+  return filtered;
 }
 
 export function visibleTimelineItems<T extends TimelineItemShape>(items: T[], options: { isToday: boolean; status: TimelineStatus; showResolved: boolean }): T[] {
