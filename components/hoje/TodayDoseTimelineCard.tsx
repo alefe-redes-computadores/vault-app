@@ -1,4 +1,6 @@
 "use client";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
+import { relevantDoseProcessingId } from "@/lib/today/card-render-scope";
 import { motion } from "framer-motion";
 import { AlertOctagon, AlertTriangle, Calendar, CheckCircle2, ChevronRight, Circle, Clock, RotateCcw, Stethoscope, Trash2, X, XCircle, Zap } from "lucide-react";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
@@ -30,7 +32,69 @@ export type TodayDoseTimelineCardScope = {
   handleToggle: (item: TodayTimelineItem) => Promise<void>;
 };
 
-export function TodayDoseTimelineCard({item,scope}: {item: TodayTimelineItem;scope: TodayDoseTimelineCardScope}) {
+type TodayDoseCardProps = {item: TodayTimelineItem; scope: TodayDoseTimelineCardScope};
+
+/**
+ * M21: light shell rerenders with Hoje, while the heavy 30 KB JSX is memoized.
+ * Event delegates always call the scope from the LAST COMMITTED render.
+ * That is essential for owner/date switches and retroactive review operations.
+ * No database or mutation logic is introduced into this visual component.
+ */
+export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
+  const committedScope = useRef(scope);
+  useLayoutEffect(() => { committedScope.current = scope; }, [scope]);
+  const commands = useMemo(() => ({
+    trigger: (kind: "vibrate") => committedScope.current.trigger(kind),
+    router: {push: (href: string) => committedScope.current.router.push(href)},
+    setMedicamentoSelecionado: (med: any) => committedScope.current.setMedicamentoSelecionado(med),
+    setModalAberto: (open: boolean) => committedScope.current.setModalAberto(open),
+    abrirRevisaoHistorica: (target: TodayTimelineItem) => committedScope.current.abrirRevisaoHistorica(target),
+    handleCancelPlannedDose: (target: TodayTimelineItem) => committedScope.current.handleCancelPlannedDose(target),
+    handleIgnorar: (target: TodayTimelineItem) => committedScope.current.handleIgnorar(target),
+    handleToggle: (target: TodayTimelineItem) => committedScope.current.handleToggle(target),
+  }), []);
+
+  // An unrelated medication or dose entering processing must not invalidate
+  // this card. The body needs only its own catalog and medication reference.
+  const regulatoryProfile = item.medicamentoId ? scope.regulatoryProfiles[item.medicamentoId] : undefined;
+  const medication = item.medicamentoId ? scope.medicamentosById.get(item.medicamentoId) : undefined;
+  const processingId = relevantDoseProcessingId(item, scope.processandoDoseId);
+  const regulatoryProfiles = useMemo<TodayDoseTimelineCardScope["regulatoryProfiles"]>(
+    () => item.medicamentoId && regulatoryProfile ? {[item.medicamentoId]: regulatoryProfile} : {},
+    [item.medicamentoId, regulatoryProfile]
+  );
+  const medicationsById = useMemo(
+    () => item.medicamentoId && medication ? new Map<string, any>([[item.medicamentoId, medication]]) : new Map<string, any>(),
+    [item.medicamentoId, medication]
+  );
+  const visualScope = useMemo<TodayDoseTimelineCardScope>(() => ({
+    isHoje: scope.isHoje,
+    isPassado: scope.isPassado,
+    isFuturo: scope.isFuturo,
+    horaAtual: scope.horaAtual,
+    regulatoryProfiles,
+    processandoDoseId: processingId,
+    trigger: commands.trigger,
+    router: commands.router,
+    medicamentosById: medicationsById,
+    setMedicamentoSelecionado: commands.setMedicamentoSelecionado,
+    setModalAberto: commands.setModalAberto,
+    abrirRevisaoHistorica: commands.abrirRevisaoHistorica,
+    isHistoricalProcessing: scope.isHistoricalProcessing,
+    handleCancelPlannedDose: commands.handleCancelPlannedDose,
+    isProcessing: scope.isProcessing,
+    handleIgnorar: commands.handleIgnorar,
+    handleToggle: commands.handleToggle,
+  }), [
+    scope.isHoje, scope.isPassado, scope.isFuturo, scope.horaAtual,
+    scope.isHistoricalProcessing, scope.isProcessing,
+    regulatoryProfiles, processingId, medicationsById, commands,
+  ]);
+  return <MemoTodayDoseTimelineCardBody item={item} scope={visualScope} />;
+}
+
+/** The original visual JSX and every button remain untouched below. */
+const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({item,scope}: TodayDoseCardProps) {
   const {isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, setMedicamentoSelecionado, setModalAberto, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing, handleIgnorar, handleToggle} = scope;
                           if (item.isSintoma) {
                             return <TodaySymptomTimelineCard key={`sintoma-${item.sintomaId}`} item={item} onOpen={() => {
@@ -591,4 +655,4 @@ export function TodayDoseTimelineCard({item,scope}: {item: TodayTimelineItem;sco
                             </motion.div>
                           );
 
-}
+});
