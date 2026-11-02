@@ -3,6 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),Module=require('node:module'),ts=require('typescript');
 const read=p=>fs.readFileSync(p,'utf8');let total=0;
 const ok=(v,message)=>{assert.ok(v,'M15: '+message);total++;};
+const doseCard=read("components/hoje/TodayDoseTimelineCard.tsx");
 const files=['app/hoje/page.tsx','components/hoje/TodayAppointmentCard.tsx','components/hoje/TodayDoseGroupHeading.tsx','components/home/HomeAlertRow.tsx','components/saude/HealthAvatar.tsx','lib/today/appointment-card-presentation.ts','lib/today/timeline-empty-copy.ts','lib/health-profile/avatar-visibility-policy.ts'];
 for(const file of files){const sf=ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,file.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(sf.parseDiagnostics.length===0,'TS/TSX syntax '+file);}
 const today=read(files[0]),card=read(files[1]),group=read(files[2]),home=read(files[3]),fenix=read(files[4]),pure=read(files[5]),empty=read(files[6]),policy=read(files[7]);
@@ -13,7 +14,7 @@ ok(today.includes('<TodayDoseGroupHeading')&&today.includes('const progresso = g
 ok(today.includes('setMostrarConcluidas')&&today.includes('Ver tomadas e ignoradas')&&today.includes('const hasFiltrosAtivos ='),'historical toggle and filters retained');
 ok(today.includes('emptyTimelineCopy.title')&&today.includes('emptyTimelineCopy.description')&&empty.includes('Nenhum slot para revisar neste dia'),'empty UI never erases scheduled slots');
 ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('buildTodayTimelineItems(')&&today.includes('setIsBatchTimeModalOpen'),'canonical dose batch/stock/actions untouched');
-ok(today.includes('describeTodayDoseStatus({')&&today.includes('isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao)'),'V242 and M14 historical-not-confirmed typings conserved');
+ok(doseCard.includes('describeTodayDoseStatus({')&&doseCard.includes('isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao)'),'V242 and M14 historical-not-confirmed typings conserved');
 ok(home.includes('getAlertBadgeLabel(')&&home.includes('router.push(')&&home.includes('trigger("vibrate")')&&home.includes('focus-visible:outline')&&home.includes('aria-label='),'Home alert remains reachable and accessible');
 const v196=read('scripts/test-v196-progressive-shell-avatar.cjs');
 ok(v196.includes('const appointmentCard = read("components/hoje/TodayAppointmentCard.tsx")') &&

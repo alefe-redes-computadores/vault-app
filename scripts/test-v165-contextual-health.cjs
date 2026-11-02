@@ -9,6 +9,7 @@ const medicine = read("app/saude/medicamentos/page.tsx");
 const quickDose = read("components/saude/QuickDoseModal.tsx");
 const repository = read("lib/repositories/doseLogs.ts");
 const today = read("app/hoje/page.tsx");
+const card = read("components/hoje/TodayDoseTimelineCard.tsx");
 const central = read("components/vault-intelligence/BrainV5DetailSheet.tsx");
 const arrivals = read("lib/health-profile/new-data-summary.ts");
 
@@ -44,7 +45,9 @@ assert.match(quickDose, /Nenhuma unidade será retirada do estoque/);
 const scheduleMethod = repository.slice(repository.indexOf("async agendarDoseAvulsa"), repository.indexOf("async registrarTomadaAvulsa"));
 assert.match(scheduleMethod, /dose_kind:\s*"planned"/);
 assert.doesNotMatch(scheduleMethod, /applyStockDelta/);
-assert.match(today, /doseKind === "planned"/);
+assert.match(today, /<TodayDoseTimelineCard/);
+assert.match(card, /doseKind === "planned"/);
+assert.match(card, /handleCancelPlannedDose\(item\)/);
 
 // Chegadas usam identidade estável e só fontes locais de integração permitidas.
 assert.match(arrivals, /source_record_id/);

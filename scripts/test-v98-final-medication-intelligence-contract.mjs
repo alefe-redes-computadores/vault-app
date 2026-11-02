@@ -4,6 +4,7 @@ const ok=(v,m)=>{if(!v)throw Error("V98 FINAL: "+m);console.log("OK:",m)};
 const hook=read("hooks/useMedicationRegulatoryProfiles.ts");
 const list=read("app/saude/medicamentos/page.tsx");
 const today=read("app/hoje/page.tsx");
+const card=read("components/hoje/TodayDoseTimelineCard.tsx");
 const timeline=read("lib/today/build-timeline-items.ts");
 const summary=read("lib/today/timeline-summary.ts");
 const home=read("lib/health-intelligence/home-signal-orchestration.ts");
@@ -40,7 +41,8 @@ ok(
   timeline.includes('isAvulsa: true') &&
   summary.includes('item.isAvulsa && item.doseKind !== "planned"') &&
   summary.includes('!item.isAvulsa && !item.isSintoma') &&
-  today.includes('item.doseKind === "planned" ? "Agendada" : "SOS / Avulsa"') &&
+  today.includes('<TodayDoseTimelineCard item={item} scope={doseCardScope} />') &&
+  card.includes('item.doseKind === "planned" ? "Agendada" : "SOS / Avulsa"') &&
   today.includes('!dose.isAvulsa'),
   "V98: SOS/extra são avulsos e permanecem fora do progresso programado"
 );

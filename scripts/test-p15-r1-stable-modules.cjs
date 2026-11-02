@@ -6,6 +6,7 @@ function ok(check,name){assert(check,`P15 R1: ${name}`);n++;console.log(`✓ ${n
 const files=["app/saude/medicamentos/detalhes/page.tsx","app/hoje/page.tsx","components/saude/MedicationDoseEvolutionTimeline.tsx","lib/today/withdrawal-urgency-presentation.ts","components/home/HomeDailyHero.tsx","components/hoje/TodayRoutinePulse.tsx","components/saude/HealthAvatar3D.tsx","lib/health-intelligence/avatar-decision-brief.ts"];
 for(const file of files){const tree=ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,file.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(tree.parseDiagnostics.length===0,`${file}: sintaxe TypeScript válida`)}
 const [detail,today,timeline,style,home,pulse,avatar,briefSource]=files.map(read);
+const doseCard=read("components/hoje/TodayDoseTimelineCard.tsx");
 ok(detail.includes('import { MedicationDoseEvolutionTimeline }')&&detail.includes('<MedicationDoseEvolutionTimeline')&&detail.includes('history={med.historico_dosagens}'),"Detalhes delegam somente a linha do tempo visual");
 ok(detail.includes('className="vault-deferred" history={med.historico_dosagens}')&&timeline.includes('className={`${className} space-y-3'),"V197: a classe de renderização progressiva permanece na página e no componente");
 ok(detail.includes('formatDose={(dose)=>formatMedicationDosageDisplay(med.nome,dose)}')&&detail.includes('formatDay={formatDate}'),"Formatação existente de dosagem e data preservada");
@@ -14,7 +15,7 @@ ok(detail.includes('Quantidade registrada hoje')&&detail.includes('Menor preço 
 ok(detail.includes('onClick={\n                    abrirQuickDose'.replace('\n','\n'.replace('\n','\n')))||detail.includes('abrirQuickDose'),"Ação de dose original continua nos detalhes");
 ok(timeline.includes('[...history].reverse()')&&timeline.includes('formatDose(item.dosagem_antiga)')&&timeline.includes('formatDay(item.data_mudanca)'),"Evolução visual usa eventos sem mutação e preserva ordem antiga");
 ok(!timeline.includes('db.')&&!timeline.includes('supabase')&&!timeline.includes('safeAdd')&&!timeline.includes('safeUpdate'),"Componente de evolução não escreve dados");
-ok(today.includes('import { getDiasRestantesEstilo }')&&today.includes('getDiasRestantesEstilo('),"Hoje reutiliza apresentação de prazo");
+ok(today.includes('import { TodayDoseTimelineCard, type TodayDoseTimelineCardScope }') && today.includes('<TodayDoseTimelineCard item={item} scope={doseCardScope} />') && doseCard.includes('import { getDiasRestantesEstilo }') && doseCard.includes('getDiasRestantesEstilo(') && doseCard.includes('diasEstilo.cor') && doseCard.includes('diasEstilo.bg'),"Hoje reutiliza apresentação de prazo");
 const compiled=ts.transpileModule(style,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 const m={exports:{}};new Function('module','exports',compiled)(m,m.exports);
 const get=m.exports.getDiasRestantesEstilo;

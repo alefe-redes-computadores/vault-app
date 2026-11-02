@@ -13,6 +13,7 @@ const paths=[
 ];let checks=0;
 const ok=(p,label)=>{assert.ok(p,`M14 ${label}`);checks++;console.log('✓ M14 '+label)};
 for(const p of paths){const code=read(p),ast=ts.createSourceFile(p,code,ts.ScriptTarget.Latest,true,p.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(ast.parseDiagnostics.length===0,`AST ${p}`)}
+const doseCard=read('components/hoje/TodayDoseTimelineCard.tsx');
 const home=read(paths[0]),today=read(paths[1]),avatar=read(paths[2]),alerts=read(paths[3]),symptom=read(paths[4]),renewal=read(paths[5]),status=read(paths[6]),hook=read(paths[7]);
 ok(home.includes('import { AlertRow, getAlertIcon, type DashboardAlert }')&&home.includes('projectHomeDashboardAlerts(healthInsights, documentInsights')&&home.includes('renderAlert={alert => <AlertRow alert={alert} />}'), 'Home projects once and delegates each alert without changing destinations');
 ok(!home.includes('function AlertRow(')&&!home.includes('function getAlertBadgeLabel(')&&alerts.includes('export function AlertRow(')&&alerts.includes('export function getAlertIcon('),'Home alert component and pure text display extracted');
@@ -20,10 +21,10 @@ ok(alerts.includes('getAlertBadgeLabel(')&&alerts.includes('router.push(')&&aler
 ok(today.includes('useTodayPersistedFilters()')&&today.includes('setMostrarConcluidas')&&today.includes('setFiltroCompromisso')&&today.includes('filterTimelineItems(doses, filtroStatus, filtroPeriodo, isHoje)'), 'Hoje filters preserve current meanings');
 ok(hook.includes('const [hydrated,setHydrated]=useState(false)')&&hook.includes('if(!hydrated)return')&&hook.includes('window.localStorage.getItem')&&hook.includes('window.localStorage.setItem')&&hook.includes('try {')&&hook.includes('catch'), 'saved filters only written after reading and tolerate disabled storage');
 ok(today.includes('groupTimelineItems(dosesParaExibir')&&today.includes('todayTimelineGroupContext(metadata[key].sub, items.length)')&&today.includes('const completed = items.reduce(')&&today.includes('const progresso = grupo.progress'), 'group completion memoized without changing dose membership');
-ok(today.includes('<TodaySymptomTimelineCard')&&today.includes('router.push(`/saude/registros/detalhes?id=${item.sintomaId}`)')&&symptom.includes('item.intensidade')&&symptom.includes('item.observacoesSintoma'), 'symptoms readable and owner navigation remains in parent');
+ok(doseCard.includes('<TodaySymptomTimelineCard')&&doseCard.includes('router.push(`/saude/registros/detalhes?id=${item.sintomaId}`)')&&symptom.includes('item.intensidade')&&symptom.includes('item.observacoesSintoma'), 'symptoms readable and owner navigation remains in parent');
 ok(today.includes('<TodayPrescriptionRenewalCard')&&today.includes('router.push(evento.actionHref)')&&renewal.includes('overdue?"Pendente":"Receita"'), 'prescription planning never presented as completed acquisition');
-ok(today.includes('describeTodayDoseStatus({')&&status.includes('if(item.isDataConflict)')&&status.includes('if(item.tomada)')&&status.includes('if(isPrevistoFuturo)'), 'dose visual precedence moved, not clinical event authority');
-ok(today.includes('isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao)') && status.includes('isHistoricoSemConfirmacao: boolean;'), 'historical unconfirmed optional evidence is explicitly boolean at presenter boundary (TS2322)');
+ok(doseCard.includes('describeTodayDoseStatus({')&&status.includes('if(item.isDataConflict)')&&status.includes('if(item.tomada)')&&status.includes('if(isPrevistoFuturo)'), 'dose visual precedence moved, not clinical event authority');
+ok(doseCard.includes('isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao)') && status.includes('isHistoricoSemConfirmacao: boolean;'), 'historical unconfirmed optional evidence is explicitly boolean at presenter boundary (TS2322)');
 
 ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('buildTodayTimelineItems(')&&today.includes('retroReviewMode')&&today.includes('setIsBatchTimeModalOpen'), 'idempotent dose, stock and retroactive pathways remain in original parent');
 ok(avatar.includes('renderAttempt')&&avatar.includes('setRenderAttempt(value=>value+1)')&&avatar.includes('<Avatar3DBoundary key=')&&avatar.includes('renderer')===false,'Fênix refreshes 3D error boundary without new render loops');

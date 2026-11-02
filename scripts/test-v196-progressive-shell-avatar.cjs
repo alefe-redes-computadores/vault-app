@@ -5,6 +5,7 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const globals = read("app/globals.css");
 const home = read("app/page.tsx");
 const today = read("app/hoje/page.tsx");
+const doseCard = read("components/hoje/TodayDoseTimelineCard.tsx");
 const appointmentCard = read("components/hoje/TodayAppointmentCard.tsx");
 const more = read("app/mais/page.tsx");
 const command = read("components/home/HomeCommandCenter.tsx");
@@ -20,7 +21,7 @@ assert(home.includes("medicamentosById.get(retirada.medicamento_id)"));
 assert(home.includes('className="vault-deferred-lg space-y-3"'));
 
 assert(today.includes("new Map<string, any>"));
-assert(today.includes("? medicamentosById.get(item.medicamentoId)"));
+assert(today.includes("<TodayDoseTimelineCard") && doseCard.includes("? medicamentosById.get(item.medicamentoId)"));
 assert(!today.includes("medicamentos.find"));
 assert(today.includes('className="vault-deferred-lg space-y-2"'));
 assert(today.includes("<TodayAppointmentCard"),"Today: extracted appointment card is mounted");
