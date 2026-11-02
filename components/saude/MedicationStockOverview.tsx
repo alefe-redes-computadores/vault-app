@@ -77,10 +77,15 @@ export function MedicationStockOverview({
           </p>
         )}
       </div>
-      <div className="mt-3 flex flex-col gap-1 border-t border-surface-border/50 pt-3 text-[10px] text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-        <span>Quantidade por dose: <b className="text-ink-primary">{doseQuantity !== null ? `${formatQuantity(doseQuantity)} ${unit}` : "Não configurada"}</b></span>
-        <span>Saldo informado em: <b className="text-ink-primary">{referenceDay}</b></span>
-      </div>
+      <details className="group mt-3 border-t border-surface-border/50 text-[10px] text-ink-muted">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 py-2.5 font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+          Origem do saldo e cálculo <span aria-hidden="true" className="text-ink-muted group-open:rotate-180">▾</span>
+        </summary>
+        <div className="flex flex-col gap-1.5 pb-2 sm:flex-row sm:justify-between">
+          <span>Quantidade por dose: <b className="text-ink-primary">{doseQuantity !== null ? `${formatQuantity(doseQuantity)} ${unit}` : "Não configurada"}</b></span>
+          <span>Saldo informado em: <b className="text-ink-primary">{referenceDay}</b></span>
+        </div>
+      </details>
       {dropsConversionMissing && (
         <div className="mt-3 flex items-start gap-2 rounded-xl bg-surface-raised p-3">
           <Info size={13} className="mt-0.5 shrink-0 text-ice" aria-hidden="true" />

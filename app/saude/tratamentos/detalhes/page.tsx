@@ -981,7 +981,7 @@ function TratamentoContent() {
 
 
         <section className="space-y-4 px-5 pt-5">
-          <ClinicalSectionNav label="Áreas do tratamento" items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length}]}/>
+          <ClinicalSectionNav label="Áreas do tratamento" layout="grid" density="compact" priorityCount={3} items={[{id:"tratamento-visao",label:"Visão geral",icon:<Activity size={14}/>},{id:"tratamento-medicamentos",label:"Medicamentos",icon:<Pill size={14}/>,badge:medicamentosAtivos.length},{id:"tratamento-rede",label:"Rede",icon:<Users size={14}/>},{id:"tratamento-linha",label:"Linha clínica",icon:<History size={14}/>,badge:timeline.length},{id:"tratamento-financeiro",label:"Aquisições",icon:<Receipt size={14}/>,badge:panorama.renovacoes}]}/>
           <span id="tratamento-visao" className="block scroll-mt-24" aria-hidden="true"/>
           <motion.div
             variants={fadeUp}
@@ -1231,11 +1231,7 @@ function TratamentoContent() {
             />
 
             {timeline.length === 0 ? (
-              <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
-                <p className="text-sm text-ink-muted">
-                  Nenhum evento clínico vinculado a este tratamento.
-                </p>
-              </div>
+              <p className="rounded-xl border border-surface-border/40 bg-surface/40 px-3 py-2.5 text-xs leading-relaxed text-ink-muted">Nenhum evento clínico vinculado a este tratamento.</p>
             ) : (
               <div className="ml-3 space-y-2 border-l-2 border-surface-border/50 pl-4">
                 {timeline.map((event) => {
@@ -1308,6 +1304,7 @@ function TratamentoContent() {
               title="Panorama do Tratamento"
             />
 
+            {(panorama.renovacoes>0 || panorama.medicamentosPrecisandoAtencao>0) ? (
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
@@ -1339,6 +1336,7 @@ function TratamentoContent() {
                 </p>
               </div>
             </div>
+            ) : <p className="rounded-xl border border-surface-border/40 bg-surface/40 px-3 py-2.5 text-xs text-ink-muted">Sem aquisições ou pendências registradas para este tratamento.</p>}
 
             {panorama.primeiraAquisicao &&
               panorama.ultimaAquisicao &&
