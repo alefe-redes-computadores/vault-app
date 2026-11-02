@@ -1153,7 +1153,7 @@ export default function HomePage() {
         <section className="space-y-6 px-5 pt-5">
           <HomeSectionNav
             hasAttention={unifiedAlerts.length > 0}
-            hasBrain={longitudinalHighlights.length > 0 || (!brainV5Pulse.isLoading && brainV5Pulse.counters.active > 0)}
+            hasBrain={longitudinalHighlights.length > 0 || (!brainV5Pulse.isLoading && (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))}
           />
           {/* ===================================================
               HOJE

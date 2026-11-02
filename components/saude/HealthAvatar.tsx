@@ -48,8 +48,11 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   const [resourceConstrained,setResourceConstrained]=useState(false);
   useEffect(()=>{
     if(typeof navigator==='undefined')return;
-    const nav=navigator as Navigator & {deviceMemory?:number;connection?:{saveData?:boolean;effectiveType?:string}};
-    setResourceConstrained((nav.deviceMemory!==undefined&&nav.deviceMemory<=4)||(nav.hardwareConcurrency!==undefined&&nav.hardwareConcurrency<=4)||nav.connection?.saveData===true||/(^|-)2g$/.test(nav.connection?.effectiveType||''));
+    const nav=navigator as Navigator & {deviceMemory?:number;connection?:{saveData?:boolean;effectiveType?:string;addEventListener?:(type:string,listener:()=>void)=>void;removeEventListener?:(type:string,listener:()=>void)=>void}};
+    const sync=()=>setResourceConstrained((nav.deviceMemory!==undefined&&nav.deviceMemory<=4)||(nav.hardwareConcurrency!==undefined&&nav.hardwareConcurrency<=4)||nav.connection?.saveData===true||/(^|-)2g$/.test(nav.connection?.effectiveType||''));
+    sync();
+    nav.connection?.addEventListener?.('change',sync);
+    return()=>nav.connection?.removeEventListener?.('change',sync);
   },[]);
   useEffect(()=>{
     if(typeof window==='undefined'||typeof window.matchMedia!=='function')return;

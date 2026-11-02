@@ -66,7 +66,7 @@ export function HealthSupplyEntry({
               )}
             </div>
           )}
-          {!loading && summary.processes.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Processos vinculados ao medicamento">{summary.processes.slice(0,3).map(process=><Link key={process.id} href={`/saude/fornecimento?id=${encodeURIComponent(process.id)}&medicamento_id=${encodeURIComponent(medicamentoId)}`} className="rounded-lg border border-emerald-300/15 bg-emerald-300/[.035] px-2 py-1.5 text-[9px] text-emerald-200">{process.title} · {process.origin} ›</Link>)}</div>:null}
+          {!loading && summary.processes.length > 0 ? <details className="mt-2"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-emerald-200">Processos vinculados ao medicamento · {summary.processes.length}</summary><div className="flex flex-wrap gap-1.5" aria-label="Processos vinculados ao medicamento">{summary.processes.map(process=><Link key={process.id} href={`/saude/fornecimento?id=${encodeURIComponent(process.id)}&medicamento_id=${encodeURIComponent(medicamentoId)}`} className="rounded-lg border border-emerald-300/15 bg-emerald-300/[.035] px-2 py-1.5 text-[9px] text-emerald-200">{process.title} · {process.origin} ›</Link>)}</div></details>:null}
         </div>
       </div>
       <Link

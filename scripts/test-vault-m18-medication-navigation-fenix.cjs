@@ -11,7 +11,7 @@ ok(detail.includes('<MedicationDetailNavigation')&&!detail.includes('<ClinicalSe
 ok(list.includes('<MedicationListGroupNavigation')&&!list.includes('<ClinicalSectionNav'),'list delegates group hierarchy');
 ok(nav.includes('historyCount')&&nav.includes('hasRoutine')&&nav.includes('hasFinancial'),'optional destinations follow rendered content');
 ok(nav.includes('attention')&&nav.includes('planned')&&nav.includes('suspended'),'list counts remain explicit');
-ok(avatar.includes('connection?:{saveData?:boolean;effectiveType?:string}')&&avatar.includes("nav.connection?.saveData===true")&&avatar.includes("/(^|-)2g$/"),'Fenix respects data saver and slow network');
+ok(avatar.includes('connection?:{saveData?:boolean;effectiveType?:string;')&&avatar.includes("nav.connection?.saveData===true")&&avatar.includes("/(^|-)2g$/")&&avatar.includes("addEventListener?.('change',sync)")&&avatar.includes("removeEventListener?.('change',sync)"),'Fenix respects data saver and slow network, including changes');
 ok(!/\b(fetch\(|supabase|\bdb\.|localStorage|\.put\(|\.update\()/.test(nav),'navigation component has no data authority');
 ok(read('scripts/test-v63-release-gate.mjs').includes('test-vault-m18-medication-navigation-fenix.cjs'),'M18 is cumulative');
 console.log(`VAULT M18: ${total} structural checks passed`);
