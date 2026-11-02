@@ -24,9 +24,13 @@ export function buildDoseSlotIndex(logs:readonly DoseLog[],scope?:{userId?:strin
 export function resolveDoseSlot(index:DoseSlotIndex,medicationId:string,date:string,time:string):DoseSlotSnapshot{
   const records=index.get(doseSlotKey(medicationId,date,time))||[];
   if(!records.length)return {state:"absent",records,latest:null};
-  const taken=records.some(row=>Boolean(row.tomado_em));
-  const ignored=records.some(row=>Boolean(row.ignorado_em));
-  const latest=records.reduce<DoseLog|null>((current,row)=>!current||String(row.updated_at||row.created_at||"")>String(current.updated_at||current.created_at||"")?row:current,null);
+  // M23: one scan preserves taken+ignored conflicts and latest-row tie order.
+  let taken=false,ignored=false,latest:DoseLog|null=null;
+  for(const row of records){
+    if(row.tomado_em)taken=true;
+    if(row.ignorado_em)ignored=true;
+    if(!latest||String(row.updated_at||row.created_at||"")>String(latest.updated_at||latest.created_at||""))latest=row;
+  }
   return {state:taken&&ignored?"conflict":taken?"taken":ignored?"ignored":"pending",records,latest};
 }
 

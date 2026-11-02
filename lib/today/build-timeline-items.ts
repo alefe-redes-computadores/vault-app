@@ -1,4 +1,5 @@
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
+import { earliestAcquisitionByMedication } from "@/lib/today/acquisition-date-index";
 import { computeEstoqueInfo, getDaysUntil } from "@/lib/health-utils";
 import { analisarComportamentoUso, isReceitaAtualVencida, sugerirRenovacao } from "@/lib/health-insights";
 
@@ -92,7 +93,8 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
   const treatmentById = byId(input.tratamentos);
   const pharmacyById = byId(input.farmacias);
   const hospitalById = byId(input.hospitais);
-  const renewalsByMedication = groupedBy(input.renovacoes, "medicamento_id");
+  // M23: one O(n) pass for every medication, no per-medication date sort.
+  const firstAcquisitionByMedication = earliestAcquisitionByMedication(input.renovacoes);
   const historyByMedication = groupedBy(input.historicoDoses, "medicamento_id");
 
   for (const med of input.medicamentos) {
@@ -103,11 +105,9 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
       .filter((time: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)))).sort();
     if (!horarios.length) continue;
 
-    const acquisitionDates = (renewalsByMedication.get(med.id) || [])
-      .map(item => String(item.data_aquisicao || item.data || "").slice(0, 10))
-      .filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)).sort();
+    const firstAcquisition = firstAcquisitionByMedication.get(med.id);
     const createdDate = String(med.created_at || "").slice(0, 10);
-    const knownStartDate = acquisitionDates[0]
+    const knownStartDate = firstAcquisition
       || (/^\d{4}-\d{2}-\d{2}$/.test(createdDate) ? createdDate : null)
       || med.estoque_data_referencia || med.data_receita || null;
     if (knownStartDate && input.dataSelecionada < knownStartDate) continue;

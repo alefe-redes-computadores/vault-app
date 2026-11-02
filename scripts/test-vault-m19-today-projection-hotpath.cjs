@@ -31,7 +31,9 @@ for(const fixture of [[],slots,slots.slice(0,1),Array.from({length:2000},(_,i)=>
   ok(JSON.stringify(fixture)===before,'agrupamento preserva ordem, pendência, saldo e não altera entrada; '+fixture.length+' slots');
 }
 const counters={days:0,stock:0,behavior:0};
+const acquisitionModule=load('lib/today/acquisition-date-index.ts');
 const builder=load('lib/today/build-timeline-items.ts',{
+  '@/lib/today/acquisition-date-index':acquisitionModule,
   '@/lib/dose-slot-authority':{buildDoseSlotIndex:()=>new Map(),resolveDoseSlot:()=>({state:'absent'})},
   '@/lib/health-utils':{computeEstoqueInfo:()=>{counters.stock++;return {quantidadeRestante:6}},getDaysUntil:()=>{counters.days++;return 5}},
   '@/lib/health-insights':{analisarComportamentoUso:()=>{counters.behavior++;return null},isReceitaAtualVencida:()=>false,sugerirRenovacao:()=>({deveRenovar:false,mensagem:'',urgencia:'nenhuma'})},

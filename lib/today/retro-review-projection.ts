@@ -1,4 +1,5 @@
 import { addDaysToLocalDate } from "@/lib/health-utils";
+import { earliestAcquisitionByMedication } from "@/lib/today/acquisition-date-index";
 
 type MedicationLike = {
   id?: string;
@@ -55,13 +56,9 @@ export function buildTodayRetroReviewSummary(input: {
   const horarios = Array.from(new Set((medicamento.estoque_horarios ?? [])
     .map(value => String(value || "").trim())
     .filter(value => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)))).sort();
-  const acquisitionDates = input.renewals
-    .filter(item => item.medicamento_id === medicamento.id)
-    .map(item => String(item.data_aquisicao || item.data || "").slice(0, 10))
-    .filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value))
-    .sort();
+  const firstAcquisition = earliestAcquisitionByMedication(input.renewals).get(medicamento.id!);
   const createdDate = String(medicamento.created_at || "").slice(0, 10);
-  const startDate = acquisitionDates[0] ||
+  const startDate = firstAcquisition ||
     (/^\d{4}-\d{2}-\d{2}$/.test(createdDate) ? createdDate : null) ||
     medicamento.estoque_data_referencia || medicamento.data_receita || null;
   const empty = (confidence: TodayRetroReviewSummary["confidence"]): TodayRetroReviewSummary => ({
@@ -74,20 +71,27 @@ export function buildTodayRetroReviewSummary(input: {
 
   const yesterday = addDaysToLocalDate(input.today, -1);
   if (!yesterday || startDate > yesterday) return empty("bounded");
-  const logsBySlot = new Set(input.doseLogs
-    .filter(log => log.medicamento_id === medicamento.id && log.person_id === input.personId)
-    .map(log => `${log.data}|${log.horario}`));
+  // M23: build the exact same slot evidence in one pass, scoped by person.
+  const logsBySlot = new Set<string>();
+  for (const log of input.doseLogs) {
+    if (log.medicamento_id === medicamento.id && log.person_id === input.personId)
+      logsBySlot.add(`${log.data}|${log.horario}`);
+  }
   const pendingDates: string[] = [];
   let cursor = startDate;
   let totalSlots = 0;
   let confirmedSlots = 0;
   let guard = 0;
   while (cursor <= yesterday && guard < 3660) {
+    // A date is appended once, regardless of how many scheduled times lack
+    // a record. Never interpret missing records as missed medication.
+    let hasUnconfirmedSlot = false;
     for (const horario of horarios) {
       totalSlots += 1;
       if (logsBySlot.has(`${cursor}|${horario}`)) confirmedSlots += 1;
-      else if (!pendingDates.includes(cursor)) pendingDates.push(cursor);
+      else hasUnconfirmedSlot = true;
     }
+    if (hasUnconfirmedSlot) pendingDates.push(cursor);
     const nextDate = addDaysToLocalDate(cursor, 1);
     if (!nextDate || nextDate === cursor) break;
     cursor = nextDate;

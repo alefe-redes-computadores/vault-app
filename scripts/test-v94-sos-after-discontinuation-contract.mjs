@@ -29,7 +29,13 @@ const compiled=ts.transpileModule(timeline, {
 ok((compiled.diagnostics||[]).every(d=>d.category!==ts.DiagnosticCategory.Error),
   "Motor Hoje mantém sintaxe TypeScript válida");
 const sandbox={exports:{}};
+const acquisitionSandbox={exports:{}};
+new Function("exports","require",ts.transpileModule(
+  r("lib/today/acquisition-date-index.ts"),
+  {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}
+).outputText)(acquisitionSandbox.exports,id=>{throw new Error("V94 unexpected acquisition helper dependency: "+id)});
 const deps={
+  "@/lib/today/acquisition-date-index":acquisitionSandbox.exports,
   "@/lib/dose-slot-authority":{
     buildDoseSlotIndex:()=>new Map(),
     resolveDoseSlot:()=>({state:"absent"}),

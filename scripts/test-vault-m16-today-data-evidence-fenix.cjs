@@ -13,11 +13,20 @@ ok(projection.includes('Ausência de confirmação')&&panel.includes('Ausência 
 ok(panel.includes('summary.confidence === "limited"')&&panel.includes('Nada é confirmado automaticamente'),'evidence limit and non-mutation boundary are visible');
 ok(avatar.includes("matchMedia('(prefers-reduced-motion: reduce)')")&&avatar.includes('O modo reduzido mantém a prévia em ilustração')&&policy.includes('!input.reducedMotion'),'Fenix compact WebGL respects reduced-motion and battery context');
 ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('setIsBatchTimeModalOpen'),'dose and stock authority remain on canonical handlers');
-ok(!/\b(fetch\(|supabase|\bdb\.|localStorage|\.put\(|\.add\(|\.update\()/.test(projection+'\n'+panel),'new Brain projection and panel are pure');
+ok(projection.includes('const logsBySlot = new Set<string>();') &&
+   projection.includes('logsBySlot.add('),
+   'in-memory evidence index is an explicit Set, not a database write');
+const puritySource = projection.replaceAll('logsBySlot.add(', '');
+ok(!/\b(fetch\(|supabase|\bdb\.|localStorage|\.put\(|\.add\(|\.update\()/.test(puritySource+'\n'+panel),
+   'new Brain projection and panel are pure');
 
 function load(file,imports={}){const compiled=ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const m=new Module(file,module);m.require=id=>{if(id in imports)return imports[id];throw Error('M16 unexpected import '+id)};m._compile(compiled,file);return m.exports;}
 const addDays=(day,delta)=>{const date=new Date(day+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+delta);return date.toISOString().slice(0,10);};
-const build=load(files[2],{'@/lib/health-utils':{addDaysToLocalDate:addDays}}).buildTodayRetroReviewSummary;
+const acquisitionIndex=load('lib/today/acquisition-date-index.ts');
+const build=load(files[2],{
+  '@/lib/health-utils':{addDaysToLocalDate:addDays},
+  '@/lib/today/acquisition-date-index':acquisitionIndex,
+}).buildTodayRetroReviewSummary;
 const medication={id:'m1',nome:'A',estoque_horarios:['08:00','20:00'],created_at:'2026-10-30T10:00:00Z'};
 const base={enabled:true,medicationId:'m1',medications:[medication],renewals:[],personId:'p1',today:'2026-11-02'};
 const summary=build({...base,doseLogs:[{medicamento_id:'m1',person_id:'p1',data:'2026-10-30',horario:'08:00'}]});

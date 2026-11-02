@@ -9,8 +9,11 @@ const avatar=fs.readFileSync("components/saude/AvatarCareWorkspace.tsx","utf8");
 const health=fs.readFileSync("app/saude/minha-saude/page.tsx","utf8");
 const gate=fs.readFileSync("scripts/test-v63-release-gate.mjs","utf8");
 assert(today.includes("buildTodayTimelineItems({"),"Hoje delegates timeline projection");
-for(const index of ["doctorById","treatmentById","pharmacyById","hospitalById","renewalsByMedication","historyByMedication"])
+for(const index of ["doctorById","treatmentById","pharmacyById","hospitalById","historyByMedication"])
   assert(timeline.includes(index),`timeline indexes ${index}`);
+assert(timeline.includes('const firstAcquisitionByMedication = earliestAcquisitionByMedication(input.renovacoes)') &&
+       timeline.includes('firstAcquisitionByMedication.get(med.id)'),
+       "M23 linear acquisition index replaces legacy renewal sort");
 assert(timeline.includes('slot.state === "conflict"')&&timeline.includes('dose_kind === "planned"'),"conflicts and planned doses remain explicit");
 assert(timeline.includes('med.tipo_uso === "sos"')&&timeline.includes('med.tipo_uso === "esporadico"'),"scheduled projection excludes SOS and sporadic medication");
 assert(progress.includes("takenRoutineSlots = new Set")&&progress.includes('dose_kind !== "sos"')&&progress.includes('dose_kind !== "extra"'),"Home progress is indexed and routine-only");
