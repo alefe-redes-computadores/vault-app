@@ -756,38 +756,29 @@ export const doseLogsRepository = {
 
   async getAll(
     personId: string,
-    data?: string
+    data?: string,
+    // M20: opt-in account scope for indexed Today reads; legacy callers retain
+    // the historical signature and full-history behavior.
+    ownerUserId?: string
   ): Promise<DoseLog[]> {
     const safePersonId =
       requirePersonId(
         personId
       );
 
-    let query =
-      db.doseLogs
-        .where(
-          "person_id"
-        )
-        .equals(
-          safePersonId
-        );
-
-    if (data) {
-      const safeDate =
-        requireDate(
-          data
-        );
-
-      query =
-        query.and(
-          (log) =>
-            log.data ===
-            safeDate
-        );
-    }
-
-    const rows =
-      await query.toArray();
+    // M20: account/person/day equality reaches only the requested day rows.
+    // Explicit owner mode fails closed while auth is not ready; no legacy
+    // person-only scan may be used as fallback for the Hoje consumer.
+    if (ownerUserId !== undefined && !ownerUserId.trim()) return [];
+    const safeDate = data ? requireDate(data) : undefined;
+    const query = ownerUserId !== undefined
+      ? safeDate
+        ? db.doseLogs.where("[user_id+person_id+data]").equals([ownerUserId, safePersonId, safeDate])
+        : db.doseLogs.where("[user_id+person_id]").equals([ownerUserId, safePersonId])
+      : db.doseLogs.where("person_id").equals(safePersonId);
+    const rows = ownerUserId === undefined && safeDate
+      ? await query.and(log => log.data === safeDate).toArray()
+      : await query.toArray();
 
     return rows.sort(
       (

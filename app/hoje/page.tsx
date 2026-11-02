@@ -287,7 +287,9 @@ export default function HojePage() {
     desmarcarDoseHistorica,
     removerDosePorId,
   } = useDoseLogs(
-    dataSelecionada
+    dataSelecionada,
+    // M20: require an authenticated owner before exposing day dose rows.
+    user?.id ?? null
   );
 
   // M16: owner/date reads live in one hook; the page consumes scoped results.

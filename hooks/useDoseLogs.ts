@@ -30,7 +30,9 @@ import type {
 // ============================================================
 
 export function useDoseLogs(
-  dataEspecifica?: string
+  dataEspecifica?: string,
+  // Explicit null means an owner-scoped request before auth is ready.
+  ownerUserId?: string | null
 ) {
   const {
     activePersonId,
@@ -45,29 +47,33 @@ export function useDoseLogs(
   // LISTA
   // ==========================================================
 
-  const doseLogsLive =
-    useLiveQuery<DoseLog[]>(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
-
-        return doseLogsRepository.getAll(
-          activePersonId,
-          targetDate
-        );
-      },
-      [
-        activePersonId,
-        targetDate,
-      ]
+  // M20: query results carry owner, person and date identity. Dexie can
+  // briefly retain a previous snapshot during account/date transitions;
+  // never expose those rows to the new patient or account.
+  const ownerScoped = ownerUserId !== undefined;
+  const doseLogsLive = useLiveQuery<{
+    ownerId: string | null | undefined;
+    personId: string | null | undefined;
+    date: string;
+    rows: DoseLog[];
+  }>(async () => {
+    const ownerId = ownerUserId;
+    const personId = activePersonId;
+    const date = targetDate;
+    if (!personId || (ownerScoped && !ownerId)) {
+      return {ownerId, personId, date, rows: []};
+    }
+    const rows = await doseLogsRepository.getAll(
+      personId, date, ownerScoped ? ownerId! : undefined
     );
+    return {ownerId, personId, date, rows};
+  }, [activePersonId, targetDate, ownerUserId]);
 
-  const doseLogs =
-    doseLogsLive ??
-    [];
+  const queryMatchesOwner = Boolean(doseLogsLive &&
+    doseLogsLive.personId === activePersonId &&
+    doseLogsLive.date === targetDate &&
+    (!ownerScoped || doseLogsLive.ownerId === ownerUserId));
+  const doseLogs = queryMatchesOwner ? doseLogsLive!.rows : [];
 
   // ==========================================================
   // MARCAR COMO TOMADA
@@ -514,8 +520,7 @@ export function useDoseLogs(
     doseLogs,
 
     isLoading:
-      doseLogsLive ===
-      undefined,
+      !queryMatchesOwner,
 
     marcarComoTomada,
 
