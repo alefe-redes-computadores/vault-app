@@ -137,10 +137,11 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     // o rosto ganha leitura humana sem aumentar a contagem de malhas.
     // P14: crânio e mandíbula com transição de perfil mais natural, usando a malha já existente.
     oval(materials.skin,0,2.825,-.016,[.186,.268,.186]);
-    const jawShape=new THREE.Shape();
-    jawShape.moveTo(-.153,.087);jawShape.lineTo(.153,.087);jawShape.lineTo(.128,-.045);jawShape.lineTo(.066,-.111);jawShape.lineTo(0,-.132);jawShape.lineTo(-.066,-.111);jawShape.lineTo(-.128,-.045);jawShape.closePath();
-    const jawGeometry=new THREE.ExtrudeGeometry(jawShape,{depth:.166,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:2});jawGeometry.translate(0,0,-.083);
-    const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018);jaw.rotation.x=.025;
+    // M10_FACE_GUARD_NATIVE_JAW: artefato real Android (triângulo/haste no rosto).
+    // O contorno extrudado e o bevel saem do pipeline facial: geometria nativa,
+    // convexa e com limites fixos. Não há atualização por quadro nem malha extra.
+    const jawGeometry=new THREE.SphereGeometry(.151,20,12);
+    const jaw=mesh(jawGeometry,materials.skin,0,2.657,.018,[1,.79,.63]);jaw.rotation.x=.025;
     for(const sign of [-1,1]) {
       // V184: cheek volume follows the jaw plane instead of reading as a sphere attached to the face.
       const cheek=mesh(taperedBox(.055,.068,.074,.034),materials.skin,sign*.104,2.738,.147);cheek.rotation.z=sign*.105;cheek.rotation.x=-.08;cheek.scale.z=.94;cheek.raycast=()=>{};

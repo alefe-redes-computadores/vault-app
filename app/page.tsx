@@ -1553,6 +1553,7 @@ export default function HomePage() {
               </div>
 
               {/* VAULT_V321_HOME_EVIDENCE: urgent evidence defaults open; routine analysis stays optional. */}
+              {/* M10_HOME_FOCUS: Brain abre em prioridade se não houver trilho operacional; não duplica a atenção. */}
               {longitudinalHighlights.length > 0 && (
                 <ClinicalDisclosure
                   key={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") ? "priority" : "routine"}
@@ -1560,7 +1561,7 @@ export default function HomePage() {
                   title="Sinais e evidências do Brain"
                   description={`${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"} · abrir para consultar`}
                   icon={<Activity size={18}/>}
-                  defaultOpen={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao")}
+                  defaultOpen={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") && unifiedAlerts.length === 0}
                 >
               {() => <>
               <div className="grid grid-cols-1 gap-2 min-[620px]:grid-cols-2" aria-label="Sinais do Brain organizados por prioridade">

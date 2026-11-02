@@ -35,9 +35,10 @@ const fallback = fs.readFileSync("components/saude/HealthBody.tsx", "utf8");
 const avatar = fs.readFileSync("components/saude/HealthAvatar.tsx", "utf8");
 const editor = fs.readFileSync("components/saude/AvatarStyleEditor.tsx", "utf8");
 const page = fs.readFileSync("app/saude/minha-saude/page.tsx", "utf8");
-for (const marker of ["jawShape", "jawGeometry", "cheek", "noseTip", "brimStitch", "toeTop", "lowerLip", "constrainedDevice"]) {
+for (const marker of ["M10_FACE_GUARD_NATIVE_JAW", "jawGeometry", "cheek", "noseTip", "brimStitch", "toeTop", "lowerLip", "constrainedDevice"]) {
   assert(scene.includes(marker), `V177 marker missing: ${marker}`);
 }
+assert(scene.includes('new THREE.SphereGeometry(.151,20,12)') && !scene.includes('new THREE.ExtrudeGeometry(jawShape'), 'face Android uses bounded native geometry, never unsafe extrusion');
 assert(scene.includes('powerPreference: "low-power"'));
 assert(scene.includes("IntersectionObserver"));
 assert(scene.includes("renderer.forceContextLoss()"));

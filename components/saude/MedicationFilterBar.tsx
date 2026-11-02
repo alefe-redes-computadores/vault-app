@@ -70,18 +70,18 @@ export function MedicationFilterBar({ value, onChange }: {
           className={`${controlClass(Boolean(extra), false)} max-w-[44%] shrink-0 px-2.5`}
           title={extra ? `Filtro atual: ${extra[1]}` : "Mostrar mais filtros"}>
           <SlidersHorizontal size={14} aria-hidden="true"/>
-          <span className="max-w-[7rem] truncate">{extra ? extra[1] : "Mais"}</span>
+          <span className="max-w-[7rem] truncate">{extra ? extra[1] : "Filtros"}</span>
           <ChevronDown size={13} aria-hidden="true" className={expanded ? "rotate-180" : ""}/>
         </button>
       </div>
       {expanded && (
         <div id="medication-more-filters" ref={panelRef}
-          className="mt-2 grid grid-cols-2 gap-1.5 rounded-xl border border-surface-border/35 bg-surface-raised/30 p-2"
+          className="mt-2 grid grid-cols-2 gap-1.5 rounded-xl border border-surface-border/35 bg-void/40 p-1.5"
           aria-label="Categorias adicionais">
           {ADDITIONAL.map(([key, label]) => (
             <button key={key} type="button" aria-pressed={value === key}
               onClick={() => choose(key)}
-              className={`${controlClass(value === key, false)} justify-between text-left`}>
+              className={`${controlClass(value === key, false)} justify-between text-left min-h-11`}>
               <span>{label}</span>{value === key && <Check size={14} aria-hidden="true"/>}
             </button>
           ))}

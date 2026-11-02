@@ -3032,6 +3032,9 @@ function MedicamentoDetalhesContent() {
                           Referência semelhante encontrada
                         </h2>
 
+                        {/* M10_NAME_SUGGESTION_ON_DEMAND: referência semelhante não é erro. */}
+                        <details className="group mt-2 rounded-xl border border-amber-400/15 bg-void/25 px-3 py-1.5">
+                          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-amber-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">Comparar nomes e revisar sugestão <ChevronDown size={16} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
                         <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                           O catálogo encontrou uma referência semelhante, mas isso pode representar marca, princípio ativo, alias ou outra identificação válida. Revise apenas se quiser padronizar o nome.
                         </p>
@@ -3094,6 +3097,7 @@ function MedicamentoDetalhesContent() {
                         <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
                           Manter o nome atual registra apenas que você revisou esta sugestão. O Vault não considera automaticamente o cadastro incorreto.
                         </p>
+                        </details>
                       </div>
                     </div>
                   </div>

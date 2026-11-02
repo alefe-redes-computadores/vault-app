@@ -97,9 +97,9 @@ function DeferredHealthSection({id,title,description,badge,icon,children}:{id:st
     return () => window.removeEventListener("hashchange", reveal);
   }, [id]);
   return <section id={id} className="scroll-mt-24 overflow-hidden rounded-2xl border border-surface-border bg-surface/80">
-    <button type="button" aria-expanded={open} aria-controls={`${id}-content`} onClick={()=>setOpen(value=>!value)} className="flex min-h-[72px] w-full items-center gap-3 px-3 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-raised text-emerald-200">{icon}</span>
-      <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">{title}</strong><span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">{description}</span></span>
+    <button type="button" aria-expanded={open} aria-controls={`${id}-content`} onClick={()=>setOpen(value=>!value)} className="flex min-h-[60px] w-full items-center gap-2.5 px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-raised text-emerald-200">{icon}</span>
+      <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">{title}</strong><span className="mt-0.5 block line-clamp-2 text-[10px] leading-snug text-ink-muted">{description}</span></span>
       {badge?<span className="shrink-0 rounded-full border border-surface-border px-2 py-1 font-mono text-[9px] text-ink-muted">{badge}</span>:null}
       <ChevronDown size={16} className={`shrink-0 text-ink-muted transition-transform ${open?"rotate-180":""}`}/>
     </button>

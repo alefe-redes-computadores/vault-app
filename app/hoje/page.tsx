@@ -2114,9 +2114,9 @@ export default function HojePage() {
                   Ignoradas · {totalIgnoradas}
                 </button>
               )}
-              <details className="group w-full rounded-xl border border-surface-border/40 bg-surface/40 px-2.5 py-1.5">
-                <summary className="flex min-h-8 cursor-pointer items-center justify-between text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Período {filtroPeriodo !== "todos" ? `· ${filtroPeriodo === "manha" ? "Manhã" : filtroPeriodo === "tarde" ? "Tarde" : "Noite"}` : "· todos"}<span aria-hidden="true">▾</span></summary>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+              <details className="group w-fit min-w-[11rem] max-w-full rounded-xl border border-surface-border/40 bg-surface/40 px-2.5 py-1.5">
+                <summary className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Período {filtroPeriodo !== "todos" ? `· ${filtroPeriodo === "manha" ? "Manhã" : filtroPeriodo === "tarde" ? "Tarde" : "Noite"}` : "· todos"}<span aria-hidden="true">▾</span></summary>
+                <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Filtrar doses por período do dia">
               {([
                 ["manha", "Manhã"],
                 ["tarde", "Tarde"],

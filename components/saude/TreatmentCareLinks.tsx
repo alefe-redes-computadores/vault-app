@@ -40,6 +40,16 @@ export function TreatmentCareLinks({context,color,onNavigate,loading=false}:{con
   const visibleWithdrawals=withdrawals.filter(item=>(view==="all"||(view==="pending"?item.status==="agendada":item.status!=="agendada"))&&matches(medicationsById.get(item.medicamento_id)?.nome||item.medicamento_nome,item.data,statusLabel[item.status]));
   const withdrawalProgress=summarizeWithdrawalProgress(withdrawals,today);
   const visibleTotal=visibleProcesses.length+visiblePrescriptions.length+visibleAcquisitions.length+visiblePlanned.length+visibleDocuments.length+visibleWithdrawals.length;
+  // M10_EMPTY_TREATMENT_LINKS: seis zeros não devem ocupar a página inteira.
+  // Todo o inventário continua disponível mediante abertura; nenhum vínculo é inferido.
+  if (!loading && !hasRelations) return <details className="group rounded-2xl border border-surface-border/70 bg-surface/60" aria-label="Cuidado conectado do tratamento">
+    <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3.5 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/[.06]" style={{color}}><Link2 size={17}/></span>
+      <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Cuidado conectado</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">Sem processos, retiradas ou documentos vinculados · ver detalhes</span></span>
+      <ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/>
+    </summary>
+    <div className="border-t border-surface-border/60 px-3 pb-3 pt-2"><div className="grid grid-cols-3 gap-1.5">{counts.map(({label,value})=><span key={label} className="rounded-lg bg-void/35 px-1 py-2 text-center text-[10px] text-ink-muted">{label}: <strong className="text-ink-primary">{value}</strong></span>)}</div><p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Ainda não há eventos relacionados. Um vínculo só aparece quando está salvo explicitamente no tratamento ou em um de seus medicamentos.</p></div>
+  </details>;
   return <section className="overflow-hidden rounded-[24px] border border-surface-border bg-surface" aria-label="Cuidado conectado do tratamento">
     <div className="flex items-start gap-3 p-4"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/[0.035]" style={{color}}><Link2 size={18}/></span><div className="min-w-0 flex-1"><h3 className="text-sm font-semibold text-ink-primary">Cuidado conectado</h3><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Receitas, compras planejadas, aquisições realizadas, retiradas e documentos ligados pelos medicamentos deste tratamento.</p></div></div>
     <div className="grid grid-cols-3 border-y border-surface-border/60 bg-black/10 sm:grid-cols-6">{counts.map(({label,value,Icon})=><div key={label} className="border-r border-t border-surface-border/60 px-1 py-2.5 text-center first:border-t-0 sm:border-t-0 last:border-r-0"><Icon size={13} className="mx-auto text-ink-muted"/><strong className="mt-1 block text-sm text-ink-primary">{value}</strong><span className="block truncate text-[8px] text-ink-muted">{label}</span></div>)}</div>
