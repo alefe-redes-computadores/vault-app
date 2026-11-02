@@ -192,6 +192,9 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
                                 );
                               }}
                               onKeyDown={(event) => {
+                                // A tecla de um botão interno pertence à própria ação,
+                                // não à navegação do cartão que o contém.
+                                if (event.target !== event.currentTarget) return;
                                 if (
                                   event.key !== "Enter" &&
                                   event.key !== " "

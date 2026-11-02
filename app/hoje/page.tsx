@@ -786,8 +786,9 @@ export default function HojePage() {
 
   // P10: confirmações só consultam slots elegíveis já resolvidos pelo Hoje.
   // O lote nunca inclui SOS avulso, dose futura, tomada, ignorada ou conflito.
-  const dosesElegiveisLote = useMemo(() =>
-    isHoje
+  const dosesElegiveisLote = useMemo(() => {
+    const selectedKeys = batchTargetKeys ? new Set(batchTargetKeys) : null;
+    return isHoje
       ? Array.from(
           metricItems
             .filter(
@@ -796,7 +797,7 @@ export default function HojePage() {
                 !dose.tomada &&
                 !dose.ignorada &&
                 !dose.isDataConflict &&
-                (batchTargetKeys ? batchTargetKeys.includes(`${dose.medicamentoId}-${dose.horario}`) : dose.horario <= operationalMinute)
+                (selectedKeys ? selectedKeys.has(`${dose.medicamentoId}-${dose.horario}`) : dose.horario <= operationalMinute)
             )
             .reduce((map, dose) => {
               const key = `${dose.medicamentoId}-${dose.horario}`;
@@ -805,7 +806,8 @@ export default function HojePage() {
             }, new Map<string, DoseItemExt>())
             .values()
         )
-      : [], [isHoje, metricItems, batchTargetKeys, operationalMinute]);
+      : [];
+  }, [isHoje, metricItems, batchTargetKeys, operationalMinute]);
 
   // V141: pending stockless doses are visible, but never silently marked taken or ignored.
   // P9: uma passagem para separar lote com/sem saldo, sem inferir tomada.

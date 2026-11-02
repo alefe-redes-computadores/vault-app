@@ -21,23 +21,23 @@ export const TodayDateNavigation = memo(function TodayDateNavigation({
   return <div className="mt-2.5 space-y-2">
     <nav className="flex items-center gap-2" aria-label="Navegação entre dias">
       <button type="button" onClick={onPrevious} aria-label="Dia anterior"
-        className="grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-transform active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+        className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-transform active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
         <ChevronLeft size={17} aria-hidden="true" />
       </button>
       <div className="min-w-0 flex-1 rounded-xl border border-surface-border/40 bg-surface-raised/60 px-3 py-1.5 text-center">
-        <span className="block text-[10px] font-semibold text-ink-primary">{label}</span>
-        <span className="mt-0.5 block truncate font-mono text-[9px] text-ink-muted">{isHoje ? "Hoje" : description}</span>
+        <span className="block text-xs font-semibold text-ink-primary">{label}</span>
+        <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-muted">{isHoje ? "Hoje" : description}</span>
       </div>
       <button type="button" onClick={onNext} aria-label="Próximo dia"
-        className="grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-transform active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+        className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-transform active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
         <ChevronRight size={17} aria-hidden="true" />
       </button>
       {!isHoje && <button type="button" onClick={onToday}
-        className="min-h-10 shrink-0 rounded-xl border border-ice/25 bg-ice/10 px-3 text-[10px] font-bold text-ice active:scale-95">Hoje</button>}
+        className="min-h-11 shrink-0 rounded-xl border border-ice/25 bg-ice/10 px-3 text-xs font-bold text-ice active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Hoje</button>}
     </nav>
     {!isHoje && <div className="flex items-start gap-2 rounded-xl border border-ice/15 bg-ice/[.045] px-3 py-2.5" role="note">
       <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-ice" />
-      <p className="text-[10px] leading-snug text-ink-muted">
+      <p className="text-xs leading-snug text-ink-muted">
         {isPassado
           ? "Histórico: doses sem registro são projeções da rotina, não tomadas confirmadas ou faltas."
           : isFuturo
