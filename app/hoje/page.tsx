@@ -101,6 +101,9 @@ import { buildTodayAppointmentProjection } from "@/lib/today/appointment-project
 import { useTodayPersistedFilters, type FiltroStatus, type FiltroPeriodo } from "@/hooks/useTodayPersistedFilters";
 import { TodaySymptomTimelineCard } from "@/components/hoje/TodaySymptomTimelineCard";
 import { TodayPrescriptionRenewalCard } from "@/components/hoje/TodayPrescriptionRenewalCard";
+import { TodayAppointmentCard } from "@/components/hoje/TodayAppointmentCard";
+import { TodayDoseGroupHeading } from "@/components/hoje/TodayDoseGroupHeading";
+import { todayTimelineEmptyCopy } from "@/lib/today/timeline-empty-copy";
 import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresentation";
 
 type FiltroCompromisso =
@@ -1950,6 +1953,13 @@ export default function HojePage() {
     filtroPeriodo !== "todos" ||
     filtroCompromisso !== "todos";
 
+  // Pure empty-state copy never writes a clinical or dose event.
+  const emptyTimelineCopy = todayTimelineEmptyCopy({
+    hasFilters: hasFiltrosAtivos, retroReview: retroReviewMode,
+    isToday: isHoje, isPast: isPassado,
+    selectedDateDescription: dataSelecionadaDescricao,
+  });
+
   const limparFiltros = () => {
     trigger("vibrate");
     setFiltroStatus("todos");
@@ -2531,195 +2541,12 @@ export default function HojePage() {
               </div>
 
               <div className="space-y-2.5">
-                {compromissosFiltrados.map(
-                  (item: any) => {
-                    const isConsulta =
-                      item.tipo ===
-                      "consulta";
-
-                    const isCirurgia =
-                      item.tipo ===
-                      "cirurgia";
-
-                    const isRetirada =
-                      item.tipo ===
-                      "retirada";
-
-                    const compromissoConcluido =
-                      item.status === "realizada";
-
-                    const compromissoCancelado =
-                      item.status === "cancelada" ||
-                      item.status === "nao_realizada";
-
-                    const retiradaAtrasada = isRetirada &&
-                      isOverdueWithdrawal(item, getLocalTodayISO());
-
-                    const getIcon = () => {
-                      if (isConsulta) {
-                        return (
-                          <Stethoscope
-                            size={18}
-                            className="text-ice"
-                          />
-                        );
-                      }
-
-                      if (isCirurgia) {
-                        return (
-                          <Activity
-                            size={18}
-                            className="text-coral"
-                          />
-                        );
-                      }
-
-                      if (isRetirada) {
-                        const med = medicamentosById.get(item.medicamento_id);
-                        return <MedicationFormatIcon formato={med?.formato} cores={med?.cores} size={26} />;
-                      }
-
-                      return (
-                        <FlaskConical
-                          size={18}
-                          className="text-emerald-400"
-                        />
-                      );
-                    };
-
-                    const getColor =
-                      () => {
-                        if (compromissoConcluido) {
-                          return "border-emerald-400/35 bg-emerald-400/8";
-                        }
-
-                        if (compromissoCancelado) {
-                          return "border-surface-border/50 bg-surface/60 opacity-70";
-                        }
-                        if (isConsulta) {
-                          return "border-ice/30 bg-ice/5";
-                        }
-
-                        if (isCirurgia) {
-                          return "border-coral/30 bg-coral/5";
-                        }
-
-                        if (isRetirada) {
-                          return "border-amber-400/25 bg-amber-400/5";
-                        }
-
-                        return "border-emerald-400/30 bg-emerald-400/5";
-                      };
-
-                    const getLabel =
-                      () => {
-                        if (compromissoConcluido) {
-                          return "Compromisso concluído";
-                        }
-
-                        if (compromissoCancelado) {
-                          return "Compromisso encerrado";
-                        }
-                        if (isConsulta) {
-                          return "Consulta agendada";
-                        }
-
-                        if (isCirurgia) {
-                          return "Procedimento cirúrgico";
-                        }
-
-                        if (isRetirada) {
-                          return retiradaAtrasada
-                            ? "Retirada pendente"
-                            : "Retirada de medicamento";
-                        }
-
-                        return "Realização de exame";
-                      };
-
-                    const descricao =
-                      item.especialidade ||
-                      item.procedimento ||
-                      item.nome ||
-                      item.medicamento_nome ||
-                      "Compromisso de saúde";
-
-                    return (
-                      <motion.button
-                        key={item.id}
-                        type="button"
-                        whileTap={{
-                          scale: 0.985,
-                        }}
-                        onClick={() =>
-                          navegarCompromisso(
-                            item
-                          )
-                        }
-                        className={`w-full rounded-[20px] border p-3.5 text-left transition-all ${getColor()}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-raised">
-                            {getIcon()}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-ink-primary">
-                                {getLabel()}
-                              </p>
-
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                                  compromissoConcluido
-                                    ? "bg-emerald-400/15 text-emerald-400"
-                                    : compromissoCancelado
-                                      ? "bg-ink-muted/10 text-ink-muted"
-                                  : isConsulta
-                                    ? "bg-ice/10 text-ice"
-                                    : isCirurgia
-                                    ? "bg-coral/10 text-coral"
-                                    : retiradaAtrasada
-                                      ? "bg-amber-400/15 text-amber-300"
-                                    : isRetirada
-                                      ? "bg-ice/10 text-ice"
-                                      : "bg-emerald-400/10 text-emerald-400"
-                                }`}
-                              >
-                                {
-                                  compromissoConcluido
-                                    ? "Concluído"
-                                    : compromissoCancelado
-                                      ? "Encerrado"
-                                      : retiradaAtrasada
-                                        ? `Atrasada · ${withdrawalDaysOverdue(item.data, getLocalTodayISO())}d`
-                                        : dataSelecionadaLabel
-                                }
-                              </span>
-                            </div>
-
-                            <p className="mt-1 truncate text-xs text-ink-muted">
-                              {descricao}
-                            </p>
-                            {isRetirada ? <WithdrawalPreparationView withdrawalId={item.id!} compact overview={supplyOverview}/> : null}
-                          </div>
-
-                          <div className="flex shrink-0 flex-col items-end gap-1.5">
-                            {item.horario && (
-                              <span className={`rounded-lg px-2 py-1 font-mono text-[10px] font-bold ${compromissoConcluido ? "bg-emerald-400/10 text-emerald-400" : "bg-coral/10 text-coral"}`}>
-                                {item.horario}
-                              </span>
-                            )}
-
-                            <span className="rounded-full bg-ice/10 px-2.5 py-1 text-[9px] font-medium text-ice">
-                              Ver
-                            </span>
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  }
-                )}
+                {compromissosFiltrados.map((item: any) => (
+                  <TodayAppointmentCard key={item.id} item={item}
+                    medication={item.tipo === "retirada" ? medicamentosById.get(item.medicamento_id) : undefined}
+                    today={hoje} dayLabel={dataSelecionadaLabel} overview={supplyOverview}
+                    onOpen={() => navegarCompromisso(item)}/>
+                ))}
               </div>
             </div>
           )}
@@ -2738,24 +2565,8 @@ export default function HojePage() {
           {dosesParaExibir.length === 0 && concluidasOcultas > 0 ? null : dosesParaExibir.length === 0 ? (
             <EmptyState
               icon={Pill}
-              title={
-                hasFiltrosAtivos
-                  ? "Nada com esses filtros"
-                  : retroReviewMode
-                    ? "Nenhum slot para revisar neste dia"
-                    : isHoje
-                      ? "Nenhum registro hoje"
-                      : `Nenhum registro em ${dataSelecionadaDescricao}`
-              }
-              description={
-                hasFiltrosAtivos
-                  ? "Tente ajustar os filtros para ver mais itens."
-                  : isHoje
-                    ? "Registre uma dose avulsa ou adicione um sintoma para preencher sua linha do tempo."
-                    : isPassado
-                      ? "Não há registros confirmados ou previsões conhecidas para este dia."
-                      : "Não há eventos previstos para este dia."
-              }
+              title={emptyTimelineCopy.title}
+              description={emptyTimelineCopy.description}
               actionLabel={
                 !hasFiltrosAtivos &&
                 isHoje &&
@@ -2786,44 +2597,13 @@ export default function HojePage() {
                 const concluidos = grupo.completed;
                 const progresso = grupo.progress;
 
-                const GrupoIcon = grupo.icon;
-
                 return (
                   <div
                     key={key}
                     className="vault-deferred-lg space-y-2"
                   >
-                    <div className="flex items-end justify-between gap-4 px-1">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-raised text-ice border border-surface-border/40">
-                          <GrupoIcon size={15} />
-                        </div>
-                        <div>
-                          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink-primary">
-                            {grupo.label}
-                          </h2>
-                          <p className="text-[11px] text-ink-muted">
-                            {grupo.sub}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-2.5">
-                        <div className="hidden w-20 overflow-hidden rounded-full bg-surface-border sm:block">
-                          <div
-                            className="h-1.5 rounded-full bg-emerald-400 transition-all duration-500"
-                            style={{
-                              width: `${progresso}%`,
-                            }}
-                          />
-                        </div>
-
-                        <span className="font-mono text-[10px] text-ink-faint">
-                          {concluidos}/
-                          {total}
-                        </span>
-                      </div>
-                    </div>
+                    <TodayDoseGroupHeading icon={grupo.icon} label={grupo.label} description={grupo.sub}
+                      total={total} completed={concluidos} progress={progresso}/>
 
                     <div className="space-y-2">
                       <DoseScheduleGroups items={grupo.items} focusTime={focusDoseTime} renderItem={(item) => {

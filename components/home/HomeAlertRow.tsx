@@ -193,7 +193,8 @@ export function AlertRow({
           alert.href
         );
       }}
-      className="flex w-full min-w-0 items-center justify-between gap-3 rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
+      aria-label={`${getAlertKindLabel(alert.kind)}. ${alert.title}. ${alert.subtitle}. ${getAlertBadgeLabel(alert)}. Abrir detalhes`}
+      className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-[background-color,transform,border-color] active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ice motion-reduce:transform-none motion-reduce:transition-none"
       style={{
         borderColor:
           `${alert.color}30`,

@@ -5,6 +5,7 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const globals = read("app/globals.css");
 const home = read("app/page.tsx");
 const today = read("app/hoje/page.tsx");
+const appointmentCard = read("components/hoje/TodayAppointmentCard.tsx");
 const more = read("app/mais/page.tsx");
 const command = read("components/home/HomeCommandCenter.tsx");
 const avatar = read("components/saude/HealthAvatar3D.tsx");
@@ -22,7 +23,9 @@ assert(today.includes("new Map<string, any>"));
 assert(today.includes("? medicamentosById.get(item.medicamentoId)"));
 assert(!today.includes("medicamentos.find"));
 assert(today.includes('className="vault-deferred-lg space-y-2"'));
-assert(today.includes("rounded-[20px] border p-3.5"));
+assert(today.includes("<TodayAppointmentCard"),"Today: extracted appointment card is mounted");
+assert(appointmentCard.includes("rounded-[20px] border p-3.5"),"Today: original appointment card radius and padding preserved");
+assert(appointmentCard.includes("onClick={onOpen}") && appointmentCard.includes("motion-reduce:transform-none"),"Today: navigable card action and reduced motion preserved");
 
 assert(more.match(/className="vault-deferred/g)?.length >= 5);
 assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.includes('<ClinicalDisclosure'));

@@ -8,6 +8,7 @@ import { avatarDisplayName, avatarPreferencePayload, parseAvatarFraming, parseAv
 import { DEFAULT_AVATAR_STYLE, normalizeAvatarStyle, type AvatarStyle } from "@/lib/health-profile/avatar-style";
 import type {AvatarFraming} from "@/lib/health-profile/avatar-framing";
 import { AvatarStyleEditor } from "./AvatarStyleEditor";
+import { canMountAvatar3D } from "@/lib/health-profile/avatar-visibility-policy";
 import type {AvatarBodyContext,AvatarBodyPart} from "@/lib/health-profile/avatar-body";
 import { avatarAttentionLabel } from "@/lib/health-profile/avatar-context";
 import { SURGERY_MARKER_COLORS, SURGERY_MARKER_LABELS } from "@/lib/health-profile/avatar-surgery-markers";
@@ -106,7 +107,8 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   // mounted only in viewport / foreground. Full-screen inspection works without
   // the compact observer. No continuous animation loop is introduced here.
   const shouldMount3D=ready&&expanded&&mode==='3d'&&documentVisible&&!unavailable&&
-    (size==='expanded'||previewVisible);
+    (size==='expanded'||previewVisible) &&
+    canMountAvatar3D({ready,expanded,mode,documentVisible,unavailable,size,previewVisible});
   const toggleExpanded=useCallback(()=>chooseSize(size==='expanded'?'compact':'expanded'),[size,preferenceKey,appearance,avatarName,framing]);
   return <div ref={expandedRef} tabIndex={expanded&&size==='expanded'?-1:undefined} role={expanded&&size==='expanded'?'dialog':undefined} aria-modal={expanded&&size==='expanded'?true:undefined} aria-label={expanded&&size==='expanded'?`Avatar ${avatarDisplayName(avatarName,personName)}`:undefined} onKeyDown={event=>{
     if(size!=='expanded'||event.key!=='Tab')return;
@@ -121,7 +123,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
       <div className="relative"><HealthBody appearance={appearance} surgeryMarkers={body?.surgeryMarkers} expression={body?.expression} onBodySelect={onBodySelect} onDeviceSelect={onDeviceSelect} skin={skin} devices={devices} expanded={expanded&&size==='expanded'} showControls={!expanded} controlsContainer={expanded&&size==='expanded'?controlsContainer:undefined}/>{expanded&&ready&&size!=='hidden'?<button type="button" aria-label={size==='expanded'?'Minimizar avatar':'Ampliar avatar'} onClick={toggleExpanded} className="absolute inset-0 h-full w-full rounded-2xl focus-visible:outline-2 focus-visible:outline-violet-300"/>:null}</div>}
     </div>
     {expanded&&ready&&attention>0&&onBrainSelect?<button type="button" aria-label="Consultar contexto do Brain sem mudar de página" onClick={onBrainSelect} className="mx-auto mt-2 flex min-h-12 w-full max-w-[520px] items-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/[0.055] px-3 text-left text-xs text-violet-200 transition-colors hover:bg-violet-400/[0.09] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-300 active:scale-[.99] motion-reduce:transition-none motion-reduce:transform-none"><Brain size={16}/><span className="min-w-0 flex-1"><strong className="block">{avatarAttentionLabel(attention)}</strong><span className="mt-0.5 block text-[9px] font-normal text-ink-muted">Ver contexto registrado · não é diagnóstico</span></span><span aria-hidden="true">Ver</span></button>:null}
-    {expanded&&ready&&size==='expanded'&&attention>0&&onBrainSelect?<p className="mx-auto mt-1 max-w-[520px] px-2 text-center text-[10px] leading-relaxed text-ink-muted">O Brain organiza registros para revisão. Ausência de confirmação não comprova tomada nem esquecimento de uma dose.</p>:null}
+    {expanded&&ready&&size==='expanded'&&attention>0&&onBrainSelect?<p className="mx-auto mt-1 max-w-[520px] px-2 text-center text-[10px] leading-relaxed text-ink-muted">O Brain organiza registros para revisão. Ausência de confirmação não comprova tomada nem esquecimento de uma dose. Projeção não significa registro realizado.</p>:null}
     {expanded&&ready&&size==='compact'?<p className="mx-auto mt-1.5 max-w-[520px] px-2 text-center text-[10px] leading-relaxed text-ink-muted" aria-label="Como usar o Avatar">Toque na Fênix para ampliar. O botão do Brain mostra o contexto sem sair desta tela.</p>:null}
     {/* V330_FENIX_VISIBLE_CONTROLS: compact controls are no longer hidden in the expanded editor. */}
     {expanded&&ready&&size==='compact'?<div className="mx-auto mt-2 grid w-full max-w-[520px] grid-cols-[1fr_1fr_auto] gap-1.5" aria-label="Modo de visualização da Fênix">
@@ -140,6 +142,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
     </details>:null}
     {/* M13_FENIX_EXPLAINABLE_3D: dica breve no modo expandido; não adiciona malhas nem trabalho por quadro. */}
     {expanded&&ready&&size==='expanded'&&mode==='3d'?<p className="mx-auto mt-1 max-w-[520px] text-center text-[10px] leading-relaxed text-ink-muted">Arraste para girar a Fênix. O modelo é ilustrativo, não representa um diagnóstico.</p>:null}
+    {expanded&&ready&&size==='expanded'&&mode==='illustration'&&!unavailable?<p className="mx-auto mt-1 max-w-[520px] px-2 text-center text-[10px] leading-relaxed text-ink-muted">A ilustração continua disponível sem processamento 3D. Você pode escolher o modo 3D em Ajustar visualização.</p>:null}
     {/* V333_FENIX_LAZY_PERSONALIZATION: edit only on demand to keep WebGL interaction fluent. */}
     {expanded&&ready&&size==='expanded'?<section className="mx-auto mt-2.5 max-w-[520px] rounded-xl border border-surface-border/60 bg-surface/80 p-2">
       <button type="button" aria-expanded={appearanceEditorOpen} onClick={()=>setAppearanceEditorOpen(value=>!value)} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-xs font-semibold text-ink-primary"><span><Shirt size={16} className="mr-2 inline text-emerald-300"/>Personalizar Avatar <span className="block pl-6 text-[10px] font-normal text-ink-muted">Cabelo, roupa, acessórios e nome</span></span><ChevronDown size={16} className={appearanceEditorOpen?'rotate-180':''}/></button>
