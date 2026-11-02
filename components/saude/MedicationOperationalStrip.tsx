@@ -15,7 +15,7 @@ type Props = {
 /** P14 R6 — UI-only summary: never interprets a dose as taken or changes stock. */
 export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome}:Props) {
   const tone=stockTone==="empty"?"text-coral":stockTone==="low"?"text-amber-400":"text-emerald-400";
-  return <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-surface-border/25 bg-void/20 px-2 py-1 text-[10px] leading-snug"
+  return <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-0.5 py-1 text-[10px] leading-snug"
     aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`}
     title={`${today.detail} · ${stockDetail}`}>
     <span className={`inline-flex min-w-0 items-center gap-1 font-semibold ${today.tone}`}>

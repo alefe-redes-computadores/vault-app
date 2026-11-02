@@ -79,7 +79,7 @@ export function ListCard({
         ${isTight ? "rounded-[16px]" : isCompact ? "rounded-[20px]" : "rounded-[24px]"}
         border
         bg-surface
-        ${isCompact ? "shadow-sm" : "shadow-md"}
+        ${isCompact ? "shadow-none" : "shadow-md"}
         transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none
         focus-within:border-ice/45
         ${

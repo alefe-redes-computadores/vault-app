@@ -33,9 +33,9 @@ html.dark {
 }
 
 html.light {
-  --bg-void: 244 247 250;
-  --bg-surface: 255 255 255;
-  --bg-surface-raised: 247 250 252;
+  --bg-void: 235 239 238;
+  --bg-surface: 249 250 247;
+  --bg-surface-raised: 242 245 241;
   --bg-surface-raised-2: 228 233 239;
   --border-surface: 224 229 236;
   --text-ink-primary: 13 20 30;
