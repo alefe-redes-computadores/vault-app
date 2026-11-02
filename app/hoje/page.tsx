@@ -98,9 +98,11 @@ import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { filterTimelineItems, groupTimelineItems, summarizeTimeline, visibleTimelineItems } from "@/lib/today/timeline-summary";
 import { buildTodayTimelineItems, type TodayTimelineItem as DoseItemExt } from "@/lib/today/build-timeline-items";
 import { buildTodayAppointmentProjection } from "@/lib/today/appointment-projection";
+import { useTodayPersistedFilters, type FiltroStatus, type FiltroPeriodo } from "@/hooks/useTodayPersistedFilters";
+import { TodaySymptomTimelineCard } from "@/components/hoje/TodaySymptomTimelineCard";
+import { TodayPrescriptionRenewalCard } from "@/components/hoje/TodayPrescriptionRenewalCard";
+import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresentation";
 
-type FiltroStatus = "todos" | "tomados" | "pendentes" | "ignorados";
-type FiltroPeriodo = "todos" | "manha" | "tarde" | "noite";
 type FiltroCompromisso =
   | "todos"
   | "consultas"
@@ -423,36 +425,9 @@ export default function HojePage() {
       ]
     );
 
-  const [filtroStatus, setFiltroStatus] =
-    useState<FiltroStatus>("todos");
-  const [mostrarConcluidas, setMostrarConcluidas] = useState(false);
-
-  const [filtroPeriodo, setFiltroPeriodo] =
-    useState<FiltroPeriodo>("todos");
-
-  const [filtroCompromisso, setFiltroCompromisso] =
-    useState<FiltroCompromisso>("todos");
-
-  // VAULT_TODAY_EXPERIENCE_V97
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedStatus = window.localStorage.getItem("@vault:today_filter_status_v97") as FiltroStatus | null;
-    const savedPeriod = window.localStorage.getItem("@vault:today_filter_period_v97") as FiltroPeriodo | null;
-
-    if (savedStatus && ["todos","tomados","pendentes","ignorados"].includes(savedStatus)) {
-      setFiltroStatus(savedStatus);
-    }
-
-    if (savedPeriod && ["todos","manha","tarde","noite"].includes(savedPeriod)) {
-      setFiltroPeriodo(savedPeriod);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("@vault:today_filter_status_v97", filtroStatus);
-    window.localStorage.setItem("@vault:today_filter_period_v97", filtroPeriodo);
-  }, [filtroStatus, filtroPeriodo]);
+  const {filtroStatus,setFiltroStatus,filtroPeriodo,setFiltroPeriodo}=useTodayPersistedFilters();
+  const [mostrarConcluidas,setMostrarConcluidas]=useState(false);
+  const [filtroCompromisso,setFiltroCompromisso]=useState<FiltroCompromisso>("todos");
 
   const [modalAberto, setModalAberto] =
     useState(false);
@@ -1087,7 +1062,12 @@ export default function HojePage() {
     // Visual presentation is outside this 168KB page; grouping remains canonical.
     const metadata = todayTimelineGroupPresentation;
     return groupTimelineItems(dosesParaExibir, { isToday: isHoje, selectedDate: dataSelecionada, today: hoje, nowTime: horaAtual })
-      .map(([key, items]) => [key, { ...metadata[key], sub: todayTimelineGroupContext(metadata[key].sub, items.length), items }] as const);
+      .map(([key, items]) => {
+        const total = items.length;
+        const completed = items.reduce((count, item) => count + (item.tomada ? 1 : 0), 0);
+        return [key, { ...metadata[key], sub: todayTimelineGroupContext(metadata[key].sub, items.length), items, total, completed,
+          progress: total > 0 ? Math.round((completed / total) * 100) : 0 }] as const;
+      });
   }, [dosesParaExibir, horaAtual, isHoje, hoje, dataSelecionada]);
 
   // Métricas de adesão contam somente slots programados.
@@ -2517,96 +2497,12 @@ export default function HojePage() {
               </div>
 
               <div className="space-y-2.5">
-                {renovacoesReceitaHoje.map(
-                  (
-                    evento
-                  ) => {
-                    const isRetirada =
-                      false;
-
-                    return (
-                      <motion.button
-                        key={
-                          evento.id
-                        }
-                        type="button"
-                        whileTap={{
-                          scale:
-                            0.985,
-                        }}
-                        onClick={
-                          () => {
-                            trigger(
-                              "vibrate"
-                            );
-
-                            router.push(evento.actionHref);
-                          }
-                        }
-                        className={`w-full rounded-[22px] border p-3.5 text-left transition-all ${
-                          evento.atrasada
-                            ? "border-coral/25 bg-coral/[0.055]"
-                            : isRetirada
-                            ? "border-ice/25 bg-ice/[0.055]"
-                            : "border-amber-400/25 bg-amber-400/[0.055]"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                              evento.atrasada
-                                ? "bg-coral/15 text-coral"
-                                : isRetirada
-                                ? "bg-ice/15 text-ice"
-                                : "bg-amber-400/15 text-amber-400"
-                            }`}
-                          >
-                            <FileWarning
-                              size={
-                                18
-                              }
-                            />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-[13px] font-bold text-ink-primary">
-                                {
-                                  evento.titulo
-                                }
-                              </p>
-
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide ${
-                                  evento.atrasada
-                                    ? "bg-coral/10 text-coral"
-                                    : isRetirada
-                                    ? "bg-ice/10 text-ice"
-                                    : "bg-amber-400/10 text-amber-400"
-                                }`}
-                              >
-                                {evento.atrasada ? "Pendente" : "Receita"}
-                              </span>
-                            </div>
-
-                            <p className="mt-1 text-[10px] text-ink-muted">
-                              {
-                                evento.descricao
-                              }
-                            </p>
-                          </div>
-
-                          <ChevronRight
-                            size={
-                              16
-                            }
-                            className="shrink-0 text-ink-faint"
-                          />
-                        </div>
-                      </motion.button>
-                    );
-                  }
-                )}
+                {renovacoesReceitaHoje.map(evento => (
+                  <TodayPrescriptionRenewalCard key={evento.id} event={evento} onOpen={() => {
+                    trigger("vibrate");
+                    router.push(evento.actionHref);
+                  }}/>
+                ))}
               </div>
             </div>
           )}
@@ -2886,22 +2782,9 @@ export default function HojePage() {
           ) : (
             dosesAgrupadas.map(
               ([key, grupo]) => {
-                const total =
-                  grupo.items.length;
-
-                const concluidos =
-                  grupo.items.filter(
-                    (i) => i.tomada
-                  ).length;
-
-                const progresso =
-                  total > 0
-                    ? Math.round(
-                        (concluidos /
-                          total) *
-                          100
-                      )
-                    : 0;
+                const total = grupo.total;
+                const concluidos = grupo.completed;
+                const progresso = grupo.progress;
 
                 const GrupoIcon = grupo.icon;
 
@@ -2944,119 +2827,11 @@ export default function HojePage() {
 
                     <div className="space-y-2">
                       <DoseScheduleGroups items={grupo.items} focusTime={focusDoseTime} renderItem={(item) => {
-                          if (
-                            item.isSintoma
-                          ) {
-                            return (
-                              <motion.button
-                                key={`sintoma-${item.sintomaId}`}
-                                type="button"
-                                whileTap={{
-                                  scale: 0.985,
-                                }}
-                                onClick={() => {
-                                  trigger(
-                                    "vibrate"
-                                  );
-
-                                  router.push(
-                                    `/saude/registros/detalhes?id=${item.sintomaId}`
-                                  );
-                                }}
-                                style={{
-                                  borderLeft: `6px solid ${item.cor}`,
-                                }}
-                                className="group relative flex w-full flex-col gap-3 rounded-[20px] border border-amber-400/30 bg-amber-400/5 p-3.5 text-left shadow-sm transition-all hover:border-amber-400/60"
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
-                                    <Activity
-                                      size={20}
-                                    />
-                                  </div>
-
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                                        <AlertTriangle size={12} /> Sintoma
-                                      </span>
-
-                                      <span className="text-[10px] text-ink-faint">
-                                        •
-                                      </span>
-
-                                      <span className="font-mono text-[10px] text-ink-faint">
-                                        {
-                                          item.horario
-                                        }
-                                      </span>
-                                    </div>
-
-                                    <p className="mt-0.5 text-sm font-semibold text-ink-primary">
-                                      {
-                                        item.sintomaNome
-                                      }
-                                    </p>
-
-                                    {item.intensidade && (
-                                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                                        <span className="text-[10px] font-medium text-ink-muted">
-                                          Intensidade:
-                                        </span>
-
-                                        <div className="flex gap-0.5">
-                                          {[
-                                            1,
-                                            2,
-                                            3,
-                                            4,
-                                            5,
-                                          ].map(
-                                            (
-                                              nivel
-                                            ) => (
-                                              <div
-                                                key={
-                                                  nivel
-                                                }
-                                                className={`h-1.5 w-3.5 rounded-full ${
-                                                  nivel <=
-                                                  (item.intensidade ||
-                                                    1)
-                                                    ? "bg-amber-400"
-                                                    : "bg-surface-border"
-                                                }`}
-                                              />
-                                            )
-                                          )}
-                                        </div>
-
-                                        <span className="font-mono text-[10px] font-bold text-amber-400">
-                                          {
-                                            item.intensidade
-                                          }
-                                          /5
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {item.observacoesSintoma && (
-                                      <p className="mt-2 line-clamp-2 text-xs italic text-ink-muted">
-                                        "
-                                        {
-                                          item.observacoesSintoma
-                                        }
-                                        "
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  <span className="shrink-0 rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-semibold text-amber-400">
-                                    Ver
-                                  </span>
-                                </div>
-                              </motion.button>
-                            );
+                          if (item.isSintoma) {
+                            return <TodaySymptomTimelineCard key={`sintoma-${item.sintomaId}`} item={item} onOpen={() => {
+                              trigger("vibrate");
+                              router.push(`/saude/registros/detalhes?id=${item.sintomaId}`);
+                            }}/>
                           }
 
                           const isAtrasado =
@@ -3124,125 +2899,9 @@ export default function HojePage() {
                               item.diasRestantes
                             );
 
-                          let statusIcon =
-                            null;
-
-                          let statusText =
-                            "";
-
-                          let statusColor =
-                            "";
-
-                          if (item.isDataConflict) {
-                            statusIcon = <AlertOctagon size={12} className="text-amber-300" />;
-                            statusText = "Revisar registros";
-                            statusColor = "text-amber-300";
-                          } else if (
-                            item.tomada
-                          ) {
-                            statusIcon = (
-                              <CheckCircle2
-                                size={12}
-                                className="text-emerald-400"
-                              />
-                            );
-
-                            statusText =
-                              item.isAvulsa
-                                ? "Tomada · Avulsa"
-                                : "Tomada";
-
-                            statusColor =
-                              "text-emerald-400";
-                          } else if (
-                            item.ignorada
-                          ) {
-                            statusIcon = (
-                              <XCircle
-                                size={12}
-                                className="text-ink-muted"
-                              />
-                            );
-
-                            statusText =
-                              "Ignorada";
-
-                            statusColor =
-                              "text-ink-muted";
-                          } else if (
-                            isPrevistoFuturo
-                          ) {
-                            statusIcon = (
-                              <Clock
-                                size={12}
-                                className="text-violet-300"
-                              />
-                            );
-
-                            statusText =
-                              "Prevista";
-
-                            statusColor =
-                              "text-violet-300";
-                          } else if (
-                            isHistoricoSemConfirmacao
-                          ) {
-                            statusIcon = (
-                              <Clock
-                                size={12}
-                                className="text-ice"
-                              />
-                            );
-
-                            statusText =
-                              "Sem confirmação";
-
-                            statusColor =
-                              "text-ice";
-                          } else if (
-                            isAtrasado
-                          ) {
-                            statusIcon = (
-                              <AlertTriangle
-                                size={12}
-                                className="text-coral"
-                              />
-                            );
-
-                            statusText =
-                              "Atrasado";
-
-                            statusColor =
-                              "text-coral";
-                          } else if (
-                            isProximo
-                          ) {
-                            statusIcon = (
-                              <Clock
-                                size={12}
-                                className="text-amber-400"
-                              />
-                            );
-
-                            statusText =
-                              "Próximo";
-
-                            statusColor =
-                              "text-amber-400";
-                          } else {
-                            statusIcon = (
-                              <Circle
-                                size={12}
-                                className="text-ink-faint"
-                              />
-                            );
-
-                            statusText =
-                              item.horario;
-
-                            statusColor =
-                              "text-ink-faint";
-                          }
+                          const {statusIcon,statusText,statusColor} = describeTodayDoseStatus({
+                            item,isPrevistoFuturo,isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao),isAtrasado,isProximo,
+                          });
 
                           return (
                             <motion.div
