@@ -11,6 +11,8 @@ import { ownedMedicationRenewals } from "@/lib/health-intelligence/medication-ow
 import { hasConfirmedControlledRegime } from "@/lib/medication-intelligence/controlled-filter";
 import { MedicationListRouteLabel } from "@/components/saude/MedicationListRouteLabel";
 import { MedicationOperationalStrip } from "@/components/saude/MedicationOperationalStrip";
+import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
+import { isRestockDestination, medicationRestockHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -1181,6 +1183,12 @@ export default function MedicamentosListPage() {
                     {quickDoseLabel}
                     {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
                   </button>
+                ) : null}
+                {!isSuspenso && med.id && !isRestockDestination(careAction?.href, med.id) ? (
+                  <MedicationRestockAction name={med.nome} onOpen={() => {
+                    trigger("vibrate");
+                    router.push(medicationRestockHref(med.id!, "/saude/medicamentos"));
+                  }} />
                 ) : null}
               </div>
             </div>
