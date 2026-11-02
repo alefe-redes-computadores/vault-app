@@ -45,6 +45,12 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   const [previewVisible,setPreviewVisible]=useState(false);
   const [documentVisible,setDocumentVisible]=useState(true);
   const [reducedMotion,setReducedMotion]=useState(false);
+  const [resourceConstrained,setResourceConstrained]=useState(false);
+  useEffect(()=>{
+    if(typeof navigator==='undefined')return;
+    const nav=navigator as Navigator & {deviceMemory?:number};
+    setResourceConstrained((nav.deviceMemory!==undefined&&nav.deviceMemory<=4)||(nav.hardwareConcurrency!==undefined&&nav.hardwareConcurrency<=4));
+  },[]);
   useEffect(()=>{
     if(typeof window==='undefined'||typeof window.matchMedia!=='function')return;
     const media=window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -117,6 +123,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   const shouldMount3D=ready&&expanded&&mode==='3d'&&documentVisible&&!unavailable&&
     (size==='expanded'||previewVisible) &&
     (size==='expanded'||!reducedMotion) &&
+    (size==='expanded'||!resourceConstrained) &&
     canMountAvatar3D({ready,expanded,mode,documentVisible,unavailable,size,previewVisible});
   const toggleExpanded=useCallback(()=>chooseSize(size==='expanded'?'compact':'expanded'),[size,preferenceKey,appearance,avatarName,framing]);
   return <div ref={expandedRef} tabIndex={expanded&&size==='expanded'?-1:undefined} role={expanded&&size==='expanded'?'dialog':undefined} aria-modal={expanded&&size==='expanded'?true:undefined} aria-label={expanded&&size==='expanded'?`Avatar ${avatarDisplayName(avatarName,personName)}`:undefined} onKeyDown={event=>{
@@ -142,6 +149,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
     </div>:null}
     {expanded&&ready&&size==='compact'&&unavailable?<p role="status" aria-live="polite" className="mt-1 text-center text-[10px] text-amber-200">WebGL não iniciou neste aparelho. A ilustração continua disponível; toque em Fênix 3D para tentar novamente.</p>:null}
     {expanded&&ready&&size==='compact'&&mode==='3d'&&reducedMotion?<p role="status" className="mt-1 text-center text-[10px] text-ink-muted">O modo reduzido mantém a prévia em ilustração para poupar movimento e bateria. O 3D continua disponível ao ampliar.</p>:null}
+    {expanded&&ready&&size==='compact'&&mode==='3d'&&!reducedMotion&&resourceConstrained?<p role="status" className="mt-1 text-center text-[10px] text-ink-muted">A prévia usa ilustração para manter o aplicativo leve neste aparelho. O 3D continua disponível ao ampliar.</p>:null}
     {expanded&&ready&&size==='expanded'?<details open className="group mx-auto mt-3 max-w-[520px] rounded-xl border border-violet-400/20 bg-violet-400/[0.035] p-2">
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl px-2 py-1 text-xs font-semibold text-violet-200"><SlidersHorizontal size={18}/><span className="flex-1"><span className="block text-sm">Ajustar visualização</span><span className="mt-1 block text-[10px] font-normal text-ink-muted">Ângulo, zoom e aparência</span></span><ChevronDown size={17} className="transition-transform group-open:rotate-180"/></summary>
       <div className="mx-auto mb-3 flex max-w-[340px] gap-2" aria-label="Visualização do avatar">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { ChevronRight, ClipboardList, FolderHeart } from "lucide-react";
 import { useHealthSupply } from "@/hooks/useHealthSupply";
-import { SUPPLY_ORIGIN_LABELS } from "@/lib/health-supply/types";
+import { summarizeMedicationSupplyRelations } from "@/lib/health-supply/relationship-map";
 
 /** V222 — cartão relacional compacto: uma consulta local, sem gravação ou inferência clínica. */
 export function HealthSupplyEntry({
@@ -15,26 +15,10 @@ export function HealthSupplyEntry({
   retiradaId?: string;
 }) {
   const { data, loading } = useHealthSupply();
-  const summary = useMemo(() => {
-    const relatedItems = data.itens.filter(item => item.medicamento_id === medicamentoId);
-    const processIds = new Set(relatedItems.map(item => item.processo_id));
-    const cycleIds = new Set(relatedItems.map(item => item.ciclo_id));
-    const processes = data.processos.filter(process =>
-      process.status === "ativo" && processIds.has(process.id)
-    );
-    const activeProcessIds = new Set(processes.map(process => process.id));
-    const cycles = data.ciclos.filter(cycle =>
-      activeProcessIds.has(cycle.processo_id) && cycleIds.has(cycle.id) && cycle.status !== "encerrado"
-    );
-    const origins = [...new Set(processes.map(process => SUPPLY_ORIGIN_LABELS[process.origem]))];
-    return {
-      processes: processes.length,
-      preparing: cycles.filter(cycle => cycle.status === "preparando").length,
-      protocolled: cycles.filter(cycle => cycle.status === "protocolado").length,
-      authorized: cycles.filter(cycle => cycle.status === "autorizado").length,
-      origins,
-    };
-  }, [data.itens, data.processos, data.ciclos, medicamentoId]);
+  const summary = useMemo(
+    () => summarizeMedicationSupplyRelations(data, medicamentoId),
+    [data.itens, data.processos, data.ciclos, medicamentoId]
+  );
 
   const href = `/saude/fornecimento?medicamento_id=${encodeURIComponent(medicamentoId)}${
     retiradaId ? `&retirada_id=${encodeURIComponent(retiradaId)}` : ""
@@ -50,20 +34,20 @@ export function HealthSupplyEntry({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
             <h2 className="text-sm font-semibold text-ink-primary">Fornecimento e documentos</h2>
-            {!loading && summary.processes > 0 && (
+            {!loading && summary.processes.length > 0 && (
               <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-medium text-emerald-200">
-                {summary.processes} {summary.processes === 1 ? "processo" : "processos"}
+                {summary.processes.length} {summary.processes.length === 1 ? "processo" : "processos"}
               </span>
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-ink-muted">
             {loading
               ? "Conferindo vínculos locais…"
-              : summary.processes
+              : summary.processes.length
                 ? summary.origins.join(" · ")
                 : "Nenhum processo ativo vinculado. Organize a origem e os documentos deste medicamento."}
           </p>
-          {!loading && summary.processes > 0 && (
+          {!loading && summary.processes.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Situação dos ciclos vinculados">
               {needsPreparation && (
                 <span className="rounded-md bg-amber-400/10 px-2 py-1 text-[10px] font-medium text-amber-200">
@@ -82,6 +66,7 @@ export function HealthSupplyEntry({
               )}
             </div>
           )}
+          {!loading && summary.processes.length > 0 ? <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Processos vinculados ao medicamento">{summary.processes.slice(0,3).map(process=><Link key={process.id} href={`/saude/fornecimento?id=${encodeURIComponent(process.id)}&medicamento_id=${encodeURIComponent(medicamentoId)}`} className="rounded-lg border border-emerald-300/15 bg-emerald-300/[.035] px-2 py-1.5 text-[9px] text-emerald-200">{process.title} · {process.origin} ›</Link>)}</div>:null}
         </div>
       </div>
       <Link

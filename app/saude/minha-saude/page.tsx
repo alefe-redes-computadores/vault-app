@@ -80,6 +80,7 @@ import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 import { PersonalHealthOverview } from "@/components/saude/PersonalHealthOverview";
+import { CareRelationshipRoutes } from "@/components/saude/CareRelationshipRoutes";
 const HealthConnectPanel = dynamic(() => import("@/components/saude/HealthConnectPanel").then(m => m.HealthConnectPanel), { loading: () => <p className="p-3 text-xs text-ink-muted">Preparando sincronização…</p> });
 const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/MedicationSafetyCoverage").then(m => m.MedicationSafetyCoverage));
 
@@ -269,6 +270,7 @@ function HealthDashboard({
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>
             <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>},{id:"fontes",label:"Fontes",icon:<Database size={14}/>},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>}]}/>
+            <CareRelationshipRoutes onNavigate={goFromHealth} compact/>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />

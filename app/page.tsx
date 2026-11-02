@@ -108,6 +108,7 @@ import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
 import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
+import { HomeSectionNav } from "@/components/home/HomeSectionNav";
 import { AlertRow, getAlertIcon, type DashboardAlert } from "@/components/home/HomeAlertRow";
 
 // ============================================================
@@ -1150,11 +1151,16 @@ export default function HomePage() {
         </header>
 
         <section className="space-y-6 px-5 pt-5">
+          <HomeSectionNav
+            hasAttention={unifiedAlerts.length > 0}
+            hasBrain={longitudinalHighlights.length > 0 || (!brainV5Pulse.isLoading && brainV5Pulse.counters.active > 0)}
+          />
           {/* ===================================================
               HOJE
           =================================================== */}
 
           <motion.section
+            id="home-agora"
             initial={{
               opacity: 0,
               y: 10,
@@ -1197,6 +1203,7 @@ export default function HomePage() {
           {unifiedAlerts.length >
             0 && (
             <motion.section
+              id="home-atencao"
               initial={{
                 opacity: 0,
                 y: 10,
@@ -1227,6 +1234,7 @@ export default function HomePage() {
             (!brainV5Pulse.isLoading &&
               (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))) && (
             <motion.section
+              id="home-brain"
               initial={{
                 opacity: 0,
                 y: 10,
@@ -2058,11 +2066,13 @@ export default function HomePage() {
               ACESSO RÁPIDO
           =================================================== */}
 
-          <HomeCommandCenter
-            gastoMes={metricasFinanceiras.gastoMesAtual}
-            diferencaMes={metricasFinanceiras.diff}
-            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length}
-          />
+          <div id="home-organizacao" className="scroll-mt-24">
+            <HomeCommandCenter
+              gastoMes={metricasFinanceiras.gastoMesAtual}
+              diferencaMes={metricasFinanceiras.diff}
+              totalRede={medicos.length + farmacias.length + hospitais.length + locais.length}
+            />
+          </div>
 
 
 

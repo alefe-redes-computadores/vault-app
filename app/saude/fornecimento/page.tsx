@@ -11,6 +11,7 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationAuthorityMap } from "@/components/saude/MedicationAuthorityMap";
 import { AccessCommandOverview } from "@/components/saude/AccessCommandOverview";
 import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
+import { SupplyRelationshipMap } from "@/components/saude/SupplyRelationshipMap";
 import { summarizeWithdrawalProgress } from "@/lib/health-intelligence/operational-triage";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -76,6 +77,7 @@ import type {
 import { estimatedCycleEnd, supplyChecklist } from "@/lib/health-supply/rules";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { buildSupplyProcessView, buildSupplyRelationshipIndex } from "@/lib/health-supply/relationship-index";
+import { projectSupplyRelationshipMap } from "@/lib/health-supply/relationship-map";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { useRouter } from "next/navigation";
 const input =
@@ -1085,6 +1087,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     ) ||
     cycles[0];
   const processView = useMemo(() => buildSupplyProcessView(relationalIndex, processes), [relationalIndex, processes]);
+  const selectedRelationshipMap = useMemo(
+    () => process ? projectSupplyRelationshipMap(relationalIndex, process.id) : null,
+    [relationalIndex, process?.id]
+  );
   // V329 DOCUMENT WORKSPACE: only explicit missing SUS requirements are shown.
   // Unknown, optional receipts and private purchases must never be fabricated as debts.
   const missingDocumentItems = healthIntelligence.careCommand?.documents.items
@@ -1285,7 +1291,6 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
                   const ids = processMedicationIds.get(process.id)||new Set<string>();
-                  const related = relationalIndex.treatmentsByProcess.get(process.id) || [];
                   const linkedMeds = [...ids].flatMap(id => { const medication = relationalIndex.medicationById.get(id); return medication ? [medication] : []; });
                   const pharmacy = relationalIndex.pharmacyById.get(process.farmacia_id || "");
                   const place = relationalIndex.placeById.get(process.local_id || "");
@@ -1303,6 +1308,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
+                    {selectedRelationshipMap ? <SupplyRelationshipMap value={selectedRelationshipMap}/> : null}
                     {/* V329: keep missing requirements visible on the selected process, not buried in closed history. */}
                     {missingDocumentItems.filter(item => {
                       try { return new URL(item.href, "https://vault.local").searchParams.get("id") === process.id; }
@@ -1315,23 +1321,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                         <p className="mt-1 text-[10px] text-ink-faint">Consulte os vínculos no histórico deste processo ou adicione o documento no ciclo correspondente.</p>
                       </div>
                     ))}
-                    {related.length > 0 && <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Tratamentos relacionados</p>
-                      {related.map(t => { const theme = getClinicalTheme(t.nome); const Icon = getVaultTreatmentIcon(t.nome); const color = /^#[0-9a-f]{6}$/i.test(t.cor || "") ? t.cor! : theme.hex; const codes = cids.filter(c => c.person_id === personId && c.user_id === process.user_id && t.cid_ids?.includes(c.id || "")).map(c => c.codigo); return <Link key={t.id} href={`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id || "")}`} className="flex items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised p-3" style={{borderLeftColor:color,borderLeftWidth:3}}>
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{backgroundColor:`${color}22`,color}}><Icon size={22} /></span>
-                        <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink-primary">{t.nome}</span><span className="block text-[11px] text-ink-muted">{codes.length ? codes.join(" · ") : "Abrir tratamento"}{t.status !== "ativo" ? " · Histórico" : ""}</span></span>
-                        <span aria-hidden="true" className="text-ink-muted">›</span>
-                      </Link>; })}
-                    </div>}
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Medicamentos vinculados</p>
-                      {linkedMeds.map(m => {const route=medicationSupplyRoute(m.id||"",data,renovacoes,personId,process.user_id);return <Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id || "")}`} className={`flex min-h-11 items-center gap-3 rounded-xl border bg-surface-raised px-3 py-2 ${route.mode==='hybrid'?'border-amber-300/25':'border-surface-border/60'}`}>
-                        <MedicationFormatIcon formato={m.formato} cores={m.cores} size={26}/>
-                        <span className="min-w-0 flex-1"><span className="block break-words text-xs font-semibold leading-snug text-ink-primary">{m.nome} · {m.dosagem}</span><span className={`mt-1 block text-[9px] ${route.mode==='hybrid'?'text-amber-300':'text-ink-muted'}`}>{route.labels.length?route.labels.join(" + "):"Origem ainda não organizada"}{route.mode==='hybrid'?" · rotas independentes":""}</span></span><span className="text-ink-muted">›</span>
-                      </Link>})}
-                    </div>
                     {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="inline-flex min-h-11 items-center rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="inline-flex min-h-11 items-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
-                    <p className="flex flex-wrap gap-x-4 gap-y-1 rounded-xl border border-surface-border/60 px-3 py-2 text-[11px] text-ink-muted" aria-label="Resumo relacional do fornecimento"><span><strong className="text-ink-primary">{processCycles.length}</strong> {processCycles.length===1?"ciclo":"ciclos"}</span><span><strong className="text-ink-primary">{processWithdrawals.length}</strong> {processWithdrawals.length===1?"retirada":"retiradas"}</span><span><strong className="text-ink-primary">{processDocs.length}</strong> {processDocs.length===1?"documento vinculado":"documentos vinculados"}</span></p>
                     <details className="group rounded-2xl border border-surface-border/60 bg-void/10 px-3 py-1">
                     <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary"><span>Histórico e relações do processo</span><span className="flex items-center gap-2 text-[9px] font-normal text-ink-muted">{processWithdrawals.length + processDocs.length + purchases.count} registro(s)<span className="transition group-open:rotate-90">›</span></span></summary>
                     <div className="vault-deferred space-y-3 border-t border-surface-border/50 py-3">
