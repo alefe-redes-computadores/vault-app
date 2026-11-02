@@ -18,6 +18,7 @@ const files=[
 ];
 for(const file of files){const tree=ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,file.endsWith('tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);check(tree.parseDiagnostics.length===0,`TS/TSX íntegro ${file}`);}
 const [nav,badge,viewSource,list,detail,avatar,briefSource]=files.map(read);
+const medicationNavigation=read('components/saude/MedicationWorkspaceNavigation.tsx');
 check(nav.includes('priorityCount?:number')&&nav.includes('primary=items.slice(0,count)'),'navegação mostra prioridades e preserva demais seções');
 check(nav.includes('secondary=items.slice(count)')&&nav.includes('Mais áreas · {secondary.length}'),'acesso visível a todas as seções restantes');
 check(nav.includes('aria-expanded={expanded}')&&nav.includes('onClick={()=>setExpanded(value=>!value)}'),'Mais áreas utilizável por teclado');
@@ -26,10 +27,10 @@ check(nav.includes('secondary.some(item=>item.id===activeId)')&&nav.includes('se
 check(nav.includes('density?:"regular"|"compact"')&&nav.includes('layout?:"scroll"|"grid"'),'API de navegação antiga preservada');
 check(nav.includes('min-[480px]:grid-cols-4')&&nav.includes('min-[480px]:grid-cols-5'),'grade responsiva antiga preservada');
 check(nav.includes('break-words text-center')&&nav.includes('aria-current='),'rótulos acessíveis e estado ativo mantidos');
-check(detail.includes('label="Áreas do medicamento" layout="grid" density="compact" priorityCount={4}'),'detalhes começa com quatro áreas primárias');
-for(const id of ['medicamento-agora','medicamento-rotina','medicamento-receita','medicamento-fornecimento','medicamento-rede','medicamento-financeiro','historico-aquisicoes'])check(detail.includes(`id:"${id}"`)||detail.includes(`id="${id}"`),`âncora preservada: ${id}`);
-check(detail.indexOf('id:"medicamento-receita"')<detail.indexOf('id:"medicamento-rede"'),'receita aparece antes da rede nas prioridades');
-check(detail.includes('hasRoutineSection')&&detail.includes('hasFinancialSection')&&detail.includes('...(renovacoes.length?'),'navegação não mostra âncoras inexistentes');
+check(medicationNavigation.includes('label="Áreas do medicamento" layout="grid" density="compact" priorityCount={4}'),'detalhes começa com quatro áreas primárias');
+for(const id of ['medicamento-agora','medicamento-rotina','medicamento-receita','medicamento-fornecimento','medicamento-rede','medicamento-financeiro','historico-aquisicoes'])check(medicationNavigation.includes(`id:"${id}"`)||detail.includes(`id="${id}"`),`âncora preservada: ${id}`);
+check(medicationNavigation.indexOf('id:"medicamento-receita"')<medicationNavigation.indexOf('id:"medicamento-rede"'),'receita aparece antes da rede nas prioridades');
+check(detail.includes('hasRoutine={hasRoutineSection}')&&detail.includes('hasFinancial={hasFinancialSection}')&&detail.includes('historyCount={renovacoes.length}')&&medicationNavigation.includes('...(historyCount?'),'navegação não mostra âncoras inexistentes');
 check(detail.includes('<ClinicalDisclosure id="medicamento-jornada"')&&detail.includes('<ClinicalDisclosure id="historico-aquisicoes"'),'jornada e histórico continuam independentes');
 check(detail.includes('title="Jornada do medicamento"')&&detail.includes('title="Movimentações anteriores"'),'rótulos distinguem próximo passo de histórico');
 check(detail.includes('V332_CARE_EVIDENCE_DISCLOSURE')&&detail.includes('(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map('),'evidências do Brain não foram removidas');

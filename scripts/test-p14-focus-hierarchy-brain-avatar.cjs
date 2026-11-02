@@ -24,6 +24,7 @@ for (const p of files) {
   check(root.parseDiagnostics.length===0, p+' faz parse TS/TSX');
 }
 const nav=read(files[0]),home=read(files[1]),metrics=read(files[2]),today=read(files[3]),med=read(files[4]),detail=read(files[5]),avatar=read(files[6]),briefSource=read(files[7]),disclosure=read(files[8]);
+const medicationNavigation=read('components/saude/MedicationWorkspaceNavigation.tsx');
 check(nav.includes('density?:"regular"|"compact"') && nav.includes('density="regular"'), 'densidade opcional preserva as telas antigas');
 check(nav.includes('grid-cols-4 gap-1') && nav.includes('min-[480px]:grid-cols-5'), 'âncoras compactas mostram 4 ou 5 colunas');
 check(nav.includes('layout="grid"') && nav.includes('layout?:"scroll"|"grid"') && nav.includes('min-[480px]:grid-cols-4'), 'contrato visual V334 legado intacto');
@@ -45,10 +46,10 @@ check(med.includes('isSearchOpen') && med.includes('selectMedicationFilter("todo
   && medFilterBar.includes('onClick={() => choose(key)}')
   && medFilterBar.includes('onChange(next)'),
   'busca e filtros de medicamentos continuam funcionais no componente extraído');
-check(detail.includes('label="Áreas do medicamento" layout="grid" density="compact"'), 'detalhes abre com navegação reduzida');
+check(medicationNavigation.includes('label="Áreas do medicamento" layout="grid" density="compact"')&&detail.includes('<MedicationDetailNavigation'), 'detalhes abre com navegação reduzida');
 check(detail.includes('ClinicalDisclosure id="historico-aquisicoes"') && detail.includes('{() => <div className="space-y-3">'), 'histórico carrega somente sob demanda');
 check(disclosure.includes('if (hash === id) setOpen(true)') && disclosure.includes('typeof children === "function"'), 'ancora de histórico abre o conteúdo lazy ao navegar');
-check(detail.includes('medicamento-rotina') && detail.includes('medicamento-receita') && detail.includes('medicamento-fornecimento'), 'identidade, rotina, receita e fornecimento preservados');
+check(medicationNavigation.includes('medicamento-rotina') && medicationNavigation.includes('medicamento-receita') && medicationNavigation.includes('medicamento-fornecimento'), 'identidade, rotina, receita e fornecimento preservados');
 check(detail.includes('<QuickDoseModal') && /registrar/i.test(detail) && detail.includes('isQuickDoseOpen'), 'registro de dose permanece com modal e rotina originais');
 check(avatar.includes('P14: crânio e mandíbula') && avatar.includes('[.186,.268,.186]') && avatar.includes('[.070,.034,.067]'), 'Avatar melhora volumes existentes sem malhas adicionais');
 check(avatar.includes('expressionEyeScaleY') && avatar.includes('expressionLidScaleY') && avatar.includes('expressionHighlightScale'), 'olhos sem regressão de traves por escala');

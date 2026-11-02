@@ -6,6 +6,7 @@ const home=read('app/page.tsx');
 const today=read('app/hoje/page.tsx');
 const todayActions=read('components/hoje/TodayActionCenter.tsx');
 const detail=read('app/saude/medicamentos/detalhes/page.tsx');
+const medicationNavigation=read('components/saude/MedicationWorkspaceNavigation.tsx');
 for(const [name,src] of [['Home',home],['Hoje',today],['Detalhes',detail]]){
  const parsed=ts.createSourceFile(name+'.tsx',src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,`${name} TSX syntax ${parsed.parseDiagnostics.map(x=>x.messageText).join('; ')}`);
@@ -22,7 +23,7 @@ assert(today.includes('pendingDoses={totalPendentes}') && today.includes('getEle
 assert(today.includes('DoseMonthOverview userId={user.id} personId={activePersonId}'),'owner-safe monthly analysis');
 assert(today.includes('dosesElegiveisLote.length > 1') && today.includes('handleTomarTodos()'),'dose batch preserved');
 assert(today.includes('setMostrarConcluidas'),'past doses review preserved');
-assert(detail.includes('label="Áreas do medicamento" layout="grid"'),'medicine sections discoverable');
+assert(detail.includes('<MedicationDetailNavigation')&&medicationNavigation.includes('label="Áreas do medicamento" layout="grid"'),'medicine sections discoverable');
 assert(detail.includes('V332_CARE_EVIDENCE_DISCLOSURE'),'evidence displayed progressively');
 assert(detail.includes('(brainCareAction?.evidence || careDecision.evidence).slice(0,3).map('),'first three canonical evidences preserved (V238)');
 assert(detail.includes('(brainCareAction?.evidence || careDecision.evidence).slice(3).map('),'remaining canonical evidences still available without truncation');

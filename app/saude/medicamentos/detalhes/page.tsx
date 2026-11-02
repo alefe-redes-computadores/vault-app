@@ -12,7 +12,7 @@ import { buildMedicationJourneySnapshot } from "@/lib/health-intelligence/medica
 import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySummary";
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
-import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { MedicationDetailNavigation } from "@/components/saude/MedicationWorkspaceNavigation";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
 import { MedicationDecisionEvidenceContext } from "@/components/saude/MedicationDecisionEvidenceContext";
 import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
@@ -2718,15 +2718,7 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
-          <ClinicalSectionNav label="Áreas do medicamento" layout="grid" density="compact" priorityCount={4} items={[
-            {id:"medicamento-agora",label:"Agora",icon:<Activity size={14}/>},
-            ...(hasRoutineSection?[{id:"medicamento-rotina",label:"Rotina",icon:<Clock size={14}/>}]:[]),
-            {id:"medicamento-receita",label:"Receita",icon:<FileText size={14}/>},
-            {id:"medicamento-fornecimento",label:"Fornecimento",icon:<Package size={14}/>},
-            {id:"medicamento-rede",label:"Rede",icon:<Stethoscope size={14}/>},
-            ...(hasFinancialSection?[{id:"medicamento-financeiro",label:"Financeiro",icon:<DollarSign size={14}/>}]:[]),
-            ...(renovacoes.length?[{id:"historico-aquisicoes",label:"Histórico",icon:<CalendarDays size={14}/>,badge:renovacoes.length}]:[]),
-          ]}/>
+          <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================

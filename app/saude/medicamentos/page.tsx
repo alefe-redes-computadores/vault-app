@@ -101,7 +101,7 @@ import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visu
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGroup";
-import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { MedicationListGroupNavigation } from "@/components/saude/MedicationWorkspaceNavigation";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
 import { MedicationFilterBar } from "@/components/saude/MedicationFilterBar";
@@ -1416,7 +1416,7 @@ export default function MedicamentosListPage() {
             <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               Ir para um grupo <span aria-hidden="true" className="text-ink-muted">▾</span>
             </summary>
-            <ClinicalSectionNav label="Grupos de medicamentos" items={[...(medsPrioridade.length?[{id:"medicamentos-atencao",label:"Atenção",icon:<AlertTriangle size={14}/>,badge:medsPrioridade.length}]:[]),...(medsEmDia.length?[{id:"medicamentos-em-dia",label:"Em dia",icon:<CheckCircle2 size={14}/>,badge:medsEmDia.length}]:[]),...(medsPlanejados.length?[{id:"medicamentos-planejados",label:"Próximas",icon:<Calendar size={14}/>,badge:medsPlanejados.length}]:[]),...(medsSOS.length?[{id:"medicamentos-sos",label:"SOS",icon:<Zap size={14}/>,badge:medsSOS.length}]:[]),...(medsSuspensos.length?[{id:"medicamentos-suspensos",label:"Suspensos",icon:<EyeOff size={14}/>,badge:medsSuspensos.length}]:[])]}/>
+            <MedicationListGroupNavigation attention={medsPrioridade.length} stable={medsEmDia.length} planned={medsPlanejados.length} sos={medsSOS.length} suspended={medsSuspensos.length}/>
           </details>:null}
 
           {listaProcessada.length ===
