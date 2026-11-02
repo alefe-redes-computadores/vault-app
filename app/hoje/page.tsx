@@ -23,7 +23,7 @@ import { partitionDoseBatchByStock } from "@/lib/today/dose-batch-stock";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -107,6 +107,7 @@ import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresen
 import { TodayRetroReviewPanel } from "@/components/hoje/TodayRetroReviewPanel";
 import { buildTodayRetroReviewSummary } from "@/lib/today/retro-review-projection";
 import { useTodayOwnerData } from "@/hooks/useTodayOwnerData";
+import { reconcileTodayTimelineItems, type TodayTimelineSnapshot } from "@/lib/today/timeline-identity";
 
 type FiltroCompromisso =
   | "todos"
@@ -611,7 +612,16 @@ export default function HojePage() {
   // projections stable during minute ticks; today still uses the live clock.
   const operationalMinute = isHoje ? horaAtual : "00:00";
 
-  const doses = useMemo<DoseItemExt[]>(() => buildTodayTimelineItems({
+  // M22: restore unchanged rows by clinical identity only within the same owner,
+  // person, selected day and retroactive review. Snapshot is committed after
+  // React has committed the UI, never mutated by speculative renders.
+  const committedTimeline = useRef<TodayTimelineSnapshot<DoseItemExt> | null>(null);
+  const doseIdentityContext = JSON.stringify([
+    user?.id ?? null, activePersonId ?? null, dataSelecionada,
+    retroReviewMode, retroReviewMedicationId ?? null,
+  ]);
+  const doses = useMemo<DoseItemExt[]>(() => {
+    const projected = buildTodayTimelineItems({
     medicamentos,
     doseLogs: doseLogs || [],
     medicos,
@@ -627,7 +637,9 @@ export default function HojePage() {
     personId: activePersonId || undefined,
     retroReviewMode,
     retroReviewMedicationId,
-  }), [
+    });
+    return reconcileTodayTimelineItems(committedTimeline.current, doseIdentityContext, projected).items;
+  }, [
     medicamentos,
     doseLogs,
     medicos,
@@ -643,7 +655,11 @@ export default function HojePage() {
     activePersonId,
     retroReviewMode,
     retroReviewMedicationId,
+    doseIdentityContext,
   ]);
+  useLayoutEffect(() => {
+    committedTimeline.current = {scopeKey: doseIdentityContext, items: doses};
+  }, [doseIdentityContext, doses]);
 
   const medicamentosSemHorario = useMemo(
     () =>
