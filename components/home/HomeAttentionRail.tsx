@@ -15,9 +15,8 @@ type Props<T extends IdentifiedAlert> = {
 /** P15 R8: somente apresentação. Prioridade, elegibilidade e destinos vêm da Home. */
 export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, description, expanded, onToggle, renderAlert}: Props<T>) {
   if (alerts.length === 0) return null;
-  const full = expanded || alerts.length === 1;
-  const visible = expanded ? alerts : alerts.slice(0, 3);
-  const hidden = Math.max(0, alerts.length - 3);
+  const visible = expanded ? alerts : alerts.slice(0, 1);
+  const hidden = Math.max(0, alerts.length - 1);
   return (
     <>
       <div className="flex items-end justify-between gap-3">
@@ -33,20 +32,16 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
           {alerts.length}
         </span>
       </div>
-      <div id="home-attention-alerts" className={full
-        ? "space-y-2"
-        : "-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"}>
+      <div id="home-attention-alerts" className="space-y-2" aria-label="Alertas ordenados por prioridade">
         {visible.map(alert => (
-          <div key={alert.id} className={full
-            ? "w-full"
-            : "flex w-[88%] shrink-0 snap-start [&>*]:h-full [&>*]:w-full sm:w-[72%]"}>
+          <div key={alert.id} className="w-full min-w-0">
             {renderAlert(alert)}
           </div>
         ))}
         {hidden > 0 && (
           <button type="button" onClick={onToggle} aria-expanded={expanded} aria-controls="home-attention-alerts"
             className="flex min-h-11 w-full items-center justify-center gap-1 rounded-2xl border border-surface-border/40 bg-surface/50 px-3 py-2.5 text-[10px] font-semibold text-ice transition-all motion-reduce:transition-none active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-            {expanded ? "Mostrar menos" : `Ver mais ${hidden} lembrete${hidden === 1 ? "" : "s"}`}
+            {expanded ? "Mostrar menos" : `Ver mais ${hidden} alerta${hidden === 1 ? "" : "s"}`}
           </button>
         )}
       </div>

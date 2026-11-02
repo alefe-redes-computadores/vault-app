@@ -37,15 +37,15 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
     quantityPerDose, doseUnit, hours, takenHours, ignoredHours, lastDose, hasStockControl,
   } = props;
   return (
-    <div className="rounded-[20px] border border-surface-border/60 bg-surface p-4" aria-label={sos ? "Resumo de tomadas SOS registradas" : "Resumo da rotina programada"}>
+    <div className="rounded-[18px] border border-surface-border/60 bg-surface p-3.5" aria-label={sos ? "Resumo de tomadas SOS registradas" : "Resumo da rotina programada"}>
       {sos ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0 rounded-2xl bg-surface-raised p-3">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="min-w-0 rounded-xl bg-surface-raised/60 p-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">Tomadas hoje</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{takenToday}</p>
             </div>
-            <div className="min-w-0 rounded-2xl bg-surface-raised p-3">
+            <div className="min-w-0 rounded-xl bg-surface-raised/60 p-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">{todayQuantityLabel}</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{todayQuantity}</p>
               {todayQuantityPartial && <p className="mt-0.5 text-[9px] text-amber-400">* existem tomadas sem quantidade registrada</p>}
@@ -64,9 +64,9 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0 rounded-2xl bg-surface-raised p-3">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="min-w-0 rounded-xl bg-surface-raised/60 p-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">Hoje</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{resolvedToday}/{plannedToday}</p>
               <p className="mt-0.5 text-[10px] text-ink-muted">slots programados resolvidos</p>
@@ -76,7 +76,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
                 </p>
               )}
             </div>
-            <div className="min-w-0 rounded-2xl bg-surface-raised p-3">
+            <div className="min-w-0 rounded-xl bg-surface-raised/60 p-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">Por dose</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{quantityPerDose ?? "—"}</p>
               <p className="mt-0.5 text-[10px] text-ink-muted">{quantityPerDose !== null ? doseUnit : "quantidade não configurada"}</p>
@@ -86,7 +86,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
         </div>
       )}
       {lastDose && (
-        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-surface-border/50 pt-4 text-[10px] text-ink-muted">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-surface-border/50 pt-3 text-[10px] text-ink-muted">
           <Clock size={11} className="text-ice" aria-hidden="true" />
           Última tomada registrada: <b className="text-ink-primary">{lastDose.date} às {lastDose.time}</b>
         </div>

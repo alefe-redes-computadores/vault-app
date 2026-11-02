@@ -22,6 +22,6 @@ ok(h.includes('setInsightExplicado(')&&h.includes('router.push("/inteligencia/al
 ok(!h.includes('Deslize para ver outros sinais')&&v332.includes('Deslize para ver outros sinais')&&v332.includes('!home.includes('),'Não reintroduz falso anúncio de carrossel');
 ok(v54.includes('Todos os sinais ficam acessíveis acima')&&v54r2.includes('Todos os sinais ficam acessíveis acima'),'V5.4 e V5.4 R2 validam grid atual');
 ok(!v54r2.includes('h.includes("w-[86%]")')&&!v54r2.includes('h.includes("snap-x")'),'V5.4 R2 não depende de layout removido');
-ok(r.includes('alerts.slice(0, 3)')&&r.includes('snap-x snap-mandatory'),'Alertas operacionais mantêm carrossel independente');
+ok(r.includes('alerts.slice(0, 1)')&&!r.includes('snap-x snap-mandatory'),'Alertas operacionais mantêm lista vertical e expansão integral');
 ok(gate.includes('test-p15-r8-r3-brain-v5-compat.cjs')&&gate.includes('test-p15-r8-r2-v94-legacy-safety.cjs'),'Gate registra prevenções R3 e R2');
 console.log(`VAULT P15 R8 R3: ${checks} checagens de compatibilidade Brain V5 aprovadas`);

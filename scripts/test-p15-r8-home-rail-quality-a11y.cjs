@@ -15,7 +15,7 @@ for(const [key,p] of Object.entries(paths)){
 }
 ok(s.home.includes('<HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}') && s.home.includes('renderAlert={alert => <AlertRow alert={alert} />}'), 'Home mantém priorização e componente original de cada alerta');
 ok(s.home.includes('onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}'), 'Alternância e haptics originais preservados');
-ok(s.rail.includes('alerts.slice(0, 3)')&&s.rail.includes('key={alert.id}')&&s.rail.includes('aria-expanded={expanded}'), 'Carrossel limita três e expansão é acessível');
+ok(s.rail.includes('alerts.slice(0, 1)')&&s.rail.includes('key={alert.id}')&&s.rail.includes('aria-expanded={expanded}'), 'Home exibe prioridade inteira e expansão acessível');
 ok(s.detail.includes('<MedicationCatalogNameComparison currentName={med.nome}') && s.detail.includes('referenceName={catalogNameSuggestion.reference.canonicalName}'), 'Identidade de cadastro comparada somente à referência existente');
 ok(s.detail.includes('handleAcceptNameCorrection')&&s.detail.includes('handleDismissNameCorrection')&&s.detail.includes('Usar nome da referência')&&s.detail.includes('O Vault não considera automaticamente o cadastro incorreto'), 'Aceitar ou ignorar referência continuam sujeitos à escolha do usuário');
 ok(s.detail.includes('result.matchedText')&&s.detail.includes('normalizedCurrentName'), 'Match e aliases canônicos preservados');
@@ -39,7 +39,7 @@ const Rail=loadComponent(paths.rail).HomeAttentionRail;
 const alerts=Array.from({length:5},(_,i)=>({id:`alert-${i}`,title:`Alerta ${i}`}));let toggles=0;
 const props={alerts,description:'O que merece prioridade agora',expanded:false,onToggle:()=>toggles++,renderAlert:alert=>jsx('article',{children:alert.title})};
 let node=Rail(props);
-ok(flatten(node).includes('Alerta 0')&&flatten(node).includes('Alerta 2')&&!flatten(node).includes('Alerta 3'), 'Carrossel exibe só três alertas sem perder dados');
+ok(flatten(node).includes('Alerta 0')&&!flatten(node).includes('Alerta 1')&&!flatten(node).includes('Alerta 2'), 'Apenas prioridade visível sem perder outros alertas');
 const button=find(node,n=>n.type==='button');ok(Boolean(button)&&button.props['aria-expanded']===false,'Ação de expansão informa estado fechado');button.props.onClick();ok(toggles===1,'Botão chama callback verdadeiro');
 node=Rail({...props,expanded:true});ok(flatten(node).includes('Alerta 4')&&find(node,n=>n.type==='button').props['aria-expanded']===true,'Expandido mostra todos sem recalcular prioridade');
 ok(Rail({...props,alerts:[]})===null,'Lista vazia não cria alerta fictício');

@@ -959,12 +959,13 @@ function TratamentoListContent() {
                       </span>
                     </div>
 
-                    {tratamento.medicamentosResumo.length>0?<div className="mt-2 flex min-w-0 items-center gap-2" aria-label="Medicamentos vinculados"><div className="flex shrink-0 -space-x-1.5">{tratamento.medicamentosResumo.map((medicamento,medIndex)=><span key={medicamento.id||`${medicamento.nome}-${medIndex}`} className="grid size-7 place-items-center rounded-lg border border-surface-border bg-void shadow-sm" title={`${medicamento.nome} ${medicamento.dosagem||''}`.trim()}><MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={14}/></span>)}</div><p className="min-w-0 flex-1 break-words text-[11px] leading-snug text-ink-muted">{tratamento.medicamentosResumo.map(m=>m.nome).join(' · ')}{tratamento.medicamentosCount>tratamento.medicamentosResumo.length?` · +${tratamento.medicamentosCount-tratamento.medicamentosResumo.length}`:''}</p></div>:<p className="mt-2 text-[11px] text-ink-muted">Sem medicamentos vinculados · vínculos são opcionais até serem registrados</p>}
+                    {tratamento.medicamentosResumo.length>0?<div className="mt-2 flex min-w-0 items-center gap-2" aria-label="Medicamentos vinculados"><div className="flex shrink-0 -space-x-1.5">{tratamento.medicamentosResumo.map((medicamento,medIndex)=><span key={medicamento.id||`${medicamento.nome}-${medIndex}`} className="grid size-7 place-items-center rounded-lg border border-surface-border bg-void shadow-sm" title={`${medicamento.nome} ${medicamento.dosagem||''}`.trim()}><MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={14}/></span>)}</div><p className="min-w-0 flex-1 break-words text-[11px] leading-snug text-ink-muted">{tratamento.medicamentosResumo.map(m=>m.nome).join(' · ')}{tratamento.medicamentosCount>tratamento.medicamentosResumo.length?` · +${tratamento.medicamentosCount-tratamento.medicamentosResumo.length}`:''}</p></div>:<p className="mt-2 text-[11px] text-ink-muted">Sem medicamentos vinculados</p>}
 
                     {/* ==========================================
                         MÉTRICAS
                         ========================================== */}
 
+                    {(tratamento.medicamentosCount>0 || tratamento.totalGasto>0) && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="flex items-center gap-1 rounded-md border border-surface-border/40 bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
                         <Pill
@@ -1011,6 +1012,8 @@ function TratamentoListContent() {
                         </span>
                       )}
                     </div>
+
+                    )}
 
                     {/* ==========================================
                         ALERTA

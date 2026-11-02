@@ -32,7 +32,7 @@ export function MedicationStockOverview({
   referenceDay, dropsConversionMissing, formatQuantity,
 }: Props) {
   return (
-    <div className="rounded-[18px] bg-surface p-4" aria-label="Resumo do estoque informado">
+    <div className="rounded-[18px] bg-surface p-3.5" aria-label="Resumo do estoque informado">
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
@@ -43,7 +43,7 @@ export function MedicationStockOverview({
           </span>
         </div>
         <div className="mt-1 flex flex-wrap items-baseline gap-2">
-          <p className={`font-display text-3xl font-bold tabular-nums ${statusColor}`}>
+          <p className={`font-display text-2xl font-bold tabular-nums ${statusColor}`}>
             {formatQuantity(quantity)}
           </p>
           <span className="text-sm font-medium uppercase text-ink-muted">{unit}</span>
@@ -77,7 +77,7 @@ export function MedicationStockOverview({
           </p>
         )}
       </div>
-      <div className="mt-4 flex flex-col gap-1.5 border-t border-surface-border/50 pt-4 text-[10px] text-ink-muted sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-3 flex flex-col gap-1 border-t border-surface-border/50 pt-3 text-[10px] text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <span>Quantidade por dose: <b className="text-ink-primary">{doseQuantity !== null ? `${formatQuantity(doseQuantity)} ${unit}` : "Não configurada"}</b></span>
         <span>Saldo informado em: <b className="text-ink-primary">{referenceDay}</b></span>
       </div>

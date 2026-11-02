@@ -16,6 +16,6 @@ ok(home.includes("brainV5Pulse.counters.new"),"Contador de novidades vem do Brai
 ok(!home.includes("brainV5Pulse.counters.attention"),"Home não depende de um contador inexistente");
 ok(!test.includes('home.includes("brainV5Pulse.counters.attention")'),"Contrato V94.2 não procura propriedade inexistente");
 ok(test.includes('home.includes("brainV5Pulse.journeys.filter(item => item.requires_attention)")')&&test.includes('home.includes("brainV5Pulse.counters.new")'),"Contrato V94.2 verifica decisões e novidades reais");
-ok(home.includes('<HomeAttentionRail alerts={unifiedAlerts}')&&rail.includes('snap-x snap-mandatory'),"Rail extraído preserva a Home");
+ok(home.includes('<HomeAttentionRail alerts={unifiedAlerts}')&&rail.includes('alerts.slice(0, 1)')&&!rail.includes('snap-x snap-mandatory'),"Rail extraído preserva a Home");
 ok(gate.includes('scripts/test-p15-r8-r2-v94-legacy-safety.cjs') && gate.includes('scripts/test-p15-r8-home-rail-quality-a11y.cjs'),"Teste preventivo e contrato R8 presentes no gate");
 console.log(`P15 R8 R2 — V94.2 recuperado: ${n} verificações aprovadas`);

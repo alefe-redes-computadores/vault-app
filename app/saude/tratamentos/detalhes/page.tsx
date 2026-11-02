@@ -1121,6 +1121,7 @@ function TratamentoContent() {
               </div>
             )}
 
+            {(medicamentosAtivos.length>0 || linkedDocuments.length>0 || panorama.renovacoes>0) && (
             <div className="relative z-10 mt-4 grid grid-cols-3 gap-1.5 border-t border-surface-border/50 pt-4">
               <StatCard
                 icon={<Pill size={14} />}
@@ -1143,6 +1144,7 @@ function TratamentoContent() {
                 description="Registradas"
               />
             </div>
+            )}
           </motion.div>
 
           <TreatmentCareLinks context={careContext} color={theme.hex} onNavigate={href=>router.push(href)} loading={supply.loading}/>
