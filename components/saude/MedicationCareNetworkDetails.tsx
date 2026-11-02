@@ -24,7 +24,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
   };
   const action = (label: string, onClick: () => void, icon: "open" | "map" | "phone") => (
     <button type="button" onClick={onClick} aria-label={label}
-      className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/65 bg-surface-raised/55 text-ink-primary shadow-sm transition-colors hover:border-emerald-300/30 hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      className="grid size-12 shrink-0 place-items-center rounded-xl border border-surface-border/65 bg-surface-raised/55 text-ink-primary shadow-sm transition-colors hover:border-emerald-300/30 hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       {icon === "open" ? <ChevronRight size={17} aria-hidden="true"/> : icon === "phone" ? <Phone size={16} aria-hidden="true"/> : <MapPin size={16} aria-hidden="true"/>}
     </button>
   );
@@ -35,7 +35,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
       {node.address ? action(`Abrir ${node.name} no mapa`,()=>onMap(node.address!),"map") : null}
     </span>
   );
-  return <div className="min-w-0 space-y-3" aria-label="Rede de cuidado vinculada ao medicamento">
+  return <div className="min-w-0 space-y-3.5" aria-label="Rede de cuidado vinculada ao medicamento">
     <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-300" label="Médico Prescritor"
       action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : undefined}>
       <p className="break-words text-sm font-bold text-ink-primary">{doctor.name}</p>

@@ -30,10 +30,15 @@ ok("atalhos clínicos possuem cores semânticas",
 ok("cirurgias continuam acessíveis", hub.includes("/saude/cirurgias"));
 ok("arquivos, compras e rede foram preservados", ["/documentos", "/saude/renovacao", "/saude/rede"].every((path) => hub.includes(path)));
 ok("Hoje resume concluídos por padrão", today.includes("mostrarConcluidas") && today.includes("concluidasOcultas"));
+// M25-R2: assert the *current* read-only implementation and run the actual function below.
+// Old .filter() wording was an implementation detail; M25 keeps the input
+// reference when no resolved rows need hiding, without changing visibility.
 ok("pendentes continuam visíveis por padrão",
   today.includes("visibleTimelineItems(dosesFiltradas, { isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas })") &&
   timeline.includes('if (!options.isToday || options.status !== "todos" || options.showResolved) return items;') &&
-  timeline.includes('return items.filter(item => !item.tomada && !item.ignorada && !item.isDataConflict);'));
+  timeline.includes('if (item.tomada || item.ignorada || item.isDataConflict)') &&
+  timeline.includes('if (filtered === null) filtered = items.slice(0, i)') &&
+  timeline.includes('return filtered ?? items;'));
 
 // Exercise the actual extracted function, not a copy of its implementation.
 const require = createRequire(import.meta.url);
@@ -55,6 +60,13 @@ const slots = [
 const selected = opts => visibleTimelineItems(slots, opts).map(slot => slot.id);
 ok("pendente continua visível no Hoje por padrão",
   JSON.stringify(selected({isToday:true,status:"todos",showResolved:false})) === JSON.stringify(["pending"]));
+const onlyPending = [slots[0], {...slots[0], id:"second pending"}];
+const pendingVisible = visibleTimelineItems(onlyPending,{isToday:true,status:"todos",showResolved:false});
+ok("sem registros resolvidos, o mesmo array é reutilizado sem alterar os pendentes",
+  pendingVisible === onlyPending && pendingVisible.length === 2 && pendingVisible[1].id === "second pending");
+const mixedVisible = visibleTimelineItems(slots,{isToday:true,status:"todos",showResolved:false});
+ok("com registros resolvidos, a lista filtrada é distinta sem mexer na fonte",
+  mixedVisible !== slots && mixedVisible.length === 1 && mixedVisible[0] === slots[0] && slots.length === 4);
 ok("filtro explícito não é substituído pelo modo padrão",
   selected({isToday:true,status:"tomados",showResolved:false}).length === 4);
 ok("mostrar concluídos e histórico mantêm todos os registros",

@@ -45,7 +45,7 @@ const AvatarEvidenceWorkspace = memo(function AvatarEvidenceWorkspace({ context,
   command?: CareCommandSnapshot | null;
   onNavigate: (href: string) => void;
 }) {
-  return <div className="vault-deferred space-y-3 [content-visibility:auto] [contain-intrinsic-size:760px]">
+  return <div className="vault-deferred space-y-3.5 [content-visibility:auto] [contain-intrinsic-size:760px]">
     {command?.documents?<CareAccessBrief portfolio={command.documents} onNavigate={onNavigate} compact/>:null}
     <DoseEvidenceBrief context={context} onNavigate={onNavigate} compact/>
     <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>

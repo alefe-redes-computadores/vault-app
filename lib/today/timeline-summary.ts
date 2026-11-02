@@ -35,9 +35,28 @@ export function filterTimelineItems<T extends TimelineItemShape>(items: T[], sta
   return filtered;
 }
 
+/** M25: allocate visible array only after a resolved item truly needs hiding. */
 export function visibleTimelineItems<T extends TimelineItemShape>(items: T[], options: { isToday: boolean; status: TimelineStatus; showResolved: boolean }): T[] {
   if (!options.isToday || options.status !== "todos" || options.showResolved) return items;
-  return items.filter(item => !item.tomada && !item.ignorada && !item.isDataConflict);
+  let filtered: T[] | null = null;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.tomada || item.ignorada || item.isDataConflict) {
+      if (filtered === null) filtered = items.slice(0, i);
+    } else if (filtered !== null) filtered.push(item);
+  }
+  return filtered ?? items;
+}
+
+/** M25: grouping receives sorted projections in the usual case; avoid re-sorting those buckets. */
+function sortTimelineBucketIfNeeded<T extends TimelineItemShape>(rows: T[]): T[] {
+  for (let index = 1; index < rows.length; index++) {
+    if (rows[index - 1].horario.localeCompare(rows[index].horario) > 0) {
+      rows.sort((a, b) => a.horario.localeCompare(b.horario));
+      break;
+    }
+  }
+  return rows;
 }
 
 export function groupTimelineItems<T extends TimelineItemShape>(items: T[], context: { isToday: boolean; selectedDate: string; today: string; nowTime: string }): Array<[TimelineGroupKey, T[]]> {
@@ -64,7 +83,7 @@ export function groupTimelineItems<T extends TimelineItemShape>(items: T[], cont
   return canonicalOrder.flatMap(key => {
     const rows = groups.get(key);
     return rows?.length
-      ? [[key, rows.sort((a, b) => a.horario.localeCompare(b.horario))] as [TimelineGroupKey, T[]]]
+      ? [[key, sortTimelineBucketIfNeeded(rows)] as [TimelineGroupKey, T[]]]
       : [];
   });
 }

@@ -15,7 +15,7 @@ export function MedicationDecisionEvidenceContext({ source, routeRecorded, evide
   const stageNote = medicationStageGuidance(stage);
   const safeCount = Number.isSafeInteger(evidenceCount) ? Math.max(0, evidenceCount) : 0;
   const clarity = medicationEvidenceClarity(source, safeCount, routeRecorded);
-  return <p className="mt-3 flex items-start gap-2.5 rounded-xl border border-surface-border/55 bg-surface-raised/40 px-3 py-3 text-[11px] leading-relaxed text-ink-muted" role="note">
+  return <p className="mt-3 flex items-start gap-3 rounded-2xl border border-surface-border/55 bg-surface-raised/40 px-3.5 py-3.5 text-[11px] leading-relaxed text-ink-muted" role="note">
     <Info size={13} className="mt-0.5 shrink-0 text-emerald-300" aria-hidden="true"/>
     <span>
       <strong className="mr-1 text-ink-primary">{clarity.label}.</strong>

@@ -38,7 +38,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
           </p>
         </div>
         <div className="shrink-0 text-right" aria-label={total>0?`${completed} de ${total} doses confirmadas hoje`:"Sem doses programadas no resumo de hoje"}>
-          <span className="block text-lg font-bold tabular-nums text-ink-primary">{total>0?`${completed}/${total}`:"—"}</span>
+          <span className="block text-xl font-bold tracking-tight tabular-nums text-ink-primary">{total>0?`${completed}/${total}`:"—"}</span>
           <span className="block text-[9px] text-ink-muted">tomadas hoje</span>
         </div>
       </div>
@@ -46,13 +46,13 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
         <MedicationScopeReconciliation listActiveCount={listActiveCount} brainActiveCount={portfolio.active} />
       )}
       {coherence.hasUnknownType && <p role="note" className="mt-1.5 text-[10px] leading-relaxed text-violet-200">{coherence.explanation}</p>}
-      {total > 0 && <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}
+      {total > 0 && <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}
       {(ignored > 0 || pending > 0) && <p className="mt-1.5 text-[10px] leading-snug text-ink-muted">
         {pending > 0 ? `${pending} a revisar` : ""}
         {pending > 0 && ignored > 0 ? " · " : ""}
         {ignored > 0 ? `${ignored} ignorada${ignored===1?"":"s"}, não tomada${ignored===1?"":"s"}` : ""}
       </p>}
-      {decision?.href && <button type="button" onClick={() => onNavigate(decision.href!)} className="mt-3 flex min-h-12 w-full items-center gap-2.5 rounded-xl border border-violet-300/20 bg-violet-300/[.045] px-3 py-2.5 text-left transition-colors hover:bg-violet-300/[.075] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+      {decision?.href && <button type="button" onClick={() => onNavigate(decision.href!)} className="mt-3 flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] px-3.5 py-3 text-left transition-colors hover:bg-violet-300/[.075] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
         <BrainCircuit size={15} className="shrink-0 text-violet-300"/>
         <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-violet-200">Próxima decisão comprovada</span><strong className="mt-1 block line-clamp-2 text-xs font-semibold leading-snug text-ink-primary">{decision.title}</strong></span>
         <ChevronRight size={14} className="shrink-0 text-ink-muted"/>

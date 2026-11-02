@@ -19,15 +19,15 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
   const hidden = Math.max(0, alerts.length - 1);
   return (
     <>
-      <div className="flex items-start justify-between gap-3 rounded-2xl border border-surface-border/35 bg-surface/45 px-3 py-3">
+      <div className="flex items-start justify-between gap-3 rounded-[20px] border border-coral/15 bg-gradient-to-r from-coral/[.035] to-surface/45 px-3.5 py-3.5">
         <div>
           <div className="flex items-center gap-2">
             <Bell size={15} className="text-coral" aria-hidden="true" />
-            <h2 className="font-display text-sm font-bold tracking-tight text-ink-primary">Atenção</h2>
+            <h2 className="font-display text-[15px] font-bold tracking-tight text-ink-primary">Atenção</h2>
           </div>
           <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{description}</p>
         </div>
-        <span className="min-w-8 rounded-full border border-coral/25 bg-coral/10 px-2.5 py-1 text-center font-mono text-[11px] font-bold tabular-nums text-coral"
+        <span className="min-w-9 rounded-xl border border-coral/25 bg-coral/10 px-2.5 py-1.5 text-center font-mono text-[12px] font-bold tabular-nums text-coral"
           aria-label={`${alerts.length} alertas registrados`}>
           {alerts.length}
         </span>

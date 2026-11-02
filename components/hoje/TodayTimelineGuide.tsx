@@ -9,8 +9,8 @@ export function TodayTimelineGuide({ isHoje, isPassado, isFuturo }: { isHoje:boo
     : isPassado
       ? "Falta de confirmação no histórico não significa uma dose ignorada. Revise o registro antes de concluir."
       : "Pendências mostram horários a revisar. Somente uma confirmação registra tomada; ignorar é uma ação diferente.";
-  return <details aria-label={isHoje ? "Orientações de hoje" : "Orientações para data selecionada"} className="group mt-2 rounded-2xl border border-surface-border/55 bg-surface-raised/30 px-3.5 py-2 text-[11px] leading-relaxed text-ink-muted">
-    <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+  return <details aria-label={isHoje ? "Orientações de hoje" : "Orientações para data selecionada"} className="group mt-2 rounded-2xl border border-surface-border/60 bg-surface-raised/35 px-4 py-2.5 text-xs leading-relaxed text-ink-muted">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
       <Info size={13} className="shrink-0 text-emerald-300" aria-hidden="true"/>
       <span className="min-w-0 flex-1">{label}</span>
       <ChevronDown size={13} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>

@@ -18,6 +18,11 @@ export const MedicationIdentityPreview = memo(function MedicationIdentityPreview
       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-300">Prévia ao vivo</p>
       <p className="mt-1 break-words text-sm font-semibold leading-snug text-ink-primary">{name || "Medicamento"}</p>
       <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Formato e cores exatamente como aparecerão no Vault.</p>
+      <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Cores selecionadas para este medicamento">
+        {colors.filter(color => /^#[0-9a-fA-F]{6}$/.test(color)).slice(0, 2).map((color, index) => (
+          <span key={`${color}-${index}`} className="size-4 rounded-full border border-white/20 shadow-sm" style={{backgroundColor:color}} title={`Cor ${index + 1}`} aria-label={`Cor ${index + 1}: ${color}`} />
+        ))}
+      </div>
     </div>
   </div>;
 });

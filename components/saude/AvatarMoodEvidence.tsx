@@ -28,15 +28,15 @@ export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) 
       <h3 className="text-sm font-bold tracking-tight">{title}</h3>
       <p className="mt-1 text-xs leading-relaxed text-ink-primary">{explanation}</p>
       <p className="mt-2 text-[11px] text-ink-muted">{evidence.days} de 7 dias com relato{evidence.from ? ` · ${formatDate(evidence.from)} a ${formatDate(evidence.to)}` : ''}</p>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" role="progressbar" aria-label="Cobertura de humor declarado nos últimos sete dias" aria-valuemin={0} aria-valuemax={7} aria-valuenow={coverageDays}>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" role="progressbar" aria-label="Cobertura de humor declarado nos últimos sete dias" aria-valuemin={0} aria-valuemax={7} aria-valuenow={coverageDays}>
         <div className="h-full rounded-full bg-emerald-400" style={{width:`${coveragePercent}%`}}/>
       </div>
       <p className="mt-2 text-[11px] font-medium text-ink-secondary">Cobertura: {coverageDays} de 7 dias ({coveragePercent}%) com relato explícito.</p>
-      <p className="mt-2 text-xs leading-relaxed text-ink-muted">Dias sem registro continuam desconhecidos — não são interpretados como humor neutro. O rosto não substitui o diário nem descreve seu estado atual.</p>
+      <p className="mt-3 text-xs leading-relaxed text-ink-muted">Dias sem registro continuam desconhecidos — não são interpretados como humor neutro. O rosto não substitui o diário nem descreve seu estado atual.</p>
     </div>
     {moods.length ? <>
       <p className="text-xs leading-relaxed text-ink-muted">Último relato: {MOOD_CHOICES[readMoodContext(moods[0].contexto)!]} em {formatDate(moods[0].data)}. A expressão resume seus relatos; não mede como você está agora.</p>
-      <ul className="space-y-2" aria-label="Humores usados na expressão">
+      <ul className="space-y-2.5" aria-label="Humores usados na expressão">
         {moods.map(record => <li key={record.id || record.data}>
           <Link className="block min-h-11 rounded-xl border border-surface-border/65 bg-surface/60 p-3 text-xs text-ink-primary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300" href={record.id ? `/saude/registros/detalhes?id=${encodeURIComponent(record.id)}` : '/saude/registros'}>
             {formatDate(record.data)} · {MOOD_CHOICES[readMoodContext(record.contexto)!]} ›
