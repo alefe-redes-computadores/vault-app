@@ -41,7 +41,6 @@ import {
   XCircle,
   FileWarning,
   AlertOctagon,
-  Info,
   Activity,
   Sun,
   Moon,
@@ -63,9 +62,7 @@ import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import { useLiveQuery } from "dexie-react-hooks";
 import {
-  db,
   safeAddRenovacao,
   safeUpdateMedicamento,
 } from "@/lib/db";
@@ -105,6 +102,9 @@ import { TodayAppointmentCard } from "@/components/hoje/TodayAppointmentCard";
 import { TodayDoseGroupHeading } from "@/components/hoje/TodayDoseGroupHeading";
 import { todayTimelineEmptyCopy } from "@/lib/today/timeline-empty-copy";
 import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresentation";
+import { TodayRetroReviewPanel } from "@/components/hoje/TodayRetroReviewPanel";
+import { buildTodayRetroReviewSummary } from "@/lib/today/retro-review-projection";
+import { useTodayOwnerData } from "@/hooks/useTodayOwnerData";
 
 type FiltroCompromisso =
   | "todos"
@@ -288,68 +288,16 @@ export default function HojePage() {
     dataSelecionada
   );
 
-  // V206: a agenda reads only the active account/person and selected day.
-  // The owner keys carried in the result also prevent a completed query from
-  // the previous profile being rendered while Dexie refreshes the live query.
-  const activeTodayData = useLiveQuery(async () => {
-    if (!user?.id || !activePersonId) return null;
-
-    const owner = [user.id, activePersonId] as [string, string];
-    const day = [user.id, activePersonId, dataSelecionada] as [string, string, string];
-    const [
-      tratamentos,
-      renovacoes,
-      medicos,
-      farmacias,
-      hospitais,
-      consultasHoje,
-      cirurgiasHoje,
-      examesHoje,
-      registrosHoje,
-    ] = await Promise.all([
-      db.tratamentos.where("[user_id+person_id]").equals(owner).toArray(),
-      db.renovacoes.where("[user_id+person_id]").equals(owner).toArray(),
-      db.medicos.where("[user_id+person_id]").equals(owner).toArray(),
-      db.farmacias.where("[user_id+person_id]").equals(owner).toArray(),
-      db.hospitais.where("[user_id+person_id]").equals(owner).toArray(),
-      db.consultas.where("[user_id+person_id+data]").equals(day).toArray(),
-      db.cirurgias.where("[user_id+person_id+data]").equals(day).toArray(),
-      db.exames.where("[user_id+person_id+data]").equals(day).toArray(),
-      db.registros_saude.where("[user_id+person_id+data]").equals(day).toArray(),
-    ]);
-
-    return {
-      userId: user.id,
-      personId: activePersonId,
-      date: dataSelecionada,
-      tratamentos,
-      renovacoes,
-      medicos,
-      farmacias,
-      hospitais,
-      consultasHoje,
-      cirurgiasHoje,
-      examesHoje,
-      registrosHoje,
-    };
-  }, [user?.id, activePersonId, dataSelecionada]);
-
-  const todayDataReady = Boolean(
-    user?.id &&
-    activePersonId &&
-    activeTodayData?.userId === user.id &&
-    activeTodayData.personId === activePersonId &&
-    activeTodayData.date === dataSelecionada
-  );
-  const tratamentos = todayDataReady ? activeTodayData!.tratamentos : [];
-  const renovacoes = todayDataReady ? activeTodayData!.renovacoes : [];
-  const medicos = todayDataReady ? activeTodayData!.medicos : [];
-  const farmacias = todayDataReady ? activeTodayData!.farmacias : [];
-  const hospitais = todayDataReady ? activeTodayData!.hospitais : [];
-  const consultasHoje = todayDataReady ? activeTodayData!.consultasHoje : [];
-  const cirurgiasHoje = todayDataReady ? activeTodayData!.cirurgiasHoje : [];
-  const examesHoje = todayDataReady ? activeTodayData!.examesHoje : [];
-  const registrosHoje = todayDataReady ? activeTodayData!.registrosHoje : [];
+  // M16: owner/date reads live in one hook; the page consumes scoped results.
+  const {
+    tratamentos, renovacoes, medicos, farmacias, hospitais,
+    consultasHoje, cirurgiasHoje, examesHoje, registrosHoje,
+    historicoDosesCompleto,
+  } = useTodayOwnerData({
+    userId: user?.id,
+    personId: activePersonId,
+    date: dataSelecionada,
+  });
 
   const renovacoesReceitaHoje =
     useMemo(
@@ -574,334 +522,23 @@ export default function HojePage() {
     }
   }, [searchParams, router]);
 
-  const doseHistoryData = useLiveQuery(async () => {
-    if (!user?.id || !activePersonId) return null;
-    return {
-      userId: user.id,
-      personId: activePersonId,
-      rows: await db.doseLogs
-        .where("[user_id+person_id]")
-        .equals([user.id, activePersonId])
-        .toArray(),
-    };
-  }, [user?.id, activePersonId]);
-
-  const historicoDosesCompleto =
-    user?.id &&
-    activePersonId &&
-    doseHistoryData?.userId === user.id &&
-    doseHistoryData.personId === activePersonId
-      ? doseHistoryData.rows
-      : [];
-
-  const retroReviewSummary =
-    useMemo(
-      () => {
-        if (
-          !retroReviewMode ||
-          !retroReviewMedicationId
-        ) {
-          return null;
-        }
-
-        const medicamento = medicamentosById.get(retroReviewMedicationId);
-
-        if (
-          !medicamento
-        ) {
-          return null;
-        }
-
-        const horarios =
-          Array.from(
-            new Set(
-              (
-                medicamento.estoque_horarios ||
-                []
-              )
-                .map(
-                  (
-                    horario:
-                      string
-                  ) =>
-                    String(
-                      horario ||
-                      ""
-                    ).trim()
-                )
-                .filter(
-                  (
-                    horario:
-                      string
-                  ) =>
-                    /^([01]\d|2[0-3]):[0-5]\d$/.test(
-                      horario
-                    )
-                )
-            )
-          ).sort();
-
-        const acquisitionDates =
-          renovacoes
-            .filter(
-              (
-                renovacao:
-                  any
-              ) =>
-                renovacao.medicamento_id ===
-                medicamento.id
-            )
-            .map(
-              (
-                renovacao:
-                  any
-              ) =>
-                String(
-                  renovacao.data_aquisicao ||
-                  renovacao.data ||
-                  ""
-                ).slice(
-                  0,
-                  10
-                )
-            )
-            .filter(
-              (
-                value:
-                  string
-              ) =>
-                /^\d{4}-\d{2}-\d{2}$/.test(
-                  value
-                )
-            )
-            .sort();
-
-        const createdDate =
-          String(
-            medicamento.created_at ||
-            ""
-          ).slice(
-            0,
-            10
-          );
-
-        const startDate =
-          acquisitionDates[0] ||
-          (
-            /^\d{4}-\d{2}-\d{2}$/.test(
-              createdDate
-            )
-              ? createdDate
-              : null
-          ) ||
-          medicamento.estoque_data_referencia ||
-          medicamento.data_receita ||
-          null;
-
-        if (
-          !startDate ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(
-            startDate
-          ) ||
-          horarios.length ===
-            0
-        ) {
-          return {
-            medicamento,
-
-            startDate,
-
-            horarios,
-
-            totalSlots:
-              0,
-
-            confirmedSlots:
-              0,
-
-            pendingSlots:
-              0,
-
-            pendingDates:
-              [] as string[],
-
-            firstPendingDate:
-              null as
-                | string
-                | null,
-          };
-        }
-
-        const yesterday =
-          addDaysToLocalDate(
-            hoje,
-            -1
-          );
-
-        if (
-          !yesterday ||
-          startDate >
-            yesterday
-        ) {
-          return {
-            medicamento,
-
-            startDate,
-
-            horarios,
-
-            totalSlots:
-              0,
-
-            confirmedSlots:
-              0,
-
-            pendingSlots:
-              0,
-
-            pendingDates:
-              [] as string[],
-
-            firstPendingDate:
-              null as
-                | string
-                | null,
-          };
-        }
-
-        const logsBySlot =
-          new Set(
-            historicoDosesCompleto
-              .filter(
-                (
-                  log:
-                    any
-                ) =>
-                  log.medicamento_id ===
-                    medicamento.id &&
-                  log.person_id ===
-                    activePersonId
-              )
-              .map(
-                (
-                  log:
-                    any
-                ) =>
-                  `${log.data}|${log.horario}`
-              )
-          );
-
-        let cursor =
-          startDate;
-
-        let totalSlots =
-          0;
-
-        let confirmedSlots =
-          0;
-
-        const pendingDatesSet =
-          new Set<string>();
-
-        /*
-         * Guard alto apenas evita loop infinito em dado inválido.
-         * Dez anos de histórico continuam suportados.
-         */
-        let guard =
-          0;
-
-        while (
-          cursor <=
-            yesterday &&
-          guard <
-            3660
-        ) {
-          for (
-            const horario of
-              horarios
-          ) {
-            totalSlots +=
-              1;
-
-            const key =
-              `${cursor}|${horario}`;
-
-            if (
-              logsBySlot.has(
-                key
-              )
-            ) {
-              confirmedSlots +=
-                1;
-            } else {
-              pendingDatesSet.add(
-                cursor
-              );
-            }
-          }
-
-          const nextDate =
-            addDaysToLocalDate(
-              cursor,
-              1
-            );
-
-          if (
-            !nextDate ||
-            nextDate ===
-              cursor
-          ) {
-            break;
-          }
-
-          cursor =
-            nextDate;
-
-          guard +=
-            1;
-        }
-
-        const pendingDates =
-          Array.from(
-            pendingDatesSet
-          ).sort();
-
-        return {
-          medicamento,
-
-          startDate,
-
-          horarios,
-
-          totalSlots,
-
-          confirmedSlots,
-
-          pendingSlots:
-            Math.max(
-              0,
-              totalSlots -
-                confirmedSlots
-            ),
-
-          pendingDates,
-
-          firstPendingDate:
-            pendingDates[0] ||
-            null,
-        };
-      },
-      [
-        retroReviewMode,
-        retroReviewMedicationId,
-        medicamentos,
-        renovacoes,
-        historicoDosesCompleto,
-        activePersonId,
-        hoje,
-      ]
-    );
-
+  const retroReviewSummary = useMemo(() => buildTodayRetroReviewSummary({
+    enabled: retroReviewMode,
+    medicationId: retroReviewMedicationId,
+    medications: medicamentos,
+    renewals: renovacoes,
+    doseLogs: historicoDosesCompleto,
+    personId: activePersonId,
+    today: hoje,
+  }), [
+    retroReviewMode,
+    retroReviewMedicationId,
+    medicamentos,
+    renovacoes,
+    historicoDosesCompleto,
+    activePersonId,
+    hoje,
+  ]);
   const irParaProximoPendenteRetroativo =
     () => {
       if (
@@ -2169,241 +1806,13 @@ export default function HojePage() {
               }} />
           )}
 
-          {retroReviewMode && (
-            <motion.div
-              initial={{
-                opacity:
-                  0,
-
-                y:
-                  8,
-              }}
-              animate={{
-                opacity:
-                  1,
-
-                y:
-                  0,
-              }}
-              className="rounded-[26px] border border-ice/25 bg-ice/5 p-4 shadow-sm"
-            >
-              {retroReviewSummary ? (
-                <>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ice/15 text-ice">
-                      <Clock
-                        size={
-                          19
-                        }
-                      />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
-                        Revisão retroativa assistida
-                      </p>
-
-                      <h2 className="mt-1 truncate text-sm font-bold text-ink-primary">
-                        {
-                          retroReviewSummary
-                            .medicamento
-                            .nome
-                        }
-                      </h2>
-
-                      {retroReviewSummary.startDate && (
-                        <p className="mt-1 text-[10px] text-ink-muted">
-                          Período conhecido desde{" "}
-                          <strong className="text-ink-primary">
-                            {new Intl.DateTimeFormat(
-                              "pt-BR"
-                            ).format(
-                              new Date(
-                                `${retroReviewSummary.startDate}T12:00:00`
-                              )
-                            )}
-                          </strong>
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={
-                        sairRevisaoRetroativa
-                      }
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted"
-                      aria-label="Sair da revisão retroativa"
-                    >
-                      <X
-                        size={
-                          14
-                        }
-                      />
-                    </button>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-2xl border border-surface-border/40 bg-surface-raised/70 p-3">
-                      <p className="text-[8px] font-bold uppercase tracking-wider text-ink-faint">
-                        Previstas
-                      </p>
-
-                      <p className="mt-1 font-mono text-sm font-bold text-ink-primary">
-                        {
-                          retroReviewSummary
-                            .totalSlots
-                        }
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-3">
-                      <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-400/80">
-                        Revisadas
-                      </p>
-
-                      <p className="mt-1 font-mono text-sm font-bold text-emerald-400">
-                        {
-                          retroReviewSummary
-                            .confirmedSlots
-                        }
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-ice/20 bg-ice/5 p-3">
-                      <p className="text-[8px] font-bold uppercase tracking-wider text-ice/80">
-                        Sem confirmação
-                      </p>
-
-                      <p className="mt-1 font-mono text-sm font-bold text-ice">
-                        {
-                          retroReviewSummary
-                            .pendingSlots
-                        }
-                      </p>
-                    </div>
-                  </div>
-
-                  {retroReviewSummary.totalSlots >
-                    0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[9px] text-ink-muted">
-                          Progresso da revisão
-                        </span>
-
-                        <span className="font-mono text-[9px] font-bold text-ice">
-                          {Math.round(
-                            (
-                              retroReviewSummary
-                                .confirmedSlots /
-                              retroReviewSummary
-                                .totalSlots
-                            ) *
-                              100
-                          )}
-                          %
-                        </span>
-                      </div>
-
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-border">
-                        <div
-                          className="h-full rounded-full bg-ice transition-all duration-500"
-                          style={{
-                            width:
-                              `${Math.round(
-                                (
-                                  retroReviewSummary
-                                    .confirmedSlots /
-                                  retroReviewSummary
-                                    .totalSlots
-                                ) *
-                                  100
-                              )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3">
-                    <Info
-                      size={
-                        13
-                      }
-                      className="mt-0.5 shrink-0 text-amber-300"
-                    />
-
-                    <p className="text-[9px] leading-relaxed text-ink-muted">
-                      Os slots são reconstruídos usando a{" "}
-                      <strong className="text-ink-primary">
-                        rotina atualmente conhecida
-                      </strong>
-                      . Se os horários ou a frequência eram diferentes no passado, revise conscientemente antes de confirmar.
-                    </p>
-                  </div>
-
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={
-                        irParaProximoPendenteRetroativo
-                      }
-                      disabled={
-                        retroReviewSummary.pendingSlots ===
-                        0
-                      }
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-ice px-4 py-3 text-[10px] font-bold text-void transition-all active:scale-[0.99] disabled:opacity-40"
-                    >
-                      <ChevronRight
-                        size={
-                          14
-                        }
-                      />
-
-                      {retroReviewSummary.pendingSlots >
-                      0
-                        ? "Próximo sem confirmação"
-                        : "Revisão concluída"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={
-                        sairRevisaoRetroativa
-                      }
-                      className="rounded-2xl border border-surface-border px-4 py-3 text-[10px] font-semibold text-ink-muted transition-all active:scale-[0.99]"
-                    >
-                      Sair
-                    </button>
-                  </div>
-
-                  <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
-                    Nada é confirmado automaticamente. “Não lembro” continua sem registro e fora das métricas.
-                  </p>
-                </>
-              ) : (
-                <div className="flex items-start gap-3">
-                  <AlertTriangle
-                    size={
-                      17
-                    }
-                    className="mt-0.5 shrink-0 text-amber-400"
-                  />
-
-                  <div>
-                    <p className="text-xs font-bold text-ink-primary">
-                      Medicamento não encontrado
-                    </p>
-
-                    <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                      Não foi possível iniciar a revisão retroativa para este medicamento.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
+          {retroReviewMode ? (
+            <TodayRetroReviewPanel
+              summary={retroReviewSummary}
+              onNext={irParaProximoPendenteRetroativo}
+              onClose={sairRevisaoRetroativa}
+            />
+          ) : null}
 
           {/* ASSISTENTE DIÁRIO */}
           {assistenteDiario && (

@@ -44,6 +44,14 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   const previewRef=useRef<HTMLDivElement>(null);
   const [previewVisible,setPreviewVisible]=useState(false);
   const [documentVisible,setDocumentVisible]=useState(true);
+  const [reducedMotion,setReducedMotion]=useState(false);
+  useEffect(()=>{
+    if(typeof window==='undefined'||typeof window.matchMedia!=='function')return;
+    const media=window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync=()=>setReducedMotion(media.matches);
+    sync(); media.addEventListener?.('change',sync);
+    return()=>media.removeEventListener?.('change',sync);
+  },[]);
   useEffect(()=>{
     if(typeof document==='undefined')return;
     const sync=()=>setDocumentVisible(!document.hidden);
@@ -108,6 +116,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
   // the compact observer. No continuous animation loop is introduced here.
   const shouldMount3D=ready&&expanded&&mode==='3d'&&documentVisible&&!unavailable&&
     (size==='expanded'||previewVisible) &&
+    (size==='expanded'||!reducedMotion) &&
     canMountAvatar3D({ready,expanded,mode,documentVisible,unavailable,size,previewVisible});
   const toggleExpanded=useCallback(()=>chooseSize(size==='expanded'?'compact':'expanded'),[size,preferenceKey,appearance,avatarName,framing]);
   return <div ref={expandedRef} tabIndex={expanded&&size==='expanded'?-1:undefined} role={expanded&&size==='expanded'?'dialog':undefined} aria-modal={expanded&&size==='expanded'?true:undefined} aria-label={expanded&&size==='expanded'?`Avatar ${avatarDisplayName(avatarName,personName)}`:undefined} onKeyDown={event=>{
@@ -132,6 +141,7 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
       <button type="button" onClick={()=>chooseSize('expanded')} aria-label={`Ampliar avatar de ${avatarDisplayName(avatarName,personName)}`} className="min-h-11 rounded-xl border border-emerald-300/25 bg-emerald-300/[.055] px-2.5 text-[10px] font-semibold text-emerald-200"><Shirt size={14} className="inline"/> Ampliar{mode==='3d'?" em 3D":""}</button>
     </div>:null}
     {expanded&&ready&&size==='compact'&&unavailable?<p role="status" aria-live="polite" className="mt-1 text-center text-[10px] text-amber-200">WebGL não iniciou neste aparelho. A ilustração continua disponível; toque em Fênix 3D para tentar novamente.</p>:null}
+    {expanded&&ready&&size==='compact'&&mode==='3d'&&reducedMotion?<p role="status" className="mt-1 text-center text-[10px] text-ink-muted">O modo reduzido mantém a prévia em ilustração para poupar movimento e bateria. O 3D continua disponível ao ampliar.</p>:null}
     {expanded&&ready&&size==='expanded'?<details open className="group mx-auto mt-3 max-w-[520px] rounded-xl border border-violet-400/20 bg-violet-400/[0.035] p-2">
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-xl px-2 py-1 text-xs font-semibold text-violet-200"><SlidersHorizontal size={18}/><span className="flex-1"><span className="block text-sm">Ajustar visualização</span><span className="mt-1 block text-[10px] font-normal text-ink-muted">Ângulo, zoom e aparência</span></span><ChevronDown size={17} className="transition-transform group-open:rotate-180"/></summary>
       <div className="mx-auto mb-3 flex max-w-[340px] gap-2" aria-label="Visualização do avatar">

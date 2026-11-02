@@ -9,9 +9,10 @@ export type AvatarVisibilityContext = {
   unavailable:boolean;
   size:"compact" | "expanded" | "hidden";
   previewVisible:boolean;
+  reducedMotion?:boolean;
 };
 export function canMountAvatar3D(input:AvatarVisibilityContext):boolean {
   return input.ready && input.expanded && input.mode === "3d" &&
     input.documentVisible && !input.unavailable &&
-    (input.size === "expanded" || input.previewVisible);
+    (input.size === "expanded" || (input.previewVisible && !input.reducedMotion));
 }

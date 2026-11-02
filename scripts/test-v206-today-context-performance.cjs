@@ -4,6 +4,7 @@ const ts = require('typescript');
 const read = (file) => fs.readFileSync(file, 'utf8');
 
 const today = read('app/hoje/page.tsx');
+const todayData = read('hooks/useTodayOwnerData.ts');
 const dbSource = read('lib/db/index.ts');
 
 assert(dbSource.includes('this.version(44).stores({'), 'V44 schema is missing');
@@ -14,28 +15,29 @@ for (const table of ['consultas', 'cirurgias', 'exames', 'registros_saude', 'dos
   assert(new RegExp(`${table}:[\\s\\S]{0,300}\\[user_id\\+person_id\\+data\\]`).test(dbSource), `${table} needs an owner/day index`);
 }
 
-assert(today.includes('const activeTodayData = useLiveQuery(async () => {'));
-assert(today.includes('activeTodayData?.userId === user.id'));
-assert(today.includes('activeTodayData.personId === activePersonId'));
-assert(today.includes('activeTodayData.date === dataSelecionada'));
+assert(today.includes('useTodayOwnerData({'));
+assert(todayData.includes('const dayData = useLiveQuery(async () => {'));
+assert(todayData.includes('dayData?.userId === userId'));
+assert(todayData.includes('dayData.personId === personId'));
+assert(todayData.includes('dayData.date === date'));
 for (const table of ['tratamentos', 'renovacoes', 'medicos', 'farmacias', 'hospitais']) {
-  assert(today.includes(`db.${table}.where("[user_id+person_id]").equals(owner)`), `${table} must use the owner index`);
+  assert(todayData.includes(`db.${table}.where("[user_id+person_id]").equals(owner)`), `${table} must use the owner index`);
 }
 for (const table of ['consultas', 'cirurgias', 'exames']) {
-  assert(today.includes(`db.${table}.where("[user_id+person_id+data]").equals(day)`), `${table} must use the day index`);
+  assert(todayData.includes(`db.${table}.where("[user_id+person_id+data]").equals(day)`), `${table} must use the day index`);
 }
-assert(today.includes('db.registros_saude.where("[user_id+person_id+data]").equals(day)'));
-assert(!today.includes('db.medicos.toArray()'));
-assert(!today.includes('db.farmacias.toArray()'));
-assert(!today.includes('db.hospitais.toArray()'));
-assert(!today.includes('db.consultas.toArray()'));
-assert(!today.includes('db.cirurgias.toArray()'));
-assert(!today.includes('db.exames.toArray()'));
-assert(today.includes('rows: await db.doseLogs'));
-assert(today.includes('doseHistoryData?.userId === user.id'));
-assert(today.includes('doseHistoryData.personId === activePersonId'));
+assert(todayData.includes('db.registros_saude.where("[user_id+person_id+data]").equals(day)'));
+assert(!todayData.includes('db.medicos.toArray()'));
+assert(!todayData.includes('db.farmacias.toArray()'));
+assert(!todayData.includes('db.hospitais.toArray()'));
+assert(!todayData.includes('db.consultas.toArray()'));
+assert(!todayData.includes('db.cirurgias.toArray()'));
+assert(!todayData.includes('db.exames.toArray()'));
+assert(todayData.includes('rows: await db.doseLogs'));
+assert(todayData.includes('historyData?.userId === userId'));
+assert(todayData.includes('historyData.personId === personId'));
 
-for (const file of ['app/hoje/page.tsx', 'lib/db/index.ts']) {
+for (const file of ['app/hoje/page.tsx', 'hooks/useTodayOwnerData.ts', 'lib/db/index.ts']) {
   const parsed = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   assert.equal(parsed.parseDiagnostics.length, 0, `syntax error: ${file}`);
 }
