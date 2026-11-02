@@ -7,6 +7,7 @@ import {useHealthSupply} from "@/hooks/useHealthSupply";
 import {treatmentCareContext} from "@/lib/treatment-care-context";
 import {TreatmentCareLinks} from "@/components/saude/TreatmentCareLinks";
 import {TreatmentSymptomTimeline} from "@/components/saude/TreatmentSymptomTimeline";
+import { TreatmentTimelineRow } from "@/components/saude/TreatmentTimelineRow";
 import {TreatmentVisitBrief} from "@/components/saude/TreatmentVisitBrief";
 import {buildTreatmentCareDossier} from "@/lib/health-network/care-continuity";
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
@@ -1233,57 +1234,24 @@ function TratamentoContent() {
             {timeline.length === 0 ? (
               <p className="rounded-xl border border-surface-border/40 bg-surface/40 px-3 py-2.5 text-xs leading-relaxed text-ink-muted">Nenhum evento clínico vinculado a este tratamento.</p>
             ) : (
-              <div className="ml-3 space-y-2 border-l-2 border-surface-border/50 pl-4">
+              <div className="ml-3 space-y-1.5 border-l-2 border-surface-border/50 pl-4">
                 {timeline.map((event) => {
                   const href = getTimelineHref(event);
 
                   return (
-                    <button
+                    <TreatmentTimelineRow
                       key={event.id}
-                      type="button"
+                      title={event.titulo}
+                      description={event.descricao}
+                      date={formatDateDisplay(event.data)}
+                      icon={<TimelineEventIcon tipo={event.tipo} />}
                       disabled={!href}
-                      onClick={() => {
-                        if (!href) {
-                          return;
-                        }
-
+                      onOpen={() => {
+                        if (!href) return;
                         trigger("vibrate");
-
                         router.push(href);
                       }}
-                      className="relative flex w-full items-center gap-3 rounded-2xl border border-surface-border/50 bg-surface p-3 text-left transition-all enabled:active:scale-[0.98] disabled:cursor-default"
-                    >
-                      <span className="absolute -left-[23px] top-5 h-2.5 w-2.5 rounded-full border-2 border-void bg-ice ring-1 ring-surface-border/50" />
-
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ice/10 text-ice">
-                        <TimelineEventIcon tipo={event.tipo} />
-                      </span>
-
-                      <span className="min-w-0 flex-1">
-                        <span className="block break-words text-sm font-semibold leading-snug text-ink-primary">
-                          {event.titulo}
-                        </span>
-
-                        {event.descricao && (
-                          <span className="mt-0.5 block truncate text-[11px] text-ink-muted">
-                            {event.descricao}
-                          </span>
-                        )}
-                      </span>
-
-                      <span className="shrink-0 text-right">
-                        <span className="block text-[10px] font-medium text-ink-muted">
-                          {formatDateDisplay(event.data)}
-                        </span>
-
-                        {href && (
-                          <ChevronRight
-                            size={15}
-                            className="ml-auto mt-1 text-ink-faint"
-                          />
-                        )}
-                      </span>
-                    </button>
+                    />
                   );
                 })}
               </div>

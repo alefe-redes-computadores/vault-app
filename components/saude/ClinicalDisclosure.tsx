@@ -27,7 +27,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
   }, [id]);
 
   return (
-    <section id={id} className="scroll-mt-28 overflow-hidden rounded-[22px] border border-surface-border/70 bg-surface shadow-sm">
+    <section id={id} className="scroll-mt-28 overflow-hidden rounded-[18px] border border-surface-border/55 bg-surface/90 shadow-sm">
       <h2>
         <button
           ref={buttonRef}
@@ -35,18 +35,18 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
           aria-expanded={open}
           aria-controls={`${id}-panel`}
           onClick={() => setOpen(value => !value)}
-          className="flex min-h-[72px] w-full items-center gap-3 px-3.5 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
+          className="flex min-h-[60px] w-full items-center gap-2.5 px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/60 bg-surface-raised text-ice" aria-hidden="true">{icon}</span>
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-surface-border/45 bg-surface-raised/60 text-ink-secondary" aria-hidden="true">{icon}</span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold leading-snug text-ink-primary">{title}</span>
-            <span className="mt-1 block text-xs leading-relaxed text-ink-muted">{description}</span>
+            <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-ink-muted">{description}</span>
           </span>
-          <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-ink-muted transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-ink-muted transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
       </h2>
       {open && (
-        <div id={`${id}-panel`} className="space-y-3 border-t border-surface-border/50 bg-void/15 p-3 sm:p-4">
+        <div id={`${id}-panel`} className="space-y-3 border-t border-surface-border/50 bg-void/10 p-2.5 sm:p-3.5">
           {typeof children === "function" ? children() : children}
         </div>
       )}

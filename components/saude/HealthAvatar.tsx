@@ -134,8 +134,10 @@ export function HealthAvatar({skin,devices,expanded=false,attention=0,preference
       <div ref={setControlsContainer}/>
       {mode==='illustration'&&onDeviceSelect?<ul className="mt-3 space-y-2" aria-label="Aparelhos representados">{avatarLayout(devices).slots.map(({device,kind,side})=><li key={`${side}-${kind}`}><button type="button" className="min-h-11 w-full rounded-xl border border-surface-border p-3 text-left text-xs text-ink-primary" aria-label={`Abrir aparelho ${device.name}`} onClick={()=>onDeviceSelect(device.id)}>{device.name} ›</button></li>)}</ul>:null}
     </details>:null}
+    {/* M13_FENIX_EXPLAINABLE_3D: dica breve no modo expandido; não adiciona malhas nem trabalho por quadro. */}
+    {expanded&&ready&&size==='expanded'&&mode==='3d'?<p className="mx-auto mt-1 max-w-[520px] text-center text-[10px] leading-relaxed text-ink-muted">Arraste para girar a Fênix. O modelo é ilustrativo, não representa um diagnóstico.</p>:null}
     {/* V333_FENIX_LAZY_PERSONALIZATION: edit only on demand to keep WebGL interaction fluent. */}
-    {expanded&&ready&&size==='expanded'?<section className="mx-auto mt-3 max-w-[520px] rounded-xl border border-surface-border/60 bg-surface p-2">
+    {expanded&&ready&&size==='expanded'?<section className="mx-auto mt-2.5 max-w-[520px] rounded-xl border border-surface-border/60 bg-surface/80 p-2">
       <button type="button" aria-expanded={appearanceEditorOpen} onClick={()=>setAppearanceEditorOpen(value=>!value)} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-xs font-semibold text-ink-primary"><span><Shirt size={16} className="mr-2 inline text-emerald-300"/>Personalizar Avatar <span className="block pl-6 text-[10px] font-normal text-ink-muted">Cabelo, roupa, acessórios e nome</span></span><ChevronDown size={16} className={appearanceEditorOpen?'rotate-180':''}/></button>
       {appearanceEditorOpen?<AvatarStyleEditor value={appearance} onChange={chooseAppearance} onPreview={setFraming} name={avatarName} onNameChange={chooseName}/>:null}
     </section>:null}

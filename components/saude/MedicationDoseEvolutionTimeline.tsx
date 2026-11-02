@@ -23,8 +23,8 @@ export function MedicationDoseEvolutionTimeline({currentDose,history,formatDose,
   if (history.length === 0) return null;
   // Only recent changes mount immediately; old changes stay available by disclosure.
   const newestFirst = [...history].reverse();
-  const recent = newestFirst.slice(0, 8);
-  const older = newestFirst.slice(8);
+  const recent = newestFirst.slice(0, 3);
+  const older = newestFirst.slice(3);
   const historyRows = (items: typeof newestFirst, offset: number) => items.map((item,index)=>(
     <li key={`${item.data_mudanca}-${offset+index}`} className="relative pl-6 opacity-80">
       <span className="absolute -left-[9px] top-0 flex size-4 items-center justify-center rounded-full border-2 border-surface-border bg-surface" aria-hidden="true"><span className="size-1.5 rounded-full bg-surface-border"/></span>
@@ -35,11 +35,11 @@ export function MedicationDoseEvolutionTimeline({currentDose,history,formatDose,
   return (
     <section className={`${className} space-y-3 [content-visibility:auto] [contain-intrinsic-size:250px]`} aria-label="Evolução da dosagem registrada">
       <h2 className="flex items-center gap-2 px-1 text-sm font-semibold text-ink-primary">
-        <TrendingUp size={15} className="text-ice" aria-hidden="true" />
+        <TrendingUp size={15} className="text-emerald-300" aria-hidden="true" />
         Evolução da Dosagem
       </h2>
-      <div className="rounded-[20px] border border-surface-border/60 bg-surface p-4">
-        <ol className="relative ml-3 space-y-6 border-l-2 border-surface-border pb-1">
+      <div className="rounded-[18px] border border-surface-border/60 bg-surface p-3.5">
+        <ol className="relative ml-3 space-y-4 border-l-2 border-surface-border pb-1">
           <li className="relative pl-6">
             <span className="absolute -left-[9px] top-0 flex size-4 items-center justify-center rounded-full border-2 border-ice bg-surface" aria-hidden="true"><span className="size-1.5 rounded-full bg-ice"/></span>
             <p className="text-sm font-bold text-ice">{formatDose(currentDose)} <span className="ml-1.5 text-[9px] font-normal uppercase text-ink-muted">Atual</span></p>
@@ -51,7 +51,7 @@ export function MedicationDoseEvolutionTimeline({currentDose,history,formatDose,
             Ver {older.length} alteração(ões) mais antiga(s)
           </summary>
           {showOlder && <ol className="ml-3 space-y-5 border-l-2 border-surface-border pt-4 pb-1" aria-label="Dosagens antigas">
-            {historyRows(older,8)}
+            {historyRows(older,3)}
           </ol>}
         </details>}
       </div>

@@ -34,10 +34,10 @@ export function MedicationAcquisitionHistoryCard({kind,dateLabel,pharmacyName,pu
   return <motion.button type="button" onClick={onOpen} disabled={!enabled}
     aria-label={`Abrir ${kind==="prescription"?"receita":kind==="planned"?"aquisição prevista":"aquisição"} de ${dateLabel}`}
     initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-    className={`w-full min-w-0 rounded-[16px] border bg-surface p-3 text-left transition-colors active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:cursor-default ${kind==="public"?"border-emerald-500/30 bg-emerald-500/5":"border-surface-border"}`}>
+    className={`w-full min-w-0 rounded-[16px] border bg-surface p-2.5 text-left transition-colors active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:cursor-default ${kind==="public"?"border-emerald-500/30 bg-emerald-500/5":"border-surface-border"}`}>
     <span className="flex min-w-0 items-start justify-between gap-3">
       <span className="flex min-w-0 flex-1 items-start gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-raised text-ink-muted"><Calendar size={14} aria-hidden="true"/></span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-raised/70 text-ink-muted"><Calendar size={14} aria-hidden="true"/></span>
         <span className="min-w-0 flex-1">
           <span className="block text-xs font-bold text-ink-primary">{dateLabel}</span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">

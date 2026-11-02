@@ -24,7 +24,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
   };
   const action = (label: string, onClick: () => void, icon: "open" | "map" | "phone") => (
     <button type="button" onClick={onClick} aria-label={label}
-      className="grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised/70 text-ice transition-colors hover:bg-ice/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/60 bg-surface-raised/50 text-ink-secondary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       {icon === "open" ? <ChevronRight size={17} aria-hidden="true"/> : icon === "phone" ? <Phone size={16} aria-hidden="true"/> : <MapPin size={16} aria-hidden="true"/>}
     </button>
   );
@@ -35,11 +35,11 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
       {node.address ? action(`Abrir ${node.name} no mapa`,()=>onMap(node.address!),"map") : null}
     </span>
   );
-  return <div className="min-w-0 space-y-2.5" aria-label="Rede de cuidado vinculada ao medicamento">
-    <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-ice/10 text-ice" label="Médico Prescritor"
+  return <div className="min-w-0 space-y-2" aria-label="Rede de cuidado vinculada ao medicamento">
+    <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-300" label="Médico Prescritor"
       action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : undefined}>
       <p className="break-words text-sm font-bold text-ink-primary">{doctor.name}</p>
-      {doctor.otherMedicationCount > 0 ? <p className="mt-1 text-[11px] text-ice">Também vinculado a {doctor.otherMedicationCount} outro{doctor.otherMedicationCount===1?"":"s"} medicamento{doctor.otherMedicationCount===1?"":"s"} desta pessoa</p> : null}
+      {doctor.otherMedicationCount > 0 ? <p className="mt-1 text-[11px] text-emerald-300">Também vinculado a {doctor.otherMedicationCount} outro{doctor.otherMedicationCount===1?"":"s"} medicamento{doctor.otherMedicationCount===1?"":"s"} desta pessoa</p> : null}
     </DetailInfoRow>
     {hospital ? <DetailInfoRow icon={<Building2 size={19}/>} iconClassName="bg-violet-400/10 text-violet-400" label="Hospital" action={nodeActions("hospitais",hospital)}>
       <p className="break-words text-sm font-bold text-ink-primary">{hospital.name}</p>
@@ -54,7 +54,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
       <p className="break-words text-sm font-bold text-ink-primary">{pharmacy.name}</p>
       {pharmacy.address ? <p className="mt-0.5 break-words text-[11px] text-ink-muted">{pharmacy.address}</p> : null}
     </DetailInfoRow> : null}
-    {latestPublicAcquisition ? <div className="flex items-start gap-3 rounded-[18px] border border-emerald-500/25 bg-emerald-500/[.065] p-3.5">
+    {latestPublicAcquisition ? <div className="flex items-start gap-2.5 rounded-[16px] border border-emerald-400/20 bg-emerald-400/[.045] p-3">
       <Gift size={17} className="mt-0.5 shrink-0 text-emerald-400" aria-hidden="true"/>
       <div className="min-w-0 text-xs"><p className="font-semibold text-emerald-400">Última aquisição registrada via SUS / sem custo</p>
         {latestPublicAcquisition.nextWithdrawalDate ? <p className="mt-1 text-ink-muted">Próxima retirada informada: {formatDay(latestPublicAcquisition.nextWithdrawalDate)}</p> : null}
