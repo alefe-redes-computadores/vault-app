@@ -1,7 +1,7 @@
 // components/list/ListSort.tsx
 "use client";
 
-import { useState, useEffect, useRef, ReactNode } from "react";
+import { useState, useEffect, useRef, useId, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -42,6 +42,7 @@ export function ListSort({
 }: ListSortProps) {
   const { trigger } = useHapticFeedback();
   const [isOpen, setIsOpen] = useState(false);
+  const dialogId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -50,6 +51,17 @@ export function ListSort({
     document.body.style.overflow = "hidden";
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); setIsOpen(false); return; }
+      if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        const choices = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>('[role="radio"]') ?? []);
+        if (!choices.length) return;
+        event.preventDefault();
+        const current = choices.indexOf(document.activeElement as HTMLButtonElement);
+        const index = event.key === "Home" ? 0 : event.key === "End" ? choices.length - 1
+          : current < 0 ? (event.key === "ArrowDown" ? 0 : choices.length - 1)
+          : (current + (event.key === "ArrowDown" ? 1 : -1) + choices.length) % choices.length;
+        choices[index]?.focus({ preventScroll: true });
+        return;
+      }
       if (event.key !== "Tab") return;
       const candidates = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? []);
       if (!candidates.length) return;
@@ -67,6 +79,7 @@ export function ListSort({
     };
   }, [isOpen]);
 
+  useEffect(() => { if (disabled) setIsOpen(false); }, [disabled]);
   const currentOption = options.find((opt) => opt.value === value);
   const displayLabel = placeholder || currentOption?.label || "Ordenar";
 
@@ -87,6 +100,8 @@ export function ListSort({
           setIsOpen((prev) => !prev);
         }}
         aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        aria-controls={isOpen ? dialogId : undefined}
         aria-label="Ordenar lista"
         disabled={disabled}
         className={`
@@ -132,7 +147,7 @@ export function ListSort({
 
             {/* Menu */}
             <motion.div
-              role="dialog" aria-modal="true" aria-label="Ordenar lista" ref={dialogRef}
+              id={dialogId} role="dialog" aria-modal="true" aria-label="Ordenar lista" ref={dialogRef}
               initial={{
                 opacity: 0,
                 y: 8,

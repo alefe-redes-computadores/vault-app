@@ -2,6 +2,7 @@
 
 import { Bell, ChevronRight, Clock3 } from "lucide-react";
 import type { HealthReminderRule } from "@/lib/health-reminders/types";
+import { isSafeLocalActionHref } from "@/lib/navigation/safe-action-href";
 
 type Reminder = Pick<HealthReminderRule, "id" | "title" | "time" | "target_route">;
 
@@ -32,13 +33,14 @@ export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
       <ol className="space-y-1.5" aria-label="Lembretes em ordem de horário">
         {reminders.map((reminder) => (
           <li key={reminder.id} className="min-w-0">
-            <button type="button" onClick={() => onNavigate(reminder.target_route)}
-              aria-label={`${reminder.title}, às ${reminder.time}. Abrir ação do lembrete`}
-              className="flex min-h-[72px] w-full items-center gap-3.5 rounded-2xl border border-surface-border/60 bg-surface/85 px-3.5 py-3 text-left transition-[background-color,border-color] hover:border-emerald-300/25 hover:bg-surface-raised/50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+            <button type="button" disabled={!isSafeLocalActionHref(reminder.target_route)}
+              onClick={() => { if (isSafeLocalActionHref(reminder.target_route)) onNavigate(reminder.target_route); }}
+              aria-label={`${reminder.title}, às ${reminder.time}. ${isSafeLocalActionHref(reminder.target_route) ? "Abrir ação do lembrete" : "Destino indisponível"}`}
+              className="flex min-h-[72px] w-full items-center gap-3.5 rounded-2xl border border-surface-border/60 bg-surface/85 px-3.5 py-3 text-left transition-[background-color,border-color] hover:border-emerald-300/25 hover:bg-surface-raised/50 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               <span className="flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] px-2.5 py-2 text-[11px] font-bold tabular-nums text-emerald-200"><Clock3 size={13} aria-hidden="true"/>{reminder.time}</span>
               <span className="min-w-0 flex-1">
                 <strong className="block break-words text-xs font-semibold leading-snug text-ink-primary line-clamp-2" title={reminder.title}>{reminder.title}</strong>
-                <span className="mt-0.5 block text-[10px] text-ink-muted">Abrir lembrete · registro manual</span>
+                <span className="mt-0.5 block text-[10px] text-ink-muted">{isSafeLocalActionHref(reminder.target_route) ? "Abrir lembrete · registro manual" : "Destino indisponível · revise o lembrete"}</span>
               </span>
               <ChevronRight size={15} className="shrink-0 text-ink-muted" aria-hidden="true"/>
             </button>
