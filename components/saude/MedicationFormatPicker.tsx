@@ -26,7 +26,8 @@ export function MedicationFormatPicker({
   const unselected = "border-surface-border/45 bg-surface-raised text-ink-muted hover:border-emerald-300/20";
   return (
     <div
-      className={`mb-5 grid gap-2 ${columns === 3 ? "grid-cols-3" : "grid-cols-4"}`}
+      className={`mb-5 grid gap-2 ${columns === 3 ? "grid-cols-3" : "grid-cols-3 min-[380px]:grid-cols-4"}`}
+      role="group"
       aria-label="Formato do medicamento"
     >
       {MEDICATION_PRIMARY_FORMATS.map(item => {

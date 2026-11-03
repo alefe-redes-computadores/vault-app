@@ -2,6 +2,7 @@
 "use client";
 import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
+import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
 import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
@@ -53,7 +54,6 @@ import {
   Loader2,
   MapPin,
   Package,
-  Palette,
   RefreshCw,
   Store,
   Stethoscope,
@@ -179,8 +179,6 @@ import type {
 import { brParaIso, handleCurrencyMask, handleTimeMask, isoParaBr, isValidTime, mascaraData, parseCurrency, parsePositiveOptionalNumber } from "@/lib/medications/form-utils";
 import { extractCatalogPresentationDosage, formatMatchesCatalog, getCatalogFormatLabel, getEstoqueUnidadePorFormato, inferVaultFormatFromOfficialPresentation, normalizeCatalogComparisonText, normalizeCatalogPresentationText } from "@/lib/medications/catalog-presentation";
 import {
-  CirclePillIcon,
-  MEDICATION_FORMATS as FORMATOS,
   type CatalogPresentationSuggestion,
 } from "@/lib/medications/form-presentation";
 import { MedicationIdentityPreview } from "@/components/saude/MedicationIdentityPreview";
@@ -2588,31 +2586,6 @@ export default function NovoMedicamentoPage() {
   // VISUAL
   // ==========================================================
 
-  const SelectedFormatIcon =
-    FORMATOS.find(
-      (
-        item
-      ) =>
-        item.id ===
-        formato
-    )?.icon ||
-    CirclePillIcon;
-
-  const hasTwoColors =
-    cores.length ===
-      2 &&
-    (
-      formato ===
-        "comprimido" ||
-      formato ===
-        "partido" ||
-      formato ===
-        "capsula"
-    );
-
-  const gradientId =
-    "split-novo-bicolor";
-
   // M3: mesma política de fechar autocomplete ao tocar fora ou Escape.
   useMedicationCatalogDismiss(isCatalogOpen, catalogPopoverRef, setIsCatalogOpen);
 
@@ -2800,50 +2773,6 @@ export default function NovoMedicamentoPage() {
             handleFileSelect
           }
         />
-
-        <svg
-          width="0"
-          height="0"
-          className="absolute"
-          aria-hidden="true"
-        >
-          <defs>
-            <linearGradient
-              id={
-                gradientId
-              }
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="0%"
-            >
-              <stop
-                offset="50%"
-                stopColor={
-                  cores[
-                    0
-                  ] ||
-                  "#9CA3AF"
-                }
-              />
-
-              <stop
-                offset="50%"
-                stopColor={
-                  cores.length ===
-                  2
-                    ? cores[
-                        1
-                      ]
-                    : cores[
-                        0
-                      ] ||
-                      "#9CA3AF"
-                }
-              />
-            </linearGradient>
-          </defs>
-        </svg>
 
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-3 pt-4 backdrop-blur-xl">
           <div className="mb-3 flex items-center justify-between">
@@ -3737,20 +3666,7 @@ export default function NovoMedicamentoPage() {
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className="mb-4 flex items-center gap-2">
-                    <Palette
-                      size={
-                        16
-                      }
-                      className="text-ice"
-                    />
-
-                    <h3 className="text-sm font-semibold text-ink-primary">
-                      Identidade Visual
-                    </h3>
-                  </div>
-
+                <MedicationAppearancePanel title="Identidade Visual">
                   <MedicationIdentityPreview name={nome} format={formato} colors={cores} />
 
                   <MedicationFormatPicker
@@ -3767,32 +3683,10 @@ export default function NovoMedicamentoPage() {
                     mode="create"
                   />}
 
-                  <p className="mb-2 text-xs font-medium text-ink-muted">
-                    Cores (Até 2 para pílulas e cápsulas)
-                  </p>
-
-                  <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="regular" />
-                  <p className="mt-2 text-[10px] text-ink-faint">Até 2 cores. Use o círculo multicolorido para qualquer tom.</p>
-
-                  <div className="mt-4 flex justify-center">
-                    <div className="flex h-16 w-24 items-center justify-center rounded-2xl border border-surface bg-void/50 shadow-inner">
-                      <SelectedFormatIcon
-                        size={
-                          32
-                        }
-                        fill={
-                          hasTwoColors
-                            ? `url(#${gradientId})`
-                            : cores[
-                                0
-                              ] ||
-                              "#9CA3AF"
-                        }
-                        stroke="none"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  <MedicationAppearanceColors>
+                    <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="regular" />
+                  </MedicationAppearanceColors>
+                </MedicationAppearancePanel>
 
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="mb-4 flex items-center gap-2">

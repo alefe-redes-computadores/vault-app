@@ -2,6 +2,7 @@
 "use client";
 import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
+import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
 import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
@@ -62,7 +63,6 @@ import {
   Loader2,
   MapPin,
   Package,
-  Palette,
   Plus,
   Save,
   Settings2,
@@ -4936,20 +4936,7 @@ function EditarMedicamentoContent() {
                 exit="exit"
                 className="space-y-6"
               >
-                <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
-                  <div className="mb-4 flex items-center gap-2">
-                    <Palette
-                      size={
-                        16
-                      }
-                      className="text-ice"
-                    />
-
-                    <h3 className="text-sm font-semibold text-ink-primary">
-                      Aparência do Remédio
-                    </h3>
-                  </div>
-
+                <MedicationAppearancePanel title="Aparência do Remédio">
                   <MedicationIdentityPreview name={nome} format={formato} colors={cores} />
 
                   <MedicationFormatPicker
@@ -4966,13 +4953,10 @@ function EditarMedicamentoContent() {
                     mode="edit"
                   />}
 
-                  <p className="mb-2 text-xs font-medium text-ink-muted">
-                    Cores
-                  </p>
-
-                  <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="compact" />
-                  <p className="mt-2 text-[10px] text-ink-faint">Até 2 cores. Use o círculo multicolorido para qualquer tom.</p>
-                </div>
+                  <MedicationAppearanceColors>
+                    <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="compact" />
+                  </MedicationAppearanceColors>
+                </MedicationAppearancePanel>
 
                 {isGotas && (
                   <CalculadoraGotas
