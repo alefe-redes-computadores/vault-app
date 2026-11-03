@@ -35,21 +35,36 @@ export function MedicationFilterBar({ value, onChange }: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const extra = ADDITIONAL.find(([key]) => key === value);
   useEffect(() => {
     if (!expanded) return;
     const dismiss = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpanded(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setExpanded(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const dismissOutside = (event: PointerEvent) => {
+      if (!event.target || triggerRef.current?.contains(event.target as Node) ||
+          panelRef.current?.contains(event.target as Node)) return;
+      setExpanded(false);
     };
     document.addEventListener("keydown", dismiss);
-    return () => document.removeEventListener("keydown", dismiss);
+    document.addEventListener("pointerdown", dismissOutside);
+    return () => {
+      document.removeEventListener("keydown", dismiss);
+      document.removeEventListener("pointerdown", dismissOutside);
+    };
   }, [expanded]);
   const choose = (next: MedicationFilterValue) => {
     onChange(next);
     setExpanded(false);
+    if (expanded) triggerRef.current?.focus();
   };
   const controlClass = (selected: boolean, highlighted: boolean) =>
-    `inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none ${
+    `inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none ${
       selected ? highlighted
         ? "border-amber-300/35 bg-amber-300/[.10] text-amber-200"
         : "border-emerald-300/30 bg-emerald-300/[.10] text-emerald-200"
@@ -65,7 +80,7 @@ export function MedicationFilterBar({ value, onChange }: {
             {label}
           </button>
         ))}
-        <button type="button" aria-expanded={expanded} aria-controls="medication-more-filters"
+        <button ref={triggerRef} type="button" aria-expanded={expanded} aria-controls="medication-more-filters"
           onClick={() => setExpanded(previous => !previous)}
           className={`${controlClass(Boolean(extra), false)} max-w-[44%] shrink-0 px-2.5`}
           title={extra ? `Filtro atual: ${extra[1]}` : "Mostrar mais filtros"}>

@@ -28,13 +28,13 @@ export const HomeDailyHero = memo(function HomeDailyHero({
     <button type="button" onClick={onOpen}
       className="group flex min-h-[104px] w-full items-center justify-between gap-4 rounded-t-[22px] bg-gradient-to-r from-surface-raised/40 via-surface-raised/20 to-transparent px-4 pb-3 pt-4 text-left transition-colors hover:from-surface-raised/60 motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
       aria-label={`${title}. ${ctaLabel}`}>
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>
-        <strong className="mt-1.5 block text-[22px] font-bold leading-[1.17] tracking-tight text-ink-primary">{title}</strong>
+        <strong className="mt-1.5 block break-words text-[22px] font-bold leading-[1.17] tracking-tight text-ink-primary">{title}</strong>
         <span className="mt-1.5 block max-w-[320px] line-clamp-2 text-xs leading-relaxed text-ink-muted">{description}</span>
         <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-ice">{ctaLabel}<ArrowUpRight size={13} aria-hidden="true" /></span>
       </span>
-      <span className="grid size-12 shrink-0 place-items-center rounded-2xl border shadow-sm transition-transform motion-safe:group-active:scale-95" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl border shadow-sm transition-transform motion-safe:group-active:scale-95" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
     </button>
     <div className="px-4 pb-4">
       <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-ink-muted">

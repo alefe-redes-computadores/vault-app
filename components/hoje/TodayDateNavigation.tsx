@@ -27,9 +27,9 @@ export const TodayDateNavigation = memo(function TodayDateNavigation({
       className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised/60 text-ink-secondary active:scale-95 motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
       <ChevronLeft size={18} aria-hidden="true" />
     </button>
-    <label className="relative flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl border border-surface-border/50 bg-surface-raised/55 px-2 text-ink-primary focus-within:outline focus-within:outline-2 focus-within:outline-ice">
+    <label title={label} className="relative flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl border border-surface-border/50 bg-surface-raised/55 px-2 text-ink-primary focus-within:outline focus-within:outline-2 focus-within:outline-ice">
       <CalendarDays size={16} className="shrink-0 text-ice" aria-hidden="true" />
-      <span className="min-w-0 truncate text-xs font-semibold">{temporalLabel} · {description.slice(0, 5)}</span>
+      <span className="min-w-0 truncate text-xs font-semibold" title={description}>{temporalLabel} · {description}</span>
       <input type="date" aria-label={label} value={date} onChange={event => { if (event.target.value) onSelectDate(event.target.value); }}
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
     </label>
