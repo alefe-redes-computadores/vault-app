@@ -70,6 +70,12 @@ export function ContextualHealthIntelligence({
   const storageKey = contextualMemoryKey(ownerKey, entityType, entityId);
   const visitKey = storageKey || `${entityType}:${entityId || ""}`;
   const carouselRef = useRef<HTMLDivElement>(null);
+  // M46: não renderizar um novo estado React para cada evento de scroll no Android.
+  const scrollFrameRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (scrollFrameRef.current !== null) cancelAnimationFrame(scrollFrameRef.current);
+  }, []);
+
 
   const allInsights = useMemo(() => {
     // VAULT_CONTEXTUAL_COMPACT_V70
@@ -137,7 +143,8 @@ export function ContextualHealthIntelligence({
     setActiveIndex(index);
     const carousel = carouselRef.current;
     if (!carousel) return;
-    carousel.scrollTo({ left: carousel.clientWidth * index, behavior: "smooth" });
+    const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    carousel.scrollTo({ left: carousel.clientWidth * index, behavior: reducedMotion ? "auto" : "smooth" });
   };
 
   return (
@@ -167,8 +174,16 @@ export function ContextualHealthIntelligence({
             ref={carouselRef}
             className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
             onScroll={(event) => {
-              const width = event.currentTarget.clientWidth;
-              if (width > 0) setActiveIndex(Math.round(event.currentTarget.scrollLeft / width));
+              if (scrollFrameRef.current !== null) return;
+              const carousel = event.currentTarget;
+              scrollFrameRef.current = requestAnimationFrame(() => {
+                scrollFrameRef.current = null;
+                const width = carousel.clientWidth;
+                if (width > 0) {
+                  const next = Math.round(carousel.scrollLeft / width);
+                  setActiveIndex(previous => previous === next ? previous : next);
+                }
+              });
             }}
           >
             {insights.map((insight, index) => (
