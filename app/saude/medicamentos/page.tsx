@@ -77,8 +77,8 @@ import {
 } from "@/components/EmptyState";
 
 import {
-  QuickDoseModal,
-} from "@/components/saude/QuickDoseModal";
+  LazyQuickDoseModal as QuickDoseModal,
+} from "@/components/saude/LazyQuickDoseModal";
 
 import {
   processarListaMedicamentos,

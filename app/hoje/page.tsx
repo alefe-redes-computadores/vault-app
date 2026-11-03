@@ -79,7 +79,7 @@ import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
 import { useRetiradas } from "@/hooks/useRetiradas";
-import { QuickDoseModal } from "@/components/saude/QuickDoseModal";
+import { LazyQuickDoseModal as QuickDoseModal } from "@/components/saude/LazyQuickDoseModal";
 import { useHealthReminders } from "@/hooks/useHealthReminders";
 import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";

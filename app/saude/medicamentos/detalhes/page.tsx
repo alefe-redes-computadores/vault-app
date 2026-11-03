@@ -149,8 +149,8 @@ import {
 } from "@/components/ConfirmationModal";
 
 import {
-  QuickDoseModal,
-} from "@/components/saude/QuickDoseModal";
+  LazyQuickDoseModal as QuickDoseModal,
+} from "@/components/saude/LazyQuickDoseModal";
 
 import {
   ListIcon,

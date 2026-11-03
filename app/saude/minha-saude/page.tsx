@@ -35,7 +35,6 @@ import { HealthMetricDetails } from "@/components/saude/HealthMetricDetails";
 import { avatarWeightContext } from "@/lib/health-profile/avatar-readings";
 import { avatarPreferenceKey } from "@/lib/health-profile/avatar-preference";
 import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
-import { AvatarReadings } from "@/components/saude/AvatarReadings";
 import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
 import { HealthTrendsExplorer } from "@/components/saude/HealthTrendsExplorer";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
@@ -50,6 +49,11 @@ import {
   HealthDeviceEditor,
 } from "@/components/saude/HealthProfileEditor";
 import dynamic from "next/dynamic";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
+const AvatarReadings = dynamic(
+  () => import("@/components/saude/AvatarReadings").then(module => module.AvatarReadings),
+  { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando indicadores…</p> },
+);
 const HydrationPanel = dynamic(
   () =>
     import("@/components/saude/HydrationPanel").then((m) => m.HydrationPanel),
@@ -349,8 +353,8 @@ function HealthDashboard({
                 </div>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">O 3D é o modo padrão quando disponível. Toque no avatar para ampliar e ajustar aparência, enquadramento e acessórios. A ilustração continua como escolha manual ou fallback técnico.</p>
-              <details className="mt-3 rounded-xl border border-surface-border/70 bg-surface-raised/30 px-3 py-1">
-                <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Corpo e sinais · explorar regiões</summary>
+              <ClinicalDisclosure id="avatar-corpo-sinais" title="Corpo e sinais · explorar regiões" description="Indicadores e registros por região do corpo" icon={<Activity size={18}/>} iconClassName="text-emerald-300">
+                {() => <>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>
                 <div className="mb-2 mt-1 flex flex-wrap gap-2" aria-label="Explorar dados de saúde por região">
                   <button type="button" onClick={()=>setMetric('sono')} className="min-h-11 rounded-full border border-violet-400/15 px-3 text-[11px] text-violet-200">Cabeça · sono</button>
@@ -364,7 +368,8 @@ function HealthDashboard({
                   {bodyContext.surgeryAgenda.total>0?<button type="button" onClick={()=>selectBody('surgery')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Cirurgias</button>:null}
                   {bodyContext.supports.length>0?<button type="button" onClick={()=>selectBody('equipment')} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Equipamentos</button>:null}
                 </div>
-              </details>
+              </>}
+              </ClinicalDisclosure>
               {careRhythm && (careRhythm.sleep.days>0 || careRhythm.walk.days>0 || careRhythm.mood.declaredDays>0) && <button type="button" onClick={()=>goFromHealth('/saude/registros/relatorio')} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-violet-400/15 bg-violet-400/[.04] px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" aria-label="Ver relatório de sono, caminhada e humor no período">
                 <span className="min-w-0"><strong className="block text-[11px] text-violet-200">Rotina documentada · últimos 7 dias</strong><span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">Sono {careRhythm.sleep.days} dia(s) · caminhada {careRhythm.walk.days} · humor {careRhythm.mood.declaredDays}</span></span><ChevronRight size={16} className="shrink-0 text-violet-300"/>
               </button>}

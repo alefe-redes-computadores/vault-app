@@ -17,8 +17,8 @@ export function HomeClinicalAreaTile({ label, description, path, Icon, tone, onN
   return (
     <button type="button" onClick={() => onNavigate(path)}
       aria-label={`${label}: ${description}`}
-      className={`group flex h-full min-h-[84px] w-full min-w-0 items-center gap-3 rounded-[20px] border px-3.5 py-3.5 text-left shadow-sm transition-[background-color,border-color,transform] hover:border-emerald-300/25 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${tone} ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-current/20 bg-surface-raised/40 transition-transform motion-safe:group-active:scale-95" aria-hidden="true"><Icon size={17}/></span>
+      className={`group flex h-full min-h-[84px] w-full min-w-0 items-start gap-2.5 rounded-[20px] border px-3.5 py-3.5 text-left shadow-sm transition-[background-color,border-color,transform] hover:border-emerald-300/25 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${tone} ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-current/30 bg-surface-raised/40 transition-transform motion-safe:group-active:scale-95" aria-hidden="true"><Icon size={17}/></span>
       <span className="min-w-0 flex-1">
         <strong className="block break-words text-[13px] font-bold leading-snug text-ink-primary">{label}</strong>
         <span className="mt-1 block line-clamp-2 break-words text-[11px] leading-relaxed text-ink-muted">{description}</span>

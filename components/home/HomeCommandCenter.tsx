@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Network, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
@@ -35,7 +35,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         {/* M6: Remédios já está visível nos indicadores da Home; este destino fica disponível sem duplicar o card. */}
         <div className="col-span-2"><ClinicalDisclosure id="home-acessos-medicamentos" title="Medicamentos, retiradas e fornecimento" description="Cadastro, SUS, compras e histórico · abrir opções" icon={<Store size={18}/>} iconClassName="text-emerald-300">
           {() => <div className="space-y-2">
-        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none w-full">
+        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-300"><Pill size={16}/></span>
           <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</span></span><ChevronRight size={17} className="text-emerald-300"/>
         </button>
