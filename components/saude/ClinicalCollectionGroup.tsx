@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, type LucideIcon } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type ClinicalCollectionGroupProps = {
   id: string;
@@ -25,6 +25,7 @@ const tones = {
 /** Progressive hierarchy for large clinical lists. Keeps secondary groups out of the first viewport. */
 export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,children,defaultOpen=false,forceOpen=false,tone="neutral"}:ClinicalCollectionGroupProps){
   const [open,setOpen]=useState(defaultOpen);
+  const groupRef=useRef<HTMLDetailsElement>(null);
   // P14 R6: direct #medicamentos-* links cannot leave an eligible group collapsed.
   useEffect(() => {
     const revealHash = () => {
@@ -32,18 +33,24 @@ export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,ch
       try { hash = decodeURIComponent(hash); } catch { return; }
       if (hash === id) setOpen(true);
     };
+    const reveal=()=>setOpen(true);
+    const target=groupRef.current;
+    target?.addEventListener("vault:reveal-clinical-section",reveal);
     revealHash();
     window.addEventListener("hashchange", revealHash);
-    return () => window.removeEventListener("hashchange", revealHash);
+    return () => {
+      target?.removeEventListener("vault:reveal-clinical-section",reveal);
+      window.removeEventListener("hashchange", revealHash);
+    };
   }, [id]);
   const visible=forceOpen||open;
   if(count===0)return null;
-  return <details id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface/60 [content-visibility:auto] [contain-intrinsic-size:180px]">
+  return <details ref={groupRef} id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface/60 [content-visibility:auto] [contain-intrinsic-size:180px]">
     <summary aria-label={`${title}. ${count} itens. ${description}`} className="flex min-h-[52px] cursor-pointer list-none items-center gap-2.5 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       <span className={`grid size-8 shrink-0 place-items-center rounded-lg border ${tones[tone]}`}><Icon size={16}/></span>
-      <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink-primary">{title}</span><span className="mt-0.5 hidden min-[460px]:block line-clamp-2 break-words text-[11px] leading-snug text-ink-muted">{description}</span></span>
+      <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink-primary">{title}</span><span className="mt-0.5 block line-clamp-2 break-words text-[11px] leading-snug text-ink-muted">{description}</span></span>
       <span className="shrink-0 rounded-full bg-surface-raised px-2 py-1 font-mono text-xs tabular-nums text-ink-muted">{count}</span>
-      <ChevronDown size={15} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/>
+      <ChevronDown size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform motion-reduce:transition-none group-open:rotate-180"/>
     </summary>
     {visible?<div className="space-y-2 border-t border-surface-border/40 bg-void/20 p-2">{typeof children==="function"?children():children}</div>:null}
   </details>;

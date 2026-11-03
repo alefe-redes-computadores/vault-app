@@ -17,22 +17,34 @@ type Props = {
  */
 export function MedicationAdditionalFormatsSheet({ open, selectedFormat, onSelect, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => closeRef.current?.focus());
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      event.preventDefault();
-      onClose();
+      if (event.key !== "Escape" && event.key !== "Tab") return;
+      if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); onCloseRef.current(); return; }
+      if (event.key !== "Tab") return;
+      const elements = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? []);
+      if (!elements.length) return;
+      const first = elements[0], last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener("keydown", escape);
     return () => {
       document.removeEventListener("keydown", escape);
-      if (previous?.isConnected) previous.focus();
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return (
     <AnimatePresence>
@@ -49,6 +61,7 @@ export function MedicationAdditionalFormatsSheet({ open, selectedFormat, onSelec
             className="fixed inset-0 z-[80] bg-black/65 backdrop-blur-sm motion-reduce:transition-none"
           />
           <motion.section
+            ref={dialogRef}
             key="format-dialog"
             role="dialog"
             aria-modal="true"
@@ -58,7 +71,7 @@ export function MedicationAdditionalFormatsSheet({ open, selectedFormat, onSelec
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: .985 }}
             transition={{ duration: .16 }}
-            className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-h-[78dvh] max-w-lg overflow-hidden rounded-[26px] border border-surface-border bg-surface shadow-2xl"
+            className="fixed inset-x-2 bottom-[max(env(safe-area-inset-bottom),0.25rem)] z-[90] mx-auto max-h-[min(88dvh,700px)] sm:inset-x-3 sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] max-w-lg overflow-hidden rounded-[26px] border border-surface-border bg-surface shadow-2xl"
           >
             <header className="flex items-start justify-between gap-3 border-b border-surface-border/50 px-4 py-4 sm:px-5">
               <div className="min-w-0 flex-1">

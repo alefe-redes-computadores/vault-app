@@ -116,13 +116,14 @@ export function ListPageHeader({
         ${className}
       `}
     >
-      <div className="flex min-w-0 items-start justify-between gap-2.5 sm:gap-3">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2.5 sm:flex-nowrap sm:gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3">
           {showBack && (
             <button
               type="button"
               onClick={handleBack}
               aria-label="Voltar"
+              title="Voltar para a área anterior"
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-surface-border/70 bg-surface-raised/85 text-ink-primary shadow-sm transition-all hover:border-ice/35 hover:bg-surface-raised active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice/70"
             >
               <ArrowLeft size={18} />
@@ -161,7 +162,7 @@ export function ListPageHeader({
         </div>
 
         {rightAction && (
-          <div className="flex shrink-0 items-center justify-end self-start">
+          <div className="flex min-w-0 max-w-full shrink-0 flex-wrap items-center justify-end gap-1 self-start">
             {rightAction}
           </div>
         )}

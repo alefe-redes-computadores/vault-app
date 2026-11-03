@@ -19,7 +19,7 @@ export function DocumentList({
 }: DocumentListProps) {
   if (documents.length === 0) {
     return (
-      <div className="rounded-[24px] border border-surface-border/50 bg-surface px-5 py-10 text-center shadow-sm">
+      <div role="status" aria-live="polite" className="rounded-[24px] border border-surface-border/50 bg-surface px-5 py-10 text-center shadow-sm">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised">
           <FileText size={26} className="text-ink-muted/45" />
         </div>
@@ -34,15 +34,16 @@ export function DocumentList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="list" aria-label="Documentos encontrados">
       {documents.map((doc) => (
+        <div key={doc.id} role="listitem" className="min-w-0">
         <DocumentCard
-          key={doc.id}
           document={doc}
           onFavoriteToggle={onFavoriteToggle}
           compact={compact}
           personName={personName ? personName(doc) : undefined}
         />
+        </div>
       ))}
     </div>
   );

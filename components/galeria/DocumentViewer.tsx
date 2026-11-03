@@ -11,6 +11,32 @@ interface DocumentViewerProps {
 
 export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); return; }
+      if (event.key !== "Tab") return;
+      const buttons = Array.from(viewerRef.current?.querySelectorAll<HTMLButtonElement>("button:not([disabled])") ?? []);
+      if (!buttons.length) return;
+      const first = buttons[0], last = buttons[buttons.length-1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, []);
   
   // Referências mutáveis (Bypass no React State para performance máxima de 60fps)
   const transform = useRef({ scale: 1, x: 0, y: 0 });
@@ -71,6 +97,10 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
 
   return (
     <motion.div
+      ref={viewerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Visualizar documento: ${item.title}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -79,10 +109,10 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
     >
       {/* Header Interativo */}
       <div className="flex items-center justify-between p-5 pt-safe z-10">
-        <button onClick={onClose} className="rounded-full bg-white/10 p-3 text-white backdrop-blur-md active:scale-90 transition-transform">
+        <button ref={closeRef} type="button" aria-label="Fechar documento" onClick={onClose} className="rounded-full bg-white/10 p-3 text-white backdrop-blur-md active:scale-90 transition-transform">
           <X size={22} />
         </button>
-        <button onClick={() => onShare(item)} className="flex items-center gap-2 rounded-full bg-ice/20 px-5 py-3 text-sm font-bold text-ice active:scale-95 transition-transform backdrop-blur-md">
+        <button type="button" onClick={() => onShare(item)} className="flex items-center gap-2 rounded-full bg-ice/20 px-5 py-3 text-sm font-bold text-ice active:scale-95 transition-transform backdrop-blur-md">
           <Share2 size={16} /> Compartilhar
         </button>
       </div>
@@ -97,7 +127,7 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
             <h3 className="text-xl font-bold text-white mb-2 max-w-[280px] leading-tight">{item.title}</h3>
             <p className="text-sm text-white/50 mb-8">Documento PDF seguro</p>
             <button 
-              onClick={() => window.open(item.url, "_blank")}
+              onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")}
               className="flex items-center gap-2 bg-white text-black px-6 py-3.5 rounded-full font-bold shadow-lg active:scale-95 transition-transform"
             >
               <ExternalLink size={18} /> Abrir Arquivo Completo

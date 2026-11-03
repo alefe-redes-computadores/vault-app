@@ -23,7 +23,7 @@ export function ClinicalListSummary({ icon: Icon, eyebrow, title, detail, metric
   metrics: ClinicalSummaryMetric[];
 }) {
   // V302: visual metric grid retains the divide-x divide-surface-border hierarchy.
-  const columns = metrics.length === 4 ? "grid-cols-2 sm:grid-cols-4" : metrics.length === 2 ? "grid-cols-2" : "grid-cols-3";
+  const columns = metrics.length <= 1 ? "grid-cols-1" : metrics.length === 2 ? "grid-cols-2" : metrics.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4";
   return <section aria-label={`${eyebrow}: ${title}`} className="overflow-hidden rounded-[18px] border border-surface-border/65 bg-gradient-to-br from-white/[.025] via-surface to-surface shadow-sm">
     <div className="flex min-w-0 items-center gap-3 px-3.5 py-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-void/30 text-ink-secondary"><Icon size={17}/></span>
