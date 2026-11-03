@@ -14,7 +14,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
   iconClassName?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const revealHash = () => {
@@ -22,16 +22,21 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
       try { hash = decodeURIComponent(hash); } catch { /* invalid fragment: ignore */ }
       if (hash === id) setOpen(true);
     };
+    const section = sectionRef.current;
+    const reveal = () => setOpen(true);
+    section?.addEventListener("vault:reveal-clinical-section", reveal);
     revealHash();
     window.addEventListener("hashchange", revealHash);
-    return () => window.removeEventListener("hashchange", revealHash);
+    return () => {
+      section?.removeEventListener("vault:reveal-clinical-section", reveal);
+      window.removeEventListener("hashchange", revealHash);
+    };
   }, [id]);
 
   return (
-    <section id={id} className="scroll-mt-28 overflow-hidden rounded-[18px] border border-surface-border/55 bg-surface/90 shadow-sm">
+    <section ref={sectionRef} id={id} className="scroll-mt-28 overflow-hidden rounded-[18px] border border-surface-border/55 bg-surface/90 shadow-sm">
       <h2>
         <button
-          ref={buttonRef}
           type="button"
           aria-expanded={open}
           aria-controls={`${id}-panel`}
@@ -43,7 +48,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
             <span className="block text-sm font-bold leading-snug text-ink-primary">{title}</span>
             <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-ink-muted">{description}</span>
           </span>
-          <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-ink-muted transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
         </button>
       </h2>
       {open && (

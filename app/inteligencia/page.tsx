@@ -46,15 +46,21 @@ export default function VaultIntelligencePage() {
   const [evidenceOpened, setEvidenceOpened] = useState(false);
 
   useEffect(() => {
-    const revealEvidence = () => {
-      if (window.location.hash === "#insight-evidencias" && evidenceRef.current) {
-        evidenceRef.current.open = true;
-        setEvidenceOpened(true);
-      }
+    const evidence = evidenceRef.current;
+    const reveal = () => {
+      if (evidence) evidence.open = true;
+      setEvidenceOpened(true);
     };
+    const revealEvidence = () => {
+      if (window.location.hash === "#insight-evidencias") reveal();
+    };
+    evidence?.addEventListener("vault:reveal-clinical-section", reveal);
     revealEvidence();
     window.addEventListener("hashchange", revealEvidence);
-    return () => window.removeEventListener("hashchange", revealEvidence);
+    return () => {
+      evidence?.removeEventListener("vault:reveal-clinical-section", reveal);
+      window.removeEventListener("hashchange", revealEvidence);
+    };
   }, []);
 
   // VAULT_INSIGHT_EXACT_ENTRY_V1
