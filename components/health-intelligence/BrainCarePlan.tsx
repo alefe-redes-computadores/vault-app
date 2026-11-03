@@ -31,15 +31,18 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
   }, [plan]);
   const visible = expanded && !compact ? plan.items : plan.focus.slice(0, 2);
   const formatDate = (value?: string | null) => value ? value.split("-").reverse().join("/") : null;
-  return <section aria-label="Plano do Brain" className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[24px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-emerald-400/[0.035] shadow-sm">
+  return <section aria-label="Plano do Brain" className="vault-brain-enter mx-auto mt-4 max-w-2xl overflow-hidden rounded-[24px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-emerald-400/[0.035] shadow-sm">
     <div className="flex items-start gap-3 px-4 py-3.5">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/15 bg-violet-400/[.07] text-violet-200"><BrainCircuit size={19}/></div>
       <div className="min-w-0 flex-1"><h2 className="text-base font-bold tracking-tight text-ink-primary"><VaultBrainIdentity context="Plano de cuidado" /></h2><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Uma fila única: fato registrado, projeção e padrão para conversar continuam identificados.</p></div>
       <span className="rounded-full border border-surface-border/70 bg-surface-raised/55 px-2.5 py-1 font-mono text-[10px] font-semibold tabular-nums text-ink-secondary">{plan.items.length} etapas</span>
     </div>
-    <div className="grid grid-cols-2 border-y border-surface-border/50 bg-void/15 min-[390px]:grid-cols-4">
-      {(Object.keys(laneMeta) as BrainCarePlanLane[]).map(lane => <div key={lane} className="min-w-0 border-r border-b border-surface-border/40 px-2 py-3 text-center min-[390px]:border-b-0 last:border-r-0"><strong className="block text-sm">{plan.counts[lane]}</strong><span className="mt-1 block text-[10px] font-semibold leading-snug text-ink-muted">{laneMeta[lane].label}</span></div>)}
-    </div>
+    <details className="group border-y border-surface-border/50 bg-void/15">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 text-[11px] font-medium text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">Ver distribuição das etapas <ChevronRight size={14} className="transition-transform motion-reduce:transition-none group-open:rotate-90" aria-hidden="true" /></summary>
+      <div className="grid grid-cols-2 border-t border-surface-border/50 min-[390px]:grid-cols-4">
+        {(Object.keys(laneMeta) as BrainCarePlanLane[]).map(lane => <div key={lane} className="min-w-0 border-r border-b border-surface-border/40 px-2 py-3 text-center min-[390px]:border-b-0 last:border-r-0"><strong className="block text-sm">{plan.counts[lane]}</strong><span className="mt-1 block text-[10px] font-semibold leading-snug text-ink-muted">{laneMeta[lane].label}</span></div>)}
+      </div>
+    </details>
     {change ? <div className="border-b border-surface-border/50 px-4 py-2 font-mono text-[8px] uppercase tracking-wide text-ink-faint">{change.label}</div> : null}
     {visible.length ? <div id={planItemsId} className="space-y-2 p-3">{visible.map(item => {
       const meta = laneMeta[item.lane], Icon = meta.icon;

@@ -350,3 +350,13 @@ body:has([role="dialog"][aria-modal="true"]) .vault-bottom-nav {
   isolation: isolate;
   z-index: 100 !important;
 }
+
+/* M45 · VAULT Brain — brief entrance only; no looping glow or layout shift. */
+@keyframes vault-brain-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.vault-brain-enter { animation: vault-brain-appear 260ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .vault-brain-enter { animation: none !important; }
+}
