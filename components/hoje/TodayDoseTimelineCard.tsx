@@ -2,7 +2,7 @@
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { relevantDoseProcessingId } from "@/lib/today/card-render-scope";
 import { motion } from "framer-motion";
-import { AlertOctagon, AlertTriangle, Calendar, CheckCircle2, ChevronRight, Circle, Clock, RotateCcw, Stethoscope, Trash2, X, XCircle, Zap } from "lucide-react";
+import { AlertOctagon, AlertTriangle, Calendar, CheckCircle2, ChevronRight, Circle, Clock, PackagePlus, RotateCcw, Stethoscope, Trash2, X, XCircle, Zap } from "lucide-react";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { TodaySymptomTimelineCard } from "@/components/hoje/TodaySymptomTimelineCard";
 import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresentation";
@@ -461,9 +461,10 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
                                                 );
                                               }
                                             }}
-                                            className="rounded-full bg-coral/20 px-2.5 py-1 text-[9px] font-bold text-coral transition-colors hover:bg-coral/30"
+                                            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-coral/15 px-3 text-xs font-semibold text-coral transition-colors hover:bg-coral/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-coral"
                                           >
-                                            Renovar
+                                            <PackagePlus size={14} aria-hidden="true" />
+                                            Repor estoque
                                           </button>
                                         </div>
                                       )}

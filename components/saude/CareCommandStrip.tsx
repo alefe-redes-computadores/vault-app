@@ -1,12 +1,12 @@
 "use client";
 
 import { useId, useState } from "react";
-import { AlertTriangle, CalendarClock, ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CalendarClock, ArrowUpRight, ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
 
 const confidenceLabel = { high: "alta", moderate: "moderada", limited: "limitada" } as const;
 
-export function CareCommandStrip({ command, onNavigate }: { command: CareCommandSnapshot | null; onNavigate: (href: string) => void }) {
+export function CareCommandStrip({ command, onNavigate, insightHref }: { insightHref?: string; command: CareCommandSnapshot | null; onNavigate: (href: string) => void }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const evidenceId = useId();
   const action = command?.decision;
@@ -24,7 +24,7 @@ export function CareCommandStrip({ command, onNavigate }: { command: CareCommand
       <button type="button" onClick={() => onNavigate(action.href)} aria-label={`Abrir próxima etapa do Brain: ${action.title}. Confiança ${confidenceLabel[action.confidence]}`} className="flex min-h-14 w-full items-center gap-3 rounded-[18px] p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 active:scale-[.985]">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${urgent ? "bg-coral/12 text-coral" : "bg-amber-300/10 text-amber-300"}`}><Icon size={17}/></span>
         <span className="min-w-0 flex-1">
-          <span className={`block text-[10px] font-bold uppercase tracking-[.1em] ${urgent ? "text-coral" : "text-amber-300"}`}>{urgent ? "Ação pendente" : "Preparar em seguida"}</span>
+          <span className={`block text-[10px] font-bold uppercase tracking-[.1em] ${urgent ? "text-coral" : "text-amber-300"}`}>Próximo passo · {urgent ? "Ação pendente" : "Preparar em seguida"}</span>
           <strong className="mt-0.5 block line-clamp-1 text-xs text-ink-primary">{action.title}</strong>
           <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-ink-muted">{action.reason}</span>
           {meta ? <span className="mt-1 block text-[10px] leading-snug text-ink-muted">{meta}</span> : null}
@@ -38,6 +38,11 @@ export function CareCommandStrip({ command, onNavigate }: { command: CareCommand
       {evidenceOpen ? <div id={evidenceId} className="space-y-1 border-t border-surface-border/30 px-3 py-3 text-xs leading-relaxed text-ink-muted">
         <p>{caveat}</p>
         <p>Prioridade {action.priorityScore} · confiança {confidenceLabel[action.confidence]}. Abrir esta etapa não registra automaticamente dose, receita, compra ou retirada.</p>
+        {insightHref ? (
+          <button type="button" onClick={() => onNavigate(insightHref)} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+            Abrir no Vault Insight <ArrowUpRight size={14} aria-hidden="true" />
+          </button>
+        ) : null}
       </div> : null}
     </section>
   );
