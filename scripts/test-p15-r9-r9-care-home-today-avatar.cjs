@@ -35,7 +35,7 @@ ok(home.includes('selectHomeDayEvents(consultas, hoje, true)')&&home.includes('s
 ok(home.includes('countHomeTodayAppointments({')&&home.includes('appointments={totalCompromissosHoje}'),'Home preserva contagem R8');
 ok(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('medicamentosById.get(retirada.medicamento_id)'),'Home conserva proprietário e índice V196');
 ok(today.includes('todayTimelineGroupContext(metadata[key].sub, items.length)')&&today.includes('groupTimelineItems(dosesParaExibir'),'Hoje mantém grupos canônicos');
-ok(today.includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 preservados');
+ok(today.includes('todayTimelineGroupPresentation')&&read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 preservados');
 ok(today.includes('const metricItems = useMemo(() => doses.filter(')&&today.includes('summarizeTimeline(doses)'),'Métrica P10 não perdeu o memo');
 ok(today.includes('visibleTimelineItems(dosesFiltradas')&&today.includes('countHiddenTodayResolved(dosesFiltradas'),'Visibilidade e contagem R8 mantidas');
 ok(details.includes('stage={careDecision.stage}')&&details.includes('V332_CARE_EVIDENCE_DISCLOSURE'),'Detalhes passam estágio canônico ao aviso');

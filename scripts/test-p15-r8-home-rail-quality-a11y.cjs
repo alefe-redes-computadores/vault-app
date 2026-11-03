@@ -21,9 +21,9 @@ ok(s.detail.includes('handleAcceptNameCorrection')&&s.detail.includes('handleDis
 ok(s.detail.includes('result.matchedText')&&s.detail.includes('normalizedCurrentName'), 'Match e aliases canônicos preservados');
 ok(s.detail.includes('onClick={\n                    abrirQuickDose') && s.detail.includes('QuickDoseModal'), 'Ação clínica e doses canônicas intocadas');
 ok(s.detail.includes('Quantidade registrada hoje')&&s.detail.includes('Menor preço médio por farmácia:')&&s.detail.includes('getElementById("historico-aquisicoes")'), 'Contratos V319/V320/V70 preservados');
-ok(s.today.includes('aria-pressed={filtroStatus === "todos"}') && s.today.includes('Período {filtroPeriodo !== "todos"'), 'Filtros antigos permanecem na página Hoje');
-for(const field of ['pendentes','tomados','ignorados'])ok(s.today.includes(`aria-pressed={filtroStatus === "${field}"}`),`Filtro ${field} expõe seleção`);
-ok(s.today.includes('aria-pressed={filtroPeriodo === value}'), 'Filtro de período expõe seleção sem alterar autoridade');
+ok(s.today.includes('<TodayFilterPanel status={filtroStatus}') && read('components/hoje/TodayFilterPanel.tsx').includes('aria-pressed={active}'), 'Filtros antigos permanecem na página Hoje');
+for(const field of ['pendentes','tomados','ignorados'])ok(read('components/hoje/TodayFilterPanel.tsx').includes(`{ value: "${field}"`),`Filtro ${field} expõe seleção`);
+ok(s.today.includes('onPeriod={(value) => { trigger("vibrate"); setFiltroPeriodo(value); }}') && read('components/hoje/TodayFilterPanel.tsx').includes('aria-pressed={active}'), 'Filtro de período expõe seleção sem alterar autoridade');
 ok(s.hero.includes('scheduled > 0')&&s.hero.includes('doses resolvidas de'), 'Home não confunde resolução de slot com tomada confirmada');
 ok(s.avatar.includes('shirtDetail: new THREE.MeshStandardMaterial')&&s.avatar.includes('roughness: .90')&&s.avatar.includes('renderer.forceContextLoss()')&&!s.avatar.includes('requestAnimationFrame(animate)'), 'Avatar conserva geometria e descarte GPU');
 

@@ -29,11 +29,11 @@ check(nav.includes('density?:"regular"|"compact"') && nav.includes('density="reg
 check(nav.includes('grid-cols-4 gap-1') && nav.includes('min-[480px]:grid-cols-5'), 'âncoras compactas mostram 4 ou 5 colunas');
 check(nav.includes('layout="grid"') && nav.includes('layout?:"scroll"|"grid"') && nav.includes('min-[480px]:grid-cols-4'), 'contrato visual V334 legado intacto');
 check(nav.includes('IntersectionObserver') && nav.includes('hashchange') && nav.includes('aria-current='), 'navegação profunda e seção ativa preservadas');
-check(today.includes('label="Áreas de Hoje" layout="grid" density="compact"') && today.includes('Navegar por data'), 'Hoje compacto, sem duplicar data selecionada');
+check(today.includes('<TodayDateNavigation label="Escolher data da linha do tempo"')&&today.includes('<TodayFilterPanel status={filtroStatus}'), 'Hoje compacto, sem duplicar data selecionada');
 check(today.includes('navegarData(') && today.includes('voltarParaHoje') && today.includes('DoseScheduleGroups'), 'datas, retorno e autoridade de doses intactos');
 check(today.includes('retroReviewMode') && today.includes('dosesElegiveisLote') && today.includes('processandoTodos'), 'revisão retroativa e operações em lote preservadas');
-check(today.includes('aria-pressed={filtroStatus === "todos"}') && today.includes('>Todas</button>'), 'filtro Todas explícito');
-check(today.includes('Período {filtroPeriodo !== "todos"') && today.includes('flex flex-wrap gap-1.5'), 'filtros de período acessíveis sem rolagem invisível');
+check(today.includes('<TodayFilterPanel status={filtroStatus}') && read('components/hoje/TodayFilterPanel.tsx').includes('{ value: "todos", label: "Padrão" }'), 'filtro Todas explícito');
+check(today.includes('onPeriod={(value) => { trigger("vibrate"); setFiltroPeriodo(value); }}') && read('components/hoje/TodayFilterPanel.tsx').includes('flex flex-wrap gap-2'), 'filtros de período acessíveis sem rolagem invisível');
 check(home.includes('home-acessos-medicamentos')&&home.includes('"/saude/retiradas"')&&home.includes('"/saude/fornecimento"'), 'Home recolhe atalhos sem apagar rotas');
 check(home.includes('"/saude/medicamentos"')&&home.includes('<ClinicalDisclosure id="home-outras-areas"'), 'Medicamentos continuam em destaque, outras áreas acessíveis');
 check(metrics.includes('min-h-[58px]') && metrics.includes('onOpenPending') && metrics.includes('SOS / extra'), '4 métricas compactas com ação de doses');

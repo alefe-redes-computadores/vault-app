@@ -6,7 +6,7 @@ const notifications=read("components/InsightNotificationReconciler.tsx");
 const hook=read("hooks/useSyncQueueSummary.ts");
 const status=read("components/SyncStatusIndicator.tsx");
 const global=read("components/GlobalSyncIssueAlert.tsx");
-ok(home.includes("href: primaryCareCommand.href")&&home.includes("router.push(resumoContextual.href)"),"Home abre o destino real da decisão do Brain");
+ok(home.includes("href: primaryCareCommand.href")&&home.includes('router.push(safeReturnTarget(resumoContextual.href, "/hoje"))'),"Home abre o destino real da decisão do Brain");
 ok(home.includes("href: primaryMedicationCareOpportunity.actionHref"),"oportunidade de medicamento preserva ação contextual");
 ok(notifications.includes("clearCarePlanNotificationMemory(ownerKey)")&&notifications.includes("if (!plan)"),"notificação antiga é cancelada quando a decisão desaparece");
 ok(notifications.includes("notificationsEnabled")&&notifications.includes("LocalNotifications.cancel"),"desativar insights cancela alerta operacional pendente");

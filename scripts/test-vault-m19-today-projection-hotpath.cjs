@@ -32,14 +32,22 @@ for(const fixture of [[],slots,slots.slice(0,1),Array.from({length:2000},(_,i)=>
 }
 const counters={days:0,stock:0,behavior:0};
 const acquisitionModule=load('lib/today/acquisition-date-index.ts');
+// Fixture M19: real stock-state adapter, estimator counted once per medicamento.
+const clinicalStock=load('lib/health-intelligence/clinical-stock.ts',{
+  '@/lib/health-utils':{computeEstoqueInfo:()=>{
+    counters.stock++;
+    return {quantidadeRestante:6,diasRestantes:null,estimativaDosesDisponivel:false};
+  }},
+});
 const builder=load('lib/today/build-timeline-items.ts',{
   '@/lib/today/acquisition-date-index':acquisitionModule,
   '@/lib/dose-slot-authority':{buildDoseSlotIndex:()=>new Map(),resolveDoseSlot:()=>({state:'absent'})},
   '@/lib/health-utils':{computeEstoqueInfo:()=>{counters.stock++;return {quantidadeRestante:6}},getDaysUntil:()=>{counters.days++;return 5}},
+  '@/lib/health-intelligence/clinical-stock':clinicalStock,
   '@/lib/health-insights':{analisarComportamentoUso:()=>{counters.behavior++;return null},isReceitaAtualVencida:()=>false,sugerirRenovacao:()=>({deveRenovar:false,mensagem:'',urgencia:'nenhuma'})},
 }).buildTodayTimelineItems;
 function input(medications,logs){return {medicamentos:medications,doseLogs:logs,medicos:[],tratamentos:[],farmacias:[],hospitais:[],historicoDoses:[],registros:[],renovacoes:[],dataSelecionada:'2026-11-02',isHoje:true,userId:'u1',personId:'p1'};}
-const med={id:'m1',nome:'Teste',tipo_uso:'continuo',status:'ativo',estoque_horarios:['08:00','20:00'],created_at:'2026-10-01',estoque_unidade_por_dose:1,estoque_unidade_medida:'comprimidos'};
+const med={id:'m1',nome:'Teste',tipo_uso:'continuo',status:'ativo',estoque_horarios:['08:00','20:00'],created_at:'2026-10-01',estoque_quantidade:6,estoque_unidade_por_dose:1,estoque_unidade_medida:'comprimidos'};
 const log=(id,kind,time,taken=true)=>({id,medicamento_id:'m1',horario:time,dose_kind:kind,tomado_em:taken?'2026-11-02T12:00:00Z':null,data:'2026-11-02',quantidade:1});
 const data=[log('a','sos','12:00'),log('a','sos','12:00'),log('b','extra','13:00'),log('c','planned','16:00',false),log(undefined,'sos','17:00'),log('d','scheduled','08:00')];
 let rows=builder(input([med],data));
@@ -57,4 +65,5 @@ ok(rows.length===1&&rows[0].isAvulsa,'legado sem ID continua a deduplicar primei
 const dense=Array.from({length:4000},(_,i)=>log('id-'+i,'extra',String(i%24).padStart(2,'0')+':00'));
 const denseRows=builder(input([sosMed],dense));
 ok(denseRows.length===4000&&new Set(denseRows.map(x=>x.logId)).size===4000,'quatro mil eventos únicos continuam visíveis e ordenados');
+ok(counters.stock===3,'estoque clinico calculado uma vez por medicamento e por projeção, inclusive SOS');
 console.log('VAULT M19: '+checks+' verificações estruturais/comportamentais aprovadas; sem alegar ganhos medidos no celular');

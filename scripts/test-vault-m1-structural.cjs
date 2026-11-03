@@ -34,7 +34,7 @@ ok(home.includes('medicamentosById.get(retirada.medicamento_id)')&&home.includes
 ok(home.includes('overdueWithdrawals={retiradasAtrasadas.length}')&&read('components/home/HomeAgendaBreakdown.tsx').includes('homeAgendaUrgency('),'Home indica retirada vencida sem nova consulta');
 ok(today.includes('remindersDoDia.length > 0')&&today.includes('<TodayRemindersPanel'),'Hoje mantém origem e extrai render de lembretes');
 ok(today.includes('aria-label="Lembretes de saúde do dia"')===false&&read('components/hoje/TodayRemindersPanel.tsx').includes('aria-label="Lembretes de saúde do dia"'),'rótulo semântico transferido ao componente real');
-ok(today.includes('Programadas para depois')&&today.includes('Registros contraditórios não entram nas métricas'),'V229 e V277 preservados no Hoje');
+ok(read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Programadas para depois · ainda não estão atrasadas')&&read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas')&&today.includes('todayTimelineGroupPresentation'),'V229 e V277 preservados no Hoje');
 ok(today.includes('groupTimelineItems(dosesParaExibir')&&today.includes('await marcarDose(')&&today.includes('const metricItems = useMemo(() => doses.filter('),'fila, ações e métricas preservadas');
 ok(read('components/hoje/TodayRemindersPanel.tsx').includes('onNavigate(reminder.target_route)'),'lembretes mantêm destino original');
 const detail=read('components/saude/MedicationJourneySummary.tsx');

@@ -6,7 +6,7 @@ const avatar=r('components/saude/AvatarCareReadiness.tsx');
 const report=r('app/saude/registros/relatorio/page.tsx');
 
 assert((plan.includes('medicationSupplyRoute')||plan.includes('readinessByMedication'))&&plan.includes('supplyRoute'),'plano identifica a origem real do medicamento');
-assert(plan.includes('const ranked')&&plan.includes('medication:${item.medicationId}')&&plan.includes('relatedCount: primary.relatedCount + item.relatedCount'),'uma posição executiva por medicamento preserva etapas relacionadas');
+assert(plan.includes('const ranked')&&plan.includes('item.medicationId, item.phenomenon')&&plan.includes('relatedCount: primary.relatedCount + item.relatedCount'),'uma posição executiva por medicamento preserva etapas relacionadas');
 assert(plan.includes('dueDate: action.date')&&plan.includes('nextConsultation.data'),'datas operacionais e consulta entram no plano');
 assert(plan.includes('formatBrainCarePlan')&&plan.includes('não confirma diagnóstico, prescrição, aquisição, retirada ou adesão'),'exportação do plano preserva limites clínicos');
 assert(memory.includes('item.dueDate || ""')&&memory.includes('item.supplyRoute || ""')&&memory.includes('item.relatedCount'),'memória percebe mudança de prazo, origem e composição');

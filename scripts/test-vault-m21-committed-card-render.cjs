@@ -17,8 +17,14 @@ for(const path of [cardPath,helperPath]){
 const card=read(cardPath),gate=read(gatePath),page=read('app/hoje/page.tsx');
 ok(card.includes('export function TodayDoseTimelineCard')&&card.includes('memo(function TodayDoseTimelineCardBody'),'public component and real memoized visual body both retained');
 ok(card.includes('useLayoutEffect(() => { committedScope.current = scope; }, [scope])'),'callback ref updates only after committed render');
-for(const command of ['handleToggle','handleIgnorar','handleCancelPlannedDose','abrirRevisaoHistorica','setModalAberto','setMedicamentoSelecionado','trigger'])
+for(const command of ['handleToggle','handleIgnorar','handleCancelPlannedDose','abrirRevisaoHistorica','trigger'])
  ok(card.includes('committedScope.current.'+command+'('),'no stale '+command+' closure');
+ok(!card.includes('committedScope.current.setModalAberto(') &&
+   !card.includes('committedScope.current.setMedicamentoSelecionado(') &&
+   card.includes('router: {push: (href: string) => committedScope.current.router.push(href)}') &&
+   card.includes('medicationRestockHref(item.medicamentoId!, returnTo)') &&
+   card.includes('medicationStockCountHref(item.medicamentoId!, returnTo)'),
+   'legacy modal removed; stock actions use latest committed router');
 ok(card.includes('scope.regulatoryProfiles[item.medicamentoId]')&&card.includes('scope.medicamentosById.get(item.medicamentoId)'),'per-medication visual state selected');
 ok(card.includes('regulatoryProfiles, processingId, medicationsById, commands'),'stable visual dependency projection');
 ok(card.includes('isHistoricalProcessing: scope.isHistoricalProcessing')&&card.includes('isProcessing: scope.isProcessing')&&card.includes('horaAtual: scope.horaAtual'),'important disabled/clock state remains reactive');
@@ -62,7 +68,7 @@ let calls=[];
 const makeScope=(patch={})=>({
  isHoje:true,isPassado:false,isFuturo:false,horaAtual:'22:00',regulatoryProfiles:{m1:profile1},processandoDoseId:null,
  trigger:()=>calls.push('old trigger'),router:{push:()=>calls.push('old navigate')},
- medicamentosById:new Map([['m1',med1]]),setMedicamentoSelecionado:()=>calls.push('old med'),setModalAberto:()=>calls.push('old modal'),
+ medicamentosById:new Map([['m1',med1]]),
  abrirRevisaoHistorica:()=>calls.push('old history'),isHistoricalProcessing:false,
  handleCancelPlannedDose:async()=>calls.push('old cancel'),isProcessing:false,
  handleIgnorar:async()=>calls.push('old ignore'),handleToggle:async()=>calls.push('old toggle'),...patch,

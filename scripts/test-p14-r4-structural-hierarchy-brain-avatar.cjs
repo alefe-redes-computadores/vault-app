@@ -34,8 +34,8 @@ ok(quick.includes('opacity-70 hover:opacity-100')&&quick.includes('min-h-[58px]'
 ok(today.includes('import { TodayDateNavigation }')&&today.includes('<TodayDateNavigation'),'Hoje extrai a navegação de data');
 for(const x of ['description={dataSelecionadaDescricao}','onPrevious={() => navegarData(-1)}',
  'onNext={() => navegarData(1)}','onToday={voltarParaHoje}'])ok(today.includes(x),'Navegação mantém autoridade anterior '+x);
-ok(today.includes('label="Navegar por data"')&&navigation.includes('Dia anterior')&&navigation.includes('Próximo dia')&&navigation.includes('onToday'),'Navegação histórica e futura acessível');
-ok(navigation.includes('Histórico: doses sem registro são projeções')&&navigation.includes('Planejamento futuro: doses previstas ainda não podem ser registradas'),'Futuro e passado não são tomados como doses confirmadas');
+ok(today.includes('label="Escolher data da linha do tempo"')&&navigation.includes('Dia anterior')&&navigation.includes('Próximo dia')&&navigation.includes('onToday'),'Navegação histórica e futura acessível');
+ok(read('components/hoje/TodayTimelineGuide.tsx').includes('Falta de confirmação no histórico não significa uma dose ignorada')&&read('components/hoje/TodayTimelineGuide.tsx').includes('A previsão não altera estoque nem confirma tomada'),'Futuro e passado não são tomados como doses confirmadas');
 ok(today.includes('dosesElegiveisLote.length > 1')&&today.includes('<TodayBatchAction')&&today.includes('count={dosesElegiveisLote.length}'),'Lote usa elegibilidade existente');
 ok(today.includes('onClick={() => void handleTomarTodos()}')&&today.includes('disabled={Boolean(processandoTodos || processandoDoseId)}'),'Lote usa handler e trava existentes');
 ok(batch.includes('count < 2')&&batch.includes('SOS e futuras ficam de fora')&&batch.includes('onClick={onClick}'),'UI de lote não autoriza SOS nem futuras');

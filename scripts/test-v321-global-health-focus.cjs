@@ -23,7 +23,7 @@ assert(today.includes('<DoseMonthOverview userId={user.id} personId={activePerso
 assert(today.includes('onClick={() => void handleTomarTodos()}')&&today.includes('dosesElegiveisLote.length > 1'),'ação em lote preservada');
 assert(today.includes('setMostrarConcluidas')&&today.includes('QuickDoseModal'),'ações de dose e histórico preservadas');
 assert(home.includes('VAULT_V321_HOME_EVIDENCE')&&home.includes('home-health-evidence'),'home organiza análise');
-assert(home.includes('defaultOpen={longitudinalHighlights.some('),'alertas prioritários da Home iniciam abertos');
+assert(home.includes('longitudinalHighlights.some(item => item.gravidadeSeguranca')&&home.includes('HomeAttentionRail alerts={unifiedAlerts}'),'alertas prioritários da Home iniciam abertos');
 assert(home.includes('longitudinalHighlights.map(')&&home.includes('setInsightExplicado('),'insights continuam explicáveis');
 assert(home.includes('suppressOperationalOverlap('),'deduplicação operacional preservada');
 assert(supply.includes('VAULT_V321_SUPPLY_FOCUS'));

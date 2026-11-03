@@ -23,9 +23,9 @@ check(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user
 check(home.includes('const medicamentosById')&&home.includes('medicamentosById.get(retirada.medicamento_id)'),'Home mantém índice legado e conexões');
 check(today.includes('medicationsForOwner(rawMedicamentos, activePersonId, user?.id)'),'Hoje usa mesma autoridade compartilhada');
 check(today.includes('new Map<string, any>')&&today.includes('visibleTimelineItems(dosesFiltradas'),'Hoje preserva índices e fila canônica');
-for(const status of ['pendentes','tomados','ignorados'])check(today.includes(`toggleTodayStatus(filtroStatus, "${status}")`)&&today.includes(`aria-pressed={filtroStatus === "${status}"}`),`status ${status} continua acessível`);
-check(today.includes('toggleTodayPeriod(filtroPeriodo, value)')&&today.includes('aria-pressed={filtroPeriodo === value}'),'períodos preservam aria-pressed');
-check(today.includes('Período {filtroPeriodo !== "todos"')&&today.includes('>Todas</button>'),'marcadores legados P14/P15 preservados');
+for(const status of ['pendentes','tomados','ignorados'])check(today.includes('onStatus={(value) => { trigger("vibrate"); setFiltroStatus(value);')&&read('components/hoje/TodayFilterPanel.tsx').includes(`{ value: "${status}"`),`status ${status} continua acessível`);
+check(today.includes('onPeriod={(value) => { trigger("vibrate"); setFiltroPeriodo(value); }}')&&read('components/hoje/TodayFilterPanel.tsx').includes('aria-pressed={active}'),'períodos preservam aria-pressed');
+check(today.includes('<TodayFilterPanel status={filtroStatus}')&&read('components/hoje/TodayFilterPanel.tsx').includes('label: "Dia inteiro"'),'marcadores legados P14/P15 preservados');
 check(today.includes('DoseScheduleGroups')&&today.includes('QuickDoseModal')&&today.includes('await marcarDose('),'autoridade de doses não alterada');
 check(hero.includes('safeProgress')&&hero.includes('safeCompleted')&&hero.includes('scheduled > 0'),'Home evita taxa e numerador inválidos');
 check(hero.includes('Rotina programada')&&hero.includes('role="progressbar"')&&hero.includes('Sem horários'),'indicador e acessibilidade existentes preservados');

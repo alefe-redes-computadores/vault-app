@@ -11,7 +11,11 @@ ok(today.includes('<TodayAppointmentCard')&&today.includes('onOpen={() => navega
 ok(!today.includes('const compromissoCancelado =')&&card.includes('WithdrawalPreparationView')&&pure.includes('item.status === "cancelada"'),'appointment presentation extracted; canonical statuses remain');
 ok(today.includes('Compromissos do Dia')&&today.includes('compromissosFiltrados.length')&&today.includes('navegarCompromisso ='),'agenda and navigation remain on the Today page');
 ok(today.includes('<TodayDoseGroupHeading')&&today.includes('const progresso = grupo.progress')&&group.includes('role="progressbar"'),'dose group shows existing memoized authority');
-ok(today.includes('setMostrarConcluidas')&&today.includes('Ver tomadas e ignoradas')&&today.includes('const hasFiltrosAtivos ='),'historical toggle and filters retained');
+ok(today.includes('setMostrarConcluidas')&&today.includes('<TodayFilterPanel')&&
+   today.includes('showResolved={mostrarConcluidas}')&&
+   today.includes('onShowResolved={(value) => { trigger("vibrate"); setMostrarConcluidas(value); }}')&&
+   today.includes('visibleTimelineItems(dosesFiltradas, { isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas })')&&
+   today.includes('const hasFiltrosAtivos ='),'historical toggle and filters retained');
 ok(today.includes('emptyTimelineCopy.title')&&today.includes('emptyTimelineCopy.description')&&empty.includes('Nenhum slot para revisar neste dia'),'empty UI never erases scheduled slots');
 ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('buildTodayTimelineItems(')&&today.includes('setIsBatchTimeModalOpen'),'canonical dose batch/stock/actions untouched');
 ok(doseCard.includes('describeTodayDoseStatus({')&&doseCard.includes('isHistoricoSemConfirmacao: Boolean(isHistoricoSemConfirmacao)'),'V242 and M14 historical-not-confirmed typings conserved');

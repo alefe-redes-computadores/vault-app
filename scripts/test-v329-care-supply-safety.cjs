@@ -17,11 +17,11 @@ const m={id:"med",user_id:"u",person_id:"p",nome:"Remédio",estoque_quantidade:0
 const rx={id:"rx",user_id:"u",person_id:"p",medicamento_id:"med",data:"2026-09-12",document_id:"doc"};
 const buy={id:"buy",user_id:"u",person_id:"p",medicamento_id:"med",data:"2026-09-23",data_aquisicao:"2026-09-23",tipo_aquisicao:"comprado",quantidade:20};
 let d=decide({medication:m,renewals:[rx,buy],today:"2026-10-29",needsPrescription:true,needsStock:true});
-assert.equal(d.stage,"acquisition_needed");assert.equal(d.actionLabel,"Conferir aquisição");assert.equal(d.prescriptionOnFile,false);assert.match(d.explanation,/não comprova que esteja válida/);
+assert.equal(d.stage,"acquisition_needed");assert.equal(d.actionLabel,"Repor estoque");assert.equal(d.prescriptionOnFile,false);assert.match(d.explanation,/não comprova que esteja válida/);
 d=decide({medication:m,renewals:[rx,buy],today:"2026-10-29",needsPrescription:true,needsStock:false});
 assert.equal(d.stage,"stock_review");assert.equal(d.actionLabel,"Conferir receita");
 d=decide({medication:m,renewals:[rx],today:"2026-10-29",needsPrescription:true,needsStock:true});
-assert.equal(d.stage,"acquisition_needed");assert.equal(d.actionLabel,"Registrar aquisição");
+assert.equal(d.stage,"acquisition_needed");assert.equal(d.actionLabel,"Repor estoque");
 d=decide({medication:m,renewals:[],today:"2026-10-29",needsPrescription:true,needsStock:false});assert.equal(d.stage,"prescription_needed");
 const foreign={...rx,user_id:"outside",id:"foreign"};
 d=decide({medication:m,renewals:[foreign],today:"2026-10-29",needsPrescription:true,needsStock:false});assert.equal(d.stage,"prescription_needed");

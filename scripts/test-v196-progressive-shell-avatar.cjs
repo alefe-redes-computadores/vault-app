@@ -21,7 +21,7 @@ assert(home.includes("medicamentosById.get(retirada.medicamento_id)"));
 assert(home.includes('className="vault-deferred-lg space-y-3"'));
 
 assert(today.includes("new Map<string, any>"));
-assert(today.includes("<TodayDoseTimelineCard") && doseCard.includes("? medicamentosById.get(item.medicamentoId)"));
+assert(today.includes("<TodayDoseTimelineCard") && doseCard.includes('scope.medicamentosById.get(item.medicamentoId)'));
 assert(!today.includes("medicamentos.find"));
 assert(today.includes('className="vault-deferred-lg space-y-2"'));
 assert(today.includes("<TodayAppointmentCard"),"Today: extracted appointment card is mounted");

@@ -14,9 +14,9 @@ const gate = fs.readFileSync("scripts/test-v63-release-gate.mjs", "utf8");
 
 assert(today.includes("<TodayActionCenter") && today.includes("pendingDoses={totalPendentes}"), "Hoje delegates its priority hierarchy without changing dose authority");
 assert(actionCenter.includes('aria-label="Prioridades de hoje"') && actionCenter.includes("<CareCommandStrip"), "Today action center keeps doses and Brain in one navigable hierarchy");
-assert(actionCenter.includes("!command?.decision && brainFallback"), "Brain fallback cannot duplicate a canonical care decision");
-assert(command.includes("evidenceOpen ?") && command.includes('aria-controls={evidenceId}'), "Brain evidence mounts on demand and remains accessible");
-assert(command.includes("Abrir esta etapa não registra automaticamente dose, receita, compra ou retirada"), "Brain never converts a suggestion into a real event");
+assert(actionCenter.includes('!actionable && brainFallback') && actionCenter.includes('command?.decision?.lane === "now" || command?.decision?.lane === "prepare"'), "Brain fallback cannot duplicate a canonical care decision");
+assert(command.includes('<VaultBrainEvidence item={action} compact />')&&fs.readFileSync('components/health-intelligence/VaultBrainEvidence.tsx','utf8').includes('<details className="group border-t'), "Brain evidence mounts on demand and remains accessible");
+assert(fs.readFileSync('components/health-intelligence/VaultBrainEvidence.tsx','utf8').includes('Uma sugestão não executa registros automaticamente'), "Brain never converts a suggestion into a real event");
 assert(home.includes('id="home-outras-areas"') && home.includes('id="home-organizacao"'), "Home separates primary actions from secondary domains");
 assert((home.match(/\{\(\) =>/g) || []).length >= 2, "Home secondary domains mount lazily");
 assert(homePage.includes("{() => <>") && homePage.includes('id="home-health-evidence"'), "Home Brain evidence list mounts only when disclosed");

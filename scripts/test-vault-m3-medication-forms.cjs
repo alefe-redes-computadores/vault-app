@@ -55,10 +55,10 @@ const v34 = read('scripts/test-v34-medication-identity-density-contract.mjs');
 const v953 = read('scripts/test-v95-3-catalog-authority-contract.mjs');
 const strip = read('components/saude/MedicationOperationalStrip.tsx');
 ok(v34.includes('MedicationOperationalStrip today={todayStatus}') &&
-   v34.includes('stockLabel={humanizeStockText(textoEstoquePrincipal)}') &&
+   v34.includes('stockLabel={stockUnknown ? "Não informado"') &&
    v34.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS?') &&
    v34.includes('strip.includes(') &&
-   strip.includes('Hoje: ${today.label}. Estoque: ${stockLabel}'),
+   strip.includes('Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}'),
    'V34/V98: contrato operacional confere renderização real de rotina/estoque');
 const list = read('app/saude/medicamentos/page.tsx');
 for (const [label, testSource] of [['V34', v34], ['V95.3', v953]]) {

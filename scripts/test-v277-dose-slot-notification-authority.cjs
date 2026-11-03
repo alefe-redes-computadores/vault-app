@@ -21,7 +21,7 @@ ok(home.includes("buildHomePendingDoseProjection")&&homePending.includes("buildP
 // M25-R3: verify actual M25 filters and metric-exclusion authority, not the
 // obsolete literal negation used before the single-pass refactoring.
 ok(todayProjection.includes('slot.state === "conflict"')&&
-  today.includes("Registros contraditórios não entram nas métricas")&&
+  read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas')&&today.includes('todayTimelineGroupPresentation')&&
   todaySummary.includes('if (item.isExpectedUnconfirmed || item.isDataConflict || item.isAvulsa || item.isSintoma) continue;')&&
   todaySummary.includes('if (item.tomada || item.ignorada || item.isDataConflict)')&&
   todaySummary.includes('if (status === "pendentes" && (item.tomada || item.ignorada || item.isDataConflict'),

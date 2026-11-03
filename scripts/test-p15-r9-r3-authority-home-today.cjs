@@ -32,7 +32,7 @@ const action=load('lib/health-intelligence/medication-card-action.ts');
 const basic={id:'med',user_id:'u',person_id:'p',nome:'Medicamento teste',dosagem:'',medico:'',data_receita:'',proxima_renovacao:'',estoque_quantidade:0,document_id:'doc-linked'};
 const run=(medication,rest={})=>care.decideMedicationCarePath({medication,renewals:[],today:'2026-11-01',needsPrescription:true,needsStock:true,...rest});
 let decision=run(basic);
-ok(decision.stage==='acquisition_needed'&&decision.actionLabel==='Conferir aquisição','Documento vinculado + sem estoque: conferir aquisição, sem duplicar receita');
+ok(decision.stage==='acquisition_needed'&&decision.actionLabel==='Repor estoque','Documento vinculado + sem estoque: conferir aquisição, sem duplicar receita');
 ok(decision.prescriptionOnFile===false&&decision.explanation.includes('validade'),'Vínculo de documento não vira validade atestada');
 ok(decision.actionHref.includes('mode=acquisition')&&!decision.plannedAcquisition,'Ação aponta aquisição real; planejamento não é compra');
 decision=run(basic,{needsStock:false});
@@ -47,7 +47,7 @@ const oldRx={id:'rx',user_id:'u',person_id:'p',medicamento_id:'med',data:'2026-0
 const bought={id:'buy',user_id:'u',person_id:'p',medicamento_id:'med',data:'2026-09-23',data_aquisicao:'2026-09-23',tipo_aquisicao:'comprado',quantidade:30};
 const history=run({...basic,document_id:undefined},{renewals:[oldRx,bought]});
 ok(history.stage==='acquisition_needed'&&history.prescriptionOnFile===false,'Receita histórica anterior à compra não prova validade atual');
-ok(history.actionLabel==='Conferir aquisição','Histórico da aquisição preserva contrato V329');
+ok(history.actionLabel==='Repor estoque','Histórico da aquisição preserva contrato V329');
 const planned={...bought,data:'2026-12-03',data_aquisicao:'2026-12-03'};
 const future=run(basic,{renewals:[planned]});
 ok(future.stage==='acquisition_planned'&&future.plannedAcquisition,'Compra futura nunca vira realizada por haver documento');

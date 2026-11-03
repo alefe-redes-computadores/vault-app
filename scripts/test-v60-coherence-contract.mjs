@@ -15,8 +15,8 @@ ok(h.includes("useMedicationRegulatoryProfiles")
   && doseCard.includes("borderLeft: `4px solid ${regulatorySurface.rail}`"),"Hoje regulatório");
 ok(m.includes("useMedicationRegulatoryProfiles")&&m.includes("regulatorySurface.rail"),"Detalhe regulatório");
 ok(t.includes("useMedicationRegulatoryProfiles")&&t.includes("getMedicationRegulatorySurface"),"Tratamento regulatório");
-ok(c.includes("VAULT_CONTEXTUAL_SURFACE_V60")&&c.includes("VAULT INSIGHT"),"Insight V60");
-ok(c.includes('router.push("/inteligencia")'),"Insight abre Central");
+ok(c.includes("VAULT_CONTEXTUAL_SURFACE_V60")&&c.includes('VaultBrainIdentity compact context="Insight"'),"Insight V60");
+ok(c.includes('withReturnTarget(href, currentHref)')&&c.includes('openWithReturn('),"Insight abre Central");
 ok(z.includes("VAULT INSIGHT"),"Central V60");
 
 console.log("VAULT SUPER V60 R2 — CONTRATO OK");

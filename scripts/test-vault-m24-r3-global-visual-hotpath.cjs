@@ -46,7 +46,7 @@ ok(identity.includes('AvatarMedicamento')&&identity.includes('name || "Medicamen
 const guide=read(visual[12]),reminders=read(visual[13]);
 const m7=read('scripts/test-vault-m7-medication-appearance-fenix.cjs');
 ok(m7.includes('Doses futuras são previsões')&&m7.includes('Somente uma confirmação registra tomada')&&
-  m7.includes('shrink-0 text-emerald-300')&&!m7.includes("today.includes('text-emerald-300/80')"),
+  m7.includes('components/hoje/TodayTimelineGroupPresentation.ts')&&!m7.includes("today.includes('text-emerald-300/80')"),
   'M7 checks same clinical notices and actual informative icon class, not obsolete opacity');
 ok(guide.includes('Falta de confirmação')&&guide.includes('Somente uma confirmação registra tomada'),'Hoje uncertainty text remains exact');
 ok(reminders.includes('onNavigate(reminder.target_route)')&&reminders.includes('Lembretes não confirmam dose tomada'),'Hoje reminders keep manual actions');

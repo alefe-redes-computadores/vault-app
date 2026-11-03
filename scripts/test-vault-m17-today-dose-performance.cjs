@@ -35,8 +35,12 @@ for(const t of ['const isAtrasado =','const isProximo =','const isPrevistoFuturo
  ok(card.includes(t),'status distinction: '+t);
 }
 for(const t of ['handleCancelPlannedDose(item)','handleIgnorar(','handleToggle(','abrirRevisaoHistorica(',
- 'setMedicamentoSelecionado(','setModalAberto(','medicamentosById.get(item.medicamentoId)',
+ 'medicationRestockHref(item.medicamentoId!, returnTo)',
+ 'medicationStockCountHref(item.medicamentoId!, returnTo)',
+ 'medicamentosById.get(item.medicamentoId)',
  'router.push(','trigger("vibrate")'])ok(card.includes(t),'delegated visual action '+t);
+ok(!card.includes('setMedicamentoSelecionado(') && !card.includes('setModalAberto('),
+   'obsolete modal does not return in clinical dose card');
 for(const t of ['await marcarDose(','partitionDoseBatchByStock(', 'buildTodayTimelineItems(',
  'const metricItems = useMemo(() => doses.filter(', 'const dosesElegiveisLote = useMemo(',
  'handleDesfazerLote','useDoseLogs(','handleToggle = async','handleIgnorar = async'])ok(today.includes(t),'canonical operation remains in parent '+t);
@@ -50,7 +54,7 @@ ok(m14.includes('doseCard.includes(\'describeTodayDoseStatus({\')')&&m14.include
  'M14 legacy verifies true component source');
 ok(m15.includes("doseCard.includes('describeTodayDoseStatus({')")&&m15.includes('today.includes(\'<TodayDoseGroupHeading\')'),
  'M15 legacy checks actual card and grouping');
-ok(v196.includes('doseCard.includes("? medicamentosById.get(item.medicamentoId)")')&&v196.includes('today.includes("<TodayDoseTimelineCard")'),
+ok(v196.includes("doseCard.includes('scope.medicamentosById.get(item.medicamentoId)')")&&v196.includes('today.includes("<TodayDoseTimelineCard")'),
  'V196 medication index still in use, in correct owner');
 ok(p15.includes('const doseCard=read("components/hoje/TodayDoseTimelineCard.tsx")')
   &&p15.includes('today.includes(\'<TodayDoseTimelineCard item={item} scope={doseCardScope} />\')')

@@ -34,8 +34,8 @@ const v45=read('scripts/test-v45-hoje-doses-contract.mjs'),v49=read('scripts/tes
 ok(v45.includes('TodayTimelineGroupPresentation.ts')&&v45.includes('groups.includes(`${key}: { label: "${label}"`)'),'V45 valida a fonte modular real de cada rótulo');
 ok(v49.includes('TodayTimelineGroupPresentation.ts')&&v49.includes('groups.indexOf(')&&v49.includes('const metadata = todayTimelineGroupPresentation'),'V49 valida ordem modular e ligação ao agrupamento');
 ok(today.includes('groupTimelineItems(dosesParaExibir')&&today.includes('summarizeTimeline(doses)'),'Grupos e métricas canônicos intactos');
-ok(today.includes('Registros contraditórios não entram nas métricas')&&groups.includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 explícitos');
-ok(today.includes('isHoje && <span className="sr-only">Programadas para depois ainda não estão atrasadas.</span>') && groups.includes('Programadas para depois · ainda não estão atrasadas'),'V229: indicação das doses futuras permanece no Hoje e no módulo de grupos');
+ok(today.includes('todayTimelineGroupPresentation')&&groups.includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 explícitos');
+ok(today.includes('<TodayTimelineGuide isHoje={isHoje}') && groups.includes('Programadas para depois · ainda não estão atrasadas'),'V229: indicação das doses futuras permanece no Hoje e no módulo de grupos');
 for(const key of ['agora','atrasadas','depois','avulsas','revisao','concluidas','ignoradas','manha','tarde','noite'])ok(groups.includes(key+': { label:'),'Grupo preservado '+key);
 ok(today.includes('const metricItems = useMemo(() => doses.filter(')&&today.includes('visibleTimelineItems(dosesFiltradas'),'Memo P10 e visibilidade V9 mantidos');
 ok(evidence.includes('medicationEvidenceClarity(source, safeCount, routeRecorded)')&&evidence.includes('{clarity.label}')&&evidence.includes('{clarity.explanation}'),'Origem da evidência explicável');

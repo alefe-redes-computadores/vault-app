@@ -13,7 +13,7 @@ const ok = (value, label) => { assert.ok(value, label); console.log("OK:", label
 
 ok(plan.includes('"recorded" | "projected" | "association" | "missing_data"'), "autoridade da evidência permanece explícita");
 ok(plan.includes('É uma associação temporal, não prova causa nem efeito de tratamento.'), "associação cautelosa não vira causalidade");
-ok(plan.includes('state === "ready"') && plan.includes("medicationAlreadyPlanned"), "plano não duplica medicamento nem cria pendência pronta");
+ok(plan.includes('state === "ready"') && plan.includes('item.phenomenon === phenomenon') && plan.includes('item.dueDate === entry.nextDate'), "plano não duplica medicamento nem cria pendência pronta");
 ok(plan.includes("plannedKnownCost + month.expectedRefillCost"), "projeção financeira mantém custo conhecido e reposição separados na origem");
 ok(plan.includes("nextConsultation") && plan.includes("buildConsultationWindow") && plan.includes("consultationWindow.days"), "consulta recebe janela longitudinal explícita");
 ok(plan.includes("status !== \"cancelada\"") && plan.includes("item.data >= forecast.generatedFor"), "consulta futura exclui cancelada e respeita dia civil");

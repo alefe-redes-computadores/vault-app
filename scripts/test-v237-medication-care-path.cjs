@@ -9,7 +9,7 @@ const prescription={id:'rx',user_id:'u1',person_id:'p1',medicamento_id:'m1',data
 const purchase={id:'buy',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-10-25',data_aquisicao:'2026-10-25',tipo_aquisicao:'comprado',quantidade:30,preco:40};
 let decision=decideMedicationCarePath({medication:med,renewals:[prescription],today:'2026-10-23',needsPrescription:true,needsStock:true});
 assert.equal(decision.stage,'acquisition_needed');
-assert.equal(decision.actionLabel,'Registrar aquisição');
+assert.equal(decision.actionLabel,'Repor estoque');
 assert.equal(decision.prescriptionOnFile,true);
 decision=decideMedicationCarePath({medication:med,renewals:[prescription,purchase],today:'2026-10-23',needsPrescription:true,needsStock:true});
 assert.equal(decision.stage,'acquisition_planned');

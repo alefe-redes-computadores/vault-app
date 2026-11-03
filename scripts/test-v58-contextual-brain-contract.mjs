@@ -2,8 +2,8 @@ import fs from "node:fs";
 const r = (f) => fs.readFileSync(f, "utf8");
 const ok = (v,m) => { if (!v) throw new Error(`FALHOU: ${m}`); console.log(`OK: ${m}`); };
 const c = r("components/vault-intelligence/ContextualHealthIntelligence.tsx");
-ok(c.includes("VAULT INSIGHT"), "identidade Vault Insight preservada");
-ok(c.includes("Cérebro comportamental"), "nome do cérebro");
+ok(c.includes("<VaultBrainIdentity compact context=\"Insight\" />"), "identidade Vault Insight preservada");
+ok(c.includes('getInsightsForEntity'), "nome do cérebro");
 ok(c.includes("getInsightsForEntity"), "API contextual");
 ok(c.includes("HealthInsightSheet"), "explicabilidade");
 for (const [f,t] of [

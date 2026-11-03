@@ -140,9 +140,21 @@ for(const scenario of [common,{...common,enabled:false},{...common,medicationId:
  assert.deepEqual(newer,old);checks++;
 }
 ok(true,'retro-review same dates, owner-scope, no evidence inference and 3660-day limit');
+// M47 CI: carregamento do estoque clinico real; isolamos apenas o estimador.
+const clinicalStock=load('lib/health-intelligence/clinical-stock.ts',{
+ '@/lib/health-utils':{computeEstoqueInfo:med=>({
+  quantidadeRestante:med.estoque_quantidade,
+  diasRestantes:null,
+  estimativaDosesDisponivel:false,
+ })},
+});
+ok(clinicalStock.getClinicalStockSnapshot({estoque_quantidade:null}).state==='unknown' &&
+   clinicalStock.getClinicalStockSnapshot({estoque_quantidade:0}).state==='empty',
+   'unknown stock remains distinct from confirmed zero');
 const builder=load(paths[1],{
  '@/lib/today/acquisition-date-index':{earliestAcquisitionByMedication:helper},
  '@/lib/dose-slot-authority':{buildDoseSlotIndex:realSlots.buildDoseSlotIndex,resolveDoseSlot:realSlots.resolveDoseSlot},
+ '@/lib/health-intelligence/clinical-stock':clinicalStock,
  '@/lib/health-utils':{computeEstoqueInfo:()=>({quantidadeRestante:5}),getDaysUntil:()=>null},
  '@/lib/health-insights':{analisarComportamentoUso:()=>null,isReceitaAtualVencida:()=>false,sugerirRenovacao:()=>({deveRenovar:false,mensagem:'',urgencia:'nenhuma'})},
 }).buildTodayTimelineItems;

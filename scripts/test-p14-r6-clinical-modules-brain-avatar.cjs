@@ -9,8 +9,8 @@ for(const [path,source] of [[p,page],[d,detail],["MedicationOperationalStrip.tsx
  const src=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  ok(src.parseDiagnostics.length===0,`${path}: TSX sintaticamente válido`);
 }
-ok(page.includes("<MedicationOperationalStrip today={todayStatus}")&&page.includes('stockLabel={humanizeStockText(textoEstoquePrincipal)}'),"listagem delega apenas a apresentação do estado operacional");
-ok(page.includes('dosesIgnoradasHoje>0&&!isSOS?"ignored"')&&page.includes('rotinaConcluida||sosTomadoHoje?"completed"'),"resultado da dose continua derivado da mesma autoridade");
+ok(page.includes("<MedicationOperationalStrip today={todayStatus}")&&page.includes('stockLabel={stockUnknown ? "Não informado"'),"listagem delega apenas a apresentação do estado operacional");
+ok(page.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored"')&&page.includes('rotinaConcluida||sosTomadoHoje?"completed"'),"resultado da dose continua derivado da mesma autoridade");
 ok(strip.includes('Hoje: ${today.label}. Estoque: ${stockLabel}')&&strip.includes('stockTone==="empty"'),"resumo clínico acessível distingue estoque conhecido de vazio");
 ok(page.includes('supplyRoute.labels.join(" + ")')&&page.includes('brainAction ??'),"V271 conserva fornecimento e prioridade canônica");
 ok(page.includes('scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "")')&&page.includes('ownedMedicationRenewals('),"R5 mantém isolamento por dono");

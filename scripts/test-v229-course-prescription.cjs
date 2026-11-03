@@ -21,7 +21,8 @@ for (const bad of [ { ...course, start: '2026-02-30' }, { ...course, days: 0 }, 
 }
 const required = {
   'app/saude/renovacao/editar/page.tsx': ['createDocument({', 'category_id: "saude"', 'type: "receita"', 'uploadedStorageUrl', 'document_id: createdDocumentId', 'somenteReceita ? undefined : renovacao.tipo_aquisicao', 'capture="environment"'],
-  'app/hoje/page.tsx': ['Programadas para depois', 'buildTodayTimelineItems'],
+  'app/hoje/page.tsx': ['todayTimelineGroupPresentation', 'buildTodayTimelineItems'],
+  'components/hoje/TodayTimelineGroupPresentation.ts': ['Programadas para depois · ainda não estão atrasadas'],
   'lib/today/build-timeline-items.ts': ['dose_kind === "planned"', 'isExpectedUnconfirmed'],
   'app/page.tsx': ['buildHomePendingDoseProjection', 'activePersonId'],
   'lib/home/pending-dose-projection.ts': ['dose_kind !== "planned"', 'input.personId', 'input.userId'],

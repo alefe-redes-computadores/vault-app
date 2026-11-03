@@ -97,6 +97,15 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
   // M23: one O(n) pass for every medication, no per-medication date sort.
   const firstAcquisitionByMedication = earliestAcquisitionByMedication(input.renovacoes);
   const historyByMedication = groupedBy(input.historicoDoses, "medicamento_id");
+  // M47: one snapshot per medication for scheduled and SOS/extra slots.
+  const stockByMedication = new Map<string, ReturnType<typeof getClinicalStockSnapshot>>();
+  const stockFor = (med: Entity) => {
+    const existing = stockByMedication.get(med.id);
+    if (existing) return existing;
+    const snapshot = getClinicalStockSnapshot(med as any);
+    stockByMedication.set(med.id, snapshot);
+    return snapshot;
+  };
 
   for (const med of input.medicamentos) {
     if (input.retroReviewMode && input.retroReviewMedicationId && med.id !== input.retroReviewMedicationId) continue;
@@ -113,7 +122,7 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
       || med.estoque_data_referencia || med.data_receita || null;
     if (knownStartDate && input.dataSelecionada < knownStartDate) continue;
 
-    const stock = getClinicalStockSnapshot(med as any);
+    const stock = stockFor(med);
     const doctor = doctorById.get(med.medico_id);
     const treatment = treatmentById.get((med.tratamento_ids || [])[0]);
     const pharmacy = pharmacyById.get(med.farmacia_id);
@@ -155,11 +164,12 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     if (!displaySeparately || (!log.tomado_em && log.dose_kind !== "planned") || existingLogIds.has(log.id)) continue;
     const treatment = treatmentById.get((med.tratamento_ids || [])[0]);
     const doctor = doctorById.get(med.medico_id);
+    const stock = stockFor(med);
     list.push({
       medicamentoId: med.id, medicamentoNome: med.nome, dosagem: med.dosagem, formato: med.formato, cores: med.cores,
       horario: log.horario || "00:00", tomada: Boolean(log.tomado_em), ignorada: false,
-      cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: getClinicalStockSnapshot(med as any).registeredQuantity,
-      estoqueTotal: getClinicalStockSnapshot(med as any).registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
+      cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock.registeredQuantity,
+      estoqueTotal: stock.registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
       unidadePorDose: log.quantidade ?? med.estoque_unidade_por_dose, unidadeDose: doseUnit(med),
       medicoNome: doctor?.nome || med.medico, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id,
       tratamentoCor: treatment?.cor, isAvulsa: true,

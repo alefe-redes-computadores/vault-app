@@ -5,7 +5,7 @@ const today=r('components/saude/CareCommandStrip.tsx');
 const avatar=r('components/saude/AvatarCareReadiness.tsx');
 const home=r('app/page.tsx');
 assert(command.includes('decision: plan.focus[0] ?? null')||command.includes('decision: plan.decision'),'comando deve publicar decisão única');
-assert(today.includes('command?.decision')&&today.includes('priorityScore'),'Hoje deve usar decisão explicável');
+assert(r('app/hoje/page.tsx').includes('command={healthIntelligence.careCommand}')&&r('components/hoje/TodayActionCenter.tsx').includes('command?.decision?.lane'),'Hoje deve usar decisão explicável');
 assert(avatar.includes('command?.decision')&&avatar.includes('planFocus.priorityScore'),'Avatar deve usar a mesma decisão');
 assert(home.includes('careCommand?.decision?.lane')&&!home.includes('careCommand?.primary?.lane'),'Home deve usar a decisão canônica');
 assert(today.includes('confidenceLabel[action.confidence]')&&today.includes('high: "alta"')&&avatar.includes('confidence === "high"'),'superfícies devem mostrar confiança');

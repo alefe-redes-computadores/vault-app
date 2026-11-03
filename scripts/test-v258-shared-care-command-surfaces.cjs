@@ -12,7 +12,7 @@ const todayActions=read('components/hoje/TodayActionCenter.tsx');
 const strip=read('components/saude/CareCommandStrip.tsx');
 const avatar=read('components/saude/AvatarCareReadiness.tsx');
 ok(command.includes('buildCareCommandSnapshot')&&command.includes('buildCareReadiness(context, forecast.generatedFor, forecast)'),'previsão e prontidão compartilham o mesmo snapshot');
-ok(command.includes('seenMedication')&&command.includes('surfaceActions'),'superfícies mostram uma decisão principal por medicamento');
+ok(command.includes('seenEvents')&&command.includes('surfaceActions')&&command.includes('action.kind'),'superfícies mostram uma decisão principal por medicamento');
 ok(hook.includes('const careCommand = useMemo')&&hook.includes('careCommand,'),'provider compartilha comando reativo por pessoa');
 ok(readiness.includes('forecast = buildCareForecast(context, today)'),'readiness aceita previsão injetada sem quebrar compatibilidade');
 ok(forecast.includes('review_schedule_data')&&forecast.includes('Data ausente ou inválida'),'data inválida permanece qualidade de dados');

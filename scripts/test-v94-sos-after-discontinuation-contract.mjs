@@ -50,6 +50,16 @@ const deps={
     analisarComportamentoUso:()=>null,
   },
 };
+// V94: dependencia clinica real; nenhuma persistencia ou baixa de estoque.
+const stockSandbox={exports:{}};
+const stockCompiled=ts.transpileModule(r("lib/health-intelligence/clinical-stock.ts"),{
+  compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
+}).outputText;
+new Function("exports","require",stockCompiled)(stockSandbox.exports,id=>{
+  if(id==="@/lib/health-utils")return deps["@/lib/health-utils"];
+  throw new Error("V94 unexpected clinical-stock dependency: "+id);
+});
+deps["@/lib/health-intelligence/clinical-stock"]=stockSandbox.exports;
 new Function("exports","require",compiled.outputText)(sandbox.exports,id=>{
   if(!Object.hasOwn(deps,id)) throw new Error("Dependência inesperada no motor de Hoje: "+id);
   return deps[id];
