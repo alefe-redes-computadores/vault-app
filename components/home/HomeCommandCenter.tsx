@@ -11,12 +11,12 @@ import { HomeCareOrganizationTiles } from "@/components/home/HomeCareOrganizatio
 type Props = { gastoMes: number; diferencaMes: number; totalRede: number };
 
 const clinical = [
-  { label: "Minha saúde", sub: "Perfil, sono e medidas", path: "/saude/minha-saude", icon: HeartPulse, tone: "border-emerald-400/20 bg-emerald-400/8 text-emerald-400" },
-  { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-violet-400/20 bg-violet-400/8 text-violet-300" },
-  { label: "Exames", sub: "Pedidos e resultados", path: "/saude/exames", icon: FlaskConical, tone: "border-emerald-400/20 bg-emerald-400/8 text-emerald-400" },
-  { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-violet-400/20 bg-violet-400/8 text-violet-300" },
-  { label: "Lembretes", sub: "Sua agenda de saúde", path: "/saude/lembretes", icon: Bell, tone: "border-amber-400/20 bg-amber-400/8 text-amber-400" },
-  { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/8 text-coral" },
+  { label: "Minha saúde", sub: "Perfil, sono e medidas", path: "/saude/minha-saude", icon: HeartPulse, tone: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" },
+  { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
+  { label: "Exames", sub: "Pedidos e resultados", path: "/saude/exames", icon: FlaskConical, tone: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" },
+  { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
+  { label: "Lembretes", sub: "Sua agenda de saúde", path: "/saude/lembretes", icon: Bell, tone: "border-amber-400/20 bg-amber-400/[0.06] text-amber-400" },
+  { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/[0.06] text-coral" },
 ] as const;
 
 export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) {
@@ -47,8 +47,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
       <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
         {() => <div className="grid grid-cols-2 gap-2.5">
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
-          <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[72px] items-center gap-2.5 rounded-2xl border border-rose-400/20 bg-rose-400/8 px-2.5 py-2.5 text-left motion-reduce:transition-none"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17}/></span><span><strong className="block text-xs text-ink-primary">Cirurgias</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Procedimentos</span></span></button>
-          <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-[72px] items-center gap-2.5 rounded-2xl border border-rose-300/20 bg-rose-300/[0.055] px-2.5 py-2.5 text-left motion-reduce:transition-none"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-200"><BookHeart size={17}/></span><span><strong className="block text-xs text-ink-primary">Plano de segurança</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Apoio e contatos</span></span></button>
+          <HomeClinicalAreaTile label="Cirurgias" description="Procedimentos" path="/saude/cirurgias" Icon={ReceiptText} tone="border-rose-400/20 bg-rose-400/[0.06] text-rose-300" onNavigate={go} />
+          <HomeClinicalAreaTile label="Plano de segurança" description="Apoio e contatos" path="/saude/plano-seguranca" Icon={BookHeart} tone="border-rose-300/20 bg-rose-300/[0.055] text-rose-200" onNavigate={go} />
         </div>}
       </ClinicalDisclosure>
 
