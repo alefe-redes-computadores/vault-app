@@ -384,6 +384,13 @@ export default function HojePage() {
     );
 
   const {filtroStatus,setFiltroStatus,filtroPeriodo,setFiltroPeriodo}=useTodayPersistedFilters();
+  // M44: link da busca aplica o filtro, sem mexer em registros clínicos.
+  const commandDoseStatus = searchParams.get("status");
+  useEffect(() => {
+    if (commandDoseStatus !== "pendentes") return;
+    setFiltroStatus("pendentes");
+    setFiltroPeriodo("todos");
+  }, [commandDoseStatus, setFiltroStatus, setFiltroPeriodo]);
   const [mostrarConcluidas,setMostrarConcluidas]=useState(false);
   const [filtroCompromisso,setFiltroCompromisso]=useState<FiltroCompromisso>("todos");
 

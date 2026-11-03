@@ -110,6 +110,7 @@ import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
 import { HomeSectionNav } from "@/components/home/HomeSectionNav";
+import { VaultBrainCommand } from "@/components/health-intelligence/VaultBrainCommand";
 import { AlertRow, getAlertIcon, type DashboardAlert } from "@/components/home/HomeAlertRow";
 
 // ============================================================
@@ -1120,6 +1121,17 @@ export default function HomePage() {
               </div>
             </button>
 
+            <div className="flex shrink-0 items-center gap-2">
+              <VaultBrainCommand data={{
+                userId: user?.id,
+                personId: activePersonId,
+                medications: medicamentos,
+                documents,
+                treatments: tratamentos,
+                appointments: consultas,
+                exams: exames,
+                renewals: renovacoes,
+              }} />
             <button
               type="button"
               onClick={() => {
@@ -1142,6 +1154,7 @@ export default function HomePage() {
                 horaAtual
               }
             </button>
+            </div>
           </motion.div>
         </header>
 
