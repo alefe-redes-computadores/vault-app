@@ -5,6 +5,7 @@ import type { BrainCarePlan as BrainCarePlanModel, BrainCarePlanLane } from "@/l
 import { useEffect, useId, useState } from "react";
 import { compareCarePlan, readCarePlanMemory, writeCarePlanMemory, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
 import { CarePlanHistory } from "./CarePlanHistory";
+import { VaultBrainIdentity } from "./VaultBrainIdentity";
 
 const laneMeta: Record<BrainCarePlanLane, { label: string; tone: string; icon: typeof CalendarClock }> = {
   now: { label: "Resolver agora", tone: "border-rose-400/25 bg-rose-400/[0.07] text-rose-200", icon: CalendarClock },
@@ -33,7 +34,7 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
   return <section aria-label="Plano do Brain" className="mx-auto mt-4 max-w-2xl overflow-hidden rounded-[24px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-emerald-400/[0.035] shadow-sm">
     <div className="flex items-start gap-3 px-4 py-3.5">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/15 bg-violet-400/[.07] text-violet-200"><BrainCircuit size={19}/></div>
-      <div className="min-w-0 flex-1"><h2 className="text-base font-bold tracking-tight text-ink-primary">Plano inteligente de cuidado</h2><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Uma fila única: fato registrado, projeção e padrão para conversar continuam identificados.</p></div>
+      <div className="min-w-0 flex-1"><h2 className="text-base font-bold tracking-tight text-ink-primary"><VaultBrainIdentity context="Plano de cuidado" /></h2><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Uma fila única: fato registrado, projeção e padrão para conversar continuam identificados.</p></div>
       <span className="rounded-full border border-surface-border/70 bg-surface-raised/55 px-2.5 py-1 font-mono text-[10px] font-semibold tabular-nums text-ink-secondary">{plan.items.length} etapas</span>
     </div>
     <div className="grid grid-cols-2 border-y border-surface-border/50 bg-void/15 min-[390px]:grid-cols-4">

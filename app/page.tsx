@@ -2,6 +2,7 @@
 "use client";
 import { selectHomeDocumentAlerts, countHomeTakenDoseLogs, selectHomeOverdueWithdrawals } from "@/lib/home/home-view-projections";
 import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -748,9 +749,9 @@ export default function HomePage() {
                 ? "Atenção ao tratamento"
                 : "Planejamento",
 
-            title: "Sua rotina de hoje",
+            title: primaryMedicationCareOpportunity.title,
 
-            description: "Veja as doses e compromissos do dia. A prioridade do medicamento aparece logo abaixo com uma ação específica.",
+            description: primaryMedicationCareOpportunity.message,
 
 
             color:
@@ -1126,12 +1127,7 @@ export default function HomePage() {
                   "vibrate"
                 );
 
-                if (resumoContextual.href === "/?open=pending-doses") {
-                  // P10: deep link works even when Home is already mounted.
-                  window.dispatchEvent(new Event("vault:open-pending-doses"));
-                } else {
-                  router.push(resumoContextual.href);
-                }
+                router.push("/hoje");
               }}
               className="flex shrink-0 items-center gap-2 rounded-full border border-surface-border/50 bg-surface px-3 py-2 text-[10px] font-semibold text-ink-muted shadow-sm transition-all active:scale-95"
             >
@@ -1179,7 +1175,12 @@ export default function HomePage() {
               description={resumoContextual.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
               progress={progressoDosesHoje}
-              onOpen={() => { trigger("vibrate"); router.push("/hoje"); }} />
+              ctaLabel={resumoContextual.href === "/hoje" ? "Abrir rotina" : "Abrir próxima etapa"}
+              onOpen={() => {
+                trigger("vibrate");
+                if (resumoContextual.href === "/?open=pending-doses") setModalPendenciasAberto(true);
+                else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));
+              }} />
             <HomeQuickMetrics
               appointments={totalCompromissosHoje}
               className="min-[380px]:grid-cols-4"
@@ -1257,7 +1258,7 @@ export default function HomePage() {
                     />
 
                     <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central de Inteligência">
-                      <h2 className="font-display text-sm font-semibold text-ink-primary">Vault Intelligence</h2>
+                      <h2 className="font-display text-sm font-semibold text-ink-primary">VAULT Brain</h2>
                       <ChevronRight size={13} className="text-violet-300" />
                     </button>
                   </div>
@@ -1315,10 +1316,10 @@ export default function HomePage() {
                 <ClinicalDisclosure
                   key={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") ? "priority" : "routine"}
                   id="home-health-evidence"
-                  title="Sinais e evidências do Brain"
+                  title="Ver observações do Brain"
                   description={`${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"} · abrir para consultar`}
                   icon={<Activity size={18}/>}
-                  defaultOpen={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") && unifiedAlerts.length === 0}
+                  defaultOpen={false}
                 >
               {() => <>
               <div className="grid grid-cols-1 gap-2 min-[620px]:grid-cols-2" aria-label="Sinais do Brain organizados por prioridade">
@@ -1403,7 +1404,7 @@ export default function HomePage() {
               </div>
 
               {longitudinalHighlights.length > 1 && (
-                <div className="flex items-center justify-between px-1"><span className="text-[9px] text-ink-faint">Todos os sinais ficam acessíveis acima</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
+                <div className="flex items-center justify-between px-1"><span className="text-[9px] text-ink-faint">Observações disponíveis para revisão</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
               )}
 
               </>}
@@ -1848,10 +1849,16 @@ export default function HomePage() {
                   </button>
                 )}
 
-                <MedicationCareOpportunityQueue
-                  items={medicationCareOpportunities.slice(1)}
-                  onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-                />
+                {medicationCareOpportunities.length > 1 ? (
+                  <ClinicalDisclosure id="home-continuity-other" title={`Outras prioridades · ${medicationCareOpportunities.length - 1}`}
+                    description="Consultar mais medicamentos sem ampliar a primeira leitura"
+                    icon={<ClipboardList size={17}/>}>
+                    {() => <MedicationCareOpportunityQueue
+                      items={medicationCareOpportunities.slice(1)}
+                      onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
+                    />}
+                  </ClinicalDisclosure>
+                ) : null}
                 <p className="mt-3 text-center text-[10px] leading-relaxed text-ink-faint">
                   O Vault cruza seus próprios registros de estoque, renovação e tratamento. Isso não substitui orientação profissional.
                 </p>

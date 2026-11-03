@@ -41,7 +41,7 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
         {hidden > 0 && (
           <button type="button" onClick={onToggle} aria-expanded={expanded} aria-controls="home-attention-alerts"
             className="flex min-h-11 w-full items-center justify-center gap-1 rounded-2xl border border-surface-border/60 bg-surface-raised/40 px-3 py-2.5 text-xs font-semibold text-ink-primary transition-colors hover:bg-surface-raised/70 motion-reduce:transition-none active:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-            {expanded ? "Mostrar menos" : `Ver mais ${hidden} alerta${hidden === 1 ? "" : "s"}`}
+            {expanded ? "Recolher alertas" : `Ver alertas · +${hidden}`}
           </button>
         )}
       </div>

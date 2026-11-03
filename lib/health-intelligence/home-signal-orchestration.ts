@@ -6,6 +6,11 @@ const norm=(value:unknown)=>String(value??"").normalize("NFD").replace(/[\u0300-
 
 export function healthSignalPhenomenon(insight:HealthInsight):HealthSignalPhenomenon{
   if(insight.id.startsWith("fornecimento-"))return "supply";
+  // Structured category is more reliable than user-facing prose.
+  const category=norm(insight.categoria);
+  if(category === "estoque")return "stock";
+  if(category === "receita" || category === "renovacao")return "renewal";
+  if(category === "fornecimento" || category === "retirada")return "supply";
   const text=norm([insight.id,insight.categoria,insight.titulo,insight.mensagem,...(insight.evidencias||[])].join(" "));
   if(/interacao|seroton|sobreposi|combinacao|depressores/.test(text))return "interaction";
   if(/sos|resgate|extra/.test(text))return "sos";
@@ -19,19 +24,26 @@ export function healthSignalPhenomenon(insight:HealthInsight):HealthSignalPhenom
   return "other";
 }
 
-function insightMatchesMedication(insight:HealthInsight,opportunity:MedicationCareOpportunity):boolean{
-  if(insight.entidadeId&&insight.entidadeId===opportunity.medicamentoId)return true;
-  if(insight.entidadeIds?.includes(opportunity.medicamentoId))return true;
-  const medicationName=norm(opportunity.medicamentoNome); if(!medicationName)return false;
-  const insightText=norm([insight.titulo,insight.mensagem,...(insight.evidencias||[])].join(" "));
-  return insightText.includes(medicationName);
+function insightMatchesMedication(insight: HealthInsight, opportunity: MedicationCareOpportunity): boolean {
+  const id = opportunity.medicamentoId;
+  if (!id) return false;
+  // Never infer a medical entity from a name found inside a generated explanation.
+  if (insight.entidadeTipo && insight.entidadeTipo !== "medicamento" &&
+      !insight.relacoesContextuais?.some(link => link.tipo === "medicamento" && link.id === id)) return false;
+  return insight.entidadeId === id || insight.entidadeIds?.includes(id) === true ||
+    insight.relacoesContextuais?.some(link => link.tipo === "medicamento" && link.id === id) === true;
 }
 
-function carePhenomena(opportunity:MedicationCareOpportunity):Set<HealthSignalPhenomenon>{
-  const result=new Set<HealthSignalPhenomenon>(["continuity"]);
-  if(opportunity.stockDays!==null||opportunity.dosesRemaining!==null||norm(opportunity.title).includes("estoque"))result.add("stock");
-  if(opportunity.renewalCount===0||/renov|receita/.test(norm(`${opportunity.title} ${opportunity.message}`)))result.add("renewal");
-  return result;
+function carePhenomena(opportunity: MedicationCareOpportunity): Set<HealthSignalPhenomenon> {
+  switch (opportunity.careStage) {
+    case "acquisition_needed":
+    case "stock_review": return new Set(["stock"]);
+    case "prescription_needed": return new Set(["renewal", "regulatory"]);
+    case "withdrawal_overdue":
+    case "withdrawal_planned": return new Set(["supply"]);
+    case "acquisition_planned": return new Set(["stock"]);
+    default: return new Set();
+  }
 }
 
 // VAULT_INTELLIGENCE_ORCHESTRATION_V96

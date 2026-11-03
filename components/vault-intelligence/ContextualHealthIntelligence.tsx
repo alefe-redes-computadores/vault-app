@@ -16,6 +16,7 @@ import type { HealthInsight } from "@/lib/health-insights";
 import type { HealthInsightEntityType } from "@/lib/health-intelligence/contextual";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
 import { withReturnTarget } from "@/lib/navigation/return-context";
+import { VaultBrainIdentity } from "@/components/health-intelligence/VaultBrainIdentity";
 
 type Props = {
   entityType: HealthInsightEntityType;
@@ -98,11 +99,9 @@ export function ContextualHealthIntelligence({
                 <BrainCircuit size={15} />
               </div>
               <div className="min-w-0">
-                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-violet-300">
-                  VAULT INSIGHT
-                </p>
+                <p><VaultBrainIdentity compact context="Insight" /></p>
                 <p className="truncate text-[10px] text-ink-faint">
-                  Cérebro comportamental · {entityLabel.toLowerCase()}
+                  Análise contextual · {entityLabel.toLowerCase()}
                 </p>
               </div>
             </div>

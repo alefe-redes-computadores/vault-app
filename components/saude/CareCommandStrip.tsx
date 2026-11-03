@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { AlertTriangle, CalendarClock, ArrowUpRight, ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
 import type { CareCommandSnapshot } from "@/lib/health-intelligence/care-command";
+import { VaultBrainIdentity } from "@/components/health-intelligence/VaultBrainIdentity";
 
 const confidenceLabel = { high: "alta", moderate: "moderada", limited: "limitada" } as const;
 
@@ -24,7 +25,7 @@ export function CareCommandStrip({ command, onNavigate, insightHref }: { insight
       <button type="button" onClick={() => onNavigate(action.href)} aria-label={`Abrir próxima etapa do Brain: ${action.title}. Confiança ${confidenceLabel[action.confidence]}`} className="flex min-h-14 w-full items-center gap-3 rounded-[18px] p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 active:scale-[.985]">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${urgent ? "bg-coral/12 text-coral" : "bg-amber-300/10 text-amber-300"}`}><Icon size={17}/></span>
         <span className="min-w-0 flex-1">
-          <span className={`block text-[10px] font-bold uppercase tracking-[.1em] ${urgent ? "text-coral" : "text-amber-300"}`}>Próximo passo · {urgent ? "Ação pendente" : "Preparar em seguida"}</span>
+          <VaultBrainIdentity compact context={urgent ? "Ação pendente" : "Próximo passo"} />
           <strong className="mt-0.5 block line-clamp-1 text-xs text-ink-primary">{action.title}</strong>
           <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-ink-muted">{action.reason}</span>
           {meta ? <span className="mt-1 block text-[10px] leading-snug text-ink-muted">{meta}</span> : null}

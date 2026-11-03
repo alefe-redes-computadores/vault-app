@@ -25,19 +25,19 @@ export type CareCommandSnapshot = {
 
 /**
  * Uma única leitura para Central, Home, Hoje e Avatar. A superfície mostra no
- * máximo uma decisão por medicamento; o histórico completo continua no
- * forecast. Assim uma retirada vencida não disputa espaço com uma projeção de
- * estoque do mesmo medicamento.
+ * uma decisão principal por superfície, sem apagar fenômenos diferentes
+ * do mesmo medicamento. O histórico e as ações seguem nos seus motores.
  */
 export function buildCareCommandSnapshot(context: HealthInsightContext): CareCommandSnapshot {
   const forecast = buildCareForecast(context);
   const readiness = buildCareReadiness(context, forecast.generatedFor, forecast);
   const documents = buildCareDocumentReadiness(context);
-  const seenMedication = new Set<string>();
+  const seenEvents = new Set<string>();
   const surfaceActions = forecast.actions.filter(action => {
-    const key = action.medicationId || action.id;
-    if (seenMedication.has(key)) return false;
-    seenMedication.add(key);
+    // Unique event IDs retain separate withdrawals/acquisitions on different dates.
+    const key = action.id || `${action.medicationId}:${action.kind}:${action.date || ""}`;
+    if (seenEvents.has(key)) return false;
+    seenEvents.add(key);
     return true;
   });
   const counts = forecast.actions.reduce<Record<CareForecastAction["lane"], number>>((acc, action) => {

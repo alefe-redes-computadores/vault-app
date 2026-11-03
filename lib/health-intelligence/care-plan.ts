@@ -8,10 +8,15 @@ import { buildConsultationWindow, type ConsultationWindowSummary } from "./consu
 
 export type BrainCarePlanLane = "now" | "prepare" | "discuss" | "observe";
 export type BrainCarePlanEvidence = "recorded" | "projected" | "association" | "missing_data";
+/** Operational phenomenon, distinct from medication identity and urgency. */
+export type BrainCarePhenomenon = "withdrawal" | "acquisition" | "stock" | "prescription" | "documents" | "supply" | "schedule" | "consultation" | "association" | "other";
 export type BrainCarePlanItem = {
   id: string;
   lane: BrainCarePlanLane;
   evidenceKind: BrainCarePlanEvidence;
+  phenomenon: BrainCarePhenomenon;
+  /** Explicit event where multiple occurrences of the same phenomenon can coexist. */
+  occurrenceKey?: string;
   title: string;
   reason: string;
   evidence: string[];
@@ -75,6 +80,11 @@ export function buildBrainCarePlan(
     id: `action:${action.id}`,
     lane: action.lane === "now" ? "now" : action.lane === "review_data" ? "observe" : "prepare",
     evidenceKind: action.lane === "review_data" ? "missing_data" : action.kind === "stock_projection" ? "projected" : "recorded",
+    phenomenon: action.kind === "overdue_withdrawal" || action.kind === "upcoming_withdrawal" ? "withdrawal"
+      : action.kind === "planned_acquisition" ? "acquisition"
+      : action.kind === "review_schedule_data" ? "schedule" : "stock",
+    // Withdrawal and acquisition events are independent, even on the same date.
+    occurrenceKey: action.kind === "overdue_withdrawal" || action.kind === "upcoming_withdrawal" || action.kind === "planned_acquisition" ? action.id : undefined,
     title: action.title,
     reason: action.reason,
     evidence: action.evidence,
@@ -88,13 +98,21 @@ export function buildBrainCarePlan(
   });
   });
 
-  const medicationAlreadyPlanned = new Set(items.flatMap(item => item.medicationId ? [item.medicationId] : []));
   for (const entry of readiness.items) {
-    if (medicationAlreadyPlanned.has(entry.medicationId) || entry.state === "ready") continue;
+    if (entry.state === "ready") continue;
+    const headline = entry.headline.toLocaleLowerCase("pt-BR");
+    const phenomenon: BrainCarePhenomenon = /retirada/.test(headline) ? "withdrawal"
+      : /aquisi|compra/.test(headline) ? "acquisition"
+      : "supply";
+    // Do not hide a different phenomenon solely because this medication already has a task.
+    // Exact forecast of the same scheduled event, however, is not a second task.
+    if (items.some(item => item.medicationId === entry.medicationId && item.phenomenon === phenomenon &&
+      item.dueDate === entry.nextDate && item.evidenceKind !== "missing_data")) continue;
     items.push(explain({
       id: `readiness:${entry.medicationId}`,
       lane: entry.state === "overdue" ? "now" : entry.state === "unknown" ? "observe" : "prepare",
       evidenceKind: entry.state === "unknown" ? "missing_data" : "recorded",
+      phenomenon,
       title: `${entry.medicationName}: ${entry.headline.toLocaleLowerCase("pt-BR")}`,
       reason: entry.missing.length ? `Ainda falta: ${entry.missing.join(" e ")}.` : "A próxima etapa está registrada, mas ainda não foi concluída.",
       evidence: entry.evidence,
@@ -115,6 +133,7 @@ export function buildBrainCarePlan(
       id:`documents:${entry.medicationId}`,
       lane:"prepare",
       evidenceKind:"recorded",
+      phenomenon:"documents",
       // Mixed history is not proof that today's purchase requires SUS paperwork.
       title:entry.routeLabel.includes("Comprado")
         ? `${entry.medicationName}: conferir vínculo do processo SUS`
@@ -138,6 +157,8 @@ export function buildBrainCarePlan(
       id: `prescription-plan:${entry.medicationId}`,
       lane: entry.due ? "now" : "prepare",
       evidenceKind: "projected",
+      phenomenon: "prescription",
+      occurrenceKey: entry.date,
       title: `${entry.medicationName}: ${entry.due ? "solicitar nova receita" : "receita planejada"}`,
       reason: `Data de solicitação escolhida: ${entry.date}. O planejamento não representa receita recebida e será concluído somente quando a nova prescrição for registrada.`,
       evidence: ["Data escolhida pelo usuário", `Solicitação: ${entry.date}`],
@@ -162,6 +183,8 @@ export function buildBrainCarePlan(
       id: `association:${association.id}`,
       lane: "discuss",
       evidenceKind: "association",
+      phenomenon: "association",
+      occurrenceKey: association.id,
       title: "Padrão para conversar na próxima consulta",
       reason: `${association.message} É uma associação temporal, não prova causa nem efeito de tratamento.`,
       evidence: [`${association.pairedDays} dias comparáveis`, `Coeficiente descritivo ${association.coefficient}`],
@@ -180,6 +203,8 @@ export function buildBrainCarePlan(
       id: `consultation:${nextConsultation.id || nextConsultation.data}`,
       lane: "prepare",
       evidenceKind: "recorded",
+      phenomenon: "consultation",
+      occurrenceKey: nextConsultation.id || nextConsultation.data,
       title: "Preparar a próxima consulta",
       reason: `Consulta registrada para ${nextConsultation.data}. O resumo reúne somente mudanças e eventos explicitamente registrados desde o último atendimento.`,
       evidence: consultationWindow.evidence,
@@ -191,11 +216,14 @@ export function buildBrainCarePlan(
   }
 
   const ranked = [...items].sort((a, b) => laneRank[a.lane] - laneRank[b.lane] || b.priorityScore - a.priorityScore || (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || a.title.localeCompare(b.title, "pt-BR"));
-  // A mesma medicação ocupa uma única posição executiva. Evidências das etapas
-  // secundárias continuam disponíveis no item principal, sem esconder que existem.
+  // Distinct problems of the same medication retain their own destination and evidence.
+  // Only the same phenomenon, occurrence and destination can be collapsed.
   const unique = new Map<string, BrainCarePlanItem>();
   for (const item of ranked) {
-    const key = item.medicationId ? `medication:${item.medicationId}` : item.id;
+    const key = item.medicationId
+      ? [context.personId || "active", item.medicationId, item.phenomenon,
+          item.occurrenceKey || item.dueDate || "current", item.href].join("::")
+      : item.id;
     const primary = unique.get(key);
     if (!primary) unique.set(key, item);
     else unique.set(key, {

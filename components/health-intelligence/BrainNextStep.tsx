@@ -1,5 +1,6 @@
 import { ArrowUpRight, CalendarClock, ClipboardList, ShieldCheck } from "lucide-react";
 import type { BrainCarePlanItem } from "@/lib/health-intelligence/care-plan";
+import { VaultBrainIdentity } from "./VaultBrainIdentity";
 
 const evidenceLabels = {
   recorded: "Registro",
@@ -25,9 +26,10 @@ export function BrainNextStep({ decision, onOpen }: {
           <Icon size={19} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 id="brain-next-step" className="text-[10px] font-bold uppercase tracking-wider text-violet-200">Próximo passo</h2>
+          <h2 id="brain-next-step"><VaultBrainIdentity compact context="Próximo passo" /></h2>
           <p className="mt-1 break-words text-sm font-semibold text-ink-primary">{decision.title}</p>
           <p className="mt-1 text-xs leading-relaxed text-ink-muted">{decision.reason}</p>
+          <p className="mt-1 text-[10px] text-ink-faint">{decision.phenomenon === "stock" ? "Estoque" : decision.phenomenon === "prescription" ? "Receita" : decision.phenomenon === "withdrawal" ? "Retirada" : decision.phenomenon === "documents" ? "Documentação" : "Organização do cuidado"}</p>
           {date || decision.supplyRoute ? (
             <p className="mt-1 text-xs text-ink-muted">{[date, decision.supplyRoute].filter(Boolean).join(" · ")}</p>
           ) : null}
