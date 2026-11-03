@@ -42,7 +42,7 @@ export function MedicationFormatPicker({
             aria-label={`Formato: ${item.label}`}
             className={`${base} ${isActive ? selected : unselected}`}
           >
-            <Icon size={20} fill={isActive ? "currentColor" : "none"} stroke={isActive ? "none" : "currentColor"}/>
+            <Icon size={20} aria-hidden="true" fill={isActive ? "currentColor" : "none"} stroke={isActive ? "none" : "currentColor"}/>
             <span className="max-w-full break-words text-[10px] font-semibold leading-tight">{item.label}</span>
           </button>
         );
@@ -54,7 +54,7 @@ export function MedicationFormatPicker({
         aria-label={other ? `Mais formatos: ${other.label}` : "Selecionar outro formato"}
         className={`${base} ${other ? selected : unselected}`}
       >
-        <Package size={20}/>
+        <Package size={20} aria-hidden="true"/>
         <span className="max-w-full break-words text-[10px] font-semibold leading-tight">{other?.label ?? "Mais formatos"}</span>
       </button>
     </div>
