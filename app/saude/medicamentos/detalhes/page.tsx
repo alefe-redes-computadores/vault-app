@@ -2721,7 +2721,7 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
-          <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
+          <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasStock={Boolean(temEstoque && (med.status !== "descontinuado" || isSOS))} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
@@ -3278,14 +3278,14 @@ function MedicamentoDetalhesContent() {
             }}/>}
 
           {/* P14 R5: rotina/estoque antes de contexto secundário (âncoras preservadas). */}
-          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>}>
+          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>} iconClassName="text-sky-300">
             <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
           </ClinicalDisclosure>
-          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>}>
+          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>} iconClassName="text-emerald-300">
             <HealthSupplyEntry medicamentoId={med.id!}/>
           </ClinicalDisclosure>
           {med.id && activePersonId === med.person_id && (
-            <ClinicalDisclosure id="medicamento-lembretes" title="Alertas e lembretes" description="Preferências de aviso para este medicamento" icon={<Clock size={18}/>}>
+            <ClinicalDisclosure id="medicamento-lembretes" title="Alertas e lembretes" description="Preferências de aviso para este medicamento" icon={<Clock size={18}/>} iconClassName="text-amber-300">
               <MedicationAlertPreferences med={med} withdrawals={retiradas} today={getLocalTodayISO()}/>
             </ClinicalDisclosure>
           )}
@@ -3306,7 +3306,7 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           {hasFinancialSection && (
-            <ClinicalDisclosure id="medicamento-financeiro" title="Financeiro" description="Compras realizadas, valores informados e planejamento futuro" icon={<LineChart size={18}/> }>
+            <ClinicalDisclosure id="medicamento-financeiro" title="Financeiro" description="Compras realizadas, valores informados e planejamento futuro" icon={<LineChart size={18}/> } iconClassName="text-amber-300">
               {()=><>
 
               {/* P15 R2: compras realizadas e médias são visuais; planejamento segue separado. */}
@@ -3336,7 +3336,7 @@ function MedicamentoDetalhesContent() {
           {/* ==================================================
               REDE — P15 R3: relações selecionadas na página, apresentação modular.
               ================================================== */}
-          <ClinicalDisclosure id="medicamento-rede" title="Prescrição e rede de cuidado" description="Profissionais, locais e farmácias vinculados" icon={<Stethoscope size={18}/> }>
+          <ClinicalDisclosure id="medicamento-rede" title="Prescrição e rede de cuidado" description="Profissionais, locais e farmácias vinculados" icon={<Stethoscope size={18}/> } iconClassName="text-teal-300">
             {() => <MedicationCareNetworkDetails
               doctor={{id:medico?.id,name:medico?.nome || med.medico || "Não informado",otherMedicationCount:outrosMedsDesteMedico.length}}
               hospital={hospital ? {id:hospital.id,name:hospital.nome,address:hospital.endereco,phone:hospital.telefone} : null}
@@ -3407,7 +3407,7 @@ function MedicamentoDetalhesContent() {
 
           {renovacoes.length >
             0 && (
-            <ClinicalDisclosure id="historico-aquisicoes" title="Movimentações anteriores" description={`${renovacoes.length} receitas e aquisições registradas · consultar sob demanda`} icon={<CalendarDays size={18}/>}>
+            <ClinicalDisclosure id="historico-aquisicoes" title="Movimentações anteriores" description={`${renovacoes.length} receitas e aquisições registradas · consultar sob demanda`} icon={<CalendarDays size={18}/>} iconClassName="text-violet-300">
               {() => <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div>

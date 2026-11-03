@@ -99,10 +99,10 @@ export default function VaultIntelligencePage() {
 
     <div className="mx-auto mt-4 max-w-2xl space-y-3">
       <ClinicalSectionNav label="Áreas do Vault Insight" layout="grid" density="compact" items={[
-        {id:"insight-decisoes",label:"Decisões",icon:<BrainCircuit size={14}/>},
-        {id:"insight-evidencias",label:"Evidências",icon:<ShieldCheck size={14}/>},
-        {id:"insight-saude",label:"Saúde",icon:<AlertTriangle size={14}/>},
-        {id:"insight-cofre",label:"Cofre",icon:<Database size={14}/>},
+        {id:"insight-decisoes",label:"Decisões",icon:<BrainCircuit size={14}/>,iconClassName:"text-violet-300",},
+        {id:"insight-evidencias",label:"Evidências",icon:<ShieldCheck size={14}/>,iconClassName:"text-cyan-300",},
+        {id:"insight-saude",label:"Saúde",icon:<AlertTriangle size={14}/>,iconClassName:"text-amber-300",},
+        {id:"insight-cofre",label:"Cofre",icon:<Database size={14}/>,iconClassName:"text-emerald-300",},
       ]}/>
       <ClinicalDisclosure id="insight-relacoes" title="Cuidado conectado" description="Medicamentos, tratamentos e fornecimento" icon={<BrainCircuit size={18}/>} iconClassName="text-violet-300">{() => <CareRelationshipRoutes compact onNavigate={href=>router.push(preserveReturn(href))}/>}</ClinicalDisclosure>
     </div>
