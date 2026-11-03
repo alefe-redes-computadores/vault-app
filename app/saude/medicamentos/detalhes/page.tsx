@@ -1,5 +1,8 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
+
+import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
+import { medicationRestockHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseSortTimestamp, formatQuantidade, getKnownDoseQuantity, summarizeKnownQuantity, formatKnownQuantitySummary } from "@/lib/health-intelligence/medication-detail-presenters";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
@@ -3203,7 +3206,8 @@ function MedicamentoDetalhesContent() {
               isSOS) &&
             temEstoque && (
               <section
-                className={`vault-deferred overflow-hidden rounded-[22px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
+                id="medicamento-estoque"
+                className={`vault-deferred scroll-mt-24 overflow-hidden rounded-[22px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
               >
                 <MedicationStockOverview
                   statusLabel={estoqueStatus.label} statusColor={estoqueStatus.color}
@@ -3220,6 +3224,14 @@ function MedicamentoDetalhesContent() {
                   dropsConversionMissing={isGota && (unidadeEstoque.includes("ml") || unidadeEstoque.includes("frasco")) && gotasPorMl === null}
                   formatQuantity={formatQuantidade}
                 />
+                {med.id && med.status !== "descontinuado" ? (
+                  <div className="flex justify-end px-3 pb-3">
+                    <MedicationRestockAction name={med.nome} onOpen={() => {
+                      trigger("vibrate");
+                      router.push(medicationRestockHref(med.id!, `/saude/medicamentos/detalhes?${searchParams.toString()}#medicamento-estoque`));
+                    }} />
+                  </div>
+                ) : null}
               </section>
             )}
 
