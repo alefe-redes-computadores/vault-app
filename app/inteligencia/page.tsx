@@ -1,4 +1,5 @@
 "use client";
+import dynamic from "next/dynamic";
 import { BRAIN_NAME } from "@/lib/health-intelligence/version";
 // VAULT_INTELLIGENCE_COMPACT_V70
 // Mais -> Central de atenção -> Saúde longitudinal.
@@ -16,11 +17,11 @@ import type { VaultGeneralInsight, VaultInsightKind } from "@/lib/vault-intellig
 import { useReturnContext } from "@/hooks/useReturnContext";
 import { CareForecastAgenda } from "@/components/saude/CareForecastAgenda";
 import { BrainCarePlan } from "@/components/health-intelligence/BrainCarePlan";
-import { DoseEvidenceBrief } from "@/components/saude/DoseEvidenceBrief";
-import { CareAccessBrief } from "@/components/saude/CareAccessBrief";
-import { UpcomingDoseAgenda } from "@/components/saude/UpcomingDoseAgenda";
-import { PrescriptionPlanningBrief } from "@/components/saude/PrescriptionPlanningBrief";
-import { CareFinancialOutlook } from "@/components/saude/CareFinancialOutlook";
+const DoseEvidenceBrief = dynamic(() => import("@/components/saude/DoseEvidenceBrief").then(module => module.DoseEvidenceBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
+const CareAccessBrief = dynamic(() => import("@/components/saude/CareAccessBrief").then(module => module.CareAccessBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
+const UpcomingDoseAgenda = dynamic(() => import("@/components/saude/UpcomingDoseAgenda").then(module => module.UpcomingDoseAgenda), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
+const PrescriptionPlanningBrief = dynamic(() => import("@/components/saude/PrescriptionPlanningBrief").then(module => module.PrescriptionPlanningBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
+const CareFinancialOutlook = dynamic(() => import("@/components/saude/CareFinancialOutlook").then(module => module.CareFinancialOutlook), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { CareRelationshipRoutes } from "@/components/saude/CareRelationshipRoutes";
 
@@ -41,11 +42,13 @@ export default function VaultIntelligencePage() {
   const [selectedHealth, setSelectedHealth] = useState<HealthInsight | null>(null);
   const openedNotificationInsightRef = useRef<string | null>(null);
   const evidenceRef = useRef<HTMLDetailsElement>(null);
+  const [evidenceOpened, setEvidenceOpened] = useState(false);
 
   useEffect(() => {
     const revealEvidence = () => {
       if (window.location.hash === "#insight-evidencias" && evidenceRef.current) {
         evidenceRef.current.open = true;
+        setEvidenceOpened(true);
       }
     };
     revealEvidence();
@@ -122,12 +125,12 @@ export default function VaultIntelligencePage() {
     {!health.isLoading && health.careCommand ? <BrainCarePlan plan={health.careCommand.plan} onNavigate={(href) => router.push(preserveReturn(href))}/> : null}
 
     {/* VAULT_V320_BRAIN_EVIDENCE: primary care decisions remain above; extra lenses below. */}
-      <details ref={evidenceRef} id="insight-evidencias" className="group mx-auto mt-3 max-w-2xl scroll-mt-24 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.025] px-3 py-1">
+      <details ref={evidenceRef} onToggle={event => { if (event.currentTarget.open) setEvidenceOpened(true); }} id="insight-evidencias" className="group mx-auto mt-3 max-w-2xl scroll-mt-24 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.025] px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 text-left">
           <span className="min-w-0"><strong className="block text-xs font-semibold text-ink-primary">Explorar planejamento e evidências</strong><span className="block text-[10px] text-ink-muted">Documentos, doses, aquisições e horizonte financeiro</span></span>
           <ChevronRight size={16} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
         </summary>
-        <div className="space-y-3 border-t border-surface-border/50 py-3">
+        {evidenceOpened ? <div className="space-y-3 border-t border-surface-border/50 py-3">
     <p className="text-xs leading-relaxed text-ink-muted">Confira a origem, o período e a amostra de cada sinal. Uma associação é uma hipótese para investigar e não comprova causa.</p>
     {health.isLoading ? <p role="status" className="text-xs text-ink-muted">Carregando evidências de saúde…</p> : null}
     {!health.isLoading && health.careCommand ? <section className="mx-auto mt-4 max-w-2xl"><CareAccessBrief portfolio={health.careCommand.documents} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
@@ -139,7 +142,7 @@ export default function VaultIntelligencePage() {
     {!health.isLoading ? <section className="mx-auto mt-4 max-w-2xl"><PrescriptionPlanningBrief context={health.context} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
 
     {!health.isLoading&&health.careCommand?<CareFinancialOutlook command={health.careCommand} realized30={coverage?.financialSpend30d||0} realized90={coverage?.financialSpend90d||0}/>:null}
-        </div>
+        </div> : null}
       </details>
 
     <section id="insight-saude" className="mx-auto mt-6 max-w-2xl scroll-mt-24">
