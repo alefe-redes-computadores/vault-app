@@ -5,6 +5,8 @@ import {useRetiradas} from "@/hooks/useRetiradas";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {MedicationEventBoundary} from "@/components/saude/MedicationEventBoundary";
 import { MedicationAcquisitionQuantityGuide } from "@/components/saude/MedicationAcquisitionQuantityGuide";
+import { medicationScheduleSupplyHref } from "@/lib/health-intelligence/medication-restock-navigation";
+import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 
 import {
   Suspense,
@@ -438,6 +440,7 @@ function NovaRenovacaoContent() {
     );
 
   const withdrawalParam=searchParams.get("retirada_id");
+  const acquisitionOrigin = searchParams.get("origin") === "sus" ? "sus" : "comprado";
   const [selectedWithdrawalId,setSelectedWithdrawalId]=useState(withdrawalParam||"");
   const {retiradas}=useRetiradas();
   const rawReturnTo = searchParams.get("return_to");
@@ -671,7 +674,7 @@ function NovaRenovacaoContent() {
       | "comprado"
       | "sus"
     >(
-      "comprado"
+      acquisitionOrigin
     );
 
   const [
@@ -705,6 +708,10 @@ function NovaRenovacaoContent() {
     useState(
       ""
     );
+
+  // Obrigatório somente se não existe saldo anterior conhecido.
+  // Zero deve ser digitado explicitamente; nunca inferido por ausência.
+  const [saldoAnteriorTexto, setSaldoAnteriorTexto] = useState("");
 
   const [
     lote,
@@ -791,6 +798,9 @@ function NovaRenovacaoContent() {
         item.id ===
         medicamentoId
     );
+
+  const stockSnapshot = selectedMedicamento ? getClinicalStockSnapshot(selectedMedicamento) : null;
+  const saldoAnteriorDesconhecido = stockSnapshot?.state === "unknown";
 
   const selectedFarmacia =
     farmacias.find(
@@ -1269,6 +1279,18 @@ function NovaRenovacaoContent() {
             : "Data da compra inválida";
       }
 
+      if (dataAquisicaoISO && dataAquisicaoISO > getLocalTodayISO()) {
+        newErrors.dataAquisicao = "Data futura é planejamento. Agende uma retirada; não registre como recebida.";
+      }
+
+      if (saldoAnteriorDesconhecido) {
+        const raw = saldoAnteriorTexto.trim().replace(",", ".");
+        const n = raw ? Number(raw) : NaN;
+        if (!Number.isFinite(n) || n < 0) {
+          newErrors.saldoAnterior = "Confirme o saldo anterior (digite 0 quando era realmente zero).";
+        }
+      }
+
       if (
         validadeProduto &&
         !parseDateToISO(
@@ -1292,11 +1314,9 @@ function NovaRenovacaoContent() {
       }
 
       if (
-        quantidadeAdicionar.trim() &&
         parsePositiveNumber(
           quantidadeAdicionar
-        ) ===
-          undefined
+        ) === undefined
       ) {
         newErrors.quantidadeAdicionar =
           "Informe uma quantidade maior que zero";
@@ -1565,9 +1585,11 @@ function NovaRenovacaoContent() {
                   undefined,
               },
               {
-                somenteAquisicao:
-                  true,
-                retiradaId:selectedWithdrawalId || undefined,
+                somenteAquisicao: true,
+                retiradaId: selectedWithdrawalId || undefined,
+                ...(saldoAnteriorDesconhecido
+                  ? { initialStockQuantity: Number(saldoAnteriorTexto.trim().replace(",", ".")) }
+                  : {}),
               }
             );
           } catch (
@@ -1726,13 +1748,14 @@ function NovaRenovacaoContent() {
 
             <div className="min-w-0">
               <h1 className="mt-1 font-display text-xl font-semibold text-ink-primary">
-                Nova aquisição / retirada
+                Repor estoque · registrar recebimento
               </h1>
             </div>
           </div>
         </header>
 
         <section className="mx-auto max-w-3xl space-y-5 px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
+          <p className="rounded-xl border border-ice/20 bg-ice/[0.06] px-3 py-2 text-[11px] leading-relaxed text-ink-secondary">Esta tela registra uma compra ou retirada que <strong>já aconteceu</strong>. Para uma data futura, use Agendar retirada/ida à farmácia; planejamento nunca adiciona estoque.</p>
           {/* ==================================================
               IDENTIDADE
               ================================================== */}
@@ -1769,6 +1792,7 @@ function NovaRenovacaoContent() {
                     : "Aguardando seleção..."}
                 </h2>
                 {selectedMedicamento?.dosagem ? <p className="mt-1 text-xs text-ink-muted">{selectedMedicamento.dosagem}</p> : null}
+                {selectedMedicamento && !autoSelectMedId && <button type="button" className="mt-2 text-[11px] font-semibold text-ice" onClick={() => setIsMedModalOpen(true)}>Trocar medicamento</button>}
                 {selectedMedicamento?.data_receita ? <p className="mt-1 text-xs text-ink-muted">Data da receita no cadastro: {formatDateToDisplay(selectedMedicamento.data_receita)} · referência do medicamento</p> : null}
               </div>
             </div>
@@ -1778,6 +1802,7 @@ function NovaRenovacaoContent() {
               MEDICAMENTO
               ================================================== */}
 
+          {!selectedMedicamento && (
           <motion.div
             variants={
               fadeUp
@@ -1813,13 +1838,7 @@ function NovaRenovacaoContent() {
               }`}
             >
               <span className="truncate">
-                {selectedMedicamento
-                  ? `${selectedMedicamento.nome}${
-                      selectedMedicamento.dosagem
-                        ? ` · ${selectedMedicamento.dosagem}`
-                        : ""
-                    }`
-                  : "Selecionar medicamento"}
+                Selecionar medicamento
               </span>
             </button>
 
@@ -1832,6 +1851,740 @@ function NovaRenovacaoContent() {
             )}
           </motion.div>
 
+          )}
+
+          {/* VAULT_ACQUISITION_ONLY_V93
+              Receita, validade e planejamento vivem em nova-receita. */}
+          <MedicationEventBoundary mode="acquisition"/>
+
+          {/* ==================================================
+              AQUISIÇÃO
+              ================================================== */}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.06,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <p className="mb-3 text-sm font-medium text-ink-primary">
+              Forma de Aquisição
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setTipoAquisicao(
+                      "comprado"
+                    );
+                  }
+                }
+                className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                  tipoAquisicao ===
+                  "comprado"
+                    ? "border-ice bg-ice/12 text-ice"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+              >
+                <Store
+                  size={
+                    16
+                  }
+                />
+
+                Particular
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  () => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setTipoAquisicao(
+                      "sus"
+                    );
+                  }
+                }
+                className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
+                  tipoAquisicao ===
+                  "sus"
+                    ? "border-emerald-500 bg-emerald-500/12 text-emerald-400"
+                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
+                }`}
+              >
+                <Receipt
+                  size={
+                    16
+                  }
+                />
+
+                SUS / Governo
+              </button>
+              {selectedMedicamento?.id && (
+                <div className="col-span-2 rounded-xl border border-ice/20 bg-ice/5 px-3 py-2 text-xs text-ink-muted">
+                  Ainda não comprou/retirou? <button type="button" className="min-h-10 font-semibold text-ice underline underline-offset-2" onClick={() => router.push(medicationScheduleSupplyHref(selectedMedicamento.id!, tipoAquisicao === "sus" ? "sus" : "farmacia", returnTo))}>
+                    {tipoAquisicao === "sus" ? "Agendar retirada SUS" : "Agendar ida à farmácia"}
+                  </button>. O agendamento não altera o saldo.
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.065,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <Calendar
+                size={
+                  16
+                }
+                className={
+                  tipoAquisicao ===
+                    "sus"
+                    ? "text-emerald-400"
+                    : "text-ice"
+                }
+              />
+
+              <div>
+                <h3 className="text-sm font-semibold text-ink-primary">
+                  {tipoAquisicao ===
+                  "sus"
+                    ? "Data da retirada"
+                    : "Data da compra"}
+                </h3>
+
+                <p className="mt-0.5 text-[11px] text-ink-muted">
+                  Esta é a data usada no histórico de aquisições e no financeiro do Vault.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <Calendar
+                size={
+                  16
+                }
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
+
+              <input
+                type="text"
+                placeholder="DD/MM/AAAA"
+                value={
+                  dataAquisicaoDisplay
+                }
+                onChange={
+                  (
+                    event
+                  ) =>
+                    setDataAquisicaoDisplay(
+                      handleDateMask(
+                        event.target.value
+                      )
+                    )
+                }
+                maxLength={
+                  10
+                }
+                inputMode="numeric"
+                className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none ${
+                  errors.dataAquisicao
+                    ? "border-coral/50"
+                    : tipoAquisicao ===
+                        "sus"
+                      ? "border-surface-border/50 focus:border-emerald-500/50"
+                      : "border-surface-border/50 focus:border-ice/50"
+                }`}
+              />
+            </div>
+
+            {errors.dataAquisicao && (
+              <p className="mt-1 text-xs text-coral">
+                {
+                  errors.dataAquisicao
+                }
+              </p>
+            )}
+          </motion.div>
+
+          {saldoAnteriorDesconhecido && (
+            <section className="rounded-[22px] border border-amber-400/30 bg-amber-400/[0.055] p-4">
+              <label htmlFor="m42-saldo-anterior" className="text-sm font-semibold text-ink-primary">Saldo antes deste recebimento *</label>
+              <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">O Vault ainda não conhece o estoque deste medicamento. Informe quantas unidades já havia antes desta compra/retirada. Se não havia nenhuma, digite 0. A quantidade adquirida será somada somente depois da confirmação.</p>
+              <input id="m42-saldo-anterior" type="number" min="0" step="any" inputMode="decimal" value={saldoAnteriorTexto} onChange={event=>setSaldoAnteriorTexto(event.target.value)} placeholder="Ex.: 0" aria-invalid={Boolean(errors.saldoAnterior)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-ink-primary focus:border-amber-400/60"/>
+              {errors.saldoAnterior && <p role="alert" className="mt-1 text-xs text-coral">{errors.saldoAnterior}</p>}
+            </section>
+          )}
+
+          {/* ==================================================
+              COMPRA
+              ================================================== */}
+
+          {tipoAquisicao ===
+          "comprado" ? (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.07,
+              }}
+              className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <Store
+                  size={
+                    16
+                  }
+                  className="text-ice"
+                />
+
+                <h3 className="text-sm font-semibold text-ink-primary">
+                  Dados da Compra
+                </h3>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-ink-primary">
+                    Farmácia
+                  </label>
+
+                  {farmaciaId && (
+                    <button
+                      type="button"
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setFarmaciaId(
+                            ""
+                          );
+
+                          setFarmaciaNome(
+                            ""
+                          );
+                        }
+                      }
+                      className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
+                    >
+                      <Eraser
+                        size={
+                          12
+                        }
+                      />
+
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    () =>
+                      setIsPharmacyModalOpen(
+                        true
+                      )
+                  }
+                  className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left"
+                >
+                  <span className="truncate font-medium text-ink-primary">
+                    {selectedFarmacia
+                      ?.nome ||
+                      farmaciaNome ||
+                      "Onde comprou?"}
+                  </span>
+
+                  <span className="text-xs font-bold text-ice">
+                    Selecionar
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+                  Valor total da compra (R$)
+                </label>
+
+                <div className="relative">
+                  <DollarSign
+                    size={
+                      16
+                    }
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"
+                  />
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0,00"
+                    value={
+                      preco
+                    }
+                    onChange={
+                      (
+                        event
+                      ) =>
+                        setPreco(
+                          handleCurrencyMask(
+                            event.target.value
+                          )
+                        )
+                    }
+                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50 ${
+                      errors.preco
+                        ? "border-coral/50"
+                        : "border-surface-border/50"
+                    }`}
+                  />
+                </div>
+
+                {errors.preco && (
+                  <p className="mt-1 text-xs text-coral">
+                    {
+                      errors.preco
+                    }
+                  </p>
+                )}
+
+                <p className="mt-1.5 text-[11px] text-ink-muted">
+                  Informe o valor total pago nesta compra. A quantidade adquirida é registrada separadamente e não multiplica este valor.
+                </p>
+
+                {analisePreco && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs">
+                    {analisePreco.diff >
+                    0 ? (
+                      <>
+                        <TrendingDown
+                          size={
+                            14
+                          }
+                          className="text-emerald-400"
+                        />
+
+                        <span className="text-emerald-400">
+                          R${" "}
+                          {analisePreco.diff
+                            .toFixed(
+                              2
+                            )
+                            .replace(
+                              ".",
+                              ","
+                            )}{" "}
+                          mais barato que a compra anterior para a mesma quantidade
+                          {analisePreco.farmaciaAnteriorName
+                            ? ` em ${analisePreco.farmaciaAnteriorName}`
+                            : ""}
+                          .
+                        </span>
+                      </>
+                    ) : analisePreco.diff <
+                      0 ? (
+                      <>
+                        <TrendingUp
+                          size={
+                            14
+                          }
+                          className="text-coral"
+                        />
+
+                        <span className="text-coral">
+                          R${" "}
+                          {Math.abs(
+                            analisePreco.diff
+                          )
+                            .toFixed(
+                              2
+                            )
+                            .replace(
+                              ".",
+                              ","
+                            )}{" "}
+                          mais caro que a compra anterior para a mesma quantidade
+                          {analisePreco.farmaciaAnteriorName
+                            ? ` em ${analisePreco.farmaciaAnteriorName}`
+                            : ""}
+                          .
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Minus
+                          size={
+                            14
+                          }
+                          className="text-ink-muted"
+                        />
+
+                        <span className="text-ink-muted">
+                          Mesmo custo proporcional da compra anterior.
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-ink-primary">
+                  <PackagePlus
+                    size={
+                      16
+                    }
+                    className="text-ink-muted"
+                  />
+
+                  Quantidade adquirida
+                </label>
+
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.5"
+                  placeholder="Opcional"
+                  value={
+                    quantidadeAdicionar
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setQuantidadeAdicionar(
+                        event.target.value
+                      )
+                  }
+                  error={
+                    errors.quantidadeAdicionar
+                  }
+                />
+
+                <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
+                <p className="mt-1.5 text-[11px] text-ink-muted">
+                  A quantidade recebida será somada ao saldo confirmado depois de salvar.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+                <Input
+                  label="Lote (opcional)"
+                  value={
+                    lote
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setLote(
+                        event.target.value
+                      )
+                  }
+                  placeholder="Lote..."
+                />
+
+                <Input
+                  label="Validade do produto"
+                  value={
+                    validadeProduto
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setValidadeProduto(
+                        handleDateMask(
+                          event.target.value
+                        )
+                      )
+                  }
+                  placeholder="DD/MM/AAAA"
+                  maxLength={
+                    10
+                  }
+                  inputMode="numeric"
+                  error={
+                    errors.validadeProduto
+                  }
+                />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              variants={
+                fadeUp
+              }
+              initial="initial"
+              animate="animate"
+              transition={{
+                delay:
+                  0.07,
+              }}
+              className="space-y-4 rounded-[28px] border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                  <Check
+                    size={
+                      16
+                    }
+                  />
+                </div>
+
+                <h3 className="text-sm font-semibold text-emerald-400">
+                  Retirada SUS / Governo
+                </h3>
+              </div>
+
+              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><HealthRelationPicker title="Selecionar retirada" medication={medicamentos.find(m => m.id === medicamentoId)} id="receipt-withdrawal" value={selectedWithdrawalId} onValueChange={e=>setSelectedWithdrawalId(e)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</HealthRelationPicker><p className="text-[10px] leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
+              <p className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-[11px] leading-relaxed text-ink-muted">LME, autorização e documentos ficam no fornecimento deste medicamento. Depois de salvar, abra “Fornecimento e documentos” no detalhe desta aquisição, inclusive para uma retirada já realizada.</p>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-ink-primary">
+                    Posto / Farmácia Pública
+                  </label>
+
+                  {farmaciaId && (
+                    <button
+                      type="button"
+                      onClick={
+                        () => {
+                          trigger(
+                            "vibrate"
+                          );
+
+                          setFarmaciaId(
+                            ""
+                          );
+
+                          setFarmaciaNome(
+                            ""
+                          );
+                        }
+                      }
+                      className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
+                    >
+                      <Eraser
+                        size={
+                          12
+                        }
+                      />
+
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    () =>
+                      setIsPharmacyModalOpen(
+                        true
+                      )
+                  }
+                  className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left"
+                >
+                  <span className="truncate font-medium text-ink-primary">
+                    {selectedFarmacia
+                      ?.nome ||
+                      farmaciaNome ||
+                      "Onde retirou?"}
+                  </span>
+
+                  <span className="text-xs font-bold text-ice">
+                    Selecionar
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-ink-primary">
+                  <PackagePlus
+                    size={
+                      16
+                    }
+                    className="text-ink-muted"
+                  />
+
+                  Quantidade retirada
+                </label>
+
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.5"
+                  placeholder="Opcional"
+                  value={
+                    quantidadeAdicionar
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setQuantidadeAdicionar(
+                        event.target.value
+                      )
+                  }
+                  error={
+                    errors.quantidadeAdicionar
+                  }
+                />
+
+                <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
+                <p className="mt-1.5 text-[11px] text-ink-muted">
+                  A quantidade recebida será somada ao saldo confirmado depois de salvar.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink-primary">
+                  Próxima data informada para retorno
+                </label>
+
+                <div className="relative">
+                  <Calendar
+                    size={
+                      16
+                    }
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="DD/MM/AAAA"
+                    value={
+                      dataProximaRetirada
+                    }
+                    onChange={
+                      (
+                        event
+                      ) =>
+                        setDataProximaRetirada(
+                          handleDateMask(
+                            event.target.value
+                          )
+                        )
+                    }
+                    maxLength={
+                      10
+                    }
+                    inputMode="numeric"
+                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none ${
+                      errors.dataProximaRetirada
+                        ? "border-coral/50"
+                        : "border-surface-border/50 focus:border-emerald-500/50"
+                    }`}
+                  />
+                </div>
+
+                {errors.dataProximaRetirada && (
+                  <p className="mt-1 text-xs text-coral">
+                    {
+                      errors.dataProximaRetirada
+                    }
+                  </p>
+                )}
+
+                <p className="mt-1.5 text-[11px] text-ink-muted">
+                  O Vault poderá usar essa data como referência para lembretes e insights de próxima retirada.
+                </p>
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-3 pt-1">
+                <input
+                  type="checkbox"
+                  checked={
+                    exigeNovaReceita
+                  }
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setExigeNovaReceita(
+                        event.target.checked
+                      )
+                  }
+                  className="h-4 w-4 rounded border-surface-border/50 bg-surface-raised text-ice focus:ring-ice/20"
+                />
+
+                <span className="text-sm text-ink-primary">
+                  Foi informado que será necessária nova receita na próxima retirada
+                </span>
+              </label>
+            </motion.div>
+          )}
+
+          {/* ==================================================
+              OBSERVAÇÕES
+              ================================================== */}
+
+          <motion.div
+            variants={
+              fadeUp
+            }
+            initial="initial"
+            animate="animate"
+            transition={{
+              delay:
+                0.08,
+            }}
+            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
+          >
+            <TextArea
+              label="Observações (opcional)"
+              value={
+                observacoes
+              }
+              onChange={
+                (
+                  event
+                ) =>
+                  setObservacoes(
+                    event.target.value
+                  )
+              }
+              placeholder="Notas sobre esta aquisição..."
+            />
+          </motion.div>
+
+          <details className="group rounded-[22px] border border-surface-border/50 bg-surface/70 p-3">
+            <summary className="flex min-h-10 cursor-pointer items-center gap-2 px-2 text-xs font-semibold text-ink-secondary">Vínculos opcionais · médico, hospital e local</summary>
+            <div className="space-y-3 pt-3">
           {/* ==================================================
               MÉDICO
               ================================================== */}
@@ -2100,718 +2853,8 @@ function NovaRenovacaoContent() {
             </button>
           </motion.div>
 
-          {/* VAULT_ACQUISITION_ONLY_V93
-              Receita, validade e planejamento vivem em nova-receita. */}
-          <MedicationEventBoundary mode="acquisition"/>
-
-          {/* ==================================================
-              AQUISIÇÃO
-              ================================================== */}
-
-          <motion.div
-            variants={
-              fadeUp
-            }
-            initial="initial"
-            animate="animate"
-            transition={{
-              delay:
-                0.06,
-            }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <p className="mb-3 text-sm font-medium text-ink-primary">
-              Forma de Aquisição
-            </p>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={
-                  () => {
-                    trigger(
-                      "vibrate"
-                    );
-
-                    setTipoAquisicao(
-                      "comprado"
-                    );
-                  }
-                }
-                className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
-                  tipoAquisicao ===
-                  "comprado"
-                    ? "border-ice bg-ice/12 text-ice"
-                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                }`}
-              >
-                <Store
-                  size={
-                    16
-                  }
-                />
-
-                Particular
-              </button>
-
-              <button
-                type="button"
-                onClick={
-                  () => {
-                    trigger(
-                      "vibrate"
-                    );
-
-                    setTipoAquisicao(
-                      "sus"
-                    );
-                  }
-                }
-                className={`flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition-all active:scale-95 ${
-                  tipoAquisicao ===
-                  "sus"
-                    ? "border-emerald-500 bg-emerald-500/12 text-emerald-400"
-                    : "border-surface-border/50 bg-surface-raised text-ink-muted"
-                }`}
-              >
-                <Receipt
-                  size={
-                    16
-                  }
-                />
-
-                SUS / Governo
-              </button>
             </div>
-          </motion.div>
-
-          <motion.div
-            variants={
-              fadeUp
-            }
-            initial="initial"
-            animate="animate"
-            transition={{
-              delay:
-                0.065,
-            }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <Calendar
-                size={
-                  16
-                }
-                className={
-                  tipoAquisicao ===
-                    "sus"
-                    ? "text-emerald-400"
-                    : "text-ice"
-                }
-              />
-
-              <div>
-                <h3 className="text-sm font-semibold text-ink-primary">
-                  {tipoAquisicao ===
-                  "sus"
-                    ? "Data da retirada"
-                    : "Data da compra"}
-                </h3>
-
-                <p className="mt-0.5 text-[11px] text-ink-muted">
-                  Esta é a data usada no histórico de aquisições e no financeiro do Vault.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative">
-              <Calendar
-                size={
-                  16
-                }
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-              />
-
-              <input
-                type="text"
-                placeholder="DD/MM/AAAA"
-                value={
-                  dataAquisicaoDisplay
-                }
-                onChange={
-                  (
-                    event
-                  ) =>
-                    setDataAquisicaoDisplay(
-                      handleDateMask(
-                        event.target.value
-                      )
-                    )
-                }
-                maxLength={
-                  10
-                }
-                inputMode="numeric"
-                className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none ${
-                  errors.dataAquisicao
-                    ? "border-coral/50"
-                    : tipoAquisicao ===
-                        "sus"
-                      ? "border-surface-border/50 focus:border-emerald-500/50"
-                      : "border-surface-border/50 focus:border-ice/50"
-                }`}
-              />
-            </div>
-
-            {errors.dataAquisicao && (
-              <p className="mt-1 text-xs text-coral">
-                {
-                  errors.dataAquisicao
-                }
-              </p>
-            )}
-          </motion.div>
-
-          {/* ==================================================
-              COMPRA
-              ================================================== */}
-
-          {tipoAquisicao ===
-          "comprado" ? (
-            <motion.div
-              variants={
-                fadeUp
-              }
-              initial="initial"
-              animate="animate"
-              transition={{
-                delay:
-                  0.07,
-              }}
-              className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <Store
-                  size={
-                    16
-                  }
-                  className="text-ice"
-                />
-
-                <h3 className="text-sm font-semibold text-ink-primary">
-                  Dados da Compra
-                </h3>
-              </div>
-
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-ink-primary">
-                    Farmácia
-                  </label>
-
-                  {farmaciaId && (
-                    <button
-                      type="button"
-                      onClick={
-                        () => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          setFarmaciaId(
-                            ""
-                          );
-
-                          setFarmaciaNome(
-                            ""
-                          );
-                        }
-                      }
-                      className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
-                    >
-                      <Eraser
-                        size={
-                          12
-                        }
-                      />
-
-                      Limpar
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={
-                    () =>
-                      setIsPharmacyModalOpen(
-                        true
-                      )
-                  }
-                  className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left"
-                >
-                  <span className="truncate font-medium text-ink-primary">
-                    {selectedFarmacia
-                      ?.nome ||
-                      farmaciaNome ||
-                      "Onde comprou?"}
-                  </span>
-
-                  <span className="text-xs font-bold text-ice">
-                    Selecionar
-                  </span>
-                </button>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                  Valor total da compra (R$)
-                </label>
-
-                <div className="relative">
-                  <DollarSign
-                    size={
-                      16
-                    }
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400"
-                  />
-
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0,00"
-                    value={
-                      preco
-                    }
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setPreco(
-                          handleCurrencyMask(
-                            event.target.value
-                          )
-                        )
-                    }
-                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none focus:border-ice/50 ${
-                      errors.preco
-                        ? "border-coral/50"
-                        : "border-surface-border/50"
-                    }`}
-                  />
-                </div>
-
-                {errors.preco && (
-                  <p className="mt-1 text-xs text-coral">
-                    {
-                      errors.preco
-                    }
-                  </p>
-                )}
-
-                <p className="mt-1.5 text-[11px] text-ink-muted">
-                  Informe o valor total pago nesta compra. A quantidade adquirida é registrada separadamente e não multiplica este valor.
-                </p>
-
-                {analisePreco && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs">
-                    {analisePreco.diff >
-                    0 ? (
-                      <>
-                        <TrendingDown
-                          size={
-                            14
-                          }
-                          className="text-emerald-400"
-                        />
-
-                        <span className="text-emerald-400">
-                          R${" "}
-                          {analisePreco.diff
-                            .toFixed(
-                              2
-                            )
-                            .replace(
-                              ".",
-                              ","
-                            )}{" "}
-                          mais barato que a compra anterior para a mesma quantidade
-                          {analisePreco.farmaciaAnteriorName
-                            ? ` em ${analisePreco.farmaciaAnteriorName}`
-                            : ""}
-                          .
-                        </span>
-                      </>
-                    ) : analisePreco.diff <
-                      0 ? (
-                      <>
-                        <TrendingUp
-                          size={
-                            14
-                          }
-                          className="text-coral"
-                        />
-
-                        <span className="text-coral">
-                          R${" "}
-                          {Math.abs(
-                            analisePreco.diff
-                          )
-                            .toFixed(
-                              2
-                            )
-                            .replace(
-                              ".",
-                              ","
-                            )}{" "}
-                          mais caro que a compra anterior para a mesma quantidade
-                          {analisePreco.farmaciaAnteriorName
-                            ? ` em ${analisePreco.farmaciaAnteriorName}`
-                            : ""}
-                          .
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Minus
-                          size={
-                            14
-                          }
-                          className="text-ink-muted"
-                        />
-
-                        <span className="text-ink-muted">
-                          Mesmo custo proporcional da compra anterior.
-                        </span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-ink-primary">
-                  <PackagePlus
-                    size={
-                      16
-                    }
-                    className="text-ink-muted"
-                  />
-
-                  Quantidade adquirida
-                </label>
-
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.5"
-                  placeholder="Opcional"
-                  value={
-                    quantidadeAdicionar
-                  }
-                  onChange={
-                    (
-                      event
-                    ) =>
-                      setQuantidadeAdicionar(
-                        event.target.value
-                      )
-                  }
-                  error={
-                    errors.quantidadeAdicionar
-                  }
-                />
-
-                <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
-                <p className="mt-1.5 text-[11px] text-ink-muted">
-                  Se informada, essa quantidade será adicionada ao saldo atual do medicamento.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
-                <Input
-                  label="Lote (opcional)"
-                  value={
-                    lote
-                  }
-                  onChange={
-                    (
-                      event
-                    ) =>
-                      setLote(
-                        event.target.value
-                      )
-                  }
-                  placeholder="Lote..."
-                />
-
-                <Input
-                  label="Validade do produto"
-                  value={
-                    validadeProduto
-                  }
-                  onChange={
-                    (
-                      event
-                    ) =>
-                      setValidadeProduto(
-                        handleDateMask(
-                          event.target.value
-                        )
-                      )
-                  }
-                  placeholder="DD/MM/AAAA"
-                  maxLength={
-                    10
-                  }
-                  inputMode="numeric"
-                  error={
-                    errors.validadeProduto
-                  }
-                />
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              variants={
-                fadeUp
-              }
-              initial="initial"
-              animate="animate"
-              transition={{
-                delay:
-                  0.07,
-              }}
-              className="space-y-4 rounded-[28px] border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-sm"
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
-                  <Check
-                    size={
-                      16
-                    }
-                  />
-                </div>
-
-                <h3 className="text-sm font-semibold text-emerald-400">
-                  Retirada SUS / Governo
-                </h3>
-              </div>
-
-              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><HealthRelationPicker title="Selecionar retirada" medication={medicamentos.find(m => m.id === medicamentoId)} id="receipt-withdrawal" value={selectedWithdrawalId} onValueChange={e=>setSelectedWithdrawalId(e)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</HealthRelationPicker><p className="text-[10px] leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
-              <p className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-[11px] leading-relaxed text-ink-muted">LME, autorização e documentos ficam no fornecimento deste medicamento. Depois de salvar, abra “Fornecimento e documentos” no detalhe desta aquisição, inclusive para uma retirada já realizada.</p>
-
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-ink-primary">
-                    Posto / Farmácia Pública
-                  </label>
-
-                  {farmaciaId && (
-                    <button
-                      type="button"
-                      onClick={
-                        () => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          setFarmaciaId(
-                            ""
-                          );
-
-                          setFarmaciaNome(
-                            ""
-                          );
-                        }
-                      }
-                      className="flex items-center gap-1 rounded-md bg-coral/10 px-2 py-0.5 text-[10px] font-bold uppercase text-coral"
-                    >
-                      <Eraser
-                        size={
-                          12
-                        }
-                      />
-
-                      Limpar
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={
-                    () =>
-                      setIsPharmacyModalOpen(
-                        true
-                      )
-                  }
-                  className="flex w-full items-center justify-between rounded-2xl border border-surface-border/50 bg-surface-raised px-4 py-3 text-left"
-                >
-                  <span className="truncate font-medium text-ink-primary">
-                    {selectedFarmacia
-                      ?.nome ||
-                      farmaciaNome ||
-                      "Onde retirou?"}
-                  </span>
-
-                  <span className="text-xs font-bold text-ice">
-                    Selecionar
-                  </span>
-                </button>
-              </div>
-
-              <div>
-                <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-ink-primary">
-                  <PackagePlus
-                    size={
-                      16
-                    }
-                    className="text-ink-muted"
-                  />
-
-                  Quantidade retirada
-                </label>
-
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.5"
-                  placeholder="Opcional"
-                  value={
-                    quantidadeAdicionar
-                  }
-                  onChange={
-                    (
-                      event
-                    ) =>
-                      setQuantidadeAdicionar(
-                        event.target.value
-                      )
-                  }
-                  error={
-                    errors.quantidadeAdicionar
-                  }
-                />
-
-                <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
-                <p className="mt-1.5 text-[11px] text-ink-muted">
-                  Se informada, essa quantidade será adicionada ao saldo atual do medicamento.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-ink-primary">
-                  Próxima data informada para retorno
-                </label>
-
-                <div className="relative">
-                  <Calendar
-                    size={
-                      16
-                    }
-                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="DD/MM/AAAA"
-                    value={
-                      dataProximaRetirada
-                    }
-                    onChange={
-                      (
-                        event
-                      ) =>
-                        setDataProximaRetirada(
-                          handleDateMask(
-                            event.target.value
-                          )
-                        )
-                    }
-                    maxLength={
-                      10
-                    }
-                    inputMode="numeric"
-                    className={`w-full rounded-2xl border bg-surface-raised py-3 pl-9 pr-4 font-mono text-sm text-ink-primary outline-none ${
-                      errors.dataProximaRetirada
-                        ? "border-coral/50"
-                        : "border-surface-border/50 focus:border-emerald-500/50"
-                    }`}
-                  />
-                </div>
-
-                {errors.dataProximaRetirada && (
-                  <p className="mt-1 text-xs text-coral">
-                    {
-                      errors.dataProximaRetirada
-                    }
-                  </p>
-                )}
-
-                <p className="mt-1.5 text-[11px] text-ink-muted">
-                  O Vault poderá usar essa data como referência para lembretes e insights de próxima retirada.
-                </p>
-              </div>
-
-              <label className="flex cursor-pointer items-center gap-3 pt-1">
-                <input
-                  type="checkbox"
-                  checked={
-                    exigeNovaReceita
-                  }
-                  onChange={
-                    (
-                      event
-                    ) =>
-                      setExigeNovaReceita(
-                        event.target.checked
-                      )
-                  }
-                  className="h-4 w-4 rounded border-surface-border/50 bg-surface-raised text-ice focus:ring-ice/20"
-                />
-
-                <span className="text-sm text-ink-primary">
-                  Foi informado que será necessária nova receita na próxima retirada
-                </span>
-              </label>
-            </motion.div>
-          )}
-
-          {/* ==================================================
-              OBSERVAÇÕES
-              ================================================== */}
-
-          <motion.div
-            variants={
-              fadeUp
-            }
-            initial="initial"
-            animate="animate"
-            transition={{
-              delay:
-                0.08,
-            }}
-            className="rounded-[28px] border border-surface-border/50 bg-surface p-4 shadow-sm"
-          >
-            <TextArea
-              label="Observações (opcional)"
-              value={
-                observacoes
-              }
-              onChange={
-                (
-                  event
-                ) =>
-                  setObservacoes(
-                    event.target.value
-                  )
-              }
-              placeholder="Notas sobre esta aquisição..."
-            />
-          </motion.div>
+          </details>
 
           {/* ==================================================
               ANEXO
@@ -2970,7 +3013,7 @@ function NovaRenovacaoContent() {
 
             {isSubmitting
               ? "Salvando..."
-              : "Salvar Aquisição"}
+              : tipoAquisicao === "sus" ? "Registrar retirada realizada" : "Registrar compra realizada"}
           </Button>
         </div>
 

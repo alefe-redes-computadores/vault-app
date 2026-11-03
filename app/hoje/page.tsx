@@ -61,10 +61,6 @@ import { useDoseLogs } from "@/hooks/useDoseLogs";
 import { useHapticFeedback } from "@/lib/haptics";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
-import {
-  safeAddRenovacao,
-  safeUpdateMedicamento,
-} from "@/lib/db";
 import { EmptyState } from "@/components/EmptyState";
 import {
   addDaysToLocalDate,
@@ -391,34 +387,10 @@ export default function HojePage() {
   const [mostrarConcluidas,setMostrarConcluidas]=useState(false);
   const [filtroCompromisso,setFiltroCompromisso]=useState<FiltroCompromisso>("todos");
 
-  const [modalAberto, setModalAberto] =
-    useState(false);
-
-  const [
-    medicamentoSelecionado,
-    setMedicamentoSelecionado,
-  ] = useState<any>(null);
-
-  const [precoRenovacao, setPrecoRenovacao] =
-    useState("");
-
-  const [
-    observacoesRenovacao,
-    setObservacoesRenovacao,
-  ] = useState("");
-
-  const [
-    adicionarMaisEstoque,
-    setAdicionarMaisEstoque,
-  ] = useState(30);
-
   const [
     processandoDoseId,
     setProcessandoDoseId,
   ] = useState<string | null>(null);
-
-  const [isProcessing, setIsProcessing] =
-    useState(false);
 
   // HOJE V5 — CENTRAL DIÁRIA
   // Relógio reativo: mantém atrasos, próximos horários e ações em lote
@@ -1550,76 +1522,6 @@ export default function HojePage() {
     }
   };
 
-  const handleSalvarRenovacaoDoModal =
-    async () => {
-      if (
-        !medicamentoSelecionado?.id ||
-        isProcessing
-      ) {
-        return;
-      }
-
-      setIsProcessing(true);
-      trigger("success");
-
-      try {
-        await safeAddRenovacao({
-          user_id:
-            medicamentoSelecionado.user_id,
-          medicamento_id:
-            medicamentoSelecionado.id,
-          data: hoje,
-          preco: precoRenovacao
-            ? Number(
-                precoRenovacao.replace(
-                  ",",
-                  "."
-                )
-              )
-            : undefined,
-          observacoes:
-            observacoesRenovacao ||
-            "Renovação rápida via alerta",
-        });
-
-        const estoqueAtual =
-          medicamentoSelecionado.estoque_quantidade ||
-          0;
-
-        await safeUpdateMedicamento(
-          medicamentoSelecionado.id,
-          {
-            estoque_quantidade:
-              estoqueAtual +
-              Number(adicionarMaisEstoque),
-            estoque_data_referencia:
-              hoje,
-          }
-        );
-
-        showToast(
-          "Sucesso!",
-          "success"
-        );
-
-        setModalAberto(false);
-        setPrecoRenovacao("");
-        setObservacoesRenovacao("");
-      } catch (error) {
-        console.error(
-          "Erro ao renovar:",
-          error
-        );
-
-        showToast(
-          "Erro ao renovar",
-          "error"
-        );
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
   const filtrosAtivosCount = Number(filtroStatus !== "todos") + Number(filtroPeriodo !== "todos") +
     Number(filtroCompromisso !== "todos") + Number(isHoje && mostrarConcluidas);
   const hasFiltrosAtivos = filtrosAtivosCount > 0;
@@ -1669,7 +1571,7 @@ export default function HojePage() {
   // M17: one interaction context per parent render, shared by every visual dose card.
   // Clinical operations, owner scope, stock authority and idempotent writes stay above.
   const doseCardScope: TodayDoseTimelineCardScope = {
-    isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, setMedicamentoSelecionado, setModalAberto, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing, handleIgnorar, handleToggle,
+    isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing: false, handleIgnorar, handleToggle,
   };
 
   return (
@@ -2453,204 +2355,7 @@ export default function HojePage() {
           }}
         />
 
-        {/* =========================================================
-            MODAL — ESTOQUE BAIXO
-        ========================================================= */}
-        <AnimatePresence>
-          {modalAberto &&
-            medicamentoSelecionado && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 p-4 backdrop-blur-md"
-                onClick={() => {
-                  trigger("vibrate");
-                  setModalAberto(false);
-                }}
-              >
-                <motion.div
-                  initial={{
-                    opacity: 0,
-                    scale: 0.95,
-                    y: 10,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                  }}
-                  exit={{
-                    opacity: 0,
-                    scale: 0.95,
-                    y: 10,
-                  }}
-                  transition={{
-                    duration: 0.18,
-                  }}
-                  onClick={(e) =>
-                    e.stopPropagation()
-                  }
-                  className="w-full max-w-md overflow-hidden rounded-[32px] border border-surface-border bg-surface shadow-2xl"
-                >
-                  <div className="border-b border-surface-border/50 p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-coral/20 text-coral">
-                          <AlertTriangle
-                            size={21}
-                          />
-                        </div>
 
-                        <div className="min-w-0">
-                          <h3 className="font-display text-base font-bold text-ink-primary">
-                            Estoque baixo
-                          </h3>
-
-                          <p className="truncate text-xs text-ink-muted">
-                            {
-                              medicamentoSelecionado.nome
-                            }
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          trigger(
-                            "vibrate"
-                          );
-                          setModalAberto(
-                            false
-                          );
-                        }}
-                        className="shrink-0 rounded-full p-2 text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 p-5">
-                    <div className="rounded-2xl border border-coral/20 bg-coral/5 p-3">
-                      <p className="text-xs leading-relaxed text-ink-muted">
-                        Deseja registrar a
-                        renovação e repor o
-                        estoque no sistema?
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-ink-muted">
-                          Unidades a adicionar
-                        </label>
-
-                        <input
-                          type="number"
-                          min="0"
-                          value={
-                            adicionarMaisEstoque
-                          }
-                          onChange={(e) =>
-                            setAdicionarMaisEstoque(
-                              Number(
-                                e.target.value
-                              )
-                            )
-                          }
-                          className="w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 text-sm text-ink-primary outline-none transition-colors focus:border-ice"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-ink-muted">
-                          Preço pago (R$)
-                          <span className="ml-1 text-ink-faint">
-                            — opcional
-                          </span>
-                        </label>
-
-                        <div className="relative">
-                          <DollarSign
-                            size={16}
-                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400"
-                          />
-
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="0,00"
-                            value={
-                              precoRenovacao
-                            }
-                            onChange={(e) =>
-                              setPrecoRenovacao(
-                                e.target
-                                  .value
-                              )
-                            }
-                            className="w-full rounded-2xl border border-surface-border bg-surface-raised py-3 pl-10 pr-4 font-mono text-sm text-ink-primary outline-none transition-colors focus:border-ice"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-ink-muted">
-                          Observações
-                        </label>
-
-                        <input
-                          type="text"
-                          placeholder="Ex: Farmácia X / SUS"
-                          value={
-                            observacoesRenovacao
-                          }
-                          onChange={(e) =>
-                            setObservacoesRenovacao(
-                              e.target
-                                .value
-                            )
-                          }
-                          className="w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 text-sm text-ink-primary outline-none transition-colors focus:border-ice"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 border-t border-surface-border/50 p-5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        trigger(
-                          "vibrate"
-                        );
-                        setModalAberto(
-                          false
-                        );
-                      }}
-                      className="flex-1 rounded-2xl border border-surface-border bg-surface-raised py-3 text-xs font-semibold text-ink-muted transition-all active:scale-95"
-                    >
-                      Depois
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleSalvarRenovacaoDoModal
-                      }
-                      disabled={
-                        isProcessing
-                      }
-                      className="flex-1 rounded-2xl bg-emerald-400 py-3 text-xs font-semibold text-void shadow-md transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isProcessing
-                        ? "Salvando..."
-                        : "Repor e Renovar"}
-                    </button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-        </AnimatePresence>
       </main>
     </PageTransition>
   );

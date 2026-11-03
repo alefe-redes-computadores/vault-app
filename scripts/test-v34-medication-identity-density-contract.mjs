@@ -15,9 +15,10 @@ ok(!page.includes("{/* CONTEXTO CLÍNICO */}"),"tratamentos não variam a altura
 const strip = fs.readFileSync("components/saude/MedicationOperationalStrip.tsx", "utf8");
 ok(
   page.includes('<MedicationOperationalStrip today={todayStatus}') &&
-  page.includes('stockLabel={humanizeStockText(textoEstoquePrincipal)}') &&
-  page.includes('stockDetail={textoEstoqueSecundario || estoqueStatus}') &&
-  page.includes('stockTone={isEstoqueZerado?"empty":isEstoqueCritico?"low":"known"}') &&
+  page.includes('stockLabel={stockUnknown ? "Não informado"') &&
+  page.includes('stockDetail={stockUnknown ? "Saldo ainda não informado"') &&
+  page.includes('stockTone={stockUnknown ? "unknown"') &&
+  page.includes('getClinicalStockSnapshot(med)') &&
   page.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}') &&
   strip.includes('aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`}') &&
   strip.includes('stockTone==="empty"') &&

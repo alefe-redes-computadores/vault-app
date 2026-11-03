@@ -1,0 +1,35 @@
+// M42: checks that the stock UX remains aligned with clinical state and persisted authority.
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+const root = path.resolve(import.meta.dirname, '..');
+const file = p => fs.readFileSync(path.join(root,p),'utf8');
+let passed=0;
+function ok(name,fn){try {fn(); passed++;console.log(`OK ${passed}: ${name}`);} catch(e){console.error(`FALHOU: ${name}`);throw e}}
+const timeline=file('lib/today/build-timeline-items.ts');
+const card=file('components/hoje/TodayDoseTimelineCard.tsx');
+const repository=file('lib/repositories/renovacoes.ts');
+const acquisition=file('app/saude/renovacao/nova/page.tsx');
+const stockCount=file('app/saude/medicamentos/saldo/page.tsx');
+const care=file('lib/health-intelligence/medication-care-decision.ts');
+const schedule=file('app/saude/retiradas/nova/page.tsx');
+const today=file('app/hoje/page.tsx');
+const navigation=file('lib/health-intelligence/medication-restock-navigation.ts');
+ok('Timeline lê snapshot canônico',()=>assert.match(timeline,/getClinicalStockSnapshot\(med/));
+ok('Timeline não transforma estoque desconhecido em zero',()=>{assert.doesNotMatch(timeline,/estoqueRestante:\s*[^\n]*\?\?\s*0/);assert.match(timeline,/estoqueRestante:\s*stock\.info\?\.quantidadeRestante\s*\?\?\s*null/)});
+ok('Card distingue estoque ausente de zero',()=>{assert.match(card,/typeof item\.estoqueRestante === "number"/);assert.match(card,/Estoque não informado/);assert.match(card,/saldoConhecido\s*&&/)});
+ok('Card direciona contagem e reposição separadamente',()=>{assert.match(card,/medicationStockCountHref/);assert.match(card,/medicationRestockHref/)});
+ok('Hoje não atualiza estoque por modal alternativo',()=>{assert.doesNotMatch(today,/safeAddRenovacao/);assert.doesNotMatch(today,/safeUpdateMedicamento/)});
+ok('Contagem confirma saldo sem criar aquisição',()=>{assert.match(stockCount,/updateMedicamento\(med\.id,/);assert.doesNotMatch(stockCount,/addRenovacao|addRetirada/);assert.match(stockCount,/Number\.isFinite\(count\)/)});
+ok('Contagem registrada no dia verificado',()=>assert.match(stockCount,/estoque_data_referencia:\s*getLocalTodayISO\(\)/));
+ok('Estoque desconhecido exige saldo anterior explícito',()=>{assert.match(repository,/initialStockQuantity/);assert.match(repository,/!knownBalance/);assert.match(repository,/Saldo anterior não informado/)});
+ok('Repositório não soma aquisição partindo de zero inferido',()=>assert.doesNotMatch(repository,/\?\s*currentMedication\.estoque_quantidade!\s*:\s*0\)\s*\+\s*quantidade/));
+ok('Movimentação de estoque é atômica dentro de transação',()=>{assert.match(repository,/const currentMedication=await db\.medicamentos\.get/);assert.match(repository,/medicamentoAtualizado\.estoque_quantidade\s*=/)});
+ok('Aquisição com data futura é recusada no formulário e repositório',()=>{assert.match(acquisition,/dataAquisicaoISO > getLocalTodayISO\(\)/);assert.match(repository,/dataAquisicao > getLocalTodayISO\(\)/)});
+ok('Quantidade realizada é obrigatória',()=>{assert.match(repository,/somenteAquisicao && \(typeof quantidade !== "number" \|\| quantidade <= 0\)/);assert.match(acquisition,/errors\.quantidadeAdicionar/)});
+ok('Planejamento vai a agenda e não aquisição',()=>{assert.match(navigation,/medicationScheduleSupplyHref/);assert.match(schedule,/O compromisso não registra compra, gasto nem entrada no estoque/)});
+ok('Brain distingue saldo unknown e empty',()=>{assert.match(care,/stockState === "unknown"/);assert.match(care,/stockState === "empty"/);assert.match(care,/Informar saldo/)});
+ok('Home não diz estoque zerado quando desconhecido',()=>{const x=file('lib/health-intelligence/medication-care-opportunities.ts');assert.match(x,/estoque zerado/);assert.match(care,/Estoque não informado/)});
+ok('Lista e detalhe têm rota de informar saldo',()=>{assert.match(file('app/saude/medicamentos/page.tsx'),/medicationStockCountHref/);assert.match(file('app/saude/medicamentos/detalhes/page.tsx'),/medicationStockCountHref/)});
+ok('Agenda preserva retorno contextual',()=>{assert.match(schedule,/const returnTo/);assert.match(schedule,/router.replace\(returnTo\)/)});
+console.log(`M42: ${passed} contratos PASSARAM`);

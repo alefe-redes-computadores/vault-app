@@ -748,11 +748,10 @@ export default function HomePage() {
                 ? "Atenção ao tratamento"
                 : "Planejamento",
 
-            title:
-              "Há cuidados para revisar",
+            title: "Sua rotina de hoje",
 
-            description:
-              "Confira abaixo o medicamento, o motivo e as ações disponíveis.",
+            description: "Veja as doses e compromissos do dia. A prioridade do medicamento aparece logo abaixo com uma ação específica.",
+
 
             color:
               primaryMedicationCareOpportunity.level ===

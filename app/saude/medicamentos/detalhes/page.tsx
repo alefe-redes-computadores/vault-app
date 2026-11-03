@@ -2,7 +2,7 @@
 "use client";
 
 import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
-import { medicationRestockHref } from "@/lib/health-intelligence/medication-restock-navigation";
+import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseSortTimestamp, formatQuantidade, getKnownDoseQuantity, summarizeKnownQuantity, formatKnownQuantitySummary } from "@/lib/health-intelligence/medication-detail-presenters";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
@@ -3197,6 +3197,22 @@ function MedicamentoDetalhesContent() {
             router.push(`/saude/medicamentos/historico?id=${id}`);
           }}/>
 
+          {/* M42 — estoque desconhecido tem seu próprio estado, sem convertê-lo em zero. */}
+          {(med.status !== "descontinuado" || isSOS) && !temEstoque && med.id && (
+            <section id="medicamento-estoque" className="vault-deferred scroll-mt-24 rounded-[18px] border border-surface-border/70 bg-surface p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-ink-primary">Estoque não informado</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Sem contagem registrada. Isso não significa que o medicamento acabou.</p>
+                </div>
+                <MedicationRestockAction name={med.nome} label="Informar saldo" onOpen={() => {
+                  trigger("vibrate");
+                  router.push(medicationStockCountHref(med.id!, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}`));
+                }} />
+              </div>
+            </section>
+          )}
+
           {/* ==================================================
               ESTOQUE
               ================================================== */}
@@ -3226,9 +3242,12 @@ function MedicamentoDetalhesContent() {
                 />
                 {med.id && med.status !== "descontinuado" ? (
                   <div className="flex justify-end px-3 pb-3">
-                    <MedicationRestockAction name={med.nome} onOpen={() => {
+                    <MedicationRestockAction name={med.nome} label={estoqueNegativo ? "Revisar saldo" : "Repor estoque"} onOpen={() => {
                       trigger("vibrate");
-                      router.push(medicationRestockHref(med.id!, `/saude/medicamentos/detalhes?${searchParams.toString()}#medicamento-estoque`));
+                      const returnTo = `/saude/medicamentos/detalhes?${searchParams.toString()}#medicamento-estoque`;
+                      router.push(estoqueNegativo
+                        ? medicationStockCountHref(med.id!, returnTo)
+                        : medicationRestockHref(med.id!, returnTo));
                     }} />
                   </div>
                 ) : null}

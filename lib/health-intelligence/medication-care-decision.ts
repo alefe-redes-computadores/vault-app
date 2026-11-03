@@ -1,6 +1,8 @@
 import type { Medicamento, Renovacao, Retirada } from "@/lib/types";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { buildMedicationJourneySnapshot, medicationJourneyEvidence } from "@/lib/health-intelligence/medication-workspace";
+import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
+import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
 
 export type MedicationCareStage =
   | "withdrawal_overdue"
@@ -111,7 +113,11 @@ export function decideMedicationCarePath(input: {
   const hasLinkedDocument = Boolean(medication.document_id?.trim());
   const plannedAcquisition = planned[0] ?? null;
   const detail = `/saude/medicamentos/detalhes?id=${encodeURIComponent(id)}`;
-  const acquisition = `/saude/renovacao/nova?medicamento_id=${encodeURIComponent(id)}&mode=acquisition&return_to=${encodeURIComponent(detail)}`;
+  const acquisition = medicationRestockHref(id, detail);
+  const reviewStock = medicationStockCountHref(id, detail);
+  const stockState = getClinicalStockSnapshot(medication).state;
+  const noStockConfirmed = stockState === "empty";
+  const stockNeedsCorrection = stockState === "negative";
   const prescription = `/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(id)}&return_to=${encodeURIComponent(detail)}`;
   // A withdrawal from another person must never hide the correct next step.
   const withdrawal = input.withdrawal && input.withdrawal.status === "agendada" &&
@@ -153,15 +159,38 @@ export function decideMedicationCarePath(input: {
     };
   }
 
+  if (input.needsStock && (stockState === "unknown" || stockNeedsCorrection)) {
+    return {
+      stage: "stock_review",
+      label: stockNeedsCorrection ? "Saldo de estoque divergente" : "Estoque não informado",
+      explanation: stockNeedsCorrection
+        ? "O saldo registrado é negativo. Confira a contagem antes de planejar a reposição; não vamos ocultar a divergência."
+        : "Ainda não existe contagem de saldo. Informe a quantidade disponível; receita e compra não comprovam o estoque atual.",
+      actionLabel: stockNeedsCorrection ? "Revisar saldo" : "Informar saldo", actionHref: reviewStock,
+      evidence: [...evidence, stockNeedsCorrection ? "Saldo negativo no cadastro" : "Saldo ainda não informado"],
+      prescriptionOnFile, plannedAcquisition: false,
+    };
+  }
+
+  // Saldo ainda positivo exige planejamento/revisão, não um formulário de compra realizada.
+  if (input.needsStock && !noStockConfirmed) {
+    return {
+      stage: "stock_review", label: "Estoque a acompanhar",
+      explanation: "Ainda existe saldo registrado. Confira a rotina e planeje uma próxima compra ou retirada sem criar aquisição antecipada.",
+      actionLabel: "Ver estoque", actionHref: detail, evidence,
+      prescriptionOnFile, plannedAcquisition: false,
+    };
+  }
+
   if (input.needsStock && hasRegisteredPrescription) {
     const currentByHistory = prescriptionOnFile;
     return {
       stage: "acquisition_needed",
-      label: currentByHistory ? "Receita registrada · falta adquirir" : "Receita registrada · conferir aquisição",
+      label: currentByHistory ? "Sem estoque · receita registrada" : "Sem estoque · revisar receita",
       explanation: currentByHistory
         ? "Existe receita registrada no histórico. Confira a validade e a exigência do canal antes de adquirir; registre uma aquisição somente se ela realmente ocorreu."
         : "Já existe uma receita registrada, anterior à última aquisição. Isso não comprova que esteja válida agora. Confira a exigência aplicável e registre uma nova aquisição somente se ela realmente ocorreu; não duplique a receita por causa do alerta de estoque.",
-      actionLabel: currentByHistory ? "Registrar aquisição" : "Conferir aquisição",
+      actionLabel: noStockConfirmed ? "Repor estoque" : "Planejar reposição",
       actionHref: acquisition,
       evidence: [...evidence, currentByHistory ? "Receita registrada · conferir validade" : "Receita registrada anteriormente · validade não inferida"],
       prescriptionOnFile: currentByHistory,
@@ -173,9 +202,9 @@ export function decideMedicationCarePath(input: {
   // O vínculo evita sugerir duplicação automática; sua validade precisa de revisão.
   if (input.needsStock && hasLinkedDocument) {
     return {
-      stage: "acquisition_needed", label: "Documento vinculado · conferir aquisição",
+      stage: "acquisition_needed", label: "Documento vinculado · estoque a revisar",
       explanation: "Há referência documental vinculada ao medicamento. Confira se é a receita correta, a pessoa, a validade e o canal de fornecimento. O saldo exige revisão; compra planejada não é compra realizada.",
-      actionLabel: "Conferir aquisição", actionHref: acquisition,
+      actionLabel: noStockConfirmed ? "Repor estoque" : "Planejar reposição", actionHref: acquisition,
       evidence: [...evidence, "Documento vinculado no cadastro; conteúdo e validade não verificados"],
       prescriptionOnFile: false, plannedAcquisition: false,
     };
@@ -214,9 +243,11 @@ export function decideMedicationCarePath(input: {
 
   if (input.needsStock) {
     return {
-      stage: "stock_review", label: "Estoque a conferir",
-      explanation: "O estoque registrado pede conferência. Registre uma aquisição apenas se ela já aconteceu; planejamento futuro não altera o saldo.",
-      actionLabel: "Revisar medicamento", actionHref: detail, evidence,
+      stage: "stock_review", label: noStockConfirmed ? "Sem estoque registrado" : "Estoque a conferir",
+      explanation: noStockConfirmed
+        ? "O saldo confirmado chegou a zero. Registre uma compra ou retirada apenas quando realmente ocorrer."
+        : "O estoque pede conferência ou planejamento. Registre compra e retirada apenas depois de realizadas.",
+      actionLabel: noStockConfirmed ? "Repor estoque" : "Ver estoque", actionHref: noStockConfirmed ? acquisition : detail, evidence,
       prescriptionOnFile, plannedAcquisition: false,
     };
   }

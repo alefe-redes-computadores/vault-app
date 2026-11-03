@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Circle, Droplet, MinusCircle } from "lucide-react";
 
-type StockTone = "empty" | "low" | "known";
+type StockTone = "empty" | "low" | "known" | "unknown";
 type DoseOutcome = "ignored" | "completed" | "unconfirmed";
 type Props = {
   today: { label: string; detail: string; tone: string };
@@ -14,7 +14,7 @@ type Props = {
 
 /** P14 R6 — UI-only summary: never interprets a dose as taken or changes stock. */
 export function MedicationOperationalStrip({today,stockLabel,stockDetail,stockTone,doseOutcome}:Props) {
-  const tone=stockTone==="empty"?"text-coral":stockTone==="low"?"text-amber-400":"text-emerald-400";
+  const tone=stockTone==="empty"?"text-coral":stockTone==="low"?"text-amber-400":stockTone==="unknown"?"text-ink-muted":"text-emerald-400";
   return <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 py-1.5 text-[11px] leading-snug"
     aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`}
     title={`${today.detail} · ${stockDetail}`}>

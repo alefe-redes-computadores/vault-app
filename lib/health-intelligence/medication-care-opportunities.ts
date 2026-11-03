@@ -509,7 +509,7 @@ export function buildMedicationCareOpportunities({
         : dueWithdrawal
         ? `${medicamento.nome}: retirada hoje`
         : decision.showStock && estoqueZerado
-        ? `${medicamento.nome} está sem estoque registrado`
+        ? stockSnapshot.state === "negative" ? `${medicamento.nome}: saldo de estoque divergente` : `${medicamento.nome} está com estoque zerado`
         : level === "urgent"
           ? `${medicamento.nome} precisa de revisão`
           : `Planeje ${medicamento.nome}`;

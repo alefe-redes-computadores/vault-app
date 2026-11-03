@@ -1,4 +1,4 @@
-export type ScheduleSlot={medicamentoId?:string;horario:string;tomada:boolean;ignorada:boolean;isAvulsa?:boolean;estoqueRestante?:number;isExpectedUnconfirmed?:boolean;isSintoma?:boolean;doseKind?:"sos"|"extra"|"planned"};
+export type ScheduleSlot={medicamentoId?:string;horario:string;tomada:boolean;ignorada:boolean;isAvulsa?:boolean;estoqueRestante?:number|null;isExpectedUnconfirmed?:boolean;isSintoma?:boolean;doseKind?:"sos"|"extra"|"planned"};
 /** Distinct actionable scheduled slots only. Planned, SOS and projected future logs never enter a batch. */
 export function eligibleGroupDoseItems<T extends ScheduleSlot>(items:readonly T[]): T[] {
   const seen=new Set<string>(), result:T[]=[];

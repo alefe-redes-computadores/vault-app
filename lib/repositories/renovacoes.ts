@@ -104,6 +104,10 @@ export type RenovacaoCreateOptions = {
    * Preserva prescrição, validade e planejamento do medicamento.
    */
   somenteAquisicao?: boolean;
+
+  /** Explicit user-counted stock before the acquisition (including zero).
+   * Required when the prior balance is unknown; never inferred from purchase quantity. */
+  initialStockQuantity?: number;
 };
 
 // ============================================================
@@ -816,6 +820,12 @@ export const renovacoesRepository = {
             )
           : getLocalTodayISO();
 
+    // M42: a date in the future is a planned event, NEVER an acquisition.
+    // A legacy caller must not silently credit stock either.
+    if (!somenteReceita && dataAquisicao && dataAquisicao > getLocalTodayISO()) {
+      throw new Error("Aquisição futura não pode aumentar estoque. Agende uma retirada/compromisso para planejar.");
+    }
+
     /*
      * Renovacao mantém `data` por compatibilidade histórica.
      * Em aquisição isolada ela recebe a data logística, mas não
@@ -870,6 +880,10 @@ export const renovacoesRepository = {
             data.quantidade,
             "Quantidade"
           );
+
+    if (somenteAquisicao && (typeof quantidade !== "number" || quantidade <= 0)) {
+      throw new Error("Informe a quantidade recebida, maior que zero, para registrar a aquisição.");
+    }
 
     const preco =
       somenteReceita
@@ -1142,24 +1156,8 @@ export const renovacoesRepository = {
       /*
        * Estoque só é alterado por uma aquisição real.
        */
-      ...(!somenteReceita &&
-      typeof quantidade ===
-        "number" &&
-      dataAquisicao
-        ? {
-            estoque_quantidade:
-              (typeof medicamento.estoque_quantidade ===
-                "number" &&
-              Number.isFinite(
-                medicamento.estoque_quantidade
-              )
-                ? medicamento.estoque_quantidade
-                : 0) +
-              quantidade,
-
-            estoque_data_referencia:
-              dataAquisicao,
-          }
+      ...(!somenteReceita && typeof quantidade === "number" && dataAquisicao
+        ? { estoque_data_referencia: dataAquisicao }
         : {}),
 
       updated_at:
@@ -1199,7 +1197,23 @@ export const renovacoesRepository = {
         }
         const currentMedication=await db.medicamentos.get(medicamentoId);
         if(!currentMedication || currentMedication.person_id!==personId || currentMedication.user_id!==userId) throw new Error("Medicamento não pertence à pessoa ativa.");
-        if(!somenteReceita && typeof quantidade==="number" && dataAquisicao) medicamentoAtualizado.estoque_quantidade=(Number.isFinite(currentMedication.estoque_quantidade) ? currentMedication.estoque_quantidade! : 0)+quantidade;
+        if (!somenteReceita && typeof quantidade === "number" && dataAquisicao) {
+          const currentBalance = currentMedication.estoque_quantidade;
+          const knownBalance = typeof currentBalance === "number" && Number.isFinite(currentBalance);
+          const initial = options.initialStockQuantity;
+          if (somenteAquisicao && !knownBalance &&
+              (typeof initial !== "number" || !Number.isFinite(initial) || initial < 0)) {
+            throw new Error("Saldo anterior não informado. Confirme a contagem inicial antes de registrar a compra ou retirada.");
+          }
+          if (somenteAquisicao && knownBalance && initial !== undefined) {
+            throw new Error("O saldo mudou antes do recebimento. Reabra a aquisição e confira o estoque atual.");
+          }
+          // Never interpret an unknown starting balance as a proven zero.
+          // Legacy callers without an explicit initial count retain unknown stock.
+          if (knownBalance || (typeof initial === "number" && Number.isFinite(initial) && initial >= 0)) {
+            medicamentoAtualizado.estoque_quantidade = (knownBalance ? (currentBalance as number) : initial!) + quantidade;
+          }
+        }
         await db.renovacoes.add(
           cleanRenovacao
         );

@@ -162,7 +162,7 @@ function NovaRetiradaContent() {
       "sus" |
       "farmacia" |
       "outro"
-    >("sus");
+    >(params.get("tipo") === "farmacia" ? "farmacia" : "sus");
 
   const [
     quantidadePrevista,
@@ -192,6 +192,8 @@ function NovaRetiradaContent() {
     params.get(
       "medicamento_id"
     );
+  const rawReturnTo = params.get("return_to");
+  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : "/saude/retiradas";
 
   useEffect(() => {
     if (
@@ -373,13 +375,11 @@ function NovaRetiradaContent() {
         );
 
         showToast(
-          "Retirada agendada",
+          tipo === "farmacia" ? "Visita à farmácia agendada" : "Retirada agendada",
           "success"
         );
 
-        router.replace(
-          "/saude/retiradas"
-        );
+        router.replace(returnTo);
       } catch (
         error
       ) {
@@ -414,9 +414,7 @@ function NovaRetiradaContent() {
             <button
               type="button"
               onClick={() =>
-                router.replace(
-                  "/saude/retiradas"
-                )
+                router.replace(returnTo)
               }
               className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-raised text-ink-primary"
             >
@@ -431,7 +429,7 @@ function NovaRetiradaContent() {
               </p>
 
               <h1 className="mt-0.5 font-display text-xl font-semibold text-ink-primary">
-                Nova retirada
+                {tipo === "farmacia" ? "Agendar ida à farmácia" : "Nova retirada"}
               </h1>
             </div>
           </div>
@@ -448,11 +446,11 @@ function NovaRetiradaContent() {
 
               <div>
                 <h2 className="text-sm font-bold text-ink-primary">
-                  Retirada como compromisso
+                  {tipo === "farmacia" ? "Planejamento de farmácia" : "Retirada como compromisso"}
                 </h2>
 
                 <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
-                  Vincule medicamento, profissional e estabelecimento. A retirada passa a aparecer na agenda do Vault.
+                  {tipo === "farmacia" ? "Agende a ida à farmácia. O compromisso não registra compra, gasto nem entrada no estoque." : "Vincule medicamento, profissional e estabelecimento. A retirada passa a aparecer na agenda do Vault sem alterar o estoque."}
                 </p>
               </div>
             </div>

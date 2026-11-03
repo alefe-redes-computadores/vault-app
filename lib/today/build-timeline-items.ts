@@ -1,6 +1,7 @@
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
 import { earliestAcquisitionByMedication } from "@/lib/today/acquisition-date-index";
-import { computeEstoqueInfo, getDaysUntil } from "@/lib/health-utils";
+import { getDaysUntil } from "@/lib/health-utils";
+import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { analisarComportamentoUso, isReceitaAtualVencida, sugerirRenovacao } from "@/lib/health-insights";
 
 export interface TodayTimelineItem {
@@ -13,8 +14,8 @@ export interface TodayTimelineItem {
   tomada: boolean;
   ignorada: boolean;
   cor: string;
-  estoqueRestante?: number;
-  estoqueTotal?: number;
+  estoqueRestante?: number | null;
+  estoqueTotal?: number | null;
   unidadeMedida?: string;
   unidadePorDose?: number;
   unidadeDose?: string;
@@ -112,7 +113,7 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
       || med.estoque_data_referencia || med.data_receita || null;
     if (knownStartDate && input.dataSelecionada < knownStartDate) continue;
 
-    const stock = computeEstoqueInfo(med as any);
+    const stock = getClinicalStockSnapshot(med as any);
     const doctor = doctorById.get(med.medico_id);
     const treatment = treatmentById.get((med.tratamento_ids || [])[0]);
     const pharmacy = pharmacyById.get(med.farmacia_id);
@@ -130,8 +131,8 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
       list.push({
         medicamentoId: med.id, medicamentoNome: med.nome, dosagem: med.dosagem, formato: med.formato, cores: med.cores,
         horario, tomada: slot.state === "taken", ignorada: slot.state === "ignored", isDataConflict: slot.state === "conflict",
-        cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock?.quantidadeRestante ?? 0,
-        estoqueTotal: med.estoque_quantidade || 0, unidadeMedida: med.estoque_unidade_medida || "unidades",
+        cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock.info?.quantidadeRestante ?? null,
+        estoqueTotal: stock.registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
         unidadePorDose: med.estoque_unidade_por_dose, unidadeDose, medicoNome: doctor?.nome || med.medico,
         medicoId: doctor?.id, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id, tratamentoCor: treatment?.cor,
         farmaciaNome: pharmacy?.nome, farmaciaId: pharmacy?.id, estabelecimentoNome: hospital?.nome,
@@ -157,8 +158,8 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     list.push({
       medicamentoId: med.id, medicamentoNome: med.nome, dosagem: med.dosagem, formato: med.formato, cores: med.cores,
       horario: log.horario || "00:00", tomada: Boolean(log.tomado_em), ignorada: false,
-      cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: med.estoque_quantidade ?? 0,
-      estoqueTotal: med.estoque_quantidade || 0, unidadeMedida: med.estoque_unidade_medida || "unidades",
+      cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: getClinicalStockSnapshot(med as any).registeredQuantity,
+      estoqueTotal: getClinicalStockSnapshot(med as any).registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
       unidadePorDose: log.quantidade ?? med.estoque_unidade_por_dose, unidadeDose: doseUnit(med),
       medicoNome: doctor?.nome || med.medico, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id,
       tratamentoCor: treatment?.cor, isAvulsa: true,

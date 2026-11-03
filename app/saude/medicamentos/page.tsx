@@ -12,7 +12,8 @@ import { hasConfirmedControlledRegime } from "@/lib/medication-intelligence/cont
 import { MedicationListRouteLabel } from "@/components/saude/MedicationListRouteLabel";
 import { MedicationOperationalStrip } from "@/components/saude/MedicationOperationalStrip";
 import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
-import { isRestockDestination, medicationRestockHref } from "@/lib/health-intelligence/medication-restock-navigation";
+import { isRestockDestination, medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
+import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
 import {
   useEffect,
@@ -758,6 +759,10 @@ export default function MedicamentosListPage() {
       } =
         item;
       const isTemporary = med.tipo_uso === "temporario";
+      const stockSnapshot = getClinicalStockSnapshot(med);
+      const stockUnknown = stockSnapshot.state === "unknown";
+      const stockNegative = stockSnapshot.state === "negative";
+      const stockEmpty = stockSnapshot.state === "empty" || stockNegative;
 
       if (
         !med.id
@@ -889,6 +894,7 @@ export default function MedicamentosListPage() {
           0;
 
       const estoqueTone =
+        stockUnknown ? "border-surface-border bg-surface-raised text-ink-muted" :
         isEstoqueZerado
           ? "border-coral/25 bg-coral/[0.07] text-coral"
           : isEstoqueCritico
@@ -896,6 +902,7 @@ export default function MedicamentosListPage() {
             : "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400";
 
       const estoqueStatus =
+        stockUnknown ? "Estoque não informado" : stockNegative ? "Saldo divergente" :
         isEstoqueZerado
           ? "Sem estoque"
           : isEstoqueCritico
@@ -1023,7 +1030,8 @@ export default function MedicamentosListPage() {
 
       // VAULT_V318_CONTEXTUAL_ACTION: visual text only; never reinterpret the care decision.
       const contextualActionLabel = careAction
-        ? /retirad/i.test(careAction.href) ? "Abrir retirada"
+        ? isRestockDestination(careAction.href, med.id!) ? "Repor estoque"
+          : /retirad/i.test(careAction.href) ? "Abrir retirada"
           : /aquisi|compra/i.test(`${careAction.label} ${careAction.href}`) ? "Registrar aquisição"
           : /receita|renova/i.test(`${careAction.label} ${careAction.href}`) ? "Renovar receita"
           : /document/i.test(`${careAction.label} ${careAction.href}`) ? "Preparar documentos"
@@ -1184,11 +1192,16 @@ export default function MedicamentosListPage() {
                     {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
                   </button>
                 ) : null}
-                {!isSuspenso && med.id && !isRestockDestination(careAction?.href, med.id) ? (
-                  <MedicationRestockAction name={med.nome} onOpen={() => {
-                    trigger("vibrate");
-                    router.push(medicationRestockHref(med.id!, "/saude/medicamentos"));
-                  }} />
+                {!isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
+                  (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (
+                  <MedicationRestockAction name={med.nome}
+                    label={stockUnknown ? "Informar saldo" : stockNegative ? "Revisar saldo" : "Repor estoque"}
+                    onOpen={() => {
+                      trigger("vibrate");
+                      router.push(stockUnknown || stockNegative
+                        ? medicationStockCountHref(med.id!, "/saude/medicamentos")
+                        : medicationRestockHref(med.id!, "/saude/medicamentos"));
+                    }} />
                 ) : null}
               </div>
             </div>
@@ -1199,9 +1212,9 @@ export default function MedicamentosListPage() {
 
             {/* VAULT_V318_OPERATIONAL_STRIP: summary only, no repeated mini-dashboard */}
             <MedicationOperationalStrip today={todayStatus}
-              stockLabel={humanizeStockText(textoEstoquePrincipal)}
-              stockDetail={textoEstoqueSecundario || estoqueStatus}
-              stockTone={isEstoqueZerado?"empty":isEstoqueCritico?"low":"known"}
+              stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
+              stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
+              stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1

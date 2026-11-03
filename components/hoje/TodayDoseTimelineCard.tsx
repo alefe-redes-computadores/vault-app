@@ -9,6 +9,7 @@ import { describeTodayDoseStatus } from "@/components/hoje/TodayDoseStatusPresen
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import type { TodayTimelineItem } from "@/lib/today/build-timeline-items";
+import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import type { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 
 /** Only the read-only rendering is extracted. Mutation handlers belong to Hoje. */
@@ -22,8 +23,6 @@ export type TodayDoseTimelineCardScope = {
   trigger: (kind: "vibrate") => void;
   router: { push: (href:string) => void };
   medicamentosById: Map<string, any>;
-  setMedicamentoSelecionado: (med: any) => void;
-  setModalAberto: (open: boolean) => void;
   abrirRevisaoHistorica: (item: TodayTimelineItem) => void;
   isHistoricalProcessing: boolean;
   handleCancelPlannedDose: (item: TodayTimelineItem) => Promise<void>;
@@ -46,8 +45,6 @@ export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
   const commands = useMemo(() => ({
     trigger: (kind: "vibrate") => committedScope.current.trigger(kind),
     router: {push: (href: string) => committedScope.current.router.push(href)},
-    setMedicamentoSelecionado: (med: any) => committedScope.current.setMedicamentoSelecionado(med),
-    setModalAberto: (open: boolean) => committedScope.current.setModalAberto(open),
     abrirRevisaoHistorica: (target: TodayTimelineItem) => committedScope.current.abrirRevisaoHistorica(target),
     handleCancelPlannedDose: (target: TodayTimelineItem) => committedScope.current.handleCancelPlannedDose(target),
     handleIgnorar: (target: TodayTimelineItem) => committedScope.current.handleIgnorar(target),
@@ -77,8 +74,6 @@ export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
     trigger: commands.trigger,
     router: commands.router,
     medicamentosById: medicationsById,
-    setMedicamentoSelecionado: commands.setMedicamentoSelecionado,
-    setModalAberto: commands.setModalAberto,
     abrirRevisaoHistorica: commands.abrirRevisaoHistorica,
     isHistoricalProcessing: scope.isHistoricalProcessing,
     handleCancelPlannedDose: commands.handleCancelPlannedDose,
@@ -95,7 +90,7 @@ export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
 
 /** The original visual JSX and every button remain untouched below. */
 const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({item,scope}: TodayDoseCardProps) {
-  const {isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, setMedicamentoSelecionado, setModalAberto, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing, handleIgnorar, handleToggle} = scope;
+  const {isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing, handleIgnorar, handleToggle} = scope;
                           if (item.isSintoma) {
                             return <TodaySymptomTimelineCard key={`sintoma-${item.sintomaId}`} item={item} onOpen={() => {
                               trigger("vibrate");
@@ -136,9 +131,10 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
                             !item.ignorada &&
                             !item.isAvulsa;
 
-                          const isEstoqueZerado =
-                            (item.estoqueRestante ??
-                              0) <= 0;
+                          const saldoConhecido = typeof item.estoqueRestante === "number" && Number.isFinite(item.estoqueRestante);
+                          const isEstoqueZerado = saldoConhecido && item.estoqueRestante! <= 0;
+                          const saldoDivergente = typeof item.estoqueTotal === "number" && item.estoqueTotal < 0;
+                          const estoqueNaoInformado = !saldoConhecido;
 
                           const tratamentoCor =
                             item.tratamentoCor ||
@@ -389,10 +385,7 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
                                             ? `${item.unidadePorDose} ${item.unidadeDose || "unidades"}`
                                             : "quantidade não informada"}
                                         </span>
-                                        {(
-                                          item.estoqueRestante ??
-                                          0
-                                        ) >= 0 && (
+                                        {saldoConhecido && !isEstoqueZerado && (
                                           <span className="rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-ink-muted">
                                             Estoque:{" "}
                                             {
@@ -422,52 +415,29 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
                                       </div>
                                     )}
 
-                                    {!item.isAvulsa &&
-                                      isEstoqueZerado && (
-                                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                                          <span className="flex items-center gap-1.5 text-[10px] font-bold text-coral">
-                                            <AlertTriangle
-                                              size={
-                                                14
-                                              }
-                                            />
-                                            Estoque zerado!
-                                          </span>
-
-                                          <button
-                                            type="button"
-                                            onClick={(
-                                              e
-                                            ) => {
-                                              e.stopPropagation();
-
-                                              trigger(
-                                                "vibrate"
-                                              );
-
-                                              const med = item.medicamentoId
-                                                ? medicamentosById.get(item.medicamentoId)
-                                                : undefined;
-
-                                              if (
-                                                med
-                                              ) {
-                                                setMedicamentoSelecionado(
-                                                  med
-                                                );
-
-                                                setModalAberto(
-                                                  true
-                                                );
-                                              }
-                                            }}
-                                            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-coral/15 px-3 text-xs font-semibold text-coral transition-colors hover:bg-coral/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-coral"
-                                          >
-                                            <PackagePlus size={14} aria-hidden="true" />
-                                            Repor estoque
-                                          </button>
-                                        </div>
-                                      )}
+                                    {isHoje && !item.isAvulsa && (isEstoqueZerado || estoqueNaoInformado) && item.medicamentoId && (
+                                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-surface-border/50 bg-surface-raised/50 px-2.5 py-2">
+                                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${estoqueNaoInformado ? "text-amber-300" : "text-coral"}`}>
+                                          <AlertTriangle size={14} aria-hidden="true" />
+                                          {estoqueNaoInformado ? "Estoque não informado" : saldoDivergente ? "Saldo de estoque divergente" : "Sem estoque registrado"}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            trigger("vibrate");
+                                            const returnTo = "/hoje";
+                                            router.push(estoqueNaoInformado || saldoDivergente
+                                              ? medicationStockCountHref(item.medicamentoId!, returnTo)
+                                              : medicationRestockHref(item.medicamentoId!, returnTo));
+                                          }}
+                                          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-coral/25 bg-coral/10 px-3 text-[11px] font-bold text-coral focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+                                        >
+                                          <PackagePlus size={14} aria-hidden="true" />
+                                          {estoqueNaoInformado ? "Informar saldo" : saldoDivergente ? "Revisar saldo" : "Repor estoque"}
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
