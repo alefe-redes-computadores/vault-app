@@ -4,13 +4,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 /** Progressive, deep-link-aware detail group. Children mount only when opened. */
-export function ClinicalDisclosure({ id, title, description, icon, children, defaultOpen = false }: {
+export function ClinicalDisclosure({ id, title, description, icon, children, defaultOpen = false, iconClassName = "text-ink-secondary" }: {
   id: string;
   title: string;
   description: string;
   icon: ReactNode;
   children: ReactNode | (() => ReactNode);
   defaultOpen?: boolean;
+  iconClassName?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -37,7 +38,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
           onClick={() => setOpen(value => !value)}
           className="flex min-h-[60px] w-full items-center gap-2.5 px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
         >
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-surface-border/45 bg-surface-raised/60 text-ink-secondary" aria-hidden="true">{icon}</span>
+          <span className={`grid size-9 shrink-0 place-items-center rounded-lg border border-surface-border/45 bg-surface-raised/60 ${iconClassName}`} aria-hidden="true">{icon}</span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold leading-snug text-ink-primary">{title}</span>
             <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-ink-muted">{description}</span>

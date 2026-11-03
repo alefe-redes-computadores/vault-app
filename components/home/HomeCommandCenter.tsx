@@ -33,7 +33,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
 
       <div className="grid grid-cols-2 gap-2.5">
         {/* M6: Remédios já está visível nos indicadores da Home; este destino fica disponível sem duplicar o card. */}
-        <div className="col-span-2"><ClinicalDisclosure id="home-acessos-medicamentos" title="Medicamentos, retiradas e fornecimento" description="Cadastro, SUS, compras e histórico · abrir opções" icon={<Store size={18}/>}>
+        <div className="col-span-2"><ClinicalDisclosure id="home-acessos-medicamentos" title="Medicamentos, retiradas e fornecimento" description="Cadastro, SUS, compras e histórico · abrir opções" icon={<Store size={18}/>} iconClassName="text-emerald-300">
           {() => <div className="space-y-2">
         <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none w-full">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-300"><Pill size={16}/></span>
@@ -44,7 +44,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         </ClinicalDisclosure></div>
       </div>
 
-      <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>}>
+      <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
         {() => <div className="grid grid-cols-2 gap-2.5">
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
           <button type="button" onClick={() => go("/saude/cirurgias")} className="flex min-h-[72px] items-center gap-2.5 rounded-2xl border border-rose-400/20 bg-rose-400/8 px-2.5 py-2.5 text-left motion-reduce:transition-none"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15 text-rose-300"><ReceiptText size={17}/></span><span><strong className="block text-xs text-ink-primary">Cirurgias</strong><span className="mt-0.5 block text-[9px] text-ink-muted">Procedimentos</span></span></button>
@@ -52,7 +52,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         </div>}
       </ClinicalDisclosure>
 
-      <ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>}>
+      <ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>} iconClassName="text-amber-300">
         {() => <HomeCareOrganizationTiles onNavigate={go} gastoMes={gastoMes} diferencaMes={diferencaMes} totalRede={totalRede}
           documentPath="/saude/documentos" purchasePath="/saude/renovacao" networkPath="/saude/rede" networkTone="text-emerald-300/80" />}
       </ClinicalDisclosure>
