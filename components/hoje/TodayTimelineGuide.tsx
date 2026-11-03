@@ -1,7 +1,7 @@
 "use client";
-import { ChevronDown, Info } from "lucide-react";
+import { Info } from "lucide-react";
 
-/** Read-only help: never changes dose, stock, scheduling or status. */
+/** M40: a explicação não ocupa uma linha inteira antes da rotina. */
 export function TodayTimelineGuide({ isHoje, isPassado, isFuturo }: { isHoje:boolean; isPassado:boolean; isFuturo:boolean }) {
   const label = isFuturo ? "Como interpretar o planejamento" : isPassado ? "Como interpretar o histórico" : "Como interpretar a rotina";
   const note = isFuturo
@@ -9,14 +9,15 @@ export function TodayTimelineGuide({ isHoje, isPassado, isFuturo }: { isHoje:boo
     : isPassado
       ? "Falta de confirmação no histórico não significa uma dose ignorada. Revise o registro antes de concluir."
       : "Pendências mostram horários a revisar. Somente uma confirmação registra tomada; ignorar é uma ação diferente.";
-  return <details aria-label={isHoje ? "Orientações de hoje" : "Orientações para data selecionada"} className="group mt-2 rounded-2xl border border-surface-border/60 bg-surface-raised/35 px-4 py-2.5 text-xs leading-relaxed text-ink-muted">
-    <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-      <Info size={13} className="shrink-0 text-emerald-300" aria-hidden="true"/>
-      <span className="min-w-0 flex-1">{label}</span>
-      <ChevronDown size={13} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
+  return <details className="group relative z-20 shrink-0">
+    <summary aria-label={label} title={label} className="grid size-11 cursor-pointer list-none place-items-center rounded-xl border border-surface-border/50 bg-surface-raised/60 text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      <Info size={16} aria-hidden="true" />
     </summary>
-    <p className="pb-2 leading-relaxed">{note}</p>
-    {isFuturo && <p className="pb-2 text-amber-200">A previsão não altera estoque e não confirma tomada.</p>}
-    {isPassado && <p className="pb-2 text-ice/80">Registros antigos podem exigir revisão manual, sem preencher lacunas automaticamente.</p>}
+    <div role="note" className="absolute -right-28 top-[calc(100%+8px)] w-[min(83vw,320px)] rounded-xl border border-surface-border bg-surface p-3 text-[11px] leading-relaxed text-ink-secondary shadow-2xl">
+      <strong className="mb-1 block text-xs text-ink-primary">{label}</strong>
+      <p>{note}</p>
+      {isFuturo && <p className="mt-2 text-amber-200">A previsão não altera estoque nem confirma tomada.</p>}
+      {isPassado && <p className="mt-2 text-ice/80">Registros antigos podem exigir revisão manual.</p>}
+    </div>
   </details>;
 }

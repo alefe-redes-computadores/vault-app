@@ -1,49 +1,45 @@
 "use client";
 
 import { memo } from "react";
-import { ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 
 type Props = {
   label: string;
+  date: string;
   isHoje: boolean;
   isPassado: boolean;
   isFuturo: boolean;
   description: string;
   onPrevious: () => void;
   onNext: () => void;
+  onSelectDate: (date: string) => void;
   onToday: () => void;
 };
 
-/** P14 R4 — Navegação temporal visual, sem criar ou registrar doses. */
+/** M40: um controle compacto de data, preservando toda a navegação histórica/futura. */
 export const TodayDateNavigation = memo(function TodayDateNavigation({
-  label, isHoje, isPassado, isFuturo, description, onPrevious, onNext, onToday,
+  label, date, isHoje, isPassado, isFuturo, description,
+  onPrevious, onNext, onSelectDate, onToday,
 }: Props) {
-  return <div className="mt-2.5 space-y-2">
-    <nav className="flex items-center gap-2" aria-label="Navegação entre dias">
-      <button type="button" onClick={onPrevious} aria-label="Dia anterior"
-        className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-transform active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-        <ChevronLeft size={17} aria-hidden="true" />
-      </button>
-      <div className="min-w-0 flex-1 rounded-xl border border-surface-border/40 bg-surface-raised/60 px-3 py-1.5 text-center">
-        <span className="block text-xs font-semibold text-ink-primary">{label}</span>
-        <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-muted">{isHoje ? "Hoje" : description}</span>
-      </div>
-      <button type="button" onClick={onNext} aria-label="Próximo dia"
-        className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-muted transition-transform active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-        <ChevronRight size={17} aria-hidden="true" />
-      </button>
-      {!isHoje && <button type="button" onClick={onToday}
-        className="min-h-11 shrink-0 rounded-xl border border-ice/25 bg-ice/10 px-3 text-xs font-bold text-ice active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Hoje</button>}
-    </nav>
-    {!isHoje && <div className="flex items-start gap-2 rounded-xl border border-ice/15 bg-ice/[.045] px-3 py-2.5" role="note">
-      <Info size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-ice" />
-      <p className="text-xs leading-snug text-ink-muted">
-        {isPassado
-          ? "Histórico: doses sem registro são projeções da rotina, não tomadas confirmadas ou faltas."
-          : isFuturo
-            ? "Planejamento futuro: doses previstas ainda não podem ser registradas como tomadas."
-            : "Consulte os registros para confirmar o período."}
-      </p>
-    </div>}
-  </div>;
+  const temporalLabel = isHoje ? "Hoje" : isPassado ? "Histórico" : isFuturo ? "Planejado" : "Data";
+  return <nav className="mt-2 flex min-w-0 items-center gap-2" aria-label="Navegar pela linha do tempo">
+    <button type="button" onClick={onPrevious} aria-label="Dia anterior"
+      className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised/60 text-ink-secondary active:scale-95 motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      <ChevronLeft size={18} aria-hidden="true" />
+    </button>
+    <label className="relative flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl border border-surface-border/50 bg-surface-raised/55 px-2 text-ink-primary focus-within:outline focus-within:outline-2 focus-within:outline-ice">
+      <CalendarDays size={16} className="shrink-0 text-ice" aria-hidden="true" />
+      <span className="min-w-0 truncate text-xs font-semibold">{temporalLabel} · {description.slice(0, 5)}</span>
+      <input type="date" aria-label={label} value={date} onChange={event => { if (event.target.value) onSelectDate(event.target.value); }}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+    </label>
+    <button type="button" onClick={onNext} aria-label="Próximo dia"
+      className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface-raised/60 text-ink-secondary active:scale-95 motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      <ChevronRight size={18} aria-hidden="true" />
+    </button>
+    {!isHoje && <button type="button" onClick={onToday} aria-label="Voltar para hoje" title="Voltar para hoje"
+      className="grid size-11 shrink-0 place-items-center rounded-xl border border-ice/35 bg-ice/10 text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      <Undo2 size={17} aria-hidden="true" />
+    </button>}
+  </nav>;
 });

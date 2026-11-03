@@ -4,7 +4,6 @@ import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
 import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
-import { toggleTodayStatus, toggleTodayPeriod } from "@/lib/today/timeline-filter-intent";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { TodayRemindersPanel } from "@/components/hoje/TodayRemindersPanel";
 import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
@@ -90,7 +89,7 @@ import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { TodayActionCenter } from "@/components/hoje/TodayActionCenter";
-import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
+import { TodayFilterPanel } from "@/components/hoje/TodayFilterPanel";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { filterTimelineItems, groupTimelineItems, summarizeTimeline, visibleTimelineItems } from "@/lib/today/timeline-summary";
 import { buildTodayTimelineItems, type TodayTimelineItem as DoseItemExt } from "@/lib/today/build-timeline-items";
@@ -223,6 +222,13 @@ export default function HojePage() {
         )
       );
     };
+
+  const navegarParaData = (date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T12:00:00`).getTime())) return;
+    if (date === dataSelecionada) return;
+    trigger("vibrate");
+    router.replace(buildTimelineUrl(date));
+  };
 
   const voltarParaHoje =
     () => {
@@ -1614,10 +1620,9 @@ export default function HojePage() {
       }
     };
 
-  const hasFiltrosAtivos =
-    filtroStatus !== "todos" ||
-    filtroPeriodo !== "todos" ||
-    filtroCompromisso !== "todos";
+  const filtrosAtivosCount = Number(filtroStatus !== "todos") + Number(filtroPeriodo !== "todos") +
+    Number(filtroCompromisso !== "todos") + Number(isHoje && mostrarConcluidas);
+  const hasFiltrosAtivos = filtrosAtivosCount > 0;
 
   // Pure empty-state copy never writes a clinical or dose event.
   const emptyTimelineCopy = todayTimelineEmptyCopy({
@@ -1631,6 +1636,7 @@ export default function HojePage() {
     setFiltroStatus("todos");
     setFiltroPeriodo("todos");
     setFiltroCompromisso("todos");
+    setMostrarConcluidas(false);
   };
 
   const navegarCompromisso = (
@@ -1669,161 +1675,55 @@ export default function HojePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
-        {/* =========================================================
-            HEADER
-        ========================================================= */}
-        <header className="relative z-10 border-b border-surface-border/30 bg-void px-4 pb-3 pt-3">
-          <div className="flex items-center justify-between gap-4">
+        {/* M40 — Cabeçalho compacto: data e progresso, sem filtros redundantes. */}
+        <header className="border-b border-surface-border/30 bg-void px-4 pb-3 pt-3">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Clock
-                  size={16}
-                  className="shrink-0 text-ice"
-                />
-
-                <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-ice/90">
-                  Linha do Tempo
-                </p>
-              </div>
-
-              <h1 className="mt-1 font-display text-xl font-semibold capitalize text-ink-primary">
-                {
-                  dataSelecionadaLabel
-                }
-              </h1>
-
-              {!isHoje && (
-                <p className="mt-0.5 font-mono text-[9px] text-ink-faint">
-                  {
-                    dataSelecionadaDescricao
-                  }
-                </p>
-              )}
+              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ice/80">Linha do tempo</p>
+              <h1 className="font-display text-2xl font-semibold capitalize leading-tight text-ink-primary">{dataSelecionadaLabel}</h1>
             </div>
-
-            <span className="shrink-0 rounded-full border border-ice/20 bg-ice/10 px-2.5 py-1 text-[10px] font-semibold text-ice">{isFuturo ? "Planejado" : isPassado ? "Histórico" : "Hoje"}</span>
+            {!isHoje && <span className="shrink-0 rounded-lg border border-ice/20 bg-ice/10 px-2 py-1 text-[10px] font-semibold text-ice">{isPassado ? "Histórico" : "Planejado"}</span>}
           </div>
-
-          {/* P14 R4: navegação e aviso temporal extraídos; mesmo calendário e handlers. */}
-          <TodayDateNavigation label="Navegar por data" isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo}
-            description={dataSelecionadaDescricao}
+          <TodayDateNavigation label="Escolher data da linha do tempo" date={dataSelecionada}
+            isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} description={dataSelecionadaDescricao}
             onPrevious={() => navegarData(-1)} onNext={() => navegarData(1)}
-            onToday={voltarParaHoje} />
-
-          {/* VAULT_TODAY_COMMAND_SUMMARY_V97 · P14 R3: painel independente de registro. */}
+            onToday={voltarParaHoje} onSelectDate={navegarParaData} />
           <TodayRoutinePulse isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo}
             pending={totalPendentes} unconfirmed={totalEsperadasSemConfirmacao}
             completed={totalTomadas} ignored={totalIgnoradas} recorded={totalRegistros}
             projected={totalItensPlanejados} percentage={percentualConclusao} />
-
-          {/* P15 R9 R6: explicação temporal sob demanda; nenhuma alteração na autoridade das doses. */}
-          <TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />
-          {isHoje && <span className="sr-only">Programadas para depois ainda não estão atrasadas.</span>}
-          <span className="sr-only">Registros contraditórios não entram nas métricas; eles exigem revisão separada.</span>
-
-          {/* VAULT_TODAY_FILTERS_V97 */}
-          <div className="mt-2 -mx-1 px-1 pb-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button type="button" aria-pressed={filtroStatus === "todos"} onClick={() => {trigger("vibrate");setFiltroStatus("todos");}} className={`rounded-full border px-2.5 py-1.5 text-[10px] font-bold ${filtroStatus === "todos" ? "border-ice/40 bg-ice/10 text-ice" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}>Todas</button>
-              <button
-                type="button"
-                aria-pressed={filtroStatus === "pendentes"}
-                onClick={() => {
-                  trigger("vibrate");
-                  setFiltroStatus(toggleTodayStatus(filtroStatus, "pendentes"));
-                }}
-                className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
-                  filtroStatus === "pendentes"
-                    ? "border-coral/40 bg-coral/12 text-coral"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted"
-                }`}
-              >
-                {isHoje
-                  ? `Pendentes · ${totalPendentes}`
-                  : isPassado
-                    ? `Sem confirmação · ${totalEsperadasSemConfirmacao}`
-                    : `Previstas · ${totalEsperadasSemConfirmacao}`}
-              </button>
-              <button
-                type="button"
-                aria-pressed={filtroStatus === "tomados"}
-                onClick={() => {
-                  trigger("vibrate");
-                  setFiltroStatus(toggleTodayStatus(filtroStatus, "tomados"));
-                }}
-                className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
-                  filtroStatus === "tomados"
-                    ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-                    : "border-surface-border/40 bg-surface-raised text-ink-muted"
-                }`}
-              >
-                Concluídas · {totalTomadas}
-              </button>
-              {totalIgnoradas > 0 && (
-                <button
-                  type="button"
-                  aria-pressed={filtroStatus === "ignorados"}
-                  onClick={() => {
-                    trigger("vibrate");
-                    setFiltroStatus(toggleTodayStatus(filtroStatus, "ignorados"));
-                  }}
-                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
-                    filtroStatus === "ignorados"
-                      ? "border-ink-muted/40 bg-surface text-ink-secondary"
-                      : "border-surface-border/40 bg-surface-raised text-ink-muted"
-                  }`}
-                >
-                  Ignoradas · {totalIgnoradas}
-                </button>
-              )}
-              <details className="group w-fit min-w-[11rem] max-w-full rounded-xl border border-surface-border/40 bg-surface/40 px-2.5 py-1.5">
-                <summary className="flex min-h-9 cursor-pointer items-center justify-between gap-3 text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Período {filtroPeriodo !== "todos" ? `· ${filtroPeriodo === "manha" ? "Manhã" : filtroPeriodo === "tarde" ? "Tarde" : "Noite"}` : "· todos"}<span aria-hidden="true">▾</span></summary>
-                <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Filtrar doses por período do dia">
-              {([
-                ["manha", "Manhã"],
-                ["tarde", "Tarde"],
-                ["noite", "Noite"],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={filtroPeriodo === value}
-                  onClick={() => {
-                    trigger("vibrate");
-                    setFiltroPeriodo(toggleTodayPeriod(filtroPeriodo, value));
-                  }}
-                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold ${
-                    filtroPeriodo === value
-                      ? "border-ice/40 bg-ice/10 text-ice"
-                      : "border-surface-border/40 bg-surface-raised text-ink-muted"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-                </div>
-              </details>
-              {hasFiltrosAtivos && (
-                <button
-                  type="button"
-                  onClick={limparFiltros}
-                  className="rounded-full border border-coral/20 bg-coral/5 px-3 py-1.5 text-[10px] font-bold text-coral"
-                >
-                  Limpar
-                </button>
-              )}
-            </div>
-          </div>
+          <span className="sr-only">Doses futuras não estão atrasadas antes do horário. Registros contraditórios exigem revisão separada.</span>
         </header>
 
         {/* =========================================================
             CONTEÚDO
         ========================================================= */}
         <section className="space-y-3 px-4 pt-3">
-          {isHoje ? <ClinicalSectionNav label="Áreas de Hoje" layout="grid" density="compact" items={[{id:"hoje-agora",label:"Agora",icon:<Activity size={14}/>,iconClassName:"text-sky-300",},{id:"hoje-agenda",label:"Agenda",icon:<Bell size={14}/>,iconClassName:"text-amber-300",badge:remindersDoDia.length},{id:"hoje-doses",label:"Doses",icon:<Pill size={14}/>,iconClassName:"text-emerald-300",badge:totalPendentes},{id:"hoje-diario",label:"Diário",icon:<ListChecks size={14}/>,iconClassName:"text-violet-300",},{id:"hoje-mes",label:"Mês",icon:<Calendar size={14}/>,iconClassName:"text-cyan-300",}]} /> : null}
-          <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true"/>
-          {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
-          {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
+          {/* M40 — O conteúdo clínico vem antes dos atalhos e painéis complementares. */}
+          <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true" />
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-display text-base font-semibold text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
+              <p className="text-[11px] text-ink-muted">{isFuturo ? "Planejamento, sem confirmar tomadas" : isPassado ? "Histórico e registros confirmados" : "Horários, registros e próximas doses"}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />
+              <TodayFilterPanel status={filtroStatus} period={filtroPeriodo} appointment={filtroCompromisso}
+                showResolved={mostrarConcluidas} isToday={isHoje} isPast={isPassado} activeCount={filtrosAtivosCount}
+                onStatus={(value) => { trigger("vibrate"); setFiltroStatus(value); if (value !== "todos") setMostrarConcluidas(false); }}
+                onPeriod={(value) => { trigger("vibrate"); setFiltroPeriodo(value); }}
+                onAppointment={(value) => { trigger("vibrate"); setFiltroCompromisso(value); }}
+                onShowResolved={(value) => { trigger("vibrate"); setMostrarConcluidas(value); }} onReset={limparFiltros} />
+            </div>
+          </div>
+          {retroReviewMode ? (
+            <TodayRetroReviewPanel
+              summary={retroReviewSummary}
+              onNext={irParaProximoPendenteRetroativo}
+              onClose={sairRevisaoRetroativa}
+            />
+          ) : null}
+
           {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <TodayBatchAction count={dosesElegiveisLote.length}
@@ -1832,6 +1732,78 @@ export default function HojePage() {
               onClick={() => void handleTomarTodos()} />
           )}
 
+          {/* =======================================================
+              TIMELINE / DOSES
+          ======================================================= */}
+          <span id="hoje-doses" className="block scroll-mt-24" aria-hidden="true"/>
+          {isHoje && filtroStatus === "todos" && concluidasOcultas > 0 && (
+            <p className="px-1 text-[10px] text-ink-muted">
+              {concluidasOcultas} registro(s) recolhido(s) na visualização padrão. Eles continuam disponíveis em Filtros.
+            </p>
+          )}
+
+          {dosesParaExibir.length === 0 && concluidasOcultas > 0 ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.045] px-3 py-3">
+              <p className="text-xs text-ink-secondary">Não há outros horários visíveis neste filtro.</p>
+              <button type="button" onClick={() => setMostrarConcluidas(true)} className="min-h-11 shrink-0 rounded-lg border border-emerald-400/25 px-3 text-[11px] font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Ver registros</button>
+            </div>
+          ) : dosesParaExibir.length === 0 ? (
+            <EmptyState
+              icon={Pill}
+              title={emptyTimelineCopy.title}
+              description={emptyTimelineCopy.description}
+              actionLabel={
+                !hasFiltrosAtivos &&
+                isHoje &&
+                !retroReviewMode
+                  ? "Registrar Dose Avulsa"
+                  : undefined
+              }
+              onAction={
+                !hasFiltrosAtivos &&
+                isHoje &&
+                !retroReviewMode
+                  ? () => {
+                      trigger(
+                        "vibrate"
+                      );
+                      setIsDoseModalOpen(
+                        true
+                      );
+                    }
+                  : undefined
+              }
+              iconClassName="border-ice/20 bg-ice/10 text-ice"
+            />
+          ) : (
+            dosesAgrupadas.map(
+              ([key, grupo]) => {
+                const total = grupo.total;
+                const concluidos = grupo.completed;
+                const progresso = grupo.progress;
+
+                return (
+                  <div
+                    key={key}
+                    className="vault-deferred-lg space-y-2"
+                  >
+                    <TodayDoseGroupHeading icon={grupo.icon} label={grupo.label} description={grupo.sub}
+                      total={total} completed={concluidos} progress={progresso}/>
+
+                    <div className="space-y-2">
+                      <DoseScheduleGroups items={grupo.items} focusTime={focusDoseTime}
+                        renderItem={(item) => <TodayDoseTimelineCard item={item} scope={doseCardScope} />}
+                        disabled={Boolean(processandoTodos || processandoDoseId)} onTakeGroup={isHoje ? handleRevisarHorario : undefined} />
+                    </div>
+                  </div>
+                );
+              }
+            )
+          )}
+
+
+          {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
+          {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
           {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
           {isHoje && medicamentosSemHorario.length > 0 && (
             <TodayUnscheduledRoutine medications={medicamentosSemHorario}
@@ -1841,77 +1813,21 @@ export default function HojePage() {
               }} />
           )}
 
-          {retroReviewMode ? (
-            <TodayRetroReviewPanel
-              summary={retroReviewSummary}
-              onNext={irParaProximoPendenteRetroativo}
-              onClose={sairRevisaoRetroativa}
-            />
-          ) : null}
-
-          {/* ASSISTENTE DIÁRIO */}
+          {/* M40 — Orientação complementar discreta; nunca substitui o Brain nem os registros. */}
           {assistenteDiario && (
-            <motion.div
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              className={`rounded-[26px] border p-4 shadow-sm ${
-                assistenteDiario.urgencia ===
-                "alta"
-                  ? "border-coral/30 bg-coral/5"
-                  : assistenteDiario.urgencia ===
-                    "media"
-                  ? "border-amber-400/30 bg-amber-400/5"
-                  : "border-ice/30 bg-ice/5"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                    assistenteDiario.urgencia ===
-                    "alta"
-                      ? "bg-coral/20 text-coral"
-                      : assistenteDiario.urgencia ===
-                        "media"
-                      ? "bg-amber-400/20 text-amber-400"
-                      : "bg-ice/20 text-ice"
-                  }`}
-                >
-                  <Activity size={20} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3
-                      className={`text-sm font-bold ${
-                        assistenteDiario.urgencia ===
-                        "alta"
-                          ? "text-coral"
-                          : assistenteDiario.urgencia ===
-                            "media"
-                          ? "text-amber-400"
-                          : "text-ice"
-                      }`}
-                    >
-                      {assistenteDiario.titulo}
-                    </h3>
-
-                    <span className="text-xs text-ink-faint">
-                      Dica
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-xs leading-relaxed text-ink-primary">
-                    {assistenteDiario.mensagem}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+            <details className={`group rounded-xl border px-3 py-2 ${assistenteDiario.urgencia === "alta"
+                ? "border-coral/30 bg-coral/[0.04]"
+                : assistenteDiario.urgencia === "media"
+                  ? "border-amber-400/25 bg-amber-400/[0.035]"
+                  : "border-surface-border/45 bg-surface/40"}`}>
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <Activity size={16} className={assistenteDiario.urgencia === "alta" ? "text-coral" : "text-ice"} aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-primary">{assistenteDiario.titulo}</span>
+                <span className="text-[10px] text-ink-muted">Dica</span>
+                <ChevronRight size={15} className="shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+              </summary>
+              <p className="pb-2 pl-6 text-xs leading-relaxed text-ink-secondary">{assistenteDiario.mensagem}</p>
+            </details>
           )}
 
           <span id="hoje-agenda" className="block scroll-mt-24" aria-hidden="true"/>
@@ -1993,71 +1909,6 @@ export default function HojePage() {
                 ))}
               </div>
             </div>
-          )}
-
-          {/* =======================================================
-              TIMELINE / DOSES
-          ======================================================= */}
-          <span id="hoje-doses" className="block scroll-mt-24" aria-hidden="true"/>
-          {isHoje && filtroStatus === "todos" && dosesFiltradas.some((dose) => dose.tomada || dose.ignorada) && (
-            <button type="button" onClick={() => setMostrarConcluidas((value) => !value)} className="flex w-full items-center justify-between rounded-[20px] border border-ice/15 bg-ice/[0.045] px-4 py-3 text-left">
-              <div className="flex items-center gap-2.5"><Activity size={17} className="text-ice" /><div><p className="text-xs font-semibold text-ink-primary">{mostrarConcluidas ? "Ocultar doses registradas" : "Ver tomadas e ignoradas"}</p><p className="mt-0.5 text-[9px] text-ink-muted">{mostrarConcluidas ? "Deixe a agenda focada no que ainda importa" : `${concluidasOcultas} registro(s) resumido(s) para reduzir ruído`}</p></div></div>
-              <ChevronRight size={16} className={`text-emerald-400 transition-transform ${mostrarConcluidas ? "rotate-90" : ""}`} />
-            </button>
-          )}
-
-          {dosesParaExibir.length === 0 && concluidasOcultas > 0 ? null : dosesParaExibir.length === 0 ? (
-            <EmptyState
-              icon={Pill}
-              title={emptyTimelineCopy.title}
-              description={emptyTimelineCopy.description}
-              actionLabel={
-                !hasFiltrosAtivos &&
-                isHoje &&
-                !retroReviewMode
-                  ? "Registrar Dose Avulsa"
-                  : undefined
-              }
-              onAction={
-                !hasFiltrosAtivos &&
-                isHoje &&
-                !retroReviewMode
-                  ? () => {
-                      trigger(
-                        "vibrate"
-                      );
-                      setIsDoseModalOpen(
-                        true
-                      );
-                    }
-                  : undefined
-              }
-              iconClassName="border-ice/20 bg-ice/10 text-ice"
-            />
-          ) : (
-            dosesAgrupadas.map(
-              ([key, grupo]) => {
-                const total = grupo.total;
-                const concluidos = grupo.completed;
-                const progresso = grupo.progress;
-
-                return (
-                  <div
-                    key={key}
-                    className="vault-deferred-lg space-y-2"
-                  >
-                    <TodayDoseGroupHeading icon={grupo.icon} label={grupo.label} description={grupo.sub}
-                      total={total} completed={concluidos} progress={progresso}/>
-
-                    <div className="space-y-2">
-                      <DoseScheduleGroups items={grupo.items} focusTime={focusDoseTime}
-                        renderItem={(item) => <TodayDoseTimelineCard item={item} scope={doseCardScope} />}
-                        disabled={Boolean(processandoTodos || processandoDoseId)} onTakeGroup={isHoje ? handleRevisarHorario : undefined} />
-                    </div>
-                  </div>
-                );
-              }
-            )
           )}
 
           {/* VAULT_V321_MONTH_DEFERRED: keep original owner and onNavigate; mount only when requested. */}

@@ -6,16 +6,17 @@ import { CareCommandStrip } from "@/components/saude/CareCommandStrip";
 
 type BrainFallback = { insightId: string; headline: string; title: string; supporting: number };
 
-export function TodayActionCenter({ pendingDoses, command, brainFallback, onOpenDoses, onNavigate }: {
+export function TodayActionCenter({ pendingDoses, command, brainFallback, onOpenDoses, onNavigate, showDoseShortcut = true }: {
   pendingDoses: number;
   command: CareCommandSnapshot | null;
   brainFallback?: BrainFallback | null;
   onOpenDoses: () => void;
   onNavigate: (href: string) => void;
+  showDoseShortcut?: boolean;
 }) {
   return (
     <section aria-label="Prioridades de hoje" className="space-y-2">
-      {pendingDoses > 0 ? <button type="button" onClick={onOpenDoses} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-[16px] border border-amber-400/25 bg-amber-400/[0.055] px-3 py-2 text-left transition-colors active:bg-amber-400/10" aria-label={`Ir para ${pendingDoses} dose${pendingDoses === 1 ? "" : "s"} pendente${pendingDoses === 1 ? "" : "s"} de hoje`}>
+      {showDoseShortcut && pendingDoses > 0 ? <button type="button" onClick={onOpenDoses} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-[16px] border border-amber-400/25 bg-amber-400/[0.055] px-3 py-2 text-left transition-colors active:bg-amber-400/10" aria-label={`Ir para ${pendingDoses} dose${pendingDoses === 1 ? "" : "s"} pendente${pendingDoses === 1 ? "" : "s"} de hoje`}>
         <span className="min-w-0"><strong className="block text-sm text-amber-300">{pendingDoses} dose{pendingDoses === 1 ? "" : "s"} pendente{pendingDoses === 1 ? "" : "s"}</strong><span className="block text-xs text-ink-muted">Abrir horários e revisar cada medicamento</span></span><ChevronRight size={18} className="shrink-0 text-amber-300" aria-hidden="true"/>
       </button> : null}
 
