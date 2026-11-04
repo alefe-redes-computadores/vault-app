@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AlertTriangle, Info, Package } from "lucide-react";
+import { useDismissibleDetails } from "@/hooks/useDismissibleDetails";
 
 type Props = {
   statusLabel: string;
@@ -31,6 +32,7 @@ export function MedicationStockOverview({
   dosesAvailable, hasStockProjection, doseEstimatePossible, doseQuantity,
   referenceDay, dropsConversionMissing, formatQuantity,
 }: Props) {
+  const detailsRef = useDismissibleDetails();
   return (
     <div className="rounded-[18px] bg-surface p-3.5" aria-label="Resumo do estoque informado">
       <div>
@@ -38,7 +40,7 @@ export function MedicationStockOverview({
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
             <Package size={14} aria-hidden="true" /> Estoque Atual
           </p>
-          <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[8px] font-bold uppercase ${statusColor} ${statusBackground}`}>
+          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase ${statusColor} ${statusBackground}`}>
             {statusIcon}{statusLabel}
           </span>
         </div>
@@ -54,7 +56,7 @@ export function MedicationStockOverview({
         {negative && registeredBalance !== null && (
           <div className="mt-3 flex items-start gap-2 rounded-xl border border-coral/20 bg-coral/10 p-3" role="status">
             <AlertTriangle size={14} className="mt-0.5 shrink-0 text-coral" aria-hidden="true" />
-            <p className="text-[10px] leading-relaxed text-coral/90">
+            <p className="text-xs leading-relaxed text-coral/90">
               Os registros de uso ultrapassaram o saldo informado. O saldo interno é{" "}
               <b>{formatQuantity(registeredBalance)} {unit}</b>. Revise o estoque físico para reconciliar o valor.
             </p>
@@ -77,8 +79,8 @@ export function MedicationStockOverview({
           </p>
         )}
       </div>
-      <details className="group mt-3 border-t border-surface-border/50 text-[10px] text-ink-muted">
-        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 py-2.5 font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+      <details ref={detailsRef} className="group mt-3 border-t border-surface-border/50 text-[11px] text-ink-muted">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2.5 font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
           Origem do saldo e cálculo <span aria-hidden="true" className="text-ink-muted group-open:rotate-180">▾</span>
         </summary>
         <div className="flex flex-col gap-1.5 pb-2 sm:flex-row sm:justify-between">
@@ -89,7 +91,7 @@ export function MedicationStockOverview({
       {dropsConversionMissing && (
         <div className="mt-3 flex items-start gap-2 rounded-xl bg-surface-raised p-3">
           <Info size={13} className="mt-0.5 shrink-0 text-ice" aria-hidden="true" />
-          <p className="text-[10px] leading-relaxed text-ink-muted">
+          <p className="text-[11px] leading-relaxed text-ink-muted">
             Gotas por ml não está configurado. O Vault não fará conversão automática entre gotas e ml.
           </p>
         </div>
