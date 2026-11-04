@@ -18,6 +18,7 @@ import {
   Toast,
   type ToastType,
 } from "./Toast";
+import { resolveToastDuration } from "@/lib/ui/toast-lifecycle";
 
 // ============================================================
 // TIPOS
@@ -187,6 +188,7 @@ export function ToastProvider({
             ? {
                 ...toast,
                 ...data,
+                duration: resolveToastDuration(toast.type, toast.duration, data.type ?? toast.type, data.duration),
               }
             : toast
         )

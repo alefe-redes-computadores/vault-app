@@ -114,6 +114,16 @@ export function SyncStatusIndicator({
       router.push("/diagnostico");
     };
 
+  // M53: do not hide a terminal sync/IndexedDB failure behind a generic Offline label.
+  if (!online && (failedCount > 0 || queueUnavailable || syncRuntime.phase === "error")) {
+    return <button type="button"
+      onClick={() => onOpenDiagnostics ? onOpenDiagnostics() : router.push("/diagnostico")}
+      className="flex min-h-10 items-center gap-1.5 rounded-full px-2 text-coral focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+      title="Offline e com falha de sincronização; abrir diagnóstico">
+      <AlertTriangle size={14} />
+      <span className="text-[11px] font-medium">Offline · revisar</span>
+    </button>;
+  }
   if (
     !online
   ) {

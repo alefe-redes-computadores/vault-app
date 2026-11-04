@@ -8,7 +8,7 @@ import { getComposeOptions, getOptionColorClass, type ComposeOption } from "@/li
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Home, LayoutGrid, Plus, Clock, FolderOpen } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface NavItem {
@@ -106,6 +106,26 @@ export function BottomNav() {
     isComposeMenuOpen,
     setIsComposeMenuOpen,
   ] = useState(false);
+  const composeButtonRef = useRef<HTMLButtonElement>(null);
+  const composeMenuRef = useRef<HTMLDivElement>(null);
+  // M53: the action sheet is a true keyboard-accessible dialog.
+  useEffect(() => {
+    if (!isComposeMenuOpen) return;
+    const frame = requestAnimationFrame(() => {
+      composeMenuRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus();
+    });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setIsComposeMenuOpen(false);
+      composeButtonRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isComposeMenuOpen]);
 
   // VAULT_BOTTOM_NAV_BIOMETRIC_V66
   // O Vault não possui mais lock biométrico global.
@@ -122,9 +142,11 @@ export function BottomNav() {
       normalizeNavPathname(path) ===
       normalizeNavPathname(pathname)
     ) {
+      setIsComposeMenuOpen(false);
       return;
     }
 
+    setIsComposeMenuOpen(false);
     trigger("vibrate");
     // VAULT_HOME_NAV_FALLBACK_V37
     // A navegação normal continua sendo client-side e usando replace,
@@ -249,6 +271,7 @@ export function BottomNav() {
                   )
                 }
                 className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+                aria-hidden="true"
               />
 
               <motion.div
@@ -272,7 +295,19 @@ export function BottomNav() {
                   damping: 25,
                   stiffness: 300,
                 }}
-                className="fixed bottom-[6.5rem] left-4 right-4 z-50 mx-auto max-w-sm overflow-hidden rounded-[24px] border border-surface-border/80 bg-surface/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+                ref={composeMenuRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Adicionar novo registro"
+                onKeyDown={(event) => {
+                  if (event.key !== "Tab") return;
+                  const actions = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+                  const first = actions[0], last = actions[actions.length - 1];
+                  if (!first || !last) return;
+                  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+                  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+                }}
+                className="fixed bottom-[calc(6.5rem+env(safe-area-inset-bottom,0px))] left-4 right-4 z-50 mx-auto max-w-sm overflow-hidden rounded-[24px] border border-surface-border/80 bg-surface/95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl"
               >
                 <div className="flex items-center justify-between px-4 pb-1 pt-3">
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-muted">
@@ -305,7 +340,7 @@ export function BottomNav() {
                                 option
                               )
                             }
-                            className="flex items-center gap-2.5 rounded-xl border border-surface-border/40 bg-surface-raised/40 p-2 text-left transition-all hover:bg-surface-raised active:scale-95"
+                            className="flex min-h-12 items-center gap-2.5 rounded-xl border border-surface-border/40 bg-surface-raised/40 p-2.5 text-left transition-all hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 active:scale-95"
                           >
                             <div
                               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${colorClass}`}
@@ -418,10 +453,11 @@ export function BottomNav() {
 
             {showCompose && (
               <button
+                ref={composeButtonRef}
                 type="button"
-                onClick={
-                  handleComposePress
-                }
+                onClick={handleComposePress}
+                aria-haspopup={composeOptions.length > 1 ? "dialog" : undefined}
+                aria-expanded={composeOptions.length > 1 ? isComposeMenuOpen : undefined}
                 aria-label={
                   composeOptions.length >
                   1

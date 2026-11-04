@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, ReactNode } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -33,6 +33,11 @@ export class ErrorBoundary extends Component<
       error,
     };
   }
+
+  // Allow a retry without losing the entire offline app session.
+  retry = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("🔴 ErrorBoundary capturou:", error);
@@ -80,12 +85,16 @@ export class ErrorBoundary extends Component<
               )}
             </div>
 
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full rounded-2xl bg-ice py-2.5 text-sm font-medium text-void transition-all active:scale-95"
-            >
-              Recarregar aplicativo
-            </button>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button type="button" onClick={this.retry}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-ice px-3 py-2.5 text-sm font-medium text-void focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+                <RotateCcw size={16} /> Tentar novamente
+              </button>
+              <button type="button" onClick={() => window.location.reload()}
+                className="min-h-11 rounded-2xl border border-surface-border px-3 py-2.5 text-sm font-medium text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+                Recarregar aplicativo
+              </button>
+            </div>
 
             <p className="mt-3 text-center text-xs text-ink-muted/60">
               Se o problema persistir, entre em contato com o suporte
