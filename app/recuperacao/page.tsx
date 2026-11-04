@@ -29,6 +29,7 @@ import { runManualVaultSync } from "@/lib/sync/manual-sync";
 import { summarizeSyncQueue } from "@/lib/sync/queue-health";
 import {
   getPullDiagnostics,
+  getPullFailureMessage,
   type VaultPullRun,
 } from "@/lib/sync/diagnostics";
 
@@ -52,7 +53,7 @@ export default function RecoveryCenterPage() {
   const router = useRouter();
   const { user } = useAuth();
   const syncRuntime = useVaultSyncRuntime();
-  const { processQueue, isOnline } = useSyncQueue();
+  const { processQueue, isOnline, isProcessing } = useSyncQueue();
   const queueHealth = useLiveQuery(async () => summarizeSyncQueue(await db.syncQueue.toArray()), []) ?? { total: 0, ready: 0, deferred: 0, failed: 0 };
   const [diagnostics, setDiagnostics] = useState<VaultPullRun>(() => getPullDiagnostics());
   const [syncing, setSyncing] = useState(false);
@@ -70,8 +71,9 @@ export default function RecoveryCenterPage() {
     [diagnostics.tables]
   );
 
+  const syncBusy = syncing || isProcessing || syncRuntime.phase === "pulling" || syncRuntime.phase === "background" || syncRuntime.phase === "pushing";
   const runRecoverySync = useCallback(async () => {
-    if (!user || syncing || !isOnline) return;
+    if (!user || syncBusy || !isOnline) return;
     setSyncing(true);
     setResult(null);
     try {
@@ -80,8 +82,7 @@ export default function RecoveryCenterPage() {
         pull: () => pullAllData(user.id),
         push: processQueue,
         pullIssue: () => {
-          const failures = getPullDiagnostics().tables.filter((metric) => !metric.ok).length;
-          return failures > 0 ? `${failures} tabela(s) tiveram falha na leitura da nuvem.` : null;
+          return getPullFailureMessage();
         },
       });
       const pullDiagnostics = getPullDiagnostics();
@@ -109,7 +110,7 @@ export default function RecoveryCenterPage() {
       setDiagnostics(getPullDiagnostics());
       setSyncing(false);
     }
-  }, [isOnline, processQueue, syncing, user]);
+  }, [isOnline, processQueue, syncBusy, user]);
 
   const hasPullFailures = diagnostics.tables.some((metric) => !metric.ok);
   const healthy = isOnline && syncRuntime.phase !== "error" && !hasPullFailures;
@@ -185,12 +186,12 @@ export default function RecoveryCenterPage() {
 
           <button
             type="button"
-            disabled={!isOnline || syncing || !user}
+            disabled={!isOnline || syncBusy || !user}
             onClick={() => void runRecoverySync()}
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-ice/20 bg-ice/10 px-4 py-3 text-sm font-semibold text-ice disabled:opacity-40"
           >
-            {syncing ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
-            {syncing ? "Conferindo dados…" : "Conferir e sincronizar"}
+            {syncBusy ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
+            {syncBusy ? "Conferindo dados…" : "Conferir e sincronizar"}
           </button>
 
           {result && (

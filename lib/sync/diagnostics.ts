@@ -18,6 +18,15 @@ export interface VaultPullRun {
 
 const KEY = "vault_sync_diagnostics_v68";
 const MAX_TABLE_METRICS = 80;
+let notificationQueued = false;
+function notifyDiagnosticsChanged() {
+  if (typeof window === "undefined" || notificationQueued) return;
+  notificationQueued = true;
+  queueMicrotask(() => {
+    notificationQueued = false;
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("vault:sync-diagnostics"));
+  });
+}
 
 function read(): VaultPullRun {
   if (typeof window === "undefined") {
@@ -42,7 +51,7 @@ function write(value: VaultPullRun) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(KEY, JSON.stringify(value));
-    window.dispatchEvent(new CustomEvent("vault:sync-diagnostics"));
+    notifyDiagnosticsChanged();
   } catch {}
 }
 
@@ -90,10 +99,20 @@ export function getPullDiagnostics(): VaultPullRun {
   return read();
 }
 
+/** Only reported cloud table failures. Never infer completion from an empty queue. */
+export function getPullFailureCount(run: VaultPullRun): number {
+  return run.tables.filter((metric) => metric.ok === false).length;
+}
+
+export function getPullFailureMessage(run: VaultPullRun = getPullDiagnostics()): string | null {
+  const count = getPullFailureCount(run);
+  return count > 0 ? `${count} tabela(s) tiveram falha na leitura da nuvem.` : null;
+}
+
 export function clearPullDiagnostics() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(KEY);
-    window.dispatchEvent(new CustomEvent("vault:sync-diagnostics"));
+    notifyDiagnosticsChanged();
   } catch {}
 }

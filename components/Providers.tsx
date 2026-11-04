@@ -68,6 +68,7 @@ import {
   pullAllData,
 } from "@/lib/sync/pull";
 import { refreshRecentCloudDoses } from "@/lib/sync/recent-dose-refresh";
+import { getPullFailureMessage } from "@/lib/sync/diagnostics";
 
 import {
   runVaultPullSingleFlight,
@@ -514,6 +515,9 @@ export function Providers({
               "Pull concluído com sucesso."
             );
 
+            // A successful Promise can still contain noncritical table errors.
+            const partialPullIssue = getPullFailureMessage();
+            if (partialPullIssue) setPullError(partialPullIssue);
             setIsPullDone(
               true
             );
@@ -593,6 +597,11 @@ export function Providers({
             return;
           }
 
+          const partialPullIssue = getPullFailureMessage();
+          if (partialPullIssue) {
+            setVaultSyncRuntime({ phase: "error", error: partialPullIssue });
+            return;
+          }
           setVaultSyncRuntime({ phase: "synced", error: null });
         } catch (error) {
           if (cancelled) return;

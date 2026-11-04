@@ -90,7 +90,7 @@ export function SyncStatusIndicator({
   const syncRuntime =
     useVaultSyncRuntime();
 
-  const { pending: pendingCount, failed: failedCount } = useSyncQueueSummary();
+  const { pending: pendingCount, failed: failedCount, unavailable: queueUnavailable } = useSyncQueueSummary();
 
   const handleClick =
     () => {
@@ -159,6 +159,17 @@ export function SyncStatusIndicator({
     );
   }
 
+  if (queueUnavailable) {
+    return (
+      <button type="button" onClick={() => router.push("/diagnostico")}
+        className="flex min-h-10 items-center gap-1.5 rounded-full px-2 text-coral focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+        title="Não foi possível consultar a fila local de sincronização">
+        <AlertTriangle size={14} />
+        <span className="text-[11px] font-medium">Revisar fila</span>
+      </button>
+    );
+  }
+
   if (
     failedCount >
     0
@@ -181,6 +192,21 @@ export function SyncStatusIndicator({
         <span className="text-[11px] font-medium">
           Erro ({failedCount})
         </span>
+      </button>
+    );
+  }
+
+  if (syncRuntime.phase === "error") {
+    return (
+      <button
+        type="button"
+        onClick={() => router.push("/diagnostico")}
+        className="flex items-center gap-1.5 text-coral transition-opacity hover:opacity-80"
+        role="status"
+        title={syncRuntime.error || "Erro de sincronização"}
+      >
+        <AlertTriangle size={14} />
+        <span className="text-[11px] font-medium">Ver sincronização</span>
       </button>
     );
   }
@@ -215,20 +241,6 @@ export function SyncStatusIndicator({
     );
   }
 
-  if (syncRuntime.phase === "error") {
-    return (
-      <button
-        type="button"
-        onClick={() => router.push("/diagnostico")}
-        className="flex items-center gap-1.5 text-coral transition-opacity hover:opacity-80"
-        role="status"
-        title={syncRuntime.error || "Erro de sincronização"}
-      >
-        <AlertTriangle size={14} />
-        <span className="text-[11px] font-medium">Ver sincronização</span>
-      </button>
-    );
-  }
 
   // VAULT_SYNC_IDLE_TRUTH_V63
   // "idle" significa que nenhuma operação está rodando. Nunca mostrar

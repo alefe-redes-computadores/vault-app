@@ -29,6 +29,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { DoseLog, SyncQueueItem } from "@/lib/types";
 import { getSyncQueueState, summarizeSyncQueue } from "@/lib/sync/queue-health";
 import { runManualVaultSync } from "@/lib/sync/manual-sync";
+import { getPullFailureMessage } from "@/lib/sync/diagnostics";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 
 interface TableCheck {
@@ -148,7 +149,7 @@ export default function DiagnosticoPage() {
       }, {}),
     [queue]
   );
-  const syncBusy = syncing || isProcessing || syncRuntime.phase === "pulling" || syncRuntime.phase === "pushing";
+  const syncBusy = syncing || isProcessing || syncRuntime.phase === "pulling" || syncRuntime.phase === "background" || syncRuntime.phase === "pushing";
   const syncHeadline = !isOnline
     ? "Trabalhando offline"
     : syncBusy
@@ -220,13 +221,14 @@ export default function DiagnosticoPage() {
   }, [user?.id, isOnline, showToast]);
 
   const syncNow = useCallback(async () => {
-    if (!user?.id || !isOnline || syncing) return;
+    if (!user?.id || !isOnline || syncBusy) return;
     setSyncing(true);
     trigger("vibrate");
     try {
       const operation = await runManualVaultSync({
         pull: () => pullAllData(user.id),
         push: processQueue,
+        pullIssue: () => getPullFailureMessage(),
       });
       const result = operation.queue;
       if (operation.phase === "error") {
@@ -242,7 +244,7 @@ export default function DiagnosticoPage() {
     } finally {
       setSyncing(false);
     }
-  }, [user?.id, isOnline, syncing, trigger, processQueue, showToast]);
+  }, [user?.id, isOnline, syncBusy, trigger, processQueue, showToast]);
 
   // V201: auditoria é EXPLICITAMENTE manual e limita concorrência a quatro consultas.
   // Sem observadores ou polling sobre contagens remotas: não criar query storm.

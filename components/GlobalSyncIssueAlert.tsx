@@ -12,9 +12,9 @@ import { useSyncQueueSummary } from "@/hooks/useSyncQueueSummary";
 export function GlobalSyncIssueAlert() {
   const router = useRouter();
   const runtime = useVaultSyncRuntime();
-  const { failed: failedCount } = useSyncQueueSummary();
+  const { failed: failedCount, unavailable: queueUnavailable } = useSyncQueueSummary();
 
-  if (failedCount <= 0 && runtime.phase !== "error") return null;
+  if (failedCount <= 0 && runtime.phase !== "error" && !queueUnavailable) return null;
 
   return (
     <button
@@ -23,6 +23,7 @@ export function GlobalSyncIssueAlert() {
       className="fixed left-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-2xl border border-coral/30 bg-surface/95 px-3 py-2.5 text-left text-coral shadow-xl shadow-black/30 backdrop-blur-xl active:scale-[0.985]"
       style={{ top: "calc(max(env(safe-area-inset-top, 0px), var(--vault-native-statusbar-fallback, 0px)) + 12px)" }}
       role="alert"
+      aria-label="Abrir diagnóstico de sincronização"
     >
       <AlertTriangle size={16} className="shrink-0" />
       <span className="min-w-0 flex-1">
@@ -30,7 +31,7 @@ export function GlobalSyncIssueAlert() {
         <span className="block truncate text-[10px] text-ink-muted">
           {failedCount > 0
             ? `${failedCount} ${failedCount === 1 ? "registro não foi enviado" : "registros não foram enviados"}`
-            : "A última tentativa não foi concluída"}
+            : queueUnavailable ? "Não foi possível consultar a fila local" : "A última tentativa não foi concluída"}
         </span>
       </span>
       <ChevronRight size={15} className="shrink-0" />

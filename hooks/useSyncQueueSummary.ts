@@ -4,14 +4,14 @@ import { liveQuery } from "dexie";
 import { useSyncExternalStore } from "react";
 import { db } from "@/lib/db";
 
-export type SyncQueueSummary = { pending: number; failed: number; total: number };
+export type SyncQueueSummary = { pending: number; failed: number; total: number; unavailable?: boolean };
 const empty: SyncQueueSummary = { pending: 0, failed: 0, total: 0 };
 const listeners = new Set<() => void>();
 let snapshot: SyncQueueSummary = empty;
 let subscription: { unsubscribe: () => void } | null = null;
 
 function sameSummary(a: SyncQueueSummary, b: SyncQueueSummary) {
-  return a.pending === b.pending && a.failed === b.failed && a.total === b.total;
+  return a.pending === b.pending && a.failed === b.failed && a.total === b.total && Boolean(a.unavailable) === Boolean(b.unavailable);
 }
 
 function publish(next: SyncQueueSummary) {
@@ -28,9 +28,10 @@ function startSharedQueueProjection() {
     for (const row of rows) if (row.failed === true) failed += 1;
     return { failed, pending: rows.length - failed, total: rows.length };
   }).subscribe({
-    next: publish,
+    next(result) { publish({ ...result, unavailable: false }); },
     error(error) {
       console.warn("[sync-queue-summary] Não foi possível atualizar o resumo local:", error);
+      publish({ ...snapshot, unavailable: true });
     },
   });
 }
