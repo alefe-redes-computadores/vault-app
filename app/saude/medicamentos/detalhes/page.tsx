@@ -3199,7 +3199,7 @@ function MedicamentoDetalhesContent() {
           }}/>
           {med.id && med.tipo_uso !== "sos" && med.tipo_uso !== "esporadico" && <button type="button" onClick={() => {
             trigger("vibrate");
-            router.push(retroReviewHref(med.id!));
+            router.push(`${retroReviewHref(med.id!)}&origem=detalhes`);
           }} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/[.045] px-4 py-3 text-left text-xs font-semibold text-ice">
             <span>Revisar várias doses antigas</span><span className="text-[10px] text-ink-muted">Selecionar dias e horários</span>
           </button>}

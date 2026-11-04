@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
 import { addDaysToLocalDate, getLocalTodayISO } from "@/lib/health-utils";
 import { buildRetroBatchSlots, mayDebitHistoricalStock, retroDateTimeISO, validRetroDate } from "@/lib/today/retro-batch-review";
+import { retroReviewExitAction } from "@/lib/today/retro-review-navigation";
 
 function RetroBatchReviewContent() {
   const router = useRouter();
@@ -84,7 +85,17 @@ function RetroBatchReviewContent() {
   const canDebit = Boolean(medication && mayDebitHistoricalStock(medication) && stockMode !== "counted");
   const debit = stockAction === "debit" && canDebit;
 
-  function goBack() { router.push(returnTo); }
+  // M67 HF1: fechar a revisão não pode empilhar outro detalhe no histórico.
+  // Aberta pelos detalhes: voltar à entrada que já existia; após aquisição:
+  // substituir o convite sem reabrir uma revisão já dispensada.
+  function goBack() {
+    if (saving) return;
+    if (retroReviewExitAction(stockMode, search.get("origem")) === "back") {
+      router.back();
+    } else {
+      router.replace(returnTo);
+    }
+  }
   function select(key: string, checked: boolean) {
     if (saving) return;
     setSelected(current => checked ? [...new Set([...current, key])] : current.filter(k => k !== key));
@@ -186,7 +197,7 @@ function RetroBatchReviewContent() {
         </section>}
         {result && <div role="status" aria-live="polite" className={`rounded-2xl border p-4 text-xs ${result.failed ? "border-amber-400/25 bg-amber-400/5" : "border-emerald-400/25 bg-emerald-400/5"}`}><strong>{result.saved} concluída(s) · {result.failed} pendente(s)</strong><p className="mt-1 leading-relaxed">{result.message}</p><p className="mt-1 text-ink-muted">O histórico foi salvo localmente e entra na fila de sincronização. A confirmação entre dispositivos precisa ser verificada separadamente.</p></div>}
         <aside className="flex items-start gap-2 rounded-xl border border-surface-border bg-surface-raised/30 p-3 text-[11px] leading-relaxed text-ink-muted"><Info size={16} className="mt-0.5 shrink-0 text-ice"/>Selecionar um dia não confirma a retirada, uma compra ou uma prescrição. Aquisições anteriores permanecem salvas mesmo se você sair sem revisar doses.</aside>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={goBack} disabled={saving} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border px-4 text-xs font-semibold">Concluir ou revisar depois <ChevronRight size={15}/></button><button type="button" onClick={() => router.push("/saude/medicamentos")} disabled={saving} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs font-semibold">Outro medicamento</button></div>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={goBack} disabled={saving} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border px-4 text-xs font-semibold">Concluir ou revisar depois <ChevronRight size={15}/></button><button type="button" onClick={() => router.replace("/saude/medicamentos")} disabled={saving} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs font-semibold">Outro medicamento</button></div>
       </>}
     </div>
   </main></PageTransition>;
