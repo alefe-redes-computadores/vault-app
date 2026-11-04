@@ -38,10 +38,10 @@ export function TreatmentRelationOption({
         <Icon size={18} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-ink-primary">
+        <span className="block break-words text-sm font-semibold leading-snug text-ink-primary">
           {treatment.nome}
         </span>
-        <span className="mt-0.5 block truncate text-[10px] text-ink-muted">
+        <span className="mt-0.5 block break-words text-[11px] leading-snug text-ink-muted">
           {statusLabel(treatment.status)}
           {treatment.condicao ? ` · ${treatment.condicao}` : ""}
         </span>

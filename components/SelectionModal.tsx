@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useModalGuard } from "@/hooks/useModalGuard";
+import { filterSelectionItems } from "@/lib/forms/selection-search";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Loader2, Search, Check, Layers } from "lucide-react";
 import { Input } from "./ui/Input";
@@ -63,7 +64,11 @@ export function SelectionModal<T>({
 }: SelectionModalProps<T>) {
   const { trigger } = useHapticFeedback();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const quickSubmitLock = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(24);
+  const [quickCreateError, setQuickCreateError] = useState("");
   
   // Estados do Cadastro-Relâmpago Inline
   const [isCreatingMode, setIsCreatingMode] = useState(false);
@@ -78,18 +83,24 @@ export function SelectionModal<T>({
       setIsCreatingMode(false);
       setQuickName("");
       setIsSubmittingQuick(false);
+      setQuickCreateError("");
+      quickSubmitLock.current = false;
     }
   }, [isOpen]);
 
-  const filteredItems = useMemo(() => {
-    const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const query = normalize(searchQuery.trim());
-    if (!query) return items;
+  useEffect(() => {
+    if (!isOpen || isCreatingMode) return;
+    const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen, isCreatingMode]);
 
-    return items.filter((item) =>
-      normalize(getItemLabel(item)).includes(query)
-    );
-  }, [items, getItemLabel, searchQuery]);
+  useEffect(() => { setVisibleCount(24); }, [searchQuery, activeTab, isOpen]);
+
+  const filteredItems = useMemo(
+    () => filterSelectionItems(items, searchQuery, getItemLabel),
+    [items, getItemLabel, searchQuery]
+  );
+  const visibleItems = useMemo(() => filteredItems.slice(0, visibleCount), [filteredItems, visibleCount]);
 
   const handleSelect = (item: T) => {
     trigger("vibrate");
@@ -99,8 +110,10 @@ export function SelectionModal<T>({
 
   const handleQuickSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickName.trim() || !onQuickCreate) return;
+    if (!quickName.trim() || !onQuickCreate || quickSubmitLock.current) return;
 
+    quickSubmitLock.current = true;
+    setQuickCreateError("");
     setIsSubmittingQuick(true);
     trigger("vibrate");
 
@@ -111,9 +124,11 @@ export function SelectionModal<T>({
         onSelect(createdItem as T);
       }
       onClose();
-    } catch (error) {
-      console.error("Erro no cadastro-relâmpago:", error);
+    } catch {
+      // Remain in the form and preserve what the person typed for retry.
+      setQuickCreateError("Não foi possível salvar. Confira os dados e tente novamente.");
     } finally {
+      quickSubmitLock.current = false;
       setIsSubmittingQuick(false);
     }
   };
@@ -121,6 +136,7 @@ export function SelectionModal<T>({
   const handleCreateNew = () => {
     trigger("vibrate");
     if (enableQuickCreate && onQuickCreate) {
+      setQuickCreateError("");
       setIsCreatingMode(true);
     } else {
       onCreateNew?.();
@@ -207,7 +223,8 @@ export function SelectionModal<T>({
                   <Input
                     placeholder={quickCreatePlaceholder}
                     value={quickName}
-                    onChange={(e) => setQuickName(e.target.value)}
+                    onChange={(e) => { setQuickName(e.target.value); setQuickCreateError(""); }}
+                    error={quickCreateError || undefined}
                     autoFocus
                     className="w-full"
                   />
@@ -221,6 +238,7 @@ export function SelectionModal<T>({
                     onClick={() => {
                       setIsCreatingMode(false);
                       setQuickName("");
+                      setQuickCreateError("");
                     }}
                     disabled={isSubmittingQuick}
                   >
@@ -276,14 +294,18 @@ export function SelectionModal<T>({
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
                   />
                   <Input
+                    ref={searchInputRef}
+                    aria-label={`Buscar em ${title}`}
                     placeholder={placeholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9"
+                    className={`w-full pl-9 ${searchQuery ? "pr-12" : ""}`}
                   />
+                  {searchQuery ? <button type="button" aria-label="Limpar busca" onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }} className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-xl text-ink-muted hover:text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><X size={15}/></button> : null}
                 </div>
 
-                <div className="flex-1 space-y-2 overflow-y-auto pr-1 min-h-[200px]">
+                <p className="mb-2 text-[11px] text-ink-muted" role="status" aria-live="polite">{loading ? "Carregando opções…" : `${filteredItems.length} opç${filteredItems.length === 1 ? "ão encontrada" : "ões encontradas"}`}</p>
+                <div className="min-h-[120px] flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
                   {loading ? (
                     <div className="flex h-full flex-col items-center justify-center py-10 text-center">
                       <Loader2 size={24} className="animate-spin text-ice" />
@@ -312,7 +334,7 @@ export function SelectionModal<T>({
                       )}
                     </div>
                   ) : (
-                    filteredItems.map((item) => (
+                    visibleItems.map((item) => (
                       <button
                         key={getItemId(item)}
                         type="button"
@@ -323,6 +345,7 @@ export function SelectionModal<T>({
                       </button>
                     ))
                   )}
+                  {!loading && visibleItems.length < filteredItems.length ? <button type="button" onClick={() => setVisibleCount(previous => previous + 24)} className="flex min-h-11 w-full items-center justify-center rounded-xl border border-surface-border/60 bg-surface-raised px-3 py-2 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice" aria-label={`Mostrar mais opções, ${filteredItems.length - visibleItems.length} restantes`}>Ver mais opções ({filteredItems.length - visibleItems.length})</button> : null}
                 </div>
 
                 {(onCreateNew || enableQuickCreate) && filteredItems.length > 0 && (

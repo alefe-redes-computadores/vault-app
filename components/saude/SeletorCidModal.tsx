@@ -3,7 +3,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Check } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { filterSelectionItems } from "@/lib/forms/selection-search";
 import { useModalGuard } from "@/hooks/useModalGuard";
 
 interface SeletorCidModalProps {
@@ -22,12 +23,15 @@ const MOCK_CIDS = [
 export function SeletorCidModal({ isOpen, onClose, onSelect }: SeletorCidModalProps) {
   const [busca, setBusca] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   useModalGuard({ open: isOpen, dialogRef, onClose });
 
-  const cidsFiltrados = MOCK_CIDS.filter(c => 
-    c.codigo.toLowerCase().includes(busca.toLowerCase()) || 
-    c.descricao.toLowerCase().includes(busca.toLowerCase())
-  );
+  useEffect(() => {
+    if (!isOpen) { setBusca(""); return; }
+    const frame = window.requestAnimationFrame(() => searchRef.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen]);
+  const cidsFiltrados = filterSelectionItems(MOCK_CIDS, busca, cid => `${cid.codigo} ${cid.descricao}`);
 
   return (
     <AnimatePresence>
@@ -37,6 +41,7 @@ export function SeletorCidModal({ isOpen, onClose, onSelect }: SeletorCidModalPr
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}
         >
           <motion.div
             ref={dialogRef}
@@ -50,22 +55,26 @@ export function SeletorCidModal({ isOpen, onClose, onSelect }: SeletorCidModalPr
             className="flex max-h-[90dvh] w-full max-w-lg flex-col rounded-[28px] border border-surface-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-ink-primary">Selecione o CID</h2>
+              <div><h2 className="text-lg font-semibold text-ink-primary">Selecione o CID</h2><p className="text-[11px] text-ink-muted">Lista de exemplo; não representa um catálogo completo de CID.</p></div>
               <button type="button" onClick={onClose} aria-label="Fechar seletor de CID" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised"><X size={20} /></button>
             </div>
 
             <div className="relative mb-4">
               <Search className="absolute left-3 top-3 text-ink-muted" size={18} />
               <input 
-                className="w-full bg-surface-raised rounded-xl py-2.5 pl-10 pr-4 outline-none border border-surface-border text-sm text-ink-primary"
+                ref={searchRef}
+                className="w-full min-h-11 bg-surface-raised rounded-xl py-2.5 pl-10 pr-12 outline-none border border-surface-border text-sm text-ink-primary"
                 placeholder="Buscar código ou descrição..."
                 aria-label="Buscar CID por código ou descrição"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
               />
+              {busca && <button type="button" aria-label="Limpar busca CID" onClick={() => { setBusca(""); searchRef.current?.focus(); }} className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-lg text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><X size={16}/></button>}
             </div>
 
+            <p className="mb-2 text-xs text-ink-muted" role="status" aria-live="polite">{cidsFiltrados.length} código{cidsFiltrados.length === 1 ? " disponível" : "s disponíveis"} nesta lista</p>
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain">
+              {cidsFiltrados.length === 0 ? <p className="rounded-xl bg-surface-raised p-4 text-sm text-ink-muted">Nenhum código encontrado nesta lista de exemplo.</p> : null}
               {cidsFiltrados.map(cid => (
                 <button
                   key={cid.id}
