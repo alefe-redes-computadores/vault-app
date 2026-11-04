@@ -5,6 +5,7 @@ import type { MedicationPortfolio } from "@/lib/health-intelligence/medication-p
 import type { BrainCarePlan } from "@/lib/health-intelligence/care-plan";
 import { medicationPortfolioCoherence } from "@/lib/health-intelligence/medication-portfolio-coherence";
 import { MedicationScopeReconciliation } from "@/components/saude/MedicationScopeReconciliation";
+import { useDismissibleDetails } from "@/hooks/useDismissibleDetails";
 
 /**
  * P9 — compacto por padrão, evidências detalhadas por opção do usuário.
@@ -18,6 +19,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
   /** Contagem canônica da listagem (inclui SOS); diferenças ficam explícitas. */
   listActiveCount?: number;
 }) {
+  const detailsRef = useDismissibleDetails();
   if (!portfolio) return null;
   const total = Math.max(0, doses.total);
   const completed = Math.max(0, Math.min(total, doses.completed));
@@ -57,7 +59,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
         <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-violet-200">Próxima decisão comprovada</span><strong className="mt-1 block line-clamp-2 text-xs font-semibold leading-snug text-ink-primary">{decision.title}</strong></span>
         <ChevronRight size={14} className="shrink-0 text-ink-muted"/>
       </button>}
-      <details className="group mt-1 border-t border-surface-border/30 pt-1">
+      <details ref={detailsRef} className="group mt-1 border-t border-surface-border/30 pt-1">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
           Entender origens, doses e estados <ChevronDown size={13} className="transition-transform group-open:rotate-180"/>
         </summary>

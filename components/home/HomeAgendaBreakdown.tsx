@@ -1,6 +1,7 @@
 "use client";
 import { ChevronDown, AlertTriangle } from "lucide-react";
 import { homeAgendaUrgency } from "@/lib/home/agenda-urgency";
+import { useDismissibleDetails } from "@/hooks/useDismissibleDetails";
 
 type Entry = { key: string; label: string; count: number; href: string };
 /** One collapsed, on-demand breakdown of events already selected by Home.
@@ -14,6 +15,7 @@ export function HomeAgendaBreakdown({ consultations, exams, surgeries, withdrawa
   overdueWithdrawals?: number;
   onNavigate: (href: string) => void;
 }) {
+  const detailsRef = useDismissibleDetails();
   const items: Entry[] = [
     { key: "consultas", label: "Consultas", count: consultations, href: "/saude/consultas" },
     { key: "exames", label: "Exames", count: exams, href: "/saude/exames" },
@@ -24,7 +26,7 @@ export function HomeAgendaBreakdown({ consultations, exams, surgeries, withdrawa
   if (valid.length === 0) return null;
   const total = valid.reduce((sum, item) => sum + item.count, 0);
   const urgency = homeAgendaUrgency(total, overdueWithdrawals);
-  return <details className="group mx-3 mb-3 rounded-xl border border-surface-border/40 bg-surface/40 px-3 py-1.5">
+  return <details ref={detailsRef} className="group mx-3 mb-3 rounded-xl border border-surface-border/40 bg-surface/40 px-3 py-1.5">
     <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
       <span className="flex min-w-0 flex-wrap items-center gap-1.5">Agenda de hoje · {total} compromisso{total === 1 ? "" : "s"}{urgency.overdue > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-coral/10 px-2 py-0.5 text-coral"><AlertTriangle size={11} aria-hidden="true"/>{urgency.overdue} retirada{urgency.overdue === 1 ? "" : "s"} vencida{urgency.overdue === 1 ? "" : "s"}</span>}</span>
       <ChevronDown size={14} aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none"/>
@@ -32,7 +34,7 @@ export function HomeAgendaBreakdown({ consultations, exams, surgeries, withdrawa
     <div className="border-t border-surface-border/30 py-2">
       {urgency.overdue > 0 && <p className="mb-2 text-[10px] leading-relaxed text-amber-200">{urgency.label}. Confira a situação: data vencida não comprova falta de retirada.</p>}
       <div className="grid grid-cols-2 gap-1.5">
-      {valid.map(item => <button key={item.key} type="button" onClick={() => onNavigate(item.href)}
+      {valid.map(item => <button key={item.key} type="button" onClick={() => { if (detailsRef.current) detailsRef.current.open = false; onNavigate(item.href); }}
         aria-label={`${item.label}: ${item.count} compromisso(s). Abrir seção`}
         className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-lg border border-surface-border/40 bg-surface-raised/40 px-2.5 text-left text-[11px] text-ink-secondary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice motion-reduce:transition-none">
         <span className="truncate">{item.label}</span><strong className="tabular-nums text-ink-primary">{item.count}</strong>

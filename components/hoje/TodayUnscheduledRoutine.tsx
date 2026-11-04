@@ -2,12 +2,15 @@
 
 import { memo } from "react";
 import { AlertTriangle, ChevronRight } from "lucide-react";
+import { useProgressiveReveal } from "@/hooks/useProgressiveReveal";
 
 type MedicationPreview = {id?: string | null; nome?: string | null};
 type Props = {medications: readonly MedicationPreview[]; onEdit: (id:string)=>void};
 
 /** P14 R4 — Falta de horário é qualidade cadastral; nunca dose não tomada. */
 export const TodayUnscheduledRoutine = memo(function TodayUnscheduledRoutine({medications,onEdit}:Props){
+  const actionable = medications.filter(item => item.id);
+  const reveal = useProgressiveReveal(actionable.map(item => item.id).join("\u001f"), actionable.length, 3, 4);
   if (!medications.length) return null;
   return <section aria-label="Medicamentos sem horário" className="rounded-2xl border border-amber-400/20 bg-amber-400/[.045] p-3">
     <div className="flex items-start gap-2.5">
@@ -15,12 +18,17 @@ export const TodayUnscheduledRoutine = memo(function TodayUnscheduledRoutine({me
       <div className="min-w-0 flex-1">
         <strong className="block text-xs font-semibold text-ink-primary">{medications.length} medicamento{medications.length===1?"":"s"} sem horário</strong>
         <p className="mt-1 text-[10px] leading-snug text-ink-muted">Rotinas ativas sem horário válido não entram nas doses pendentes. Confira a programação.</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {medications.filter(m=>m.id).map(m=><button key={m.id} type="button" onClick={()=>onEdit(m.id!)}
-            className="inline-flex min-h-10 max-w-full items-center gap-1 rounded-xl border border-amber-400/20 bg-void/30 px-3 text-[10px] font-semibold text-amber-200 active:scale-[.98]">
+        <div id="today-unscheduled-medications" className="mt-2 flex flex-wrap gap-1.5">
+          {actionable.slice(0, reveal.visible).map(m=><button key={m.id} type="button" onClick={()=>onEdit(m.id!)}
+            className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-xl border border-amber-400/20 bg-void/30 px-3 text-[10px] font-semibold text-amber-200 active:scale-[.98] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
             <span className="truncate">{m.nome || "Medicamento"}</span><ChevronRight size={13} aria-hidden="true"/>
           </button>)}
         </div>
+        {(reveal.remaining > 0 || reveal.expanded) && <div className="mt-2 flex flex-wrap gap-2">
+          {reveal.remaining > 0 && <button type="button" onClick={reveal.showMore} aria-controls="today-unscheduled-medications" className="min-h-11 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 text-[10px] font-semibold text-amber-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Ver mais {reveal.nextCount} medicamento{reveal.nextCount === 1 ? "" : "s"}</button>}
+          {reveal.expanded && <button type="button" onClick={reveal.collapse} aria-controls="today-unscheduled-medications" className="min-h-11 rounded-xl border border-surface-border px-3 text-[10px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Recolher</button>}
+        </div>}
+        {actionable.length === 0 && <p className="mt-2 text-[10px] text-ink-muted">Identificador indisponível. Abra Medicamentos para revisar os horários.</p>}
       </div>
     </div>
   </section>;

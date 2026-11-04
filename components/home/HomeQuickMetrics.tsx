@@ -37,7 +37,7 @@ export const HomeQuickMetrics = memo(function HomeQuickMetrics({
           : index === 1
             ? "border-b border-surface-border/40 min-[380px]:border-b-0 min-[380px]:border-r"
             : index === 2 ? "border-r border-surface-border/40" : ""}`}>
-        <span className="flex min-w-0 items-center justify-center gap-1 text-[10px] leading-tight text-ink-muted"><Icon size={13} aria-hidden="true" className={accent}/><span className="truncate">{label}</span></span>
+        <span className="flex min-w-0 items-center justify-center gap-1 text-[10px] leading-tight text-ink-muted"><Icon size={13} aria-hidden="true" className={accent}/><span className="min-w-0 truncate" title={label}>{label}</span></span>
         <strong className={`font-mono text-base font-bold tabular-nums ${key === "pendentes" && value > 0 ? "text-coral" : "text-ink-primary"}`}>{value}</strong>
       </button>
     ))}

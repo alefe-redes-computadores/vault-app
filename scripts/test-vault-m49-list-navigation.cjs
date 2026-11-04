@@ -66,8 +66,14 @@ const flatten=(tree,list=[])=>{
  if(tree&&typeof tree==='object'&&'type' in tree){list.push(tree);flatten(tree.props?.children,list);}
  return list;
 };
+// M55: load the REAL pagination hook, with a test-only React state dispatcher.
+// The M49 checks below still exercise the original safe/unsafe reminder buttons.
+const progressiveHook=load('hooks/useProgressiveReveal.ts',{
+ react:{useState:initial=>[typeof initial==='function'?initial():initial,()=>{}]}
+},ts.JsxEmit.None).useProgressiveReveal;
 const Reminder=load('components/hoje/TodayRemindersPanel.tsx',{
- ...runtime,'@/lib/navigation/safe-action-href':{isSafeLocalActionHref:safe}
+ ...runtime,'@/lib/navigation/safe-action-href':{isSafeLocalActionHref:safe},
+ '@/hooks/useProgressiveReveal':{useProgressiveReveal:progressiveHook}
 }).TodayRemindersPanel;
 const visited=[];
 const rendered=Reminder({reminders:[{id:'ok',title:'Consulta',time:'09:00',target_route:'/saude/consultas'},{id:'bad',title:'Inseguro',time:'10:00',target_route:'javascript:alert(1)'}],onNavigate:v=>visited.push(v)});

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useProgressiveReveal } from "@/hooks/useProgressiveReveal";
 import { CalendarRange, ChevronRight, Clock3 } from "lucide-react";
 import type { HealthInsightContext } from "@/lib/health-insights";
 import { buildUpcomingDoseAgenda, type UpcomingDoseItem } from "@/lib/health-intelligence/upcoming-dose-agenda";
@@ -9,16 +10,18 @@ const dayLabel = (item: UpcomingDoseItem) => item.dayOffset === 0 ? "Hoje" : ite
 
 export function UpcomingDoseAgenda({ context, onNavigate, compact = false }: { context: HealthInsightContext | null | undefined; onNavigate: (href: string) => void; compact?: boolean }) {
   const agenda = useMemo(() => context ? buildUpcomingDoseAgenda(context) : null, [context]);
-  const [showAll, setShowAll] = useState(false);
+  const all = agenda ? [...agenda.today, ...agenda.future] : [];
+  const reveal = useProgressiveReveal(all.map(item => item.key).join("\u001f") + String(compact), all.length, compact ? 2 : 4, compact ? 4 : 6);
   if (!agenda || (!agenda.today.length && !agenda.future.length)) return null;
-  const all = [...agenda.today, ...agenda.future];
-  const limit = compact ? 2 : 4;
-  const visible = showAll ? all : all.slice(0, limit);
-  const remaining = Math.max(0, all.length - limit);
+  const visible = all.slice(0, reveal.visible);
   return <section aria-label="Próximas doses programadas" className="rounded-2xl border border-violet-300/20 bg-violet-300/[.035] p-3">
     <div className="flex items-start gap-2.5"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-200"><CalendarRange size={16}/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Agenda de doses</strong><span className="mt-0.5 block text-[9px] leading-relaxed text-ink-muted">Hoje e próximos {agenda.horizonDays} dias, somente a partir de horários realmente programados.</span></span><span className="rounded-full border border-violet-300/15 px-2 py-1 text-[8px] text-violet-200">{agenda.today.length + agenda.future.length}</span></div>
-    <div className="mt-3 space-y-1.5">{visible.map(item => <button key={item.key} type="button" onClick={() => onNavigate(item.href)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-surface-border/60 bg-surface/65 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><Clock3 size={13} className={item.dayOffset === 0 ? "text-ice" : "text-violet-300"}/><span className="min-w-0 flex-1"><strong className="block truncate text-[11px] text-ink-primary">{item.medicationName}</strong><span className="text-[8px] text-ink-muted">{dayLabel(item)} · {item.time}</span></span><ChevronRight size={13} className="text-ink-faint"/></button>)}</div>
-    {remaining > 0 && <button type="button" aria-expanded={showAll} onClick={() => setShowAll(value => !value)} className="mt-2 min-h-10 w-full rounded-xl border border-violet-300/15 bg-violet-300/[.04] px-3 text-[10px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{showAll ? "Mostrar menos doses" : `Ver mais ${remaining} dose(s) programada(s)`}</button>}
+    <div id="upcoming-dose-agenda-list" className="mt-3 space-y-1.5">{visible.map(item => <button key={item.key} type="button" onClick={() => onNavigate(item.href)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-surface-border/60 bg-surface/65 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><Clock3 size={13} className={item.dayOffset === 0 ? "text-ice" : "text-violet-300"}/><span className="min-w-0 flex-1"><strong className="block truncate text-[11px] text-ink-primary">{item.medicationName}</strong><span className="text-[8px] text-ink-muted">{dayLabel(item)} · {item.time}</span></span><ChevronRight size={13} className="text-ink-faint"/></button>)}</div>
+    {(reveal.remaining > 0 || reveal.expanded) && <div className="mt-2 flex flex-wrap gap-2">
+      {reveal.remaining > 0 && <button type="button" aria-expanded={reveal.expanded} aria-controls="upcoming-dose-agenda-list" onClick={reveal.showMore} className="min-h-11 flex-1 rounded-xl border border-violet-300/15 bg-violet-300/[.04] px-3 text-[10px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">Ver mais {reveal.nextCount} dose(s) programada(s)</button>}
+      {reveal.expanded && <button type="button" aria-controls="upcoming-dose-agenda-list" onClick={reveal.collapse} className="min-h-11 rounded-xl border border-surface-border/50 px-3 text-[10px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">Mostrar menos doses</button>}
+    </div>}
+    {reveal.remaining > 0 && <p className="mt-1 text-[9px] text-ink-muted">{reveal.remaining} doses programadas ainda disponíveis nesta agenda.</p>}
     <p className="mt-2 text-[8px] leading-relaxed text-ink-faint">Dose futura é planejamento: não aparece como atrasada, tomada ou ignorada antes do dia. {agenda.hiddenAfterHorizon ? `${agenda.hiddenAfterHorizon} horário(s) posterior(es) continuam preservados fora deste resumo.` : ""}</p>
   </section>;
 }
