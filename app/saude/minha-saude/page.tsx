@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Droplets,
   History,
+  HeartPulse,
   Network,
   Plus,
   Settings,
@@ -272,7 +273,9 @@ function HealthDashboard({
         ) : (
           <>
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
-            <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>
+            <ClinicalDisclosure id="minha-saude-panorama" title="Panorama do cuidado" description="Tratamentos, acompanhamento e próximos passos registrados" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">
+               {() => <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>}
+             </ClinicalDisclosure>
             <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>,iconClassName:"text-emerald-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
             <CareRelationshipRoutes onNavigate={goFromHealth} compact/>
             {panel === "profile" && (
@@ -352,7 +355,10 @@ function HealthDashboard({
                   </div>
                 </div>
               </div>
-              <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">O 3D é o modo padrão quando disponível. Toque no avatar para ampliar e ajustar aparência, enquadramento e acessórios. A ilustração continua como escolha manual ou fallback técnico.</p>
+              <details className="mt-2 rounded-xl border border-emerald-300/10 bg-void/15 px-3 text-[11px] text-ink-muted">
+                 <summary className="flex min-h-11 cursor-pointer items-center text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como explorar sua Fênix</summary>
+                 <p className="pb-3 leading-relaxed">O 3D funciona quando o aparelho permite. Toque no avatar para ampliar e ajustar aparência, enquadramento e acessórios; a ilustração continua como alternativa. As marcações representam registros, não um diagnóstico.</p>
+               </details>
               <ClinicalDisclosure id="avatar-corpo-sinais" title="Corpo e sinais · explorar regiões" description="Indicadores e registros por região do corpo" icon={<Activity size={18}/>} iconClassName="text-emerald-300">
                 {() => <>
                 <AvatarReadings records={records} devices={devices} personId={personId} userId={person?.user_id||""} today={today} onView={type=>{trigger("vibrate");setMetric(type);}} onAdd={open}/>

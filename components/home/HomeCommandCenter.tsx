@@ -40,7 +40,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
       </div>
 
       <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
-        {() => <div className="grid grid-cols-2 gap-2.5">
+        {() => <div className="grid min-w-0 grid-cols-2 gap-2.5">
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
           <HomeClinicalAreaTile label="Cirurgias" description="Procedimentos" path="/saude/cirurgias" Icon={ReceiptText} tone="border-rose-400/20 bg-rose-400/[0.06] text-rose-300" onNavigate={go} />
           <HomeClinicalAreaTile label="Plano de segurança" description="Apoio e contatos" path="/saude/plano-seguranca" Icon={BookHeart} tone="border-rose-300/20 bg-rose-300/[0.055] text-rose-200" onNavigate={go} />

@@ -40,10 +40,10 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
     <p role="note" className="rounded-xl border border-surface-border/50 bg-surface-raised/30 px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
       {linkedLocations>0?`${linkedLocations} referência(s) de cuidado exibida(s) conforme os vínculos registrados.`:"Nenhuma referência de rede confirmada nesta ficha."} Vínculo não confirma atendimento, fornecimento ou retirada.
     </p>
-    <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-300" label="Médico Prescritor"
+    <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-sky-400/10 text-sky-300" label="Médico Prescritor"
       action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : undefined}>
       <p className="break-words text-sm font-bold text-ink-primary">{doctor.name}</p>
-      {doctor.otherMedicationCount > 0 ? <p className="mt-1 text-[11px] text-emerald-300">Também vinculado a {doctor.otherMedicationCount} outro{doctor.otherMedicationCount===1?"":"s"} medicamento{doctor.otherMedicationCount===1?"":"s"} desta pessoa</p> : null}
+      {doctor.otherMedicationCount > 0 ? <p className="mt-1 text-[11px] text-sky-300">Também vinculado a {doctor.otherMedicationCount} outro{doctor.otherMedicationCount===1?"":"s"} medicamento{doctor.otherMedicationCount===1?"":"s"} desta pessoa</p> : null}
     </DetailInfoRow>
     {hospital ? <DetailInfoRow icon={<Building2 size={19}/>} iconClassName="bg-violet-400/10 text-violet-400" label="Hospital" action={nodeActions("hospitais",hospital)}>
       <p className="break-words text-sm font-bold text-ink-primary">{hospital.name}</p>
@@ -54,7 +54,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
       <p className="mt-0.5 text-[11px] text-ink-muted">{location.kind || "Local de saúde"}</p>
       {location.address ? <p className="mt-0.5 break-words text-[11px] text-ink-muted">{location.address}</p> : null}
     </DetailInfoRow> : null}
-    {pharmacy ? <DetailInfoRow icon={<Store size={19}/>} iconClassName="bg-amber-400/10 text-amber-400" label="Farmácia Vinculada" action={nodeActions("farmacias",pharmacy)}>
+    {pharmacy ? <DetailInfoRow icon={<Store size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-300" label="Farmácia Vinculada" action={nodeActions("farmacias",pharmacy)}>
       <p className="break-words text-sm font-bold text-ink-primary">{pharmacy.name}</p>
       {pharmacy.address ? <p className="mt-0.5 break-words text-[11px] text-ink-muted">{pharmacy.address}</p> : null}
     </DetailInfoRow> : null}

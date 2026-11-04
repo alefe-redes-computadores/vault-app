@@ -14,24 +14,31 @@ export function useTodayOwnerData(input: {
   date: string;
 }) {
   const { userId, personId, date } = input;
-  const dayData = useLiveQuery(async () => {
+  // M64: owner-level records do not change when navigating between dates.
+  // Keep independent Dexie subscriptions so date changes only reload day rows.
+  const ownerData = useLiveQuery(async () => {
     if (!userId || !personId) return null;
     const owner = [userId, personId] as [string, string];
-    const day = [userId, personId, date] as [string, string, string];
-    const [tratamentos, renovacoes, medicos, farmacias, hospitais,
-      consultasHoje, cirurgiasHoje, examesHoje, registrosHoje] = await Promise.all([
+    const [tratamentos, renovacoes, medicos, farmacias, hospitais] = await Promise.all([
       db.tratamentos.where("[user_id+person_id]").equals(owner).toArray(),
       db.renovacoes.where("[user_id+person_id]").equals(owner).toArray(),
       db.medicos.where("[user_id+person_id]").equals(owner).toArray(),
       db.farmacias.where("[user_id+person_id]").equals(owner).toArray(),
       db.hospitais.where("[user_id+person_id]").equals(owner).toArray(),
+    ]);
+    return { userId, personId, tratamentos, renovacoes, medicos, farmacias, hospitais };
+  }, [userId, personId]);
+
+  const dayData = useLiveQuery(async () => {
+    if (!userId || !personId) return null;
+    const day = [userId, personId, date] as [string, string, string];
+    const [consultasHoje, cirurgiasHoje, examesHoje, registrosHoje] = await Promise.all([
       db.consultas.where("[user_id+person_id+data]").equals(day).toArray(),
       db.cirurgias.where("[user_id+person_id+data]").equals(day).toArray(),
       db.exames.where("[user_id+person_id+data]").equals(day).toArray(),
       db.registros_saude.where("[user_id+person_id+data]").equals(day).toArray(),
     ]);
-    return { userId, personId, date, tratamentos, renovacoes, medicos, farmacias,
-      hospitais, consultasHoje, cirurgiasHoje, examesHoje, registrosHoje };
+    return { userId, personId, date, consultasHoje, cirurgiasHoje, examesHoje, registrosHoje };
   }, [userId, personId, date]);
 
   const historyData = useLiveQuery(async () => {
@@ -40,18 +47,22 @@ export function useTodayOwnerData(input: {
       .where("[user_id+person_id]").equals([userId, personId]).toArray() };
   }, [userId, personId]);
 
-  const ready = Boolean(userId && personId && dayData?.userId === userId &&
+  // A stale Dexie result for another owner/date must never reach this view.
+  const ownerReady = Boolean(userId && personId && ownerData?.userId === userId &&
+    ownerData.personId === personId);
+  const dayReady = Boolean(userId && personId && dayData?.userId === userId &&
     dayData.personId === personId && dayData.date === date);
+  const ready = ownerReady && dayReady;
   const historyReady = Boolean(userId && personId && historyData?.userId === userId &&
     historyData.personId === personId);
   return {
     ready,
     historyReady,
-    tratamentos: ready ? dayData!.tratamentos : EMPTY_TODAY_ROWS,
-    renovacoes: ready ? dayData!.renovacoes : EMPTY_TODAY_ROWS,
-    medicos: ready ? dayData!.medicos : EMPTY_TODAY_ROWS,
-    farmacias: ready ? dayData!.farmacias : EMPTY_TODAY_ROWS,
-    hospitais: ready ? dayData!.hospitais : EMPTY_TODAY_ROWS,
+    tratamentos: ready ? ownerData!.tratamentos : EMPTY_TODAY_ROWS,
+    renovacoes: ready ? ownerData!.renovacoes : EMPTY_TODAY_ROWS,
+    medicos: ready ? ownerData!.medicos : EMPTY_TODAY_ROWS,
+    farmacias: ready ? ownerData!.farmacias : EMPTY_TODAY_ROWS,
+    hospitais: ready ? ownerData!.hospitais : EMPTY_TODAY_ROWS,
     consultasHoje: ready ? dayData!.consultasHoje : EMPTY_TODAY_ROWS,
     cirurgiasHoje: ready ? dayData!.cirurgiasHoje : EMPTY_TODAY_ROWS,
     examesHoje: ready ? dayData!.examesHoje : EMPTY_TODAY_ROWS,

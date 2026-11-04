@@ -101,6 +101,7 @@ import {
 import { medicationIgnoredStatus } from "@/lib/medication-availability";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
+import { medicationPersonalAccent, medicationPersonalAccentStyle } from "@/lib/medications/list-personal-accent";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { ClinicalCollectionGroup } from "@/components/saude/ClinicalCollectionGroup";
@@ -861,6 +862,7 @@ export default function MedicamentosListPage() {
 
       const regulatoryBorderColor =
         regulatorySurface.rail;
+      const personalAccent = medicationPersonalAccent(med);
 
       const regulatoryMeaning =
         regulatoryProfile
@@ -1100,7 +1102,8 @@ export default function MedicamentosListPage() {
           icon={
             <span
               className={`flex h-8 w-8 items-center justify-center rounded-xl border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
-              title={regulatoryMeaning}
+              title={personalAccent ? "Identidade visual personalizada · classificação da receita na faixa lateral" : regulatoryMeaning}
+              style={medicationPersonalAccentStyle(med)}
             >
               <SelectedFormatIcon
                 size={18}
@@ -1115,6 +1118,7 @@ export default function MedicamentosListPage() {
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-1">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
                 <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[14px] font-bold leading-tight text-ink-primary">
                   {med.nome}
                 </h3>
