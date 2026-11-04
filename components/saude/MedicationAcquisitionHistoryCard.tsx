@@ -32,17 +32,17 @@ export function MedicationAcquisitionHistoryCard({kind,dateLabel,pharmacyName,pu
   const shownPrice=kind==="prescription"?"Receita":kind==="planned"?"Prevista":kind==="public"?"R$ 0,00":safePrice!==null?`R$ ${safePrice.toFixed(2)}`:"—";
   const Icon=kind==="prescription"?FileText:kind==="planned"?Clock:kind==="public"?Gift:DollarSign;
   return <motion.button type="button" onClick={onOpen} disabled={!enabled}
-    aria-label={`Abrir ${kind==="prescription"?"receita":kind==="planned"?"aquisição prevista":"aquisição"} de ${dateLabel}`}
+    aria-label={`${enabled ? "Abrir" : "Detalhes indisponíveis de"} ${kind==="prescription"?"receita":kind==="planned"?"aquisição prevista":"aquisição"} de ${dateLabel}`}
     initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-    className={`w-full min-w-0 rounded-[16px] border bg-surface p-2.5 text-left transition-colors active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:cursor-default ${kind==="public"?"border-emerald-500/30 bg-emerald-500/5":"border-surface-border"}`}>
+    className={`w-full min-h-11 min-w-0 rounded-[16px] border bg-surface p-2.5 text-left transition-colors active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice disabled:cursor-default disabled:opacity-65 ${kind==="public"?"border-emerald-500/30 bg-emerald-500/5":"border-surface-border"}`}>
     <span className="flex min-w-0 items-start justify-between gap-3">
       <span className="flex min-w-0 flex-1 items-start gap-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-raised/70 text-ink-muted"><Calendar size={14} aria-hidden="true"/></span>
         <span className="min-w-0 flex-1">
           <span className="block text-xs font-bold text-ink-primary">{dateLabel}</span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            {pharmacyName && <span className="max-w-[180px] truncate text-[10px] text-ink-muted">{pharmacyName}</span>}
-            <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase ${tag.tone}`}><Icon size={9} aria-hidden="true"/>{tagLabel}</span>
+            {pharmacyName && <span className="max-w-[180px] break-words text-[11px] leading-snug text-ink-muted">{pharmacyName}</span>}
+            <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${tag.tone}`}><Icon size={9} aria-hidden="true"/>{tagLabel}</span>
             {quantityLabel && kind!=="prescription" && <span className="rounded-full bg-surface-raised px-1.5 py-0.5 text-[8px] font-bold text-ink-muted">Qtd. {quantityLabel}</span>}
             {requiresPrescription && <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-400"><AlertCircle size={9} aria-hidden="true"/>Nova receita</span>}
             {nextWithdrawalLabel && <span className="inline-flex items-center gap-0.5 rounded-full bg-ice/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-ice"><Calendar size={9} aria-hidden="true"/>Retorno: {nextWithdrawalLabel}</span>}

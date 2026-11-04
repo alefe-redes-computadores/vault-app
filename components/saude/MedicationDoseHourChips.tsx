@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import { AlertCircle, Check } from "lucide-react";
 
 type Props = {
@@ -11,6 +11,8 @@ type Props = {
 
 /** Somente leitura: os conjuntos chegam da autoridade de slots da página. */
 export const MedicationDoseHourChips = memo(function MedicationDoseHourChips({ hours, taken, ignored }: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleHours = expanded ? hours : hours.slice(0, 8);
   if (hours.length === 0) {
     return (
       <p className="border-t border-surface-border/50 pt-4 text-xs text-amber-400">
@@ -22,7 +24,7 @@ export const MedicationDoseHourChips = memo(function MedicationDoseHourChips({ h
     <div className="border-t border-surface-border/50 pt-4">
       <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-ink-muted">Horários configurados</p>
       <ul className="flex flex-wrap gap-2" aria-label="Estado dos horários configurados">
-        {hours.map(horario => {
+        {visibleHours.map(horario => {
           const tomada = taken.has(horario);
           const ignorada = !tomada && ignored.has(horario);
           const label = tomada ? "tomada registrada" : ignorada ? "ignorada" : "sem confirmação";
@@ -39,6 +41,10 @@ export const MedicationDoseHourChips = memo(function MedicationDoseHourChips({ h
           );
         })}
       </ul>
+      {hours.length > 8 && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
+        className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-surface-border/70 bg-surface-raised px-3 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+        {expanded ? "Recolher horários" : `Ver todos os ${hours.length} horários configurados`}
+      </button>}
     </div>
   );
 });

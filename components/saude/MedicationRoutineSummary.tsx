@@ -36,6 +36,10 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
     resolvedToday, plannedToday, takenScheduledToday, ignoredScheduledToday,
     quantityPerDose, doseUnit, hours, takenHours, ignoredHours, lastDose, hasStockControl,
   } = props;
+  const plannedSafe = Number.isFinite(plannedToday) ? Math.max(0, plannedToday) : 0;
+  const resolvedSafe = Number.isFinite(resolvedToday) ? Math.max(0, resolvedToday) : 0;
+  const barNow = Math.min(resolvedSafe, plannedSafe);
+  const visualPercent = plannedSafe > 0 ? Math.min(100, Math.round(100 * barNow / plannedSafe)) : 0;
   return (
     <div className="rounded-[18px] border border-surface-border/60 bg-surface p-3.5" aria-label={sos ? "Resumo de tomadas SOS registradas" : "Resumo da rotina programada"}>
       {sos ? (
@@ -70,6 +74,9 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">Hoje</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{resolvedToday}/{plannedToday}</p>
               <p className="mt-0.5 text-[10px] text-ink-muted">slots programados resolvidos</p>
+              {plannedSafe > 0 && <div className="mt-2" role="progressbar" aria-label="Horários programados resolvidos" aria-valuemin={0} aria-valuemax={plannedSafe} aria-valuenow={barNow} aria-valuetext={`${resolvedToday} de ${plannedToday} horários resolvidos`}>
+                <div className="h-1.5 overflow-hidden rounded-full bg-surface-border/60"><div className="h-full rounded-full bg-ice transition-[width] motion-reduce:transition-none" style={{ width: `${visualPercent}%` }} /></div>
+              </div>}
               {plannedToday > 0 && (
                 <p className="mt-1 text-[9px] text-ink-faint">
                   {takenScheduledToday} tomada{takenScheduledToday === 1 ? "" : "s"} · {ignoredScheduledToday} ignorada{ignoredScheduledToday === 1 ? "" : "s"}

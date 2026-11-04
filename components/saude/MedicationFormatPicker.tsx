@@ -1,6 +1,6 @@
 "use client";
 
-import { Package } from "lucide-react";
+import { CheckCircle2, Package } from "lucide-react";
 import {
   MEDICATION_ADDITIONAL_FORMATS,
   MEDICATION_PRIMARY_FORMATS,
@@ -21,7 +21,7 @@ export function MedicationFormatPicker({
   columns?: 3 | 4;
 }) {
   const other = MEDICATION_ADDITIONAL_FORMATS.find(item => item.id === selectedFormat);
-  const base = "flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5 text-center transition-[color,background-color,border-color,transform] active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none motion-reduce:transition-none";
+  const base = "relative flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5 text-center transition-[color,background-color,border-color,transform] active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none motion-reduce:transition-none";
   const selected = "border-emerald-300/50 bg-emerald-300/[.10] text-emerald-100";
   const unselected = "border-surface-border/45 bg-surface-raised text-ink-muted hover:border-emerald-300/20";
   return (
@@ -43,6 +43,7 @@ export function MedicationFormatPicker({
             className={`${base} ${isActive ? selected : unselected}`}
           >
             <Icon size={20} aria-hidden="true" fill={isActive ? "currentColor" : "none"} stroke={isActive ? "none" : "currentColor"}/>
+            {isActive && <CheckCircle2 size={12} className="absolute right-1.5 top-1.5" aria-hidden="true" />}
             <span className="max-w-full break-words text-[10px] font-semibold leading-tight">{item.label}</span>
           </button>
         );
@@ -55,6 +56,7 @@ export function MedicationFormatPicker({
         className={`${base} ${other ? selected : unselected}`}
       >
         <Package size={20} aria-hidden="true"/>
+        {other && <CheckCircle2 size={12} className="absolute right-1.5 top-1.5" aria-hidden="true" />}
         <span className="max-w-full break-words text-[10px] font-semibold leading-tight">{other?.label ?? "Mais formatos"}</span>
       </button>
     </div>

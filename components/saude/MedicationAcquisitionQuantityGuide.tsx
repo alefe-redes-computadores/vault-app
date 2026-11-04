@@ -10,6 +10,7 @@ type Props = { medicamento?: Medicamento | null; quantity: string };
 export function MedicationAcquisitionQuantityGuide({ medicamento, quantity }: Props) {
   const n = Number(quantity.trim().replace(",", "."));
   const informed = quantity.trim().length > 0 && Number.isFinite(n) && n > 0;
+  const invalid = quantity.trim().length > 0 && !informed;
   const unit = medicamento?.estoque_unidade_medida?.trim() || "unidade(s) do estoque";
   return (
     <aside aria-label="Conferir quantidade adquirida antes de salvar" className="mt-2 rounded-xl border border-ice/20 bg-ice/[0.035] px-3 py-2.5">
@@ -26,6 +27,7 @@ export function MedicationAcquisitionQuantityGuide({ medicamento, quantity }: Pr
           </p>
         </div>
       </div>
+      {invalid && <p role="status" className="mt-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2 py-1.5 text-[11px] leading-relaxed text-amber-300">Confira um número positivo de unidades recebidas antes de salvar.</p>}
       <div className="mt-2 flex items-start gap-1.5 border-t border-surface-border/30 pt-2">
         <Info size={13} className="mt-0.5 shrink-0 text-ice" aria-hidden="true" />
         <p className="text-[11px] leading-relaxed text-ink-muted">

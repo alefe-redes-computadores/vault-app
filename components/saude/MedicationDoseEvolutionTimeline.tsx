@@ -48,8 +48,8 @@ export function MedicationDoseEvolutionTimeline({currentDose,history,formatDose,
           {historyRows(recent,0)}
         </ol>
         {older.length>0 && <details onToggle={event=>setShowOlder(event.currentTarget.open)} className="mt-3 rounded-xl border border-surface-border/50 px-3 py-2">
-          <summary className="flex min-h-10 cursor-pointer items-center text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-            Ver {older.length} alteração(ões) mais antiga(s)
+          <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+            {showOlder ? "Recolher alterações antigas" : `Ver ${older.length} alteração(ões) mais antiga(s)`}
           </summary>
           {showOlder && <ol className="ml-3 space-y-5 border-l-2 border-surface-border pt-4 pb-1" aria-label="Dosagens antigas">
             {historyRows(older,3)}
