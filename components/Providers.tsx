@@ -1,4 +1,6 @@
 "use client";
+import dynamic from "next/dynamic";
+const ContextualHelp = dynamic(() => import("@/components/help/ContextualHelp").then(module => module.ContextualHelp));
 import { isVaultNative } from "@/lib/native-runtime";
 import { resolveDoseNotificationDestination } from "@/lib/notification-dose-navigation";
 // components/Providers.tsx
@@ -1325,6 +1327,7 @@ export function Providers({
       )}
       <HealthConnectRuntime />
       <GlobalSyncIssueAlert />
+      <ContextualHelp userId={user.id} personId={activePersonId} />
         <div className="min-h-screen pb-24">
           <Suspense
             fallback={

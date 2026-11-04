@@ -1347,6 +1347,12 @@ export default function MaisPage() {
               Ajuda
             </h2>
 
+            <button type="button" onClick={() => { trigger("vibrate"); router.push("/ajuda"); }} className="mb-2 flex min-h-16 w-full items-center gap-3 rounded-[22px] border border-emerald-400/20 bg-surface p-3.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+              <BookOpen size={20} className="shrink-0 text-emerald-300" aria-hidden="true" />
+              <span className="min-w-0 flex-1"><strong className="block text-sm">Ajuda e guias por área</strong><span className="mt-1 block text-xs text-ink-muted">Busque orientações e reveja os guias do Vault.</span></span>
+              <ChevronRight size={17} className="shrink-0 text-ink-muted" aria-hidden="true" />
+            </button>
+
             <button
               type="button"
               onClick={() => {

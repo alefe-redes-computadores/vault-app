@@ -30,6 +30,7 @@ export type VaultBrainCommandIntent = {
 };
 
 const MODULES: ReadonlyArray<{ id: string; label: string; href: string; aliases: readonly string[] }> = [
+  { id: "ajuda", label: "Ajuda e guias do Vault", href: "/ajuda", aliases: ["ajuda", "como usar", "guias", "tutorial", "conhecer o vault"] },
   { id: "hoje", label: "Hoje · doses e rotina", href: "/hoje", aliases: ["hoje", "doses", "rotina", "agenda de hoje"] },
   { id: "medicamentos", label: "Medicamentos", href: "/saude/medicamentos", aliases: ["medicamentos", "remedios", "remedio", "medicacao"] },
   { id: "receitas", label: "Receitas e aquisições", href: "/saude/renovacao", aliases: ["receita", "receitas", "renovacao", "prescricao", "aquisicoes"] },

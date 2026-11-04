@@ -94,6 +94,10 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
             requestAnimationFrame(() => inputRef.current?.focus());
           }} />
         </div>
+        {!query.trim() ? <div className="mx-3 mb-2 rounded-xl border border-violet-400/15 bg-violet-400/5 px-3 py-2 text-xs text-ink-muted">
+          <p>Procure uma área ou um medicamento. Confira o resultado antes de abrir. As confirmações acontecem no formulário.</p>
+          <button type="button" onClick={() => navigate("/ajuda")} className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">Conhecer os Comandos e outros guias <ArrowUpRight size={14} aria-hidden="true" /></button>
+        </div> : null}
         <div className="max-h-[min(52dvh,420px)] overflow-y-auto overscroll-contain px-3 pb-3" aria-live="polite" aria-busy={queryBusy}>
           <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[.14em] text-ink-muted">{queryBusy ? "Atualizando resultados…" : query.trim() ? `${results.length} resultado(s) local(is)` : "Acessos rápidos"}</p>
           {queryBusy ? <p role="status" className="rounded-xl bg-surface/50 px-3 py-4 text-xs text-ink-muted">Buscando no dispositivo…</p> : results.length ? <ul className="space-y-1.5" aria-label="Resultados dos Comandos">{results.map((item, index) => <li key={item.id}>
