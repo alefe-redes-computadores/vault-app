@@ -20,7 +20,7 @@ type Props = {
 /** Presentation only. The owning page authorizes every relation before passing it in. */
 export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,latestPublicAcquisition,onNavigate,onMap,onCall,formatDay}:Props) {
   const navigate = (type: "medicos" | "hospitais" | "locais" | "farmacias", id?: string | null) => {
-    if (id) onNavigate(`/saude/${type}/detalhes?id=${encodeURIComponent(id)}`);
+    if (id?.trim()) onNavigate(`/saude/${type}/detalhes?id=${encodeURIComponent(id)}`);
   };
   const action = (label: string, onClick: () => void, icon: "open" | "map" | "phone") => (
     <button type="button" onClick={onClick} aria-label={label}
@@ -35,7 +35,11 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
       {node.address ? action(`Abrir ${node.name} no mapa`,()=>onMap(node.address!),"map") : null}
     </span>
   );
+  const linkedLocations = Number(Boolean(doctor.id)) + Number(Boolean(hospital)) + Number(Boolean(location)) + Number(Boolean(pharmacy));
   return <div className="min-w-0 space-y-3.5" aria-label="Rede de cuidado vinculada ao medicamento">
+    <p role="note" className="rounded-xl border border-surface-border/50 bg-surface-raised/30 px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
+      {linkedLocations>0?`${linkedLocations} referência(s) de cuidado exibida(s) conforme os vínculos registrados.`:"Nenhuma referência de rede confirmada nesta ficha."} Vínculo não confirma atendimento, fornecimento ou retirada.
+    </p>
     <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-300" label="Médico Prescritor"
       action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : undefined}>
       <p className="break-words text-sm font-bold text-ink-primary">{doctor.name}</p>

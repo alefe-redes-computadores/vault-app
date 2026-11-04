@@ -10,9 +10,9 @@ export function MedicationDoseHistoryLink({onOpen}:{onOpen:()=>void}) {
       <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-raised text-ink-secondary"><CalendarDays size={18}/></span>
       <span className="min-w-0">
         <strong className="block text-xs font-bold text-ink-primary">Histórico e calendário de doses</strong>
-        <span className="mt-0.5 block text-[10px] text-ink-muted">Veja tomadas, horários, SOS e dias sem confirmação</span>
+        <span className="mt-0.5 block break-words text-[10px] leading-snug text-ink-muted">Veja tomadas, horários, SOS e dias sem confirmação</span>
       </span>
     </span>
-    <ChevronRight size={16} className="shrink-0 text-ink-muted"/>
+    <ChevronRight size={16} className="shrink-0 text-ink-muted" aria-hidden="true"/>
   </button>;
 }

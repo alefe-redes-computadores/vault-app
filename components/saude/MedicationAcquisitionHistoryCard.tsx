@@ -49,7 +49,10 @@ export function MedicationAcquisitionHistoryCard({kind,dateLabel,pharmacyName,pu
           </span>
         </span>
       </span>
-      <span className={`shrink-0 rounded-lg px-2 py-1 font-mono text-xs font-bold ${kind==="public"?"bg-emerald-400/10 text-emerald-400":"bg-ice/10 text-ice"}`}>{shownPrice}</span>
+      <span className={`max-w-[45%] shrink-0 break-words rounded-lg px-2 py-1 text-right font-mono text-xs font-bold ${kind==="public"?"bg-emerald-400/10 text-emerald-400":"bg-ice/10 text-ice"}`}>{shownPrice}</span>
+    </span>
+    <span className={kind==="planned"||kind==="prescription"?"mt-2 block border-t border-surface-border/35 pt-2 text-[10px] leading-snug text-ink-muted":"sr-only"}>
+      {kind==="prescription"?"Receita registrada; não demonstra compra ou retirada.":kind==="planned"?"Aquisição planejada, ainda não realizada; sem entrada automática no estoque.":kind==="public"?"Aquisição registrada sem custo informado; confirme a retirada pelo registro correspondente.":"Compra registrada; estoque depende da movimentação salva."}
     </span>
   </motion.button>;
 }

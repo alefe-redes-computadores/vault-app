@@ -28,7 +28,7 @@ export function MedicationDoseEvolutionTimeline({currentDose,history,formatDose,
   const historyRows = (items: typeof newestFirst, offset: number) => items.map((item,index)=>(
     <li key={`${item.data_mudanca}-${offset+index}`} className="relative pl-6 opacity-80">
       <span className="absolute -left-[9px] top-0 flex size-4 items-center justify-center rounded-full border-2 border-surface-border bg-surface" aria-hidden="true"><span className="size-1.5 rounded-full bg-surface-border"/></span>
-      <p className="text-sm font-semibold text-ink-primary">{formatDose(item.dosagem_antiga)}</p>
+      <p className="break-words text-sm font-semibold text-ink-primary">{formatDose(item.dosagem_antiga)}</p>
       <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">Alterado em {formatDay(item.data_mudanca)}{item.medico_responsavel ? ` · ${item.medico_responsavel}` : ""}</p>
     </li>
   ));
@@ -38,11 +38,12 @@ export function MedicationDoseEvolutionTimeline({currentDose,history,formatDose,
         <TrendingUp size={15} className="text-emerald-300" aria-hidden="true" />
         Evolução da Dosagem
       </h2>
+      <p className="px-1 text-[11px] leading-relaxed text-ink-muted">{history.length} alteração(ões) de dosagem registrada(s). A linha abaixo apresenta o valor atual informado e os anteriores, sem avaliar resposta clínica.</p>
       <div className="rounded-[18px] border border-surface-border/60 bg-surface p-3.5">
         <ol className="relative ml-3 space-y-4 border-l-2 border-surface-border pb-1">
           <li className="relative pl-6">
             <span className="absolute -left-[9px] top-0 flex size-4 items-center justify-center rounded-full border-2 border-ice bg-surface" aria-hidden="true"><span className="size-1.5 rounded-full bg-ice"/></span>
-            <p className="text-sm font-bold text-ice">{formatDose(currentDose)} <span className="ml-1.5 text-[9px] font-normal uppercase text-ink-muted">Atual</span></p>
+            <p className="break-words text-sm font-bold text-ice">{formatDose(currentDose)} <span className="ml-1.5 text-[9px] font-normal uppercase text-ink-muted">Atual</span></p>
           </li>
           {historyRows(recent,0)}
         </ol>
