@@ -21,7 +21,7 @@ export function MedicationAcquisitionQuantityGuide({ medicamento, quantity }: Pr
           </span>
         ) : <PackageCheck size={17} className="shrink-0 text-ice" aria-hidden="true"/>}
         <div className="min-w-0 flex-1">
-          <strong className="block truncate text-xs text-ink-primary">{medicamento?.nome || "Quantidade recebida"}</strong>
+          <strong className="block break-words text-xs text-ink-primary">{medicamento?.nome || "Quantidade recebida"}</strong>
           <p className="text-[11px] leading-snug text-ink-muted">
             {informed ? `${n.toLocaleString("pt-BR")} ${unit} informada(s) para o saldo` : "Informe a quantidade que realmente entrou no estoque"}
           </p>

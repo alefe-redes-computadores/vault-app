@@ -34,9 +34,9 @@ export function MedicationPrescriptionCard({ typeLabel, badge, status, issuedAt,
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-ink-primary"><FileText size={14} aria-hidden="true"/>{typeLabel}</span>
-        {badge && <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase ${badge.colorClass}`}>{badge.label}</span>}
+        {badge && <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase ${badge.colorClass}`}>{badge.label}</span>}
       </div>
-      <span role="status" className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase ${state.tone}`}>{state.label}</span>
+      <span role="status" className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${state.tone}`}>{state.label}</span>
     </div>
     <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-surface-border/50 pt-3">
       <div className="min-w-0"><dt className="text-[9px] font-bold uppercase text-ink-muted">Emissão</dt><dd className="mt-0.5 break-words text-sm font-bold text-ink-primary">{issuedAt}</dd></div>
@@ -47,8 +47,8 @@ export function MedicationPrescriptionCard({ typeLabel, badge, status, issuedAt,
       <button type="button" onClick={onPlan} className="min-h-11 rounded-xl border border-surface-border/60 px-3 text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Ajustar data</button>
     </div>
     <details className="mt-2 rounded-xl border border-surface-border/40 px-3 py-1 text-ink-muted">
-      <summary className="min-h-10 cursor-pointer py-2 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Receita vinculada ou recebida?</summary>
-      <p className="pb-2 text-[10px] leading-relaxed">Vincular um documento não registra seu recebimento nem comprova a validade da prescrição. Use o registro específico quando receber a receita.</p>
+      <summary className="min-h-11 cursor-pointer py-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Receita vinculada ou recebida?</summary>
+      <p className="pb-2 text-[11px] leading-relaxed">Vincular um documento não registra seu recebimento nem comprova a validade da prescrição. Use o registro específico quando receber a receita.</p>
     </details>
     <div className="mt-3 grid gap-2 border-t border-surface-border/50 pt-3 min-[420px]:grid-cols-2">
       <button type="button" onClick={hasAttachment ? onAttachment : onLink} className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-surface-border/70 bg-surface-raised/40 px-2 py-2 text-[11px] font-semibold text-ink-secondary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">

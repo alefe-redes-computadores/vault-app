@@ -19,7 +19,7 @@ export function TreatmentLinkedMetrics({ items }: { items: readonly LinkMetric[]
         <div key={label} className="flex min-w-0 items-center gap-2 rounded-lg border border-surface-border/40 bg-surface/60 px-2.5 py-2">
           <Icon size={14} className="shrink-0 text-emerald-300/75" aria-hidden="true" />
           <span className="min-w-0 flex-1 break-words text-[10px] font-medium leading-snug text-ink-muted">{label}</span>
-          <strong className="shrink-0 font-mono text-xs font-bold tabular-nums text-ink-primary">{value}</strong>
+          <strong className="shrink-0 font-mono text-sm font-bold tabular-nums text-ink-primary" aria-label={`${value} ${label.toLocaleLowerCase("pt-BR")}`}>{value}</strong>
         </div>
       ))}
     </div>

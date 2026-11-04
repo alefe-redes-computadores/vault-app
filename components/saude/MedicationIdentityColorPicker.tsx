@@ -56,7 +56,7 @@ export function MedicationIdentityColorPicker({
         ))}
       </div>
     )}
-    <p className="text-xs text-ink-muted" role="status">{colors.length} de 2 cores selecionadas</p>
+    <p className="text-xs text-ink-muted" role="status">{colors.length} de 2 cores selecionadas{colors.length ? ` · ${colors.join(" e ")}` : ""}</p>
     </div>
   );
 }

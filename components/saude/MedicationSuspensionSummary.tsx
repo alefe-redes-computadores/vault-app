@@ -33,7 +33,7 @@ export function MedicationSuspensionSummary({ discontinuedAt, reason, physician,
       )}
       {replacement && (
         <button type="button" onClick={onOpenReplacement} disabled={!replacement.id}
-          aria-label={`Ver medicamento substituto: ${replacement.name}`}
+          aria-label={replacement.id ? `Ver medicamento substituto: ${replacement.name}` : `Medicamento substituto sem vínculo navegável: ${replacement.name}`}
           className="flex min-h-12 w-full items-center justify-between gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-left transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
           <span className="flex min-w-0 items-center gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-400" aria-hidden="true"><ArrowRightLeft size={16} /></span>
@@ -42,7 +42,7 @@ export function MedicationSuspensionSummary({ discontinuedAt, reason, physician,
               <span className="block break-words text-sm font-bold text-ink-primary">{replacement.name} {replacement.dosage}</span>
             </span>
           </span>
-          <ChevronRight size={17} className="shrink-0 text-emerald-400" aria-hidden="true" />
+          {replacement.id ? <ChevronRight size={17} className="shrink-0 text-emerald-400" aria-hidden="true" /> : <span className="shrink-0 text-[10px] text-ink-muted">Sem vínculo</span>}
         </button>
       )}
     </div>

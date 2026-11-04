@@ -2811,7 +2811,7 @@ export default function NovoMedicamentoPage() {
             </span>
           </div>
 
-          <div className="flex h-1.5 w-full gap-2 overflow-hidden rounded-full bg-surface-raised">
+          <div role="progressbar" aria-label="Progresso do cadastro do medicamento" aria-valuemin={1} aria-valuemax={totalSteps} aria-valuenow={currentStep} aria-valuetext={`Etapa ${currentStep} de ${totalSteps}: ${stepLabels[currentStep-1]}`} className="flex h-1.5 w-full gap-2 overflow-hidden rounded-full bg-surface-raised">
             {[
               1,
               2,
@@ -2835,7 +2835,7 @@ export default function NovoMedicamentoPage() {
             )}
           </div>
           <div className="mt-2 grid grid-cols-3 gap-2" aria-label={`Etapa atual: ${stepLabels[currentStep-1]}`}>
-            {stepLabels.map((label,index)=><span key={label} className={`truncate text-center text-[8px] font-bold uppercase tracking-wide ${index+1===currentStep?"text-ice":index+1<currentStep?"text-emerald-300":"text-ink-faint"}`}>{label}</span>)}
+            {stepLabels.map((label,index)=><span key={label} aria-current={index+1===currentStep?"step":undefined} className={`min-w-0 break-words text-center text-[10px] font-bold uppercase leading-snug tracking-wide ${index+1===currentStep?"text-ice":index+1<currentStep?"text-emerald-300":"text-ink-faint"}`}>{label}</span>)}
           </div>
         </header>
 
@@ -4865,11 +4865,8 @@ export default function NovoMedicamentoPage() {
                 }
                 className="flex max-w-[100px] flex-1 items-center justify-center"
               >
-                <ChevronLeft
-                  size={
-                    20
-                  }
-                />
+                <ChevronLeft aria-hidden="true" size={20} />
+                <span className="sr-only">Voltar à etapa {currentStep - 1}: {stepLabels[currentStep-2]}</span>
               </Button>
             )}
 
@@ -4883,6 +4880,7 @@ export default function NovoMedicamentoPage() {
                 className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-base font-bold shadow-lg shadow-ice/20"
               >
                 Avançar
+                <span className="sr-only"> para {stepLabels[currentStep]}</span>
 
                 <ChevronRight
                   size={

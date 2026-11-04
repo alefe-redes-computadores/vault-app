@@ -4030,7 +4030,7 @@ function EditarMedicamentoContent() {
                           true
                         )
                     }
-                    className="ml-4 shrink-0 text-sm font-medium text-ink-muted transition-colors hover:text-coral"
+                    className="ml-3 flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-coral/20 px-3 text-xs font-semibold text-coral transition-colors hover:border-coral/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-coral"
                     type="button"
                   >
                     Descartar
