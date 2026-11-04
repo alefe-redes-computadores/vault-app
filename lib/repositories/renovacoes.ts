@@ -108,6 +108,11 @@ export type RenovacaoCreateOptions = {
   /** Explicit user-counted stock before the acquisition (including zero).
    * Required when the prior balance is unknown; never inferred from purchase quantity. */
   initialStockQuantity?: number;
+  /** M62: explicitly COUNTED CURRENT balance after a backdated acquisition;
+   * never treat it as the historical quantity acquired. */
+  countedCurrentStock?: number;
+  /** Optimistic guard: value seen before the form opened; null = unknown. */
+  expectedCurrentStock?: number | null;
 };
 
 // ============================================================
@@ -820,6 +825,13 @@ export const renovacoesRepository = {
             )
           : getLocalTodayISO();
 
+    // M62: only an actual acquisition can update a user-counted current balance.
+    if (options.countedCurrentStock !== undefined &&
+        (!somenteAquisicao || typeof options.countedCurrentStock !== "number" ||
+         !Number.isFinite(options.countedCurrentStock) || options.countedCurrentStock < 0 ||
+         options.expectedCurrentStock === undefined)) {
+      throw new Error("Contagem atual inválida ou sem referência de estoque para comparação.");
+    }
     // M42: a date in the future is a planned event, NEVER an acquisition.
     // A legacy caller must not silently credit stock either.
     if (!somenteReceita && dataAquisicao && dataAquisicao > getLocalTodayISO()) {
@@ -1201,17 +1213,27 @@ export const renovacoesRepository = {
           const currentBalance = currentMedication.estoque_quantidade;
           const knownBalance = typeof currentBalance === "number" && Number.isFinite(currentBalance);
           const initial = options.initialStockQuantity;
-          if (somenteAquisicao && !knownBalance &&
-              (typeof initial !== "number" || !Number.isFinite(initial) || initial < 0)) {
-            throw new Error("Saldo anterior não informado. Confirme a contagem inicial antes de registrar a compra ou retirada.");
-          }
-          if (somenteAquisicao && knownBalance && initial !== undefined) {
-            throw new Error("O saldo mudou antes do recebimento. Reabra a aquisição e confira o estoque atual.");
-          }
-          // Never interpret an unknown starting balance as a proven zero.
-          // Legacy callers without an explicit initial count retain unknown stock.
-          if (knownBalance || (typeof initial === "number" && Number.isFinite(initial) && initial >= 0)) {
-            medicamentoAtualizado.estoque_quantidade = (knownBalance ? (currentBalance as number) : initial!) + quantidade;
+          const currentCount = options.countedCurrentStock;
+          if (currentCount !== undefined) {
+            const actual = knownBalance ? currentBalance as number : null;
+            if (actual !== options.expectedCurrentStock) {
+              throw new Error("O saldo mudou desde a abertura do formulário. Reabra a aquisição e confira a contagem atual.");
+            }
+            // The receipt records quantity acquired; current balance is a separate, explicit count.
+            medicamentoAtualizado.estoque_quantidade = currentCount;
+            medicamentoAtualizado.estoque_data_referencia = getLocalTodayISO();
+          } else {
+            if (somenteAquisicao && !knownBalance &&
+                (typeof initial !== "number" || !Number.isFinite(initial) || initial < 0)) {
+              throw new Error("Saldo anterior não informado. Confirme a contagem inicial antes de registrar a compra ou retirada.");
+            }
+            if (somenteAquisicao && knownBalance && initial !== undefined) {
+              throw new Error("O saldo mudou antes do recebimento. Reabra a aquisição e confira o estoque atual.");
+            }
+            // Never interpret an unknown starting balance as a proven zero.
+            if (knownBalance || (typeof initial === "number" && Number.isFinite(initial) && initial >= 0)) {
+              medicamentoAtualizado.estoque_quantidade = (knownBalance ? (currentBalance as number) : initial!) + quantidade;
+            }
           }
         }
         await db.renovacoes.add(

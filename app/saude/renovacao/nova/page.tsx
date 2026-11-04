@@ -7,6 +7,7 @@ import {MedicationEventBoundary} from "@/components/saude/MedicationEventBoundar
 import { MedicationAcquisitionQuantityGuide } from "@/components/saude/MedicationAcquisitionQuantityGuide";
 import { medicationScheduleSupplyHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
+import { retroReviewHref } from "@/lib/today/retro-batch-review";
 
 import {
   Suspense,
@@ -712,6 +713,8 @@ function NovaRenovacaoContent() {
   // Obrigatório somente se não existe saldo anterior conhecido.
   // Zero deve ser digitado explicitamente; nunca inferido por ausência.
   const [saldoAnteriorTexto, setSaldoAnteriorTexto] = useState("");
+  const [retroStockMode, setRetroStockMode] = useState<"add" | "counted">("add");
+  const [currentCountText, setCurrentCountText] = useState("");
 
   const [
     lote,
@@ -801,6 +804,9 @@ function NovaRenovacaoContent() {
 
   const stockSnapshot = selectedMedicamento ? getClinicalStockSnapshot(selectedMedicamento) : null;
   const saldoAnteriorDesconhecido = stockSnapshot?.state === "unknown";
+  const acquisitionDateForReview = parseDateToISO(dataAquisicaoDisplay);
+  const isBackdatedAcquisition = Boolean(acquisitionDateForReview && acquisitionDateForReview < getLocalTodayISO());
+  const useCurrentCount = isBackdatedAcquisition && retroStockMode === "counted";
 
   const selectedFarmacia =
     farmacias.find(
@@ -1283,7 +1289,12 @@ function NovaRenovacaoContent() {
         newErrors.dataAquisicao = "Data futura é planejamento. Agende uma retirada; não registre como recebida.";
       }
 
-      if (saldoAnteriorDesconhecido) {
+      if (useCurrentCount) {
+        const rawCount = currentCountText.trim().replace(",", ".");
+        const current = rawCount ? Number(rawCount) : NaN;
+        if (!Number.isFinite(current) || current < 0) newErrors.currentCount = "Informe o saldo realmente contado hoje (inclusive zero, quando confirmado).";
+      }
+      if (saldoAnteriorDesconhecido && !useCurrentCount) {
         const raw = saldoAnteriorTexto.trim().replace(",", ".");
         const n = raw ? Number(raw) : NaN;
         if (!Number.isFinite(n) || n < 0) {
@@ -1587,9 +1598,12 @@ function NovaRenovacaoContent() {
               {
                 somenteAquisicao: true,
                 retiradaId: selectedWithdrawalId || undefined,
-                ...(saldoAnteriorDesconhecido
-                  ? { initialStockQuantity: Number(saldoAnteriorTexto.trim().replace(",", ".")) }
-                  : {}),
+                ...(useCurrentCount
+                  ? { countedCurrentStock: Number(currentCountText.trim().replace(",", ".")),
+                      expectedCurrentStock: stockSnapshot?.registeredQuantity ?? null }
+                  : saldoAnteriorDesconhecido
+                    ? { initialStockQuantity: Number(saldoAnteriorTexto.trim().replace(",", ".")) }
+                    : {}),
               }
             );
           } catch (
@@ -1646,7 +1660,9 @@ function NovaRenovacaoContent() {
             "Erro ao registrar aquisição",
 
           successUrl:
-            returnTo,
+            acquisitionDateForReview && acquisitionDateForReview < getLocalTodayISO() && medicamentoId
+              ? retroReviewHref(medicamentoId, acquisitionDateForReview, useCurrentCount ? "counted" : "added")
+              : returnTo,
         }
       ).finally(
         () => {
@@ -2032,7 +2048,16 @@ function NovaRenovacaoContent() {
             )}
           </motion.div>
 
-          {saldoAnteriorDesconhecido && (
+          {isBackdatedAcquisition && <section aria-label="Conferir saldo de aquisição retroativa" className="rounded-[22px] border border-ice/20 bg-ice/[0.035] p-4">
+            <h3 className="text-sm font-bold text-ink-primary">Aquisição de uma data passada</h3>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">Informe separadamente quantas unidades recebeu naquele dia e o que o saldo cadastrado representa hoje. Estoque não confirma doses tomadas.</p>
+            <div className="mt-3 space-y-2">
+              <label className="flex items-start gap-2 rounded-xl border border-surface-border p-3 text-xs text-ink-primary"><input type="radio" name="m62-retro-stock-mode" checked={!useCurrentCount} onChange={() => setRetroStockMode("add")} className="mt-0.5 size-4 accent-cyan-400"/><span><strong>Somar quantidade adquirida ao saldo já registrado.</strong><span className="mt-1 block text-ink-muted">Use apenas se essas unidades ainda não foram incorporadas ao saldo atual. A revisão posterior pode descontar tomadas selecionadas.</span></span></label>
+              <label className="flex items-start gap-2 rounded-xl border border-surface-border p-3 text-xs text-ink-primary"><input type="radio" name="m62-retro-stock-mode" checked={useCurrentCount} onChange={() => setRetroStockMode("counted")} className="mt-0.5 size-4 accent-cyan-400"/><span><strong>Informar a quantidade que tenho agora.</strong><span className="mt-1 block text-ink-muted">O Vault registra a compra/retirada passada, mas não soma novamente as unidades; usa a sua contagem atual.</span></span></label>
+            </div>
+            {useCurrentCount && <label className="mt-3 block text-xs font-semibold text-ink-primary">Saldo realmente contado agora *<input type="number" min="0" step="any" inputMode="decimal" value={currentCountText} onChange={e => setCurrentCountText(e.target.value)} placeholder="Ex.: 18" aria-invalid={Boolean(errors.currentCount)} className="mt-2 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary"/>{errors.currentCount && <span role="alert" className="mt-1 block text-xs text-coral">{errors.currentCount}</span>}</label>}
+          </section>}
+          {saldoAnteriorDesconhecido && !useCurrentCount && (
             <section className="rounded-[22px] border border-amber-400/30 bg-amber-400/[0.055] p-4">
               <label htmlFor="m42-saldo-anterior" className="text-sm font-semibold text-ink-primary">Saldo antes deste recebimento *</label>
               <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">O Vault ainda não conhece o estoque deste medicamento. Informe quantas unidades já havia antes desta compra/retirada. Se não havia nenhuma, digite 0. A quantidade adquirida será somada somente depois da confirmação.</p>

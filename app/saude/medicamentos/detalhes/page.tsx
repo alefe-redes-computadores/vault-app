@@ -27,6 +27,7 @@ import { MedicationRenewalAttention } from "@/components/saude/MedicationRenewal
 import { MedicationBehaviorEvidence } from "@/components/saude/MedicationBehaviorEvidence";
 import { MedicationCatalogNameComparison } from "@/components/saude/MedicationCatalogNameComparison";
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
+import { retroReviewHref } from "@/lib/today/retro-batch-review";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
@@ -3196,6 +3197,12 @@ function MedicamentoDetalhesContent() {
             const id = encodeURIComponent(med.id ?? "");
             router.push(`/saude/medicamentos/historico?id=${id}`);
           }}/>
+          {med.id && med.tipo_uso !== "sos" && med.tipo_uso !== "esporadico" && <button type="button" onClick={() => {
+            trigger("vibrate");
+            router.push(retroReviewHref(med.id!));
+          }} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/[.045] px-4 py-3 text-left text-xs font-semibold text-ice">
+            <span>Revisar várias doses antigas</span><span className="text-[10px] text-ink-muted">Selecionar dias e horários</span>
+          </button>}
 
           {/* M42 — estoque desconhecido tem seu próprio estado, sem convertê-lo em zero. */}
           {(med.status !== "descontinuado" || isSOS) && !temEstoque && med.id && (

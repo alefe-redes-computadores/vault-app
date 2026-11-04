@@ -23,7 +23,7 @@ export function MedicationAcquisitionQuantityGuide({ medicamento, quantity }: Pr
         <div className="min-w-0 flex-1">
           <strong className="block break-words text-xs text-ink-primary">{medicamento?.nome || "Quantidade recebida"}</strong>
           <p className="text-[11px] leading-snug text-ink-muted">
-            {informed ? `${n.toLocaleString("pt-BR")} ${unit} informada(s) para o saldo` : "Informe a quantidade que realmente entrou no estoque"}
+            {informed ? `${n.toLocaleString("pt-BR")} ${unit} recebida(s) neste evento` : "Informe a quantidade que realmente recebeu nesta compra ou retirada"}
           </p>
         </div>
       </div>
