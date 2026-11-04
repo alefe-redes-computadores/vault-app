@@ -1067,7 +1067,7 @@ export default function HomePage() {
             transition={{
               duration: 0.22,
             }}
-            className="flex items-center justify-between gap-3"
+            className="mx-auto flex max-w-3xl items-center justify-between gap-2"
           >
             <button
               type="button"
@@ -1121,7 +1121,11 @@ export default function HomePage() {
               </div>
             </button>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
+              <HomeSectionNav
+                hasAttention={unifiedAlerts.length > 0}
+                hasBrain={longitudinalHighlights.length > 0 || (!brainV5Pulse.isLoading && (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))}
+              />
               <VaultBrainCommand data={{
                 userId: user?.id,
                 personId: activePersonId,
@@ -1141,7 +1145,8 @@ export default function HomePage() {
 
                 router.push("/hoje");
               }}
-              className="flex shrink-0 items-center gap-2 rounded-full border border-surface-border/50 bg-surface px-3 py-2 text-[10px] font-semibold text-ink-muted shadow-sm transition-all active:scale-95"
+              aria-label={`Abrir Hoje. Horário atual: ${horaAtual}`}
+              className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full border border-surface-border/50 bg-surface px-3 py-2 min-[420px]:flex text-[10px] font-semibold text-ink-muted shadow-sm transition-all active:scale-95"
             >
               <Clock
                 size={
@@ -1158,11 +1163,8 @@ export default function HomePage() {
           </motion.div>
         </header>
 
-        <section className="space-y-6 px-5 pt-5">
-          <HomeSectionNav
-            hasAttention={unifiedAlerts.length > 0}
-            hasBrain={longitudinalHighlights.length > 0 || (!brainV5Pulse.isLoading && (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))}
-          />
+        <section className="mx-auto max-w-3xl space-y-5 px-4 pt-4 sm:px-5">
+
           {/* ===================================================
               HOJE
           =================================================== */}
@@ -1181,14 +1183,14 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.02,
             }}
-            className="relative overflow-hidden rounded-[22px] border border-ice/20 bg-gradient-to-br from-ice/10 via-surface to-surface shadow-[0_14px_38px_rgba(0,0,0,0.16)]"
+            className="relative overflow-hidden rounded-[22px] border border-surface-border bg-gradient-to-br from-surface-raised/50 via-surface to-surface shadow-sm"
           >
             {/* P14 R3: hero puramente visual isolado; contadores continuam na Home. */}
             <HomeDailyHero eyebrow={resumoContextual.eyebrow} title={resumoContextual.title}
               description={resumoContextual.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
               progress={progressoDosesHoje}
-              ctaLabel={resumoContextual.href === "/hoje" ? "Abrir rotina" : "Abrir próxima etapa"}
+              ctaLabel={resumoContextual.href === "/?open=pending-doses" ? "Revisar doses" : resumoContextual.href === "/hoje" ? "Abrir rotina" : "Conferir próximo passo"}
               onOpen={() => {
                 trigger("vibrate");
                 if (resumoContextual.href === "/?open=pending-doses") setModalPendenciasAberto(true);

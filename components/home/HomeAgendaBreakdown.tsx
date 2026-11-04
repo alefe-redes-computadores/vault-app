@@ -26,8 +26,8 @@ export function HomeAgendaBreakdown({ consultations, exams, surgeries, withdrawa
   if (valid.length === 0) return null;
   const total = valid.reduce((sum, item) => sum + item.count, 0);
   const urgency = homeAgendaUrgency(total, overdueWithdrawals);
-  return <details ref={detailsRef} className="group mx-3 mb-3 rounded-xl border border-surface-border/40 bg-surface/40 px-3 py-1.5">
-    <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+  return <details ref={detailsRef} className="group mx-3 mb-2 border-t border-surface-border/30 px-1 pt-1">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[10px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
       <span className="flex min-w-0 flex-wrap items-center gap-1.5">Agenda de hoje · {total} compromisso{total === 1 ? "" : "s"}{urgency.overdue > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-coral/10 px-2 py-0.5 text-coral"><AlertTriangle size={11} aria-hidden="true"/>{urgency.overdue} retirada{urgency.overdue === 1 ? "" : "s"} vencida{urgency.overdue === 1 ? "" : "s"}</span>}</span>
       <ChevronDown size={14} aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none"/>
     </summary>

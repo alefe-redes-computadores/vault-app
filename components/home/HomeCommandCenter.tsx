@@ -31,17 +31,12 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <Stethoscope size={16} className="text-ink-muted"/>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        {/* M6: Remédios já está visível nos indicadores da Home; este destino fica disponível sem duplicar o card. */}
-        <div className="col-span-2"><ClinicalDisclosure id="home-acessos-medicamentos" title="Medicamentos, retiradas e fornecimento" description="Cadastro, SUS, compras e histórico · abrir opções" icon={<Store size={18}/>} iconClassName="text-emerald-300">
-          {() => <div className="space-y-2">
-        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400/10 text-emerald-300"><Pill size={16}/></span>
-          <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-[10px] text-ink-muted">Tratamentos, estoque, doses e histórico</span></span><ChevronRight size={17} className="text-emerald-300"/>
+      <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Medicamentos, retiradas e fornecimento">
+        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-emerald-400/20 bg-surface px-3 py-3 w-full text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300" aria-hidden="true"><Pill size={19}/></span>
+          <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-xs text-ink-muted">Rotina, estoque e histórico</span></span><ChevronRight size={17} className="shrink-0 text-emerald-300" aria-hidden="true"/>
         </button>
-            <HomeSupplyAccessTiles onNavigate={go} withdrawalPath="/saude/retiradas" supplyPath="/saude/fornecimento" />
-          </div>}
-        </ClinicalDisclosure></div>
+        <HomeSupplyAccessTiles onNavigate={go} withdrawalPath="/saude/retiradas" supplyPath="/saude/fornecimento" />
       </div>
 
       <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
