@@ -139,13 +139,15 @@ export default function RetiradasPage() {
 
   const hoje = useLocalDay();
   const currentMonth = hoje.slice(0, 7);
+  const rawNotificationDate = searchParams.get("data") || "";
+  const notificationDate = /^\d{4}-\d{2}-\d{2}$/.test(rawNotificationDate) ? rawNotificationDate : "";
   const listHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
   const navigateWithReturn = (href: string) => router.push(withReturnTarget(href, listHref));
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("todos");
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(
-    () => new Set([currentMonth])
+    () => new Set([notificationDate ? notificationDate.slice(0, 7) : currentMonth])
   );
   const [expandedMedications, setExpandedMedications] =
     useState<Set<string>>(new Set());
@@ -174,6 +176,7 @@ export default function RetiradasPage() {
     const query = normalize(search);
 
     return retiradas.filter((retirada) => {
+      if (notificationDate && retirada.data !== notificationDate) return false;
       if (
         status === "hoje" &&
         !(retirada.status === "agendada" && retirada.data === hoje)
@@ -226,6 +229,7 @@ export default function RetiradasPage() {
     retiradas,
     status,
     search,
+    notificationDate,
     medicationMap,
     pharmacyMap,
     supplyOverview,
@@ -306,6 +310,11 @@ export default function RetiradasPage() {
   }, [retiradas, hoje]);
 
   useEffect(() => {
+    if (!notificationDate) return;
+    setExpandedMonths(previous => new Set([...previous, notificationDate.slice(0, 7)]));
+  }, [notificationDate]);
+
+  useEffect(() => {
     if (!grouped.length) return;
     setExpandedMonths((previous) => {
       if (grouped.some((month) => previous.has(month.key))) return previous;
@@ -338,6 +347,10 @@ export default function RetiradasPage() {
             </button>
           }
         >
+          {notificationDate && <div role="status" className="order-1 flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[.06] px-3 py-2 text-xs text-emerald-200">
+            <span>Retiradas de {notificationDate.split("-").reverse().join("/")} · abertas pela notificação</span>
+            <button type="button" onClick={() => router.replace("/saude/retiradas")} className="min-h-11 shrink-0 rounded-lg px-2 font-semibold underline underline-offset-2">Ver todas</button>
+          </div>}
           <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." className="order-1" />
           <ListFilters className="order-2" title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
             {[["todos", "Todas"], ["hoje", "Hoje"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (

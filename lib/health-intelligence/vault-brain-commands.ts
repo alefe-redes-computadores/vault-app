@@ -5,14 +5,15 @@
  */
 import { normalizeLocalSearch } from "@/lib/local-search";
 import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
-import type { Medicamento, Document, Tratamento, Consulta, Exame, Renovacao } from "@/lib/types";
+import type { Medicamento, Document, Tratamento, Consulta, Exame, Renovacao, Retirada, Cirurgia, Medico, Farmacia, Hospital, LocalSaude } from "@/lib/types";
+import type { SupplyProcess } from "@/lib/health-supply/types";
 
 export type VaultBrainCommandItem = {
   id: string;
   title: string;
   detail: string;
   href: string;
-  kind: "navigate" | "medication" | "document" | "prescription" | "treatment" | "appointment" | "exam" | "prepare";
+  kind: "navigate" | "medication" | "document" | "prescription" | "treatment" | "appointment" | "exam" | "prepare" | "withdrawal" | "surgery" | "provider" | "supply";
 };
 export type VaultBrainCommandData = {
   userId: string | null | undefined;
@@ -23,6 +24,13 @@ export type VaultBrainCommandData = {
   appointments: readonly Consulta[];
   exams: readonly Exame[];
   renewals: readonly Renovacao[];
+  withdrawals?: readonly Retirada[];
+  surgeries?: readonly Cirurgia[];
+  doctors?: readonly Medico[];
+  pharmacies?: readonly Farmacia[];
+  hospitals?: readonly Hospital[];
+  careLocations?: readonly LocalSaude[];
+  supplyProcesses?: readonly SupplyProcess[];
 };
 export type VaultBrainCommandIntent = {
   kind: "browse" | "replenish" | "count" | "prescription" | "pending" | "search";
@@ -35,6 +43,11 @@ const MODULES: ReadonlyArray<{ id: string; label: string; href: string; aliases:
   { id: "medicamentos", label: "Medicamentos", href: "/saude/medicamentos", aliases: ["medicamentos", "remedios", "remedio", "medicacao"] },
   { id: "receitas", label: "Receitas e aquisições", href: "/saude/renovacao", aliases: ["receita", "receitas", "renovacao", "prescricao", "aquisicoes"] },
   { id: "retiradas", label: "Retiradas e agendamentos", href: "/saude/retiradas", aliases: ["retiradas", "retirada", "sus", "agendamentos"] },
+  { id: "cirurgias", label: "Cirurgias", href: "/saude/cirurgias", aliases: ["cirurgia", "cirurgias", "operacao"] },
+  { id: "farmacias", label: "Farmácias", href: "/saude/farmacias", aliases: ["farmacia", "farmacias", "drogaria", "drogarias"] },
+  { id: "medicos", label: "Médicos", href: "/saude/medicos", aliases: ["medicos", "medico", "profissionais"] },
+  { id: "hospitais", label: "Hospitais", href: "/saude/hospitais", aliases: ["hospital", "hospitais"] },
+  { id: "locais", label: "Locais de saúde", href: "/saude/locais", aliases: ["locais", "posto de saude", "ubs", "caps"] },
   { id: "tratamentos", label: "Tratamentos", href: "/saude/tratamentos", aliases: ["tratamentos", "tratamento"] },
   { id: "consultas", label: "Consultas", href: "/saude/consultas", aliases: ["consultas", "consulta", "medico"] },
   { id: "exames", label: "Exames", href: "/saude/exames", aliases: ["exames", "exame"] },
@@ -47,15 +60,16 @@ const MODULES: ReadonlyArray<{ id: string; label: string; href: string; aliases:
 const LEADING = /^(?:(?:por favor|brain|vault brain|vault)\s+)?(?:(?:quero|preciso|pode|gostaria de)\s+)?/;
 const ACTION = /^(?:abrir|abre|ir para|navegar para|mostrar|mostra|ver|buscar|procurar|encontrar|consultar|pesquisar)\s+/;
 const PREPOSITIONS = /^(?:meus?|minhas?|o|a|os|as|de|da|do|dos|das|para|no|na)\s+/;
-function normalize(value: string): string { return normalizeLocalSearch(value).slice(0, 160); }
+function normalize(value: string): string { return normalizeLocalSearch(value); }
+function queryNormalize(value: string): string { return normalize(value).slice(0, 160); }
 function stripCommonWords(input: string): string {
-  let value = normalize(input).replace(LEADING, "");
+  let value = queryNormalize(input).replace(LEADING, "");
   value = value.replace(ACTION, "");
   for (let i = 0; i < 3; i++) value = value.replace(PREPOSITIONS, "");
   return value.trim();
 }
 export function parseVaultBrainCommand(raw: string): VaultBrainCommandIntent {
-  const clean = normalize(raw).replace(LEADING, "");
+  const clean = queryNormalize(raw).replace(LEADING, "");
   if (/^(?:mostrar|ver|abrir|revisar|consultar)?\s*(?:as |minhas )?doses?\s+(?:pendentes?|atrasadas?|sem confirmacao)/.test(clean)) return { kind: "pending", term: "" };
   const replenish = clean.match(/^(?:repor|comprar|adquirir|registrar compra de|registrar retirada de)\s+(?:(?:estoque|medicamento|remedio|medicacao)\s+(?:de|do|da)\s+)?(.+)$/);
   if (replenish) return { kind: "replenish", term: stripCommonWords(replenish[1]) };
@@ -74,6 +88,7 @@ function owned<T extends { user_id?: string; person_id?: string }>(items: readon
 }
 function matches(term: string, ...fields: Array<unknown>): boolean {
   const words = normalize(term).split(" ").filter(Boolean);
+  // M63: do not truncate an entire record at the query's 160-character limit.
   const candidate = normalize(fields.filter(value => typeof value === "string" || typeof value === "number").join(" "));
   return words.length > 0 && words.every(word => candidate.includes(word));
 }
@@ -106,6 +121,16 @@ export function searchVaultBrainCommands(raw: string, input: VaultBrainCommandDa
   const appointments = owned(input.appointments, input.userId, input.personId);
   const exams = owned(input.exams, input.userId, input.personId);
   const renewals = owned(input.renewals, input.userId, input.personId);
+  const medicationById = new Map(medications.filter(item => Boolean(item.id)).map(item => [item.id!, item]));
+  const withdrawals = owned(input.withdrawals ?? [], input.userId, input.personId);
+  const surgeries = owned(input.surgeries ?? [], input.userId, input.personId);
+  const supplies = owned(input.supplyProcesses ?? [], input.userId, input.personId);
+  // Medical network records belong to the account, not necessarily to one person.
+  const ownedNetwork = <T extends { user_id: string }>(items: readonly T[]) => items.filter(item => item.user_id === input.userId);
+  const doctors = ownedNetwork(input.doctors ?? []);
+  const pharmacies = ownedNetwork(input.pharmacies ?? []);
+  const hospitals = ownedNetwork(input.hospitals ?? []);
+  const careLocations = ownedNetwork(input.careLocations ?? []);
   if (intent.kind === "pending") return [link("navigate", "pending", "Revisar doses pendentes", "Abrir a lista e aplicar o filtro pendentes", "/hoje?focus=doses&status=pendentes")];
   if (intent.kind === "replenish" || intent.kind === "count") {
     if (!intent.term || ["estoque", "medicamento", "remedio", "medicamentos"].includes(intent.term))
@@ -142,7 +167,24 @@ export function searchVaultBrainCommands(raw: string, input: VaultBrainCommandDa
     results.push(link("treatment", treatment.id, treatment.nome, "Tratamento registrado", `/saude/tratamentos/detalhes?id=${encodeURIComponent(treatment.id)}`));
   for (const consultation of appointments) if (consultation.id && matches(intent.term, consultation.especialidade, consultation.medico))
     results.push(link("appointment", consultation.id, consultation.especialidade, `Consulta · ${consultation.medico}`, `/saude/consultas/detalhes?id=${encodeURIComponent(consultation.id)}`));
-  for (const exam of exams) if (exam.id && matches(intent.term, exam.nome, exam.laboratorio))
+  for (const exam of exams) if (exam.id && matches(intent.term, "exame", exam.nome, exam.laboratorio))
     results.push(link("exam", exam.id, exam.nome, "Exame registrado", `/saude/exames/detalhes?id=${encodeURIComponent(exam.id)}`));
+  for (const withdrawal of withdrawals) {
+    const medicationName = medicationById.get(withdrawal.medicamento_id)?.nome || withdrawal.medicamento_nome || "medicamento";
+    if (withdrawal.id && matches(intent.term, "retirada sus agendamento", medicationName, withdrawal.medicamento_dosagem, withdrawal.data, withdrawal.tipo, withdrawal.status, withdrawal.observacoes))
+      results.push(link("withdrawal", withdrawal.id, `Retirada · ${medicationName}`, `${withdrawal.data} · ${withdrawal.status}`, `/saude/retiradas/detalhes?id=${encodeURIComponent(withdrawal.id)}`));
+  }
+  for (const surgery of surgeries) if (surgery.id && matches(intent.term, "cirurgia", surgery.procedimento, surgery.data, surgery.status, surgery.observacoes))
+    results.push(link("surgery", surgery.id, surgery.procedimento, `Cirurgia · ${surgery.data}`, `/saude/cirurgias/detalhes?id=${encodeURIComponent(surgery.id)}`));
+  for (const supply of supplies) if (supply.id && matches(intent.term, "fornecimento sus processo protocolo", supply.titulo, supply.protocolo, supply.origem, supply.status, supply.observacoes))
+    results.push(link("supply", supply.id, supply.titulo, `Fornecimento · ${supply.status}`, `/saude/fornecimento?id=${encodeURIComponent(supply.id)}`));
+  for (const doctor of doctors) if (doctor.id && matches(intent.term, "medico profissional", doctor.nome, doctor.especialidade, doctor.crm, doctor.observacoes))
+    results.push(link("provider", `medico:${doctor.id}`, doctor.nome, `Médico · ${doctor.especialidade || "rede de saúde"}`, `/saude/medicos/detalhes?id=${encodeURIComponent(doctor.id)}`));
+  for (const pharmacy of pharmacies) if (pharmacy.id && matches(intent.term, "farmacia drogaria sus", pharmacy.nome, pharmacy.endereco, pharmacy.tipo))
+    results.push(link("provider", `farmacia:${pharmacy.id}`, pharmacy.nome, "Farmácia cadastrada", `/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id)}`));
+  for (const hospital of hospitals) if (hospital.id && matches(intent.term, "hospital", hospital.nome, hospital.endereco, hospital.tipo))
+    results.push(link("provider", `hospital:${hospital.id}`, hospital.nome, "Hospital cadastrado", `/saude/hospitais/detalhes?id=${encodeURIComponent(hospital.id)}`));
+  for (const local of careLocations) if (local.id && matches(intent.term, "local de saude posto ubs caps clinica", local.nome, local.endereco, local.tipo))
+    results.push(link("provider", `local:${local.id}`, local.nome, "Local de saúde cadastrado", `/saude/locais/detalhes?id=${encodeURIComponent(local.id)}`));
   return unique(results);
 }

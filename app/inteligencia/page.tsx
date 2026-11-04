@@ -42,6 +42,7 @@ export default function VaultIntelligencePage() {
   const health = useHealthIntelligence({ includeAudit: false });
   const [selected, setSelected] = useState<VaultGeneralInsight | null>(null);
   const [selectedHealth, setSelectedHealth] = useState<HealthInsight | null>(null);
+  const [expiredInsightNotice, setExpiredInsightNotice] = useState(false);
   const openedNotificationInsightRef = useRef<string | null>(null);
   const evidenceRef = useRef<HTMLDetailsElement>(null);
   const [evidenceOpened, setEvidenceOpened] = useState(false);
@@ -82,7 +83,11 @@ export default function VaultIntelligencePage() {
 
     const match = health.insights.find((item) => item.id === insightId);
     if (match) {
+      setExpiredInsightNotice(false);
       setSelectedHealth(match);
+    } else {
+      // Evidence may have been resolved or reconciled since the notification.
+      setExpiredInsightNotice(true);
     }
   }, [health.isLoading, health.insights]);
   const grouped = useMemo(() => {
@@ -120,6 +125,10 @@ export default function VaultIntelligencePage() {
     </details>
 
     {/* VAULT_BRAIN_V4_EXPERIENCE_ENTRY */}
+    {expiredInsightNotice && <div role="status" className="mx-auto mt-4 flex max-w-2xl items-start justify-between gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/[.06] p-3 text-xs text-amber-100">
+      <p>O insight desta notificação não está mais disponível nos dados atuais. Isso não significa que o cuidado foi realizado. Consulte os alertas atuais para revisar as evidências.</p>
+      <button type="button" onClick={() => setExpiredInsightNotice(false)} className="min-h-11 shrink-0 rounded-lg px-2 font-semibold">Entendi</button>
+    </div>}
     <section id="insight-decisoes" className="mx-auto mt-6 max-w-2xl scroll-mt-24">
       {!health.isLoading && health.careCommand?.decision ? (
         <BrainNextStep decision={health.careCommand.decision} onOpen={href => router.push(preserveReturn(href))} />

@@ -20,6 +20,8 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
   const results = useMemo(() => open ? searchVaultBrainCommands(deferredQuery, data) : [], [
     open, deferredQuery, data.userId, data.personId, data.medications, data.documents,
     data.treatments, data.appointments, data.exams, data.renewals,
+    data.withdrawals, data.surgeries, data.doctors, data.pharmacies,
+    data.hospitals, data.careLocations, data.supplyProcesses,
   ]);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
             <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-200" aria-hidden="true" />
             <input ref={inputRef} type="search" autoComplete="off" autoCorrect="off" spellCheck={false}
               aria-label="Pesquisar ou escrever um comando"
-              placeholder="Buscar medicamentos, receitas ou navegar…"
+              placeholder="Buscar doses, retiradas, SUS, médicos, cirurgias…"
               className="h-12 w-full rounded-2xl border border-surface-border/70 bg-surface pl-10 pr-3 text-sm text-ink-primary outline-none placeholder:text-ink-muted focus:border-violet-300/60 focus:ring-2 focus:ring-violet-300/15"
               value={query} maxLength={160} onChange={e => setQuery(e.target.value)}
               onKeyDown={e => {
@@ -106,7 +108,7 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
               <span className="min-w-0 flex-1"><span className="block break-words text-xs font-semibold text-ink-primary">{item.title}</span><span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">{item.detail}</span></span>
               {item.kind === "prepare" ? <ArrowUpRight size={15} className="shrink-0 text-violet-200" aria-hidden="true" /> : <ChevronRight size={15} className="shrink-0 text-ink-muted" aria-hidden="true" />}
             </button>
-          </li>)}</ul> : <p className="rounded-xl bg-surface/50 px-3 py-5 text-xs text-ink-muted">Não encontrei um destino confiável. Tente o nome do medicamento ou abra a área pela lista.</p>}
+          </li>)}</ul> : <div className="rounded-xl bg-surface/50 px-3 py-4 text-xs text-ink-muted"><p>Não encontrei registro correspondente nos dados locais desta pessoa. Tente outro nome ou uma área.</p><button type="button" onClick={() => navigate("/ajuda")} className="mt-2 min-h-11 font-semibold text-violet-200 underline underline-offset-2">Abrir Ajuda e guias</button></div>}
         </div>
         <p className="border-t border-surface-border/45 px-5 py-3 text-[10px] leading-relaxed text-ink-muted">Busca local da pessoa selecionada. Nenhum dado é alterado; registros e movimentações exigem confirmação no formulário original.</p>
       </section>

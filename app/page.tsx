@@ -1134,8 +1134,15 @@ export default function HomePage() {
                 treatments: tratamentos,
                 appointments: consultas,
                 exams: exames,
-                renewals: renovacoes,
-              }} />
+                 renewals: renovacoes,
+                 withdrawals: retiradas,
+                 surgeries: cirurgias,
+                 doctors: medicos,
+                 pharmacies: farmacias,
+                 hospitals: hospitais,
+                 careLocations: locais,
+                 supplyProcesses: supplyOverview?.data?.processos ?? [],
+               }} />
             <button
               type="button"
               onClick={() => {

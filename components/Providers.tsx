@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 const ContextualHelp = dynamic(() => import("@/components/help/ContextualHelp").then(module => module.ContextualHelp));
 import { isVaultNative } from "@/lib/native-runtime";
 import { resolveDoseNotificationDestination } from "@/lib/notification-dose-navigation";
+import { resolveHealthEventDestination, isSafeVaultNotificationRoute } from "@/lib/health-reminders/event-navigation";
 // components/Providers.tsx
 
 import {
@@ -121,6 +122,11 @@ interface NotificationActionData {
 
   targetRoute?:
     string;
+  userId?: string;
+  eventKind?: string;
+  eventId?: string;
+  eventIds?: string[];
+  eventDate?: string;
 
   reminderId?:
     string;
@@ -198,6 +204,12 @@ function getNotificationActionData(
       typeof record.targetRoute === "string"
         ? record.targetRoute
         : undefined,
+    userId: typeof record.userId === "string" ? record.userId : undefined,
+    eventKind: typeof record.eventKind === "string" ? record.eventKind : undefined,
+    eventId: typeof record.eventId === "string" ? record.eventId : undefined,
+    eventDate: typeof record.eventDate === "string" ? record.eventDate : undefined,
+    eventIds: Array.isArray(record.eventIds)
+      ? record.eventIds.filter((id): id is string => typeof id === "string") : undefined,
 
     reminderId:
       typeof record.reminderId === "string"
@@ -810,10 +822,7 @@ export function Providers({
                 rawData
               );
 
-            console.log(
-              "Notificação clicada:",
-              data
-            );
+            // M63: a native payload can contain patient and record IDs. Never log it.
 
             // V121: stock reviews use the same cold-start entry and biometric gate.
             if (data.type === "dose_stock_review") {
@@ -847,14 +856,17 @@ export function Providers({
             ) {
               void (async () => {
                 try {
-                  if (
-                    data.personId &&
-                    data.personId !== activePersonId
-                  ) {
-                    await changePerson(data.personId);
+                  // Cold-start may deliver a notification before authentication has finished.
+                  // Never navigate into clinical records for a different or unknown owner.
+                  if (!user?.id) return;
+                  if (data.userId && data.userId !== user.id) return;
+                  if (data.personId) {
+                    const person = await db.persons.get(data.personId);
+                    if (!person || person.user_id !== user.id) return;
+                    if (data.personId !== activePersonId) await changePerson(data.personId);
                   }
 
-                  let destination = data.targetRoute;
+                  let destination: string | null | undefined = data.targetRoute;
 
                   if (
                     data.type === "dose_reminder_group" ||
@@ -863,15 +875,15 @@ export function Providers({
                     destination = "/hoje";
                     destination = resolveDoseNotificationDestination(data.type, data.horario)
                       ?? resolveDoseNotificationDestination(data.type) ?? destination;
+                  } else if (data.type === "health_event" || data.vaultHealthEvent === true) {
+                    destination = resolveHealthEventDestination(data) ?? data.targetRoute;
                   } else if (data.vaultHealthInsight === true) {
                     destination = data.insightId
                       ? `/inteligencia?healthInsight=${encodeURIComponent(data.insightId)}`
                       : "/inteligencia";
                   }
 
-                  if (!destination?.startsWith("/")) {
-                    return;
-                  }
+                  if (!isSafeVaultNotificationRoute(destination)) return;
 
                   runAfterVaultBiometricUnlock(() => {
                     if (destination === "/?open=pending-doses") {
