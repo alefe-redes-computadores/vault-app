@@ -240,6 +240,22 @@ jobs:
           echo "ASSINATURA E VERSIONCODE DO VAULT VALIDADOS."
 
 
+      # M67: This summary appears only if the prior gate, export, build and
+      # signed-APK/versionCode verification have succeeded. No medical data.
+      - name: Certificação M67 — resumo da homologação Android
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## VAULT M67 · Homologação automatizada Android'
+            echo "- Commit: ${GITHUB_SHA}"
+            echo "- Execução: ${GITHUB_RUN_ID}"
+            echo '- Gate canônico e TypeScript: aprovados'
+            echo '- Exportação, bridge, build e certificado/versionCode: aprovados'
+            echo '- Artefato APK: Vault-App-debug (conferir etapa seguinte)'
+            echo '- Teste de instalação e sincronização PWA × APK: pendente de homologação manual'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
