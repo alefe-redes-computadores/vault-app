@@ -31,6 +31,7 @@ import { getSyncQueueState, summarizeSyncQueue } from "@/lib/sync/queue-health";
 import { runManualVaultSync } from "@/lib/sync/manual-sync";
 import { getPullFailureMessage } from "@/lib/sync/diagnostics";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
+import { SyncDoseRefreshSummary } from "@/components/SyncDoseRefreshSummary";
 
 interface TableCheck {
   key: string;
@@ -367,6 +368,7 @@ export default function DiagnosticoPage() {
           </div>
         </section>
         <p className="mt-2 px-1 text-[10px] leading-relaxed text-ink-muted">Esta tela nunca descarta itens. Toda nova tentativa passa pela fila oficial e mantém o funcionamento offline.</p>
+        <SyncDoseRefreshSummary userId={user?.id} />
 
         <div aria-label="Etapas da recuperação" className="mt-3 grid grid-cols-3 overflow-hidden rounded-xl border border-surface-border/60 bg-surface text-center">
           {(["Liberar", "Sincronizar", "Validar"] as const).map((label,index)=>{const step=index+1;const active=recoveryStep===step;const complete=recoveryStep>step;return <div key={label} className={`border-r border-surface-border/50 px-1.5 py-2.5 last:border-r-0 ${active?'bg-ice/[0.07] text-ice':complete?'text-emerald-300':'text-ink-muted'}`}><span className="font-mono text-[9px] font-bold">{complete?'✓':step}</span><p className="mt-0.5 text-[9px] font-semibold">{label}</p></div>})}

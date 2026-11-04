@@ -23,6 +23,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useSyncQueue } from "@/hooks/useSyncQueue";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
+import { SyncDoseRefreshSummary } from "@/components/SyncDoseRefreshSummary";
 import { pullAllData } from "@/lib/sync/pull";
 import { db } from "@/lib/db";
 import { runManualVaultSync } from "@/lib/sync/manual-sync";
@@ -177,6 +178,7 @@ export default function RecoveryCenterPage() {
           )}
         </section>
 
+        <SyncDoseRefreshSummary userId={user?.id} />
         <section className="mx-auto mt-4 max-w-2xl rounded-[26px] border border-surface-border bg-surface p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ice">Recuperação segura</p>
           <h2 className="mt-1 text-base font-bold">Conferir com a nuvem</h2>

@@ -38,17 +38,25 @@ export function DoseNotificationReconciler() {
     return () => window.removeEventListener(VAULT_NOTIFICATION_PREFERENCES_EVENT, refresh);
   }, []);
 
+  // M66: invalidate only on owner change or unmount. Invalidation on every
+  // Dexie emission would defeat idempotent reconciliation of identical data.
+  useEffect(() => {
+    if (!activePersonId || !user?.id) doseNotificationPipeline.invalidate();
+    return () => doseNotificationPipeline.invalidate();
+  }, [activePersonId, user?.id]);
+
   useEffect(() => {
     if (!activePersonId || !user?.id || !snapshot || snapshot.userId!==user.id || snapshot.personId!==activePersonId) return;
 
     void doseNotificationPipeline.enqueue({
+      userId: user.id,
+      refreshKey: preferenceRevision,
       personId: activePersonId,
       medicamentos:snapshot.medicamentos,
       logs:snapshot.logs,
     }).catch((error) => {
       console.error("[DoseNotificationReconciler V228]", error);
     });
-    return () => doseNotificationPipeline.invalidate();
   }, [activePersonId, user?.id, snapshot, preferenceRevision]);
 
   return null;

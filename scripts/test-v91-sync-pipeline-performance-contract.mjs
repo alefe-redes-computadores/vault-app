@@ -28,7 +28,18 @@ ok(!providers.includes("<OverdueDoseNotificationReconciler />"), "observador atr
 ok(!providers.includes("<ScheduledDoseNotificationReconciler />"), "observador agendado duplicado removido");
 ok(doses.includes("reconcileScheduledDoseNotifications"), "agenda de doses preservada");
 ok(doses.includes("reconcileOverdueDoseNotifications"), "atrasos preservados");
-ok((doses.match(/useLiveQuery\(/g) || []).length === 2, "uma única leitura reativa por tabela");
+// M66 R2: desde a consolidação por proprietário, o reconciliador usa
+// UMA assinatura reativa envolvendo AS DUAS tabelas em uma transação Dexie.
+// Duas assinaturas separadas aumentariam leituras e perderiam a atomicidade.
+const liveQueryCalls = (doses.match(/useLiveQuery\(/g) || []).length;
+const ownerScopedReads = (doses.match(/\.where\("\[user_id\+person_id\]"\)\.equals\(owner\)\.toArray\(\)/g) || []).length;
+ok(liveQueryCalls === 1 &&
+   doses.includes('db.transaction("r",[db.medicamentos,db.doseLogs]') &&
+   doses.includes('const owner=[user.id,activePersonId]') &&
+   ownerScopedReads === 2 &&
+   doses.includes('snapshot.userId!==user.id || snapshot.personId!==activePersonId') &&
+   doses.includes('doseNotificationPipeline.enqueue('),
+   "uma assinatura transacional para duas tabelas da mesma conta e pessoa, sem duplicar notificações");
 const legacyContracts = contractFiles.filter((file) => {
   const source = read(`scripts/${file}`);
   return (
