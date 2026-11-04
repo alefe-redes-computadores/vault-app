@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useModalGuard } from "@/hooks/useModalGuard";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Loader2, Search, Check, Layers } from "lucide-react";
 import { Input } from "./ui/Input";
@@ -61,12 +62,15 @@ export function SelectionModal<T>({
   loading = false,
 }: SelectionModalProps<T>) {
   const { trigger } = useHapticFeedback();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   
   // Estados do Cadastro-Relâmpago Inline
   const [isCreatingMode, setIsCreatingMode] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [isSubmittingQuick, setIsSubmittingQuick] = useState(false);
+
+  useModalGuard({ open: isOpen, dialogRef, onClose, canDismiss: !isSubmittingQuick });
 
   useEffect(() => {
     if (!isOpen) {
@@ -129,7 +133,7 @@ export function SelectionModal<T>({
   };
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
+    if (!isSubmittingQuick && event.target === event.currentTarget) {
       onClose();
     }
   };
@@ -146,16 +150,18 @@ export function SelectionModal<T>({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
           onMouseDown={handleBackdropClick}
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
         >
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
             initial={{ opacity: 0, y: 14, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-surface-border/60 bg-surface p-4 shadow-vault"
+            className="relative flex max-h-[min(90dvh,800px)] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-surface-border/60 bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-vault"
             onMouseDown={(event) => {
               event.stopPropagation();
             }}
@@ -173,8 +179,9 @@ export function SelectionModal<T>({
               <button
                 type="button"
                 onClick={onClose}
+                disabled={isSubmittingQuick}
                 aria-label="Fechar modal"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink-primary"
               >
                 <X size={18} />
               </button>

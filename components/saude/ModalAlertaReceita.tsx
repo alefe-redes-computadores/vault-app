@@ -3,6 +3,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useRef } from "react";
+import { useModalGuard } from "@/hooks/useModalGuard";
 
 interface ModalAlertaReceitaProps {
   isOpen: boolean;
@@ -12,15 +14,22 @@ interface ModalAlertaReceitaProps {
 }
 
 export function ModalAlertaReceita({ isOpen, mensagem, onAjustar, onForcar }: ModalAlertaReceitaProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalGuard({ open: isOpen, dialogRef, onClose: () => {}, canDismiss: false });
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/85 backdrop-blur-md">
-          <motion.div 
+          <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Atenção regulatória"
             initial={{ opacity: 0, scale: 0.95, y: 10 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="w-full max-w-md rounded-[32px] border border-amber-400/30 bg-surface p-6 shadow-2xl space-y-4"
+            className="max-h-[90dvh] w-full max-w-md space-y-4 overflow-y-auto overscroll-contain rounded-[32px] border border-amber-400/30 bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-400">

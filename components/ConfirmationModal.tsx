@@ -3,8 +3,8 @@
 
 import {
   ReactNode,
-  useEffect,
   useId,
+  useRef,
 } from "react";
 import {
   AnimatePresence,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "./ui/Button";
+import { useModalGuard } from "@/hooks/useModalGuard";
 
 // ============================================================
 // TIPOS
@@ -102,6 +103,9 @@ export function ConfirmationModal({
   showActions = true,
   closeOnBackdrop = true,
 }: ConfirmationModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalGuard({ open: isOpen, dialogRef, onClose, canDismiss: !isLoading });
+
   const titleId =
     useId();
 
@@ -115,43 +119,6 @@ export function ConfirmationModal({
     type === "info"
       ? Info
       : AlertTriangle;
-
-  // ==========================================================
-  // ESC
-  // ==========================================================
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (
-      event: KeyboardEvent
-    ) => {
-      if (
-        event.key === "Escape" &&
-        !isLoading
-      ) {
-        onClose();
-      }
-    };
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-    };
-  }, [
-    isOpen,
-    isLoading,
-    onClose,
-  ]);
 
   // ==========================================================
   // BACKDROP
@@ -199,11 +166,11 @@ export function ConfirmationModal({
           transition={{
             duration: 0.18,
           }}
-          onMouseDown={
-            handleBackdropClick
-          }
+          onMouseDown={(event) => { if (event.target === event.currentTarget) handleBackdropClick(); }}
         >
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={
@@ -241,7 +208,7 @@ export function ConfirmationModal({
             ) =>
               event.stopPropagation()
             }
-            className="relative w-full max-w-md rounded-[28px] border border-surface-border/60 bg-surface p-6 shadow-vault"
+            className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-[28px] border border-surface-border/60 bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-vault"
           >
             {/* =========================================== */}
             {/* CLOSE */}

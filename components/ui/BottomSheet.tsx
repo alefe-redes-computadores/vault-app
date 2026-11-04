@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   createPortal,
@@ -14,9 +10,8 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  useHapticFeedback,
-} from "@/lib/haptics";
+import { useHapticFeedback } from "@/lib/haptics";
+import { useModalGuard } from "@/hooks/useModalGuard";
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -56,61 +51,7 @@ export function BottomSheet({
     useRef<HTMLDivElement>(
       null
     );
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(
-    () => {
-      if (
-        !isOpen
-      ) {
-        return;
-      }
-
-      const previousOverflow =
-        document.body.style.overflow;
-      previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-      const handleEscape =
-        (
-          event:
-            KeyboardEvent
-        ) => {
-          if (
-            event.key ===
-            "Escape"
-          ) {
-            onClose();
-          }
-        };
-
-      document.addEventListener(
-        "keydown",
-        handleEscape
-      );
-
-      document.body.style.overflow =
-        "hidden";
-
-      window.requestAnimationFrame(() => {
-        sheetRef.current?.focus();
-      });
-
-      return () => {
-        document.removeEventListener(
-          "keydown",
-          handleEscape
-        );
-
-        document.body.style.overflow =
-          previousOverflow;
-        if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus({ preventScroll: true });
-      };
-    },
-    [
-      isOpen,
-      onClose,
-    ]
-  );
+  useModalGuard({ open: isOpen && portalReady, dialogRef: sheetRef, onClose });
 
   if (
     !isOpen ||

@@ -12,6 +12,7 @@ import { safeAddDocument, safeAddAnexoClinico } from "@/lib/db";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase/client";
 import { compressImage, generateThumbnail } from "@/lib/imageCompression";
+import { useModalGuard } from "@/hooks/useModalGuard";
 
 interface UploadGaleriaModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
   const { showToast } = useToast();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   
   const [file, setFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -58,6 +61,8 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
     resetState();
     onClose();
   };
+
+  useModalGuard({ open: isOpen, dialogRef, onClose: handleClose, canDismiss: !isUploading });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -163,7 +168,10 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
 
       showToast("Arquivo salvo com sucesso!", "success");
       if (onSuccess) onSuccess();
-      handleClose();
+      // O envio ainda está marcado como ativo nesta renderização; handleClose
+      // rejeita fechamento manual durante upload. O sucesso autoriza fechar.
+      resetState();
+      onClose();
 
     } catch (error) {
       console.error("Erro no upload:", error);
@@ -178,11 +186,16 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-void/80 p-4 backdrop-blur-sm">
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Adicionar à Galeria"
             initial={{ opacity: 0, y: 100, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 30 }}
-            className="w-full max-w-md overflow-hidden rounded-[32px] border border-surface-border bg-surface shadow-2xl"
+            className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-[32px] border border-surface-border bg-surface shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-surface-border/50 bg-surface-raised/30 px-6 py-4">
               <h2 className="font-display text-lg font-bold text-ink-primary">
@@ -191,13 +204,14 @@ export function UploadGaleriaModal({ isOpen, onClose, onSuccess }: UploadGaleria
               <button
                 onClick={handleClose}
                 disabled={isUploading}
+                aria-label="Fechar envio à Galeria"
                 className="rounded-full bg-surface-border/50 p-2 text-ink-muted transition-colors hover:bg-coral/20 hover:text-coral disabled:opacity-50"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-6 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               
               {!file ? (
                 <div 

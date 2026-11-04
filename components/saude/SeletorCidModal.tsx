@@ -3,7 +3,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Check } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useModalGuard } from "@/hooks/useModalGuard";
 
 interface SeletorCidModalProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ const MOCK_CIDS = [
 
 export function SeletorCidModal({ isOpen, onClose, onSelect }: SeletorCidModalProps) {
   const [busca, setBusca] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalGuard({ open: isOpen, dialogRef, onClose });
 
   const cidsFiltrados = MOCK_CIDS.filter(c => 
     c.codigo.toLowerCase().includes(busca.toLowerCase()) || 
@@ -36,14 +39,19 @@ export function SeletorCidModal({ isOpen, onClose, onSelect }: SeletorCidModalPr
           exit={{ opacity: 0 }}
         >
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            tabIndex={-1}
+            aria-modal="true"
+            aria-label="Selecionar CID"
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="w-full max-w-lg rounded-[28px] bg-surface p-6 shadow-2xl border border-surface-border"
+            className="flex max-h-[90dvh] w-full max-w-lg flex-col rounded-[28px] border border-surface-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-ink-primary">Selecione o CID</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-raised"><X size={20} /></button>
+              <button type="button" onClick={onClose} aria-label="Fechar seletor de CID" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-surface-raised"><X size={20} /></button>
             </div>
 
             <div className="relative mb-4">
@@ -51,12 +59,13 @@ export function SeletorCidModal({ isOpen, onClose, onSelect }: SeletorCidModalPr
               <input 
                 className="w-full bg-surface-raised rounded-xl py-2.5 pl-10 pr-4 outline-none border border-surface-border text-sm text-ink-primary"
                 placeholder="Buscar código ou descrição..."
+                aria-label="Buscar CID por código ou descrição"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
               />
             </div>
 
-            <div className="max-h-[300px] overflow-y-auto space-y-2">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain">
               {cidsFiltrados.map(cid => (
                 <button
                   key={cid.id}
