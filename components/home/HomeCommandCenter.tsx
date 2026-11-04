@@ -48,8 +48,9 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
       </ClinicalDisclosure>
 
       <ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>} iconClassName="text-amber-300">
-        {() => <HomeCareOrganizationTiles onNavigate={go} gastoMes={gastoMes} diferencaMes={diferencaMes} totalRede={totalRede}
-          documentPath="/saude/documentos" purchasePath="/saude/renovacao" networkPath="/saude/rede" networkTone="text-emerald-300/80" />}
+        {() => <div className="space-y-2"><HomeCareOrganizationTiles onNavigate={go} gastoMes={gastoMes} diferencaMes={diferencaMes} totalRede={totalRede}
+          documentPath="/saude/documentos" purchasePath="/saude/renovacao" networkPath="/saude/rede" networkTone="text-emerald-300/80" />
+        <button type="button" onClick={() => go("/ajuda?topico=home")} className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/35 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como usar a Home e organizar o cuidado</button></div>}
       </ClinicalDisclosure>
     </section>
   );

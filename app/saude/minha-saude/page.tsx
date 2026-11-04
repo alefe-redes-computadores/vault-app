@@ -86,6 +86,7 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 import { PersonalHealthOverview } from "@/components/saude/PersonalHealthOverview";
 import { CareRelationshipRoutes } from "@/components/saude/CareRelationshipRoutes";
+import { CareJourney360 } from "@/components/saude/CareJourney360";
 const HealthConnectPanel = dynamic(() => import("@/components/saude/HealthConnectPanel").then(m => m.HealthConnectPanel), { loading: () => <p className="p-3 text-xs text-ink-muted">Preparando sincronização…</p> });
 const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/MedicationSafetyCoverage").then(m => m.MedicationSafetyCoverage));
 
@@ -276,7 +277,10 @@ function HealthDashboard({
             <ClinicalDisclosure id="minha-saude-panorama" title="Panorama do cuidado" description="Tratamentos, acompanhamento e próximos passos registrados" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">
                {() => <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>}
              </ClinicalDisclosure>
-            <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>,iconClassName:"text-emerald-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
+             <ClinicalDisclosure id="minha-saude-mapa-cuidado" title="Mapa do cuidado 360" description="Medicamentos, retiradas, SUS, documentos e prioridades com suas origens preservadas" icon={<HeartPulse size={18}/>} iconClassName="text-violet-300">
+               {() => <CareJourney360 command={intelligence.careCommand} onNavigate={goFromHealth} compact />}
+             </ClinicalDisclosure>
+             <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>,iconClassName:"text-emerald-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
             <CareRelationshipRoutes onNavigate={goFromHealth} compact/>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">

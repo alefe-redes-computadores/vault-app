@@ -20,6 +20,7 @@ export function TodayTimelineGuide({ isHoje, isPassado, isFuturo }: { isHoje:boo
       <p>{note}</p>
       {isFuturo && <p className="mt-2 text-amber-200">A previsão não altera estoque nem confirma tomada.</p>}
       {isPassado && <p className="mt-2 text-ice/80">Registros antigos podem exigir revisão manual.</p>}
+      <a href={`/ajuda?topico=${isPassado ? "retro-review" : "today"}`} className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Abrir guia completo</a>
     </div>
   </details>;
 }

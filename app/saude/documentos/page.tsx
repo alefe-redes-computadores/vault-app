@@ -63,6 +63,8 @@ import {
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { DocumentArchiveOverview } from "@/components/saude/DocumentArchiveOverview";
+import { CareJourney360 } from "@/components/saude/CareJourney360";
+import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 
 import {
@@ -3877,6 +3879,9 @@ export default function DocumentsPage() {
               ) : (
                 <div className="space-y-4">
                   <DocumentArchiveOverview command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)}/>
+                  <ClinicalDisclosure id="documentos-mapa-cuidado" title="Conexões deste acervo" description="Medicamentos, retiradas, SUS e registros relacionados ao panorama" icon={<FolderHeart size={17}/>} iconClassName="text-violet-300">
+                     {() => <CareJourney360 command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)} compact />}
+                   </ClinicalDisclosure>
                   <ClinicalSectionNav label="Domínios do acervo" items={documentNavItems}/>
                   <div className="flex items-center gap-2 px-1">
                     <LayersSummary

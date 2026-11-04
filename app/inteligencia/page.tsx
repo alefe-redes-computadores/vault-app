@@ -26,6 +26,7 @@ const PrescriptionPlanningBrief = dynamic(() => import("@/components/saude/Presc
 const CareFinancialOutlook = dynamic(() => import("@/components/saude/CareFinancialOutlook").then(module => module.CareFinancialOutlook), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { CareRelationshipRoutes } from "@/components/saude/CareRelationshipRoutes";
+import { CareJourney360 } from "@/components/saude/CareJourney360";
 
 const kindMeta: Record<VaultInsightKind, { label: string; classes: string }> = {
   attention: { label: "Atenção", classes: "border-amber-400/25 bg-amber-400/10 text-amber-300" },
@@ -133,6 +134,7 @@ export default function VaultIntelligencePage() {
       {!health.isLoading && health.careCommand?.decision ? (
         <BrainNextStep decision={health.careCommand.decision} onOpen={href => router.push(preserveReturn(href))} />
       ) : null}
+      {!health.isLoading && health.careCommand ? <CareJourney360 command={health.careCommand} onNavigate={href => router.push(preserveReturn(href))} compact /> : null}
       <button type="button" onClick={() => router.push(preserveReturn("/inteligencia/alertas"))} className="flex min-h-[72px] w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-gradient-to-r from-violet-400/[0.07] to-surface p-3.5 text-left active:scale-[0.985]">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
         <div className="min-w-0 flex-1"><p className="text-sm font-bold">{BRAIN_NAME}</p><p className="mt-1 text-xs text-ink-muted">Atenção agora, segurança, padrões, qualidade dos dados e histórico persistente.</p></div>

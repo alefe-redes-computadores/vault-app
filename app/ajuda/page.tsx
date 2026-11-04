@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, ArrowUpRight, BookOpen, ChevronRight, Search } from "lucide-react";
-import { searchHelpTopics, type HelpTopic } from "@/lib/help/catalog";
+import { helpTopics, searchHelpTopics, type HelpTopic } from "@/lib/help/catalog";
 
 const HelpTopicGuide = dynamic(() => import("@/components/help/HelpTopicGuide").then(module => module.HelpTopicGuide));
 
@@ -13,6 +13,12 @@ export default function HelpPage() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<HelpTopic | null>(null);
   const topics = useMemo(() => searchHelpTopics(query), [query]);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("topico")?.trim();
+    if (!id || id.length > 64) return;
+    const topic = helpTopics.find(entry => entry.id === id);
+    if (topic) setSelected(topic);
+  }, []);
   return (
     <main className="mx-auto min-h-screen max-w-2xl space-y-4 px-4 pb-32 pt-5 header-safe-top text-ink-primary">
       <header className="flex items-center gap-3">

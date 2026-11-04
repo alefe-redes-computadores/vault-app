@@ -154,6 +154,16 @@ export const helpTopics: readonly HelpTopic[] = [
     { title: "Abra o registro", text: "Favoritos são atalhos para os itens existentes. Confira os dados na tela de origem." },
     { title: "Revise quando precisar", text: "Atualize suas escolhas conforme sua rotina e mantenha os acessos úteis por perto." },
   ] },
+  { id: "retro-review", title: "Revisar doses antigas", summary: "Confira datas, quantidades e desfechos sem presumir o passado.", routes: [], destination: "/hoje", steps: [
+    { title: "Escolha o dia correto", text: "Abra o histórico da pessoa ativa e selecione a data antes de conferir os horários. Uma falta de confirmação não comprova esquecimento." },
+    { title: "Diferencie os estados", text: "Tomada, ignorada, SOS e sem confirmação são estados distintos. Só registre uma tomada se ela realmente aconteceu." },
+    { title: "Revise o saldo com cautela", text: "Ajuste de estoque e registro de dose antiga são operações diferentes. Confira a quantidade e não converta automaticamente uma compra em tomadas anteriores." },
+  ] },
+  { id: "avatar-inspection", title: "Fênix · Inspeção e contexto", summary: "Explore o avatar 3D e seus vínculos sem confundir representação com diagnóstico.", routes: [], destination: "/saude/minha-saude", steps: [
+    { title: "Abra sua representação", text: "Na Minha Saúde, toque no avatar para ampliar. Se o 3D não estiver disponível, a ilustração permanece acessível." },
+    { title: "Confira a origem", text: "Toque no contexto do Brain para consultar o registro associado. Nenhuma região do corpo ou expressão visual equivale a exame ou diagnóstico." },
+    { title: "Personalize com segurança", text: "Use os controles de aparência e enquadramento quando a prévia estiver ampliada. As preferências visuais não alteram os dados clínicos." },
+  ] },
   { id: "sync", title: "Sincronização e dispositivos", summary: "Entenda dados locais, fila e diagnóstico.", routes: [], destination: "/mais", steps: [
     { title: "Dados locais e nuvem", text: "O Vault trabalha com dados locais e uma fila de sincronização. Uma alteração feita offline pode levar tempo para aparecer em outro dispositivo." },
     { title: "Confira a conta e o perfil", text: "Antes de comparar aparelhos, confira a conta conectada e a pessoa ativa. Use os indicadores e o diagnóstico em Mais." },
