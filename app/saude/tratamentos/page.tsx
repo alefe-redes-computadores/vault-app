@@ -693,7 +693,7 @@ function TratamentoListContent() {
           title="Tratamentos"
           badgeLabel="CUIDADO CONECTADO"
           badgeColor="text-emerald-300"
-          rightAction={<button type="button" onClick={handleCreate} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95"><Plus size={15}/>Novo</button>}
+          rightAction={<button type="button" onClick={handleCreate} className="flex min-h-11 items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/[.09] px-3 text-xs font-bold uppercase tracking-wide text-emerald-300 active:scale-95"><Plus size={15}/>Novo</button>}
           subtitle={
             filtroStatus ===
               "todos" &&

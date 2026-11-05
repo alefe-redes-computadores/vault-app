@@ -45,13 +45,13 @@ export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,ch
   }, [id]);
   const visible=forceOpen||open;
   if(count===0)return null;
-  return <details ref={groupRef} id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/50 bg-surface/60 [content-visibility:auto] [contain-intrinsic-size:180px]">
-    <summary aria-label={`${title}. ${count} itens. ${description}`} className="flex min-h-[52px] cursor-pointer list-none items-center gap-2.5 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+  return <details ref={groupRef} id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/65 bg-surface/75 shadow-sm [content-visibility:auto] [contain-intrinsic-size:180px]">
+    <summary aria-label={`${title}. ${count} itens. ${description}`} className="flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-3.5 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       <span className={`grid size-8 shrink-0 place-items-center rounded-lg border ${tones[tone]}`}><Icon size={16}/></span>
-      <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink-primary">{title}</span><span className="mt-0.5 block line-clamp-2 break-words text-[11px] leading-snug text-ink-muted">{description}</span></span>
+      <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold leading-tight text-ink-primary">{title}</span><span className="mt-0.5 block line-clamp-2 break-words text-xs leading-relaxed text-ink-muted">{description}</span></span>
       <span className="shrink-0 rounded-full bg-surface-raised px-2 py-1 font-mono text-xs tabular-nums text-ink-muted">{count}</span>
       <ChevronDown size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform motion-reduce:transition-none group-open:rotate-180"/>
     </summary>
-    {visible?<div className="space-y-2 border-t border-surface-border/40 bg-void/20 p-2">{typeof children==="function"?children():children}</div>:null}
+    {visible?<div className="space-y-2.5 border-t border-surface-border/50 bg-void/15 p-2.5">{typeof children==="function"?children():children}</div>:null}
   </details>;
 }

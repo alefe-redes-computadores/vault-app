@@ -212,7 +212,7 @@ export default function HealthIntelligenceLabPage() {
             ))}
           </div>
           {daily.items.length > 2 && (
-            <button type="button" onClick={() => setDailyExpanded((value) => !value)} className="mt-2 w-full rounded-xl py-2 text-[10px] font-semibold text-violet-300 active:scale-[0.99]">
+            <button type="button" onClick={() => setDailyExpanded((value) => !value)} className="mt-2 min-h-11 w-full rounded-xl border border-violet-300/20 bg-violet-300/[.05] px-3 py-2 text-xs font-semibold text-violet-300 active:scale-[0.99]">
               {dailyExpanded ? "Resumir briefing" : `Ver mais ${daily.items.length - 2} item(ns)`}
             </button>
           )}

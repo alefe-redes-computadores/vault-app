@@ -1192,7 +1192,7 @@ export default function DocumentsPage() {
             {(hasActiveFilters ||
               hasSearch) && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-ice/15 bg-ice/5 px-2.5 py-1 text-[10px] font-medium text-ice">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-ice/20 bg-ice/[.07] px-3 py-1.5 text-xs font-medium text-ice">
                   <Sparkles
                     size={
                       11

@@ -26,17 +26,17 @@ export const HomeDailyHero = memo(function HomeDailyHero({
   const safeCompleted = scheduled > 0 && Number.isFinite(scheduled) && Number.isFinite(completed) ? Math.max(0, Math.min(Math.floor(scheduled), Math.floor(completed))) : 0;
   return <>
     <button type="button" onClick={onOpen}
-      className="group flex min-h-[104px] w-full items-center justify-between gap-3 rounded-t-[22px] bg-gradient-to-r from-surface-raised/40 via-surface-raised/20 to-transparent px-3.5 pb-2 pt-3 text-left transition-colors hover:from-surface-raised/60 motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+      className="group relative isolate flex min-h-[104px] min-[380px]:min-h-[116px] w-full items-center justify-between gap-3 overflow-hidden rounded-t-[22px] bg-[radial-gradient(ellipse_at_94%_0%,rgba(47,227,201,0.10),transparent_48%)] px-4 pb-2.5 pt-4 text-left transition-colors hover:bg-surface-raised/40 motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
       aria-label={`${title}. ${ctaLabel}`}>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>
         <strong className="mt-1.5 block break-words text-xl sm:text-[22px] font-bold leading-[1.17] tracking-tight text-ink-primary">{title}</strong>
         <span className="mt-1.5 block max-w-[340px] line-clamp-2 break-words text-[13px] leading-relaxed text-ink-muted">{description}</span>
-        <span className="mt-2 inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-ice">{ctaLabel}<ArrowUpRight size={13} aria-hidden="true" /></span>
+        <span className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-ice/25 bg-ice/[0.085] px-3 text-xs font-bold text-ice transition-colors group-hover:bg-ice/[0.13]">{ctaLabel}<ArrowUpRight size={13} aria-hidden="true" /></span>
       </span>
       <span className="grid size-10 shrink-0 place-items-center rounded-2xl border shadow-sm transition-transform motion-safe:group-active:scale-95" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
     </button>
-    <div className="px-4 pb-3">
+    <div className="border-t border-surface-border/25 px-4 pb-3 pt-2.5">
       <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-ink-muted">
         <span>Rotina programada</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${safeCompleted}/${scheduled}` : "Sem horários"}</span>
       </div>

@@ -3696,7 +3696,7 @@ export default function DocumentsPage() {
                     );
                   }
                 }
-                className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[11px] font-semibold transition-all active:scale-[0.98] ${
+                className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-all active:scale-[0.98] ${
                   hasActiveFilters
                     ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400"
                     : "border-surface-border/50 bg-surface-raised text-ink-muted"

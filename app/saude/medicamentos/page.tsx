@@ -1426,8 +1426,8 @@ export default function MedicamentosListPage() {
         <section className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
           <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
-            <div className="min-w-0"><h2 className="text-sm font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
-              <p className="mt-0.5 text-xs leading-snug text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados</p></div>
+            <div className="min-w-0"><h2 className="text-base font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
+              <p className="mt-1 text-xs leading-relaxed text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>

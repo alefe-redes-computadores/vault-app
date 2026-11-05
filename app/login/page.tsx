@@ -232,7 +232,7 @@ export default function LoginPage() {
           </p>
         </motion.div>
 
-        <p className="mt-6 text-center text-[11px] text-ink-faint">
+        <p className="mt-6 text-center text-xs text-ink-muted">
           Seus dados ficam protegidos e sincronizados com segurança.
         </p>
       </div>

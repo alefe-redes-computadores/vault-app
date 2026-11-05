@@ -109,7 +109,7 @@ export function NotificationPreferencesPanel() {
                 <span className="block text-xs font-semibold text-ink-primary">
                   {option.label}
                 </span>
-                <span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">
+                <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">
                   {option.description}
                 </span>
               </span>

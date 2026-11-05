@@ -1189,7 +1189,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <div className="flex items-start gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><FileText size={17}/></span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-bold text-ink-primary">Documentos que exigem conferência</h2>
+            <h2 className="text-base font-bold text-ink-primary">Documentos que exigem conferência</h2>
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">{missingDocumentItems.length ? `${missingDocumentItems.length} vínculo(s) documental(is) explicitamente ausente(s). Toque para localizar o processo e verificar o documento.` : "Nenhuma exigência documental explicitamente ausente nos processos conhecidos."}</p>
           </div>
           <span className="rounded-full border border-amber-300/15 px-2 py-1 text-[10px] font-bold text-amber-200">{missingDocumentItems.length}</span>

@@ -34,7 +34,7 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
       </div>
       <div id="home-attention-alerts" className="space-y-2" aria-label="Alertas ordenados por prioridade">
         {visible.map(alert => (
-          <div key={alert.id} className="w-full min-w-0">
+          <div key={alert.id} className="w-full min-w-0 overflow-hidden rounded-[18px]">
             {renderAlert(alert)}
           </div>
         ))}

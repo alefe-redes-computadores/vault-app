@@ -1585,7 +1585,7 @@ export default function HojePage() {
     <PageTransition>
       <main className="min-h-screen bg-void pb-32">
         {/* M40 — Cabeçalho compacto: data e progresso, sem filtros redundantes. */}
-        <header className="border-b border-surface-border/30 bg-void px-4 pb-3 pt-3">
+        <header className="border-b border-surface-border/40 bg-void px-4 pb-3 pt-3 shadow-[0_10px_26px_-24px_rgba(47,227,201,0.4)]">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">Linha do tempo</p>
@@ -1612,8 +1612,8 @@ export default function HojePage() {
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true" />
           <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="font-display text-base font-semibold text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
-              <p className="text-xs leading-relaxed text-ink-muted">{isFuturo ? "Planejamento, sem confirmar tomadas" : isPassado ? "Histórico e registros confirmados" : "Horários, registros e próximas doses"}</p>
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">{isFuturo ? "Planejamento, sem confirmar tomadas" : isPassado ? "Histórico e registros confirmados" : "Horários, registros e próximas doses"}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />

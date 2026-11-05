@@ -248,7 +248,7 @@ function HealthDashboard({
             <p className="text-xs uppercase tracking-[.14em] text-emerald-400">
               Saúde e rotina
             </p>
-            <h1 className="font-display text-2xl font-semibold">Minha saúde</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-primary">Minha saúde</h1>
           </div>
           <button
             type="button"
@@ -281,7 +281,7 @@ function HealthDashboard({
                {() => <CareJourney360 command={intelligence.careCommand} onNavigate={goFromHealth} compact />}
              </ClinicalDisclosure>
              <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>,iconClassName:"text-emerald-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
-            <div className="rounded-2xl border border-surface-border/50 bg-surface/35 p-2"><CareRelationshipRoutes onNavigate={goFromHealth} compact/></div>
+            <ClinicalDisclosure id="minha-saude-relacoes" title="Explorar áreas relacionadas" description="Medicamentos, tratamentos, fornecimento e documentos · acesso sob demanda" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">{() => <CareRelationshipRoutes onNavigate={goFromHealth} compact/>}</ClinicalDisclosure>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />

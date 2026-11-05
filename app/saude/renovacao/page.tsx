@@ -750,7 +750,7 @@ export default function RenovacoesPage() {
                   "/saude/renovacao/nova"
                 );
               }}
-              className="flex h-11 items-center gap-2 rounded-2xl border border-ice/30 bg-ice/10 px-3 text-[10px] font-bold uppercase tracking-wide text-ice transition-all active:scale-95"
+              className="flex min-h-11 items-center gap-2 rounded-2xl border border-ice/35 bg-ice/[.09] px-3 text-xs font-bold uppercase tracking-wide text-ice transition-all active:scale-95"
               aria-label="Registrar aquisição de medicamento"
             >
               <Plus

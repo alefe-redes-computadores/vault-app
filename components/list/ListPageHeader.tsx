@@ -112,7 +112,7 @@ export function ListPageHeader({
         px-3.5 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-4
         header-safe-top
         backdrop-blur-xl
-        shadow-[0_9px_26px_-23px_rgba(0,0,0,0.85)]
+        shadow-[0_12px_30px_-24px_rgba(0,0,0,0.95)]
         ${className}
       `}
     >
@@ -149,7 +149,7 @@ export function ListPageHeader({
               </div>
             )}
 
-            <h1 className="break-words font-display text-xl font-semibold leading-tight tracking-tight text-ink-primary sm:text-2xl">
+            <h1 className="break-words font-display text-[22px] font-semibold leading-tight tracking-tight text-ink-primary sm:text-2xl">
               {title}
             </h1>
 

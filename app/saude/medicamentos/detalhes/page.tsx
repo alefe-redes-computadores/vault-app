@@ -2765,7 +2765,7 @@ function MedicamentoDetalhesContent() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="break-words text-lg font-semibold leading-tight tracking-tight text-ink-primary sm:text-xl">
+                    <h2 className="break-words font-display text-xl font-semibold leading-tight tracking-tight text-ink-primary sm:text-2xl">
                       {
                         med.nome
                       }
