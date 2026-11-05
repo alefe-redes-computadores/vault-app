@@ -2012,7 +2012,7 @@ export default function NovoDocumentoPage() {
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ice/90">
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-ice/90">
                   Novo documento
                 </p>
 
@@ -2098,7 +2098,7 @@ export default function NovoDocumentoPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-faint">
+                        <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-faint">
                           Pessoa ativa
                         </p>
 
@@ -2113,7 +2113,7 @@ export default function NovoDocumentoPage() {
                         </p>
                       </div>
 
-                      <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+                      <p className="mt-1 text-xs leading-4 text-ink-muted">
                         O vínculo é automático e não pode ser transferido durante a criação.
                       </p>
                     </div>
@@ -2126,7 +2126,7 @@ export default function NovoDocumentoPage() {
                         className="shrink-0 text-coral"
                       />
 
-                      <p className="text-[11px] text-coral">
+                      <p className="text-xs text-coral">
                         {errors.person_id}
                       </p>
                     </div>
@@ -2528,7 +2528,7 @@ export default function NovoDocumentoPage() {
                     uploadProgress < 100 && (
                       <div className="mt-4 rounded-2xl border border-ice/15 bg-ice/5 p-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-[11px] font-medium text-ink-muted">
+                          <p className="text-xs font-medium text-ink-muted">
                             Enviando anexos
                           </p>
 
@@ -2563,7 +2563,7 @@ export default function NovoDocumentoPage() {
                           Nenhum anexo ainda
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-4 text-ink-faint">
+                        <p className="mt-1 text-xs leading-4 text-ink-faint">
                           Você pode salvar sem anexo e adicionar arquivos depois.
                         </p>
                       </div>
@@ -2597,7 +2597,7 @@ export default function NovoDocumentoPage() {
                               {attachment.name}
                             </p>
 
-                            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-faint">
+                            <p className="mt-1 font-mono text-xs uppercase tracking-[0.12em] text-ink-faint">
                               {attachment.type === "image" ? "Imagem" : "PDF"}
                             </p>
                           </div>
@@ -2820,7 +2820,7 @@ export default function NovoDocumentoPage() {
                           )}
                         </div>
 
-                        <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-ink-muted">
+                        <p className="mt-1 line-clamp-2 text-xs leading-4 text-ink-muted">
                           {TYPE_DESCRIPTIONS[type]}
                         </p>
                       </div>

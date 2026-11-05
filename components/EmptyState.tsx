@@ -2,7 +2,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LucideIcon, Plus, ArrowRight } from "lucide-react";
+import { LucideIcon, Plus, ArrowRight, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useHapticFeedback } from "@/lib/haptics";
 
@@ -27,6 +27,7 @@ interface EmptyStateProps {
   iconClassName?: string;
   /** Desabilita a animação de entrada */
   disableAnimation?: boolean;
+  variant?: "default" | "no-results" | "offline" | "error" | "calm";
 }
 
 export function EmptyState({
@@ -40,8 +41,21 @@ export function EmptyState({
   compact = false,
   iconClassName = "",
   disableAnimation = false,
+  variant = "default",
 }: EmptyStateProps) {
   const { trigger } = useHapticFeedback();
+  const isSearch = variant === "no-results";
+  const isCritical = variant === "error";
+  const isOffline = variant === "offline";
+  const ActionIcon = isSearch ? RotateCcw : Plus;
+  const iconTone = isCritical ? "text-coral" : isOffline ? "text-amber-300" : "text-ice/70";
+  const wrapperTone = isCritical
+    ? "border-coral/25 bg-coral/[0.035]"
+    : isOffline
+    ? "border-amber-400/25 bg-amber-400/[0.035]"
+    : isSearch || variant === "calm"
+    ? "border-surface-border/60 bg-surface/75"
+    : "border-surface-border/50 bg-surface";
 
   const handleAction = () => {
     trigger("vibrate");
@@ -56,11 +70,11 @@ export function EmptyState({
   const Content = () => (
     <>
       <div
-        className={`glow-ice flex items-center justify-center rounded-full border border-ice/15 bg-surface-raised ${
+        className={`${isSearch || isCritical || isOffline || variant === "calm" ? "" : "glow-ice"} flex items-center justify-center rounded-full border border-surface-border/60 bg-surface-raised ${
           compact ? "mb-3 h-16 w-16" : "mb-5 h-24 w-24"
         } ${iconClassName}`}
       >
-        <Icon size={compact ? 26 : 34} className="text-ice/55" />
+        <Icon size={compact ? 26 : 34} className={iconTone} />
       </div>
 
       <h3
@@ -87,7 +101,7 @@ export function EmptyState({
               onClick={handleAction}
               className="glow-ice flex items-center gap-2"
             >
-              <Plus size={16} />
+              <ActionIcon size={16} />
               {actionLabel}
             </Button>
           )}
@@ -112,7 +126,8 @@ export function EmptyState({
       initial={!disableAnimation ? { opacity: 0, y: 14, scale: 0.98 } : false}
       animate={!disableAnimation ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={!disableAnimation ? { duration: 0.28 } : {}}
-      className={`flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface text-center shadow-sm ${
+      role={isCritical ? "alert" : "status"}
+      className={`flex flex-col items-center justify-center rounded-[24px] border ${wrapperTone} text-center shadow-sm ${
         compact ? "px-4 py-8" : "px-6 py-14"
       }`}
     >

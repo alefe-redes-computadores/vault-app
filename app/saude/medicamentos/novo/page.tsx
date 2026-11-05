@@ -2874,7 +2874,7 @@ export default function NovoMedicamentoPage() {
                         </span>
                       </div>
 
-                      <p className="mt-1.5 text-[10px] leading-relaxed text-ink-muted">
+                      <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
                         Pesquise pelo nome comercial ou princípio ativo. Ao escolher uma referência, o Vault pode identificar apresentações, formato e validações regulatórias disponíveis.
                       </p>
                     </div>
@@ -3184,7 +3184,7 @@ export default function NovoMedicamentoPage() {
                                     </button>
                                   </div>
 
-                                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                                     {
                                       issue.message
                                     }
@@ -3193,7 +3193,7 @@ export default function NovoMedicamentoPage() {
                                   {issue.evidence.length >
                                     0 && (
                                     <div className="mt-3 rounded-xl border border-amber-400/15 bg-black/10 p-2.5">
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-300">
                                         Evidências
                                       </p>
 
@@ -3206,7 +3206,7 @@ export default function NovoMedicamentoPage() {
                                               key={
                                                 evidence
                                               }
-                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                              className="text-xs leading-relaxed text-ink-muted"
                                             >
                                               •{" "}
                                               {
@@ -3222,7 +3222,7 @@ export default function NovoMedicamentoPage() {
                                   {issue.sources.length >
                                     0 && (
                                     <div className="mt-3 border-t border-amber-400/15 pt-2.5">
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
                                         Fonte regulatória
                                       </p>
 
@@ -3235,7 +3235,7 @@ export default function NovoMedicamentoPage() {
                                               key={
                                                 source.id
                                               }
-                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                              className="text-xs leading-relaxed text-ink-muted"
                                             >
                                               {
                                                 source.label
@@ -3253,7 +3253,7 @@ export default function NovoMedicamentoPage() {
                                     </div>
                                   )}
 
-                                  <p className="mt-3 text-[9px] leading-relaxed text-ink-faint">
+                                  <p className="mt-3 text-xs leading-relaxed text-ink-faint">
                                     O Vault não altera o tipo de receita automaticamente. Confira o documento original antes de modificar o cadastro.
                                   </p>
                                 </div>
@@ -3294,7 +3294,7 @@ export default function NovoMedicamentoPage() {
                               Receita merece revisão
                             </p>
 
-                            <p className="mt-0.5 text-[10px] leading-relaxed text-ink-muted">
+                            <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
                               {catalogRegulatoryIssues[
                                 0
                               ]?.suggestedValue
@@ -3327,7 +3327,7 @@ export default function NovoMedicamentoPage() {
                                         }
                                       </p>
 
-                                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                                         O catálogo pode usar nome comercial, substância ou denominação canônica diferente. Seu nome atual continua válido até você decidir alterá-lo.
                                       </p>
 
@@ -3373,11 +3373,11 @@ export default function NovoMedicamentoPage() {
                                 0 &&
                                 isCatalogPresentationOpen && (
                                 <div className="mt-4 border-t border-ice/10 pt-4">
-                                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-faint">
+                                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-faint">
                                     Apresentações encontradas
                                   </p>
 
-                                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                                     Escolha uma apresentação para preencher a dosagem. O formato só será alterado quando puder ser identificado com segurança.
                                   </p>
 
@@ -3451,7 +3451,7 @@ export default function NovoMedicamentoPage() {
                                                   }
                                                 </p>
 
-                                                <p className="mt-0.5 text-[11px] font-medium text-ice">
+                                                <p className="mt-0.5 text-xs font-medium text-ice">
                                                   {
                                                     suggestion.formatLabel
                                                       ? `${suggestion.formatLabel} identificado`
@@ -3470,14 +3470,14 @@ export default function NovoMedicamentoPage() {
                                               )}
                                             </div>
 
-                                            <p className="mt-2 line-clamp-2 text-[9px] leading-relaxed text-ink-faint">
+                                            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink-faint">
                                               {
                                                 suggestion.officialLabel
                                               }
                                             </p>
 
                                             {suggestion.packageDescription && (
-                                              <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-ink-muted">
+                                              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">
                                                 Embalagem: {suggestion.packageDescription}
                                               </p>
                                             )}
@@ -3487,7 +3487,7 @@ export default function NovoMedicamentoPage() {
                                     )}
                                   </div>
 
-                                  <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
+                                  <p className="mt-3 text-xs leading-relaxed text-ink-faint">
                                     Fonte: apresentações atuais do catálogo regulatório. Se o formato não puder ser reconhecido com segurança, apenas a dosagem é preenchida.
                                   </p>
                                 </div>
@@ -3517,7 +3517,7 @@ export default function NovoMedicamentoPage() {
                                         </p>
                                       </div>
 
-                                      <p className="mt-1 text-[9px] leading-relaxed text-ink-faint">
+                                      <p className="mt-1 text-xs leading-relaxed text-ink-faint">
                                         Apresentação selecionada no catálogo ANVISA
                                       </p>
                                     </div>
@@ -3596,7 +3596,7 @@ export default function NovoMedicamentoPage() {
                               Dosagem não encontrada nas apresentações atuais consultadas
                             </p>
 
-                            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                               O Vault não encontrou{" "}
                               <strong>
                                 {
@@ -3619,7 +3619,7 @@ export default function NovoMedicamentoPage() {
                       dosagem.trim() &&
                       catalogPresentations.length ===
                         0 && (
-                        <p className="mt-2 text-[10px] leading-relaxed text-ink-faint">
+                        <p className="mt-2 text-xs leading-relaxed text-ink-faint">
                           O catálogo não possui apresentações atuais suficientes para validar esta dosagem com segurança.
                         </p>
                       )}
@@ -4096,7 +4096,7 @@ export default function NovoMedicamentoPage() {
                         />
                       </div>
 
-                      <p className="text-[11px] text-ink-muted">
+                      <p className="text-xs text-ink-muted">
                         O Vault pode usar essa data para lembrar quando chegar o período informado para uma nova retirada.
                       </p>
                     </div>
@@ -4541,7 +4541,7 @@ export default function NovoMedicamentoPage() {
                           </div>
                         </div>
 
-                        <p className="mb-4 text-[11px] leading-relaxed text-ink-muted">
+                        <p className="mb-4 text-xs leading-relaxed text-ink-muted">
                           Informe o consumo por dose somente se souber o valor. Sem essa informação, o Vault registra as tomadas normalmente, mas não calcula consumo automático do estoque.
                         </p>
 
@@ -4611,7 +4611,7 @@ export default function NovoMedicamentoPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-[9px] font-black uppercase tracking-[0.14em] text-ink-faint">
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-ink-faint">
                         Verificação regulatória
                       </p>
 
@@ -5000,7 +5000,7 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-emerald-400">
                       Medicamento cadastrado
                     </p>
 
@@ -5033,7 +5033,7 @@ export default function NovoMedicamentoPage() {
                     className="mt-0.5 shrink-0 text-ice"
                   />
 
-                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                  <p className="text-xs leading-relaxed text-ink-muted">
                     A revisão histórica não movimenta o estoque atual e nenhuma dose será confirmada automaticamente.
                   </p>
                 </div>
@@ -5051,7 +5051,7 @@ export default function NovoMedicamentoPage() {
                         Revisar histórico agora
                       </p>
 
-                      <p className="mt-0.5 text-[9px] opacity-70">
+                      <p className="mt-0.5 text-xs opacity-70">
                         Abrir a revisão retroativa assistida
                       </p>
                     </div>
@@ -5074,7 +5074,7 @@ export default function NovoMedicamentoPage() {
                   </button>
                 </div>
 
-                <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
                   Você poderá revisar o período depois pela Linha do Tempo.
                 </p>
               </motion.div>
@@ -5156,7 +5156,7 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-ice">
                       Cadastro retroativo
                     </p>
 
@@ -5194,7 +5194,7 @@ export default function NovoMedicamentoPage() {
                 <div className="mt-4 rounded-2xl border border-surface-border bg-surface-raised p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
                         Estoque na aquisição
                       </p>
 
@@ -5225,7 +5225,7 @@ export default function NovoMedicamentoPage() {
                     />
 
                     <div className="text-right">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-ice">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ice">
                         Estimativa hoje
                       </p>
 
@@ -5250,7 +5250,7 @@ export default function NovoMedicamentoPage() {
                   </div>
 
                   <div className="mt-3 border-t border-surface-border/60 pt-3">
-                    <p className="text-[10px] leading-relaxed text-ink-muted">
+                    <p className="text-xs leading-relaxed text-ink-muted">
                       Consumo estimado:{" "}
                       <strong className="text-ink-primary">
                         {new Intl.NumberFormat(
@@ -5282,7 +5282,7 @@ export default function NovoMedicamentoPage() {
                     className="mt-0.5 shrink-0 text-amber-400"
                   />
 
-                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                  <p className="text-xs leading-relaxed text-ink-muted">
                     Isso é uma estimativa de estoque, não um histórico de adesão. O Vault{" "}
                     <strong className="text-ink-primary">
                       não marcará doses passadas como tomadas
@@ -5323,7 +5323,7 @@ export default function NovoMedicamentoPage() {
                         Ajustar estoque retroativamente
                       </p>
 
-                      <p className="mt-0.5 text-[9px] opacity-70">
+                      <p className="mt-0.5 text-xs opacity-70">
                         Usar o saldo estimado para hoje
                       </p>
                     </div>
@@ -5366,7 +5366,7 @@ export default function NovoMedicamentoPage() {
                         Manter quantidade informada
                       </p>
 
-                      <p className="mt-0.5 text-[9px] text-ink-muted">
+                      <p className="mt-0.5 text-xs text-ink-muted">
                         A quantidade digitada representa meu saldo atual
                       </p>
                     </div>
@@ -5415,7 +5415,7 @@ export default function NovoMedicamentoPage() {
                   </button>
                 </div>
 
-                <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
                   Dias anteriores ficarão disponíveis na Linha do Tempo, mas só entrarão como tomada ou ignorada quando houver confirmação real.
                 </p>
               </motion.div>

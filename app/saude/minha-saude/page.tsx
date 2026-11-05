@@ -245,7 +245,7 @@ function HealthDashboard({
             <ArrowLeft size={20} />
           </button>
           <div className="flex-1">
-            <p className="text-[9px] uppercase tracking-[.2em] text-emerald-400">
+            <p className="text-xs uppercase tracking-[.14em] text-emerald-400">
               Saúde e rotina
             </p>
             <h1 className="font-display text-2xl font-semibold">Minha saúde</h1>
@@ -281,7 +281,7 @@ function HealthDashboard({
                {() => <CareJourney360 command={intelligence.careCommand} onNavigate={goFromHealth} compact />}
              </ClinicalDisclosure>
              <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>,iconClassName:"text-emerald-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
-            <CareRelationshipRoutes onNavigate={goFromHealth} compact/>
+            <div className="rounded-2xl border border-surface-border/50 bg-surface/35 p-2"><CareRelationshipRoutes onNavigate={goFromHealth} compact/></div>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
@@ -331,7 +331,7 @@ function HealthDashboard({
                 </div>
                 <div className="grid min-w-0 grid-cols-3 gap-2 self-center min-[480px]:block min-[480px]:space-y-2" aria-label="Medidas principais do perfil">
                   <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
-                    <p className="text-[9px] uppercase tracking-wide text-ink-faint">Altura</p>
+                    <p className="text-xs uppercase tracking-wide text-ink-faint">Altura</p>
                     <p className="mt-0.5 text-base font-semibold">
                       {profile?.height_cm ? `${profile.height_cm} cm` : "—"}
                     </p>
@@ -341,20 +341,20 @@ function HealthDashboard({
                     onClick={() => open("peso")}
                     className="block min-h-14 w-full rounded-xl border border-emerald-300/15 bg-emerald-300/[.04] px-3 py-2 text-left focus-visible:outline focus-visible:outline-emerald-300"
                   >
-                    <p className="text-[9px] uppercase tracking-wide text-ink-faint">Último peso</p>
+                    <p className="text-xs uppercase tracking-wide text-ink-faint">Último peso</p>
                     <p className="mt-0.5 text-base font-semibold">
                       {weight?.valor_numerico
                         ? `${weight.valor_numerico} kg`
                         : "Registrar"}
                     </p>
                     {weight && (
-                      <p className="text-[9px] text-ink-muted">
+                      <p className="text-xs text-ink-muted">
                         {weight.data.split("-").reverse().join("/")}
                       </p>
                     )}
                   </button>
                   <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
-                    <p className="text-[9px] uppercase tracking-wide text-ink-faint">IMC calculado</p>
+                    <p className="text-xs uppercase tracking-wide text-ink-faint">IMC calculado</p>
                     <p className="mt-0.5 text-base font-semibold">{index ?? "—"}</p>
                   </div>
                 </div>
@@ -399,12 +399,12 @@ function HealthDashboard({
                 <span className={`rounded-xl p-3 ${!intelligence.error&&!intelligence.isLoading&&intelligence.insights.some(x=>x.urgencia==='alta'||x.gravidadeSeguranca==='critica')?'bg-rose-400/10 text-rose-300':!intelligence.error&&!intelligence.isLoading&&intelligence.insights.some(x=>x.urgencia==='media')?'bg-amber-400/10 text-amber-300':'bg-violet-400/10 text-violet-300'}`}><Brain size={20}/></span>
                 <div className="min-w-0 flex-1">
                   <button type="button" aria-expanded={brainSummaryOpen} onClick={()=>setBrainSummaryOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between text-left text-sm font-semibold">Vault Intelligence <ChevronDown size={16} className={brainSummaryOpen?"rotate-180":""}/></button>
-                  <p className="mt-1 text-[11px] text-ink-muted">
+                  <p className="mt-1 text-xs text-ink-muted">
                     {intelligence.isLoading
                       ? "Analisando os registros disponíveis…"
                       : intelligence.error ? "Não foi possível atualizar a análise. Seus registros continuam disponíveis." : avatarContext.primary?.titulo || "Sem destaque prioritário nos registros disponíveis."}
                   </p>
-                  {!brainPulse.isLoading&&brainPulse.counters.snoozed>0?<p className="mt-1 text-[9px] text-amber-300">{brainPulse.counters.snoozed} acompanhamento(s) programado(s) fora das prioridades atuais</p>:null}
+                  {!brainPulse.isLoading&&brainPulse.counters.snoozed>0?<p className="mt-1 text-xs text-amber-300">{brainPulse.counters.snoozed} acompanhamento(s) programado(s) fora das prioridades atuais</p>:null}
                 </div>
               </div>
               {brainSummaryOpen && (!intelligence.error && avatarContext.items.length > 0 ? (
@@ -412,7 +412,7 @@ function HealthDashboard({
                   {avatarContext.items.map((item) => (
                     <li key={item.id} className="border-l-2 border-violet-300/25 bg-surface/70 py-2 pl-3 pr-2">
                       <button type="button" onClick={()=>setSelectedInsight(item)} className="flex min-h-11 w-full items-center gap-2 text-left text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex-1">{item.titulo}</span><ChevronRight size={14} className="shrink-0 text-violet-300"/><span className="sr-only">Ver evidências</span></button>
-                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.mensagem}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">{item.mensagem}</p>
                     </li>
                   ))}
                 </ul>
@@ -438,7 +438,7 @@ function HealthDashboard({
             <DeferredHealthSection id="fontes" title="Fontes e sincronização" description="Aparelhos, Samsung Health, Health Connect e origem das medidas" icon={<Database size={18}/>} badge={`${active.length} ativo${active.length===1?"":"s"}`}>
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <div><h2 className="font-semibold">Minha rede de dados</h2><p className="mt-0.5 text-[10px] text-ink-muted">{active.length} {active.length===1?'aparelho ativo':'aparelhos ativos'}</p></div>
+                <div><h2 className="font-semibold">Minha rede de dados</h2><p className="mt-0.5 text-xs text-ink-muted">{active.length} {active.length===1?'aparelho ativo':'aparelhos ativos'}</p></div>
                 <button
                   type="button"
                   onClick={() => {
@@ -506,7 +506,7 @@ function HealthDashboard({
             )}
             <DeferredHealthSection id="indicadores" title="Indicadores de saúde" description="Últimos valores registrados e acesso ao histórico de cada medida" icon={<ListChecks size={18}/>} badge={`${Object.keys(METRICS).length} tipos`}>
             <section className="space-y-3">
-              <div className="flex items-end justify-between gap-3"><div><h2 className="font-semibold">Meus registros</h2><p className="mt-1 text-[11px] text-ink-muted">Valores recentes e acesso ao histórico</p></div><button type="button" onClick={()=>goFromHealth('/saude/registros')} className="min-h-11 shrink-0 text-xs font-semibold text-emerald-400">Ver todos</button></div>
+              <div className="flex items-end justify-between gap-3"><div><h2 className="font-semibold">Meus registros</h2><p className="mt-1 text-xs text-ink-muted">Valores recentes e acesso ao histórico</p></div><button type="button" onClick={()=>goFromHealth('/saude/registros')} className="min-h-11 shrink-0 text-xs font-semibold text-emerald-400">Ver todos</button></div>
               <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface">
                 {(Object.keys(METRICS) as HealthMetric[]).map((type) => (
                   <button
@@ -602,7 +602,7 @@ function HealthDashboard({
                 <button type="button" disabled={historyDate===today} onClick={()=>setHistoryDate(today)} className="min-h-11 rounded-xl border border-emerald-400/25 px-2 text-xs text-emerald-300 disabled:opacity-40">Hoje</button>
                 <button type="button" disabled={!adjacentDays.next} onClick={()=>{if(adjacentDays.next)setHistoryDate(adjacentDays.next);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Próximo com dados</button>
               </div>
-              <p className="mb-3 rounded-xl bg-black/15 px-3 py-2 text-[10px] leading-relaxed text-ink-muted">{daySummary.total} registros no dia · {daySummary.imported} importados · {daySummary.manual} manuais{daySummary.unknown>0?` · ${daySummary.unknown} sem origem informada`:""}</p>
+              <p className="mb-3 rounded-xl bg-black/15 px-3 py-2 text-xs leading-relaxed text-ink-muted">{daySummary.total} registros no dia · {daySummary.imported} importados · {daySummary.manual} manuais{daySummary.unknown>0?` · ${daySummary.unknown} sem origem informada`:""}</p>
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -658,7 +658,7 @@ function HealthDashboard({
                         <p className="text-xs font-semibold">
                           {r.nome} · {r.valor_medicao || "Registrado"}
                         </p>
-                        <p className="mt-1 text-[10px] text-ink-muted">
+                        <p className="mt-1 text-xs text-ink-muted">
                           {r.data.split("-").reverse().join("/")} · {r.horario}{" "}
                           ·{" "}
                           {r.source === "samsung_manual"

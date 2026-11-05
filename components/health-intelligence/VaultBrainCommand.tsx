@@ -71,7 +71,7 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
         <div className="flex items-center justify-between border-b border-surface-border/50 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2 text-violet-200">
             <BrainCircuit size={17} aria-hidden="true" />
-            <h2 id="vault-brain-command-title" className="text-xs font-bold tracking-wide">VAULT Brain <span className="font-normal text-ink-muted">· Comandos</span></h2>
+            <h2 id="vault-brain-command-title" className="text-sm font-bold tracking-tight">VAULT Brain <span className="font-normal text-ink-muted">· Comandos</span></h2>
           </div>
           <button type="button" onClick={close} aria-label="Fechar Comandos" className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink-muted hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><X size={18}/></button>
         </div>

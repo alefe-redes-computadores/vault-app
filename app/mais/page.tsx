@@ -353,6 +353,18 @@ export default function MaisPage() {
   // ============================================================
 
   const clearLocalData = async () => {
+    // Falha fechada: impedir exclusão de dados que ainda aguardam upload.
+    let pendingWrites: number;
+    try {
+      pendingWrites = await db.syncQueue.count();
+    } catch {
+      showError("Não foi possível verificar a fila de sincronização. Nenhum dado foi apagado.");
+      return;
+    }
+    if (pendingWrites > 0) {
+      showError(`Existem ${pendingWrites} operações locais aguardando envio ou revisão. Confira a fila em Saúde da sincronização antes de limpar dados.`);
+      return;
+    }
     // VAULT_CLEAR_DATA_BIOMETRIC_V32
     // APK + biometria ativa: identidade antes da operação destrutiva.
     // PWA continua protegido pelo RigorousConfirmInput/EXCLUIR.
@@ -375,6 +387,12 @@ export default function MaisPage() {
        * Evita notificações órfãs depois que os dados locais
        * forem removidos.
        */
+      // Revalidar depois da confirmação biométrica e imediatamente antes
+      // da remoção: uma escrita pendente não pode ser descartada silenciosamente.
+      if (await db.syncQueue.count() > 0) {
+        showError("A fila recebeu novas operações. Nenhum dado foi apagado. Sincronize antes de tentar novamente.");
+        return;
+      }
       await cancelAllNotifications();
 
       await Promise.all([

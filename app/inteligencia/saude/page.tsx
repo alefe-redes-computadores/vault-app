@@ -174,7 +174,7 @@ export default function HealthIntelligenceLabPage() {
             <ChevronLeft size={20} />
           </button>
           <div className="min-w-0">
-            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-violet-300">
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-300">
               VAULT INTELLIGENCE
             </p>
             <h1 className="text-2xl font-bold">Inteligência de saúde</h1>
@@ -233,7 +233,7 @@ export default function HealthIntelligenceLabPage() {
               ].map(([label, value]) => (
                 <div key={String(label)} className="rounded-2xl bg-black/10 px-2 py-3">
                   <strong className="text-lg">{value}</strong>
-                  <p className="text-[9px] uppercase text-ink-faint">{label}</p>
+                  <p className="text-xs uppercase text-ink-faint">{label}</p>
                 </div>
               ))}
             </div>
@@ -284,7 +284,7 @@ export default function HealthIntelligenceLabPage() {
                 <div className="h-2 w-2 shrink-0 rounded-full bg-ice/70" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-semibold">{event.label}</p>
-                  <p className="mt-0.5 text-[9px] text-ink-faint">{EVENT_TYPE_LABEL[event.type] ?? event.type} · {formatDate(event.date)}</p>
+                  <p className="mt-0.5 text-xs text-ink-faint">{EVENT_TYPE_LABEL[event.type] ?? event.type} · {formatDate(event.date)}</p>
                 </div>
               </div>
             ))}
@@ -313,7 +313,7 @@ export default function HealthIntelligenceLabPage() {
                       <p className="text-xs font-semibold">{humanSignalSubject(signal.subject, health.context?.medicamentos ?? [])}</p>
                       <span className="rounded-full bg-violet-400/10 px-2 py-1 font-mono text-[9px] text-violet-300">{signal.confidenceScore}%</span>
                     </div>
-                    <p className="mt-1 font-mono text-[9px] uppercase text-ink-faint">{SIGNAL_KIND_LABEL[signal.kind] ?? signal.kind}{signal.direction ? ` · ${SIGNAL_DIRECTION_LABEL[signal.direction] ?? signal.direction}` : ""}</p>
+                    <p className="mt-1 font-mono text-xs uppercase text-ink-faint">{SIGNAL_KIND_LABEL[signal.kind] ?? signal.kind}{signal.direction ? ` · ${SIGNAL_DIRECTION_LABEL[signal.direction] ?? signal.direction}` : ""}</p>
                     {signal.evidence.map((line) => <p key={line} className="mt-2 text-xs text-ink-muted">{line}</p>)}
                   </div>
                 ))
@@ -350,11 +350,11 @@ export default function HealthIntelligenceLabPage() {
             </div>
           </div>
           <div className="mt-3 rounded-[26px] border border-emerald-400/15 bg-emerald-400/[0.03] p-4">
-            <p className="mb-3 text-[10px] font-semibold text-emerald-200">{consultation.basis.label}</p>
+            <p className="mb-3 text-xs font-semibold text-emerald-200">{consultation.basis.label}</p>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.medicationCount}</strong><p className="text-[9px] text-ink-faint">medicamentos</p></div>
-              <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.adherence.percentage ?? "—"}{consultation.adherence.percentage !== null ? "%" : ""}</strong><p className="text-[9px] text-ink-faint">doses registradas</p></div>
-              <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.sosExtra.count}</strong><p className="text-[9px] text-ink-faint">SOS/extra</p></div>
+              <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.medicationCount}</strong><p className="text-xs text-ink-faint">medicamentos</p></div>
+              <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.adherence.percentage ?? "—"}{consultation.adherence.percentage !== null ? "%" : ""}</strong><p className="text-xs text-ink-faint">doses registradas</p></div>
+              <div className="rounded-2xl bg-black/10 p-3"><strong>{consultation.sosExtra.count}</strong><p className="text-xs text-ink-faint">SOS/extra</p></div>
             </div>
             <div className="mt-4">
               <p className="text-xs font-semibold">Lembretes para conversar</p>
@@ -364,11 +364,11 @@ export default function HealthIntelligenceLabPage() {
             </div>
             {consultation.dataQuality.length > 0 && (
               <div className="mt-4 border-t border-surface-border/60 pt-3">
-                <p className="text-[10px] font-semibold uppercase text-ink-faint">Qualidade dos dados</p>
+                <p className="text-xs font-semibold uppercase text-ink-faint">Qualidade dos dados</p>
                 {consultation.dataQuality.map((item) => <p key={item} className="mt-1.5 text-xs text-ink-muted">• {item}</p>)}
               </div>
             )}
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">{consultation.evidenceGroups.map(group => <div key={group.kind} className="rounded-2xl border border-surface-border/60 bg-black/10 p-3"><p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">{group.label}</p>{group.items.length ? group.items.map(item => <p key={item} className="mt-2 text-[10px] leading-relaxed text-ink-primary">• {item}</p>) : <p className="mt-2 text-[10px] text-ink-faint">Sem amostra suficiente.</p>}</div>)}</div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">{consultation.evidenceGroups.map(group => <div key={group.kind} className="rounded-2xl border border-surface-border/60 bg-black/10 p-3"><p className="text-xs font-bold uppercase tracking-wide text-ink-muted">{group.label}</p>{group.items.length ? group.items.map(item => <p key={item} className="mt-2 text-xs leading-relaxed text-ink-primary">• {item}</p>) : <p className="mt-2 text-xs text-ink-faint">Sem amostra suficiente.</p>}</div>)}</div>
           </div>
         </section>
 
@@ -378,12 +378,12 @@ export default function HealthIntelligenceLabPage() {
             <h2 className="font-bold">Saúde da inteligência</h2>
           </div>
           <button type="button" onClick={() => setBrainHealthExpanded((value) => !value)} className="mt-3 flex w-full items-center justify-between rounded-[22px] border border-violet-400/15 bg-violet-400/[0.03] p-4 text-left">
-            <div><p className="text-sm font-semibold">{statusLabel}</p><p className="mt-0.5 text-[10px] text-ink-muted">{brainHealth.timelineEvents} eventos · {brainHealth.shadowSignals} sinais · {brainHealth.replayPoints} replays</p></div>
+            <div><p className="text-sm font-semibold">{statusLabel}</p><p className="mt-0.5 text-xs text-ink-muted">{brainHealth.timelineEvents} eventos · {brainHealth.shadowSignals} sinais · {brainHealth.replayPoints} replays</p></div>
             <ChevronRight size={17} className={`text-violet-300 transition-transform ${brainHealthExpanded ? "rotate-90" : ""}`} />
           </button>
           {brainHealthExpanded && (
             <div className="mt-2 rounded-[22px] border border-violet-400/10 bg-violet-400/[0.02] p-4">
-              <p className="text-[10px] text-ink-muted">Mede dados e funcionamento do motor, não sua saúde.</p>
+              <p className="text-xs text-ink-muted">Mede dados e funcionamento do motor, não sua saúde.</p>
               {brainHealth.notes.map((note) => <p key={note} className="mt-2 text-xs text-ink-muted">• {note}</p>)}
             </div>
           )}
@@ -436,7 +436,7 @@ export default function HealthIntelligenceLabPage() {
         <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-surface-border bg-surface/70 p-4">
           <div className="flex gap-3">
             <Database size={17} className="mt-0.5 shrink-0 text-ink-faint" />
-            <p className="text-[10px] leading-relaxed text-ink-muted">
+            <p className="text-xs leading-relaxed text-ink-muted">
               O Vault Intelligence usa somente dados registrados no Vault. Relações temporais não provam causa. Confiança mede força do conjunto de dados e das evidências disponíveis, não certeza médica.
             </p>
           </div>
@@ -455,24 +455,24 @@ export default function HealthIntelligenceLabPage() {
 
           return (
             <section className="mx-auto mt-4 max-w-2xl rounded-[24px] border border-violet-400/15 bg-violet-400/[0.03] p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-300">
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-300">
                 Por que o Vault mostrou isso?
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-2xl bg-black/10 p-3">
-                  <p className="text-[9px] uppercase text-ink-faint">Período</p>
+                  <p className="text-xs uppercase text-ink-faint">Período</p>
                   <p className="mt-1 text-xs text-ink-muted">{explanation.periodLabel}</p>
                 </div>
                 <div className="rounded-2xl bg-black/10 p-3">
-                  <p className="text-[9px] uppercase text-ink-faint">Amostra</p>
+                  <p className="text-xs uppercase text-ink-faint">Amostra</p>
                   <p className="mt-1 text-xs text-ink-muted">{explanation.sampleLabel}</p>
                 </div>
                 <div className="rounded-2xl bg-black/10 p-3">
-                  <p className="text-[9px] uppercase text-ink-faint">Cobertura</p>
+                  <p className="text-xs uppercase text-ink-faint">Cobertura</p>
                   <p className="mt-1 text-xs text-ink-muted">{explanation.coverageLabel}</p>
                 </div>
                 <div className="rounded-2xl bg-black/10 p-3">
-                  <p className="text-[9px] uppercase text-ink-faint">Eventos relacionados</p>
+                  <p className="text-xs uppercase text-ink-faint">Eventos relacionados</p>
                   <p className="mt-1 text-xs text-ink-muted">{explanation.nearbyEvents}</p>
                 </div>
               </div>
@@ -484,20 +484,20 @@ export default function HealthIntelligenceLabPage() {
               ))}
               {explanation.sources.length > 0 && (
                 <div className="mt-3 rounded-2xl border border-surface-border/60 bg-black/10 p-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-ink-faint">Fontes internas consultadas</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Fontes internas consultadas</p>
                   <p className="mt-1 text-xs leading-relaxed text-ink-muted">{explanation.sources.join(" · ")}</p>
                 </div>
               )}
               {selected.acaoSegura && (
                 <div className="mt-3 rounded-2xl border border-ice/15 bg-ice/[0.05] p-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-ice">Próximo passo seguro</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ice">Próximo passo seguro</p>
                   <p className="mt-1 text-xs leading-relaxed text-ink-muted">{selected.acaoSegura}</p>
                 </div>
               )}
               {explanation.missingData.slice(0, 2).map((line) => (
                 <p key={line} className="mt-2 text-xs leading-relaxed text-amber-300/80">• {line}</p>
               ))}
-              <p className="mt-3 border-t border-surface-border/60 pt-3 text-[10px] leading-relaxed text-ink-faint">
+              <p className="mt-3 border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-faint">
                 {explanation.limitation}
               </p>
             </section>

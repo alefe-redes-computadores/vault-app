@@ -533,7 +533,7 @@ function NovaReceitaContent() {
                   className="text-violet-300"
                 />
 
-                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-violet-300">
+                <p className="font-mono text-xs uppercase tracking-[0.22em] text-violet-300">
                   Prescrição
                 </p>
               </div>
@@ -561,7 +561,7 @@ function NovaReceitaContent() {
                   {planOnly ? "Ainda não tenho a receita" : "Já tenho a nova prescrição"}
                 </p>
 
-                <p className="mt-1 text-[11px] leading-5 text-ink-muted">
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
                   {planOnly
                     ? "Escolha quando pretende solicitar a receita. Nenhuma receita ou documento será criado agora; estoque e retiradas continuam iguais."
                     : "Registre a receita que já recebeu. O anexo vai para Documentos de saúde; nenhuma compra ou retirada será confirmada."}
@@ -670,7 +670,7 @@ function NovaReceitaContent() {
                 onChange={setProximaRenovacao}
                 className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-violet-400/50"
               />
-              <p className="mt-1.5 text-[10px] leading-4 text-ink-muted">
+              <p className="mt-1.5 text-xs leading-4 text-ink-muted">
                 O Vault sugere pela validade cadastrada, mas você pode usar o dia real em que pretende solicitar a próxima receita.
               </p>
             </div>
@@ -733,19 +733,19 @@ function NovaReceitaContent() {
             <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/[0.05] p-4">
               <label className="mb-2 block text-xs font-semibold text-ink-primary">Dia em que vou solicitar a receita</label>
               <CustomDatePicker value={plannedDate} onChange={setPlannedDate} className="w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-3 py-3 text-sm text-ink-primary" />
-              <p className="mt-2 text-[11px] leading-5 text-ink-muted">Até esse dia, o Vault não tratará o planejamento como receita recebida. Se mudar de ideia, ajuste a data aqui.</p>
+              <p className="mt-2 text-xs leading-5 text-ink-muted">Até esse dia, o Vault não tratará o planejamento como receita recebida. Se mudar de ideia, ajuste a data aqui.</p>
             </div>
           ) : <>
 
           <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4">
             <div className="flex items-center justify-between gap-3">
-              <div><p className="text-xs font-semibold text-ink-primary">Anexo da receita</p><p className="mt-1 text-[10px] text-ink-muted">Foto ou PDF fica ligado a este registro, sem criar aquisição.</p></div>
+              <div><p className="text-xs font-semibold text-ink-primary">Anexo da receita</p><p className="mt-1 text-xs text-ink-muted">Foto ou PDF fica ligado a este registro, sem criar aquisição.</p></div>
               {attachmentName ? <button type="button" onClick={() => { setLocalFile(null); setAttachmentName(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-400/20 text-rose-300" aria-label="Remover anexo"><X size={16}/></button> : null}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(event) => handleAttachment(event)} />
             <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => handleAttachment(event, true)} />
             {attachmentName ? <div className="mt-3 break-all rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-xs font-semibold text-emerald-200">{attachmentName}{localFile?<span className="mt-1 block text-[9px] font-normal text-emerald-200/70">{formatPrescriptionAttachmentSize(localFile.size)} · validado antes do envio</span>:null}</div> : <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] text-xs font-semibold text-violet-200"><Upload size={15}/>Escolher arquivo</button><button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] text-xs font-semibold text-emerald-200"><Camera size={15}/>Fotografar</button></div>}
-            <p className="mt-2 text-[9px] text-ink-faint">Imagem ou PDF · máximo de 15 MB.</p>
+            <p className="mt-2 text-xs text-ink-faint">Imagem ou PDF · máximo de 15 MB.</p>
           </div>
 
           {selectedMedicamento && (
@@ -763,7 +763,7 @@ function NovaReceitaContent() {
                     O que será atualizado
                   </p>
 
-                  <p className="mt-1 text-[11px] leading-5 text-ink-muted">
+                  <p className="mt-1 text-xs leading-5 text-ink-muted">
                     A receita atual de{" "}
                     <strong className="text-ink-primary">
                       {selectedMedicamento.nome}
@@ -789,10 +789,10 @@ function NovaReceitaContent() {
                       : "."}
                   </p>
 
-                  <p className="mt-2 text-[10px] leading-4 text-emerald-300">
+                  <p className="mt-2 text-xs leading-4 text-emerald-300">
                     Estoque, farmácia, preço, quantidade e retirada agendada permanecem intactos.
                   </p>
-                  {dataReceita>getLocalTodayISO()?<p className="mt-2 text-[10px] leading-4 text-violet-200">A data informada é futura. O registro continuará sendo apenas receita/documento e não confirmará recebimento, aquisição ou estoque.</p>:null}
+                  {dataReceita>getLocalTodayISO()?<p className="mt-2 text-xs leading-4 text-violet-200">A data informada é futura. O registro continuará sendo apenas receita/documento e não confirmará recebimento, aquisição ou estoque.</p>:null}
                 </div>
               </div>
             </div>

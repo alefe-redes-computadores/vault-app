@@ -1426,8 +1426,8 @@ export default function MedicamentosListPage() {
         <section className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
           <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
-            <div className="min-w-0"><h2 className="text-xs font-bold text-ink-primary">Seus medicamentos</h2>
-              <p className="mt-0.5 text-[10px] leading-snug text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados</p></div>
+            <div className="min-w-0"><h2 className="text-sm font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
+              <p className="mt-0.5 text-xs leading-snug text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>
@@ -1435,7 +1435,7 @@ export default function MedicamentosListPage() {
           </ClinicalDisclosure>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
-            <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+            <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               Ir para um grupo <span aria-hidden="true" className="text-ink-muted">▾</span>
             </summary>
             <MedicationListGroupNavigation attention={medsPrioridade.length} stable={medsEmDia.length} planned={medsPlanejados.length} sos={medsSOS.length} suspended={medsSuspensos.length}/>
@@ -1448,6 +1448,7 @@ export default function MedicamentosListPage() {
                 Pill
               }
               title="Nenhum medicamento encontrado"
+              variant={listPresentation.active ? "no-results" : "default"}
               description={listPresentation.emptyDescription}
               actionLabel={listPresentation.active ? listPresentation.clearLabel : undefined}
               onAction={listPresentation.active ? () => { setSearchQuery(""); selectMedicationFilter("todos"); } : undefined}
@@ -1536,7 +1537,7 @@ export default function MedicamentosListPage() {
                 />
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-black uppercase tracking-[0.15em] text-ink-faint">
+                  <p className="text-xs font-black uppercase tracking-[0.15em] text-ink-faint">
                     Classificação da receita
                   </p>
 
@@ -1588,12 +1589,12 @@ export default function MedicamentosListPage() {
               </div>
 
               {!selectedRegulatory.verified && (
-                <p className="mt-2.5 text-[10px] leading-relaxed text-amber-200">
+                <p className="mt-2.5 text-xs leading-relaxed text-amber-200">
                   Medicamento identificado no catálogo. O tipo de receita ainda não possui confirmação regulatória na fonte atual.
                 </p>
               )}
 
-              <p className="mt-2.5 text-[9px] leading-relaxed text-ink-faint">
+              <p className="mt-2.5 text-xs leading-relaxed text-ink-faint">
                 Informação para organização de receitas e renovações.
               </p>
             </section>

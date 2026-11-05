@@ -229,7 +229,7 @@ export default function HealthRemindersPage() {
       <section className="mx-auto mt-5 max-w-xl overflow-hidden rounded-[24px] border border-amber-400/15 bg-gradient-to-br from-amber-400/[0.07] via-surface to-surface">
         <div className="flex items-center gap-3 p-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/[0.08] text-amber-300"><CalendarClock size={20}/></div>
-          <div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-300">Próximo lembrete</p><h2 className="mt-0.5 truncate text-sm font-bold">{presentation.next?.reminder.title||"Sua rotina está livre"}</h2><p className="mt-0.5 text-[11px] text-ink-muted">{presentation.next?nextLabel(presentation.next.next,presentation.now):"Crie apenas lembretes úteis para você"}</p></div>
+          <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Próximo lembrete</p><h2 className="mt-0.5 truncate text-sm font-bold">{presentation.next?.reminder.title||"Sua rotina está livre"}</h2><p className="mt-0.5 text-xs text-ink-muted">{presentation.next?nextLabel(presentation.next.next,presentation.now):"Crie apenas lembretes úteis para você"}</p></div>
           <span className="shrink-0 rounded-lg border border-surface-border bg-void/45 px-2 py-1 text-[9px] font-semibold text-ink-muted">{activeCount} ativo{activeCount===1?"":"s"}</span>
         </div>
         {presentation.next&&<button type="button" onClick={()=>router.push(preserveReturn(presentation.next!.reminder.target_route))} className="flex min-h-11 w-full items-center justify-between border-t border-amber-400/10 px-4 text-xs font-semibold text-amber-200"><span>Abrir destino do próximo lembrete</span><ChevronRight size={15}/></button>}
@@ -309,7 +309,7 @@ export default function HealthRemindersPage() {
       <section className="mx-auto mt-5 max-w-xl overflow-hidden rounded-3xl border border-surface-border bg-surface">
         <button type="button" onClick={() => setAdvancedOpen((value) => !value)} className="flex w-full items-center gap-3 p-4 text-left" aria-expanded={advancedOpen}>
           <div className="rounded-xl border border-surface-border bg-void p-2 text-ink-muted"><SlidersHorizontal size={17} /></div>
-          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Configurações avançadas</p><p className="mt-0.5 text-[11px] text-ink-muted">Categorias, antecedência e repetição dos avisos</p></div>
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Configurações avançadas</p><p className="mt-0.5 text-xs text-ink-muted">Categorias, antecedência e repetição dos avisos</p></div>
           <ChevronDown size={18} className={`text-ink-muted transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
         </button>
         {advancedOpen && <div className="grid gap-3 border-t border-surface-border p-3"><NotificationPreferencesPanel /><NotificationBrainPanel /></div>}

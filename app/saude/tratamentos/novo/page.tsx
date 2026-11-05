@@ -1124,7 +1124,7 @@ export default function NovoTratamentoPage() {
 
               {status !==
                 "ativo" && (
-                <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
+                <p className="mt-2 text-xs leading-relaxed text-ink-muted">
                   Medicamentos vinculados só serão descontinuados automaticamente se não estiverem associados a outro tratamento ativo da mesma pessoa.
                 </p>
               )}

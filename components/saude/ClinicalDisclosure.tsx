@@ -49,7 +49,7 @@ export function ClinicalDisclosure({ id, title, description, icon, children, def
           <span className={`grid size-9 shrink-0 place-items-center rounded-lg border border-surface-border/45 bg-surface-raised/60 ${iconClassName}`} aria-hidden="true">{icon}</span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold leading-snug text-ink-primary">{title}</span>
-            <span id={descriptionId} className={`mt-0.5 block break-words text-[11px] leading-snug text-ink-muted ${open ? "sr-only" : "line-clamp-2"}`}>{description}</span>
+            <span id={descriptionId} className={`mt-0.5 block break-words text-xs leading-relaxed text-ink-muted ${open ? "sr-only" : "line-clamp-2"}`}>{description}</span>
           </span>
           <ChevronDown size={16} aria-hidden="true" className={`shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
         </button>

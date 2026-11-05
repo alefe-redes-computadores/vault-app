@@ -21,6 +21,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { useToast } from "@/components/ToastProvider";
 import { useState } from "react";
 import { useBiometricPreference } from "@/hooks/useBiometricPreference";
+import { useBiometric } from "@/hooks/useBiometric";
+import { isVaultNative } from "@/lib/native-runtime";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 const itemMotion = {
@@ -33,8 +35,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { showToast } = useToast();
-  const [isChangingPhoto, setIsChangingPhoto] = useState(false);
   const { isEnabled: isBiometricEnabled, toggle: toggleBiometric } = useBiometricPreference();
+  const { isAvailable: biometricAvailable, isLoading: biometricChecking } = useBiometric();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showClearDataModal, setShowClearDataModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,44 +55,49 @@ export default function ProfilePage() {
     }
   };
 
+  // Nunca executa db.delete() a partir de Perfil. A exclusão depende de
+  // uma única rota de segurança com confirmação rigorosa em Mais.
   const clearLocalData = async () => {
     setIsLoading(true);
     try {
-      await db.delete();
-      trigger("success");
-      showToast("Dados locais limpos com sucesso!", "success");
-      router.push("/login");
-    } catch (error) {
-      showToast("Erro ao limpar dados", "error");
+      const pending = await db.syncQueue.count();
+      if (pending > 0) {
+        showToast(`Há ${pending} operação(ões) locais aguardando sincronização. Revise a fila antes de qualquer limpeza.`, "error", 6500);
+        return;
+      }
+      setShowClearDataModal(false);
+      showToast("Para limpar dados locais, confirme a operação em Mais > Zona sensível.", "info", 5500);
+      router.push("/mais");
+    } catch {
+      showToast("Não foi possível conferir a fila. Nenhum dado foi apagado.", "error", 5000);
     } finally {
       setIsLoading(false);
       setShowClearDataModal(false);
     }
   };
 
+  // O botão antigo anunciava sucesso sem salvar o arquivo escolhido.
   const handleChangePhoto = () => {
-    trigger("vibrate");
-    setIsChangingPhoto(true);
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        showToast("Foto atualizada com sucesso!", "success");
-      }
-      setIsChangingPhoto(false);
-    };
-    input.click();
+    trigger("light");
+    showToast("Alteração de foto ainda indisponível nesta tela. Sua foto atual foi preservada.", "info", 4500);
   };
 
   const handleBiometricToggle = () => {
+    trigger("light");
+    if (!isVaultNative()) {
+      showToast("A biometria nativa está disponível somente no APK. O PWA não deve anunciar essa proteção.", "info", 5500);
+      return;
+    }
+    if (biometricChecking) {
+      showToast("Verificando a biometria do aparelho…", "info");
+      return;
+    }
+    if (!biometricAvailable) {
+      showToast("Biometria indisponível neste aparelho. Verifique as configurações do Android.", "info", 5000);
+      return;
+    }
     toggleBiometric();
-    trigger("vibrate");
-    showToast(
-      isBiometricEnabled ? "Biometria desativada" : "Biometria ativada",
-      "info"
-    );
+    showToast(isBiometricEnabled ? "Biometria desativada" : "Biometria ativada para ações sensíveis", "info");
   };
 
   const avatarUrl = user?.user_metadata?.avatar_url;
@@ -133,8 +140,7 @@ export default function ProfilePage() {
 
                 <button
                   onClick={handleChangePhoto}
-                  disabled={isChangingPhoto}
-                  aria-label="Alterar foto"
+                  aria-label="Alterar foto (indisponível nesta versão)"
                   className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-void bg-ice text-void transition-all active:scale-95"
                 >
                   <Camera size={14} />
@@ -289,9 +295,9 @@ export default function ProfilePage() {
           isOpen={showClearDataModal}
           onClose={() => setShowClearDataModal(false)}
           onConfirm={clearLocalData}
-          title="Limpar dados locais"
-          message="Tem certeza que deseja limpar todos os dados locais? Esta ação não pode ser desfeita."
-          confirmLabel="Limpar"
+          title="Gerenciar dados locais"
+          message="A exclusão exige verificação da fila, confirmação rigorosa e, no APK configurado, biometria. Continuar para Mais?"
+          confirmLabel="Ir para Mais"
           cancelLabel="Cancelar"
           isLoading={isLoading}
           type="danger"

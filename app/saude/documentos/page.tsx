@@ -3655,7 +3655,7 @@ export default function DocumentsPage() {
                     className="text-emerald-400"
                   />
 
-                  <p className="font-mono text-[10px] uppercase whitespace-nowrap tracking-[0.12em] text-emerald-400">
+                  <p className="font-mono text-xs uppercase whitespace-nowrap tracking-[0.12em] text-emerald-400">
                     Acervo Clínico
                   </p>
                 </div>
@@ -3760,7 +3760,7 @@ export default function DocumentsPage() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-faint">
+                    <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-faint">
                       Período
                     </p>
 
@@ -3779,7 +3779,7 @@ export default function DocumentsPage() {
                     }
                   </p>
 
-                  <p className="text-[9px] text-ink-faint">
+                  <p className="text-xs text-ink-faint">
                     documento
                     {uniqueDocumentViewModels.length ===
                     1
@@ -4231,13 +4231,13 @@ export default function DocumentsPage() {
                                                 ) : (
                                                   <div className="mt-0.5 flex min-w-0 items-center gap-2">
                                                     {parent.description ? (
-                                                      <p className="truncate text-[10px] text-ink-muted">
+                                                      <p className="truncate text-xs text-ink-muted">
                                                         {
                                                           parent.description
                                                         }
                                                       </p>
                                                     ) : (
-                                                      <p className="text-[10px] text-ink-faint">
+                                                      <p className="text-xs text-ink-faint">
                                                         {
                                                           parent.documents.length
                                                         }{" "}
@@ -4365,7 +4365,7 @@ export default function DocumentsPage() {
                                                                     />
                                                                   )}
 
-                                                                  <p className="truncate text-[11px] font-semibold text-ink-primary">
+                                                                  <p className="truncate text-xs font-semibold text-ink-primary">
                                                                     {
                                                                       primaryLabel
                                                                     }
@@ -4547,7 +4547,7 @@ export default function DocumentsPage() {
                     Todos os meses
                   </p>
 
-                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     Exibir todo o histórico clínico
                   </p>
                 </div>
@@ -4687,7 +4687,7 @@ function ExportDocumentCard({
           </div>
 
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-400">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-emerald-400">
               Acervo Clínico
             </p>
 
@@ -4751,7 +4751,7 @@ function ExportDocumentCard({
           </div>
 
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-ink-faint">
+            <p className="text-xs uppercase tracking-[0.15em] text-ink-faint">
               {
                 DOMAIN_CONFIG[
                   item.domainId
@@ -4788,7 +4788,7 @@ function ExportDocumentCard({
 
       {item.document.description && (
         <div className="mt-5">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-ink-faint">
+          <p className="text-xs uppercase tracking-[0.15em] text-ink-faint">
             Observações
           </p>
 

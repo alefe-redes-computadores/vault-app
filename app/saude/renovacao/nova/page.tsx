@@ -1771,7 +1771,7 @@ function NovaRenovacaoContent() {
         </header>
 
         <section className="mx-auto max-w-3xl space-y-5 px-4 pt-5 pb-28 sm:px-5 sm:pt-6">
-          <p className="rounded-xl border border-ice/20 bg-ice/[0.06] px-3 py-2 text-[11px] leading-relaxed text-ink-secondary">Esta tela registra uma compra ou retirada que <strong>já aconteceu</strong>. Para uma data futura, use Agendar retirada/ida à farmácia; planejamento nunca adiciona estoque.</p>
+          <p className="rounded-xl border border-ice/20 bg-ice/[0.06] px-3 py-2 text-xs leading-relaxed text-ink-secondary">Esta tela registra uma compra ou retirada que <strong>já aconteceu</strong>. Para uma data futura, use Agendar retirada/ida à farmácia; planejamento nunca adiciona estoque.</p>
           {/* ==================================================
               IDENTIDADE
               ================================================== */}
@@ -1994,7 +1994,7 @@ function NovaRenovacaoContent() {
                     : "Data da compra"}
                 </h3>
 
-                <p className="mt-0.5 text-[11px] text-ink-muted">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   Esta é a data usada no histórico de aquisições e no financeiro do Vault.
                 </p>
               </div>
@@ -2060,7 +2060,7 @@ function NovaRenovacaoContent() {
           {saldoAnteriorDesconhecido && !useCurrentCount && (
             <section className="rounded-[22px] border border-amber-400/30 bg-amber-400/[0.055] p-4">
               <label htmlFor="m42-saldo-anterior" className="text-sm font-semibold text-ink-primary">Saldo antes deste recebimento *</label>
-              <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">O Vault ainda não conhece o estoque deste medicamento. Informe quantas unidades já havia antes desta compra/retirada. Se não havia nenhuma, digite 0. A quantidade adquirida será somada somente depois da confirmação.</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-muted">O Vault ainda não conhece o estoque deste medicamento. Informe quantas unidades já havia antes desta compra/retirada. Se não havia nenhuma, digite 0. A quantidade adquirida será somada somente depois da confirmação.</p>
               <input id="m42-saldo-anterior" type="number" min="0" step="any" inputMode="decimal" value={saldoAnteriorTexto} onChange={event=>setSaldoAnteriorTexto(event.target.value)} placeholder="Ex.: 0" aria-invalid={Boolean(errors.saldoAnterior)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-4 text-sm text-ink-primary focus:border-amber-400/60"/>
               {errors.saldoAnterior && <p role="alert" className="mt-1 text-xs text-coral">{errors.saldoAnterior}</p>}
             </section>
@@ -2203,7 +2203,7 @@ function NovaRenovacaoContent() {
                   </p>
                 )}
 
-                <p className="mt-1.5 text-[11px] text-ink-muted">
+                <p className="mt-1.5 text-xs text-ink-muted">
                   Informe o valor total pago nesta compra. A quantidade adquirida é registrada separadamente e não multiplica este valor.
                 </p>
 
@@ -2318,7 +2318,7 @@ function NovaRenovacaoContent() {
                 />
 
                 <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
-                <p className="mt-1.5 text-[11px] text-ink-muted">
+                <p className="mt-1.5 text-xs text-ink-muted">
                   A quantidade recebida será somada ao saldo confirmado depois de salvar.
                 </p>
               </div>
@@ -2393,8 +2393,8 @@ function NovaRenovacaoContent() {
                 </h3>
               </div>
 
-              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><HealthRelationPicker title="Selecionar retirada" medication={medicamentos.find(m => m.id === medicamentoId)} id="receipt-withdrawal" value={selectedWithdrawalId} onValueChange={e=>setSelectedWithdrawalId(e)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</HealthRelationPicker><p className="text-[10px] leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
-              <p className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-[11px] leading-relaxed text-ink-muted">LME, autorização e documentos ficam no fornecimento deste medicamento. Depois de salvar, abra “Fornecimento e documentos” no detalhe desta aquisição, inclusive para uma retirada já realizada.</p>
+              <div className="space-y-2"><label className="block text-xs font-semibold text-ink-primary" htmlFor="receipt-withdrawal">Concluir uma retirada junto com este recebimento</label><HealthRelationPicker title="Selecionar retirada" medication={medicamentos.find(m => m.id === medicamentoId)} id="receipt-withdrawal" value={selectedWithdrawalId} onValueChange={e=>setSelectedWithdrawalId(e)} className="min-h-[44px] w-full rounded-2xl border border-surface-border bg-surface-raised p-3 text-xs text-ink-primary"><option value="">Recebimento sem agendamento vinculado</option>{retiradas.filter(r=>r.medicamento_id===medicamentoId&&r.tipo==="sus"&&["agendada","realizada"].includes(r.status)&&!r.renovacao_realizada_id).map(r=><option key={r.id} value={r.id}>{r.data} · {r.status==="realizada"?"Realizada, sem aquisição vinculada":"Agendada"}</option>)}</HealthRelationPicker><p className="text-xs leading-relaxed text-ink-muted">O estoque será atualizado e esta retirada será concluída no mesmo registro. Se você já registrou o estoque, vincule a aquisição existente no detalhe da retirada.</p></div>
+              <p className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-3 text-xs leading-relaxed text-ink-muted">LME, autorização e documentos ficam no fornecimento deste medicamento. Depois de salvar, abra “Fornecimento e documentos” no detalhe desta aquisição, inclusive para uma retirada já realizada.</p>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
@@ -2491,7 +2491,7 @@ function NovaRenovacaoContent() {
                 />
 
                 <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
-                <p className="mt-1.5 text-[11px] text-ink-muted">
+                <p className="mt-1.5 text-xs text-ink-muted">
                   A quantidade recebida será somada ao saldo confirmado depois de salvar.
                 </p>
               </div>
@@ -2545,7 +2545,7 @@ function NovaRenovacaoContent() {
                   </p>
                 )}
 
-                <p className="mt-1.5 text-[11px] text-ink-muted">
+                <p className="mt-1.5 text-xs text-ink-muted">
                   O Vault poderá usar essa data como referência para lembretes e insights de próxima retirada.
                 </p>
               </div>

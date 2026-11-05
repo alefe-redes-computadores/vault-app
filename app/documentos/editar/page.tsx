@@ -2091,7 +2091,7 @@ export default function EditarDocumentoPage() {
             </button>
 
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ice/90">
+              <p className="font-mono text-xs uppercase tracking-[0.24em] text-ice/90">
                 Cofre Pessoal
               </p>
 
@@ -2147,7 +2147,7 @@ export default function EditarDocumentoPage() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
-                  <p className="shrink-0 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-faint">
+                  <p className="shrink-0 font-mono text-xs uppercase tracking-[0.2em] text-ink-faint">
                     Pessoa vinculada
                   </p>
 
@@ -2165,7 +2165,7 @@ export default function EditarDocumentoPage() {
                   </p>
                 </div>
 
-                <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+                <p className="mt-1 text-xs leading-4 text-ink-muted">
                   O proprietário não pode ser alterado durante a edição.
                 </p>
               </div>
@@ -2373,7 +2373,7 @@ export default function EditarDocumentoPage() {
                       }
                     </p>
 
-                    <p className="mt-1 line-clamp-1 text-[11px] text-ink-muted">
+                    <p className="mt-1 line-clamp-1 text-xs text-ink-muted">
                       {
                         selectedTypeDescription
                       }
@@ -2516,7 +2516,7 @@ export default function EditarDocumentoPage() {
                     Escolher arquivo
                   </p>
 
-                  <p className="mt-0.5 text-[9px] text-ink-faint">
+                  <p className="mt-0.5 text-xs text-ink-faint">
                     Imagem ou PDF
                   </p>
                 </div>
@@ -2545,7 +2545,7 @@ export default function EditarDocumentoPage() {
                     Usar câmera
                   </p>
 
-                  <p className="mt-0.5 text-[9px] text-ink-faint">
+                  <p className="mt-0.5 text-xs text-ink-faint">
                     Fotografar agora
                   </p>
                 </div>
@@ -2555,7 +2555,7 @@ export default function EditarDocumentoPage() {
             {pendingUploads.length >
               0 && (
               <div className="mt-3 flex items-center justify-between rounded-xl border border-ice/15 bg-ice/5 px-3 py-2">
-                <p className="text-[10px] text-ink-muted">
+                <p className="text-xs text-ink-muted">
                   {pendingUploads.length} novo
                   {pendingUploads.length !==
                   1
@@ -2624,7 +2624,7 @@ export default function EditarDocumentoPage() {
                   Nenhum anexo
                 </p>
 
-                <p className="mt-1 text-[10px] leading-4 text-ink-faint">
+                <p className="mt-1 text-xs leading-4 text-ink-faint">
                   Você pode manter o documento sem arquivo ou adicionar um novo agora.
                 </p>
               </div>
@@ -2632,7 +2632,7 @@ export default function EditarDocumentoPage() {
               <div className="mt-4 space-y-2">
                 {existingAttachmentsCount >
                   0 && (
-                  <p className="px-1 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint">
+                  <p className="px-1 font-mono text-xs uppercase tracking-[0.16em] text-ink-faint">
                     Arquivos do documento
                   </p>
                 )}

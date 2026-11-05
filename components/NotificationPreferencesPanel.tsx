@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
+import { triggerHaptic } from "@/lib/haptics";
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   getVaultNotificationPreferences,
@@ -48,6 +49,7 @@ export function NotificationPreferencesPanel() {
   }, []);
 
   const setMasterPreference = (enabled: boolean) => {
+    triggerHaptic("light");
     setNotificationPreferenceEnabled(enabled);
     setMaster(enabled);
     window.dispatchEvent(new CustomEvent("vault:health-reminders-reconcile"));
@@ -70,6 +72,7 @@ export function NotificationPreferencesPanel() {
         <button
           type="button"
           role="switch"
+          aria-label="Ativar ou desativar notificações do Vault"
           aria-checked={master}
           onClick={() => setMasterPreference(!master)}
           className={`relative h-7 w-12 shrink-0 rounded-full border transition ${
@@ -92,6 +95,9 @@ export function NotificationPreferencesPanel() {
               key={option.id}
               type="button"
               disabled={!master}
+              role="switch"
+              aria-label={`${option.label}: ${checked ? "ativada" : "desativada"}`}
+              aria-checked={checked}
               onClick={() =>
                 setPrefs(
                   setVaultNotificationCategoryEnabled(option.id, !checked)
@@ -108,8 +114,7 @@ export function NotificationPreferencesPanel() {
                 </span>
               </span>
               <span
-                role="switch"
-                aria-checked={checked}
+                aria-hidden="true"
                 className={`relative h-6 w-10 shrink-0 rounded-full border ${
                   checked
                     ? "border-ice/40 bg-ice/25"

@@ -959,7 +959,7 @@ function TratamentoListContent() {
                       </span>
                     </div>
 
-                    {tratamento.medicamentosResumo.length>0?<div className="mt-2 flex min-w-0 items-center gap-2" aria-label="Medicamentos vinculados"><div className="flex shrink-0 -space-x-1.5">{tratamento.medicamentosResumo.map((medicamento,medIndex)=><span key={medicamento.id||`${medicamento.nome}-${medIndex}`} className="grid size-7 place-items-center rounded-lg border border-surface-border bg-void shadow-sm" title={`${medicamento.nome} ${medicamento.dosagem||''}`.trim()}><MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={14}/></span>)}</div><p className="min-w-0 flex-1 break-words text-[11px] leading-snug text-ink-muted">{tratamento.medicamentosResumo.map(m=>m.nome).join(' · ')}{tratamento.medicamentosCount>tratamento.medicamentosResumo.length?` · +${tratamento.medicamentosCount-tratamento.medicamentosResumo.length}`:''}</p></div>:<p className="mt-2 text-[11px] text-ink-muted">Sem medicamentos vinculados</p>}
+                    {tratamento.medicamentosResumo.length>0?<div className="mt-2 flex min-w-0 items-center gap-2" aria-label="Medicamentos vinculados"><div className="flex shrink-0 -space-x-1.5">{tratamento.medicamentosResumo.map((medicamento,medIndex)=><span key={medicamento.id||`${medicamento.nome}-${medIndex}`} className="grid size-7 place-items-center rounded-lg border border-surface-border bg-void shadow-sm" title={`${medicamento.nome} ${medicamento.dosagem||''}`.trim()}><MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={14}/></span>)}</div><p className="min-w-0 flex-1 break-words text-xs leading-snug text-ink-muted">{tratamento.medicamentosResumo.map(m=>m.nome).join(' · ')}{tratamento.medicamentosCount>tratamento.medicamentosResumo.length?` · +${tratamento.medicamentosCount-tratamento.medicamentosResumo.length}`:''}</p></div>:<p className="mt-2 text-xs text-ink-muted">Sem medicamentos vinculados</p>}
 
                     {/* ==========================================
                         MÉTRICAS
@@ -1020,7 +1020,7 @@ function TratamentoListContent() {
                         ========================================== */}
 
                     {tratamento.alertaPrincipal && !(tratamento.medicamentosCount === 0 && tratamento.alertaPrincipal.titulo === "Tratamento sem medicamento vinculado") && (
-                      <p className="mt-2 flex w-fit max-w-full items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold text-amber-400">
+                      <p className="mt-2 flex w-fit max-w-full items-center gap-1 rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-xs font-semibold text-amber-400">
                         <AlertTriangle
                           size={
                             10

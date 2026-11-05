@@ -165,7 +165,7 @@ function ProcessForm({
           <option value="">Escolher tratamento · opcional</option>{existingTreatments.filter(t=>t.id&&t.person_id===personId&&t.user_id===user?.id&&t.status!=='concluido').map(t=><option key={t.id} value={t.id}>{t.nome}{t.status === "suspenso" ? " · tratamento suspenso (SOS permitido)" : ""}</option>)}
         </HealthRelationPicker>
         {treatmentId && !selected.length ? <p className="text-xs text-amber-300">Nenhum medicamento disponível foi encontrado neste tratamento. Confira os vínculos em Medicamentos e os processos ativos antes de continuar.</p> : null}
-        <p className="text-[11px] leading-relaxed text-ink-muted">Reaproveita medicamentos disponíveis do tratamento. Revise a seleção e retire os que não pertencem a este fornecimento; não cria outro tratamento nem duplica medicamento.</p>
+        <p className="text-xs leading-relaxed text-ink-muted">Reaproveita medicamentos disponíveis do tratamento. Revise a seleção e retire os que não pertencem a este fornecimento; não cria outro tratamento nem duplica medicamento.</p>
       </div>:null}
       <label className="block text-xs text-ink-muted">
         Nome para identificar este fornecimento
@@ -204,7 +204,7 @@ function ProcessForm({
           ))}
         </HealthRelationPicker>
       </label>
-      <p className="text-[11px] leading-relaxed text-ink-muted">
+      <p className="text-xs leading-relaxed text-ink-muted">
         A origem é independente do endereço de retirada. O CEAF também pode ser
         entregue em uma unidade municipal.
       </p>
@@ -235,7 +235,7 @@ function ProcessForm({
               ))}
             </HealthRelationPicker>
           </label>
-          <p className="text-[11px] leading-relaxed text-ink-muted">
+          <p className="text-xs leading-relaxed text-ink-muted">
             Selecione a indicação documentada pelo médico. O catálogo estadual
             disponível nesta versão é de Minas Gerais.
           </p>
@@ -432,7 +432,7 @@ function ItemEditor({
         {med?.nome || "Medicamento"}
       </p>
       <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
-        <label className="text-[11px] text-ink-muted">
+        <label className="text-xs text-ink-muted">
           Dose no processo
           <input
             required
@@ -441,7 +441,7 @@ function ItemEditor({
             onChange={(e) => setDose(e.target.value)}
           />
         </label>
-        <label className="text-[11px] text-ink-muted">
+        <label className="text-xs text-ink-muted">
           Referência mensal · opcional
           <input
             type="number"
@@ -453,33 +453,33 @@ function ItemEditor({
           />
         </label>
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Este campo não agenda nem antecipa retiradas. A quantidade total recebida e a próxima data ficam no registro de Retirada, separado da referência mensal.</p>
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">Este campo não agenda nem antecipa retiradas. A quantidade total recebida e a próxima data ficam no registro de Retirada, separado da referência mensal.</p>
       <details className="mt-3 rounded-xl border border-surface-border p-3">
         <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Recebo para mais de um mês · calcular referência</summary>
         <div className="mt-2 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2"><label className="text-xs text-ink-muted">Total por retirada<input className={input} type="number" min="0.01" step="any" value={pickupAmount} onChange={e=>setPickupAmount(e.target.value)}/></label><label className="text-xs text-ink-muted">Meses informados<input className={input} type="number" min="1" max="24" step="1" value={coverageMonths} onChange={e=>setCoverageMonths(e.target.value)}/></label></div>
-        <p className="mt-2 text-[11px] text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
+        <p className="mt-2 text-xs text-ink-muted">Exemplo: 60 unidades para 2 meses = 30 por mês, usando a mesma unidade. A conta não define prescrição ou próxima retirada.</p>
         <button type="button" className={button+" mt-2"} disabled={monthlyReference===null} onClick={()=>{if(monthlyReference!==null)setQuantity(String(monthlyReference));}}>Usar referência {monthlyReference!==null?monthlyReference.toLocaleString('pt-BR'):''}</button>
       </details>
       {med && isDropMedication && <details className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-3">
         <summary className="min-h-11 cursor-pointer py-2 text-xs font-bold text-emerald-300">Frascos · volume e gotas por mês</summary>
-        <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Confirme no rótulo o volume de CADA frasco e o fator de gotas/ml. O Vault não presume 20 gotas/ml nem que o frasco tenha 20 ml.</p>
+        <p className="mb-2 text-xs leading-relaxed text-ink-muted">Confirme no rótulo o volume de CADA frasco e o fator de gotas/ml. O Vault não presume 20 gotas/ml nem que o frasco tenha 20 ml.</p>
         <div className="grid grid-cols-2 gap-2">
-          <label className="text-[11px] text-ink-muted">Frascos recebidos<input className={input} type="number" min="1" step="1" value={bottleCount} onChange={e=>setBottleCount(e.target.value)}/></label>
-          <label className="text-[11px] text-ink-muted">Meses cobertos<input className={input} type="number" min="1" max="24" step="1" value={bottleMonths} onChange={e=>setBottleMonths(e.target.value)}/></label>
-          <label className="text-[11px] text-ink-muted">ml por frasco<input className={input} type="number" min="0.1" step="any" placeholder="Conferir no rótulo" value={bottleMl} onChange={e=>setBottleMl(e.target.value)}/></label>
-          <label className="text-[11px] text-ink-muted">Gotas por ml<input className={input} type="number" min="1" step="any" placeholder="Fator cadastrado/rótulo" value={bottleDrops} onChange={e=>setBottleDrops(e.target.value)}/></label>
+          <label className="text-xs text-ink-muted">Frascos recebidos<input className={input} type="number" min="1" step="1" value={bottleCount} onChange={e=>setBottleCount(e.target.value)}/></label>
+          <label className="text-xs text-ink-muted">Meses cobertos<input className={input} type="number" min="1" max="24" step="1" value={bottleMonths} onChange={e=>setBottleMonths(e.target.value)}/></label>
+          <label className="text-xs text-ink-muted">ml por frasco<input className={input} type="number" min="0.1" step="any" placeholder="Conferir no rótulo" value={bottleMl} onChange={e=>setBottleMl(e.target.value)}/></label>
+          <label className="text-xs text-ink-muted">Gotas por ml<input className={input} type="number" min="1" step="any" placeholder="Fator cadastrado/rótulo" value={bottleDrops} onChange={e=>setBottleDrops(e.target.value)}/></label>
         </div>
         {bottleReference ? <div className="mt-3 rounded-xl border border-emerald-400/15 bg-surface-raised p-3 text-xs text-ink-primary">
           <p>{bottleReference.totalMl.toLocaleString("pt-BR")} ml no total · {bottleReference.totalDrops.toLocaleString("pt-BR")} gotas estimadas</p>
           <p className="mt-1 font-bold text-emerald-300">Referência mensal: {bottleReference.monthlyMl.toLocaleString("pt-BR")} ml · {bottleReference.monthlyDrops.toLocaleString("pt-BR")} gotas</p>
           {isDropMedication && <button type="button" className={button+" mt-2"} onClick={()=>setQuantity(String(bottleReference.monthlyDrops))}>Usar referência mensal em gotas</button>}
-          <p className="mt-2 text-[10px] text-ink-muted">Estimativa de quantidade, não prescrição, dose ou agendamento da retirada.</p>
-        </div> : <p className="mt-2 text-[11px] text-amber-300">Informe volume e fator de conversão confirmados para calcular.</p>}
+          <p className="mt-2 text-xs text-ink-muted">Estimativa de quantidade, não prescrição, dose ou agendamento da retirada.</p>
+        </div> : <p className="mt-2 text-xs text-amber-300">Informe volume e fator de conversão confirmados para calcular.</p>}
       </details>}
       {process.origem === "estadual_ceaf" ||
       process.origem === "farmacia_popular" ? (
         <div className="mt-3 space-y-2">
-          <label className="block text-[11px] text-ink-muted">
+          <label className="block text-xs text-ink-muted">
             Buscar princípio ativo no programa
             <input
               className={input}
@@ -488,7 +488,7 @@ function ItemEditor({
               placeholder="Ex.: codeína"
             />
           </label>
-          <label className="block text-[11px] text-ink-muted">
+          <label className="block text-xs text-ink-muted">
             Apresentação SUS confirmada
             <HealthRelationPicker title="Apresentação SUS confirmada" medication={med}
               className={input}
@@ -508,14 +508,14 @@ function ItemEditor({
               ))}
             </HealthRelationPicker>
           </label>
-          <p className="text-[10px] leading-relaxed text-ink-muted">
+          <p className="text-xs leading-relaxed text-ink-muted">
             Confirme a apresentação da prescrição e a indicação do processo. A
             escolha registra uma informação sua; não aprova o fornecimento.
           </p>
         </div>
       ) : null}
       <button className={button + " mt-2"}>Salvar no ciclo</button>
-      <p className="mt-2 text-[11px] text-ink-muted">
+      <p className="mt-2 text-xs text-ink-muted">
         Esse registro não altera a prescrição nem o estoque.
       </p>
     </form>
@@ -587,7 +587,7 @@ function CyclePanel({
         <p className="text-sm font-semibold text-ink-primary">LME e período autorizado</p>
         <p className="mt-2 text-xs text-ink-muted">{documentContext.lmeDelivered ? 'LME marcada como entregue neste ciclo.' : documentContext.lmeLinked ? 'LME vinculada; confirme a entrega quando ocorrer.' : 'Vincule a LME já existente abaixo, sem cadastrar o arquivo novamente.'}</p>
         <p className="mt-2 text-xs text-ink-muted">{documentContext.confirmed ? `Período informado: ${fmt(cycle.inicio)} a ${fmt(cycle.fim)}. Preparar renovação a partir de ${fmt(documentContext.prepareRenewalFrom)}.` : 'A entrega do documento não confirma automaticamente o período. Informe início e fim autorizados pela unidade em Atualizar etapa, datas ou observações.'}</p>
-        <p className="mt-2 text-[11px] text-ink-muted">Um ciclo pode reunir várias retiradas em dias diferentes. A próxima LME acompanha o período do processo, não a data de cada retirada. Receita para dispensação continua separada.</p>
+        <p className="mt-2 text-xs text-ink-muted">Um ciclo pode reunir várias retiradas em dias diferentes. A próxima LME acompanha o período do processo, não a data de cada retirada. Receita para dispensação continua separada.</p>
       </div>:null}
       <details hidden={cycleView!=='documents'} className="rounded-2xl border border-surface-border bg-surface p-4">
         <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-ink-primary">Planejamento de documentos · opcional</summary>
@@ -683,7 +683,7 @@ function CyclePanel({
                   <FileText size={15} />
                   {doc.title}
                 </Link> : <p className="text-xs text-amber-200">Documento não disponível · vínculo histórico preservado</p>}
-                <p className="mt-1 text-[11px] text-ink-muted">
+                <p className="mt-1 text-xs text-ink-muted">
                   {l.tipo} · {l.estado}
                   {l.retirada_id
                     ? " · documento de uma retirada"
@@ -784,7 +784,7 @@ function CyclePanel({
           <Plus size={14} className="mr-1 inline" />
           Novo documento com anexo
         </Link>
-        <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
+        <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           O arquivo é salvo uma vez em Documentos de Saúde. Médico e local ficam
           no documento; o vínculo organiza este ciclo. A receita de uma retirada
           anterior não confirma a atual.
@@ -793,7 +793,7 @@ function CyclePanel({
       </div>
       <div hidden={cycleView!=='overview'} role="tabpanel" id={`pane-${cycle.id}-overview`} aria-labelledby={`tab-${cycle.id}-overview`} className={panel}>
         <SupplyCycleSummary process={process} cycle={cycle} data={data} documents={documents} medications={meds} withdrawals={withdrawals} personId={pid} onOpen={view=>{setCycleView(view);requestAnimationFrame(()=>document.getElementById(`tab-${cycle.id}-${view}`)?.focus());}}/>
-        <p className="mt-4 text-[10px] font-bold uppercase tracking-wider text-ink-primary">
+        <p className="mt-4 text-xs font-bold uppercase tracking-wider text-ink-primary">
           Ciclo de fornecimento
         </p>
         <p className="mt-2 text-sm text-ink-primary">
@@ -855,12 +855,12 @@ function CyclePanel({
             </label>
           </div>
           {estimate && (
-            <p className="text-[11px] text-ink-muted">
+            <p className="text-xs text-ink-muted">
               Referência de {process.renovacao_meses} meses: {fmt(estimate)}.
               Confira a data indicada pela unidade antes de preencher o fim.
             </p>
           )}
-          <p className="text-[11px] leading-relaxed text-ink-muted">
+          <p className="text-xs leading-relaxed text-ink-muted">
             Anexar uma LME ou registrar uma retirada não autoriza o ciclo.
             Marque a autorização apenas após a confirmação da unidade.
           </p>
@@ -886,7 +886,7 @@ function CyclePanel({
             <summary className="cursor-pointer text-xs font-bold text-ink-primary">
               Incluir ou retirar medicamento deste ciclo
             </summary>
-            <p className="mt-2 text-[11px] text-ink-muted">
+            <p className="mt-2 text-xs text-ink-muted">
               Ajuste o novo ciclo conforme a prescrição. Os ciclos anteriores e
               os medicamentos cadastrados permanecem preservados.
             </p>
@@ -1189,8 +1189,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <div className="flex items-start gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><FileText size={17}/></span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-xs font-bold text-ink-primary">Documentos que exigem conferência</h2>
-            <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{missingDocumentItems.length ? `${missingDocumentItems.length} vínculo(s) documental(is) explicitamente ausente(s). Toque para localizar o processo e verificar o documento.` : "Nenhuma exigência documental explicitamente ausente nos processos conhecidos."}</p>
+            <h2 className="text-sm font-bold text-ink-primary">Documentos que exigem conferência</h2>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">{missingDocumentItems.length ? `${missingDocumentItems.length} vínculo(s) documental(is) explicitamente ausente(s). Toque para localizar o processo e verificar o documento.` : "Nenhuma exigência documental explicitamente ausente nos processos conhecidos."}</p>
           </div>
           <span className="rounded-full border border-amber-300/15 px-2 py-1 text-[10px] font-bold text-amber-200">{missingDocumentItems.length}</span>
         </div>
@@ -1222,8 +1222,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
               <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
               <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
-              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-[10px] font-bold uppercase tracking-wider text-rose-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 break-words leading-snug">{m.nome} · {m.dosagem}</span><span className="text-rose-300">Compra ›</span></Link>)}</div>:null}
-              <p className="mt-2 text-[10px] text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
+              {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-xs font-bold uppercase tracking-wider text-rose-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 break-words leading-snug">{m.nome} · {m.dosagem}</span><span className="text-rose-300">Compra ›</span></Link>)}</div>:null}
+              <p className="mt-2 text-xs text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
             </section>;
           })}</div></details>}
           {/* VAULT_V321_SUPPLY_FOCUS: no synthetic SUS/private funding classification. */}
@@ -1241,7 +1241,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
           Acompanhe SUS e compras particulares com seus medicamentos, tratamentos e documentos. Consulte aquisições e retiradas pelos vínculos já registrados.
         </p>
-        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-[11px] leading-relaxed text-ink-muted">SUS, compras e documentos mantêm suas origens independentes. Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
+        <p className="mt-2 rounded-xl border border-violet-400/10 bg-violet-400/[0.035] px-3 py-2 text-xs leading-relaxed text-ink-muted">SUS, compras e documentos mantêm suas origens independentes. Um tratamento pode reunir medicamentos comprados e fornecidos pelo SUS, mas cada processo preserva sua origem real.</p>
         <div className="pb-3 pt-2"><SusCatalogBrowser compact /></div>
       </details>
 
@@ -1315,10 +1315,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       catch { return false; }
                     }).map(item => (
                       <div key={`doc-requirement-${item.medicationId}`} id={`documento-${item.medicationId}`} className="rounded-xl border border-amber-300/30 bg-amber-300/[0.055] p-3" role="status">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Conferir vínculo documental</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-amber-300">Conferir vínculo documental</p>
                         <p className="mt-1 text-xs font-semibold text-ink-primary">{item.medicationName} · {item.requirement.label}</p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.requirement.detail}</p>
-                        <p className="mt-1 text-[10px] text-ink-faint">Consulte os vínculos no histórico deste processo ou adicione o documento no ciclo correspondente.</p>
+                        <p className="mt-1 text-xs leading-relaxed text-ink-muted">{item.requirement.detail}</p>
+                        <p className="mt-1 text-xs text-ink-faint">Consulte os vínculos no histórico deste processo ou adicione o documento no ciclo correspondente.</p>
                       </div>
                     ))}
                     {(pharmacy || place) && <div className="flex flex-wrap gap-2 text-xs">{pharmacy && <Link className="inline-flex min-h-11 items-center rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-emerald-200" href={`/saude/farmacias/detalhes?id=${encodeURIComponent(pharmacy.id!)}`}>{pharmacy.nome} ›</Link>}{place && <Link className="inline-flex min-h-11 items-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-amber-200" href={`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`}>{place.nome} ›</Link>}</div>}
@@ -1326,34 +1326,34 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary"><span>Histórico e relações do processo</span><span className="flex items-center gap-2 text-[9px] font-normal text-ink-muted">{processWithdrawals.length + processDocs.length + purchases.count} registro(s)<span className="transition group-open:rotate-90">›</span></span></summary>
                     <div className="vault-deferred space-y-3 border-t border-surface-border/50 py-3">
                     {processWithdrawals.length > 0 && <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Retiradas vinculadas a este processo</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-ink-muted">Retiradas vinculadas a este processo</p>
                       {processWithdrawals.slice(0, 5).map(r => <Link key={r.id} href={`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-surface-raised p-3 text-xs text-ink-primary">
                         <span className="min-w-0 break-words leading-snug">{r.medicamento_nome || "Retirada"} · {fmt(r.data)} · {r.status}</span><span className="shrink-0 text-emerald-300">Ver ›</span>
                       </Link>)}
-                      {processWithdrawals.length > 5 && <p className="text-[11px] text-ink-muted">Mais {processWithdrawals.length - 5} retirada(s) no histórico.</p>}
+                      {processWithdrawals.length > 5 && <p className="text-xs text-ink-muted">Mais {processWithdrawals.length - 5} retirada(s) no histórico.</p>}
                     </div>}
                     {/* V134: canonical documents; missing links remain visible, never fabricated. */}
                     {processDocs.length > 0 && <div className="space-y-2">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-ink-muted">Documentos vinculados · LME e receitas</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-ink-muted">Documentos vinculados · LME e receitas</p>
                       {processDocs.slice(0, 8).map(link => {
                         const doc = relationalIndex.documentById.get(link.document_id);
                         return doc ? <Link key={link.id} href={`/saude/documentos/detalhes?id=${encodeURIComponent(doc.id || "")}`} className="flex items-center justify-between gap-2 rounded-xl border border-violet-400/15 bg-violet-400/5 p-3 text-xs">
                           <span className="min-w-0"><span className="block break-words font-semibold leading-snug text-ink-primary">{doc.title}</span><span className="block text-[10px] text-ink-muted">{link.tipo.toUpperCase()} · {link.estado}</span></span><span className="shrink-0 text-violet-300">Ver ›</span>
                         </Link> : <p key={link.id} className="rounded-xl border border-amber-400/20 p-3 text-xs text-amber-200">{link.tipo.toUpperCase()} · documento vinculado indisponível</p>;
                       })}
-                      {processDocs.length > 8 && <p className="text-[11px] text-ink-muted">Mais {processDocs.length - 8} documento(s) nos ciclos.</p>}
+                      {processDocs.length > 8 && <p className="text-xs text-ink-muted">Mais {processDocs.length - 8} documento(s) nos ciclos.</p>}
                     </div>}
                     {purchases.count > 0 && <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-3">
                       <p className="text-xs font-bold text-amber-200">Compras particulares registradas</p>
                       <p className="mt-1 text-sm font-bold text-ink-primary">{purchases.total.toLocaleString("pt-BR", {style:"currency",currency:"BRL"})} <span className="text-xs font-normal text-ink-muted">em {purchases.count} registro(s) com valor</span></p>
-                      <p className="mt-1 text-[11px] text-ink-muted">Compare somente apresentações equivalentes. Preço total não é preço unitário.</p>
-                      <p className="mt-2 text-[11px] text-ink-muted">Confirme se embalagens e unidades são equivalentes. Os registros atuais não guardam unidade e apresentação suficientes para um ranking confiável.</p>
+                      <p className="mt-1 text-xs text-ink-muted">Compare somente apresentações equivalentes. Preço total não é preço unitário.</p>
+                      <p className="mt-2 text-xs text-ink-muted">Confirme se embalagens e unidades são equivalentes. Os registros atuais não guardam unidade e apresentação suficientes para um ranking confiável.</p>
                       {purchaseHistory(renovacoes, personId, process.user_id, ids).slice(0, 5).map(r => <Link key={r.id} href={`/saude/renovacao/detalhes?id=${encodeURIComponent(r.id || "")}`} className="mt-2 block rounded-xl bg-surface-raised p-3 text-xs text-ink-primary">
                         <span className="block font-semibold">{r.medicamento_nome || linkedMeds.find(m => m.id === r.medicamento_id)?.nome || "Medicamento"} · {r.medicamento_dosagem || "Dosagem não registrada"}</span>
                         <span className="mt-1 block text-ink-muted">{fmt(r.data_aquisicao || r.data)} · {r.preco!.toLocaleString("pt-BR", {style:"currency",currency:"BRL"})} no total · {r.quantidade || "Quantidade não informada"}</span>
                         <span className="mt-1 block text-amber-200">{relationalIndex.pharmacyById.get(r.farmacia_id || "")?.nome || "Farmácia não informada"} · Ver aquisição ›</span>
                       </Link>)}
-                      <p className="mt-1 text-[10px] text-ink-muted">Estas compras são uma rota separada, inclusive quando o medicamento também está vinculado a um processo SUS. Não representam custo do SUS, retirada gratuita nem custo específico deste processo.</p>
+                      <p className="mt-1 text-xs text-ink-muted">Estas compras são uma rota separada, inclusive quando o medicamento também está vinculado a um processo SUS. Não representam custo do SUS, retirada gratuita nem custo específico deste processo.</p>
                     </div>}
                     {/* V133 CONTEXTUAL LINKS: deep links use real records; index links remain clearly general. */}
                     <div className="grid grid-cols-1 gap-2 text-xs min-[390px]:grid-cols-2">
@@ -1445,7 +1445,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 >
                   Preparar próximo ciclo
                 </button>
-                <p className="mt-2 text-[11px] text-ink-muted">
+                <p className="mt-2 text-xs text-ink-muted">
                   {cycles.some(c=>c.status === "preparando" || c.status === "protocolado") ? "Já existe um ciclo em preparação. Continue nele antes de abrir outro." : "O histórico fica preservado. O próximo ciclo começa sem autorização e sem documentos herdados."}
                 </p>
                 </details>
@@ -1457,7 +1457,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   <option value="">Sem retirada selecionada</option>
                   {compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).map(r => <option key={r.id} value={r.id}>{r.medicamento_nome} · {fmt(r.data)} · {r.status}</option>)}
                 </HealthRelationPicker>
-                <p className="mt-2 text-[11px] text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
+                <p className="mt-2 text-xs text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
               </details>}
               {cycle && (
                 <div id="ciclo-atual" className="scroll-mt-24">

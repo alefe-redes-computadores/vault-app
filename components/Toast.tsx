@@ -117,7 +117,7 @@ export function Toast({
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-xs leading-4 text-ink-primary">{message}</p>
+              <p className="text-sm leading-5 text-ink-primary">{message}</p>
 
               {action && (
                 <button

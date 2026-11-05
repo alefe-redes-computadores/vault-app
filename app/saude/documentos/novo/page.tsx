@@ -3309,7 +3309,7 @@ export default function NovoDocumentoSaudePage() {
                     )}
                   </p>
 
-                  <p className="mt-0.5 text-[10px] text-ink-faint">
+                  <p className="mt-0.5 text-xs text-ink-faint">
                     Dado complementar deste documento
                   </p>
                 </div>
@@ -3514,7 +3514,7 @@ export default function NovoDocumentoSaudePage() {
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
+                <p className="font-mono text-xs uppercase tracking-[0.28em] text-ice/90">
                   Acervo Clínico
                 </p>
 
@@ -3610,7 +3610,7 @@ export default function NovoDocumentoSaudePage() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">
+                      <p className="font-mono text-xs uppercase tracking-[0.22em] text-ink-faint">
                         Pessoa ativa
                       </p>
 
@@ -3801,7 +3801,7 @@ export default function NovoDocumentoSaudePage() {
                               Selecionar vínculo clínico
                             </p>
 
-                            <p className="mt-0.5 text-[10px] text-ink-faint">
+                            <p className="mt-0.5 text-xs text-ink-faint">
                               Este será o pai do documento no Acervo Clínico
                             </p>
                           </div>
@@ -3930,7 +3930,7 @@ export default function NovoDocumentoSaudePage() {
               >
                 {selectedClinicalEntity && (
                   <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/5 p-4">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-violet-300">
+                    <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-300">
                       Vínculo clínico principal
                     </p>
 
@@ -4364,7 +4364,7 @@ export default function NovoDocumentoSaudePage() {
                                   }
                                 </p>
 
-                                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-faint">
+                                <p className="mt-0.5 text-xs uppercase tracking-wider text-ink-faint">
                                   {attachment.type ===
                                   "image"
                                     ? "Imagem"

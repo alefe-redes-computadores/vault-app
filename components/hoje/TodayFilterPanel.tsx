@@ -72,7 +72,7 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
     </summary>
     <div className="absolute right-0 top-[calc(100%+8px)] z-40 max-h-[min(66dvh,460px)] w-[min(88vw,360px)] space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-surface-border bg-surface p-3.5 pb-[max(14px,env(safe-area-inset-bottom))] shadow-2xl">
       <div className="flex items-center justify-between gap-2">
-        <strong className="text-xs text-ink-primary">Personalizar visualização</strong>
+        <strong className="text-sm font-semibold text-ink-primary">Personalizar visualização</strong>
         <button type="button" onClick={() => { onReset(); }} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><RotateCcw size={13} /> Limpar</button>
       </div>
       <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Situação das doses</legend>{options(statusOptions, status, onStatus)}</fieldset>

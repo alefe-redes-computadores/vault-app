@@ -1588,7 +1588,7 @@ export default function HojePage() {
         <header className="border-b border-surface-border/30 bg-void px-4 pb-3 pt-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ice/80">Linha do tempo</p>
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">Linha do tempo</p>
               <h1 className="font-display text-2xl font-semibold capitalize leading-tight text-ink-primary">{dataSelecionadaLabel}</h1>
             </div>
             {!isHoje && <span className="shrink-0 rounded-lg border border-ice/20 bg-ice/10 px-2 py-1 text-[10px] font-semibold text-ice">{isPassado ? "Histórico" : "Planejado"}</span>}
@@ -1613,7 +1613,7 @@ export default function HojePage() {
           <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-display text-base font-semibold text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
-              <p className="text-[11px] text-ink-muted">{isFuturo ? "Planejamento, sem confirmar tomadas" : isPassado ? "Histórico e registros confirmados" : "Horários, registros e próximas doses"}</p>
+              <p className="text-xs leading-relaxed text-ink-muted">{isFuturo ? "Planejamento, sem confirmar tomadas" : isPassado ? "Histórico e registros confirmados" : "Horários, registros e próximas doses"}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />
@@ -1646,7 +1646,7 @@ export default function HojePage() {
           ======================================================= */}
           <span id="hoje-doses" className="block scroll-mt-24" aria-hidden="true"/>
           {isHoje && filtroStatus === "todos" && concluidasOcultas > 0 && (
-            <p className="px-1 text-[10px] text-ink-muted">
+            <p className="px-1 text-xs text-ink-muted">
               {concluidasOcultas} registro(s) recolhido(s) na visualização padrão. Eles continuam disponíveis em Filtros.
             </p>
           )}
@@ -1762,7 +1762,7 @@ export default function HojePage() {
                       Cuidados do dia
                     </h2>
 
-                    <p className="mt-0.5 text-[9px] text-ink-faint">
+                    <p className="mt-0.5 text-xs text-ink-faint">
                       Eventos planejados dos seus medicamentos
                     </p>
                   </div>
@@ -1835,7 +1835,7 @@ export default function HojePage() {
           {isHoje && !retroReviewMode && (
             <details id="hoje-diario" aria-label="Diário rápido do dia" className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-[10px] text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
+                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-xs text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
                 <ChevronRight size={15} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
               </summary>
               <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1887,18 +1887,18 @@ export default function HojePage() {
                     <Clock size={19} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-400">Revisão de doses</p>
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-emerald-400">Revisão de doses</p>
                     <h3 className="mt-1 text-base font-bold text-ink-primary">
                       Como registrar estas {dosesElegiveisLote.length} doses?
                     </h3>
-                    <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                    <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                       O horário programado continua como referência. O horário real é salvo separadamente para o histórico e para a inteligência do Vault. Se a dose for antecipada, use "Tomei agora" ou informe o horário real; o Vault não altera a programação original.
                     </p>
                   </div>
                 </div>
 
                 {dosesSemEstoqueNoLote.length>0 && <div className="mt-3 overflow-hidden rounded-xl border border-amber-400/25 bg-amber-400/[0.055]">
-                  <div className="flex items-start gap-2 p-3"><PackageX size={16} className="mt-0.5 shrink-0 text-amber-300"/><div><p className="text-xs font-bold text-amber-200">Saldo insuficiente em {dosesSemEstoqueNoLote.length} {dosesSemEstoqueNoLote.length===1?'dose':'doses'}</p><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Saldo zerado não comprova que a dose deixou de ser tomada. Revise o que aconteceu.</p></div></div>
+                  <div className="flex items-start gap-2 p-3"><PackageX size={16} className="mt-0.5 shrink-0 text-amber-300"/><div><p className="text-xs font-bold text-amber-200">Saldo insuficiente em {dosesSemEstoqueNoLote.length} {dosesSemEstoqueNoLote.length===1?'dose':'doses'}</p><p className="mt-1 text-xs leading-relaxed text-ink-muted">Saldo zerado não comprova que a dose deixou de ser tomada. Revise o que aconteceu.</p></div></div>
                   <ul className="border-y border-amber-400/15 bg-void/15 px-3 py-2 text-[10px] text-ink-primary">{dosesSemEstoqueNoLote.map(d=><li key={`${d.medicamentoId}-${d.horario}`} className="flex min-h-8 items-center justify-between gap-2"><span className="truncate">{d.medicamentoNome}</span><span className="shrink-0 text-ink-muted">{d.horario}</span></li>)}</ul>
                   <button type="button" disabled={processandoTodos} onClick={()=>void confirmarDosesNaoTomadasPorEstoque()} className="min-h-11 w-full px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40">Confirmar que não tomei por falta de estoque</button>
                 </div>}
@@ -1912,7 +1912,7 @@ export default function HojePage() {
                   >
                     <div>
                       <p className="text-xs font-bold">Tomei agora</p>
-                      <p className="mt-0.5 text-[9px] opacity-70">
+                      <p className="mt-0.5 text-xs opacity-70">
                         Mesmo instante real para as doses disponíveis
                       </p>
                     </div>
@@ -1931,7 +1931,7 @@ export default function HojePage() {
                   >
                     <div>
                       <p className="text-xs font-bold">Tomei nos horários programados</p>
-                      <p className="mt-0.5 text-[9px] text-ink-muted">
+                      <p className="mt-0.5 text-xs text-ink-muted">
                         Cada dose mantém seu próprio horário previsto
                       </p>
                     </div>
@@ -1939,7 +1939,7 @@ export default function HojePage() {
                   </button>
 
                   <div className="rounded-xl border border-surface-border bg-surface-raised p-3">
-                    <label htmlFor="vault-batch-real-time" className="text-[10px] font-semibold text-ink-muted">
+                    <label htmlFor="vault-batch-real-time" className="text-xs font-semibold text-ink-muted">
                       Tomei as disponíveis em outro horário
                     </label>
                     <div className="mt-2 flex gap-2">
@@ -2034,7 +2034,7 @@ export default function HojePage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-ice">
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-ice">
                       Revisão histórica
                     </p>
 
@@ -2076,7 +2076,7 @@ export default function HojePage() {
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-ice/15 bg-ice/5 p-3">
-                  <p className="text-[10px] leading-relaxed text-ink-muted">
+                  <p className="text-xs leading-relaxed text-ink-muted">
                     Esta revisão altera apenas o histórico.{" "}
                     <strong className="text-ink-primary">
                       O estoque atual não será movimentado.
@@ -2103,7 +2103,7 @@ export default function HojePage() {
                       />
                     )}
 
-                    <p className="text-[10px] text-ink-muted">
+                    <p className="text-xs text-ink-muted">
                       Estado atual:{" "}
                       <strong className="text-ink-primary">
                         {historicalDoseReviewItem.tomada
@@ -2134,7 +2134,7 @@ export default function HojePage() {
                           Tomei no horário
                         </p>
 
-                        <p className="mt-0.5 text-[9px] opacity-70">
+                        <p className="mt-0.5 text-xs opacity-70">
                           Registrar às{" "}
                           {
                             historicalDoseReviewItem
@@ -2168,7 +2168,7 @@ export default function HojePage() {
                           Tomei em outro horário
                         </p>
 
-                        <p className="mt-0.5 text-[9px] text-ink-muted">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           Informar quando realmente tomou
                         </p>
                       </div>
@@ -2198,7 +2198,7 @@ export default function HojePage() {
                           Não tomei
                         </p>
 
-                        <p className="mt-0.5 text-[9px] text-ink-muted">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           Confirmar ausência daquela dose
                         </p>
                       </div>
@@ -2297,7 +2297,7 @@ export default function HojePage() {
                   </div>
                 )}
 
-                <p className="mt-3 text-center text-[9px] leading-relaxed text-ink-faint">
+                <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
                   “Não lembro” não cria nenhum registro e permanece fora das métricas de adesão.
                 </p>
               </motion.div>
@@ -2321,7 +2321,7 @@ export default function HojePage() {
                   <p className="text-xs font-bold text-ink-primary">
                     {loteConfirmado.length} {loteConfirmado.length === 1 ? "dose registrada" : "doses registradas"}
                   </p>
-                  <p className="mt-0.5 text-[9px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     Estoque movimentado pela quantidade real de cada dose.
                   </p>
                 </div>

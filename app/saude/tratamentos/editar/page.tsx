@@ -1585,7 +1585,7 @@ function EditarTratamentoContent() {
                     className="mt-0.5 shrink-0 text-amber-400"
                   />
 
-                  <p className="text-[11px] leading-relaxed text-ink-muted">
+                  <p className="text-xs leading-relaxed text-ink-muted">
                     Ao salvar este tratamento como{" "}
                     <span className="font-semibold text-amber-400">
                       {status ===
@@ -1739,7 +1739,7 @@ function EditarTratamentoContent() {
                 </div>
               )}
 
-              <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
+              <p className="mt-2 text-xs leading-relaxed text-ink-muted">
                 Alterações nesses vínculos só serão aplicadas quando você salvar o tratamento.
               </p>
             </div>
@@ -2096,7 +2096,7 @@ function EditarTratamentoContent() {
                             </p>
 
                             {exame.data && (
-                              <p className="mt-0.5 text-[10px] text-ink-muted">
+                              <p className="mt-0.5 text-xs text-ink-muted">
                                 Data:{" "}
                                 {
                                   exame.data
@@ -2118,7 +2118,7 @@ function EditarTratamentoContent() {
 
                 {examesVinculados.length >
                   3 && (
-                  <p className="mt-2 text-center text-[10px] text-ink-muted">
+                  <p className="mt-2 text-center text-xs text-ink-muted">
                     E mais{" "}
                     {examesVinculados.length -
                       3}{" "}

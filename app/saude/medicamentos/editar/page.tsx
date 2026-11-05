@@ -4006,7 +4006,7 @@ function EditarMedicamentoContent() {
                   stroke="none"
                 />
 
-                <p className="font-mono text-[11px] uppercase tracking-widest text-ice">
+                <p className="font-mono text-xs uppercase tracking-widest text-ice">
                   Ajustes
                 </p>
               </div>
@@ -4421,7 +4421,7 @@ function EditarMedicamentoContent() {
                       novaDosagem.trim() &&
                       catalogPresentations.length ===
                         0 && (
-                        <p className="mt-2 text-[10px] leading-relaxed text-ink-faint">
+                        <p className="mt-2 text-xs leading-relaxed text-ink-faint">
                           O catálogo não possui apresentações atuais suficientes para validar esta nova dosagem com segurança.
                         </p>
                       )}
@@ -4724,7 +4724,7 @@ function EditarMedicamentoContent() {
                         />
                       </div>
 
-                      <p className="text-[11px] text-ink-muted">
+                      <p className="text-xs text-ink-muted">
                         O Vault poderá usar essa data como referência para lembretes de uma nova retirada.
                       </p>
                     </div>
@@ -4899,7 +4899,7 @@ function EditarMedicamentoContent() {
                           />
                         </div>
 
-                        <p className="text-[11px] leading-relaxed text-ink-muted">
+                        <p className="text-xs leading-relaxed text-ink-muted">
                           Na edição, a quantidade acima representa o saldo real que você está informando agora. O Vault não descontará dias passados novamente.
                         </p>
 
@@ -4912,7 +4912,7 @@ function EditarMedicamentoContent() {
                               className="mt-0.5 shrink-0 text-ice"
                             />
 
-                            <p className="text-[10px] leading-relaxed text-ink-muted">
+                            <p className="text-xs leading-relaxed text-ink-muted">
                               Sem gasto por dose, o saldo continuará sendo armazenado normalmente, mas o Vault não estimará quantidade de doses ou duração do estoque.
                             </p>
                           </div>
@@ -5107,7 +5107,7 @@ function EditarMedicamentoContent() {
                       <p className="text-xs font-semibold text-amber-300">
                         Disponível como SOS sem reabrir o tratamento
                       </p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                         O encerramento anterior permanece no histórico. Novos usos são doses avulsas/SOS, sem criar rotina ou próxima dose.
                       </p>
                     </div>
@@ -5298,7 +5298,7 @@ function EditarMedicamentoContent() {
                         )}
                       </div>
 
-                      <p className="text-[11px] leading-relaxed text-ink-muted">
+                      <p className="text-xs leading-relaxed text-ink-muted">
                         Os horários fazem parte da rotina do medicamento e continuarão salvos mesmo que o controle de estoque esteja desativado.
                       </p>
                     </div>
@@ -5578,7 +5578,7 @@ function EditarMedicamentoContent() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-[9px] font-black uppercase tracking-[0.14em] text-ink-faint">
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-ink-faint">
                         Verificação regulatória
                       </p>
 
@@ -6196,7 +6196,7 @@ function EditarMedicamentoContent() {
                         </span>
                       </div>
 
-                      <p className="mt-1.5 text-[10px] leading-relaxed text-ink-muted">
+                      <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
                         Pesquise pelo nome comercial ou princípio ativo. Ao escolher uma referência, o Vault pode identificar apresentações, formato e validações regulatórias disponíveis.
                       </p>
                     </div>
@@ -6474,7 +6474,7 @@ function EditarMedicamentoContent() {
                                     }
                                   </p>
 
-                                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                                     {
                                       issue.message
                                     }
@@ -6483,7 +6483,7 @@ function EditarMedicamentoContent() {
                                   {issue.evidence.length >
                                     0 && (
                                     <div className="mt-3 rounded-xl border border-amber-400/15 bg-black/10 p-2.5">
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-300">
                                         Evidências
                                       </p>
 
@@ -6496,7 +6496,7 @@ function EditarMedicamentoContent() {
                                               key={
                                                 evidence
                                               }
-                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                              className="text-xs leading-relaxed text-ink-muted"
                                             >
                                               •{" "}
                                               {
@@ -6512,7 +6512,7 @@ function EditarMedicamentoContent() {
                                   {issue.sources.length >
                                     0 && (
                                     <div className="mt-3 border-t border-amber-400/15 pt-2.5">
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
                                         Fonte regulatória
                                       </p>
 
@@ -6525,7 +6525,7 @@ function EditarMedicamentoContent() {
                                               key={
                                                 source.id
                                               }
-                                              className="text-[10px] leading-relaxed text-ink-muted"
+                                              className="text-xs leading-relaxed text-ink-muted"
                                             >
                                               {
                                                 source.label
@@ -6543,7 +6543,7 @@ function EditarMedicamentoContent() {
                                     </div>
                                   )}
 
-                                  <p className="mt-3 text-[9px] leading-relaxed text-ink-faint">
+                                  <p className="mt-3 text-xs leading-relaxed text-ink-faint">
                                     O Vault não altera o tipo de receita automaticamente. Confira o documento original antes de modificar o cadastro.
                                   </p>
                                 </div>
@@ -6566,11 +6566,11 @@ function EditarMedicamentoContent() {
                                     />
 
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-faint">
+                                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-faint">
                                         Apresentações encontradas
                                       </p>
 
-                                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                                         Escolha uma apresentação oficial para preencher a dosagem. O formato só será alterado quando puder ser identificado com segurança.
                                       </p>
                                     </div>
@@ -6656,7 +6656,7 @@ function EditarMedicamentoContent() {
                                                   }
                                                 </p>
 
-                                                <p className="mt-0.5 text-[11px] font-medium text-ice">
+                                                <p className="mt-0.5 text-xs font-medium text-ice">
                                                   {
                                                     suggestion.formatLabel ??
                                                     "Formato não confirmado"
@@ -6674,14 +6674,14 @@ function EditarMedicamentoContent() {
                                               )}
                                             </div>
 
-                                            <p className="mt-2 line-clamp-2 text-[9px] leading-relaxed text-ink-faint">
+                                            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink-faint">
                                               {
                                                 suggestion.officialLabel
                                               }
                                             </p>
 
                                             {suggestion.packageDescription && (
-                                              <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-ink-muted">
+                                              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">
                                                 Embalagem: {suggestion.packageDescription}
                                               </p>
                                             )}
@@ -6691,7 +6691,7 @@ function EditarMedicamentoContent() {
                                     )}
                                   </div>
 
-                                  <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
+                                  <p className="mt-3 text-xs leading-relaxed text-ink-faint">
                                     Fonte: apresentações atuais do catálogo regulatório. Quando o formato não puder ser reconhecido com segurança, apenas a dosagem é preenchida.
                                   </p>
                                 </div>
@@ -6715,7 +6715,7 @@ function EditarMedicamentoContent() {
                                         }
                                       </p>
 
-                                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                                         O catálogo pode usar nome comercial, substância ou denominação canônica diferente. Seu nome atual continua válido até você decidir alterá-lo.
                                       </p>
 

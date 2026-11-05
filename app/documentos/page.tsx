@@ -1119,7 +1119,7 @@ export default function DocumentsPage() {
           <div className="mx-auto max-w-5xl">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-ice/90">
+                <p className="font-mono text-xs uppercase tracking-[0.24em] text-ice/90">
                   Documentos
                 </p>
 
@@ -1293,7 +1293,7 @@ export default function DocumentsPage() {
                         ========================================== */}
 
                     <div>
-                      <label className="mb-2.5 block font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">
+                      <label className="mb-2.5 block font-mono text-xs uppercase tracking-[0.18em] text-ink-faint">
                         Categoria
                       </label>
 
@@ -1368,7 +1368,7 @@ export default function DocumentsPage() {
 
                     <div>
                       <div className="mb-2.5 flex items-center justify-between gap-3">
-                        <label className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">
+                        <label className="font-mono text-xs uppercase tracking-[0.18em] text-ink-faint">
                           Tipo
                         </label>
 
@@ -1445,7 +1445,7 @@ export default function DocumentsPage() {
                         ========================================== */}
 
                     <div>
-                      <label className="mb-2.5 block font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">
+                      <label className="mb-2.5 block font-mono text-xs uppercase tracking-[0.18em] text-ink-faint">
                         Validade
                       </label>
 
@@ -1584,7 +1584,7 @@ export default function DocumentsPage() {
                     Procurando nos seus documentos…
                   </p>
 
-                  <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+                  <p className="mt-1 text-xs leading-4 text-ink-muted">
                     Há mais páginas no Cofre Pessoal.
                   </p>
                 </div>

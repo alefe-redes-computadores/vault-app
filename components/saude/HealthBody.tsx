@@ -190,7 +190,7 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         {avatarBraceSlots(devices).map(d=>{const x=d.side==='right'?32:134;return <g key={d.id} role="button" tabIndex={0} aria-label={`Abrir equipamento ${d.name}`} onClick={()=>onDeviceSelect?.(d.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onDeviceSelect?.(d.id);}}}><rect x={x} y="147" width="14" height="18" rx="4" fill={avatarColor(d.color,'#7dd3fc')}/><path d={`M${x} 151 h14 M${x} 160 h14`} stroke="#17212b" strokeWidth="2"/></g>;})}
         {onBodySelect?<SurgeryIllustrationMarkers markers={surgeryMarkers} onSelect={key=>onBodySelect("surgery",key)}/>:null}
       </svg>
-      <p aria-hidden="true" className="-mt-1 text-center font-mono text-[9px] tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
+      <p aria-hidden="true" className="-mt-1 text-center font-mono text-xs tracking-[.14em] text-violet-300/80">VAULT · {BRAIN_BRAND}</p>
       {controlsContainer===undefined?(showControls?perspective:null):controlsContainer?createPortal(perspective,controlsContainer):null}
       {slots.length>0 && <ul aria-label="Aparelhos representados no avatar" className={expanded && showControls ? "mt-3 space-y-2" : "hidden"}>
         {slots.map(({kind,side,device,count})=><li key={`${side}-${kind}`} className="rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-xs text-ink-primary">

@@ -96,7 +96,7 @@ export interface ToastContextType {
 // CONFIGURAÇÃO
 // ============================================================
 
-const MAX_VISIBLE_TOASTS = 4;
+const MAX_VISIBLE_TOASTS = 3;
 
 const ToastContext =
   createContext<

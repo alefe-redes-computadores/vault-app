@@ -924,7 +924,7 @@ function TratamentoContent() {
                         onClick={(event) => event.stopPropagation()}
                       >
                         <div className="px-3 pb-2 pt-3.5">
-                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+                          <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
                             Ações
                           </p>
                         </div>
@@ -1090,7 +1090,7 @@ function TratamentoContent() {
                       className="mt-0.5 shrink-0 text-amber-400"
                     />
 
-                    <p className="text-[11px] leading-relaxed text-ink-muted">
+                    <p className="text-xs leading-relaxed text-ink-muted">
                       <span className="font-medium text-amber-400">
                         Contexto do histórico:
                       </span>{" "}
@@ -1111,7 +1111,7 @@ function TratamentoContent() {
                   className="mt-0.5 shrink-0 text-emerald-300"
                 />
 
-                <p className="text-[11px] leading-relaxed text-ink-muted">
+                <p className="text-xs leading-relaxed text-ink-muted">
                   <span className="font-semibold text-emerald-300">
                     Aquisição registrada via SUS:
                   </span>{" "}
@@ -1169,7 +1169,7 @@ function TratamentoContent() {
                 </span>
 
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-400">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-400">
                     Inteligência do tratamento
                   </p>
 
@@ -1188,7 +1188,7 @@ function TratamentoContent() {
                     {alerta.titulo}
                   </p>
 
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                     {alerta.mensagem}
                   </p>
 
@@ -1275,7 +1275,7 @@ function TratamentoContent() {
             {(panorama.renovacoes>0 || panorama.medicamentosPrecisandoAtencao>0) ? (
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
                   Histórico de aquisições
                 </p>
 
@@ -1283,7 +1283,7 @@ function TratamentoContent() {
                   {panorama.renovacoes}
                 </p>
 
-                <p className="mt-0.5 text-[10px] text-ink-muted">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   {panorama.ultimaAquisicao
                     ? `Última em ${formatDateDisplay(panorama.ultimaAquisicao)}`
                     : "Nenhuma aquisição registrada"}
@@ -1291,7 +1291,7 @@ function TratamentoContent() {
               </div>
 
               <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
                   Atenção atual
                 </p>
 
@@ -1299,7 +1299,7 @@ function TratamentoContent() {
                   {panorama.medicamentosPrecisandoAtencao}
                 </p>
 
-                <p className="mt-0.5 text-[10px] text-ink-muted">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   Receita ou renovação sinalizada
                 </p>
               </div>
@@ -1309,7 +1309,7 @@ function TratamentoContent() {
             {panorama.primeiraAquisicao &&
               panorama.ultimaAquisicao &&
               panorama.primeiraAquisicao !== panorama.ultimaAquisicao && (
-                <p className="px-1 text-[10px] leading-relaxed text-ink-muted">
+                <p className="px-1 text-xs leading-relaxed text-ink-muted">
                   O histórico de aquisições associado a este tratamento vai de{" "}
                   <span className="font-medium text-ink-primary">
                     {formatDateDisplay(panorama.primeiraAquisicao)}
@@ -1340,7 +1340,7 @@ function TratamentoContent() {
             <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3.5">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">
+                  <p className="text-xs font-medium uppercase tracking-wider text-ink-faint">
                     Valor registrado
                   </p>
 
@@ -1357,7 +1357,7 @@ function TratamentoContent() {
                     {aquisicoesComPreco !== 1 ? "s" : ""} com preço
                   </p>
 
-                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     Soma apenas eventos de aquisição
                   </p>
                 </div>
@@ -1383,7 +1383,7 @@ function TratamentoContent() {
                     Variação recente de preço
                   </p>
 
-                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     Comparação feita separadamente por medicamento.
                   </p>
                 </div>
@@ -1430,7 +1430,7 @@ function TratamentoContent() {
                           {item.medicamento.nome}
                         </p>
 
-                        <p className="mt-0.5 text-[10px] leading-relaxed text-ink-muted">
+                        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
                           {melhorou
                             ? `Última aquisição ficou ${formatCurrency(
                                 Math.abs(item.economia.economia),
@@ -1622,7 +1622,7 @@ function TratamentoContent() {
               </div>
 
               {linkedRenovacoes.length > 5 && (
-                <p className="pt-1 text-center text-[10px] text-ink-muted">
+                <p className="pt-1 text-center text-xs text-ink-muted">
                   E mais {linkedRenovacoes.length - 5} aquisição(ões).
                 </p>
               )}

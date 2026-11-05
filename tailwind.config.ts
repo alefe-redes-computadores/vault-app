@@ -29,8 +29,8 @@ const config: Config = {
           dark: "#3E566B",
         },
         ice: {
-          DEFAULT: "#7DD3FC",
-          soft: "#A5E3FE",
+          DEFAULT: "#2FE3C9",
+          soft: "#7DD3FC",
         },
         coral: "#E8735C",
       },

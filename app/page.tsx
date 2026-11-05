@@ -1106,11 +1106,11 @@ export default function HomePage() {
               )}
 
               <div className="min-w-0">
-                <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-ice/80">
+                <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">
                   Vault Saúde
                 </p>
 
-                <h1 className="mt-0.5 truncate font-display text-base font-semibold text-ink-primary">
+                <h1 className="mt-0.5 truncate font-display text-lg font-semibold tracking-tight text-ink-primary">
                   Olá,{" "}
                   {
                     displayName.split(
@@ -1280,12 +1280,12 @@ export default function HomePage() {
                     />
 
                     <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central de Inteligência">
-                      <h2 className="font-display text-sm font-semibold text-ink-primary">VAULT Brain</h2>
+                      <h2 className="font-display text-base font-semibold tracking-tight text-ink-primary">VAULT Brain</h2>
                       <ChevronRight size={13} className="text-violet-300" />
                     </button>
                   </div>
 
-                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     {healthIntelligence.maturity.totalRecords} registros analisados
                     {brainV5Pulse.journeys.some(item => item.requires_attention) ? ` · ${brainV5Pulse.journeys.filter(item => item.requires_attention).length} decisões em atenção` : brainV5Pulse.brief.total > 0 ? ` · ${brainV5Pulse.brief.total} decisões acompanhadas` : ""}
                     {brainV5Pulse.counters.new > 0 ? ` · ${brainV5Pulse.counters.new} novo${brainV5Pulse.counters.new === 1 ? "" : "s"}` : ""}
@@ -1409,7 +1409,7 @@ export default function HomePage() {
                           }
                         </p>
 
-                        <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-ink-muted">
+                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">
                           {
                             insight.mensagem
                           }
@@ -1437,7 +1437,7 @@ export default function HomePage() {
               {longitudinalHighlights.length === 0 && brainV5Pulse.top && (
                 <button type="button" onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainV5Pulse.top!.insight_id)}`)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left active:scale-[0.985]">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={16}/></div>
-                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-[10px] text-ink-muted">{brainV5Pulse.brief.headline} · {brainV5PriorityReason(brainV5Pulse.top)}</p></div>
+                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-xs text-ink-muted">{brainV5Pulse.brief.headline} · {brainV5PriorityReason(brainV5Pulse.top)}</p></div>
                   <ChevronRight size={14} className="shrink-0 text-violet-300"/>
                 </button>
               )}
@@ -1481,7 +1481,7 @@ export default function HomePage() {
                     </h2>
                   </div>
 
-                  <p className="mt-0.5 text-[10px] text-ink-muted">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     {retiradasAtrasadas.length > 0
                       ? "Compromissos abertos não somem na virada do dia"
                       : "Sua agenda de saúde do dia"}
@@ -1542,7 +1542,7 @@ export default function HomePage() {
                             "Consulta"}
                         </p>
 
-                        <p className="truncate text-[10px] text-ink-muted">
+                        <p className="truncate text-xs text-ink-muted">
                           {consulta.medico
                             ? `Dr(a). ${consulta.medico}`
                             : "Profissional não informado"}
@@ -1591,7 +1591,7 @@ export default function HomePage() {
                             "Cirurgia"}
                         </p>
 
-                        <p className="text-[10px] text-ink-muted">
+                        <p className="text-xs text-ink-muted">
                           Procedimento agendado
                         </p>
                       </div>
@@ -1637,7 +1637,7 @@ export default function HomePage() {
                             "Exame"}
                         </p>
 
-                        <p className="text-[10px] text-ink-muted">
+                        <p className="text-xs text-ink-muted">
                           Exame programado para hoje
                         </p>
                       </div>
@@ -1679,7 +1679,7 @@ export default function HomePage() {
                             "Retirada de medicamento"}
                         </p>
 
-                        <p className="truncate text-[10px] text-ink-muted">
+                        <p className="truncate text-xs text-ink-muted">
                           {isOverdueWithdrawal(retirada, hoje)
                             ? `Pendente há ${withdrawalDaysOverdue(retirada.data, hoje)} dia(s) · revise ou reagende`
                             : retirada.tipo === "sus"
@@ -1775,7 +1775,7 @@ export default function HomePage() {
                       }
                     </h2>
 
-                    <p className="mt-1.5 text-[10px] leading-relaxed text-ink-muted">
+                    <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
                       {
                         primaryMedicationCareOpportunity.message
                       }
@@ -1793,7 +1793,7 @@ export default function HomePage() {
                     </div>
 
                     {primaryMedicationCareOpportunity.latestRenewalDate && (
-                      <p className="mt-2 font-mono text-[9px] text-ink-faint">
+                      <p className="mt-2 font-mono text-xs text-ink-faint">
                         {primaryMedicationCareOpportunity.latestRenewalKind === "receita"
                           ? "Última receita registrada: "
                           : "Última aquisição registrada: "}
@@ -1853,11 +1853,11 @@ export default function HomePage() {
                     className="mt-2 flex w-full items-center justify-between rounded-xl border border-surface-border/70 bg-surface-raised/70 px-3 py-2.5 text-left transition-all active:scale-[0.98]"
                   >
                     <div className="min-w-0">
-                      <p className="text-[9px] font-semibold text-ink-primary">
+                      <p className="text-xs font-semibold text-ink-primary">
                         Ver tratamento vinculado
                       </p>
 
-                      <p className="truncate text-[9px] text-ink-muted">
+                      <p className="truncate text-xs text-ink-muted">
                         {
                           primaryMedicationCareOpportunity.treatmentName
                         }
@@ -1881,7 +1881,7 @@ export default function HomePage() {
                     />}
                   </ClinicalDisclosure>
                 ) : null}
-                <p className="mt-3 text-center text-[10px] leading-relaxed text-ink-faint">
+                <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
                   O Vault cruza seus próprios registros de estoque, renovação e tratamento. Isso não substitui orientação profissional.
                 </p>
               </div>
@@ -1922,7 +1922,7 @@ export default function HomePage() {
                   </h2>
                 </div>
 
-                <p className="mt-0.5 text-[10px] text-ink-muted">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   Acompanhamentos desta pessoa
                 </p>
               </div>
@@ -1976,7 +1976,7 @@ export default function HomePage() {
                       Nenhum tratamento cadastrado
                     </p>
 
-                    <p className="text-[10px] text-ink-muted">
+                    <p className="text-xs text-ink-muted">
                       Toque para acessar Tratamentos
                     </p>
                   </div>
@@ -2063,7 +2063,7 @@ export default function HomePage() {
                               }
                             </p>
 
-                            <p className="truncate text-[10px] text-ink-muted">
+                            <p className="truncate text-xs text-ink-muted">
                               {tratamento.status ===
                               "ativo"
                                 ? "Em andamento"

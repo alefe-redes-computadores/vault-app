@@ -141,10 +141,11 @@ export default function LoginPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="shadow-vault rounded-[28px] border border-surface-border/50 bg-surface/90 p-6 backdrop-blur-xl"
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} aria-busy={loading} className="space-y-4">
             <Input
               label="E-mail"
               type="email"
+              autoComplete="email"
               placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -154,6 +155,7 @@ export default function LoginPage() {
             <Input
               label="Senha"
               type="password"
+              autoComplete={isLogin ? "current-password" : "new-password"}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -164,6 +166,8 @@ export default function LoginPage() {
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
+                role="alert"
+                aria-live="assertive"
                 className="rounded-xl bg-coral/10 px-3 py-2 text-sm text-coral"
               >
                 {error}

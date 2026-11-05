@@ -371,6 +371,7 @@ export default function RetiradasPage() {
             <EmptyState
               icon={Pill}
               title="Nenhuma retirada encontrada"
+              variant={retiradas.length === 0 ? "default" : "no-results"}
               description={
                 retiradas.length === 0
                   ? "Cadastre uma retirada para transformar a próxima obtenção do medicamento em um compromisso real."
@@ -407,7 +408,7 @@ export default function RetiradasPage() {
                         <Calendar size={17} />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-faint">
+                        <p className="font-mono text-xs uppercase tracking-[0.18em] text-ink-faint">
                           Período
                         </p>
                         <h2 className="truncate text-sm font-semibold text-ink-primary">
@@ -501,7 +502,7 @@ export default function RetiradasPage() {
                                         {medication.retiradas.length}
                                       </span>
                                     </div>
-                                    <p className="mt-0.5 truncate text-[10px] text-ink-muted">
+                                    <p className="mt-0.5 truncate text-xs text-ink-muted">
                                       {medication.dosagem || "Sem dosagem informada"}
                                     </p>
                                   </div>
@@ -574,7 +575,7 @@ export default function RetiradasPage() {
                                             <div className="min-w-0 flex-1">
                                               <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview} sourceNotesById={sourceNotesById}/>
                                               <div className="flex flex-wrap items-center gap-1.5">
-                                                <p className="text-[11px] font-semibold text-ink-primary">
+                                                <p className="text-xs font-semibold text-ink-primary">
                                                   Retirada
                                                 </p>
                                                 {retirada.data === hoje &&

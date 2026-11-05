@@ -4380,7 +4380,7 @@ function EditarDocumentoSaudeContent() {
                     )}
                   </p>
 
-                  <p className="mt-0.5 text-[10px] text-ink-faint">
+                  <p className="mt-0.5 text-xs text-ink-faint">
                     Informação deste documento
                   </p>
                 </div>
@@ -4709,7 +4709,7 @@ function EditarDocumentoSaudeContent() {
               </button>
 
               <div className="min-w-0">
-                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ice">
+                <p className="font-mono text-xs uppercase tracking-[0.25em] text-ice">
                   Acervo Clínico
                 </p>
 
@@ -4790,7 +4790,7 @@ function EditarDocumentoSaudeContent() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+                      <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-faint">
                         Pessoa
                       </p>
 
@@ -4972,7 +4972,7 @@ function EditarDocumentoSaudeContent() {
                               Vínculo atual preservado
                             </p>
 
-                            <p className="mt-0.5 text-[10px] leading-4 text-ink-muted">
+                            <p className="mt-0.5 text-xs leading-4 text-ink-muted">
                               O vínculo não está disponível nesta tela. Ele será mantido se você não o substituir.
                             </p>
                           </div>
@@ -5094,7 +5094,7 @@ function EditarDocumentoSaudeContent() {
               >
                 {selectedClinicalEntity && (
                   <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/5 p-4">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-violet-300">
+                    <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-300">
                       Vínculo clínico
                     </p>
 
@@ -5423,7 +5423,7 @@ function EditarDocumentoSaudeContent() {
                                 }
                               </p>
 
-                              <p className="mt-0.5 text-[10px] uppercase tracking-wider text-ink-faint">
+                              <p className="mt-0.5 text-xs uppercase tracking-wider text-ink-faint">
                                 {attachment.type ===
                                 "image"
                                   ? "Imagem"
@@ -5557,7 +5557,7 @@ function EditarDocumentoSaudeContent() {
                         }
                       </p>
 
-                      <p className="mt-1 line-clamp-3 text-[10px] leading-4 text-ink-muted">
+                      <p className="mt-1 line-clamp-3 text-xs leading-4 text-ink-muted">
                         {
                           HEALTH_TYPE_DESCRIPTIONS[
                             type

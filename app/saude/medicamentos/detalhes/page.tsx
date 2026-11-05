@@ -2494,7 +2494,7 @@ function MedicamentoDetalhesContent() {
             </button>
 
             <div className="min-w-0 flex-1 px-1">
-              <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-ice/80">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-ice/80">
                 Medicamento
               </p>
 
@@ -2656,7 +2656,7 @@ function MedicamentoDetalhesContent() {
                   className="absolute right-5 top-[68px] z-50 w-60 overflow-hidden rounded-[18px] border border-surface-border/60 bg-surface p-1.5 shadow-2xl"
                 >
                   <div className="px-3 pb-2 pt-3">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-ink-faint">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-ink-faint">
                       Ações
                     </p>
                   </div>
@@ -2765,7 +2765,7 @@ function MedicamentoDetalhesContent() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="break-words text-lg font-bold uppercase tracking-wide text-ink-primary sm:text-xl">
+                    <h2 className="break-words text-lg font-semibold leading-tight tracking-tight text-ink-primary sm:text-xl">
                       {
                         med.nome
                       }
@@ -2932,14 +2932,14 @@ function MedicamentoDetalhesContent() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">Linha de cuidado</p>
                     <MedicationDecisionAuthority stage={careDecision.stage} />
                   </div>
                   <h2 className="mt-1 text-sm font-bold text-ink-primary">{brainCareAction?.title || careDecision.label}</h2>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{brainCareAction?.reason || careDecision.explanation}</p>
                   {/* V332_CARE_EVIDENCE_DISCLOSURE: full evidence stays available, action stays visible. */}
                   <details className="mt-2 rounded-xl border border-surface-border/40 bg-surface/30 px-2.5 py-1.5">
-                    <summary className="min-h-9 cursor-pointer py-1.5 text-[10px] font-semibold text-ink-secondary">Ver evidências e origem</summary>
+                    <summary className="min-h-9 cursor-pointer py-1.5 text-xs font-semibold text-ink-secondary">Ver evidências e origem</summary>
                     <MedicationDecisionEvidenceContext
                       source={brainCareAction ? "brain" : "record"}
                       routeRecorded={Boolean(supplyRoute && supplyRoute.mode !== "none")}
@@ -3019,7 +3019,7 @@ function MedicamentoDetalhesContent() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-400">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-400">
                             Qualidade do cadastro
                           </p>
                         </div>
@@ -3090,7 +3090,7 @@ function MedicamentoDetalhesContent() {
                           </button>
                         </div>
 
-                        <p className="mt-3 text-[10px] leading-relaxed text-ink-faint">
+                        <p className="mt-3 text-xs leading-relaxed text-ink-faint">
                           Manter o nome atual registra apenas que você revisou esta sugestão. O Vault não considera automaticamente o cadastro incorreto.
                         </p>
                         </details>
@@ -3210,7 +3210,7 @@ function MedicamentoDetalhesContent() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-ink-primary">Estoque não informado</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Sem contagem registrada. Isso não significa que o medicamento acabou.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">Sem contagem registrada. Isso não significa que o medicamento acabou.</p>
                 </div>
                 <MedicationRestockAction name={med.nome} label="Informar saldo" onOpen={() => {
                   trigger("vibrate");
@@ -3342,7 +3342,7 @@ function MedicamentoDetalhesContent() {
               {medicationCosts.planned.length > 0 && (
                 <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
                   <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Planejado · não realizado</span><strong className="text-xs text-ink-primary">{medicationCosts.plannedWithPrice ? `R$ ${medicationCosts.plannedKnownTotal.toFixed(2)}` : "Valor não informado"}</strong></div>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">{medicationCosts.planned.length} aquisição(ões) futura(s). Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{medicationCosts.planned.length} aquisição(ões) futura(s). Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
                 </div>
               )}
               {/* VAULT_V320_FINANCE_PROGRESSIVE: calculations retained, advanced projection optional */}
@@ -3437,7 +3437,7 @@ function MedicamentoDetalhesContent() {
               {() => <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-ink-muted">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-muted">
                     Histórico
                   </p>
 
