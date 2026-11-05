@@ -28,6 +28,9 @@ export function BrainNextStep({ decision, onOpen }: { decision: BrainCarePlanIte
         </button>
       </div>
     </div>
-    <VaultBrainEvidence item={decision} />
+    <details className="group border-t border-violet-300/15 px-3.5 py-1">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">Ver por que o Brain sugeriu esta etapa <span aria-hidden="true" className="transition-transform group-open:rotate-180">▾</span></summary>
+      <VaultBrainEvidence item={decision} />
+    </details>
   </section>;
 }

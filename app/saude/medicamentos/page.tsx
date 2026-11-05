@@ -99,6 +99,7 @@ import {
   useMedicationCatalogProfiles,
 } from "@/hooks/useMedicationRegulatoryProfiles";
 import { medicationIgnoredStatus } from "@/lib/medication-availability";
+import { medicationStockUnitReview } from "@/lib/health-intelligence/medication-presentation-review";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
 import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
 import { medicationPersonalAccent, medicationPersonalAccentStyle } from "@/lib/medications/list-personal-accent";
@@ -764,6 +765,7 @@ export default function MedicamentosListPage() {
       const stockUnknown = stockSnapshot.state === "unknown";
       const stockNegative = stockSnapshot.state === "negative";
       const stockEmpty = stockSnapshot.state === "empty" || stockNegative;
+      const stockReview = medicationStockUnitReview(med);
 
       if (
         !med.id
@@ -1119,11 +1121,11 @@ export default function MedicamentosListPage() {
             <div className="flex min-w-0 flex-col gap-1">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
-                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[14px] font-bold leading-tight text-ink-primary">
+                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold leading-snug text-ink-primary">
                   {med.nome}
                 </h3>
                 {med.dosagem && (
-                  <span title={med.dosagem} className="min-w-0 max-w-full text-[11px] font-semibold leading-tight text-ink-muted">
+                  <span title={med.dosagem} className="min-w-0 max-w-full text-xs font-semibold leading-snug text-ink-secondary">
                     {med.dosagem}
                   </span>
                 )}
@@ -1153,7 +1155,7 @@ export default function MedicamentosListPage() {
                 ) : (supplyRoute?.mode === "private" || supplyRoute?.mode === "public") && (
                   <MedicationListRouteLabel route={supplyRoute} label={supplyRoute.labels.join(" + ")} />
                 )}
-                {textoDose && <span title={`Dose ${textoDose}`} className="text-[10px] text-ink-muted">Dose {textoDose}</span>}
+                {textoDose && <span title={`Dose ${textoDose}`} className="text-[11px] text-ink-muted">Dose {textoDose}</span>}
                 {careDecision.stage !== "stable" && !careAction && (!isSOS || sosHasOperationalException) && (
                   <span title={careDecision.explanation} className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
                     {careDecision.label}
@@ -1220,6 +1222,7 @@ export default function MedicamentosListPage() {
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
+            {stockReview && <p role="note" className="mt-1.5 rounded-lg border border-amber-300/20 bg-amber-300/[.045] px-2.5 py-2 text-[11px] leading-relaxed text-amber-200">Unidade do estoque: {stockReview}</p>}
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1
                 Ações rápidas ficam junto da dose, antes do painel operacional.
@@ -1427,7 +1430,7 @@ export default function MedicamentosListPage() {
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
           <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
             <div className="min-w-0"><h2 className="text-base font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
-              <p className="mt-1 text-xs leading-relaxed text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados</p></div>
+              <p className="mt-1 text-xs leading-relaxed text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados · pendências não são doses perdidas</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>

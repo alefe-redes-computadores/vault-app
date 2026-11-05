@@ -107,7 +107,7 @@ export default function VaultIntelligencePage() {
   return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-5 header-safe-top text-ink-primary">
     <header className="mx-auto flex max-w-2xl items-start gap-3">
       <button type="button" onClick={() => router.replace(backTarget)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface text-ink-muted" aria-label="Voltar"><ChevronLeft size={20}/></button>
-      <div className="min-w-0"><p className="font-mono text-xs uppercase tracking-[0.16em] text-ice">VAULT INSIGHT</p><h1 className="font-display text-2xl font-bold tracking-tight text-ink-primary">Vault Insight</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prioriza vencimentos, inconsistências, organização e sinais financeiros sustentados pelos dados que o Vault realmente possui.</p></div>
+      <div className="min-w-0"><p className="font-mono text-xs uppercase tracking-[0.16em] text-ice">VAULT INSIGHT</p><h1 className="font-display text-2xl font-bold tracking-tight text-ink-primary">Vault Insight</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Um próximo passo em destaque. Evidências, plano e histórico disponíveis sob demanda, sem presumir que algo foi realizado.</p></div>
     </header>
 
     <div className="mx-auto mt-5 max-w-2xl space-y-3">
@@ -117,7 +117,7 @@ export default function VaultIntelligencePage() {
         {id:"insight-saude",label:"Saúde",icon:<AlertTriangle size={14}/>,iconClassName:"text-amber-300",},
         {id:"insight-cofre",label:"Cofre",icon:<Database size={14}/>,iconClassName:"text-emerald-300",},
       ]}/>
-      <ClinicalDisclosure id="insight-relacoes" title="Cuidado conectado" description="Medicamentos, tratamentos e fornecimento" icon={<BrainCircuit size={18}/>} iconClassName="text-violet-300">{() => <CareRelationshipRoutes compact onNavigate={href=>router.push(preserveReturn(href))}/>}</ClinicalDisclosure>
+      <ClinicalDisclosure id="insight-relacoes" title="Cuidado conectado" description="Medicamentos, tratamentos e fornecimento" icon={<BrainCircuit size={18}/>} iconClassName="text-violet-300">{() => <div className="space-y-3"><CareRelationshipRoutes compact onNavigate={href=>router.push(preserveReturn(href))}/>{!health.isLoading && health.careCommand ? <CareJourney360 command={health.careCommand} onNavigate={href=>router.push(preserveReturn(href))} compact /> : null}</div>}</ClinicalDisclosure>
     </div>
 
     <details className="group mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-surface-border/70 bg-gradient-to-br from-emerald-400/[0.06] via-surface to-violet-400/[0.05]">
@@ -134,7 +134,7 @@ export default function VaultIntelligencePage() {
       {!health.isLoading && health.careCommand?.decision ? (
         <BrainNextStep decision={health.careCommand.decision} onOpen={href => router.push(preserveReturn(href))} />
       ) : null}
-      {!health.isLoading && health.careCommand ? <CareJourney360 command={health.careCommand} onNavigate={href => router.push(preserveReturn(href))} compact /> : null}
+      {/* O mapa do cuidado fica disponível na seção Cuidado conectado, sem duplicar na tela inicial. */}
       <button type="button" onClick={() => router.push(preserveReturn("/inteligencia/alertas"))} className="flex min-h-[72px] w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-gradient-to-r from-violet-400/[0.07] to-surface p-3.5 text-left active:scale-[0.985]">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-300"><BrainCircuit size={19}/></div>
         <div className="min-w-0 flex-1"><p className="text-sm font-bold">{BRAIN_NAME}</p><p className="mt-1 text-xs text-ink-muted">Atenção agora, segurança, padrões, qualidade dos dados e histórico persistente.</p></div>
@@ -144,7 +144,7 @@ export default function VaultIntelligencePage() {
 
     {!health.isLoading ? <div className="mx-auto mt-3 max-w-2xl"><ClinicalDisclosure id="insight-agenda" title="Agenda de compromissos" description="Retiradas, aquisições planejadas e projeções" icon={<FileText size={18}/>} iconClassName="text-cyan-300">{() => <CareForecastAgenda context={health.context} forecast={health.careCommand?.forecast} onNavigate={(href) => router.push(preserveReturn(`${href}`))}/>}</ClinicalDisclosure></div> : null}
 
-    {!health.isLoading && health.careCommand ? <BrainCarePlan plan={health.careCommand.plan} onNavigate={(href) => router.push(preserveReturn(href))}/> : null}
+    {!health.isLoading && health.careCommand ? <div className="mx-auto mt-3 max-w-2xl"><ClinicalDisclosure id="insight-plano" title="Plano de cuidado completo" description={`${health.careCommand.plan.items.length} etapas · revisar por prioridade, sem registrar ações automaticamente`} icon={<BrainCircuit size={18}/>} iconClassName="text-violet-300">{() => health.careCommand ? <BrainCarePlan plan={health.careCommand.plan} onNavigate={(href) => router.push(preserveReturn(href))}/> : null}</ClinicalDisclosure></div> : null}
 
     {/* VAULT_V320_BRAIN_EVIDENCE: primary care decisions remain above; extra lenses below. */}
       <details ref={evidenceRef} onToggle={event => { if (event.currentTarget.open) setEvidenceOpened(true); }} id="insight-evidencias" className="group mx-auto mt-3 max-w-2xl scroll-mt-24 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.025] px-3 py-1">

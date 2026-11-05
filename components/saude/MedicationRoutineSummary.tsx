@@ -58,7 +58,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-border/50 pt-4 text-xs">
             <span className="text-ink-muted">Últimos 7 dias</span>
             <span className="font-semibold tabular-nums text-ink-primary">
-              {takenLast7Days} tomada{takenLast7Days === 1 ? "" : "s"} · {last7DaysQuantity} un.
+              {takenLast7Days} tomada{takenLast7Days === 1 ? "" : "s"} · {last7DaysQuantity} {doseUnit}
             </span>
           </div>
           {last7DaysQuantityPartial && (
@@ -73,7 +73,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
             <div className="min-w-0 rounded-xl bg-surface-raised/60 p-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">Hoje</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{resolvedToday}/{plannedToday}</p>
-              <p className="mt-0.5 text-[10px] text-ink-muted">slots programados resolvidos</p>
+              <p className="mt-0.5 text-[10px] text-ink-muted">horários com desfecho registrado</p>
               {plannedSafe > 0 && <div className="mt-2" role="progressbar" aria-label="Horários programados resolvidos" aria-valuemin={0} aria-valuemax={plannedSafe} aria-valuenow={barNow} aria-valuetext={`${resolvedToday} de ${plannedToday} horários resolvidos`}>
                 <div className="h-1.5 overflow-hidden rounded-full bg-surface-border/60"><div className="h-full rounded-full bg-ice transition-[width] motion-reduce:transition-none" style={{ width: `${visualPercent}%` }} /></div>
               </div>}
@@ -86,7 +86,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
             <div className="min-w-0 rounded-xl bg-surface-raised/60 p-2.5">
               <p className="text-[9px] font-bold uppercase tracking-wide text-ink-muted">Por dose</p>
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{quantityPerDose ?? "—"}</p>
-              <p className="mt-0.5 text-[10px] text-ink-muted">{quantityPerDose !== null ? doseUnit : "quantidade não configurada"}</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{quantityPerDose !== null ? doseUnit : "quantidade não configurada"}</p>
             </div>
           </div>
           <MedicationDoseHourChips hours={hours} taken={takenHours} ignored={ignoredHours} />

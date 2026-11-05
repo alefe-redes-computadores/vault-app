@@ -3567,7 +3567,9 @@ export default function DocumentsPage() {
     return (
       <main className="min-h-screen bg-void px-5 pb-28 pt-6" aria-busy="true" aria-label="Carregando acervo clínico">
         <p role="status" className="sr-only">Carregando documentos e relações clínicas da pessoa selecionada.</p>
-        <CardListSkeleton />
+        <div role="group" aria-label="Carregando documentos">
+          <CardListSkeleton />
+        </div>
       </main>
     );
   }

@@ -195,6 +195,7 @@ import {
   healthIntelligenceDecisionsRepository,
 } from "@/lib/repositories/healthIntelligenceDecisions";
 import { loadMedicationDetailRelations } from "@/lib/medication-detail-relations";
+import { medicationStockUnitReview } from "@/lib/health-intelligence/medication-presentation-review";
 import type { Cid, Tratamento } from "@/lib/types";
 
 const EMPTY_PHARMACY_NAME_MAP = new Map<string, string>();
@@ -2765,7 +2766,7 @@ function MedicamentoDetalhesContent() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="break-words font-display text-xl font-semibold leading-tight tracking-tight text-ink-primary sm:text-2xl">
+                    <h2 className="break-words font-display text-xl font-bold leading-snug tracking-tight text-ink-primary sm:text-2xl">
                       {
                         med.nome
                       }
@@ -2795,7 +2796,7 @@ function MedicamentoDetalhesContent() {
                     )}
                   </div>
 
-                  <p className="mt-1 text-sm font-medium text-ink-muted">
+                  <p className="mt-1 text-sm font-medium leading-relaxed text-ink-secondary">
                     {med.dosagem}
                     <span>
                       {" "}•{" "}
@@ -3245,6 +3246,7 @@ function MedicamentoDetalhesContent() {
                   doseQuantity={unidadePorDose}
                   referenceDay={formatDate(med.estoque_data_referencia)}
                   dropsConversionMissing={isGota && (unidadeEstoque.includes("ml") || unidadeEstoque.includes("frasco")) && gotasPorMl === null}
+                  formatWarning={medicationStockUnitReview(med)}
                   formatQuantity={formatQuantidade}
                 />
                 {med.id && med.status !== "descontinuado" ? (
@@ -3304,10 +3306,10 @@ function MedicamentoDetalhesContent() {
             }}/>}
 
           {/* P14 R5: rotina/estoque antes de contexto secundário (âncoras preservadas). */}
-          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Próximas etapas e vínculos entre receita, aquisição e retirada" icon={<CalendarDays size={18}/>} iconClassName="text-sky-300">
+          <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Receita, aquisição e retirada · etapas registradas ou planejadas" icon={<CalendarDays size={18}/>} iconClassName="text-sky-300">
             <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
           </ClinicalDisclosure>
-          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Processos SUS, compras particulares e vínculos" icon={<Package size={18}/>} iconClassName="text-emerald-300">
+          <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Fornecimento público ou particular e documentos relacionados" icon={<Package size={18}/>} iconClassName="text-emerald-300">
             <HealthSupplyEntry medicamentoId={med.id!}/>
           </ClinicalDisclosure>
           {med.id && activePersonId === med.person_id && (
