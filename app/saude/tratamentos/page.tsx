@@ -77,6 +77,7 @@ import {
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { inspectTreatmentMedicationLinks } from "@/lib/health-intelligence/treatment-link-review";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 
 // ============================================================
@@ -94,6 +95,7 @@ type TratamentoEnriquecido =
     medicamentosCount: number;
     medicamentosAtivosCount: number;
     medicamentosResumo: Medicamento[];
+    possiveisVinculos: {nome:string;origem:string}[];
     totalGasto: number;
     alertaPrincipal:
       | TratamentoInsightAlerta
@@ -401,6 +403,7 @@ function TratamentoListContent() {
 
                 medicamentosResumo:
                   [],
+                possiveisVinculos: [],
 
                 totalGasto:
                   0,
@@ -416,6 +419,11 @@ function TratamentoListContent() {
               ) ||
               [];
 
+            const review = inspectTreatmentMedicationLinks(tratamento, medicamentos);
+            const possiveisVinculos = [
+              ...review.reverseLegacy.map(item => ({nome:item.nome,origem:"vínculo inverso antigo"})),
+              ...review.cidCandidates.map(item => ({nome:item.nome,origem:"CID em comum"})),
+            ].slice(0,3);
             const medicamentosAtivosCount =
               meds.filter(
                 (
@@ -466,6 +474,7 @@ function TratamentoListContent() {
 
               medicamentosAtivosCount,
 
+              possiveisVinculos,
               medicamentosResumo: meds
                 .slice()
                 .sort((a,b)=>Number(a.status==='descontinuado')-Number(b.status==='descontinuado')||a.nome.localeCompare(b.nome,'pt-BR'))
@@ -959,7 +968,7 @@ function TratamentoListContent() {
                       </span>
                     </div>
 
-                    {tratamento.medicamentosResumo.length>0?<div className="mt-2 flex min-w-0 items-center gap-2" aria-label="Medicamentos vinculados"><div className="flex shrink-0 -space-x-1.5">{tratamento.medicamentosResumo.map((medicamento,medIndex)=><span key={medicamento.id||`${medicamento.nome}-${medIndex}`} className="grid size-7 place-items-center rounded-lg border border-surface-border bg-void shadow-sm" title={`${medicamento.nome} ${medicamento.dosagem||''}`.trim()}><MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={14}/></span>)}</div><p className="min-w-0 flex-1 break-words text-xs leading-snug text-ink-muted">{tratamento.medicamentosResumo.map(m=>m.nome).join(' · ')}{tratamento.medicamentosCount>tratamento.medicamentosResumo.length?` · +${tratamento.medicamentosCount-tratamento.medicamentosResumo.length}`:''}</p></div>:<p className="mt-2 text-xs text-ink-muted">Sem medicamentos vinculados</p>}
+                    {tratamento.medicamentosResumo.length>0?<div className="mt-2 flex min-w-0 items-center gap-2" aria-label="Medicamentos vinculados"><div className="flex shrink-0 -space-x-1.5">{tratamento.medicamentosResumo.map((medicamento,medIndex)=><span key={medicamento.id||`${medicamento.nome}-${medIndex}`} className="grid size-7 place-items-center rounded-lg border border-surface-border bg-void shadow-sm" title={`${medicamento.nome} ${medicamento.dosagem||''}`.trim()}><MedicationFormatIcon formato={medicamento.formato} cores={medicamento.cores} size={14}/></span>)}</div><p className="min-w-0 flex-1 break-words text-xs leading-snug text-ink-muted">{tratamento.medicamentosResumo.map(m=>m.nome).join(' · ')}{tratamento.medicamentosCount>tratamento.medicamentosResumo.length?` · +${tratamento.medicamentosCount-tratamento.medicamentosResumo.length}`:''}</p></div>:<div className="mt-2 text-xs text-ink-muted"><p>Sem medicamentos vinculados</p>{tratamento.possiveisVinculos.length>0 && <p className="mt-1 rounded-xl border border-amber-300/20 bg-amber-300/[.05] p-2 text-[11px] leading-relaxed text-amber-200">{tratamento.possiveisVinculos.map(item=>`${item.nome} (${item.origem})`).join(" · ")} · Revise nos detalhes antes de associar.</p>}</div>}
 
                     {/* ==========================================
                         MÉTRICAS

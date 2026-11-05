@@ -2,14 +2,18 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { createPortal } from "react-dom";
 import { ArrowUpRight, BrainCircuit, ChevronRight, Search, X } from "lucide-react";
 import { VaultBrainVoiceInput } from "@/components/health-intelligence/VaultBrainVoiceInput";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { searchVaultBrainCommands, type VaultBrainCommandData } from "@/lib/health-intelligence/vault-brain-commands";
 
 /** M44: one discreet entry in the Home header; no second floating assistant. */
 export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
   const router = useRouter();
+  const { isPrivate } = usePrivacyMode();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -17,11 +21,28 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
   const deferredQuery = useDeferredValue(query);
   const queryBusy = deferredQuery !== query;
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const results = useMemo(() => open ? searchVaultBrainCommands(deferredQuery, data) : [], [
+  // Load private metadata only while the search is open; never access encrypted fields.
+  const personalSnapshot = useLiveQuery(async () => {
+    if (!open || !data.userId || !data.personId) return null;
+    const userId=data.userId, personId=data.personId;
+    const [credentials,bankCards,vaults]=await Promise.all([
+      db.credentials.where("[user_id+person_id]").equals([userId,personId]).toArray(),
+      db.bankCards.where("[user_id+person_id]").equals([userId,personId]).toArray(),
+      db.vaults.where("person_id").equals(personId).toArray(),
+    ]);
+    return {userId,personId,credentials,bankCards,vaults:vaults.filter(v=>v.user_id===userId&&v.person_id===personId)};
+  }, [open,data.userId,data.personId]);
+  const privateReady = Boolean(open && personalSnapshot && personalSnapshot.userId === data.userId && personalSnapshot.personId === data.personId);
+  const results = useMemo(() => open ? searchVaultBrainCommands(deferredQuery, {
+    ...data,
+    credentials: privateReady ? personalSnapshot!.credentials : [],
+    bankCards: privateReady ? personalSnapshot!.bankCards : [],
+    vaults: privateReady ? personalSnapshot!.vaults : [],
+  }) : [], [
     open, deferredQuery, data.userId, data.personId, data.medications, data.documents,
     data.treatments, data.appointments, data.exams, data.renewals,
     data.withdrawals, data.surgeries, data.doctors, data.pharmacies,
-    data.hospitals, data.careLocations, data.supplyProcesses,
+    data.hospitals, data.careLocations, data.supplyProcesses, personalSnapshot, privateReady,
   ]);
 
   useEffect(() => {
@@ -80,7 +101,7 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
             <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-200" aria-hidden="true" />
             <input ref={inputRef} type="search" autoComplete="off" autoCorrect="off" spellCheck={false}
               aria-label="Pesquisar ou escrever um comando"
-              placeholder="Buscar doses, retiradas, SUS, médicos, cirurgias…"
+              placeholder="Buscar saúde, senhas, cartões, cofres…"
               className="h-12 w-full rounded-2xl border border-surface-border/70 bg-surface pl-10 pr-3 text-sm text-ink-primary outline-none placeholder:text-ink-muted focus:border-violet-300/60 focus:ring-2 focus:ring-violet-300/15"
               value={query} maxLength={160} onChange={e => setQuery(e.target.value)}
               onKeyDown={e => {
@@ -105,12 +126,12 @@ export function VaultBrainCommand({ data }: { data: VaultBrainCommandData }) {
           {queryBusy ? <p role="status" className="rounded-xl bg-surface/50 px-3 py-4 text-xs text-ink-muted">Buscando no dispositivo…</p> : results.length ? <ul className="space-y-1.5" aria-label="Resultados dos Comandos">{results.map((item, index) => <li key={item.id}>
             <button type="button" onMouseEnter={() => setSelected(index)} onClick={() => { if (!queryBusy) navigate(item.href); }}
               className={`flex min-h-14 w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300 ${selected === index ? "border-violet-300/30 bg-violet-300/[.08]" : "border-transparent bg-surface/50 hover:bg-surface-raised"}`}>
-              <span className="min-w-0 flex-1"><span className="block break-words text-xs font-semibold text-ink-primary">{item.title}</span><span className="mt-0.5 block text-[10px] leading-relaxed text-ink-muted">{item.detail}</span></span>
+              <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-1.5"><span className="rounded-md border border-violet-300/20 bg-violet-300/[.06] px-1.5 py-0.5 text-[10px] font-semibold text-violet-200">{item.section || (item.href.startsWith("/senhas") ? "Pessoal" : item.href.startsWith("/cartoes") || item.href.startsWith("/contas") ? "Financeiro" : item.href.startsWith("/vaults") ? "Cofres" : "Saúde")}</span><span className="break-words text-xs font-semibold text-ink-primary">{isPrivate && (item.kind==="credential" || item.kind==="card" || item.kind==="vault") ? "Item protegido · toque para abrir" : item.title}</span></span><span className="mt-0.5 block text-[11px] leading-relaxed text-ink-muted">{isPrivate && (item.kind==="credential" || item.kind==="card" || item.kind==="vault") ? "Informação oculta no modo privado" : item.detail}</span></span>
               {item.kind === "prepare" ? <ArrowUpRight size={15} className="shrink-0 text-violet-200" aria-hidden="true" /> : <ChevronRight size={15} className="shrink-0 text-ink-muted" aria-hidden="true" />}
             </button>
           </li>)}</ul> : <div className="rounded-xl bg-surface/50 px-3 py-4 text-xs text-ink-muted"><p>Não encontrei registro correspondente nos dados locais desta pessoa. Tente outro nome ou uma área.</p><button type="button" onClick={() => navigate("/ajuda")} className="mt-2 min-h-11 font-semibold text-violet-200 underline underline-offset-2">Abrir Ajuda e guias</button></div>}
         </div>
-        <p className="border-t border-surface-border/45 px-5 py-3 text-[10px] leading-relaxed text-ink-muted">Busca local da pessoa selecionada. Nenhum dado é alterado; registros e movimentações exigem confirmação no formulário original.</p>
+        <p className="border-t border-surface-border/45 px-5 py-3 text-[10px] leading-relaxed text-ink-muted">Busca local da pessoa selecionada: Saúde, Pessoal, Financeiro e Cofres. Nenhuma senha ou número secreto é pesquisado; registros e movimentações exigem confirmação no formulário original.</p>
       </section>
     </div>, document.body)}
   </>;

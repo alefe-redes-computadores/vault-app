@@ -1,6 +1,7 @@
 // app/saude/lembretes/page.tsx
 "use client";
 import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
+import { expandReminderInterval } from "@/lib/health-reminders/interval-plan";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
@@ -87,6 +88,8 @@ export default function HealthRemindersPage() {
   const [targetType, setTargetType] = useState<HealthReminderTargetType>(DEFAULT_TARGET.type);
   const [title, setTitle] = useState<string>(DEFAULT_TARGET.label);
   const [time, setTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("21:00");
+  const [intervalHours, setIntervalHours] = useState(0);
   const [frequency, setFrequency] = useState<HealthReminderFrequency>("daily");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -119,6 +122,7 @@ export default function HealthRemindersPage() {
     setTargetType((knownTarget || DEFAULT_TARGET).type);
     setTitle(editing.title);
     setTime(editing.time);
+    setIntervalHours(0);
     setFrequency(editing.frequency);
     setWeekdays(editing.weekdays);
   }, [editing]);
@@ -128,6 +132,8 @@ export default function HealthRemindersPage() {
     setTargetType(DEFAULT_TARGET.type);
     setTitle(DEFAULT_TARGET.label);
     setTime("10:00");
+    setEndTime("21:00");
+    setIntervalHours(0);
     setFrequency("daily");
     setWeekdays([]);
     setFormOpen(false);
@@ -177,7 +183,16 @@ export default function HealthRemindersPage() {
         status: editing?.status || "active" as const,
       };
       if (editing) await updateReminder(editing.id, data);
-      else await createReminder(data);
+      else {
+        const times = intervalHours > 0 && frequency === "daily" ? expandReminderInterval(time, endTime, intervalHours) : [time];
+        // Every time is an existing, owner-scoped synced reminder. No secret/new backend schema.
+        // An interrupted batch is never retried automatically; review saved rows before retrying.
+        let created = 0;
+        for (const at of times) {
+          try { await createReminder({...data, time: at}); created++; }
+          catch (error) { throw new Error(`${created} de ${times.length} lembretes salvos. Confira a lista antes de tentar novamente. ${errorMessage(error)}`); }
+        }
+      }
       reset();
     }, editing ? "Lembrete atualizado" : "Lembrete criado");
   }
@@ -200,6 +215,10 @@ export default function HealthRemindersPage() {
     }
   }
 
+  const intervalPreview = !editing && frequency === "daily" && intervalHours > 0 ? (() => {
+    try { return expandReminderInterval(time, endTime, intervalHours); } catch { return []; }
+  })() : [];
+  const invalidInterval = !editing && frequency === "daily" && intervalHours > 0 && intervalPreview.length === 0;
   const invalidDays = frequency === "weekly"
     ? weekdays.length !== 1
     : frequency === "custom" && weekdays.length === 0;
@@ -275,6 +294,12 @@ export default function HealthRemindersPage() {
           <label className="grid gap-1 text-xs text-ink-muted">Horário
             <HealthTimePicker value={time} onChange={setTime} />
           </label>
+          {!editing && frequency === "daily" && <fieldset className="rounded-xl border border-amber-300/15 bg-void/40 p-3">
+            <legend className="px-1 text-xs font-medium text-amber-200">Vários horários no mesmo dia</legend>
+            <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Para água ou outras rotinas, escolha um intervalo. Cada horário será salvo como lembrete independente, editável e sincronizado.</p>
+            <div className="flex flex-wrap gap-2">{([0,1,2,3,4,6] as const).map(hours => <button type="button" key={hours} onClick={() => setIntervalHours(hours)} aria-pressed={intervalHours===hours} className={`min-h-10 rounded-xl border px-3 text-xs font-semibold ${intervalHours===hours ? "border-amber-300/50 bg-amber-300/10 text-amber-200" : "border-surface-border text-ink-muted"}`}>{hours===0 ? "Uma vez" : `A cada ${hours}h`}</button>)}</div>
+            {intervalHours > 0 && <><label className="mt-3 grid gap-1 text-xs text-ink-muted">Até que horário?<HealthTimePicker value={endTime} onChange={setEndTime}/></label><p className="mt-2 text-xs leading-relaxed text-ink-muted" aria-live="polite">{intervalPreview.length ? `${intervalPreview.length} horários: ${intervalPreview.join(" · ")}` : "Escolha uma janela válida de 2 a 12 horários no mesmo dia."}</p><p className="mt-1 text-[11px] text-ink-muted">O Android agenda até 60 avisos futuros e renova o calendário quando o app é aberto. Não há confirmação automática de consumo.</p></>}
+          </fieldset>}
           <fieldset>
             <legend className="text-xs font-medium text-ink-muted">Frequência</legend>
             <div className="mt-2 grid grid-cols-3 gap-2">
@@ -290,7 +315,7 @@ export default function HealthRemindersPage() {
               ))}
             </div>
           )}
-          <button type="button" disabled={busyId !== null || !title.trim() || !time || invalidDays} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-xl bg-amber-400 p-3 font-semibold text-void disabled:opacity-40">
+          <button type="button" disabled={busyId !== null || !title.trim() || !time || invalidDays || invalidInterval} onClick={() => void save()} className="flex items-center justify-center gap-2 rounded-xl bg-amber-400 p-3 font-semibold text-void disabled:opacity-40">
             {busyId === "form" && <Loader2 size={17} className="animate-spin" />}
             {editing ? "Salvar alterações" : "Criar lembrete"}
           </button>

@@ -286,6 +286,7 @@ function TratamentoContent() {
   const isLoading = Boolean(id && activePersonId && user?.id && relationSnapshot === undefined);
   const tratamento = relationSnapshot?.tratamento ?? null;
   const linkedMedicamentos = relationSnapshot?.medicamentos ?? [];
+  const possibleMedications = relationSnapshot?.possibleMedications ?? [];
   const renovacoes = relationSnapshot?.renovacoes ?? [];
   const cids = relationSnapshot?.cids ?? [];
   const medicos = relationSnapshot?.medicos ?? [];
@@ -1661,8 +1662,9 @@ function TratamentoContent() {
             {medicamentosAtivos.length === 0 ? (
               <div className="rounded-[20px] border border-surface-border/50 bg-surface-raised/50 p-4 text-center">
                 <p className="text-sm text-ink-muted">
-                  Nenhum medicamento ativo vinculado a este tratamento.
+                  Nenhum medicamento ativo com vínculo explícito neste tratamento.
                 </p>
+                {possibleMedications.length > 0 && <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/[.05] p-3 text-left"><p className="text-xs font-semibold text-amber-200">Possíveis vínculos para conferência</p><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">O CID em comum não cria uma associação automaticamente. Abra o medicamento para revisar o tratamento correto.</p><div className="mt-2 grid gap-2">{possibleMedications.map(candidate => <button type="button" key={candidate.id} onClick={() => {if(candidate.id) router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(candidate.id)}`);}} className="min-h-11 rounded-lg border border-surface-border/60 p-2 text-left text-xs text-ink-primary">{candidate.name} · {candidate.reason} · Revisar cadastro</button>)}</div></div>}
               </div>
             ) : (
               <div className="space-y-3">

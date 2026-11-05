@@ -25,6 +25,7 @@ import {
 } from "./health-intelligence/sos-patterns";
 
 import { buildHydrationInsights } from "@/lib/health-intelligence/hydration-insights";
+import type { HydrationReference } from "@/lib/health-intelligence/hydration-reference";
 
 import { buildLongitudinalHealthInsights } from "@/lib/health-intelligence/longitudinal-insights";
 import { buildRecordedDoseRoutineInsights } from "@/lib/health-intelligence/dose-routine-insights";
@@ -140,6 +141,8 @@ export interface HealthInsightContext {
   personId: string;
   /** Authenticated owner of this person-scoped snapshot, used for explicit care links. */
   userId?: string;
+  /** Optional, owner-scoped hydration reference. No diagnosis is inferred from missing logs. */
+  hydration?: {goalMl:number|null; reference:HydrationReference|null};
   fornecimento?: SupplyData;
 
   /**
@@ -9506,7 +9509,7 @@ export function gerarInsightsSaude(
   // HIDRATAÇÃO — somente registros reais, nunca ausência = zero
   // ----------------------------------------------------------
 
-  insights.push(...buildHydrationInsights(registrosSaude, contexto.hoje || getLocalTodayISO()));
+  insights.push(...buildHydrationInsights(registrosSaude, contexto.hoje || getLocalTodayISO(), contexto.hydration));
 
   // Comparações longitudinais auditáveis; associação temporal não implica causalidade.
   insights.push(...buildLongitudinalHealthInsights({ ...contexto, medicamentos, doseLogs, renovacoes, tratamentos, registrosSaude }));

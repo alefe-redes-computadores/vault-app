@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { inspectTreatmentMedicationLinks } from "@/lib/health-intelligence/treatment-link-review";
 
 export type TreatmentDetailRelationInput = {
   treatmentId: string;
@@ -46,6 +47,9 @@ export async function loadTreatmentDetailRelations(input: TreatmentDetailRelatio
   const medications = medicationsRaw.filter(
     item => belongsToPerson(item, input.userId, input.personId) && item.tratamento_ids?.includes(input.treatmentId),
   );
+  const linkReview = inspectTreatmentMedicationLinks(treatmentRaw, medicationsRaw);
+  const possibleMedications = [...linkReview.reverseLegacy.map(item=>({id:item.id, name:item.nome,reason:"Vínculo inverso antigo"})),
+    ...linkReview.cidCandidates.map(item=>({id:item.id,name:item.nome,reason:"CID em comum"}))].slice(0,8);
   const medicationIds = new Set(medications.flatMap(item => item.id ? [item.id] : []));
   const referencedDoctorIds = new Set([
     ...(treatmentRaw.medico_ids || []),
@@ -63,6 +67,7 @@ export async function loadTreatmentDetailRelations(input: TreatmentDetailRelatio
   return {
     tratamento: treatmentRaw,
     medicamentos: medications,
+    possibleMedications,
     renovacoes: renewalsRaw.filter(item => belongsToPerson(item, input.userId, input.personId) && medicationIds.has(item.medicamento_id)),
     cids: cidsRaw.filter(item => belongsToPerson(item, input.userId, input.personId)),
     medicos: doctorsRaw.filter(item => belongsToAccount(item, input.userId) && Boolean(item.id && referencedDoctorIds.has(item.id))),

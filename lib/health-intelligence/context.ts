@@ -1,6 +1,7 @@
 // lib/health-intelligence/context.ts
 
 import { db } from "@/lib/db";
+import { estimateHydrationReference } from "@/lib/health-intelligence/hydration-reference";
 
 import type {
   HealthInsightContext,
@@ -64,9 +65,9 @@ export async function loadHealthInsightContext(
     cids,
     documentos,
     retiradas,
-    processos,ciclos,itens,vinculos,
+    processos,ciclos,itens,vinculos,hydrationGoals,healthProfiles,
   ] =
-    await db.transaction("r", [db.persons, db.medicamentos, db.doseLogs, db.renovacoes, db.tratamentos, db.registros_saude, db.consultas, db.exames, db.cirurgias, db.cids, db.documents, db.retiradas, db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens, db.fornecimento_documentos], async () => {
+    await db.transaction("r", [db.persons, db.medicamentos, db.doseLogs, db.renovacoes, db.tratamentos, db.registros_saude, db.consultas, db.exames, db.cirurgias, db.cids, db.documents, db.retiradas, db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens, db.fornecimento_documentos, ...db.tables.filter(table => table.name === "health_goals" || table.name === "health_profiles")], async () => {
   if (userId) {
     const person = await db.persons.get(safePersonId);
     if (person?.user_id !== userId) throw new Error("Pessoa não pertence à conta atual.");
@@ -130,10 +131,24 @@ export async function loadHealthInsightContext(
       db.fornecimento_ciclos.where("[user_id+person_id]").equals(owner).toArray(),
       db.fornecimento_itens.where("[user_id+person_id]").equals(owner).toArray(),
       db.fornecimento_documentos.where("[user_id+person_id]").equals(owner).toArray(),
+      db.tables.some(table => table.name === "health_goals")
+        ? db.health_goals.where("user_id").equals(userId).filter(row => row.person_id === safePersonId && row.goal_type === "hydration_ml").toArray()
+        : Promise.resolve([]),
+      db.tables.some(table => table.name === "health_profiles")
+        ? db.health_profiles.where("user_id").equals(userId).filter(row => row.person_id === safePersonId).toArray()
+        : Promise.resolve([]),
     ]);
     });
 
+  // M70: both references are owned; weight is the most recent real measurement.
+  const recentWeight = registrosSaude
+    .filter(row => row.user_id === userId && row.person_id === safePersonId && row.tipo === "peso" && row.unidade_medida === "kg" && typeof row.valor_numerico === "number")
+    .sort((a,b) => `${b.data}:${b.horario || ""}`.localeCompare(`${a.data}:${a.horario || ""}`))[0];
+  const ownerProfile = healthProfiles.find(row => row.user_id === userId && row.person_id === safePersonId);
+  const ownerGoal = hydrationGoals.find(row => row.user_id === userId && row.person_id === safePersonId && row.goal_type === "hydration_ml");
+  const reference = estimateHydrationReference(recentWeight?.valor_numerico, ownerProfile?.height_cm);
   return {
+    hydration: {goalMl: ownerGoal?.target_value ?? null, reference},
     personId:
       safePersonId,
     userId,

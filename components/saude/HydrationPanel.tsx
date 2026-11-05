@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, CheckCircle2, ChevronDown, Droplets, History, Info, Loader2, RotateCcw, Target, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 import { useHealthGoals } from "@/hooks/useHealthGoals";
+import { useHealthProfile } from "@/hooks/useHealthProfile";
+import { estimateHydrationReference, hydrationRecordedPattern } from "@/lib/health-intelligence/hydration-reference";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useReturnContext } from "@/hooks/useReturnContext";
@@ -33,6 +35,7 @@ export function HydrationPanel({embedded=false}:{embedded?:boolean}) {
   const { trigger } = useHapticFeedback();
   const { registros, isLoading: recordsLoading, createRegistro, deleteRegistro } = useRegistrosSaude();
   const { hydrationGoal, isLoading: goalLoading, setHydrationGoal, clearHydrationGoal } = useHealthGoals();
+  const { profile } = useHealthProfile();
   const operationLock = useRef(false);
   const addQueue = useRef<Promise<void>>(Promise.resolve());
   const [queuedAdds,setQueuedAdds]=useState(0);
@@ -47,6 +50,9 @@ export function HydrationPanel({embedded=false}:{embedded?:boolean}) {
   const [busy, setBusy] = useState<string | null>(null);
   const today = localDateKey(new Date());
   const goal = hydrationGoal?.target_value ?? null;
+  const weightRecord = useMemo(() => registros.filter(row => row.tipo === "peso" && row.unidade_medida === "kg" && typeof row.valor_numerico === "number")
+    .sort((a,b) => `${b.data}:${b.horario || ""}`.localeCompare(`${a.data}:${a.horario || ""}`))[0], [registros]);
+  const hydrationReference = estimateHydrationReference(weightRecord?.valor_numerico, profile?.height_cm);
 
   const validRecords = useMemo(() => registros.filter(validWaterRecord), [registros]);
   const todayRecords = useMemo(() => validRecords.filter((record) => record.data === today).sort((left, right) => {
@@ -77,6 +83,7 @@ export function HydrationPanel({embedded=false}:{embedded?:boolean}) {
   const sevenDayCoverage = sevenDayKeys.size;
   const progress = goal ? Math.min(100, Math.round((total / goal) * 100)) : null;
   const remaining = goal ? Math.max(0, goal - total) : null;
+  const observedPattern = hydrationRecordedPattern(validRecords, today, goal ?? hydrationReference?.middleMl ?? 0);
   const historyMax = Math.max(...days.map(([, amount]) => amount), 1);
   const lastRecord = todayRecords[0] ?? null;
 
@@ -173,6 +180,15 @@ export function HydrationPanel({embedded=false}:{embedded?:boolean}) {
         <div className="mt-4 grid grid-cols-4 gap-2">{QUICK_AMOUNTS.map((amount) => <button key={amount} type="button" disabled={busy !== null && busy !== "add"} onClick={() => void add(amount)} className="min-h-12 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.055] px-1.5 py-2 text-center transition active:scale-95 disabled:opacity-40"><span className="text-sm font-bold text-cyan-300">+{amount}</span><span className="ml-0.5 text-[9px] text-ink-muted">ml</span></button>)}</div>
         <div className="mt-3 flex gap-2"><input aria-label="Outro valor em mililitros" inputMode="numeric" placeholder="Outro valor em ml" value={custom} onChange={(event) => setCustom(event.target.value.replace(/[^0-9]/g, ""))} className="min-w-0 flex-1 rounded-xl border border-surface-border bg-void p-3 text-sm outline-none focus:border-cyan-400/50" /><button type="button" disabled={busy !== null || !custom} onClick={() => void add(Number(custom))} className="rounded-xl border border-cyan-400/40 px-4 text-xs font-bold text-cyan-300 disabled:opacity-40">Registrar</button></div>
         <div className="mt-2 flex min-h-9 items-center justify-between gap-2 text-[10px] text-ink-muted"><span aria-live="polite">{queuedAdds>0?`${queuedAdds} registro(s) sendo salvo(s)…`:lastRecord?`Último: ${lastRecord.valor_numerico} ml às ${lastRecord.horario}`:"Nenhum registro hoje"}</span>{lastRecord?.id && <button type="button" disabled={busy !== null || queuedAdds > 0} onClick={() => void remove(lastRecord.id, true)} className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 font-semibold text-ink-muted disabled:opacity-40"><RotateCcw size={13} /> Desfazer último registro</button>}</div>
+      </section>
+
+      <section aria-label="Referência exploratória de hidratação" className="mx-auto mt-4 max-w-xl rounded-3xl border border-cyan-300/15 bg-surface p-4">
+        <div className="flex items-start gap-3"><Droplets size={19} className="mt-0.5 shrink-0 text-cyan-300"/><div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Brain · referência de hidratação</h2>
+          {hydrationReference ? <><p className="mt-1 text-xs leading-relaxed text-ink-muted">Pelo peso registrado de {hydrationReference.weightKg} kg{hydrationReference.heightCm ? ` e altura cadastrada de ${hydrationReference.heightCm} cm` : ""}, a faixa ilustrativa é de <strong className="text-cyan-200">{hydrationReference.lowerMl} a {hydrationReference.upperMl} ml/dia</strong>, com ponto central de {hydrationReference.middleMl} ml.</p>
+          {goal === null && <button type="button" disabled={busy !== null} onClick={() => void withOperation("goal", async () => { await setHydrationGoal(hydrationReference.middleMl); trigger("success"); showToast("Referência aceita como meta manual", "success"); })} className="mt-3 min-h-11 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 text-xs font-semibold text-cyan-200">Usar esta referência como meta</button>}</> : <p className="mt-1 text-xs leading-relaxed text-ink-muted">Cadastre uma medição de peso válida em Minha Saúde para visualizar uma estimativa exploratória. A altura complementa o contexto; não define sozinha a quantidade.</p>}
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Estimativa genérica de 25–35 ml/kg, não uma prescrição. Alimentação, atividade, calor, medicamentos e problemas renais ou cardíacos podem alterar necessidades e restrições. Consulte orientação profissional antes de adotá-la.</p>
+          {observedPattern.dayCount >= 3 && observedPattern.level !== "within" && observedPattern.level !== "insufficient" && <p className={`mt-3 rounded-xl border p-3 text-xs leading-relaxed ${observedPattern.level === "very_low" || observedPattern.level === "very_high" ? "border-rose-300/30 bg-rose-300/[.07] text-rose-200" : "border-amber-300/25 bg-amber-300/[.06] text-amber-200"}`}>Atenção ao registro: média de {observedPattern.averageMl} ml em {observedPattern.dayCount} dias observados, {observedPattern.level.includes("low") ? "abaixo" : "acima"} da referência. É um sinal para revisar os lançamentos, não prova de hidratação insuficiente ou excessiva.</p>}
+        </div></div>
       </section>
 
       <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-surface-border bg-surface p-4">

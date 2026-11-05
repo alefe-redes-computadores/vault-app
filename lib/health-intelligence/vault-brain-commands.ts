@@ -5,7 +5,7 @@
  */
 import { normalizeLocalSearch } from "@/lib/local-search";
 import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
-import type { Medicamento, Document, Tratamento, Consulta, Exame, Renovacao, Retirada, Cirurgia, Medico, Farmacia, Hospital, LocalSaude } from "@/lib/types";
+import type { Medicamento, Document, Tratamento, Consulta, Exame, Renovacao, Retirada, Cirurgia, Medico, Farmacia, Hospital, LocalSaude, Credential, BankCard, Vault } from "@/lib/types";
 import type { SupplyProcess } from "@/lib/health-supply/types";
 
 export type VaultBrainCommandItem = {
@@ -13,7 +13,8 @@ export type VaultBrainCommandItem = {
   title: string;
   detail: string;
   href: string;
-  kind: "navigate" | "medication" | "document" | "prescription" | "treatment" | "appointment" | "exam" | "prepare" | "withdrawal" | "surgery" | "provider" | "supply";
+  kind: "navigate" | "medication" | "document" | "prescription" | "treatment" | "appointment" | "exam" | "prepare" | "withdrawal" | "surgery" | "provider" | "supply" | "credential" | "card" | "vault";
+  section?: "Saúde" | "Pessoal" | "Financeiro" | "Cofres";
 };
 export type VaultBrainCommandData = {
   userId: string | null | undefined;
@@ -31,6 +32,9 @@ export type VaultBrainCommandData = {
   hospitals?: readonly Hospital[];
   careLocations?: readonly LocalSaude[];
   supplyProcesses?: readonly SupplyProcess[];
+  credentials?: readonly Credential[];
+  bankCards?: readonly BankCard[];
+  vaults?: readonly Vault[];
 };
 export type VaultBrainCommandIntent = {
   kind: "browse" | "replenish" | "count" | "prescription" | "pending" | "search";
@@ -54,6 +58,10 @@ const MODULES: ReadonlyArray<{ id: string; label: string; href: string; aliases:
   { id: "documentos", label: "Documentos", href: "/documentos", aliases: ["documentos", "documento", "arquivos", "anexos"] },
   { id: "fornecimento", label: "Fornecimento", href: "/saude/fornecimento", aliases: ["fornecimento", "farmacia popular", "processos"] },
   { id: "registros", label: "Registros de saúde", href: "/saude/registros", aliases: ["registros", "historico de saude", "historico clinico"] },
+  { id: "senhas", label: "Senhas", href: "/senhas", aliases: ["senhas", "senhas pessoais", "credenciais", "logins", "sites"] },
+  { id: "cartoes", label: "Cartões", href: "/cartoes", aliases: ["cartoes", "cartao de credito", "cartao de debito"] },
+  { id: "contas", label: "Contas bancárias", href: "/contas", aliases: ["contas bancarias", "conta corrente", "banco", "bancos"] },
+  { id: "cofres", label: "Cofres", href: "/vaults", aliases: ["cofre", "cofres", "compartilhamento"] },
   { id: "mais", label: "Todas as áreas", href: "/mais", aliases: ["mais", "areas", "menu"] },
 ];
 
@@ -96,8 +104,8 @@ function unique(items: VaultBrainCommandItem[]): VaultBrainCommandItem[] {
   const seen = new Set<string>();
   return items.filter(item => { if (seen.has(item.href)) return false; seen.add(item.href); return true; }).slice(0, 18);
 }
-function link(kind: VaultBrainCommandItem["kind"], id: string, title: string, detail: string, href: string): VaultBrainCommandItem {
-  return { id: `${kind}:${id}`, kind, title, detail, href };
+function link(kind: VaultBrainCommandItem["kind"], id: string, title: string, detail: string, href: string, section?: VaultBrainCommandItem["section"]): VaultBrainCommandItem {
+  return { id: `${kind}:${id}`, kind, title, detail, href, section };
 }
 function medicationMatches(term: string, medications: Medicamento[]): Medicamento[] {
   return medications.filter(item => item.id && matches(term, item.nome, item.dosagem)).slice(0, 12);
@@ -125,6 +133,9 @@ export function searchVaultBrainCommands(raw: string, input: VaultBrainCommandDa
   const withdrawals = owned(input.withdrawals ?? [], input.userId, input.personId);
   const surgeries = owned(input.surgeries ?? [], input.userId, input.personId);
   const supplies = owned(input.supplyProcesses ?? [], input.userId, input.personId);
+  const credentials = owned(input.credentials ?? [], input.userId, input.personId);
+  const bankCards = owned(input.bankCards ?? [], input.userId, input.personId);
+  const vaults = owned(input.vaults ?? [], input.userId, input.personId);
   // Medical network records belong to the account, not necessarily to one person.
   const ownedNetwork = <T extends { user_id: string }>(items: readonly T[]) => items.filter(item => item.user_id === input.userId);
   const doctors = ownedNetwork(input.doctors ?? []);
@@ -154,15 +165,25 @@ export function searchVaultBrainCommands(raw: string, input: VaultBrainCommandDa
   }
   if (intent.kind === "browse") {
     const match = MODULES.find(item => item.aliases.some(alias => normalize(alias) === intent.term));
-    if (match) return [link("navigate", match.id, `Abrir ${match.label}`, "Navegação sem alterar registros", match.href)];
+    if (match) return [link("navigate", match.id, `Abrir ${match.label}`, "Navegação sem alterar registros", match.href,
+      match.href.startsWith("/senhas") ? "Pessoal" : match.href.startsWith("/cartoes") || match.href.startsWith("/contas") ? "Financeiro" : match.href.startsWith("/vaults") ? "Cofres" : "Saúde")];
   }
   if (!intent.term) return HOME_SHORTCUTS;
   const results: VaultBrainCommandItem[] = [];
   for (const item of MODULES) if (item.aliases.some(alias => matches(intent.term, alias) || matches(alias, intent.term)))
     results.push(link("navigate", item.id, item.label, "Abrir área", item.href));
+  // M70 Busca 360: only owner/person metadata; never decrypt, index or reveal secret contents.
+  for (const credential of credentials) if (credential.id && matches(intent.term, credential.title, credential.category))
+    results.push(link("credential", credential.id, credential.title, "Senha protegida · título e categoria", `/senhas/detalhes?id=${encodeURIComponent(credential.id)}`, "Pessoal"));
+  for (const card of bankCards) if (card.id && matches(intent.term, card.title, card.bank_name, card.type)) {
+    const account = card.type === "conta_corrente" || card.type === "conta_poupanca" || card.type === "conta_digital";
+    results.push(link("card", card.id, card.title, `${account ? "Conta" : "Cartão"} · ${card.bank_name}`, `${account ? "/contas" : "/cartoes"}/detalhes?id=${encodeURIComponent(card.id)}`, "Financeiro"));
+  }
+  for (const vault of vaults) if (vault.id && matches(intent.term, vault.name, vault.description))
+    results.push(link("vault", vault.id, vault.name, "Cofre da pessoa ativa", `/vaults/detalhes?id=${encodeURIComponent(vault.id)}`, "Cofres"));
   for (const med of medicationMatches(intent.term, medications)) results.push(link("medication", med.id!, med.nome, `Medicamento · ${med.dosagem}`, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}`));
   for (const doc of documents) if (doc.id && matches(intent.term, doc.title, doc.description, doc.type))
-    results.push(link("document", doc.id, doc.title, `Documento · ${doc.type}`, `${doc.category_id === "saude" ? "/saude" : ""}/documentos/detalhes?id=${encodeURIComponent(doc.id)}`));
+    results.push(link("document", doc.id, doc.title, `Documento · ${doc.type}`, `${doc.category_id === "saude" ? "/saude" : ""}/documentos/detalhes?id=${encodeURIComponent(doc.id)}`, doc.category_id === "saude" ? "Saúde" : "Pessoal"));
   for (const treatment of treatments) if (treatment.id && matches(intent.term, treatment.nome, treatment.condicao))
     results.push(link("treatment", treatment.id, treatment.nome, "Tratamento registrado", `/saude/tratamentos/detalhes?id=${encodeURIComponent(treatment.id)}`));
   for (const consultation of appointments) if (consultation.id && matches(intent.term, consultation.especialidade, consultation.medico))
