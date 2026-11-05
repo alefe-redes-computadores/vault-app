@@ -12,6 +12,7 @@ export function useHealthReminders() {
   return {
     reminders: reminders ?? [], isLoading: reminders === undefined,
     createReminder: useCallback((input: Omit<CreateHealthReminderInput, "person_id">) => healthRemindersRepository.create({ ...input, person_id: requirePerson() }), [requirePerson]),
+    createReminders: useCallback((inputs: Omit<CreateHealthReminderInput, "person_id">[]) => { const personId = requirePerson(); return healthRemindersRepository.createMany(inputs.map(input => ({ ...input, person_id: personId }))); }, [requirePerson]),
     updateReminder: useCallback((id: string, changes: UpdateHealthReminderInput) => healthRemindersRepository.update(id, requirePerson(), changes), [requirePerson]),
     pauseReminder: useCallback((id: string, paused: boolean) => healthRemindersRepository.setPaused(id, requirePerson(), paused), [requirePerson]),
     deleteReminder: useCallback((id: string) => healthRemindersRepository.delete(id, requirePerson()), [requirePerson]),

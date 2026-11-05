@@ -32,26 +32,29 @@ export const healthRemindersRepository = {
   },
 
   async create(input: CreateHealthReminderInput) {
-    const userId = await authenticatedUserId();
-    const personId = requirePersonId(input.person_id);
-    await assertOwnedPerson(personId, userId);
-    const normalized = normalizeHealthReminderInput({ ...input, person_id: personId });
-    const stamp = now();
-    const row: HealthReminderRule = {
-      ...normalized,
-      id: makeId(),
-      user_id: userId,
-      created_at: stamp,
-      updated_at: stamp,
-      synced: false,
-    };
+    const [id] = await this.createMany([input]);
+    return id;
+  },
 
+  async createMany(inputs: CreateHealthReminderInput[]) {
+    if (!inputs.length || inputs.length > 12) throw new Error("Configure entre 1 e 12 lembretes.");
+    const userId = await authenticatedUserId();
+    const personId = requirePersonId(inputs[0].person_id);
+    if (inputs.some(input => requirePersonId(input.person_id) !== personId)) throw new Error("Os lembretes devem pertencer à mesma pessoa.");
+    await assertOwnedPerson(personId, userId);
+    const stamp = now();
+    const rows: HealthReminderRule[] = inputs.map(input => ({
+      ...normalizeHealthReminderInput({ ...input, person_id: personId }),
+      id: makeId(), user_id: userId, created_at: stamp, updated_at: stamp, synced: false,
+    }));
     await db.transaction("rw", [db.health_reminders, db.syncQueue], async () => {
-      await db.health_reminders.add(row);
-      await enfileirarOperacao("health_reminders", "add", row, { dispatchSync: false });
+      for (const row of rows) {
+        await db.health_reminders.add(row);
+        await enfileirarOperacao("health_reminders", "add", row, { dispatchSync: false });
+      }
     });
     solicitarProcessamentoSync();
-    return row.id;
+    return rows.map(row => row.id);
   },
 
   async update(reminderId: string, personIdValue: string, changes: UpdateHealthReminderInput) {

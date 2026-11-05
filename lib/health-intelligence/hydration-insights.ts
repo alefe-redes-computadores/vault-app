@@ -3,8 +3,8 @@ import type { HealthInsight } from "@/lib/health-insights";
 import { hydrationRecordedPattern, type HydrationReference } from "@/lib/health-intelligence/hydration-reference";
 
 function dayDistance(from: string, to: string): number {
-  const a = Date.parse(`${from}T12:00:00`);
-  const b = Date.parse(`${to}T12:00:00`);
+  const a = Date.parse(`${from}T00:00:00Z`);
+  const b = Date.parse(`${to}T00:00:00Z`);
   return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 86_400_000) : Number.NaN;
 }
 
@@ -17,7 +17,7 @@ export function buildHydrationInsights(records: RegistroSaude[], today: string, 
   if (!water.length) return [];
 
   const invalid = water.filter((record) => record.unidade_medida !== "ml" || typeof record.valor_numerico !== "number" || !Number.isFinite(record.valor_numerico) || record.valor_numerico <= 0);
-  const valid = water.filter((record) => record.unidade_medida === "ml" && typeof record.valor_numerico === "number" && Number.isFinite(record.valor_numerico) && record.valor_numerico > 0 && dayDistance(record.data, today) >= 0 && dayDistance(record.data, today) <= 13);
+  const valid = water.filter((record) => record.unidade_medida === "ml" && typeof record.valor_numerico === "number" && Number.isFinite(record.valor_numerico) && record.valor_numerico > 0 && dayDistance(record.data, today) >= 1 && dayDistance(record.data, today) <= 14);
   const insights: HealthInsight[] = [];
 
   if (invalid.length) {
@@ -46,11 +46,11 @@ export function buildHydrationInsights(records: RegistroSaude[], today: string, 
         id: `hidratacao-referencia-${today}-${pattern.level}`,
         kind: "observation", categoria: "historico",
         titulo: below ? "Água registrada abaixo da referência" : "Água registrada acima da referência",
-        mensagem: `A média dos ${pattern.dayCount} dias com registro nos últimos 7 dias foi ${pattern.averageMl} ml, ${below ? "abaixo" : "acima"} da referência de ${target} ml. Isso não comprova quanto foi realmente ingerido nem identifica desidratação ou excesso de água.`,
+        mensagem: `A média dos ${pattern.dayCount} dias com registro nos 7 dias completos anteriores foi ${pattern.averageMl} ml, ${below ? "abaixo" : "acima"} da referência de ${target} ml. Isso não comprova quanto foi realmente ingerido nem identifica desidratação ou excesso de água.`,
         urgencia: pronounced ? "media" : "baixa", confianca: "baixa", amostra: pattern.dayCount, periodoDias: 7,
         link: "/saude/hidratacao", entidadeTipo: "registro_saude",
         fontesInternas: ["Registros de Saúde · Água", context?.goalMl ? "Meta informada pela pessoa" : "Referência ilustrativa pelo peso"],
-        evidencias: [`${pattern.dayCount}/7 dias possuíam registros`, `Média nos dias observados: ${pattern.averageMl} ml`, "Dias sem registro não representam consumo zero; avaliação clínica depende do contexto"],
+        evidencias: [`${pattern.dayCount}/7 dias possuíam registros`, `Média nos dias observados: ${pattern.averageMl} ml`, "O dia atual ainda incompleto não entra na média; dias sem registro não representam consumo zero"],
       });
     }
   }

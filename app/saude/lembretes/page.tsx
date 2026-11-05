@@ -7,7 +7,7 @@ import { NotificationPreferencesPanel } from "@/components/NotificationPreferenc
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useReturnContext } from "@/hooks/useReturnContext";
 import {
@@ -79,7 +79,7 @@ export default function HealthRemindersPage() {
   const {
     reminders,
     isLoading,
-    createReminder,
+    createReminders,
     updateReminder,
     pauseReminder,
     deleteReminder,
@@ -170,8 +170,12 @@ export default function HealthRemindersPage() {
     }
   }
 
+  const saveInFlight = useRef(false);
+
   async function save() {
-    await run("form", async () => {
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
+    try { await run("form", async () => {
       const data = {
         title,
         body: "Abra o Vault para registrar — sem presumir que a ação foi realizada.",
@@ -185,16 +189,11 @@ export default function HealthRemindersPage() {
       if (editing) await updateReminder(editing.id, data);
       else {
         const times = intervalHours > 0 && frequency === "daily" ? expandReminderInterval(time, endTime, intervalHours) : [time];
-        // Every time is an existing, owner-scoped synced reminder. No secret/new backend schema.
-        // An interrupted batch is never retried automatically; review saved rows before retrying.
-        let created = 0;
-        for (const at of times) {
-          try { await createReminder({...data, time: at}); created++; }
-          catch (error) { throw new Error(`${created} de ${times.length} lembretes salvos. Confira a lista antes de tentar novamente. ${errorMessage(error)}`); }
-        }
+        await createReminders(times.map(at => ({ ...data, time: at })));
       }
       reset();
     }, editing ? "Lembrete atualizado" : "Lembrete criado");
+    } finally { saveInFlight.current = false; }
   }
 
   async function enableNotifications() {

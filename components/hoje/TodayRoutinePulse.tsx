@@ -28,18 +28,18 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
   const safePercentage = Number.isFinite(percentage) ? Math.max(0, Math.min(100, percentage)) : 0;
   const temporalGuidance = todayTemporalGuidance({ isFuturo, isPassado, recorded, unconfirmed });
   return (
-    <div className="mt-2 rounded-[20px] border border-surface-border/65 bg-gradient-to-br from-surface-raised/80 via-surface-raised/40 to-surface/50 px-3.5 py-3 shadow-sm" data-temporal-authority={isFuturo ? "projected" : isPassado ? "historical" : "today"} aria-live="polite" aria-atomic="true" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
+    <div className="mt-2 rounded-[20px] border border-surface-border/65 bg-gradient-to-br from-ice/[0.08] via-surface-raised/65 to-surface/50 px-4 py-3.5 shadow-sm" data-temporal-authority={isFuturo ? "projected" : isPassado ? "historical" : "today"} aria-live="polite" aria-atomic="true" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-2 text-xs font-semibold">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-semibold">
           <span className={isFuturo ? "inline-flex items-center gap-1 text-violet-300" : isPassado ? "inline-flex items-center gap-1 text-ink-muted" : pending > 0 ? "inline-flex items-center gap-1 text-amber-300" : "inline-flex items-center gap-1 text-emerald-300"}>
             {isHoje ? <AlertTriangle size={12} aria-hidden="true" /> : <CalendarDays size={12} aria-hidden="true" />}{pendingText}
           </span>
           {!isFuturo && <span className="inline-flex items-center gap-1 text-emerald-400"><CheckCircle2 size={12} aria-hidden="true" />{completed} concluída{completed === 1 ? "" : "s"}</span>}
-          {!isFuturo && ignored > 0 && <span className="inline-flex items-center gap-1 text-ink-muted"><XCircle size={12} aria-hidden="true" />{ignored} ignorada{ignored === 1 ? "" : "s"}</span>}
+          {!isFuturo && ignored > 0 && <span className="inline-flex items-center gap-1 text-ink-secondary"><XCircle size={12} aria-hidden="true" />{ignored} ignorada{ignored === 1 ? "" : "s"}</span>}
         </div>
         <div className="shrink-0 text-right">
           <strong className={`font-mono text-lg font-bold tabular-nums ${isFuturo ? "text-violet-300" : "text-ink-primary"}`}>{isFuturo ? projected : isPassado && recorded===0 ? "—" : `${safePercentage}%`}</strong>
-          <span className="ml-1 text-[11px] text-ink-muted">{isFuturo ? "previstas" : isPassado && recorded===0 ? "sem registros" : "rotina"}</span>
+          <span className="ml-1 text-xs text-ink-muted">{isFuturo ? "previstas" : isPassado && recorded===0 ? "sem registros" : "rotina"}</span>
         </div>
       </div>
       <span className="sr-only">{isFuturo ? "Planejamento futuro não significa dose tomada." : isPassado ? "Sem confirmação histórica não significa dose ignorada." : "Doses ignoradas e pendentes não contam como tomadas."}</span>

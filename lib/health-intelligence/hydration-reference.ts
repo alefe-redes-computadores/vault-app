@@ -17,10 +17,10 @@ export function hydrationRecordedPattern(
   today: string, referenceMl: number,
 ): {dayCount:number;averageMl:number;ratio:number;level:"low"|"very_low"|"high"|"very_high"|"within"|"insufficient"} {
   const days = new Map<string,number>();
-  const todayTime=Date.parse(`${today}T12:00:00`);
+  const todayTime=Date.parse(`${today}T00:00:00Z`);
   for (const item of records) {
-    const timestamp=Date.parse(`${item.data}T12:00:00`);
-    if (item.tipo!=="agua" || item.unidade_medida!=="ml" || typeof item.valor_numerico !== "number" || !Number.isFinite(item.valor_numerico) || item.valor_numerico<=0 || !Number.isFinite(timestamp) || timestamp>todayTime || todayTime-timestamp>6*86_400_000) continue;
+    const timestamp=Date.parse(`${item.data}T00:00:00Z`);
+    if (item.tipo!=="agua" || item.unidade_medida!=="ml" || typeof item.valor_numerico !== "number" || !Number.isFinite(item.valor_numerico) || item.valor_numerico<=0 || !Number.isFinite(timestamp) || timestamp>=todayTime || todayTime-timestamp>7*86_400_000) continue;
     days.set(item.data,(days.get(item.data)||0)+item.valor_numerico);
   }
   const count=days.size, average=count?Math.round([...days.values()].reduce((a,b)=>a+b,0)/count):0;

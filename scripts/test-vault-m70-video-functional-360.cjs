@@ -36,7 +36,7 @@ const reference=load('lib/health-intelligence/hydration-reference.ts');
 const estimate=reference.estimateHydrationReference(70,175);
 ok(estimate?.middleMl===2100&&estimate?.lowerMl===1750&&estimate?.upperMl===2450&&estimate?.heightCm===175,'weight reference is approximate and bounded; height contextual');
 ok(reference.estimateHydrationReference(null)===null&&reference.estimateHydrationReference(8)===null,'missing/implausible weight does not produce a target');
-const records=['2026-11-03','2026-11-04','2026-11-05'].map(data=>({data,tipo:'agua',valor_numerico:700,unidade_medida:'ml'}));
+const records=['2026-11-02','2026-11-03','2026-11-04'].map(data=>({data,tipo:'agua',valor_numerico:700,unidade_medida:'ml'}));
 let pattern=reference.hydrationRecordedPattern(records,'2026-11-05',2100);
 ok(pattern.dayCount===3&&pattern.averageMl===700&&pattern.level==='very_low','low registered volumes produce observational level');
 pattern=reference.hydrationRecordedPattern(records.slice(0,2),'2026-11-05',2100);
@@ -62,7 +62,7 @@ ok(component.includes('useLiveQuery')&&component.includes('if (!open || !data.us
 ok(component.includes('credentials: privateReady ?')&&component.includes('bankCards: privateReady ?')&&component.includes('vaults: privateReady ?'),'Search passes only owner-scoped metadata');
 ok(read('components/health-intelligence/VaultBrainCommand.tsx').includes('Financeiro')&&read('components/health-intelligence/VaultBrainCommand.tsx').includes('Saúde'),'results show section labels');
 const reminders=read('app/saude/lembretes/page.tsx');
-ok(reminders.includes('expandReminderInterval(time, endTime, intervalHours)')&&reminders.includes('await createReminder({...data, time: at})'),'every interval slot is an ordinary synchronized reminder');
+ok(reminders.includes('expandReminderInterval(time, endTime, intervalHours)')&&reminders.includes('await createReminders(times.map(at => ({ ...data, time: at })))'),'every interval slot is an ordinary synchronized reminder');
 ok(read('lib/health-reminders/scheduler.ts').includes('MAX_PENDING = 60')&&read('lib/health-reminders/scheduler.ts').includes('reconcileVaultNotificationSet'),'native notification cap and canonical reconciliation remain');
 ok(read('app/saude/tratamentos/detalhes/page.tsx').includes('possibleMedications.map(') && read('lib/treatment-detail-relations.ts').includes('possibleMedications'),'treatment detail offers explicit review rather than automatic association');
 const gate=read('scripts/test-v63-release-gate.mjs');

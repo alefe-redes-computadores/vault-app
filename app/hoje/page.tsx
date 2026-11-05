@@ -1842,7 +1842,7 @@ export default function HojePage() {
                 <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
                 <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
               </div>
-              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-[10px] font-semibold text-violet-300">Ver resumo longitudinal</button>
+              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300">Ver resumo longitudinal</button>
             </details>
           )}
 
@@ -1899,7 +1899,7 @@ export default function HojePage() {
 
                 {dosesSemEstoqueNoLote.length>0 && <div className="mt-3 overflow-hidden rounded-xl border border-amber-400/25 bg-amber-400/[0.055]">
                   <div className="flex items-start gap-2 p-3"><PackageX size={16} className="mt-0.5 shrink-0 text-amber-300"/><div><p className="text-xs font-bold text-amber-200">Saldo insuficiente em {dosesSemEstoqueNoLote.length} {dosesSemEstoqueNoLote.length===1?'dose':'doses'}</p><p className="mt-1 text-xs leading-relaxed text-ink-muted">Saldo zerado não comprova que a dose deixou de ser tomada. Revise o que aconteceu.</p></div></div>
-                  <ul className="border-y border-amber-400/15 bg-void/15 px-3 py-2 text-[10px] text-ink-primary">{dosesSemEstoqueNoLote.map(d=><li key={`${d.medicamentoId}-${d.horario}`} className="flex min-h-8 items-center justify-between gap-2"><span className="truncate">{d.medicamentoNome}</span><span className="shrink-0 text-ink-muted">{d.horario}</span></li>)}</ul>
+                  <ul className="border-y border-amber-400/15 bg-void/15 px-3 py-2 text-xs text-ink-primary">{dosesSemEstoqueNoLote.map(d=><li key={`${d.medicamentoId}-${d.horario}`} className="flex min-h-8 items-center justify-between gap-2"><span className="truncate">{d.medicamentoNome}</span><span className="shrink-0 text-ink-muted">{d.horario}</span></li>)}</ul>
                   <button type="button" disabled={processandoTodos} onClick={()=>void confirmarDosesNaoTomadasPorEstoque()} className="min-h-11 w-full px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-40">Confirmar que não tomei por falta de estoque</button>
                 </div>}
                 {dosesComEstoqueNoLote.length>0 ? <p className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-400/[0.06] p-2.5 text-xs text-emerald-300"><CheckCircle2 size={14}/>{dosesComEstoqueNoLote.length} {dosesComEstoqueNoLote.length===1?'dose disponível':'doses disponíveis'} para confirmar</p> : <p className="mt-3 text-xs text-amber-300">Nenhuma dose com saldo confirmado para registrar como tomada neste lote.</p>}

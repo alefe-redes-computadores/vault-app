@@ -1137,10 +1137,10 @@ export default function MedicamentosListPage() {
               )}
               <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px]">
                 {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classificação acessível na faixa lateral V328 */}
-                {isSOS && <span className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">SOS</span>}
-                {isTemporary && <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-300">POR PERÍODO</span>}
+                {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
+                {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
-                  <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Revisar identidade</span>
+                  <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">Revisar identidade</span>
                 )}
                 {supplyRoute?.mode === "hybrid" ? (
                   // R9 R3: o medicamento informa a origem cadastrada; a rota híbrida
@@ -1166,7 +1166,7 @@ export default function MedicamentosListPage() {
                 {careAction && (
                   <button
                     type="button"
-                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-2.5 py-1 text-[11px] font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${careActionClass}`}
                     title={careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     onClick={(event) => {
@@ -1190,7 +1190,7 @@ export default function MedicamentosListPage() {
                       trigger("vibrate");
                       setQuickDoseMedId(med.id!);
                     }}
-                    className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-xl border px-2.5 text-[11px] font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
+                    className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
                     aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
                   >
                     <Zap size={12} fill="currentColor" />

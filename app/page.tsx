@@ -1400,7 +1400,7 @@ export default function HomePage() {
                               insight.amostra
                             }
                           </span>
-                          {insight.gravidadeSeguranca && <span className={`rounded-md px-1.5 py-0.5 font-mono text-[8px] uppercase ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-cyan-400/10 text-cyan-300"}`}>{insight.gravidadeSeguranca}</span>}
+                          {insight.gravidadeSeguranca && <span className={`rounded-md px-1.5 py-0.5 font-mono text-[11px] uppercase ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-cyan-400/10 text-cyan-300"}`}>{insight.gravidadeSeguranca}</span>}
                         </div>
 
                         <p className="mt-1 line-clamp-1 text-xs font-bold text-ink-primary">
@@ -1426,7 +1426,7 @@ export default function HomePage() {
               </div>
 
               {longitudinalHighlights.length > 1 && (
-                <div className="flex items-center justify-between px-1"><span className="text-[9px] text-ink-faint">Observações disponíveis para revisão</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
+                <div className="flex items-center justify-between px-1"><span className="text-xs text-ink-muted">Observações disponíveis para revisão</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
               )}
 
               </>}
