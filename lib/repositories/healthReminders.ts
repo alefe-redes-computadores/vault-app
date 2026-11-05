@@ -28,7 +28,11 @@ async function assertOwnedPerson(personId: string, userId: string) {
 
 export const healthRemindersRepository = {
   async getAll(personId: string) {
-    return db.health_reminders.where("person_id").equals(requirePersonId(personId)).sortBy("time");
+    const userId = await authenticatedUserId();
+    const scopedPersonId = requirePersonId(personId);
+    await assertOwnedPerson(scopedPersonId, userId);
+    const rows = await db.health_reminders.where("person_id").equals(scopedPersonId).sortBy("time");
+    return rows.filter(row => row.user_id === userId);
   },
 
   async create(input: CreateHealthReminderInput) {

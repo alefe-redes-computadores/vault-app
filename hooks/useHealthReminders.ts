@@ -1,5 +1,6 @@
 "use client";
 import { useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { healthRemindersRepository } from "@/lib/repositories/healthReminders";
@@ -7,10 +8,16 @@ import type { CreateHealthReminderInput, UpdateHealthReminderInput } from "@/lib
 
 export function useHealthReminders() {
   const { activePersonId } = useActivePersonId();
-  const reminders = useLiveQuery(() => activePersonId ? healthRemindersRepository.getAll(activePersonId) : [], [activePersonId]);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const snapshot = useLiveQuery(async () => ({
+    userId, personId: activePersonId,
+    rows: userId && activePersonId ? await healthRemindersRepository.getAll(activePersonId) : [],
+  }), [userId, activePersonId]);
+  const scopedSnapshot = snapshot?.userId === userId && snapshot?.personId === activePersonId ? snapshot : undefined;
   const requirePerson = useCallback(() => { if (!activePersonId) throw new Error("Pessoa ativa não identificada."); return activePersonId; }, [activePersonId]);
   return {
-    reminders: reminders ?? [], isLoading: reminders === undefined,
+    reminders: scopedSnapshot?.rows ?? [], isLoading: scopedSnapshot === undefined,
     createReminder: useCallback((input: Omit<CreateHealthReminderInput, "person_id">) => healthRemindersRepository.create({ ...input, person_id: requirePerson() }), [requirePerson]),
     createReminders: useCallback((inputs: Omit<CreateHealthReminderInput, "person_id">[]) => { const personId = requirePerson(); return healthRemindersRepository.createMany(inputs.map(input => ({ ...input, person_id: personId }))); }, [requirePerson]),
     updateReminder: useCallback((id: string, changes: UpdateHealthReminderInput) => healthRemindersRepository.update(id, requirePerson(), changes), [requirePerson]),

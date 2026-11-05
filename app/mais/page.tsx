@@ -1,5 +1,6 @@
 // app/mais/page.tsx
 "use client";
+import { clearGuardedLocalData } from "@/lib/sync/guarded-local-clear";
 import { isVaultNative } from "@/lib/native-runtime";
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -387,15 +388,9 @@ export default function MaisPage() {
        * Evita notificações órfãs depois que os dados locais
        * forem removidos.
        */
-      // Revalidar depois da confirmação biométrica e imediatamente antes
-      // da remoção: uma escrita pendente não pode ser descartada silenciosamente.
-      if (await db.syncQueue.count() > 0) {
-        showError("A fila recebeu novas operações. Nenhum dado foi apagado. Sincronize antes de tentar novamente.");
-        return;
-      }
-      await cancelAllNotifications();
-
-      await Promise.all([
+      // A fila e as tabelas são verificadas dentro da mesma transação da limpeza.
+      await clearGuardedLocalData(db, async () => {
+        await Promise.all([
         db.persons.clear(),
         db.documents.clear(),
         db.medicamentos.clear(),
@@ -426,7 +421,11 @@ export default function MaisPage() {
         db.settings.clear(),
         db.versiculos.clear(),
         db.syncQueue.clear(),
-      ]);
+        ]);
+      });
+      // Notificações são externas ao IndexedDB. Falha aqui não desfaz dados já limpos.
+      try { await cancelAllNotifications(); }
+      catch { showInfo("Dados locais limpos, mas não foi possível cancelar todas as notificações."); }
 
       trigger("success");
 
@@ -440,7 +439,7 @@ export default function MaisPage() {
       console.error("Erro ao limpar dados:", error);
 
       showToast(
-        "Erro ao limpar dados",
+        error instanceof Error ? error.message : "Erro ao limpar dados. Confira a fila antes de tentar novamente.",
         "error"
       );
     } finally {
