@@ -8,6 +8,7 @@ import {
 
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
+import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
 
 import type { Table } from "dexie";
 import type { SyncQueueItem } from "@/lib/types";
@@ -49,7 +50,8 @@ interface ProcessTableOptions<T extends object> {
     () => Promise<QueryResult>;
 
   mapRemote?: (
-    row: RemoteRow
+    row: RemoteRow,
+    local?: Record<string, unknown>
   ) => Record<string, unknown>;
 }
 
@@ -386,7 +388,7 @@ async function performPullAllData(userId: string): Promise<void> {
             }
 
             const mapped = mapRemote
-              ? mapRemote(remoteItem)
+              ? mapRemote(remoteItem, localItem as Record<string, unknown> | undefined)
               : { ...remoteItem };
 
             pendingWrites.push({
@@ -1044,6 +1046,8 @@ async function performPullAllData(userId: string): Promise<void> {
         "medicamentos",
       localTable:
         db.medicamentos,
+      // Links are hydrated by the separate medicamento_tratamentos query.
+      mapRemote: preserveMedicationTreatmentLinks,
       query:
         async () =>
           await supabase
