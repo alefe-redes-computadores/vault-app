@@ -55,7 +55,7 @@ ok(notification.includes('setNotificationPreferenceEnabled')&&notification.inclu
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.includes('scripts/test-vault-m69-premium-closure.cjs')&&gate.includes('scripts/test-vault-m67-retro-navigation.cjs')&&gate.includes('scripts/test-v334-visible-filters-hierarchy.cjs'), 'M69 and cumulative gates registered');
 const filters=read('components/list/ListFilters.tsx');
-ok(filters.includes('Aplicar filtros')&&filters.includes('V334_VISIBLE_FILTER_TRIGGER'), 'V334 compatibility preserved');
+ok(filters.includes('Concluir')&&filters.includes('V334_VISIBLE_FILTER_TRIGGER'), 'V334 compatibility preserved');
 for(const path of ['components/home/HomeQuickMetrics.tsx','components/home/HomeDailyHero.tsx','components/hoje/TodayRoutinePulse.tsx','components/saude/ClinicalCollectionGroup.tsx','components/saude/CareRelationshipRoutes.tsx','components/saude/AccessCommandOverview.tsx']){
  const source=read(path);ok(!/\b(?:db\.|supabase\.|syncQueue\.|\.insert\(|\.bulkPut\(|\.bulkDelete\()/.test(source),`pure visual module has no persistence: ${path}`);
 }

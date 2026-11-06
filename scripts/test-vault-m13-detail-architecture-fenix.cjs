@@ -37,7 +37,7 @@ check(symptoms.includes('record.intensidade')&&symptoms.includes('!dossier')&&sy
 check(acquisition.includes('kind==="planned"?"Prevista"')&&acquisition.includes('kind==="public"?"R$ 0,00"')&&acquisition.includes('disabled={!enabled}'),'compra futura e SUS não viram compra paga');
 check(summary.includes('metrics.map')&&summary.includes('toneClass')&&summary.includes('tabular-nums')&&summary.includes('break-all font-mono text-lg font-semibold'),'métricas preservam valores compridos sem corte (V302)');
 check(avatar.includes('M13_FENIX_EXPLAINABLE_3D')&&avatar.includes('O modelo é ilustrativo, não representa um diagnóstico.'),'Fênix explica limite do 3D sem nova malha');
-check(avatar.includes('Toque na Fênix para ampliar.')&&avatar.includes('Ver contexto registrado · não é diagnóstico')&&avatar.includes('Consultar contexto do Brain sem mudar de página'),'contratos antigos de Fênix mantidos');
+check(avatar.includes('Toque no Avatar para ampliar.')&&avatar.includes('Ver contexto registrado · não é diagnóstico')&&avatar.includes('Consultar contexto do Brain sem mudar de página'),'contratos antigos de Fênix mantidos');
 const scene=read('components/saude/HealthAvatar3D.tsx');
 check(scene.includes('M10_FACE_GUARD_NATIVE_JAW')&&scene.includes('new THREE.SphereGeometry(.151,20,12)')&&scene.includes('renderer.forceContextLoss()'),'Fênix 3D mantém mandíbula nativa e descarte GPU');
 const legacy=read('scripts/test-p15-r2-clinical-cost-detail-adaptive.cjs');

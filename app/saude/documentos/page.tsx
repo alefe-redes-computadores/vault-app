@@ -3880,7 +3880,7 @@ export default function DocumentsPage() {
                 </motion.div>
               ) : (
                 <div className="space-y-4">
-                  <DocumentArchiveOverview command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)}/>
+                  <ClinicalDisclosure id="documentos-panorama" title="Panorama do acervo" description="Indicadores, vínculos e planejamento" icon={<FolderHeart size={17}/>} iconClassName="text-violet-300">{() => <DocumentArchiveOverview command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)}/>}</ClinicalDisclosure>
                   <ClinicalDisclosure id="documentos-mapa-cuidado" title="Conexões deste acervo" description="Medicamentos, retiradas, SUS e registros relacionados ao panorama" icon={<FolderHeart size={17}/>} iconClassName="text-violet-300">
                      {() => <CareJourney360 command={healthIntelligence.careCommand} onNavigate={(href)=>router.push(href)} compact />}
                    </ClinicalDisclosure>

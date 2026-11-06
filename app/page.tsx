@@ -871,6 +871,8 @@ export default function HomePage() {
     return () => window.removeEventListener("vault:open-pending-doses", open);
   }, []);
 
+  const [mostrarTodasRetiradas, setMostrarTodasRetiradas] = useState(false);
+
   const [
     mostrarTodosAlertas,
     setMostrarTodosAlertas,
@@ -1649,7 +1651,7 @@ export default function HomePage() {
                   )
                 )}
 
-                {retiradasHoje.map(
+                {(mostrarTodasRetiradas ? retiradasHoje : retiradasHoje.slice(0, 3)).map(
                   (
                     retirada
                   ) => (
@@ -1698,6 +1700,7 @@ export default function HomePage() {
                   )
                 )}
 
+                {retiradasHoje.length > 3 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${retiradasHoje.length - 3} retirada(s)`}</button>}
               </div>
             </motion.section>
           )}

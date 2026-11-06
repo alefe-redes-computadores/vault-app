@@ -71,7 +71,7 @@ export function ListFilters({ children, showIcon = true, onClear, clearLabel = "
             <div className="mt-4 flex max-h-[55dvh] min-w-0 flex-wrap items-center gap-2.5 overflow-y-auto overscroll-contain rounded-2xl border border-surface-border/50 bg-void/25 p-3.5 text-sm [&_button]:min-h-11 [&_button]:rounded-xl [&_label]:leading-relaxed">{children}</div>
             <div className="sticky bottom-0 mt-4 grid grid-cols-2 gap-2 border-t border-surface-border/35 bg-surface pt-3">
               {onClear ? <button ref={clearRef} type="button" onClick={onClear} className="min-h-12 rounded-2xl border border-surface-border bg-surface-raised text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface-raised-2">{clearLabel}</button> : null}
-              <button ref={applyRef} type="button" onClick={() => setOpen(false)} className={`min-h-12 rounded-2xl bg-ice text-sm font-bold text-void shadow-sm transition-transform active:scale-[0.98] ${onClear ? "" : "col-span-2"}`}>Aplicar filtros</button>
+              <button ref={applyRef} type="button" onClick={() => setOpen(false)} className={`min-h-12 rounded-2xl bg-ice text-sm font-bold text-void shadow-sm transition-transform active:scale-[0.98] ${onClear ? "" : "col-span-2"}`}>Concluir</button>
             </div>
           </div>
         </div>

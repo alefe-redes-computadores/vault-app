@@ -25,7 +25,7 @@ const [header,search,filters,sort,card,icon,summary,nav]=files.map(read);
 const all=(source,parts,label)=>parts.forEach(part=>assert(source.includes(part),`${label}: missing ${part}`));
 all(header,['safeReturnTarget(','break-words font-display','header-safe-top','aria-label={`Ferramentas de ${title}`}','focus-visible:ring-2'],'header');
 all(search,['role="search"','aria-label="Abrir busca"','V334_VISIBLE_SEARCH_TRIGGER','enterKeyHint="search"','onChange(event.target.value)','onKeyDown=','h-10 w-10','>Buscar</span>'],'search');
-all(filters,['V334_VISIBLE_FILTER_TRIGGER','aria-haspopup="dialog"','<span>Filtros</span>','if (onClear) clearRef.current?.focus','else applyRef.current?.focus','document.body.style.overflow = previous','triggerRef.current.focus','role="dialog"','aria-modal="true"','Aplicar filtros','onClear ? <button','col-span-2'],'filters');
+all(filters,['V334_VISIBLE_FILTER_TRIGGER','aria-haspopup="dialog"','<span>Filtros</span>','if (onClear) clearRef.current?.focus','else applyRef.current?.focus','document.body.style.overflow = previous','triggerRef.current.focus','role="dialog"','aria-modal="true"','Concluir','onClear ? <button','col-span-2'],'filters');
 all(sort,['role="dialog"','role="radiogroup"','aria-checked={isSelected}','document.body.style.overflow = previous','triggerRef.current.focus','onChange(selectedValue)','min-h-12'],'sort');
 all(card,['initial={false}','reducedMotion','contentVisibility: "auto"','interactiveContent','aria-label={navigationLabel}','density','compactTight','hover:shadow-lg','focus-visible:ring-2'],'card');
 all(icon,['--vault-list-icon-size','Math.max(12, Math.min(40, size))','isGradient','color2'],'icon');

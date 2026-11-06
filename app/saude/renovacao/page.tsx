@@ -68,6 +68,7 @@ import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-sear
 import { isPrescriptionOnly, renewalEventDate, isFutureAcquisition, realizedAcquisitionExpense } from "@/lib/health-supply/renewal-event";
 import { presentRenewalEvent, summarizeRenewalEvents } from "@/lib/health-supply/renewal-event-presentation";
 import { useLocalDay } from "@/hooks/useLocalDay";
+import { useProgressiveReveal } from "@/hooks/useProgressiveReveal";
 
 import type {
   Renovacao,
@@ -90,6 +91,7 @@ type StatusFilter =
 type AcquisitionFilter =
   | "todos"
   | "receita"
+  | "aquisicoes"
   | "planejada"
   | "comprado"
   | "sus"
@@ -665,6 +667,7 @@ export default function RenovacoesPage() {
               ) =>
                 filtroAquisicao === "receita"
                   ? isPrescriptionOnly(renovacao)
+                  : filtroAquisicao === "aquisicoes" ? !isPrescriptionOnly(renovacao)
                   : filtroAquisicao === "planejada"
                     ? presentRenewalEvent(renovacao, hojeISO).planned
                     : renovacao.tipo_aquisicao === filtroAquisicao && !presentRenewalEvent(renovacao, hojeISO).planned
@@ -690,6 +693,8 @@ export default function RenovacoesPage() {
         hojeISO,
       ]
     );
+
+  const revealRenewals = useProgressiveReveal(filteredRenovacoes.map(item => item.id).join("|"), filteredRenovacoes.length, 8, 8);
 
   // ==========================================================
   // FILTER ACTIONS
@@ -1036,6 +1041,9 @@ export default function RenovacoesPage() {
             ==================================================== */}
 
         <section className="space-y-3.5 px-5 pt-4">
+          <nav aria-label="Tipo de registro" className="flex flex-wrap gap-2">
+            {([['todos','Todos'],['receita','Receitas'],['aquisicoes','Aquisições'],['planejada','Planejadas']] as const).map(([value,label]) => <button key={value} type="button" aria-pressed={filtroAquisicao === value} onClick={() => setFiltroAquisicao(value)} className={`min-h-11 rounded-xl border px-3 text-xs font-semibold ${filtroAquisicao === value ? "border-ice/40 bg-ice/10 text-ice" : "border-surface-border bg-surface text-ink-secondary"}`}>{label}</button>)}
+          </nav>
           {filteredRenovacoes.length ===
           0 ? (
             <EmptyState
@@ -1051,7 +1059,7 @@ export default function RenovacoesPage() {
               }
             />
           ) : (
-            filteredRenovacoes.map(
+            filteredRenovacoes.slice(0, revealRenewals.visible).map(
               (
                 renovacao,
                 index
@@ -1330,6 +1338,7 @@ export default function RenovacoesPage() {
               }
             )
           )}
+          {(revealRenewals.remaining > 0 || revealRenewals.expanded) && <div className="flex gap-2">{revealRenewals.remaining > 0 && <button type="button" onClick={revealRenewals.showMore} className="min-h-11 flex-1 rounded-xl border border-surface-border bg-surface text-xs font-semibold text-ink-primary">Ver mais {revealRenewals.nextCount} registros · {revealRenewals.remaining} restantes</button>}{revealRenewals.expanded && <button type="button" onClick={revealRenewals.collapse} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-secondary">Recolher</button>}</div>}
         </section>
       </main>
     </PageTransition>

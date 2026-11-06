@@ -29,7 +29,7 @@ export function CareJourney360({ command, onNavigate, compact = false }: Props) 
         <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Áreas conectadas a partir do panorama da pessoa ativa. Os números são registros e planos, não confirmação de ações.</p>
       </div>
     </div>
-    <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+    <div className="mt-3 grid grid-cols-1 gap-2 min-[640px]:grid-cols-2">
       {visible.map(item => <button key={item.id} type="button" onClick={() => onNavigate(item.href)}
         className="group flex min-h-[74px] min-w-0 items-start gap-2 rounded-xl border border-surface-border/55 bg-void/20 p-2.5 text-left transition-colors hover:bg-surface-raised/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
         <span className={`grid size-8 shrink-0 place-items-center rounded-lg bg-surface-raised/60 ${tone[item.id]}`}>

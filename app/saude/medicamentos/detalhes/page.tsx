@@ -3,6 +3,7 @@
 
 import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
 import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
+import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
 import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseSortTimestamp, formatQuantidade, getKnownDoseQuantity, summarizeKnownQuantity, formatKnownQuantitySummary } from "@/lib/health-intelligence/medication-detail-presenters";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
@@ -743,7 +744,9 @@ function MedicamentoDetalhesContent() {
                     normalizeMedicationQualityText(
                       result.canonicalName
                     ) ===
-                      normalizedCurrentName
+                      normalizedCurrentName ||
+                    isPharmaceuticallyEquivalentName(nomeAtual, result.canonicalName) ||
+                    isPharmaceuticallyEquivalentName(nomeAtual, result.matchedText)
                 );
 
               if (

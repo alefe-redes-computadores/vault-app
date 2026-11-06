@@ -75,7 +75,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
               <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{resolvedToday}/{plannedToday}</p>
               <p className="mt-0.5 text-[10px] text-ink-muted">horários com desfecho registrado</p>
               {plannedSafe > 0 && <div className="mt-2" role="progressbar" aria-label="Horários programados resolvidos" aria-valuemin={0} aria-valuemax={plannedSafe} aria-valuenow={barNow} aria-valuetext={`${resolvedToday} de ${plannedToday} horários resolvidos`}>
-                <div className="h-1.5 overflow-hidden rounded-full bg-surface-border/60"><div className="h-full rounded-full bg-ice transition-[width] motion-reduce:transition-none" style={{ width: `${visualPercent}%` }} /></div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-surface-border/60"><div className={`h-full rounded-full ${ignoredScheduledToday > 0 ? "bg-amber-400" : "bg-ice"} transition-[width] motion-reduce:transition-none`} style={{ width: `${visualPercent}%` }} /></div>
               </div>}
               {plannedToday > 0 && (
                 <p className="mt-1 text-[9px] text-ink-faint">

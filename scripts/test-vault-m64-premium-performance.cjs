@@ -136,10 +136,10 @@ check(network.includes('text-sky-300" label="Médico Prescritor"'),'médico iden
     node.importClause.namedBindings.elements.some(item => item.name.text === 'HeartPulse')),
     'HeartPulse usado em Minha Saúde está importado (contrato TypeScript)');
  check(health.includes('id="minha-saude-panorama"')&&health.includes('{() => <PersonalHealthOverview'),'panorama sob demanda sem abandonar seção');
- check(health.includes('Como explorar sua Fênix')&&health.includes('não um diagnóstico'),'orientação de Avatar acessível sob demanda');
+ check(health.includes('Como explorar seu Avatar')&&health.includes('não um diagnóstico'),'orientação de Avatar acessível sob demanda');
  const avatar=file('components/saude/HealthAvatar.tsx');
  check(avatar.includes("size==='expanded'?<details open className=") &&
- avatar.includes('Toque na Fênix para ampliar. O botão do Brain mostra o contexto sem sair desta tela.') &&
+ avatar.includes('Toque no Avatar para ampliar. O botão do Brain mostra o contexto sem sair desta tela.') &&
  avatar.includes('não diagnósticos'),
  'V178/M7/M11/M13: inspeção ampliada visível e orientação original preservadas');
  check(avatar.includes('shouldMount3D')&&avatar.includes('previewVisible')&&avatar.includes('documentVisible'),'Fênix mantém WebGL condicionado à visibilidade');

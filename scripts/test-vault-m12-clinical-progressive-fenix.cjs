@@ -33,7 +33,7 @@ ok(acquisition.includes('const shownPrice=kind==="prescription"?"Receita":kind==
 ok(journey.includes('const recorded=items.filter(item=>item.value>0)')&&journey.includes('const remaining=items.filter(item=>item.value===0)')&&journey.includes('Outras etapas · {remaining.length}')&&journey.includes('onNavigate(href)'), 'Jornada prioriza etapas registradas sem perder links de itens vazios');
 ok(journey.includes('overdueWithdrawals>0')&&journey.includes('plannedAcquisitions>0')&&journey.includes('Planejamento futuro não registra compra'), 'Jornada preserva previsão versus realização e alerta de atraso');
 ok(three.includes('M10_FACE_GUARD_NATIVE_JAW')&&three.includes('new THREE.SphereGeometry(.151,20,12)')&&!three.includes('new THREE.ExtrudeGeometry(jawShape')&&three.includes('renderer.forceContextLoss()'), 'Fênix: mandíbula segura e descarte GPU preservados');
-ok(avatar.includes('Toque na Fênix para ampliar.')&&avatar.includes('Ver contexto registrado · não é diagnóstico')&&avatar.includes('onClick={onBrainSelect}'), 'Fênix: acessibilidade M7 e Brain não diagnóstico');
+ok(avatar.includes('Toque no Avatar para ampliar.')&&avatar.includes('Ver contexto registrado · não é diagnóstico')&&avatar.includes('onClick={onBrainSelect}'), 'Fênix: acessibilidade M7 e Brain não diagnóstico');
 // Evaluate the NEW stateless UI with synthetic data, rather than merely inspecting markers.
 const jsx=(type,props)=>({type,props:props||{}}),icon=()=>null;
 const deps={

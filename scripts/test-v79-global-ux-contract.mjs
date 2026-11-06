@@ -10,7 +10,7 @@ const network = read('app/saude/rede/page.tsx');
 const sync = read('components/GlobalSyncIssueAlert.tsx');
 
 ok(search.includes('aria-label="Abrir busca"') && search.includes('V334_VISIBLE_SEARCH_TRIGGER') && search.includes('>Buscar</span>'), 'busca compacta mantém rótulo visível e acessível');
-ok(filters.includes('role="dialog"') && filters.includes('Aplicar filtros') && filters.includes('V334_VISIBLE_FILTER_TRIGGER') && filters.includes('<span>Filtros</span>'), 'filtros visíveis preservam bottom sheet e aplicar');
+ok(filters.includes('role="dialog"') && filters.includes('Concluir') && filters.includes('V334_VISIBLE_FILTER_TRIGGER') && filters.includes('<span>Filtros</span>'), 'filtros visíveis preservam bottom sheet e aplicar');
 ok(more.includes('VAULT_MORE_INFORMATION_ARCHITECTURE_V79'), 'Mais separa conta, perfis, preferências e nuvem');
 ok(more.includes('<PersonSelector mode="identity"'), 'pessoa ativa possui área própria e identidade visível');
 ok(more.includes('"Sincronizado"'), 'estado normal de sincronização permanece visível em Mais');

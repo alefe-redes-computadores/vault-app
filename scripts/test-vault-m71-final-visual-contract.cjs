@@ -53,7 +53,7 @@ ok(routine.includes('resolvedToday}/{plannedToday}')&&routine.includes('ignoredS
 const treatment=read('app/saude/tratamentos/page.tsx');
 const treatmentDetail=read('app/saude/tratamentos/detalhes/page.tsx');
 ok(treatment.includes('Sem medicamentos vinculados')&&treatment.includes('tratamento.alertaPrincipal.titulo === "Tratamento sem medicamento vinculado"'),'legacy empty state and single-alert contract preserved');
-ok(treatment.includes('possiveisVinculos.slice(0,2)')&&treatment.includes('medicamentosResumo.map(m=>m.nome)'), 'list shows at most two candidate names, confirmed relations intact');
+ok(treatment.includes('Possíveis vínculos para revisar nos detalhes.')&&treatment.includes('medicamentosResumo.map(m=>m.nome)'), 'list shows at most two candidate names, confirmed relations intact');
 ok(treatmentDetail.includes('possibleMedications.map(')&&treatmentDetail.includes('medicamentosAtivos.map(')&&treatmentDetail.includes('tratamento_id=${encodeURIComponent(id)}'),'all candidate links and new medication workflow accessible');
 ok(treatmentDetail.includes('Nenhum evento clínico vinculado a este tratamento.')&&treatmentDetail.includes('id="tratamento-linha"'),'clinical history preserved');
 const central=read('app/inteligencia/page.tsx');

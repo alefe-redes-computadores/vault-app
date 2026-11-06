@@ -20,7 +20,7 @@ const providers=read('components/Providers.tsx');
 check('Recuperação automática em foreground tem intervalo limitado',providers.includes('refreshRecentCloudDoses(userId)')&&providers.includes('10 * 60_000'));
 const filters=read('components/list/ListFilters.tsx'),sort=read('components/list/ListSort.tsx');
 check('Filtros e ordenação permitem Escape e devolvem foco',filters.includes('event.key === "Escape"')&&sort.includes('event.key === "Escape"')&&filters.includes('focus({ preventScroll: true })')&&sort.includes('focus({ preventScroll: true })'));
-check('Listagens continuam com filtros aplicáveis',filters.includes('Aplicar filtros')&&sort.includes('const handleSelect = (selectedValue: string)'));
+check('Listagens continuam com filtros aplicáveis',filters.includes('Concluir')&&sort.includes('const handleSelect = (selectedValue: string)'));
 const card=read('components/list/ListCard.tsx');
 check('Cards respeitam preferência de movimento reduzido',card.includes('useReducedMotion()')&&card.includes('initial={false}')&&card.includes('duration: reducedMotion ? 0')&&card.includes('delay: reducedMotion ? 0'));
 const intelligenceSheet=read('components/vault-intelligence/VaultInsightSheet.tsx');

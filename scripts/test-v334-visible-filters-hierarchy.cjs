@@ -24,7 +24,7 @@ assert(filter.includes('activeCount > 0')&&filter.includes('aria-hidden="true"')
 assert(filter.includes('if (onClear) clearRef.current?.focus')&&filter.includes('else applyRef.current?.focus'),'foco inicial válido com/sem limpar');
 assert(filter.includes('triggerRef.current.focus')&&filter.includes('document.body.style.overflow = previous'),'sheet restaura foco e rolagem');
 assert(filter.includes('onClear ? <button')&&filter.includes('col-span-2'),'não exibir ação limpar desabilitada');
-assert(filter.includes('Aplicar filtros')&&filter.includes('setOpen(false)'),'sheet mantém ação aplicar');
+assert(filter.includes('Concluir')&&filter.includes('setOpen(false)'),'sheet mantém ação aplicar');
 assert(search.includes('V334_VISIBLE_SEARCH_TRIGGER')&&search.includes('>Buscar</span>'),'buscar descobrível em modo compacto');
 assert(search.includes('role="search"')&&search.includes('onChange(event.target.value)'),'busca continua funcional');
 assert(nav.includes('layout="grid"')&&nav.includes('layout?:"scroll"|"grid"'),'hierarquia visível por padrão com opção scroll');

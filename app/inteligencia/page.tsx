@@ -117,7 +117,6 @@ export default function VaultIntelligencePage() {
         {id:"insight-saude",label:"Saúde",icon:<AlertTriangle size={14}/>,iconClassName:"text-amber-300",},
         {id:"insight-cofre",label:"Cofre",icon:<Database size={14}/>,iconClassName:"text-emerald-300",},
       ]}/>
-      <ClinicalDisclosure id="insight-relacoes" title="Cuidado conectado" description="Medicamentos, tratamentos e fornecimento" icon={<BrainCircuit size={18}/>} iconClassName="text-violet-300">{() => <div className="space-y-3"><CareRelationshipRoutes compact onNavigate={href=>router.push(preserveReturn(href))}/>{!health.isLoading && health.careCommand ? <CareJourney360 command={health.careCommand} onNavigate={href=>router.push(preserveReturn(href))} compact /> : null}</div>}</ClinicalDisclosure>
     </div>
 
     <details className="group mx-auto mt-4 max-w-2xl overflow-hidden rounded-[22px] border border-surface-border/70 bg-gradient-to-br from-emerald-400/[0.06] via-surface to-violet-400/[0.05]">
@@ -141,6 +140,10 @@ export default function VaultIntelligencePage() {
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
     </section>
+
+    <div className="mx-auto mt-3 max-w-2xl">
+      <ClinicalDisclosure id="insight-relacoes" title="Cuidado conectado" description="Medicamentos, tratamentos e fornecimento" icon={<BrainCircuit size={18}/>} iconClassName="text-violet-300">{() => <div className="space-y-3"><CareRelationshipRoutes compact onNavigate={href=>router.push(preserveReturn(href))}/>{!health.isLoading && health.careCommand ? <CareJourney360 command={health.careCommand} onNavigate={href=>router.push(preserveReturn(href))} compact /> : null}</div>}</ClinicalDisclosure>
+    </div>
 
     {!health.isLoading ? <div className="mx-auto mt-3 max-w-2xl"><ClinicalDisclosure id="insight-agenda" title="Agenda de compromissos" description="Retiradas, aquisições planejadas e projeções" icon={<FileText size={18}/>} iconClassName="text-cyan-300">{() => <CareForecastAgenda context={health.context} forecast={health.careCommand?.forecast} onNavigate={(href) => router.push(preserveReturn(`${href}`))}/>}</ClinicalDisclosure></div> : null}
 

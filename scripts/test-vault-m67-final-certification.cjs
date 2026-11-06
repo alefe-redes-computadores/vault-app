@@ -141,7 +141,7 @@ function load(rel,stubs={}){
   for(const token of ['queuedIds.has(remote.id!)','local?.synced === false','localTime > remoteTime','if (response.data === null)','isSameRecentCloudDose(local, remote)'])ok(recent.includes(token),'refresh preserva proteção '+token);
   const avatar=read('components/saude/HealthAvatar.tsx');
   ok(avatar.includes('canMountAvatar3D(')&&avatar.includes('previewVisible')&&avatar.includes('documentVisible'),'Fênix WebGL condicionado a visibilidade');
-  ok(avatar.includes('Toque na Fênix para ampliar.')&&avatar.includes('não diagnósticos'),'Fênix informa limite não diagnóstico');
+  ok(avatar.includes('Toque no Avatar para ampliar.')&&avatar.includes('não diagnósticos'),'Fênix informa limite não diagnóstico');
   const meds=read('app/saude/medicamentos/page.tsx');
   ok(meds.includes('regulatoryBorderColor')&&meds.includes('setQuickDoseMedId'),'identidade regulatória e ação de dose rápida mantidas');
   const health=read('app/saude/minha-saude/page.tsx');

@@ -24,7 +24,7 @@ check(format.includes('MEDICATION_PRIMARY_FORMATS')&&format.includes('MEDICATION
 check(color.includes('MEDICATION_IDENTITY_COLORS')&&color.includes('type="color"')&&color.includes('aria-pressed={active}'),'paleta tem mesma origem e acessibilidade');
 check(!/(?:\bdb\.|\bsupabase\b|\bfetch\(|\.insert\(|\.delete\(|\.put\()/.test(format+'\n'+color),'seletores não leem nem gravam dados');
 check(fenix.includes('Consultar contexto do Brain sem mudar de página')&&fenix.includes('onClick={onBrainSelect}')&&fenix.includes('Ver contexto registrado · não é diagnóstico'),'Brain contextual com ressalva e CTA real');
-check(fenix.includes('Toque na Fênix para ampliar.')&&fenix.includes('aria-label="Como usar o Avatar"'),'afordância de toque explícita');
+check(fenix.includes('Toque no Avatar para ampliar.')&&fenix.includes('aria-label="Como usar o Avatar"'),'afordância de toque explícita');
 check(scene.includes('new THREE.BoxGeometry(Math.max(backWidth,frontWidth),height,depth)')&&scene.includes('shadowCanvas.width=128;shadowCanvas.height=128')&&scene.includes('gradient.addColorStop(0,"rgba(0,0,0,.37)")')&&scene.includes('gradient.addColorStop(.58,"rgba(0,0,0,.08)")'),'geometria Android preservada e sombra mais suave');
 check(today.includes('Doses futuras são previsões')&&read('components/hoje/TodayTimelineGuide.tsx').includes('Doses futuras são previsões')&&read('components/hoje/TodayTimelineGuide.tsx').includes('Somente uma confirmação registra tomada')&&read('components/hoje/TodayTimelineGroupPresentation.ts').includes('concluidas: { label: "Tomadas"'),'Hoje mantém autoridade clínica e tom visual equilibrado');
 

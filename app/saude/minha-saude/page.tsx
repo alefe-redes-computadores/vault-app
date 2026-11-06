@@ -360,7 +360,7 @@ function HealthDashboard({
                 </div>
               </div>
               <details className="mt-2 rounded-xl border border-emerald-300/10 bg-void/15 px-3 text-[11px] text-ink-muted">
-                 <summary className="flex min-h-11 cursor-pointer items-center text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como explorar sua Fênix</summary>
+                 <summary className="flex min-h-11 cursor-pointer items-center text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como explorar seu Avatar</summary>
                  <p className="pb-3 leading-relaxed">O 3D funciona quando o aparelho permite. Toque no avatar para ampliar e ajustar aparência, enquadramento e acessórios; a ilustração continua como alternativa. As marcações representam registros, não um diagnóstico.</p>
                </details>
               <ClinicalDisclosure id="avatar-corpo-sinais" title="Corpo e sinais · explorar regiões" description="Indicadores e registros por região do corpo" icon={<Activity size={18}/>} iconClassName="text-emerald-300">
