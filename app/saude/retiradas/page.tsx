@@ -336,7 +336,7 @@ export default function RetiradasPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-16">
+      <main className="min-h-screen bg-void pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
         <ListPageHeader
           title="Retiradas"
           badgeLabel="AGENDA DE MEDICAMENTOS"
@@ -354,19 +354,25 @@ export default function RetiradasPage() {
           <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." className="order-1" />
           <ListFilters className="order-2" title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
             {[["todos", "Todas"], ["hoje", "Hoje"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (
-              <button key={key} type="button" aria-pressed={status === key} onClick={() => { trigger("vibrate"); setStatus(key as StatusFilter); }} className={`shrink-0 rounded-full border px-3 py-2 text-[10px] font-bold uppercase ${status === key ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{label}</button>
+              <button key={key} type="button" aria-pressed={status === key} onClick={() => { trigger("vibrate"); setStatus(key as StatusFilter); }} className={`inline-flex min-h-11 shrink-0 items-center rounded-xl border px-3 text-xs font-semibold ${status === key ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{label}</button>
             ))}
           </ListFilters>
           {counts.total > 0 ? <div className="order-3 w-full"><ClinicalListSummary icon={PackageCheck} eyebrow="Situação operacional" title={counts.atrasadas ? `${counts.atrasadas} retirada${counts.atrasadas === 1 ? "" : "s"} precisa${counts.atrasadas === 1 ? "" : "m"} de revisão` : counts.hoje ? `${counts.hoje} retirada${counts.hoje === 1 ? "" : "s"} para hoje` : "Agenda organizada"} detail={`${counts.agendadas} agendadas no histórico`} metrics={[{label:"Hoje",value:counts.hoje,tone:counts.hoje?"attention":"neutral"},{label:"Atrasadas",value:counts.atrasadas,tone:counts.atrasadas?"critical":"neutral"},{label:"Realizadas",value:counts.realizadas,tone:"positive"}]}/></div> : null}
         </ListPageHeader>
 
         <section className="space-y-4 px-5 pt-4">
-          {activePersonId ? <WithdrawalBatchPlanner key={activePersonId} rows={filtered.filter(row => row.person_id === activePersonId)} onSave={rescheduleRetiradas}/> : null}
           {(counts.atrasadas > 0 || counts.hoje > 0) ? <div className="grid grid-cols-2 gap-2">
-            <button type="button" disabled={!counts.hoje} onClick={() => { trigger("vibrate"); setStatus("hoje"); }} className="min-h-12 rounded-2xl border border-amber-400/20 bg-amber-400/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-amber-200">Hoje · {counts.hoje}</strong><span className="text-[9px] text-ink-muted">Abrir agenda atual</span></button>
-            <button type="button" disabled={!counts.atrasadas} onClick={() => { trigger("vibrate"); setStatus("atrasada"); }} className="min-h-12 rounded-2xl border border-coral/20 bg-coral/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-coral">Atrasadas · {counts.atrasadas}</strong><span className="text-[9px] text-ink-muted">Revisar pendências</span></button>
+            <button type="button" disabled={!counts.hoje} onClick={() => { trigger("vibrate"); setStatus("hoje"); }} className="min-h-12 rounded-2xl border border-amber-400/20 bg-amber-400/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-amber-200">Hoje · {counts.hoje}</strong><span className="text-xs text-ink-muted">Abrir agenda atual</span></button>
+            <button type="button" disabled={!counts.atrasadas} onClick={() => { trigger("vibrate"); setStatus("atrasada"); }} className="min-h-12 rounded-2xl border border-coral/20 bg-coral/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-coral">Atrasadas · {counts.atrasadas}</strong><span className="text-xs text-ink-muted">Revisar pendências</span></button>
           </div> : null}
-          <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/fornecimento"); }} className="flex min-h-[56px] w-full items-center justify-between rounded-[18px] border border-emerald-400/20 bg-emerald-400/[.05] px-3.5 py-3 text-left"><span><span className="block text-xs font-bold text-emerald-300">Fornecimento SUS e documentos</span><span className="mt-0.5 block text-[9px] text-ink-muted">Autorizações, anexos e preparo das próximas retiradas</span></span><ChevronRight size={16} className="text-emerald-300"/></button>
+          {activePersonId ? <details className="group rounded-2xl border border-surface-border/50 bg-surface/55 px-3 py-2">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+              <span>Reorganizar retiradas <span className="ml-1 font-normal text-ink-muted">· ferramenta opcional</span></span>
+              <ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="border-t border-surface-border/40 pt-2"><WithdrawalBatchPlanner key={activePersonId} rows={filtered.filter(row => row.person_id === activePersonId)} onSave={rescheduleRetiradas}/></div>
+          </details> : null}
+          <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/fornecimento"); }} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/[.05] px-3.5 py-2.5 text-left"><span><span className="block text-xs font-bold text-emerald-300">Fornecimento SUS e documentos</span><span className="mt-0.5 block text-xs text-ink-muted">Autorizações, anexos e preparo das próximas retiradas</span></span><ChevronRight size={16} className="text-emerald-300"/></button>
           {grouped.length === 0 ? (
             <EmptyState
               icon={Pill}

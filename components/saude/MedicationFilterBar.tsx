@@ -64,14 +64,14 @@ export function MedicationFilterBar({ value, onChange }: {
     if (expanded) triggerRef.current?.focus();
   };
   const controlClass = (selected: boolean, highlighted: boolean) =>
-    `inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-[11px] font-bold transition-colors active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none ${
+    `inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none ${
       selected ? highlighted
         ? "border-amber-300/35 bg-amber-300/[.10] text-amber-200"
         : "border-emerald-300/30 bg-emerald-300/[.10] text-emerald-200"
         : "border-surface-border/50 bg-surface-raised/35 text-ink-muted"
     }`;
   return (
-    <section className="border-b border-surface-border/30 bg-surface/30 px-4 py-3" aria-label="Filtros de medicamentos">
+    <section className="border-b border-surface-border/30 bg-surface/30 px-4 py-2.5" aria-label="Filtros de medicamentos">
       <div className="flex min-w-0 items-center gap-1.5">
         {PRIMARY.map(([key, label]) => (
           <button key={key} type="button" aria-pressed={value === key}
@@ -83,6 +83,7 @@ export function MedicationFilterBar({ value, onChange }: {
         <button ref={triggerRef} type="button" aria-expanded={expanded} aria-controls="medication-more-filters"
           onClick={() => setExpanded(previous => !previous)}
           className={`${controlClass(Boolean(extra), false)} max-w-[44%] shrink-0 px-2.5`}
+          aria-label={extra ? `Mais filtros. Atual: ${extra[1]}` : "Abrir mais filtros de medicamentos"}
           title={extra ? `Filtro atual: ${extra[1]}` : "Mostrar mais filtros"}>
           <SlidersHorizontal size={14} aria-hidden="true"/>
           <span className="max-w-[7rem] truncate">{extra ? extra[1] : "Filtros"}</span>
@@ -91,7 +92,7 @@ export function MedicationFilterBar({ value, onChange }: {
       </div>
       {expanded && (
         <div id="medication-more-filters" ref={panelRef}
-          className="mt-2 grid grid-cols-2 gap-1.5 rounded-xl border border-surface-border/35 bg-void/40 p-1.5"
+          className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-surface-border/35 bg-void/40 p-2"
           aria-label="Categorias adicionais">
           {ADDITIONAL.map(([key, label]) => (
             <button key={key} type="button" aria-pressed={value === key}

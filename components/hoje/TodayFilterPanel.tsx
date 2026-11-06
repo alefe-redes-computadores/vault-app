@@ -56,7 +56,7 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
         const active = option.value === selected;
         return <button key={option.value} type="button" aria-pressed={active}
           onClick={() => select(option.value)}
-          className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-semibold transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${active ? "border-ice/45 bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised/50 text-ink-secondary"}`}>
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${active ? "border-ice/45 bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised/50 text-ink-secondary"}`}>
           {active && <Check size={12} aria-hidden="true" />}{option.label}
         </button>;
       })}
@@ -73,7 +73,7 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
     <div className="absolute right-0 top-[calc(100%+8px)] z-40 max-h-[min(66dvh,460px)] w-[min(88vw,360px)] space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-surface-border bg-surface p-3.5 pb-[max(14px,env(safe-area-inset-bottom))] shadow-2xl">
       <div className="flex items-center justify-between gap-2">
         <strong className="text-sm font-semibold text-ink-primary">Personalizar visualização</strong>
-        <button type="button" onClick={() => { onReset(); }} className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><RotateCcw size={13} /> Limpar</button>
+        <button type="button" onClick={() => { onReset(); }} className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><RotateCcw size={13} /> Limpar</button>
       </div>
       <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Situação das doses</legend>{options(statusOptions, status, onStatus)}</fieldset>
       <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Período</legend>{options(PERIOD, period, onPeriod)}</fieldset>
@@ -83,8 +83,8 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
         Mostrar registros concluídos na visualização padrão
       </label>}
       <button type="button" aria-label="Aplicar filtros e fechar" onClick={() => { if (detailsRef.current) detailsRef.current.open = false; }}
-        className="min-h-11 w-full rounded-xl bg-ice/15 text-xs font-bold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Aplicar e voltar</button>
-      <p className="text-[10px] leading-relaxed text-ink-muted">Estes controles apenas filtram o que aparece. Nenhum registro ou planejamento será modificado.</p>
+        className="min-h-11 w-full rounded-xl bg-ice/15 text-sm font-bold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Aplicar e voltar</button>
+      <p className="text-xs leading-relaxed text-ink-muted">As escolhas são aplicadas imediatamente. Estes filtros não modificam registros ou planejamento.</p>
     </div>
   </details>;
 }

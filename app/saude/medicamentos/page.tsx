@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   MinusCircle,
   Circle,
   Droplet,
@@ -1131,9 +1132,14 @@ export default function MedicamentosListPage() {
                 )}
               </div>
               {showActiveIngredient && (
+                <>
                 <p className="sr-only" title={`Princípio ativo: ${activeIngredient}`}>
                   Princípio ativo: {activeIngredient}
                 </p>
+                <p aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-xs font-medium leading-snug text-ink-secondary" title={`Princípio ativo: ${activeIngredient}`}>
+                  Princípio ativo: {activeIngredient}
+                </p>
+                </>
               )}
               <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px]">
                 {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classificação acessível na faixa lateral V328 */}
@@ -1222,7 +1228,14 @@ export default function MedicamentosListPage() {
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
-            {stockReview && <p role="note" className="mt-1.5 rounded-lg border border-amber-300/20 bg-amber-300/[.045] px-2.5 py-2 text-[11px] leading-relaxed text-amber-200">Unidade do estoque: {stockReview}</p>}
+            {stockReview && <details className="group mt-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[.05] px-2.5 py-1.5 text-amber-200">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+                <AlertTriangle size={14} className="shrink-0" aria-hidden="true"/>
+                <span className="min-w-0 flex-1">Unidade do estoque diferente · revisar</span>
+                <ChevronDown size={14} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
+              </summary>
+              <p role="note" className="pb-2 text-xs leading-relaxed text-amber-100">Unidade do estoque: {stockReview}</p>
+            </details>}
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1
                 Ações rápidas ficam junto da dose, antes do painel operacional.
@@ -1438,8 +1451,8 @@ export default function MedicamentosListPage() {
           </ClinicalDisclosure>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
-            <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-              Ir para um grupo <span aria-hidden="true" className="text-ink-muted">▾</span>
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+              <span>Ir para um grupo <span className="ml-1 font-normal text-ink-faint">· navegação, não filtro</span></span><span aria-hidden="true" className="text-ink-muted">▾</span>
             </summary>
             <MedicationListGroupNavigation attention={medsPrioridade.length} stable={medsEmDia.length} planned={medsPlanejados.length} sos={medsSOS.length} suspended={medsSuspensos.length}/>
           </details>:null}

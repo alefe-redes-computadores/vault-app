@@ -6,6 +6,8 @@ import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { TodayRemindersPanel } from "@/components/hoje/TodayRemindersPanel";
+import { TodayAgendaOverview } from "@/components/hoje/TodayAgendaOverview";
+import { buildTodayAgendaOverview } from "@/lib/today/agenda-overview";
 import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
 import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
 import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
@@ -722,6 +724,11 @@ export default function HojePage() {
       });
   }, [dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada]);
 
+  // M76: read-only agenda projection across categories. It never changes dose state.
+  const agendaOverview = useMemo(() => buildTodayAgendaOverview({
+    doses, reminders: remindersDoDia, appointments: compromissosFiltrados, now: operationalMinute,
+  }), [doses, remindersDoDia, compromissosFiltrados, operationalMinute]);
+
   // Métricas de adesão contam somente slots programados.
   // SOS/avulsas e sintomas permanecem na linha do tempo, mas não
   // inflam nem derrubam artificialmente o progresso da rotina.
@@ -747,6 +754,11 @@ export default function HojePage() {
 
   const totalCompromissosDoDia =
     compromissosFiltrados.length;
+
+  // Includes only scheduled withdrawals with dates strictly earlier than today.
+  const overdueWithdrawalsForToday = isHoje
+    ? retiradasHoje.filter(item => item.status === "agendada" && item.data < hoje).length
+    : 0;
 
   const totalEventosMedicamento =
     renovacoesReceitaHoje.length;
@@ -1588,7 +1600,7 @@ export default function HojePage() {
         <header className="border-b border-surface-border/40 bg-void px-4 pb-3 pt-3 shadow-[0_10px_26px_-24px_rgba(47,227,201,0.4)]">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">Linha do tempo</p>
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">Linha do tempo · por categoria</p>
               <h1 className="font-display text-2xl font-semibold capitalize leading-tight text-ink-primary">{dataSelecionadaLabel}</h1>
             </div>
             {!isHoje && <span className="shrink-0 rounded-lg border border-ice/20 bg-ice/10 px-2 py-1 text-[10px] font-semibold text-ice">{isPassado ? "Histórico" : "Planejado"}</span>}
@@ -1610,6 +1622,17 @@ export default function HojePage() {
         <section className="space-y-3 px-4 pt-3">
           {/* M40 — O conteúdo clínico vem antes dos atalhos e painéis complementares. */}
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true" />
+          {isHoje && !retroReviewMode ? <TodayAgendaOverview
+            overview={agendaOverview} overdueWithdrawals={overdueWithdrawalsForToday}
+            remindersCount={remindersDoDia.length}
+            onJump={(section) => {
+              trigger("vibrate");
+              document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            onOpenWithdrawals={() => { trigger("vibrate"); router.push("/saude/retiradas"); }}
+          /> : null}
+          {/* VAULT_V321_DAILY_FOCUS: real Brain command is visible before long dose lists. */}
+          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
           <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-semibold tracking-tight text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
@@ -1711,8 +1734,7 @@ export default function HojePage() {
           )}
 
 
-          {/* VAULT_V321_DAILY_FOCUS: no new dose authority; navigate to the existing queue. */}
-          {isHoje ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
+          {/* VAULT_V321_DAILY_FOCUS: Brain actions moved to first fold in M76; dose authority unchanged. */}
           {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
           {isHoje && medicamentosSemHorario.length > 0 && (
             <TodayUnscheduledRoutine medications={medicamentosSemHorario}
@@ -1791,7 +1813,7 @@ export default function HojePage() {
           ======================================================= */}
           {compromissosFiltrados.length >
             0 && (
-            <div className="vault-deferred space-y-3">
+            <div id="hoje-compromissos" className="vault-deferred scroll-mt-24 space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="flex items-center gap-2">
                   <Calendar
@@ -1804,7 +1826,7 @@ export default function HojePage() {
                   </h2>
                 </div>
 
-                <span className="rounded-full bg-coral/10 px-2 py-1 font-mono text-[9px] font-bold text-coral">
+                <span className="rounded-full bg-coral/10 px-2 py-1 font-mono text-xs font-bold text-coral">
                   {compromissosFiltrados.length}
                 </span>
               </div>
