@@ -288,6 +288,9 @@ export default function MedicamentosListPage() {
   // VAULT_MEDICATION_EXPERIENCE_V97
   const [medicationFilter, setMedicationFilter] =
     useState<MedicationListFilter>("todos");
+  // M80: view preference changes presentation only; the same filtered rows and
+  // clinical actions remain authoritative in both modes.
+  const [unifiedList, setUnifiedList] = useState(false);
 
   const showDescontinuados =
     medicationFilter === "encerrados";
@@ -1449,8 +1452,15 @@ export default function MedicamentosListPage() {
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>
             {() => <div className="space-y-2"><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/><a href="/ajuda?topico=medications" className="flex min-h-11 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como organizar rotina, estoque e receitas</a></div>}
           </ClinicalDisclosure>
+          <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface/45 px-3 py-2" aria-label="Modo de exibição dos medicamentos">
+            <div className="min-w-0"><strong className="block text-xs text-ink-primary">Exibição</strong><span className="block text-[11px] text-ink-muted">Mesmos resultados, outra organização</span></div>
+            <div className="inline-flex shrink-0 rounded-xl border border-surface-border/60 p-0.5" role="group" aria-label="Organização dos medicamentos">
+              <button type="button" aria-pressed={!unifiedList} onClick={() => setUnifiedList(false)} className={`min-h-11 rounded-lg px-2.5 text-xs font-semibold ${!unifiedList ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Grupos</button>
+              <button type="button" aria-pressed={unifiedList} onClick={() => setUnifiedList(true)} className={`min-h-11 rounded-lg px-2.5 text-xs font-semibold ${unifiedList ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Lista única</button>
+            </div>
+          </div>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
-          {listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
+          {!unifiedList && listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               <span>Ir para um grupo <span className="ml-1 font-normal text-ink-faint">· navegação, não filtro</span></span><span aria-hidden="true" className="text-ink-muted">▾</span>
             </summary>
@@ -1470,6 +1480,12 @@ export default function MedicamentosListPage() {
               onAction={listPresentation.active ? () => { setSearchQuery(""); selectMedicationFilter("todos"); } : undefined}
             />
           ) : (
+            unifiedList ? (
+              <div className="space-y-2.5 pb-8" aria-label="Todos os medicamentos encontrados">
+                <p role="status" className="text-xs text-ink-muted">{listaProcessada.length} medicamento(s) nesta visão · os filtros continuam ativos</p>
+                {listaProcessada.map(renderCard)}
+              </div>
+            ) : (
             <div className="space-y-2.5 pb-8">
               <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
@@ -1477,6 +1493,7 @@ export default function MedicamentosListPage() {
               <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSuspensos.map(renderCard) : medsSuspensos.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
             </div>
+            )
           )}
         </section>
 
