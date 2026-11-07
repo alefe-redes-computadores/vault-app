@@ -291,6 +291,9 @@ export default function MedicamentosListPage() {
   // M80: view preference changes presentation only; the same filtered rows and
   // clinical actions remain authoritative in both modes.
   const [unifiedList, setUnifiedList] = useState(false);
+  // M83: a lista única é incremental para evitar montar centenas de cards
+  // no Android. Busca e filtros continuam operando no conjunto completo.
+  const [unifiedVisibleCount, setUnifiedVisibleCount] = useState(12);
 
   const showDescontinuados =
     medicationFilter === "encerrados";
@@ -1482,8 +1485,14 @@ export default function MedicamentosListPage() {
           ) : (
             unifiedList ? (
               <div className="space-y-2.5 pb-8" aria-label="Todos os medicamentos encontrados">
-                <p role="status" className="text-xs text-ink-muted">{listaProcessada.length} medicamento(s) nesta visão · os filtros continuam ativos</p>
-                {listaProcessada.map(renderCard)}
+                <p role="status" className="text-xs text-ink-muted">Exibindo {Math.min(unifiedVisibleCount, listaProcessada.length)} de {listaProcessada.length} medicamento(s) · filtros e pesquisa consideram todos</p>
+                {listaProcessada.slice(0, unifiedVisibleCount).map(renderCard)}
+                {unifiedVisibleCount < listaProcessada.length && (
+                  <button type="button" onClick={() => setUnifiedVisibleCount(count => count + 12)}
+                    className="flex min-h-12 w-full items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-300/[.06] px-4 text-xs font-bold text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+                    Mostrar mais {Math.min(12, listaProcessada.length - unifiedVisibleCount)} medicamentos
+                  </button>
+                )}
               </div>
             ) : (
             <div className="space-y-2.5 pb-8">
