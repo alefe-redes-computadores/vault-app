@@ -23,6 +23,8 @@ export type VisualAgendaOverview = {
   hiddenCount: number;
   dueDoseCount: number;
   untimedAppointments: number;
+  /** First event at or after the provided clock; none is invented. */
+  nextUpcoming?: VisualAgendaRow | null;
 };
 const validTime = (value: unknown): value is string =>
   typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
@@ -65,11 +67,14 @@ export function buildTodayAgendaOverview(input: {
   }
   // Stable sort: equal clock times keep their original source order.
   candidates.sort((a, b) => a.time.localeCompare(b.time) || a.order - b.order);
+  const next = validTime(input.now) ? candidates.find(item => item.time >= input.now) : undefined;
+  const nextUpcoming: VisualAgendaRow | null = next ? {time:next.time,title:next.title,context:next.context,kind:next.kind,destination:next.destination} : null;
   const limit = Math.max(1, Math.min(8, Math.trunc(Number.isFinite(visibleLimit) ? visibleLimit : 4)));
   return {
     rows: candidates.slice(0, limit).map(({order: _order, ...row}) => row),
     hiddenCount: Math.max(0, candidates.length - limit),
     dueDoseCount,
     untimedAppointments,
+    nextUpcoming,
   };
 }

@@ -9,10 +9,13 @@ type ClinicalCollectionGroupProps = {
   description: string;
   count: number;
   icon: LucideIcon;
-  children: ReactNode | (() => ReactNode);
+  children: ReactNode | ((limit?: number) => ReactNode);
   defaultOpen?: boolean;
   forceOpen?: boolean;
   tone?: "attention" | "positive" | "neutral" | "sos";
+  /** Opt-in: render only the first visible cards until the reader requests more. */
+  progressive?: boolean;
+  pageSize?: number;
 };
 
 const tones = {
@@ -23,8 +26,9 @@ const tones = {
 } as const;
 
 /** Progressive hierarchy for large clinical lists. Keeps secondary groups out of the first viewport. */
-export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,children,defaultOpen=false,forceOpen=false,tone="neutral"}:ClinicalCollectionGroupProps){
+export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,children,defaultOpen=false,forceOpen=false,tone="neutral",progressive=false,pageSize=6}:ClinicalCollectionGroupProps){
   const [open,setOpen]=useState(defaultOpen);
+  const [visibleCount,setVisibleCount]=useState(Math.max(1,pageSize));
   const groupRef=useRef<HTMLDetailsElement>(null);
   // P14 R6: direct #medicamentos-* links cannot leave an eligible group collapsed.
   useEffect(() => {
@@ -44,6 +48,10 @@ export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,ch
     };
   }, [id]);
   const visible=forceOpen||open;
+  // Filtered lists are deliberately complete; only the ordinary overview is progressive.
+  const progressiveList = progressive && !forceOpen && typeof children === "function";
+  const shown = Math.min(count,visibleCount);
+  const remaining = progressiveList ? Math.max(0,count-shown) : 0;
   if(count===0)return null;
   return <details ref={groupRef} id={id} open={visible} onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}} className="group scroll-mt-24 overflow-hidden rounded-[22px] border border-surface-border/65 bg-surface/75 shadow-sm [content-visibility:auto] [contain-intrinsic-size:180px]">
     <summary aria-label={`${title}. ${count} itens. ${description}`} className="flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-3.5 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
@@ -52,6 +60,9 @@ export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,ch
       <span className="shrink-0 rounded-full bg-surface-raised px-2 py-1 font-mono text-xs tabular-nums text-ink-muted">{count}</span>
       <ChevronDown size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform motion-reduce:transition-none group-open:rotate-180"/>
     </summary>
-    {visible?<div className="space-y-2.5 border-t border-surface-border/50 bg-void/15 p-2.5">{typeof children==="function"?children():children}</div>:null}
+    {visible?<div id={`${id}-content`} className="space-y-2.5 border-t border-surface-border/50 bg-void/15 p-2.5">{typeof children==="function"?children(progressiveList?shown:undefined):children}
+      {remaining>0&&<button type="button" aria-controls={`${id}-content`} onClick={()=>setVisibleCount(previous=>Math.min(count,previous+Math.max(1,pageSize)))} className="flex min-h-11 w-full items-center justify-center rounded-xl border border-ice/20 bg-ice/[.05] px-3 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Mostrar mais {Math.min(remaining,Math.max(1,pageSize))} de {count} medicamentos</button>}
+      {progressiveList&&remaining===0&&count>pageSize&&<button type="button" aria-controls={`${id}-content`} onClick={()=>setVisibleCount(Math.max(1,pageSize))} className="min-h-11 w-full rounded-xl border border-surface-border/50 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Recolher lista para os primeiros {Math.max(1,pageSize)}</button>}
+    </div>:null}
   </details>;
 }

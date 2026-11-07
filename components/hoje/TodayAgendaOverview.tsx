@@ -27,7 +27,7 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
       </button>}
     </div> : <p className="mt-2 text-xs text-ink-secondary">Nenhuma retirada atrasada ou dose pendente identificada neste resumo. Confira os demais compromissos abaixo.</p>}
     <div className="mt-3 border-t border-surface-border/40 pt-2.5">
-      <div className="flex items-baseline justify-between gap-2"><h3 className="text-xs font-bold text-ink-primary">Agenda por horário</h3><span className="text-xs text-ink-muted">Prévia · todos os tipos</span></div>
+      <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-bold text-ink-primary">Agenda por horário</h3>{overview.nextUpcoming ? <button type="button" onClick={()=>onJump(overview.nextUpcoming!.destination)} className="min-h-11 shrink-0 rounded-lg border border-ice/20 bg-ice/[.055] px-2 text-xs font-semibold tabular-nums text-ice" aria-label={`Ir para o próximo horário às ${overview.nextUpcoming.time}`}>Próximo · {overview.nextUpcoming.time}</button> : <span className="text-xs text-ink-muted">Prévia · todos os tipos</span>}</div>
       {overview.rows.length > 0 ? <ol className="mt-2 space-y-1" aria-label="Horários combinados em ordem cronológica">
         {overview.rows.map((item, index) => {
           const Icon = kindIcon[item.kind];

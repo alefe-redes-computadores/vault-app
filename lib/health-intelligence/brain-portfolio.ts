@@ -36,14 +36,16 @@ const laneRank: Record<BrainDecisionLane, number> = { now: 4, next: 3, follow_up
 const qualityWeight: Record<BrainEvidenceQuality, number> = { strong: 100, moderate: 65, limited: 25 };
 
 export function brainV5Momentum(item: BrainV5Alert): BrainMomentum {
-  if (!item.last_seen_at) return "new";
+  // A recurrence or material change remains meaningful even when the signal
+  // has never been opened. "New" means unseen, not newly detected today.
   if ((item.episode || 1) > 1) return "recurrent";
   if ((item.occurrences || 1) > 1) return "updated";
+  if (!item.last_seen_at) return "new";
   return "stable";
 }
 
 function focusReason(item: BrainV5Alert, momentum: BrainMomentum): string {
-  const prefix = momentum === "new" ? "Novo" : momentum === "recurrent" ? "Recorrente" : momentum === "updated" ? "Atualizado" : "Em acompanhamento";
+  const prefix = momentum === "new" ? "Ainda não visto" : momentum === "recurrent" ? "Recorrente" : momentum === "updated" ? "Atualizado" : "Em acompanhamento";
   return `${prefix} · ${brainV5PriorityReason(item)}`;
 }
 
@@ -97,7 +99,7 @@ export function buildBrainPortfolio(items: readonly BrainV5Alert[], focusLimit =
         ? "Acompanhamento organizado sem urgência comprovada"
         : "Nenhuma ação aberta neste momento";
   const summary = [
-    newCount ? `${newCount} nova(s)` : "",
+    newCount ? `${newCount} ainda não vista(s)` : "",
     recurring ? `${recurring} recorrente(s)` : "",
     scheduled ? `${scheduled} programada(s)` : "",
     confidenceScore !== null ? `base de evidência ${confidenceScore}/100` : "",

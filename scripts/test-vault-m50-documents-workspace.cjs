@@ -44,7 +44,7 @@ ok(disclosure.includes('aria-expanded={open}')&&disclosure.includes('aria-contro
 ok(disclosure.includes('role="region" aria-labelledby={headingId}'), 'clinical disclosure panel labelled for screen readers');
 ok(collection.includes('if(count===0)return null')&&collection.includes('forceOpen||open'), 'empty groups hidden and forced-open groups preserved');
 ok(collection.includes('vault:reveal-clinical-section')&&collection.includes('hashchange'), 'clinical list groups reveal from navigation and deep links');
-ok(collection.includes('typeof children==="function"?children():children')&&collection.includes('visible?<div'), 'clinical list group remains lazy');
+ok(collection.includes('typeof children==="function"?children(progressiveList?shown:undefined):children')&&collection.includes('visible?<div')&&collection.includes('remaining>0&&<button'), 'clinical list group remains lazy and progressively bounded');
 ok(collection.includes('className="mt-0.5 block line-clamp-2 break-words'), 'clinical group description readable on narrow phones');
 ok(summary.includes('divide-x divide-surface-border')&&summary.includes('metrics.map('), 'clinical summary preserves metric and separator identity');
 ok(summary.includes('metrics.length <= 1 ? "grid-cols-1"')&&summary.includes('metrics.length === 2 ? "grid-cols-2"')&&summary.includes('metrics.length === 3 ? "grid-cols-3"'), 'clinical metric layout adapts from one to several real metrics');

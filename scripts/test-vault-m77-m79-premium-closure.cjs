@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+"use strict";
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const ts=require("typescript");
+let passed=0;
+const ok=(value,label)=>{assert.ok(value,`M77-M79: ${label}`);console.log(`✓ ${++passed}: ${label}`);};
+const read=path=>fs.readFileSync(path,"utf8");
+const parse=path=>{const source=read(path);const ast=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,path.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(ast.parseDiagnostics.length===0,`JSX/TSX válido: ${path}`);return source;};
+const groups=parse("components/saude/ClinicalCollectionGroup.tsx");
+const meds=parse("app/saude/medicamentos/page.tsx");
+ok(groups.includes('children(progressiveList?shown:undefined)')&&groups.includes('remaining>0&&<button')&&groups.includes('!forceOpen'),"Lista progressiva só calcula os primeiros cards no estado normal");
+for(const name of ["medsPrioridade","medsEmDia","medsPlanejados","medsSOS","medsSuspensos"]){
+  ok(meds.includes(`${name}.map(renderCard)`)&&meds.includes(`${name}.slice(0, limit).map(renderCard)`),`${name}: lote parcial e render completo com filtros`);
+}
+ok(meds.includes('progressive={medicationFilter === "todos" && !searchQuery}'),"Busca e recortes explícitos sempre acessam todos os resultados");
+const portfolio=parse("lib/health-intelligence/brain-portfolio.ts");
+const central=parse("app/inteligencia/alertas/page.tsx");
+const changes=parse("components/vault-intelligence/BrainChangeSummary.tsx");
+ok(portfolio.indexOf('if ((item.episode || 1) > 1) return "recurrent";')<portfolio.indexOf('if (!item.last_seen_at) return "new";'),"Recorrência não fica mascarada por alerta ainda não visualizado");
+ok(central.includes('<BrainChangeSummary records={brain.records} onOpen={open}/>')&&central.includes('NÃO VISTO'),"Brain mostra evolução e não confunde não visto com recém-detectado");
+ok(changes.includes('Date.parse(item.last_detected_at)')&&changes.includes('30 * 86400000')&&changes.includes('brainV5IsSnoozed(item)'),"Mudanças do Brain têm data real e respeitam sinais adiados");
+ok(!/\b(db\.|supabase\.|fetch\(|safeAdd|safeUpdate|updateLedger\()/i.test(changes),"Sumário do Brain não faz consultas ou alterações em dados clínicos");
+const fakeBrain={brainV5IsSnoozed:()=>false,brainV5Journeys:()=>[],brainV5Lane:()=>"follow_up",brainV5PriorityReason:()=>"apresentação"};
+const compiled=ts.transpileModule(portfolio,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+const moduleObject={exports:{}};
+new Function("module","exports","require",compiled)(moduleObject,moduleObject.exports,()=>fakeBrain);
+const momentum=moduleObject.exports.brainV5Momentum;
+ok(momentum({episode:2,occurrences:1})==="recurrent"&&momentum({episode:1,occurrences:2})==="updated","Brain identifica recorrente/atualizado sem depender de abertura");
+ok(momentum({episode:1,occurrences:1})==="new"&&momentum({episode:1,occurrences:1,last_seen_at:"2026-11-06T12:00:00Z"})==="stable","Brain distingue não visto de estado acompanhado");
+const agenda=parse("lib/today/agenda-overview.ts");
+const agendaView=parse("components/hoje/TodayAgendaOverview.tsx");
+const compiledAgenda=ts.transpileModule(agenda,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const am={exports:{}};new Function("module","exports",compiledAgenda)(am,am.exports);
+const model=am.exports.buildTodayAgendaOverview({now:"12:00",doses:[{horario:"10:00",tomada:false,ignorada:false},{horario:"22:00",tomada:false,ignorada:false}],reminders:[{id:"r",time:"15:00",title:"Lembrete"}],appointments:[{tipo:"retirada",horario:null}]});
+ok(model.rows.map(row=>row.time).join("|")==="10:00|15:00|22:00"&&model.nextUpcoming?.time==="15:00","Hoje preserva ordem completa e identifica o próximo evento conhecido");
+ok(model.untimedAppointments===1&&model.dueDoseCount===1,"Retirada sem horário permanece sem hora e dose vencida não é tomada");
+ok(agendaView.includes('onJump(overview.nextUpcoming!.destination)')&&agendaView.includes('Próximo · {overview.nextUpcoming.time}'),"Próximo evento tem atalho para a seção correta");
+const fenix=parse("components/saude/HealthAvatar3D.tsx");
+ok(fenix.includes('Restaurar vista frontal')&&fenix.includes('controller.current?.zoom(100)')&&fenix.includes('onFramingChange?.(\'body\')'),"Fênix restaura zoom/vista sem remontar WebGL");
+ok(fenix.includes('if(transition||cameraTransition)draw()')&&fenix.includes('renderer.dispose()'),"Fênix conserva render sob demanda e limpeza de recursos");
+const gate=read("scripts/test-v63-release-gate.mjs");
+ok(gate.indexOf('"scripts/test-vault-m77-m79-premium-closure.cjs"')<gate.indexOf('"scripts/test-vault-m76-final-visual-ux.cjs"'),"Novo gate antes dos contratos M76 e legados");
+console.log(`M77–M79: ${passed} verificações de experiência, privacidade e regressão aprovadas.`);
