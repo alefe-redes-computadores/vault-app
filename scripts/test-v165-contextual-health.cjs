@@ -34,7 +34,7 @@ const identity = medicine.slice(identityStart, identityEnd);
 assert.match(identity, /flex min-w-0 flex-col gap-1/, "cabeçalho vertical preserva largura do nome");
 assert.match(identity, /line-clamp-2 break-words font-display/, "nome não truncado");
 assert.doesNotMatch(identity, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "coluna rígida não pode retornar");
-assert.match(identity, /mt-1 flex min-w-0 flex-wrap items-center gap-1\.5/, "ações com faixa separada");
+assert.match(identity, /aria-label="Ações do medicamento" className="mt-1\.5 grid min-w-0 grid-cols-2 gap-1\.5 border-t/, "ações independentes em faixa separada e grade premium");
 assert.match(identity, /careAction && \(\s*[\s\S]*?<button[\s\S]*?router\.push\(\s*careAction\.href/, "pendência navega para seu destino");
 assert.match(identity, /canQuickDose &&[\s\S]*?quickDoseLabel[\s\S]*?<button[\s\S]*?setQuickDoseMedId\(/, "registro rápido continua independente");
 

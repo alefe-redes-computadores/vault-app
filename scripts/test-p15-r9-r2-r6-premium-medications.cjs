@@ -33,7 +33,7 @@ ok('Avatar mantém baixo custo de GPU',avatar.includes('powerPreference: "low-po
 // Distinguish the resolved NOW action from its candidate object; no false visual urgency.
 ok('Cor de urgência compara ação resolvida', med.includes('careAction === brainAction && brainCareItem?.lane === "now"'));
 ok('O estado híbrido não herda etiqueta de origem ativa', med.includes('supplyRoute?.mode === "hybrid" ? ('));
-ok('V165: faixa separada mantém margem original acessível',/mt-1 flex min-w-0 flex-wrap items-center gap-1\.5/.test(med));
+ok('M86: faixa separada e alvos táteis preservados',/aria-label="Ações do medicamento" className="mt-1\.5 grid min-w-0 grid-cols-2 gap-1\.5 border-t/.test(med) && med.includes('[&>button]:min-h-11'));
 ok('V165: botões continuam independentes da identidade',med.includes('VAULT_V318_COMPACT_IDENTITY') && med.includes('VAULT_MEDICATION_LIST_HIERARCHY_V98') && med.includes('router.push(careAction.href)') && med.includes('setQuickDoseMedId(med.id!)'));
 
 console.log(`P15 R9 R2 R6: ${checks} contratos aprovados`);

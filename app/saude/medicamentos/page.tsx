@@ -1124,8 +1124,9 @@ export default function MedicamentosListPage() {
         >
           <div className="relative flex min-w-0 flex-col gap-0.5">
 
-            {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY */}
+            {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-h-[3rem] min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
                 <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold leading-snug text-ink-primary">
@@ -1142,12 +1143,13 @@ export default function MedicamentosListPage() {
                 <p className="sr-only" title={`Princípio ativo: ${activeIngredient}`}>
                   Princípio ativo: {activeIngredient}
                 </p>
-                <p aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-xs font-medium leading-snug text-ink-secondary" title={`Princípio ativo: ${activeIngredient}`}>
-                  Princípio ativo: {activeIngredient}
+                <p aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted" title={`Princípio ativo: ${activeIngredient}`}>
+                  {activeIngredient}
                 </p>
                 </>
               )}
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px]">
+              </div>
+              <div className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px]">
                 {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classificação acessível na faixa lateral V328 */}
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
@@ -1174,7 +1176,7 @@ export default function MedicamentosListPage() {
                   </span>
                 )}
               </div>
-              <div aria-label="Ações do medicamento" className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 border-t border-surface-border/25 pt-1.5">
+              <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-[11px]">
                 {careAction && (
                   <button
                     type="button"
@@ -1234,8 +1236,8 @@ export default function MedicamentosListPage() {
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
-            {stockReview && <details className="group mt-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[.05] px-2.5 py-1.5 text-amber-200">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+            {stockReview && <details className="group mt-1 rounded-lg border border-amber-300/25 bg-amber-300/[.05] px-2.5 py-1 text-amber-200">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
                 <AlertTriangle size={14} className="shrink-0" aria-hidden="true"/>
                 <span className="min-w-0 flex-1">Unidade do estoque diferente · revisar</span>
                 <ChevronDown size={14} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
