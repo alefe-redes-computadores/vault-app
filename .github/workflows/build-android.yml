@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: vault-android-${{ github.ref }}
@@ -129,6 +129,9 @@ jobs:
           set -euo pipefail
           test -n "$VAULT_DEBUG_KEYSTORE_BASE64" || { echo "ERRO: secret VAULT_DEBUG_KEYSTORE_BASE64 ausente." >&2; exit 1; }
           test "$VAULT_VERSION_CODE" -ge 1
+          VAULT_APP_VERSION="$(node -p 'require("./package.json").version')"
+          export VAULT_APP_VERSION
+          test -n "$VAULT_APP_VERSION"
 
           KEYSTORE="$RUNNER_TEMP/vault-debug.keystore"
           printf '%s' "$VAULT_DEBUG_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
@@ -158,6 +161,17 @@ jobs:
           if count != 1:
               raise SystemExit("V86: versionCode não encontrado no Gradle.")
 
+          version_name = os.environ["VAULT_APP_VERSION"]
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version_name):
+              raise SystemExit("M87: versão semântica inválida")
+          text, vn_count = re.subn(
+              r'(?m)^(\s*)versionName\s+"[^"]+"\s*$',
+              rf'\g<1>versionName "{version_name}"',
+              text, count=1,
+          )
+          if vn_count != 1:
+              raise SystemExit("M87: versionName não encontrada no Gradle")
+
           if "vaultStableDebug" in text:
               raise SystemExit("V86: contrato de assinatura duplicado.")
 
@@ -184,6 +198,7 @@ jobs:
           PY
 
           grep -F "versionCode $VAULT_VERSION_CODE" android/app/build.gradle
+          grep -F "versionName \"$VAULT_APP_VERSION\"" android/app/build.gradle
           grep -F 'vaultStableDebug' android/app/build.gradle
           grep -F 'vault-debug.keystore' android/app/build.gradle
 
@@ -234,6 +249,9 @@ jobs:
 
           BADGING="$("$AAPT" dump badging "$APK")"
           printf '%s\n' "$BADGING" | head -n 1
+          VAULT_APP_VERSION="$(node -p 'require("./package.json").version')"
+          ACTUAL_VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -nE "s/^package:.*versionName='([^']+)'.*/\1/p" | head -n 1)"
+          test "$ACTUAL_VERSION_NAME" = "$VAULT_APP_VERSION" || { echo "ERRO: versionName real diverge do package.json" >&2; exit 1; }
           ACTUAL_VERSION_CODE="$(printf '%s\n' "$BADGING" | sed -nE "s/^package:.*versionCode='([0-9]+)'.*/\1/p" | head -n 1)"
           test "$ACTUAL_VERSION_CODE" = "$VAULT_VERSION_CODE" || { echo "ERRO: versionCode real diverge do github.run_number." >&2; exit 1; }
 
@@ -263,3 +281,45 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
+
+      # M87: publish only after release tests, export, stable signing, aapt/apksigner
+      # verification and the original artifact upload have all succeeded.
+      - name: Publicar atualização Android certificada
+        if: success() && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="vault-android-b${GITHUB_RUN_NUMBER}"
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          DIR="$RUNNER_TEMP/vault-certified-release"
+          mkdir -p "$DIR"
+          test -s "$APK"
+          cp "$APK" "$DIR/Vault-App.apk"
+          SHA256="$(sha256sum "$DIR/Vault-App.apk" | awk '{print $1}')"
+          VERSION="$(node -p 'require("./package.json").version')"
+          COMMIT_SUBJECT="$(git log -1 --pretty=%s | tr '\n' ' ' | cut -c1-160)"
+          {
+            echo "VAULT_VERSION=$VERSION"
+            echo "VAULT_BUILD=$GITHUB_RUN_NUMBER"
+            echo "VAULT_COMMIT=$GITHUB_SHA"
+            echo "VAULT_APK_SHA256=$SHA256"
+            echo
+            echo '## Novidades'
+            printf -- '- %s\n' "$COMMIT_SUBJECT"
+            echo
+            echo '## Certificação'
+            echo '- Testes canônicos, exportação, build e assinatura Android validados na Action.'
+            echo '- Atualização sobre APK anterior depende da assinatura estável e da confirmação do Android.'
+          } > "$DIR/notes.md"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "BLOQUEADO: release $TAG já existe; não sobrescrever asset certificado" >&2
+            exit 1
+          fi
+          gh release create "$TAG" "$DIR/Vault-App.apk#Vault-App.apk" \
+            --target "$GITHUB_SHA" \
+            --title "VAULT v${VERSION} · Build ${GITHUB_RUN_NUMBER}" \
+            --notes-file "$DIR/notes.md" \
+            --latest
+          echo "APK certificado publicado: $TAG" >> "$GITHUB_STEP_SUMMARY"

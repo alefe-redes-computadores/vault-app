@@ -92,6 +92,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 import { HealthConnectRuntime } from "@/components/saude/HealthConnectRuntime";
 import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
+import { VaultUpdateReconciler } from "@/components/updates/VaultUpdateReconciler";
 
 import { resolveMedicationStockReview } from "@/lib/medication-availability";
 import { HealthIntelligenceProvider } from "@/contexts/HealthIntelligenceContext";
@@ -822,6 +823,12 @@ export function Providers({
                 rawData
               );
 
+            // M89: update notifications contain no clinical or person identifiers.
+            if (data.type === "vault_update_available") {
+              runAfterVaultBiometricUnlock(() => router.push("/mais"));
+              return;
+            }
+
             // M63: a native payload can contain patient and record IDs. Never log it.
 
             // V121: stock reviews use the same cold-start entry and biometric gate.
@@ -1338,6 +1345,7 @@ export function Providers({
         </>
       )}
       <HealthConnectRuntime />
+      <VaultUpdateReconciler />
       <GlobalSyncIssueAlert />
       <ContextualHelp userId={user.id} personId={activePersonId} />
         <div className="min-h-screen pb-24">

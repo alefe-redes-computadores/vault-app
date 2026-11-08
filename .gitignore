@@ -16,3 +16,7 @@ out/
 .vault-backups/
 .nomedia
 tsconfig.tsbuildinfo
+
+# VAULT Update Center — arquivos de verificação locais
+.vault-update-cache/
+.vault-update-reports/

@@ -68,6 +68,7 @@ import { useBiometric } from "@/hooks/useBiometric";
 import { pullAllData } from "@/lib/sync/pull";
 import { useLiveQuery } from "dexie-react-hooks";
 import { APP_VERSION } from "@/lib/app-version";
+import { VaultUpdateCenter } from "@/components/updates/VaultUpdateCenter";
 import type {
   Document,
   Medicamento,
@@ -981,6 +982,8 @@ export default function MaisPage() {
               {isNativeApp && isNotificationsEnabled ? <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Lembretes no mesmo horário são agrupados; cada tomada continua individual no prontuário.</p> : null}
               {isNativeApp && isNotificationsEnabled && activePersonId ? <NativeDoseAgendaInspection key={activePersonId} personId={activePersonId} /> : null}
             </div>
+
+            <VaultUpdateCenter />
 
             <div>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Nuvem</h2>

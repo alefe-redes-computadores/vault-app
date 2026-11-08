@@ -113,6 +113,14 @@ Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícon
 - [ ] Exportação de documentos (PDF) e miniaturas confiáveis
 - [ ] Otimização geral de performance de carregamento
 
+## VAULT Update Center (M87–M89)
+
+- **Android:** a Action `build-android.yml` publica uma release `vault-android-b<run_number>` apenas após validar assinatura, versão e upload do APK. O APK temporário do Actions mantém retenção de sete dias; a release certificada não tem essa expiração automática.
+- **Mais → Atualizações:** identifica o `versionCode` instalado por `App.getInfo()`, consulta a release pública, mostra status, novidades, build e diagnóstico; nunca utiliza token GitHub no cliente.
+- **PWA:** atualiza pelo fluxo web, distinto do pacote Android. Não afirma que o APK está atualizado a partir da versão web.
+- **Notificações:** aviso local Android com opt-in, apenas após o app verificar a release em primeiro plano. Notificações remotas com aplicativo fechado exigem canal push próprio e ficam para evolução posterior.
+- **Segurança:** links de APK restritos ao repositório oficial, sem instalação silenciosa ou acesso a dados clínicos. Consulte [docs/UPDATE-CENTER.md](docs/UPDATE-CENTER.md) e [CHANGELOG.md](CHANGELOG.md).
+
 ## Desenvolvimento
 
 Ambiente mobile-first via Termux + Acode. Deploy contínuo via GitHub → Vercel; build Android via Capacitor.
