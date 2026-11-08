@@ -117,6 +117,13 @@ Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícon
 
 A rota `/saude/lembretes` é a Central de Notificações: categorias automáticas, regras personalizadas e acesso à Central de Atualizações em Mais. A configuração reutiliza `NotificationPreferencesPanel`, `NotificationBrainPanel` e o agendador canônico; não há agenda paralela. A opção rápida de Mais foi preservada, com link para personalização. O VAULT verifica releases Android assinadas e mantém os estados Action (em execução/erro), release aprovada e versão instalada separados. Ver [docs/M94-NOTIFICACOES-UPDATE.md](docs/M94-NOTIFICACOES-UPDATE.md).
 
+## M97 — Correlação documental e catálogo de evoluções
+
+- Brain V5.1-B: três categorias de evento documentado (doses ignoradas/retirada não realizada, sintomas vinculados, SOS/extra) analisadas em 14 dias contra os 14 dias anteriores. Associação temporal não é diagnóstico.
+- UI somente leitura na Central, mantendo os insights originais e o controle de notificações.
+- Página **Inteligência → Evolução do Cérebro** com catálogo embarcado, exemplos e limitações.
+- Documentação em `docs/M97-BRAIN-CORRELACAO-EVOLUCOES.md`; pesquisa e roadmap VAULT 360 arquivados em `docs/`.
+
 ## M95 — Histórico de quantidade e PDF mensal
 
 - Na **Linha de Cuidado**, o mês escolhido pode ser exportado como PDF estruturado no PWA ou compartilhado pelo Android com os plugins já existentes.

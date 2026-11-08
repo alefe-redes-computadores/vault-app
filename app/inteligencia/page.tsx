@@ -139,6 +139,11 @@ export default function VaultIntelligencePage() {
         <div className="min-w-0 flex-1"><p className="text-sm font-bold">{BRAIN_NAME}</p><p className="mt-1 text-xs text-ink-muted">Atenção agora, segurança, padrões, qualidade dos dados e histórico persistente.</p></div>
         <ChevronRight size={17} className="text-ink-faint"/>
       </button>
+       <button type="button" onClick={() => router.push(preserveReturn("/inteligencia/evolucoes"))} className="mt-2 flex min-h-[58px] w-full items-center gap-3 rounded-[18px] border border-surface-border/70 bg-surface px-3.5 py-2.5 text-left active:scale-[0.99]">
+         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><BrainCircuit size={17}/></div>
+         <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Evolução do Cérebro</strong><span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">O que mudou, evidências, exemplos e limites de cada capacidade</span></span>
+         <ChevronRight size={16} className="shrink-0 text-ink-faint"/>
+      </button>
     </section>
 
     <div className="mx-auto mt-3 max-w-2xl">

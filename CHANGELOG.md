@@ -1,5 +1,16 @@
 # Histórico de versões do VAULT
 
+## M97 — Correlações documentais e evolução do Cérebro (2026-11-08)
+
+- Projeção conservadora de coincidências temporais em 14 dias: doses explicitamente ignoradas ou retiradas não realizadas + sintomas vinculados + aumento em registros SOS/extra, sem presumir causalidade ou abstinência.
+- Central de Inteligência ganha painel progressivo somente leitura; alertas atômicos e push permanecem intactos.
+- Nova página offline “Evolução do Cérebro” documenta capacidades M94–M97 com exemplos, evidências e limitações.
+- Pesquisa comparativa Medisafe/Pillo e roadmap VAULT 360 guardados em docs/, sem copiar software de terceiros.
+
+## M96 — Agrupamento conservador de episódios (2026-11-08)
+
+- Agrupamento temporal de alertas persistidos com vínculos por medicamento, preservando o detalhe individual e a urgência original.
+
 ## M95 — Episódios preservados e relatório mensal (2026-11-08)
 
 - Reconciliação automática dos alertas de quantidade confirmada no ledger sincronizado do Brain V5; preservação histórica dos snapshots realmente registrados.
