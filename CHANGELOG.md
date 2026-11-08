@@ -2,6 +2,15 @@
 
 Este arquivo registra entregas efetivas. O `versionCode` Android identifica cada compilação aprovada; `APP_VERSION` representa a versão-base do produto.
 
+## M94 — Central unificada de avisos e paridade de APK (2026-11-08)
+
+- Tela de notificações separa categorias automáticas, lembretes manuais e atualizações do app, sem duplicar agendamentos.
+- Acesso direto a categorias e antecedência sob demanda; atalhos e indicadores visuais no padrão Lucide/dark premium.
+- Mais preserva o comando rápido de avisos e oferece a Central para personalização.
+- Acompanhar Action ao vivo separado da release Android certificada; sem prometer APK pronto durante compilação ou falha.
+- Alerta de quantidade atípica com comparação numérica clara e revisão sem duplicidade; avaliação clínica não é inferida.
+- Não altera dose confirmada, consulta, estoque, dados de saúde ou regras de notificação, nem instala APK silenciosamente.
+
 ## M90 — Fechamento de atualização premium (2026-11-08)
 
 - Interface da Central com transições suaves, ícones Lucide, leitura acessível e preferência de movimento reduzido.

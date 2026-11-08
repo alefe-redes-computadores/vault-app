@@ -1721,134 +1721,30 @@ export function QuickDoseModal({
                           : "Essa quantidade parece incomum"}
                       </h4>
 
-                      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                        Você informou{" "}
-                        <strong className="text-ink-primary">
-                          {
-                            formatQuantity(
-                              doseQtd
-                            )
-                          }{" "}
-                          {
-                            quantitySafetyAssessment.unitLabel
-                          }
-                        </strong>
-                        .
-
-                        {quantitySafetyAssessment.baseline !==
-                          null && (
-                          <>
-                            {" "}
-                            A referência encontrada no cadastro ou no seu histórico é de aproximadamente{" "}
-                            <strong className="text-ink-primary">
-                              {
-                                formatQuantity(
-                                  quantitySafetyAssessment.baseline
-                                )
-                              }{" "}
-                              {
-                                quantitySafetyAssessment.unitLabel
-                              }
-                            </strong>
-                            .
-                          </>
-                        )}
-                      </p>
-
-                      {quantitySafetyAssessment.ratio !==
-                        null && (
-                        <p className="mt-2 text-[11px] text-ink-muted">
-                          Aproximadamente{" "}
-                          <strong
-                            className={
-                              quantitySafetyAssessment.level ===
-                              "high"
-                                ? "text-coral"
-                                : "text-amber-400"
-                            }
-                          >
-                            {
-                              quantitySafetyAssessment.ratio
-                            }×
-                          </strong>{" "}
-                          a referência interna encontrada.
-                        </p>
+                      {/* M94: valores explícitos, sem chamar a referência de dose correta. */}
+                      <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Comparação com a referência registrada">
+                        <div className="min-w-0 rounded-xl border border-coral/25 bg-coral/[0.07] p-2.5">
+                          <p className="text-[10px] font-semibold text-ink-muted">Você informou</p>
+                          <p className="mt-1 text-xl font-bold tabular-nums text-coral">{formatQuantity(doseQtd)}</p>
+                          <p className="text-[10px] text-ink-muted">{quantitySafetyAssessment.unitLabel}</p>
+                        </div>
+                        <div className="min-w-0 rounded-xl border border-surface-border/60 bg-void/30 p-2.5">
+                          <p className="text-[10px] font-semibold text-ink-muted">Referência registrada</p>
+                          <p className="mt-1 text-xl font-bold tabular-nums text-ink-primary">{quantitySafetyAssessment.baseline !== null ? formatQuantity(quantitySafetyAssessment.baseline) : "—"}</p>
+                          <p className="text-[10px] text-ink-muted">{quantitySafetyAssessment.unitLabel}</p>
+                        </div>
+                      </div>
+                      {quantitySafetyAssessment.ratio !== null && (
+                        <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">A quantidade informada é aproximadamente <strong className={quantitySafetyAssessment.level === "high" ? "text-coral" : "text-amber-400"}>{quantitySafetyAssessment.ratio}×</strong> a referência interna. Esta comparação não determina uma dose clinicamente segura.</p>
                       )}
                     </div>
                   </div>
 
-                  {quantitySafetyAssessment.suggestedQuantity !==
-                    null && (
-                    <div className="mt-4 rounded-2xl border border-ice/20 bg-ice/5 p-3.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ice">
-                        Possível erro de digitação
-                      </p>
-
-                      <p className="mt-1 text-xs text-ink-muted">
-                        Você quis dizer{" "}
-                        <strong className="text-ink-primary">
-                          {
-                            formatQuantity(
-                              quantitySafetyAssessment.suggestedQuantity
-                            )
-                          }{" "}
-                          {
-                            quantitySafetyAssessment.unitLabel
-                          }
-                        </strong>
-                        ?
-                      </p>
-
-                      <button
-                        type="button"
-                        disabled={
-                          isSaving
-                        }
-                        onClick={
-                          () => {
-                            const suggestion =
-                              quantitySafetyAssessment.suggestedQuantity;
-
-                            if (
-                              suggestion ===
-                              null
-                            ) {
-                              return;
-                            }
-
-                            trigger(
-                              "success"
-                            );
-
-                            setDoseQtd(
-                              suggestion
-                            );
-
-                            setAcceptedUnusualQuantity(
-                              null
-                            );
-
-                            setQuantitySafetyOpen(
-                              false
-                            );
-                          }
-                        }
-                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-ice px-3 py-2.5 text-xs font-bold text-void active:scale-[0.99]"
-                      >
-                        <Check
-                          size={
-                            14
-                          }
-                        />
-
-                        Usar{" "}
-                        {
-                          formatQuantity(
-                            quantitySafetyAssessment.suggestedQuantity
-                          )
-                        }
-                      </button>
-                    </div>
+                  {quantitySafetyAssessment.suggestedQuantity !== null && (
+                    <p className="mt-3 rounded-xl border border-ice/20 bg-ice/[0.045] px-3 py-2.5 text-[11px] leading-relaxed text-ink-secondary">
+                      <strong className="block text-ice">Possível erro de digitação</strong>
+                      Ao revisar, a referência registrada será preenchida no formulário para você conferir ou alterar. Ela não é uma recomendação de dose.
+                    </p>
                   )}
 
                   {quantitySafetyAssessment.level ===
@@ -1885,25 +1781,19 @@ export function QuickDoseModal({
                   )}
 
                   <div className="mt-4 space-y-2">
-                    <button
-                      type="button"
-                      disabled={
-                        isSaving
-                      }
-                      onClick={
-                        () => {
-                          trigger(
-                            "vibrate"
-                          );
-
-                          setQuantitySafetyOpen(
-                            false
-                          );
+                    <button type="button" disabled={isSaving}
+                      onClick={() => {
+                        trigger("vibrate");
+                        const suggested = quantitySafetyAssessment.suggestedQuantity;
+                        if (suggested !== null) {
+                          setDoseQtd(suggested);
+                          setAcceptedUnusualQuantity(null);
                         }
-                      }
-                      className="w-full rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 text-xs font-semibold text-ink-primary active:scale-[0.99]"
+                        setQuantitySafetyOpen(false);
+                      }}
+                      className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-ice/30 bg-ice/10 px-4 py-3 text-xs font-bold text-ice active:scale-[0.99] motion-reduce:transform-none"
                     >
-                      Revisar quantidade
+                      {quantitySafetyAssessment.suggestedQuantity !== null ? "Preencher referência e revisar" : "Revisar quantidade"}
                     </button>
 
                     <button

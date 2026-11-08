@@ -113,6 +113,10 @@ Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícon
 - [ ] Exportação de documentos (PDF) e miniaturas confiáveis
 - [ ] Otimização geral de performance de carregamento
 
+## M94 — Notificações, Lembretes e Atualizações
+
+A rota `/saude/lembretes` é a Central de Notificações: categorias automáticas, regras personalizadas e acesso à Central de Atualizações em Mais. A configuração reutiliza `NotificationPreferencesPanel`, `NotificationBrainPanel` e o agendador canônico; não há agenda paralela. A opção rápida de Mais foi preservada, com link para personalização. O VAULT verifica releases Android assinadas e mantém os estados Action (em execução/erro), release aprovada e versão instalada separados. Ver [docs/M94-NOTIFICACOES-UPDATE.md](docs/M94-NOTIFICACOES-UPDATE.md).
+
 ## VAULT Update Center (M87–M90)
 
 - **Android:** a Action `build-android.yml` publica uma release `vault-android-b<run_number>` apenas após validar assinatura, versão e upload do APK. O APK temporário do Actions mantém retenção de sete dias; a release certificada não tem essa expiração automática.

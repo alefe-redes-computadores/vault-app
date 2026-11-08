@@ -147,6 +147,11 @@ export function VaultUpdateCenter() {
         </div>
       </div> : null}
 
+      {/* M94: os estados do run e da release são independentes; uma Action nova não homologa APK. */}
+      {state.run && state.phase === "ready" ? <div aria-label="Situação da compilação no GitHub" className="mt-2 flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-void/25 px-3 py-2 text-[11px]">
+        <span className="min-w-0 text-ink-secondary">Action #{state.run.number} · {state.run.status !== "completed" ? "Compilando" : state.run.conclusion === "success" ? "Concluída" : "Falhou ou foi cancelada"}</span>
+        <span className={`shrink-0 text-[10px] font-semibold ${state.run.status !== "completed" ? "text-amber-200" : state.run.conclusion === "success" ? "text-emerald-300" : "text-coral"}`}>{state.run.status !== "completed" ? "Em andamento" : state.run.conclusion === "success" ? "Sucesso" : "Atenção"}</span>
+      </div> : null}
       {state.artifact && state.phase === "ready" ? <div role="note" className={`mt-2 flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] leading-relaxed ${artifactStatus === "expired" ? "border-coral/20 bg-coral/[.04] text-coral" : artifactStatus === "expiring" ? "border-amber-400/25 bg-amber-400/[.05] text-amber-200" : "border-surface-border/40 bg-surface-raised/25 text-ink-muted"}`}>
         <Clock3 size={15} className="mt-0.5 shrink-0"/>
         <div className="min-w-0">

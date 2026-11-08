@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, BrainCircuit, CalendarClock, ClipboardList, Droplets, FileText, Package, Pill, Stethoscope } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptics";
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -21,15 +21,16 @@ const OPTIONS: Array<{
   id: VaultNotificationCategory;
   label: string;
   description: string;
+  icon: typeof Bell;
 }> = [
-  { id: "doses", label: "Medicamentos e doses", description: "Horários dos medicamentos de rotina." },
-  { id: "consultas", label: "Consultas", description: "Avisos antes das consultas agendadas." },
-  { id: "exames", label: "Exames", description: "Avisos de exames com data e horário." },
-  { id: "retiradas", label: "Retiradas", description: "Retiradas programadas de medicamentos." },
-  { id: "renovacoes", label: "Receitas e renovações", description: "Planejamento de renovação de medicamentos." },
-  { id: "documentos", label: "Documentos", description: "Vencimentos relevantes de documentos." },
-  { id: "lembretes_saude", label: "Lembretes de saúde", description: "Hidratação, medições, sintomas e lembretes criados por você." },
-  { id: "insights", label: "Insights importantes", description: "Sinais importantes ou críticos selecionados pelo cérebro do Vault." },
+  { id: "doses", label: "Medicamentos e doses", description: "Horários dos medicamentos de rotina.", icon: Pill },
+  { id: "consultas", label: "Consultas", description: "Avisos antes das consultas agendadas.", icon: Stethoscope },
+  { id: "exames", label: "Exames", description: "Avisos de exames com data e horário.", icon: ClipboardList },
+  { id: "retiradas", label: "Retiradas", description: "Retiradas programadas de medicamentos.", icon: Package },
+  { id: "renovacoes", label: "Receitas e renovações", description: "Planejamento de renovação de medicamentos.", icon: CalendarClock },
+  { id: "documentos", label: "Documentos", description: "Vencimentos relevantes de documentos.", icon: FileText },
+  { id: "lembretes_saude", label: "Lembretes de saúde", description: "Hidratação, medições, sintomas e lembretes criados por você.", icon: Droplets },
+  { id: "insights", label: "Insights importantes", description: "Sinais importantes ou críticos selecionados pelo cérebro do Vault.", icon: BrainCircuit },
 ];
 
 export function NotificationPreferencesPanel() {
@@ -63,9 +64,9 @@ export function NotificationPreferencesPanel() {
             {master ? <Bell size={18} /> : <BellOff size={18} />}
           </div>
           <div>
-            <p className="text-sm font-semibold text-ink-primary">Notificações do Vault</p>
+            <p className="text-sm font-semibold text-ink-primary">Notificações do Vault · avisos automáticos</p>
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-              Escolha o que pode aparecer como notificação neste aparelho.
+              Escolha quais tipos de eventos podem gerar avisos. A permissão do Android é independente.
             </p>
           </div>
         </div>
@@ -87,9 +88,13 @@ export function NotificationPreferencesPanel() {
         </button>
       </div>
 
-      <div className={`mt-4 space-y-2 ${master ? "" : "opacity-50"}`}>
+      <p aria-live="polite" className="mt-3 rounded-xl border border-surface-border/50 bg-void/35 px-3 py-2 text-[11px] text-ink-muted">
+        {Object.values(prefs).filter(Boolean).length} de {OPTIONS.length} categorias selecionadas · {master ? "preferência geral ativa" : "preferência geral desativada"}.
+      </p>
+      <div className={`mt-3 space-y-2 ${master ? "" : "opacity-50"}`}>
         {OPTIONS.map((option) => {
           const checked = prefs[option.id];
+          const Icon = option.icon;
           return (
             <button
               key={option.id}
@@ -105,13 +110,14 @@ export function NotificationPreferencesPanel() {
               }
               className="flex w-full items-center justify-between gap-4 rounded-2xl border border-surface-border bg-void/30 p-3 text-left disabled:cursor-not-allowed"
             >
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold text-ink-primary">
+              <span className="flex min-w-0 items-start gap-2.5">
+                <span aria-hidden="true" className={`grid size-9 shrink-0 place-items-center rounded-xl border ${checked ? "border-emerald-400/20 bg-emerald-400/[.07] text-emerald-300" : "border-surface-border bg-surface-raised text-ink-muted"}`}><Icon size={17}/></span>
+                <span className="min-w-0"><span className="block text-xs font-semibold text-ink-primary">
                   {option.label}
                 </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">
                   {option.description}
-                </span>
+                </span></span>
               </span>
               <span
                 aria-hidden="true"

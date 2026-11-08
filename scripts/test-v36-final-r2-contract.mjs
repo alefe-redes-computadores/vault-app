@@ -31,13 +31,27 @@ ok(events.includes('isVaultNotificationCategoryEnabled("retiradas")'),"retiradas
 ok(persistent.includes('isVaultNotificationCategoryEnabled("documentos")'),"documentos sem categoria");
 ok(persistent.includes('isVaultNotificationCategoryEnabled("renovacoes")'),"renovações sem categoria");
 
+const policy=r("lib/health-intelligence/notification-policy.ts");
+const memory=r("lib/health-intelligence/insight-memory.ts");
 ok(
- insights.includes('gravidadeSeguranca === "importante"') &&
- insights.includes('gravidadeSeguranca === "critica"'),
+ policy.includes('insight.gravidadeSeguranca === "importante"') &&
+ policy.includes('insight.gravidadeSeguranca === "critica"') &&
+ policy.includes('brainDecisionLane(insight) === "now"') &&
+ policy.includes('.filter(isEligibleForBehavioralPush)') &&
+ policy.includes('hasCurrentRegulatorySource') &&
+ insights.includes('rankHealthInsightNotificationCandidates(insights)'),
  "insights não são conservadores"
 );
-ok(insights.includes("COOLDOWN_MS"),"cooldown de insight ausente");
-ok(insights.includes(".slice(0, 1)"),"limite anti-spam ausente");
+ok(memory.includes('getHealthInsightCooldownMs(') &&
+   memory.includes('minimumCooldownMs = 12 * 60 * 60 * 1000') &&
+   memory.includes('shouldDeliverHealthInsight(') &&
+   insights.includes('shouldDeliverHealthInsight(activePersonId, candidate)') &&
+   insights.includes('recordHealthInsightDelivery('),
+   "cooldown de insight ausente");
+ok(insights.includes('const selected = eligible.find((item) => item.decision.deliver)') &&
+   insights.includes('if (plan && planDecision?.deliver && planDecision.item)') &&
+   insights.includes('if (!selected) return;'),
+   "limite anti-spam ausente");
 ok(providers.includes("<InsightNotificationReconciler />"),"insights não montados");
 
 ok(cap.plugins?.LocalNotifications?.smallIcon==="ic_stat_vault","smallIcon incorreto");

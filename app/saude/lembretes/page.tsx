@@ -5,6 +5,7 @@ import { expandReminderInterval } from "@/lib/health-reminders/interval-plan";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
+import { VaultNotificationHub } from "@/components/notifications/VaultNotificationHub";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -237,17 +238,42 @@ export default function HealthRemindersPage() {
           <ArrowLeft size={20} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-bold">Lembretes de saúde</h1>
-          <p className="text-sm text-ink-muted">{isLoading ? "Carregando sua rotina…" : `${activeCount} ativo(s) · ${reminders.length} no total`}</p>
+          <h1 className="font-display text-2xl font-bold">Central de notificações</h1>
+          <p className="text-sm text-ink-muted">{isLoading ? "Carregando sua rotina…" : `${activeCount} lembrete(s) personalizado(s) ativo(s) · ${reminders.length} no total`}</p>
         </div>
         <button type="button" onClick={() => { reset(); setFormOpen(true); }} className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400 text-void" aria-label="Criar lembrete"><Plus size={20} /></button>
       </header>
 
+      {/* M94: uma central, três famílias de avisos, sem outra autoridade. */}
+      <VaultNotificationHub
+        activeCustomCount={activeCount}
+        totalCustomCount={reminders.length}
+        permission={permission}
+        onConfigure={() => { trigger("vibrate"); setAdvancedOpen(true); }}
+        onUpdates={() => { trigger("vibrate"); router.push("/mais#vault-updates"); }}
+      />
+      <section id="vault-notification-settings" className="mx-auto mt-3 max-w-xl overflow-hidden rounded-3xl border border-surface-border bg-surface">
+        <button type="button" onClick={() => setAdvancedOpen((value) => !value)} className="flex w-full items-center gap-3 p-4 text-left" aria-expanded={advancedOpen}>
+          <div className="rounded-xl border border-surface-border bg-void p-2 text-ink-muted"><SlidersHorizontal size={17} /></div>
+          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Personalizar notificações</p><p className="mt-0.5 text-xs text-ink-muted">Categorias automáticas, antecedência e horários</p></div>
+          <ChevronDown size={18} className={`text-ink-muted transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+        </button>
+        {advancedOpen && <div className="grid gap-3 border-t border-surface-border p-3">
+          <NotificationPreferencesPanel />
+          <details className="group overflow-hidden rounded-2xl border border-surface-border/60 bg-void/30">
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+              <span className="flex items-center gap-2"><SlidersHorizontal size={15} className="text-ice"/> Antecedência e repetição de avisos</span>
+              <ChevronDown size={15} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none"/>
+            </summary>
+            <div className="border-t border-surface-border/50 p-2"><NotificationBrainPanel /></div>
+          </details>
+        </div>}
+      </section>
       {/* VAULT_REMINDER_INTENT_UX_V67 */}
       <section className="mx-auto mt-5 max-w-xl overflow-hidden rounded-[24px] border border-amber-400/15 bg-gradient-to-br from-amber-400/[0.07] via-surface to-surface">
         <div className="flex items-center gap-3 p-4">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/[0.08] text-amber-300"><CalendarClock size={20}/></div>
-          <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Próximo lembrete</p><h2 className="mt-0.5 truncate text-sm font-bold">{presentation.next?.reminder.title||"Sua rotina está livre"}</h2><p className="mt-0.5 text-xs text-ink-muted">{presentation.next?nextLabel(presentation.next.next,presentation.now):"Crie apenas lembretes úteis para você"}</p></div>
+          <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-300">Próximo lembrete personalizado</p><h2 className="mt-0.5 truncate text-sm font-bold">{presentation.next?.reminder.title||"Sua rotina está livre"}</h2><p className="mt-0.5 text-xs text-ink-muted">{presentation.next?nextLabel(presentation.next.next,presentation.now):"Crie apenas lembretes úteis para você"}</p></div>
           <span className="shrink-0 rounded-lg border border-surface-border bg-void/45 px-2 py-1 text-[9px] font-semibold text-ink-muted">{activeCount} ativo{activeCount===1?"":"s"}</span>
         </div>
         {presentation.next&&<button type="button" onClick={()=>router.push(preserveReturn(presentation.next!.reminder.target_route))} className="flex min-h-11 w-full items-center justify-between border-t border-amber-400/10 px-4 text-xs font-semibold text-amber-200"><span>Abrir destino do próximo lembrete</span><ChevronRight size={15}/></button>}
@@ -321,7 +347,11 @@ export default function HealthRemindersPage() {
         </div>
       </section>}
 
-      <section className="mx-auto mt-4 grid max-w-xl gap-2">
+      <div className="mx-auto mt-5 max-w-xl px-1">
+        <h2 className="flex items-center gap-2 text-sm font-bold text-ink-primary"><CalendarClock size={16} className="text-amber-300"/> Seus lembretes personalizados</h2>
+        <p className="mt-1 text-xs text-ink-muted">Hidratação, medições e outros horários criados por você. Os alertas automáticos têm categorias próprias acima.</p>
+      </div>
+      <section className="mx-auto mt-3 grid max-w-xl gap-2">
         {isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-amber-300" /></div>}
         {!isLoading && reminders.length === 0 && (
           <button type="button" onClick={() => setFormOpen(true)} className="rounded-3xl border border-dashed border-surface-border p-8 text-center"><Bell className="mx-auto text-ink-faint" /><p className="mt-3 text-sm font-semibold">Nenhum lembrete criado</p><p className="mt-1 text-xs text-ink-muted">Toque para criar apenas o que for útil para sua rotina.</p></button>
@@ -330,14 +360,6 @@ export default function HealthRemindersPage() {
         {presentation.paused.length>0&&<div className="overflow-hidden rounded-2xl border border-surface-border bg-surface"><button type="button" aria-expanded={showPaused} onClick={()=>setShowPaused(value=>!value)} className="flex min-h-14 w-full items-center gap-3 px-4 text-left"><Pause size={16} className="text-ink-faint"/><span className="min-w-0 flex-1 text-sm font-semibold">Pausados <span className="font-normal text-ink-muted">· {presentation.paused.length}</span></span><ChevronDown size={16} className={`text-ink-muted transition ${showPaused?"rotate-180":""}`}/></button>{showPaused&&<div className="grid gap-2 border-t border-surface-border/60 p-2">{presentation.paused.map(({reminder})=><ReminderRow key={reminder.id} reminder={reminder} next="Pausado" busy={busyId===reminder.id} onOpen={()=>router.push(preserveReturn(reminder.target_route))} onEdit={()=>setEditing(reminder)} onPause={()=>void run(reminder.id,()=>pauseReminder(reminder.id,false),"Lembrete ativado")} onDelete={()=>setDeleting(reminder)}/>)}</div>}</div>}
       </section>
 
-      <section className="mx-auto mt-5 max-w-xl overflow-hidden rounded-3xl border border-surface-border bg-surface">
-        <button type="button" onClick={() => setAdvancedOpen((value) => !value)} className="flex w-full items-center gap-3 p-4 text-left" aria-expanded={advancedOpen}>
-          <div className="rounded-xl border border-surface-border bg-void p-2 text-ink-muted"><SlidersHorizontal size={17} /></div>
-          <div className="min-w-0 flex-1"><p className="text-sm font-semibold">Configurações avançadas</p><p className="mt-0.5 text-xs text-ink-muted">Categorias, antecedência e repetição dos avisos</p></div>
-          <ChevronDown size={18} className={`text-ink-muted transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-        </button>
-        {advancedOpen && <div className="grid gap-3 border-t border-surface-border p-3"><NotificationPreferencesPanel /><NotificationBrainPanel /></div>}
-      </section>
       <ConfirmationModal isOpen={Boolean(deleting)} onClose={()=>setDeleting(null)} onConfirm={async()=>{const reminder=deleting;if(!reminder)return;const removed=await run(reminder.id,()=>deleteReminder(reminder.id),"Lembrete excluído");if(removed)setDeleting(null);}} title="Excluir lembrete?" message={deleting?`“${deleting.title}” será removido desta pessoa. Os registros de saúde existentes não serão alterados.`:""} confirmLabel="Excluir lembrete" isLoading={Boolean(deleting&&busyId===deleting.id)}/>
     </main>
   );
