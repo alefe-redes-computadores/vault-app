@@ -48,7 +48,7 @@ ok(meds.includes('setQuickDoseMedId(med.id!)')&&meds.includes('MedicationOperati
 ok(detail.includes('abrirQuickDose')&&detail.includes('formatWarning={medicationStockUnitReview(med)}')&&detail.includes('MedicationRestockAction'), 'detail keeps dose and restock actions');
 ok(stock.includes('formatQuantity(quantity)')&&stock.includes('registeredBalance')&&stock.includes('negative && registeredBalance')&&stock.includes('dropsConversionMissing'),'stock count, negative balance and drop conversion untouched');
 ok(stock.includes('formatWarning && <p role="note"')&&stock.includes('O saldo numérico não foi convertido'),'unit inconsistency does not convert stock');
-ok(strip.includes('doseOutcome==="ignored"')&&strip.includes('stockTone==="empty"')&&strip.includes('flex min-h-14 min-w-0 items-center')&&strip.includes('min-[320px]:grid-cols-2')&&strip.includes('Package size={12}'),'stock/dose states and legacy density preserved');
+ok(strip.includes('doseOutcome==="ignored"')&&strip.includes('stockTone==="empty"')&&strip.includes('flex min-h-11 min-w-0 items-center')&&strip.includes('min-[320px]:grid-cols-2')&&strip.includes('Package size={12}'),'stock/dose states and legacy density preserved');
 ok(routine.includes('resolvedToday}/{plannedToday}')&&routine.includes('ignoredScheduledToday')&&routine.includes('takenScheduledToday')&&routine.includes('horários com desfecho registrado'),'ignored remains distinct from taken');
 const treatment=read('app/saude/tratamentos/page.tsx');
 const treatmentDetail=read('app/saude/tratamentos/detalhes/page.tsx');

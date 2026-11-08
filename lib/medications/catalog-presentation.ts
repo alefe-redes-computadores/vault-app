@@ -38,7 +38,7 @@ export function inferVaultFormatFromOfficialPresentation(value: string): string 
 }
 
 const labels: Record<string, string> = {
-  comprimido: "Comprimido", partido: "Partido", capsula: "Cápsula", gota: "Gotas", injecao: "Injeção",
+  comprimido: "Comprimido", partido: "Partido", oblongo: "Oblongo inteiro", oblongo_sulcado: "Oblongo com sulco", capsula: "Cápsula", gota: "Gotas", injecao: "Injeção",
   adesivo: "Adesivo", solucao: "Solução", suspensao: "Suspensão", xarope: "Xarope", spray: "Spray",
   inalador: "Inalador", creme: "Creme", pomada: "Pomada", gel: "Gel", colirio: "Colírio",
   supositorio: "Supositório", ovulo: "Óvulo", po: "Pó", granulado: "Granulado", sache: "Sachê",
@@ -49,7 +49,7 @@ const labels: Record<string, string> = {
 export const getCatalogFormatLabel = (format: string | null) => format ? labels[format] ?? format : null;
 
 const aliases: Record<string, string[]> = {
-  comprimido:["comprimido","comp"],partido:["comprimido","comp"],capsula:["capsula","cap"],gota:["gota","gotas","gts"],
+  comprimido:["comprimido","comp"],partido:["comprimido","comp"],oblongo:["comprimido","comp"],oblongo_sulcado:["comprimido","comp"],capsula:["capsula","cap"],gota:["gota","gotas","gts"],
   injecao:["injecao","injetavel","inj"],adesivo:["adesivo","transdermico"],solucao:["solucao","sol"],suspensao:["suspensao"],
   xarope:["xarope"],spray:["spray","aerosol"],inalador:["inalador","inalacao","inalatoria"],creme:["creme"],pomada:["pomada"],
   gel:["gel"],colirio:["colirio","oftalmica","oftalmico"],supositorio:["supositorio"],ovulo:["ovulo","vaginal"],po:["po"],

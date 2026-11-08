@@ -4,6 +4,7 @@
 import {
   useId,
 } from "react";
+import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-presentation";
 
 import {
   Droplet,
@@ -216,7 +217,9 @@ export function MedicationFormatIcon({
     normalizedFormat ===
       "partido" ||
     normalizedFormat ===
-      "capsula";
+      "capsula" ||
+    normalizedFormat === "oblongo" ||
+    normalizedFormat === "oblongo_sulcado";
 
   const hasTwoColors =
     supportsTwoColors &&
@@ -264,6 +267,12 @@ export function MedicationFormatIcon({
         </svg>
       )}
 
+      {normalizedFormat === "oblongo" && (
+        <OblongPillIcon size={size} fill={fill} className={className} />
+      )}
+      {normalizedFormat === "oblongo_sulcado" && (
+        <ScoredOblongPillIcon size={size} fill={fill} className={className} />
+      )}
       {normalizedFormat ===
         "partido" && (
         <SplitPillIcon
@@ -349,6 +358,8 @@ export function MedicationFormatIcon({
       )}
 
       {![
+        "oblongo",
+        "oblongo_sulcado",
         "partido",
         "capsula",
         "gota",

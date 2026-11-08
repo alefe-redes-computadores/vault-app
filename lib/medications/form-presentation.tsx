@@ -14,6 +14,7 @@ type MedicationFormatIconProps = {
   size: string | number;
   fill?: string;
   stroke?: string;
+  className?: string;
 };
 
 export type MedicationFormatOption = {
@@ -30,6 +31,15 @@ export function SplitPillIcon({ size, fill = "currentColor", stroke = "none" }: 
   return <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><line x1="12" y1="3" x2="12" y2="21" stroke="rgba(0,0,0,0.35)" strokeWidth="2" strokeLinecap="round" /></svg>;
 }
 
+/** M92: oblongo inteiro ou com sulco apenas como identidade visual.
+ * O sulco NÃO constitui orientação para dividir o medicamento. */
+export function OblongPillIcon({ size, fill = "currentColor", stroke = "none", className }: MedicationFormatIconProps) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} className={className} aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="6" /></svg>;
+}
+export function ScoredOblongPillIcon({ size, fill = "currentColor", stroke = "none", className }: MedicationFormatIconProps) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} className={className} aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="6" /><line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" /></svg>;
+}
+
 export function CapsuleIcon({ size, fill = "currentColor", stroke = "none" }: MedicationFormatIconProps) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" aria-hidden="true"><rect x="4" y="7" width="16" height="10" rx="5" ry="5" /><line x1="12" y1="7" x2="12" y2="17" stroke="rgba(0,0,0,0.35)" strokeWidth="2" /></svg>;
 }
@@ -44,6 +54,8 @@ export const MEDICATION_PRIMARY_FORMATS: readonly MedicationFormatOption[] = [
 ];
 
 export const MEDICATION_ADDITIONAL_FORMATS: readonly MedicationFormatOption[] = [
+  { id: "oblongo", label: "Oblongo inteiro", icon: OblongPillIcon },
+  { id: "oblongo_sulcado", label: "Oblongo com sulco", icon: ScoredOblongPillIcon },
   { id: "solucao", label: "Solução", icon: Droplet },
   { id: "suspensao", label: "Suspensão", icon: Droplet },
   { id: "xarope", label: "Xarope", icon: Droplet },

@@ -3906,7 +3906,9 @@ function EditarMedicamentoContent() {
       formato ===
         "partido" ||
       formato ===
-        "capsula"
+        "capsula" ||
+      formato === "oblongo" ||
+      formato === "oblongo_sulcado"
     );
 
   const gradientId =
@@ -6836,11 +6838,10 @@ function EditarMedicamentoContent() {
           </AnimatePresence>
         </section>
 
-        <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-surface-border/40 bg-void/88 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-surface-border/40 bg-void/95 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
           <AnimatePresence>
             {editIntent !==
-              "menu" &&
-              hasChanges && (
+              "menu" && (
                 <motion.div
                   initial={{
                     opacity:
@@ -6872,7 +6873,7 @@ function EditarMedicamentoContent() {
                       handleSubmit
                     }
                     disabled={
-                      isSaving
+                      isSaving || !hasChanges
                     }
                     className="flex h-14 items-center justify-center gap-2 rounded-[20px] text-base font-bold shadow-lg shadow-ice/20"
                   >
@@ -6903,9 +6904,7 @@ function EditarMedicamentoContent() {
               )}
           </AnimatePresence>
 
-          {(editIntent ===
-            "menu" ||
-            !hasChanges) && (
+          {editIntent === "menu" && (
             <div className="h-10" />
           )}
         </div>

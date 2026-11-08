@@ -1,6 +1,7 @@
 // app/saude/medicamentos/page.tsx
 "use client";
 import { formatQuantidade } from "@/lib/health-intelligence/medication-detail-presenters";
+import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-presentation";
 
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
@@ -139,6 +140,9 @@ function getMedicamentoIconComponent(
       .toLowerCase()
       .trim();
 
+  // M92: formatos oblongos têm silhuetas próprias, sem reinterpretar dose.
+  if (normalized.includes("oblongo_sulcado")) return ScoredOblongPillIcon;
+  if (normalized.includes("oblongo")) return OblongPillIcon;
   if (
     normalized.includes(
       "gota"
@@ -798,6 +802,7 @@ export default function MedicamentosListPage() {
           "capsula",
           "cápsula",
           "inteiro",
+          "oblongo",
         ].some(
           (
             value
@@ -1126,7 +1131,7 @@ export default function MedicamentosListPage() {
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-1">
-              <div className="flex min-h-[3rem] min-w-0 flex-col gap-0.5">
+              <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
                 <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold leading-snug text-ink-primary">
@@ -1176,7 +1181,7 @@ export default function MedicamentosListPage() {
                   </span>
                 )}
               </div>
-              <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-[11px]">
+              <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-[11px] [&>button:only-child]:col-span-2">
                 {careAction && (
                   <button
                     type="button"
@@ -1237,9 +1242,9 @@ export default function MedicamentosListPage() {
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
             {stockReview && <details className="group mt-1 rounded-lg border border-amber-300/25 bg-amber-300/[.05] px-2.5 py-1 text-amber-200">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+              <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
                 <AlertTriangle size={14} className="shrink-0" aria-hidden="true"/>
-                <span className="min-w-0 flex-1">Unidade do estoque diferente · revisar</span>
+                <span className="min-w-0 flex-1 truncate" title="Unidade do estoque diferente · revisar">Unidade do estoque diferente · revisar</span>
                 <ChevronDown size={14} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
               </summary>
               <p role="note" className="pb-2 text-xs leading-relaxed text-amber-100">Unidade do estoque: {stockReview}</p>
@@ -1454,6 +1459,25 @@ export default function MedicamentosListPage() {
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados · pendências não são doses perdidas</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
+          {/* M92: resumo de progresso em primeiro plano; ajustes avançados por demanda. */}
+          <div className="mb-2.5 rounded-2xl border border-emerald-300/15 bg-gradient-to-r from-emerald-300/[.055] to-surface/70 px-3.5 py-2.5" aria-label="Progresso das doses programadas de hoje">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
+                <p className="text-[10px] text-ink-muted">Somente doses programadas · SOS fora do total</p>
+              </div>
+              <strong className="shrink-0 text-sm font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
+            </div>
+            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised">
+              <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{width:`${statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0}%`}} />
+            </div>
+          </div>
+          <details className="group mb-2.5 rounded-xl border border-surface-border/40 bg-surface/35 px-2.5" aria-label="Indicadores e organização avançada">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+              <span className="flex items-center gap-2"><Pill size={14} aria-hidden="true"/>Indicadores e organização</span>
+              <ChevronDown size={15} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
+            </summary>
+            <div className="space-y-2 border-t border-surface-border/30 pt-2">
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>
             {() => <div className="space-y-2"><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/><a href="/ajuda?topico=medications" className="flex min-h-11 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como organizar rotina, estoque e receitas</a></div>}
           </ClinicalDisclosure>
@@ -1471,6 +1495,8 @@ export default function MedicamentosListPage() {
             </summary>
             <MedicationListGroupNavigation attention={medsPrioridade.length} stable={medsEmDia.length} planned={medsPlanejados.length} sos={medsSOS.length} suspended={medsSuspensos.length}/>
           </details>:null}
+            </div>
+          </details>
 
           {listaProcessada.length ===
           0 ? (
@@ -1501,7 +1527,7 @@ export default function MedicamentosListPage() {
               <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPlanejados.map(renderCard) : medsPlanejados.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" defaultOpen={medsSOS.length > 0} forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSuspensos.map(renderCard) : medsSuspensos.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
             </div>
             )
