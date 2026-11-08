@@ -68,8 +68,11 @@ export function reconcileBrainV5(personId:string,current:HealthInsight[],previou
   // Retention applies to resolved history; an old active alert must not disappear.
   const owned = [...map.values()].sort((a,b)=>b.last_detected_at.localeCompare(a.last_detected_at));
   const open = owned.filter(x=>x.state!=="resolved");
-  const history = owned.filter(x=>x.state==="resolved").slice(0, Math.max(0, 1200-open.length));
-  return [...foreign, ...open, ...history];
+  // M95: confirmed quantity episodes remain audit evidence even after the 7-day alert window.
+  // Other resolved Brain history retains its existing 1200-record budget.
+  const historicalDoseEpisodes = owned.filter(x=>x.state==="resolved" && x.insight_id.startsWith("quantidade-confirmada-"));
+  const history = owned.filter(x=>x.state==="resolved" && !x.insight_id.startsWith("quantidade-confirmada-")).slice(0, Math.max(0, 1200-open.length));
+  return [...foreign, ...open, ...historicalDoseEpisodes, ...history];
 }
 function alertInsight(x: BrainV5Alert): HealthInsight { return { id:x.insight_id,kind:x.snapshot.kind as HealthInsight["kind"],categoria:x.snapshot.categoria as HealthInsight["categoria"],titulo:x.snapshot.titulo,mensagem:x.snapshot.mensagem,urgencia:x.snapshot.urgencia as HealthInsight["urgencia"],confianca:x.snapshot.confianca as HealthInsight["confianca"],amostra:x.snapshot.amostra,periodoDias:x.snapshot.periodo_dias,link:x.snapshot.link,evidencias:x.snapshot.evidencias,fontesInternas:x.snapshot.fontes_internas,acaoSegura:x.snapshot.acao_segura,limitacaoSeguranca:x.snapshot.limitacao_seguranca,gravidadeSeguranca:x.snapshot.gravidade_seguranca as HealthInsight["gravidadeSeguranca"],comparacao:x.snapshot.comparacao,coberturaDias:x.snapshot.cobertura_dias}; }
 export function brainV5Lane(x: BrainV5Alert): BrainDecisionLane { return x.lane ?? brainSignalSemantics(alertInsight(x)).lane; }

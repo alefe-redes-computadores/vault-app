@@ -1,5 +1,13 @@
 # Histórico de versões do VAULT
 
+## M95 — Episódios preservados e relatório mensal (2026-11-08)
+
+- Reconciliação automática dos alertas de quantidade confirmada no ledger sincronizado do Brain V5; preservação histórica dos snapshots realmente registrados.
+- Destaque de episódios por dia na Linha de Cuidado e no histórico do medicamento, sem reclassificar doses antigas.
+- PDF mensal com doses, horários, motivos, eventos de saúde, alertas históricos e limitações, com download web/compartilhamento Android.
+- Nenhum diagnóstico, horário fictício, alteração de estoque ou envio automático do relatório.
+
+
 Este arquivo registra entregas efetivas. O `versionCode` Android identifica cada compilação aprovada; `APP_VERSION` representa a versão-base do produto.
 
 ## M94 — Central unificada de avisos e paridade de APK (2026-11-08)

@@ -14,5 +14,5 @@ export function useBrainV5Pulse(){
  const brief=useMemo(()=>brainV5DecisionBrief(records),[records]);
  const journeys=useMemo(()=>brainV5Journeys(records),[records]);
  const portfolio=useMemo(()=>buildBrainPortfolio(records),[records]);
- return {counters:brainV5Counters(records),brief,portfolio,journeys,top:portfolio.focus[0]?.journey.primary??ranked[0]??null,isLoading:Boolean(user?.id&&settings===undefined)};
+ return {records,counters:brainV5Counters(records),brief,portfolio,journeys,top:portfolio.focus[0]?.journey.primary??ranked[0]??null,isLoading:Boolean(user?.id&&settings===undefined)};
 }

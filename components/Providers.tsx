@@ -87,6 +87,7 @@ import {
 
 import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
 import { InsightNotificationReconciler } from "@/components/InsightNotificationReconciler";
+import { DoseSafetyEpisodeReconciler } from "@/components/health-intelligence/DoseSafetyEpisodeReconciler";
 import { DoseNotificationReconciler } from "@/components/DoseNotificationReconciler";
 import { useLiveQuery } from "dexie-react-hooks";
 import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
@@ -1341,6 +1342,7 @@ export function Providers({
         <>
           <HealthReminderReconciler />
           <InsightNotificationReconciler />
+          <DoseSafetyEpisodeReconciler />
           <DoseNotificationReconciler />
         </>
       )}

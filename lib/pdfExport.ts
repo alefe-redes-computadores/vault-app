@@ -222,7 +222,7 @@ function getMountedElements(
 /** Salvamento nativo via chooser do Android, sem solicitar acesso geral aos arquivos.
  * O APK usa Cache + FileProvider do Capacitor. No PWA mantém o download web.
  */
-async function deliverPdf(pdf: jsPDF, filename: string, title: string): Promise<void> {
+export async function deliverPdf(pdf: jsPDF, filename: string, title: string): Promise<void> {
   if (!Capacitor.isNativePlatform()) {
     pdf.save(filename);
     return;

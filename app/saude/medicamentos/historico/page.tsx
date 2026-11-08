@@ -55,6 +55,9 @@ import {
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
+import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
+import { useAuth } from "@/hooks/useAuth";
+import { indexConfirmedDoseSafetyEpisodes } from "@/lib/clinical-safety-episodes";
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -88,11 +91,13 @@ function DayCell({
   day,
   selected,
   today,
+  hasSafety,
   onSelect,
 }: {
   day: DoseHistoryDay;
   selected: boolean;
   today: string;
+  hasSafety: boolean;
   onSelect: () => void;
 }) {
   const hasTaken = day.takenScheduled > 0;
@@ -123,6 +128,7 @@ function DayCell({
         {hasIgnored && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />}
         {hasMissing && <span className="h-1.5 w-1.5 rounded-full bg-coral" />}
         {hasAvulsa && <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />}
+        {hasSafety && <span title="Alerta de quantidade preservado" className="h-2 w-2 rounded-sm bg-amber-300" />}
       </div>
     </button>
   );
@@ -137,6 +143,8 @@ function HistoryContent() {
   const today = getLocalTodayISO();
   const [monthKey, setMonthKey] = useState(() => currentMonthKey());
   const [selectedDate, setSelectedDate] = useState(today);
+  const { user } = useAuth();
+  const { records: brainEpisodes } = useBrainV5Pulse();
 
   const medication = useLiveQuery(
     async () => {
@@ -158,6 +166,11 @@ function HistoryContent() {
     },
     [medicationId, activePersonId]
   );
+
+  const doseSafety = useMemo(() => user?.id && activePersonId ? indexConfirmedDoseSafetyEpisodes(
+    logs || [], brainEpisodes, user.id, activePersonId
+  ) : new Map(), [logs, brainEpisodes, user?.id, activePersonId]);
+  const safetyDates = useMemo(() => new Set([...doseSafety.values()].map(item => item.date)), [doseSafety]);
 
   const model = useMemo(
     () => medication
@@ -209,6 +222,7 @@ function HistoryContent() {
 
   const selectedDay =
     model.days.find((day) => day.date === selectedDate) || model.days[0];
+  const daySafety = [...doseSafety.values()].filter(item => item.date === selectedDay.date);
   const canGoNext = monthKey < currentMonthKey();
   const unit = medication.forma_farmaceutica === "gota" ||
     String(medication.formato || "").toLocaleLowerCase("pt-BR").includes("gota")
@@ -291,6 +305,7 @@ function HistoryContent() {
                   day={day}
                   selected={day.date === selectedDate}
                   today={today}
+                  hasSafety={safetyDates.has(day.date)}
                   onSelect={() => {
                     trigger("vibrate");
                     setSelectedDate(day.date);
@@ -339,6 +354,15 @@ function HistoryContent() {
             </p>
           </div>
 
+          {daySafety.length > 0 && <section role="note" className="rounded-[22px] border border-amber-300/25 bg-amber-300/[.05] p-3.5">
+            <h2 className="flex items-center gap-2 text-xs font-bold text-amber-200"><AlertCircle size={16}/> Alertas preservados neste dia · {daySafety.length}</h2>
+            {daySafety.map(item => <div key={item.doseId} className="mt-2 border-t border-amber-300/15 pt-2 text-[11px] leading-relaxed">
+              <p className="font-semibold text-ink-primary">{item.title}</p>
+              <p className="mt-1 text-ink-muted">Informado: {item.quantity} {item.unit} · Referência interna: {item.referenceQuantity === null ? "desconhecida" : `${item.referenceQuantity} ${item.unit}`}</p>
+              <p className="mt-1 text-ink-muted">{item.reviewedAt ? "Conferência pessoal registrada (não equivale a avaliação profissional)." : "Sem conferência pessoal registrada."}</p>
+            </div>)}
+            <p className="mt-2 text-[10px] text-amber-200/80">A referência histórica não determina dose segura ou prescrita.</p>
+          </section>}
           <section className="rounded-[26px] border border-surface-border/60 bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div>

@@ -117,6 +117,15 @@ Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícon
 
 A rota `/saude/lembretes` é a Central de Notificações: categorias automáticas, regras personalizadas e acesso à Central de Atualizações em Mais. A configuração reutiliza `NotificationPreferencesPanel`, `NotificationBrainPanel` e o agendador canônico; não há agenda paralela. A opção rápida de Mais foi preservada, com link para personalização. O VAULT verifica releases Android assinadas e mantém os estados Action (em execução/erro), release aprovada e versão instalada separados. Ver [docs/M94-NOTIFICACOES-UPDATE.md](docs/M94-NOTIFICACOES-UPDATE.md).
 
+## M95 — Histórico de quantidade e PDF mensal
+
+- Na **Linha de Cuidado**, o mês escolhido pode ser exportado como PDF estruturado no PWA ou compartilhado pelo Android com os plugins já existentes.
+- Doses, horários previstos, confirmações reais, motivos e registros de saúde vêm da fonte local canônica; nenhum horário é inventado.
+- Episódios com avaliação originalmente preservada pelo Brain V5 acompanham a dose nos históricos. O observador global reconcilia esses episódios sem abrir a página de alertas.
+- Snapshots de quantidade já salvos não são descartados pelo limite de retenção da memória geral. Registros antigos sem snapshot não recebem um falso alerta retrospectivo.
+- A conferência da pessoa não equivale à avaliação profissional. A exportação ocorre somente por ação do usuário e não envia o relatório à nuvem.
+- Consulte `docs/M95-HISTORICO-RELATORIO.md`.
+
 ## VAULT Update Center (M87–M90)
 
 - **Android:** a Action `build-android.yml` publica uma release `vault-android-b<run_number>` apenas após validar assinatura, versão e upload do APK. O APK temporário do Actions mantém retenção de sete dias; a release certificada não tem essa expiração automática.

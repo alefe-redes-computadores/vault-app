@@ -48,6 +48,20 @@ export const brainV5AlertLedgerRepository = {
   reconcile(userId: string, personId: string, insights: HealthInsight[]) {
     return updateLedger(userId, (current) => reconcileBrainV5(personId, insights, current));
   },
+  // M95: safely merge only confirmed-quantity insights. Do not resolve other Brain families.
+  reconcileDoseSafetyEpisodes(userId: string, personId: string, insights: HealthInsight[]) {
+    return updateLedger(userId, (current) => {
+      const currentEpisodes = insights.filter(item => item.id.startsWith("quantidade-confirmada-"));
+      const now = new Date().toISOString();
+      const merged = reconcileBrainV5(personId, currentEpisodes, current, now, { complete: false });
+      const activeKeys = new Set(currentEpisodes.map(item => brainV5Key(personId, item)));
+      return merged.map(item => item.person_id === personId &&
+        item.insight_id.startsWith("quantidade-confirmada-") &&
+        !activeKeys.has(item.key) && item.state !== "resolved"
+        ? { ...item, state: "resolved" as const, resolved_at: now }
+        : item);
+    });
+  },
   mutate,
   mutateMany,
   markSeen(userId: string, personId: string, key: string) { return mutate(userId, personId, key, { last_seen_at: new Date().toISOString() }); },
