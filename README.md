@@ -117,6 +117,13 @@ Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícon
 
 A rota `/saude/lembretes` é a Central de Notificações: categorias automáticas, regras personalizadas e acesso à Central de Atualizações em Mais. A configuração reutiliza `NotificationPreferencesPanel`, `NotificationBrainPanel` e o agendador canônico; não há agenda paralela. A opção rápida de Mais foi preservada, com link para personalização. O VAULT verifica releases Android assinadas e mantém os estados Action (em execução/erro), release aprovada e versão instalada separados. Ver [docs/M94-NOTIFICACOES-UPDATE.md](docs/M94-NOTIFICACOES-UPDATE.md).
 
+## M98 — Central de Relatórios 360
+
+- `Saúde → Linha de Cuidado → Central de Relatórios 360` e `Médicos → Detalhes` levam a uma exportação clínica local.
+- 7/30/90 dias ou período livre; PDF/CSV/JSON, seleção de seções, pessoa e médico com e-mail apenas sugerido.
+- Modos factual, Brain persistido e resumo para consulta. Nenhuma conclusão médica, alerta histórico retroativo ou envio automático.
+- `lib/clinical-report-360.ts` é uma projeção read-only de entidades canônicas; veja `docs/M98-RELATORIOS-360.md`.
+
 ## M97 — Correlação documental e catálogo de evoluções
 
 - Brain V5.1-B: três categorias de evento documentado (doses ignoradas/retirada não realizada, sintomas vinculados, SOS/extra) analisadas em 14 dias contra os 14 dias anteriores. Associação temporal não é diagnóstico.

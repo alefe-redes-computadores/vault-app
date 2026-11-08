@@ -19,6 +19,15 @@ export type VaultCapability = {
 
 export const VAULT_CAPABILITIES: readonly VaultCapability[] = [
   {
+    id:"m98-report-360",surgery:"M98",domain:"reports",title:"Relatórios de saúde por pessoa e período",
+    changed:"Central de exportação clínica unifica PDF, CSV e JSON, com escolha de conteúdo, período e médico cadastrado.",
+    canDo:"Preparar relatórios factuais, com alertas persistidos do Brain ou resumo para consulta, sem enviar automaticamente.",
+    evidence:"Doses registradas, registros de saúde, consultas, cadastro atual de medicamentos e snapshots já salvos do Brain V5.",
+    limits:"Sem diagnóstico, sem alerta retroativo, sem anexo automático de e-mail. Documentos incluem somente títulos quando autorizados.",
+    example:"Preparar os últimos 30 dias em PDF, copiar o e-mail de um médico cadastrado e anexar voluntariamente no e-mail.",
+    location:"Saúde → Linha de Cuidado → Central de Relatórios 360",status:"included_in_this_build",
+  },
+  {
     id:"m97-care-correlation",surgery:"M97",domain:"brain",title:"Relações temporais entre registros",
     changed:"Organiza em conjunto acontecimentos de continuidade do cuidado, sintomas vinculados e mudanças na frequência registrada de SOS/extra.",
     canDo:"Apresentar os registros que coincidiram numa janela de 14 dias quando existem vínculos explícitos entre medicamentos e tratamentos.",

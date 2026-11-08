@@ -1728,6 +1728,10 @@ function DetalhesMedicoContent() {
                 </div>
               )}
 
+              {activePersonId && medico.id && (
+                <button type="button" onClick={() => router.push(`/saude/relatorios?medico=${encodeURIComponent(medico.id!)}`)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/[.055] px-3 text-xs font-semibold text-emerald-300"><FileText size={15}/>Preparar relatório para este médico</button>
+              )}
+
               {medico.observacoes && (
                 <div className="border-t border-surface-border/40 pt-4">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">

@@ -1,5 +1,12 @@
 # Histórico de versões do VAULT
 
+## M98 — Central de Relatórios 360 (2026-11-08)
+
+- Nova Central clínica com períodos 7/30/90 dias, intervalo livre e seleção de pessoa e conteúdo.
+- Relatórios factual, factual + Brain persistido e resumo para consulta, com exportações PDF/CSV/JSON locais.
+- Compartilhamento voluntário e médico pré-selecionado pelo cadastro; o VAULT não envia nem confirma entrega por e-mail.
+- Mantidos relatório M95, doses originais, estoque, privacidade e auditoria do Brain.
+
 ## M97 — Correlações documentais e evolução do Cérebro (2026-11-08)
 
 - Projeção conservadora de coincidências temporais em 14 dias: doses explicitamente ignoradas ou retiradas não realizadas + sintomas vinculados + aumento em registros SOS/extra, sem presumir causalidade ou abstinência.
