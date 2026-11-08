@@ -1,12 +1,17 @@
 "use client";
 import { useEffect } from "react";
 import { checkVaultUpdates, getVaultUpdateSnapshot, subscribeVaultUpdates } from "@/lib/updates/client";
-import { notifyVaultUpdateOnce } from "@/lib/updates/notifications";
+import { notifyVaultUpdateOnce, reconcileVaultArtifactExpiryReminder } from "@/lib/updates/notifications";
 
 /** Cheap, shared foreground checks; never starts a background service or clinical query. */
 export function VaultUpdateReconciler() {
   useEffect(() => {
-    const maybeNotify = () => { void notifyVaultUpdateOnce(getVaultUpdateSnapshot()); };
+    const maybeNotify = () => {
+      const snapshot = getVaultUpdateSnapshot();
+      if (snapshot.phase !== "ready") return;
+      void notifyVaultUpdateOnce(snapshot);
+      void reconcileVaultArtifactExpiryReminder(snapshot);
+    };
     const unsubscribe = subscribeVaultUpdates(maybeNotify);
     void checkVaultUpdates().then(maybeNotify);
     const onActive = () => { if (document.visibilityState === "visible") void checkVaultUpdates().then(maybeNotify); };

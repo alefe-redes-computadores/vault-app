@@ -2,6 +2,7 @@
 import { App } from "@capacitor/app";
 import { isVaultAndroid } from "@/lib/native-runtime";
 import { APP_VERSION } from "@/lib/app-version";
+import { parseVaultTemporaryArtifact, type VaultTemporaryArtifact } from "./artifacts";
 import {
   VAULT_RELEASE_API, VAULT_RUN_API, parseVaultApprovedRelease, parseVaultWorkflowRun,
   getVaultUpdateDecision, getVaultLatestRunWarning,
@@ -15,6 +16,7 @@ export type VaultUpdateSnapshot = {
   installedBuild: number | null;
   release: VaultApprovedRelease | null;
   run: VaultWorkflowRun | null;
+  artifact: VaultTemporaryArtifact | null;
   decision: ReturnType<typeof getVaultUpdateDecision> | "web";
   newestRunWarning: ReturnType<typeof getVaultLatestRunWarning>;
   checkedAt: string | null;
@@ -22,7 +24,7 @@ export type VaultUpdateSnapshot = {
 };
 const EMPTY: VaultUpdateSnapshot = {
   phase: "idle", runtime: "web", installedVersion: APP_VERSION, installedBuild: null,
-  release: null, run: null, decision: "web", newestRunWarning: null, checkedAt: null, errorCode: null,
+  release: null, run: null, artifact: null, decision: "web", newestRunWarning: null, checkedAt: null, errorCode: null,
 };
 let state: VaultUpdateSnapshot = EMPTY;
 let lastRequestMs = 0;
@@ -40,9 +42,9 @@ export function subscribeVaultUpdates(notify: () => void): () => void {
 export function getVaultUpdateSnapshot(): VaultUpdateSnapshot { return state; }
 export function getVaultUpdateServerSnapshot(): VaultUpdateSnapshot { return EMPTY; }
 
-async function githubJson(url: string, allow404 = false): Promise<unknown | null> {
+async function githubJson(url: string, allow404 = false, timeoutMs = 12000): Promise<unknown | null> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 12000);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const result = await fetch(url, {
       headers: { Accept: "application/vnd.github+json" },
@@ -87,9 +89,15 @@ export function checkVaultUpdates(force = false): Promise<VaultUpdateSnapshot> {
       const release = parseVaultApprovedRelease(rawRelease);
       if (rawRelease !== null && !release) throw new Error("VAULT-UPD-MANIFEST");
       const run = parseVaultWorkflowRun(rawRun);
+      // The temporary Actions artifact is informational only. Failure to read it must
+      // never hide a valid GitHub Release or turn an unapproved run into a download.
+      const rawArtifact = run && run.status === "completed" && run.conclusion === "success"
+        ? await githubJson(`https://api.github.com/repos/alefe-redes-computadores/vault-app/actions/runs/${run.id}/artifacts`, true, 3500).catch(() => null)
+        : null;
+      const artifact = run && rawArtifact !== null ? parseVaultTemporaryArtifact(rawArtifact, run.id) : null;
       const decision = installed.runtime === "web" ? "web" : getVaultUpdateDecision(installed.build, release, run);
       publish({phase:"ready", runtime:installed.runtime, installedVersion:installed.version,
-        installedBuild:installed.build, release, run, decision,
+        installedBuild:installed.build, release, run, artifact, decision,
         newestRunWarning:getVaultLatestRunWarning(release,run),
         checkedAt:new Date().toISOString(), errorCode:null});
       lastRequestMs = Date.now();
@@ -98,7 +106,7 @@ export function checkVaultUpdates(force = false): Promise<VaultUpdateSnapshot> {
         ? error.message : "VAULT-UPD-NETWORK";
       // Fail closed: don't present a previously cached URL as currently checked.
       publish({phase:"error", runtime:installed.runtime, installedVersion:installed.version,
-        installedBuild:installed.build, release:null, run:null, decision:"unavailable",
+        installedBuild:installed.build, release:null, run:null, artifact:null, decision:"unavailable",
         newestRunWarning:null, errorCode:code, checkedAt:new Date().toISOString()});
     }
     return state;

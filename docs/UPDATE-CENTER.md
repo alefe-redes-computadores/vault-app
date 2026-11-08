@@ -1,4 +1,4 @@
-# VAULT Update Center — contrato operacional M87–M89
+# VAULT Update Center — contrato operacional M87–M90
 
 ## Fonte de verdade
 
@@ -29,7 +29,17 @@
 - `VAULT-UPD-HTTP-<status>`: API respondeu com erro.
 - `VAULT-UPD-NETWORK`: timeout, bloqueio CORS, falha de rede ou resposta inválida.
 
-## Homologação pendente M90
+## M90 — Fechamento de interface e prazo do artefato
+
+- O cliente tenta consultar `GET /actions/runs/<run_id>/artifacts` **somente** quando a última Action terminou com `success`. A consulta é best-effort: ausência de permissão, erro de rede ou falta do endpoint resulta em **prazo desconhecido**, não em expiração inventada.
+- Um artefato temporário só é reconhecido com `name=Vault-App-debug`, `workflow_run.id` conferido, URL oficial, flag `expired` e `expires_at` válido. O prazo é lido da resposta do GitHub, nunca estimado pela data da Action.
+- `expires_at` vale para o ZIP **temporário do Actions**. A release pública certificada continua independente do vencimento do artefato de teste.
+- Com opt-in, o aplicativo pode agendar **um** aviso local até 24 horas antes do prazo verdadeiro, apenas quando a release certificada corresponde ao mesmo run e o APK instalado é mais antigo. Ao desativar notificações ou identificar build instalado atualizado, o lembrete anterior é cancelado.
+- Lembrete já agendado pode tocar com o aplicativo fechado. Descoberta de novas versões e novos prazos exige o VAULT aberto ou retomado, pois **push remoto não está ativo**.
+- Botões e ícones Lucide, transições Framer Motion e redução de movimento respeitada. O clique em baixar abre o link no navegador; **não** significa download concluído, percentual confirmado ou instalação automática.
+- Os testes M90 verificam expiração com data real, isolamento de runs, falha parcial do endpoint de artefatos, renderização TSX, suporte à redução de movimento e preservação das garantias M87–M89.
+
+## Homologação no Android (manual, após M90)
 
 - Validar instalação por cima de APK anterior com o mesmo certificado no Android real.
 - Validar o link de download no WebView, navegador padrão e a confirmação do instalador.

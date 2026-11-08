@@ -2,6 +2,14 @@
 
 Este arquivo registra entregas efetivas. O `versionCode` Android identifica cada compilação aprovada; `APP_VERSION` representa a versão-base do produto.
 
+## M90 — Fechamento de atualização premium (2026-11-08)
+
+- Interface da Central com transições suaves, ícones Lucide, leitura acessível e preferência de movimento reduzido.
+- Inspeção opcional do artefato `Vault-App-debug` por ID do run e prazo real `expires_at` do GitHub, separada do APK durável publicado em Releases.
+- Lembrete local opcional do prazo temporário apenas quando há versão certificada correspondente e o APK instalado ainda é antigo; evita alarmes repetitivos e cancela lembretes ao desativar a preferência.
+- Diagnóstico aprimorado, copiar SHA-256, link oficial da release e informações de build. Nenhuma porcentagem falsa de download, instalação silenciosa, dado clínico ou push remoto prometido.
+- Testes de regressão herméticos; a atualização física do APK ainda precisa ser homologada no dispositivo.
+
 ## M87–M89 — VAULT Update Center (2026-11-07)
 
 - **M87:** pipeline publica APK Android aprovado em GitHub Releases depois do gate, exportação, assinatura, versão nativa e upload do artefato; mantém retenção de sete dias para o artefato do Actions.

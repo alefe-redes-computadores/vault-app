@@ -113,13 +113,19 @@ Paleta teal/violeta (substituiu o sky-blue original). Sem emojis na UI — ícon
 - [ ] Exportação de documentos (PDF) e miniaturas confiáveis
 - [ ] Otimização geral de performance de carregamento
 
-## VAULT Update Center (M87–M89)
+## VAULT Update Center (M87–M90)
 
 - **Android:** a Action `build-android.yml` publica uma release `vault-android-b<run_number>` apenas após validar assinatura, versão e upload do APK. O APK temporário do Actions mantém retenção de sete dias; a release certificada não tem essa expiração automática.
 - **Mais → Atualizações:** identifica o `versionCode` instalado por `App.getInfo()`, consulta a release pública, mostra status, novidades, build e diagnóstico; nunca utiliza token GitHub no cliente.
 - **PWA:** atualiza pelo fluxo web, distinto do pacote Android. Não afirma que o APK está atualizado a partir da versão web.
 - **Notificações:** aviso local Android com opt-in, apenas após o app verificar a release em primeiro plano. Notificações remotas com aplicativo fechado exigem canal push próprio e ficam para evolução posterior.
 - **Segurança:** links de APK restritos ao repositório oficial, sem instalação silenciosa ou acesso a dados clínicos. Consulte [docs/UPDATE-CENTER.md](docs/UPDATE-CENTER.md) e [CHANGELOG.md](CHANGELOG.md).
+
+### M90 — fechamento de atualizações
+
+- O prazo do arquivo temporário do Actions é mostrado **somente quando** a API pública informa `expires_at`; nunca é estimado a partir do horário de execução. A release certificada é independente desse prazo.
+- Interface de Mais com Framer Motion, Lucide, movimentação reduzida e diagnóstico copiável; lembretes de prazo são opt-in, canceláveis e exclusivos do Android.
+- Não há download automático, instalação silenciosa, percentual inventado, push remoto com app fechado nem alterações em dados clínicos. Ver [docs/UPDATE-CENTER.md](docs/UPDATE-CENTER.md).
 
 ## Desenvolvimento
 
