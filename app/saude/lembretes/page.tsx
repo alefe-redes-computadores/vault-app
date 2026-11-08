@@ -6,6 +6,7 @@ import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 import { VaultNotificationHub } from "@/components/notifications/VaultNotificationHub";
+import { VaultDoseAlertPanelM99 } from "@/components/notifications/VaultDoseAlertPanelM99";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -252,6 +253,7 @@ export default function HealthRemindersPage() {
         onConfigure={() => { trigger("vibrate"); setAdvancedOpen(true); }}
         onUpdates={() => { trigger("vibrate"); router.push("/mais#vault-updates"); }}
       />
+      <VaultDoseAlertPanelM99 />
       <section id="vault-notification-settings" className="mx-auto mt-3 max-w-xl overflow-hidden rounded-3xl border border-surface-border bg-surface">
         <button type="button" onClick={() => setAdvancedOpen((value) => !value)} className="flex w-full items-center gap-3 p-4 text-left" aria-expanded={advancedOpen}>
           <div className="rounded-xl border border-surface-border bg-void p-2 text-ink-muted"><SlidersHorizontal size={17} /></div>

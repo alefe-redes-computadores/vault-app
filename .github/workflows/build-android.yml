@@ -114,6 +114,9 @@ jobs:
       - name: Configurar Health Connect e validar ferramentas Android
         run: node scripts/patch-android-health-connect-v113.mjs
 
+      - name: Configurar alarmes exatos M99 com autorização especial
+        run: node scripts/patch-android-exact-alarms-m99.mjs
+
       - name: Instalar ícone de notificações Android
         run: |
           test -f assets/android/ic_stat_vault.xml

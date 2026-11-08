@@ -3,6 +3,7 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 import { isVaultNative } from "@/lib/native-runtime";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import { getVaultNotificationBrainSettings } from "@/lib/notification-brain";
+import { getVaultDoseAlertMode, doseAlertOffsetsForMode } from "@/lib/dose-alert-policy-m99";
 import {
   ensureVaultNotificationChannel,
   isNotificationPreferenceEnabled,
@@ -51,14 +52,17 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
   if(!isVaultNative())return;
   const personId=input.personId.trim();if(!personId)return;
   const pending=await LocalNotifications.getPending();
-  const existing=pending.notifications.filter(n=>{const type=(n.extra as Record<string,unknown>|undefined)?.type;return type==="dose_overdue"||type==="dose_overdue_group";});
+  const existing=pending.notifications.filter(n=>{const extra=n.extra as Record<string,unknown>|undefined;const type=extra?.type;return extra?.personId===personId&&(type==="dose_overdue"||type==="dose_overdue_group");});
   if(!isNotificationPreferenceEnabled()||!isVaultNotificationCategoryEnabled("doses")){await cancelIds(existing.map(n=>n.id));return;}
   const permission=await LocalNotifications.checkPermissions();if(permission.display!=="granted")return;
   await ensureVaultNotificationChannel();
 
   const now=input.now??new Date();
   const configuredOffsets=getVaultNotificationBrainSettings().doseOverdueOffsets.filter(value=>Number.isFinite(value)&&value>0).sort((a,b)=>a-b);
-  const offsetMinutes=configuredOffsets[0]??30;
+  const offsetMinutes=configuredOffsets[0]??30; // V87: primeiro aviso continua único no modo suave.
+  const mode=getVaultDoseAlertMode(personId);
+  const alertOffsets=doseAlertOffsetsForMode(mode,[offsetMinutes]);
+  const maxOffsetMinutes=alertOffsets[alertOffsets.length-1]??30;
 
   type PendingSlot={medicamentoId:string;nome:string;data:string;horario:string;base:Date};
   const grouped=new Map<string,PendingSlot[]>();
@@ -73,7 +77,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
       for(const horario of horarios){
         if(isResolved(resolvedIndex,medicamentoId,data,horario))continue;
         const base=dateAt(data,horario);if(!base)continue;
-        const at=new Date(base.getTime()+offsetMinutes*60000);
+        const at=new Date(base.getTime()+maxOffsetMinutes*60000);
         if(at<=now)continue;
         const key=`${data}|${horario}`;
         const slots=grouped.get(key)??[];
@@ -94,7 +98,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
     const med=medicamentoId?medicationById.get(medicamentoId):undefined;
     if(!medicamentoId||!horario||!med||slotKeys.has(slotKey(personId,medicamentoId,log.data,horario)))continue;
     const base=dateAt(log.data,horario);if(!base)continue;
-    const at=new Date(base.getTime()+offsetMinutes*60000);
+    const at=new Date(base.getTime()+maxOffsetMinutes*60000);
     const horizonEnd=addLocalDays(now,HORIZON_DAYS);
     if(at<=now||at>=horizonEnd)continue;
     const key=`${log.data}|${horario}`;
@@ -104,19 +108,26 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
     slotKeys.add(slotKey(personId,medicamentoId,log.data,horario));
   }
 
-  const desired=new Map<number,{id:number;title:string;body:string;at:Date;personId:string;medicamentoIds:string[];data:string;horario:string;offsetMinutes:number}>();
+  // M99: uma sequência limitada por slot, nunca um registro de tomada.
+  type PendingCandidate={id:number;title:string;body:string;at:Date;personId:string;medicamentoIds:string[];data:string;horario:string;offsetMinutes:number};
+  const candidates:PendingCandidate[]=[];
   for(const slots of grouped.values()){
-    if(desired.size>=MAX_PENDING_OVERDUE)break;
     const first=slots[0];
     const medicamentoIds=slots.map(slot=>slot.medicamentoId).sort();
-    const at=new Date(first.base.getTime()+offsetMinutes*60000);
     const signature=medicamentoIds.join(",");
-    const id=hashToId(`dose-overdue-group:v87:${personId}:${first.data}:${first.horario}:${signature}`);
-    const title=slots.length===1?`Dose pendente: ${slots[0].nome}`:`${slots.length} doses continuam pendentes`;
+    const title=slots.length===1?`Dose pendente: ${first.nome}`:`${slots.length} doses continuam pendentes`;
     const names=slots.map(slot=>slot.nome).join(" · ");
     const body=slots.length===1?`A dose de ${first.horario} ainda não foi resolvida. Toque para registrar.`:`${names} — toque para revisar as doses de ${first.horario}.`;
-    desired.set(id,{id,title,body,at,personId,medicamentoIds,data:first.data,horario:first.horario,offsetMinutes});
+    for(const offsetMinutes of alertOffsets){
+      const at=new Date(first.base.getTime()+offsetMinutes*60000);
+      if(at<=now)continue;
+      const id=hashToId(`dose-overdue-group:m99:${personId}:${first.data}:${first.horario}:${signature}:${offsetMinutes}`);
+      candidates.push({id,title,body,at,personId,medicamentoIds,data:first.data,horario:first.horario,offsetMinutes});
+    }
   }
+  // Protege o presente: limite global de lembretes por pessoa, ordenados por disparo.
+  candidates.sort((left,right)=>left.at.getTime()-right.at.getTime()||left.id-right.id);
+  const desired=new Map<number,PendingCandidate>(candidates.slice(0,MAX_PENDING_OVERDUE).map(item=>[item.id,item]));
 
   await cancelIds(existing.filter(n=>!desired.has(n.id)).map(n=>n.id));
   const existingIds=new Set(existing.map(n=>n.id));
