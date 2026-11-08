@@ -107,6 +107,7 @@ import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projecti
 import { buildHomePendingBrief } from "@/lib/home/home-pending-brief";
 import { HomeQuickMetrics } from "@/components/home/HomeQuickMetrics";
 import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
+import { HomeDoseQuantityFollowUp } from "@/components/home/HomeDoseQuantityFollowUp";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
 import { HomeSectionNav } from "@/components/home/HomeSectionNav";
@@ -1248,6 +1249,16 @@ export default function HomePage() {
                 renderAlert={alert => <AlertRow alert={alert} />} />
             </motion.section>
           )}
+
+          {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
+              Não gera nova interpretação nem substitui alertas de segurança. */}
+          <HomeDoseQuantityFollowUp
+            insight={healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null}
+            feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === healthIntelligence.insights.find(insight => insight.id.startsWith("quantidade-confirmada-"))?.id)}
+            nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
+            onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
+            onNavigate={href => { trigger("vibrate"); router.push(href); }}
+          />
 
           {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
                     {/* ===================================================

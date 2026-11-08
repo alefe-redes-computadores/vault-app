@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { format } from "date-fns";
 import type { RefObject } from "react";
+import { Capacitor } from "@capacitor/core";
 
 // ============================================================
 // TIPOS
@@ -33,7 +34,7 @@ const PDF_BACKGROUND =
   "#0A0C0F";
 
 const PDF_SCALE =
-  3;
+  2;
 
 const PDF_CONTENT_RATIO =
   0.95;
@@ -218,6 +219,64 @@ function getMountedElements(
     );
 }
 
+/** Salvamento nativo via chooser do Android, sem solicitar acesso geral aos arquivos.
+ * O APK usa Cache + FileProvider do Capacitor. No PWA mantém o download web.
+ */
+async function deliverPdf(pdf: jsPDF, filename: string, title: string): Promise<void> {
+  if (!Capacitor.isNativePlatform()) {
+    pdf.save(filename);
+    return;
+  }
+  const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+    import("@capacitor/filesystem"),
+    import("@capacitor/share"),
+  ]);
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_") || "vault.pdf";
+  const encoded = pdf.output("datauristring").split(",")[1];
+  if (!encoded) throw new Error("Falha ao preparar o arquivo PDF.");
+  const path = `vault-export/${safeName}`;
+  await Filesystem.writeFile({ path, data: encoded, directory: Directory.Cache, recursive: true });
+  const { uri } = await Filesystem.getUri({ path, directory: Directory.Cache });
+  await Share.share({ title, url: uri, dialogTitle: "Salvar ou compartilhar PDF" });
+}
+
+/** O html2canvas pode falhar com certos estilos ou imagens do WebView.
+ * Nestes casos a exportação ainda oferece um resumo TEXTUAL fiel aos dados
+ * visíveis. Não afirma incorporar anexos nem substitui os originais.
+ */
+function addTextSummary(pdf: jsPDF, element: HTMLElement): void {
+  pdf.setTextColor(35, 35, 35);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(12);
+  const width = pdf.internal.pageSize.getWidth();
+  const height = pdf.internal.pageSize.getHeight();
+  let y = 30;
+  const heading = "VAULT — Resumo textual do documento";
+  pdf.text(heading, 22, y);
+  y += 24;
+  const sourceText = (element.innerText || element.textContent || "").trim();
+  const text = sourceText || "Não foi possível extrair texto do cartão selecionado.";
+  const lines: string[] = pdf.splitTextToSize(text.slice(0, 16000), Math.max(120, width - 44));
+  for (const line of lines) {
+    if (y > height - 46) { pdf.addPage(); y = 30; }
+    pdf.text(String(line), 22, y);
+    y += 15;
+  }
+  if (y > height - 40) { pdf.addPage(); y = 30; }
+  pdf.setFontSize(9);
+  pdf.text("Resumo de cartão. Anexos não incorporados; confira os arquivos originais.", 22, y + 12);
+}
+
+async function renderCardPage(pdf: jsPDF, element: HTMLElement): Promise<void> {
+  try {
+    const canvas = await captureElement(element);
+    addCanvasToCurrentPage(pdf, canvas);
+  } catch (error) {
+    console.warn("[pdfExport] Captura visual indisponível; gerando resumo textual.", error);
+    addTextSummary(pdf, element);
+  }
+}
+
 // ============================================================
 // EXPORTAR UM CARD
 // ============================================================
@@ -256,24 +315,9 @@ export async function exportCardToPDF(
   }
 
   try {
-    const canvas =
-      await captureElement(
-        element
-      );
-
-    const pdf =
-      createPdf(
-        title
-      );
-
-    addCanvasToCurrentPage(
-      pdf,
-      canvas
-    );
-
-    pdf.save(
-      filename
-    );
+    const pdf = createPdf(title);
+    await renderCardPage(pdf, element);
+    await deliverPdf(pdf, filename, title);
   } catch (
     error
   ) {
@@ -373,17 +417,7 @@ export async function exportCardsToPDF(
           index
         ];
 
-      const canvas =
-        await captureElement(
-          element
-        );
-
-      /*
-       * O jsPDF já nasce com a primeira página.
-       *
-       * Só adicionamos outra página depois que pelo menos um
-       * card válido já tiver sido escrito.
-       */
+      /* Cada card mantém sua página, com fallback textual quando necessário. */
       if (
         index >
         0
@@ -391,10 +425,7 @@ export async function exportCardsToPDF(
         pdf.addPage();
       }
 
-      addCanvasToCurrentPage(
-        pdf,
-        canvas
-      );
+      await renderCardPage(pdf, element);
 
       onProgress?.(
         index +
@@ -403,9 +434,7 @@ export async function exportCardsToPDF(
       );
     }
 
-    pdf.save(
-      filename
-    );
+    await deliverPdf(pdf, filename, title);
   } catch (
     error
   ) {

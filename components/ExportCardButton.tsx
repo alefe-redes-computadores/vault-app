@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useHapticFeedback } from "@/lib/haptics";
 import { exportCardToPDF, exportCardsToPDF } from "@/lib/pdfExport";
@@ -35,6 +35,7 @@ export function ExportCardButton({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const iconOnly = compact || label.trim().length === 0;
 
   const handleExport = async () => {
     setIsLoading(true);
@@ -77,29 +78,32 @@ export function ExportCardButton({
   };
 
   return (
-    <div className="space-y-1.5">
+    <div className="relative inline-flex shrink-0">
       <Button
-        aria-label={compact ? `${label} · ${title}` : undefined}
+        aria-label={iconOnly ? `Exportar PDF · ${title}` : undefined}
         variant={variant}
         size={size}
         onClick={handleExport}
         disabled={isLoading}
-        className={`flex items-center justify-center gap-2 ${compact ? "min-h-11 min-w-11" : ""} ${className}`}
+        className={`inline-flex shrink-0 items-center justify-center gap-2 ${iconOnly ? "!h-10 !w-10 !min-h-10 !min-w-10 !p-0" : ""} ${className}`}
       >
         {isLoading ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            <span className={compact ? "sr-only sm:not-sr-only" : undefined}>{cards && cards.length > 0 ? `${progress}%` : "Gerando..."}</span>
+            <span className={iconOnly ? "sr-only" : undefined}>{cards && cards.length > 0 ? `${progress}%` : "Gerando..."}</span>
           </>
         ) : (
           <>
             <FileDown size={16} />
-            <span className={compact ? "sr-only sm:not-sr-only" : undefined}>{label}</span>
+            <span className={iconOnly ? "sr-only" : undefined}>{label}</span>
           </>
         )}
       </Button>
 
-      {error && <p className="text-xs text-coral">{error}</p>}
+      {error && <div role="alert" className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[85] mx-auto flex max-w-xl items-start gap-2 rounded-2xl border border-coral/30 bg-surface-raised px-3 py-3 text-xs text-coral shadow-2xl">
+        <span className="min-w-0 flex-1">{error}</span>
+        <button type="button" onClick={() => setError(null)} className="grid size-8 shrink-0 place-items-center rounded-lg border border-coral/25" aria-label="Fechar erro de exportação"><X size={14}/></button>
+      </div>}
     </div>
   );
 }

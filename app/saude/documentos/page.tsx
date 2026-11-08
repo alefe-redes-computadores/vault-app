@@ -259,7 +259,7 @@ export default function DocumentsPage() {
     selectedMonth,
     setSelectedMonth,
   ] =
-    useState("all");
+    useState(() => format(new Date(), "yyyy-MM"));
 
   const [
     showFilters,
@@ -1178,17 +1178,16 @@ export default function DocumentsPage() {
           }
         }
 
-        return Array.from(
-          months
-        ).sort(
-          (
-            a,
-            b
-          ) =>
-            b.localeCompare(
-              a
-            )
-        );
+        // M93: mês atual no topo; datas futuras permanecem acessíveis no fim,
+        // não são apagadas ou corrigidas silenciosamente.
+        const current = format(new Date(), "yyyy-MM");
+        months.add(current);
+        return Array.from(months).sort((a, b) => {
+          const futureA = a > current;
+          const futureB = b > current;
+          if (futureA !== futureB) return futureA ? 1 : -1;
+          return b.localeCompare(a);
+        });
       },
       [
         healthDocuments,
@@ -3223,7 +3222,7 @@ export default function DocumentsPage() {
         ""
       );
 
-      setSelectedMonth("all");
+      setSelectedMonth(format(new Date(), "yyyy-MM"));
 
       setShowFilters(
         false
@@ -4611,6 +4610,7 @@ export default function DocumentsPage() {
                           {formatMonthLabel(
                             month
                           )}
+                          {month > format(new Date(), "yyyy-MM") ? <span className="ml-2 text-[10px] text-amber-300">Data futura · conferir</span> : null}
                         </p>
                       </div>
 

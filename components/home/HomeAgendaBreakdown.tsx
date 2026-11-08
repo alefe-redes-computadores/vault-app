@@ -33,11 +33,11 @@ export function HomeAgendaBreakdown({ consultations, exams, surgeries, withdrawa
     </summary>
     <div className="border-t border-surface-border/30 py-2">
       {urgency.overdue > 0 && <p className="mb-2 text-[10px] leading-relaxed text-amber-200">{urgency.label}. Confira a situação: data vencida não comprova falta de retirada.</p>}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 gap-1.5">
       {valid.map(item => <button key={item.key} type="button" onClick={() => { if (detailsRef.current) detailsRef.current.open = false; onNavigate(item.href); }}
         aria-label={`${item.label}: ${item.count} compromisso(s). Abrir seção`}
-        className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-lg border border-surface-border/40 bg-surface-raised/40 px-2.5 text-left text-[11px] text-ink-secondary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice motion-reduce:transition-none">
-        <span className="truncate">{item.label}</span><strong className="tabular-nums text-ink-primary">{item.count}</strong>
+        className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface-raised/40 px-3 text-left text-xs text-ink-secondary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice motion-reduce:transition-none">
+        <span className="min-w-0 flex-1 truncate">{item.label}</span><strong className="rounded-lg bg-surface/70 px-2 py-1 text-xs tabular-nums text-ink-primary">{item.count}</strong><ChevronDown size={13} className="-rotate-90 text-ink-faint" aria-hidden="true"/>
       </button>)}
       </div>
     </div>

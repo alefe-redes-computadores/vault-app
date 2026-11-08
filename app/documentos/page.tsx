@@ -1145,23 +1145,7 @@ export default function DocumentsPage() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={
-                  openNewDocument
-                }
-                className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ice/20 bg-ice/10 px-4 text-sm font-semibold text-ice transition-all active:scale-95"
-              >
-                <Plus
-                  size={
-                    17
-                  }
-                />
-
-                <span className="hidden sm:inline">
-                  Novo
-                </span>
-              </button>
+              {/* M93: criação permanece no FAB e no estado vazio; remover duplicidade do cabeçalho. */}
             </div>
 
             {/* ==================================================
