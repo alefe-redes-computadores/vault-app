@@ -10,6 +10,7 @@ import { brainV5AlertLedgerRepository as repo } from "@/lib/repositories/brainV5
 import { buildBrainPortfolio } from "@/lib/health-intelligence/brain-portfolio";
 import { calibrateBrain } from "@/lib/health-intelligence/brain-calibration";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
+import { buildCareEpisodesFromLedger } from "@/lib/health-intelligence/care-episodes";
 export function useBrainV5Alerts() {
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
@@ -36,6 +37,11 @@ export function useBrainV5Alerts() {
   const portfolio = useMemo(() => buildBrainPortfolio(scoped), [scoped]);
   const calibration = useMemo(() => calibrateBrain(scoped), [scoped]);
   const safetyCoverage = useMemo(() => health.context ? buildMedicationSafetyCoverage(health.context) : null, [health.context]);
+  // M96: read-only grouping of persisted V5 signals; no new DB reads or writes.
+  const careEpisodes = useMemo(() => health.context?.personId === activePersonId &&
+    health.context?.userId === user?.id && !health.error && !health.isLoading
+    ? buildCareEpisodesFromLedger(health.context, scoped) : [],
+    [health.context, scoped, activePersonId, user?.id, health.error, health.isLoading]);
   const feedback = useCallback((key: string, value: BrainV5Feedback) => user?.id && activePersonId ? perform(() => repo.feedback(user.id, activePersonId, key, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const state = useCallback((key: string, value: BrainV5State) => user?.id && activePersonId ? perform(() => repo.state(user.id, activePersonId, key, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const seen = useCallback((key: string) => user?.id && activePersonId ? perform(() => repo.markSeen(user.id, activePersonId, key)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
@@ -43,6 +49,6 @@ export function useBrainV5Alerts() {
   const stateMany = useCallback((keys: readonly string[], value: BrainV5State) => user?.id && activePersonId ? perform(() => repo.stateMany(user.id, activePersonId, keys, value)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const seenMany = useCallback((keys: readonly string[]) => user?.id && activePersonId ? perform(() => repo.markSeenMany(user.id, activePersonId, keys)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
   const snoozeMany = useCallback((keys: readonly string[], until: string) => user?.id && activePersonId ? perform(() => repo.snoozeMany(user.id, activePersonId, keys, until)) : Promise.resolve([]), [user?.id, activePersonId, perform]);
-  return { records: scoped, ranked, journeys, portfolio, calibration, safetyCoverage, brief, counters: brainV5Counters(scoped), feedback, feedbackMany, state, stateMany, seen, seenMany, snoozeMany, error: error || health.error,
+  return { records: scoped, ranked, journeys, portfolio, calibration, safetyCoverage, careEpisodes, brief, counters: brainV5Counters(scoped), feedback, feedbackMany, state, stateMany, seen, seenMany, snoozeMany, error: error || health.error,
     isLoading: health.isLoading || Boolean(user?.id && settings === undefined) };
 }
