@@ -9,13 +9,18 @@ import { db } from "@/lib/db";
 import { reconcileScheduledDoseNotifications } from "@/lib/dose-notifications";
 import { reconcileOverdueDoseNotifications } from "@/lib/overdue-dose-notifications";
 import { createDoseNotificationPipeline } from "@/lib/dose-notification-pipeline";
+import { reconcileSnoozedDoseNotificationsM99P3 } from "@/lib/dose-snooze-m99p3";
 import { VAULT_NOTIFICATION_PREFERENCES_EVENT } from "@/lib/notification-preferences";
 import { useNotificationRecoveryM99P2 } from "@/hooks/useNotificationRecoveryM99P2";
 
 // VAULT_DOSE_NOTIFICATION_RECONCILER_V91
 // V228: pipeline singleton sequencial; preserva apenas o snapshot mais novo.
+// M99 P3: a mesma fila, o mesmo snapshot e a mesma assinatura transacional V91.
 const doseNotificationPipeline = createDoseNotificationPipeline(
-  reconcileScheduledDoseNotifications,
+  async snapshot => {
+    await reconcileScheduledDoseNotifications(snapshot);
+    await reconcileSnoozedDoseNotificationsM99P3(snapshot);
+  },
   reconcileOverdueDoseNotifications
 );
 export function DoseNotificationReconciler() {

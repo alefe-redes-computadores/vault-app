@@ -4,7 +4,7 @@ import { isVaultNative } from "@/lib/native-runtime";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import { getVaultNotificationBrainSettings } from "@/lib/notification-brain";
 import { getVaultDoseAlertMode, doseAlertOffsetsForMode } from "@/lib/dose-alert-policy-m99";
-import { getVaultDosePauseUntil, shouldKeepOverdueReinforcement } from "@/lib/dose-alert-pause-m99p2";
+import { getVaultDosePauseUntil, shouldKeepOverdueReinforcement, getVaultDoseSlotSnoozeUntilM99P3 } from "@/lib/dose-alert-pause-m99p2";
 import {
   ensureVaultNotificationChannel,
   isNotificationPreferenceEnabled,
@@ -78,6 +78,9 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
       const horarios=Array.from(new Set((med.estoque_horarios||[]).map(normalizeHorario).filter((v):v is string=>Boolean(v))));
       for(const horario of horarios){
         if(isResolved(resolvedIndex,medicamentoId,data,horario))continue;
+        // M99 P3: adiar apenas ESTE slot; grupos de outros medicamentos continuam.
+        if(typeof getVaultDoseSlotSnoozeUntilM99P3==="function" &&
+          getVaultDoseSlotSnoozeUntilM99P3(personId,medicamentoId,data,horario,now.getTime())!==null)continue;
         const base=dateAt(data,horario);if(!base)continue;
         const at=new Date(base.getTime()+maxOffsetMinutes*60000);
         if(at<=now)continue;
@@ -99,6 +102,8 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
     const horario=normalizeHorario(log.horario||"");
     const med=medicamentoId?medicationById.get(medicamentoId):undefined;
     if(!medicamentoId||!horario||!med||slotKeys.has(slotKey(personId,medicamentoId,log.data,horario)))continue;
+    if(typeof getVaultDoseSlotSnoozeUntilM99P3==="function" &&
+      getVaultDoseSlotSnoozeUntilM99P3(personId,medicamentoId,log.data,horario,now.getTime())!==null)continue;
     const base=dateAt(log.data,horario);if(!base)continue;
     const at=new Date(base.getTime()+maxOffsetMinutes*60000);
     const horizonEnd=addLocalDays(now,HORIZON_DAYS);

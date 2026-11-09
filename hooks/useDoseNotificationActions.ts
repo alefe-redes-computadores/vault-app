@@ -19,6 +19,7 @@ import {
 } from "@/lib/repositories/doseLogs";
 
 import { cancelOverdueDoseNotification } from "@/lib/overdue-dose-notifications";
+import { snoozeDoseReminderM99P3 } from "@/lib/dose-snooze-m99p3";
 
 import {
   addDaysToLocalDate,
@@ -234,6 +235,16 @@ export function useDoseNotificationActions() {
                 resolveDoseNotificationSlotDate(
                   horario
                 );
+
+              // M99 P3: nenhuma escrita clínica, exige data exata da notificação.
+              if (event.actionId === "ADIAR") {
+                if (!exactNotificationDate) return;
+                await snoozeDoseReminderM99P3({
+                  type: extra.type, personId, medicamentoId,
+                  data: exactNotificationDate, horario,
+                });
+                return;
+              }
 
               if (
                 event.actionId ===

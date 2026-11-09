@@ -1052,7 +1052,8 @@ export function Providers({
                 "dose_reminder" ||
                data.type ===
                 "dose_overdue" ||
-               data.type === "dose_planned") &&
+               data.type === "dose_planned" ||
+               data.type === "dose_snooze_m99p3") &&
               data.medicamentoId &&
               data.actionId !==
                 "TOMEI" &&
@@ -1085,6 +1086,10 @@ export function Providers({
                       return;
                     }
 
+                    // M99 P3: o adiamento individual não pode atravessar contas.
+                    if (data.type === "dose_snooze_m99p3" &&
+                        (!user?.id || medicamento.user_id !== user.id ||
+                         medicamento.person_id !== data.personId || data.userId !== user.id)) return;
                     if (
                       medicamento.person_id &&
                       medicamento.person_id !==

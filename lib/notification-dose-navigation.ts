@@ -10,6 +10,7 @@ export function resolveDoseNotificationDestination(type: unknown, horario?: unkn
     case "dose_reminder":
     case "dose_reminder_group":
     case "dose_planned":
+    case "dose_snooze_m99p3":
       return doseRoute;
     default:
       return null;

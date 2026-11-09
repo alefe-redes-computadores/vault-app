@@ -12,6 +12,7 @@ import {
   VAULT_DOSE_ALERT_MODE_EVENT,
 } from "@/lib/dose-alert-policy-m99";
 import { summarizeNativeCareAgenda } from "@/lib/dose-reminder-diagnostics";
+import { summarizeSnoozedNotificationsM99P3 } from "@/lib/dose-snooze-policy-m99p3";
 import { getVaultDosePauseUntil, setVaultDosePauseMinutes } from "@/lib/dose-alert-pause-m99p2";
 import { ensureVaultNotificationChannel, VAULT_NOTIFICATION_CHANNEL_ID } from "@/lib/notifications";
 
@@ -25,12 +26,14 @@ type Diagnostic = {
   display: "granted" | "denied" | "prompt" | "unavailable" | "error";
   exact: "granted" | "denied" | "prompt" | "unavailable" | "error";
   scheduled: number | null;
+  snoozed: number | null;
+  nextSnoozeAt: number | null;
 };
 
 export function VaultDoseAlertPanelM99() {
   const { activePersonId } = useActivePersonId();
   const [mode, setMode] = useState<VaultDoseAlertMode>("suave");
-  const [diag, setDiag] = useState<Diagnostic>({ display: "unavailable", exact: "unavailable", scheduled: null });
+  const [diag, setDiag] = useState<Diagnostic>({ display: "unavailable", exact: "unavailable", scheduled: null, snoozed: null, nextSnoozeAt: null });
   const [busy, setBusy] = useState(false);
   const [pauseUntil, setPauseUntil] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -41,7 +44,7 @@ export function VaultDoseAlertPanelM99() {
     setMode(getVaultDoseAlertMode(activePersonId));
     setPauseUntil(getVaultDosePauseUntil(activePersonId));
     if (!android) {
-      setDiag({ display: "unavailable", exact: "unavailable", scheduled: null });
+      setDiag({ display: "unavailable", exact: "unavailable", scheduled: null, snoozed: null, nextSnoozeAt: null });
       return;
     }
     try {
@@ -50,13 +53,15 @@ export function VaultDoseAlertPanelM99() {
         LocalNotifications.checkExactNotificationSetting(),
         LocalNotifications.getPending(),
       ]);
+      const snoozed = summarizeSnoozedNotificationsM99P3(pending.notifications, activePersonId);
       setDiag({
+        snoozed: snoozed.count, nextSnoozeAt: snoozed.nextAt,
         display: permissions.display === "granted" ? "granted" : permissions.display === "denied" ? "denied" : "prompt",
         exact: exact.exact_alarm === "granted" ? "granted" : exact.exact_alarm === "denied" ? "denied" : "prompt",
         scheduled: summarizeNativeCareAgenda(pending.notifications, activePersonId).total,
       });
     } catch {
-      setDiag({ display: "error", exact: "error", scheduled: null });
+      setDiag({ display: "error", exact: "error", scheduled: null, snoozed: null, nextSnoozeAt: null });
     }
   }, [activePersonId, android]);
 
@@ -141,7 +146,7 @@ export function VaultDoseAlertPanelM99() {
       </div>
       </summary>
       <div className="mt-3 border-t border-surface-border/60 pt-3">
-      <p className="mb-2 text-[11px] text-ink-muted">Só muda notificações futuras da pessoa ativa: nenhuma dose é marcada automaticamente.</p>
+      <p className="mb-2 text-[11px] text-ink-muted">Só muda notificações futuras da pessoa ativa: nenhuma dose é marcada automaticamente. No APK, avisos individuais têm a opção “Lembrar em 10 min”; grupos nunca recebem adiamento em massa.</p>
       <div className="mt-3 grid gap-2">
         {OPTIONS.map(option => (
           <button key={option.id} type="button" onClick={() => choose(option.id)} disabled={!activePersonId}
@@ -170,6 +175,7 @@ export function VaultDoseAlertPanelM99() {
           <p className="rounded-xl bg-surface-raised/60 p-2 text-ink-muted">Notificações <strong className="block text-ink-primary">{diag.display === "granted" ? "Permitidas" : diag.display === "denied" ? "Bloqueadas" : "Verificar"}</strong></p>
           <p className="rounded-xl bg-surface-raised/60 p-2 text-ink-muted">Alarmes exatos <strong className="block text-ink-primary">{diag.exact === "granted" ? "Autorizados" : diag.exact === "denied" ? "Sem autorização" : "Verificar"}</strong></p>
           <p className="col-span-2 rounded-xl bg-surface-raised/60 p-2 text-ink-muted">Avisos futuros da pessoa ativa <strong className="ml-1 text-ink-primary">{diag.scheduled ?? "Indisponível"}</strong></p>
+          <p className="col-span-2 rounded-xl bg-surface-raised/60 p-2 text-ink-muted">Adiamentos individuais ativos <strong className="ml-1 text-ink-primary">{diag.snoozed ?? "Indisponível"}</strong>{diag.nextSnoozeAt !== null && <span className="block mt-1">Próximo aviso: {new Date(diag.nextSnoozeAt).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"})}</span>}</p>
         </div> : <p className="mt-2 text-[11px] text-ink-muted">No PWA, o navegador fechado não garante alarmes. Verifique a confiabilidade no APK Android.</p>}
         {android && <div className="mt-3 flex flex-wrap gap-2">
           {diag.exact !== "granted" && <button type="button" onClick={() => void configureExact()} disabled={busy} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-[11px] font-semibold text-emerald-300 disabled:opacity-50"><Clock3 size={13} className="mr-1 inline"/> Ajustar alarmes exatos</button>}

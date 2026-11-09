@@ -208,6 +208,12 @@ async function registerNotificationActions(): Promise<void> {
             },
 
             {
+              // M99 P3: apenas lembrete individual; grupos não oferecem ação em massa.
+              id: "ADIAR",
+              title: "Lembrar em 10 min",
+              foreground: true,
+            },
+            {
               id:
                 ACTION_IGNORED,
 
