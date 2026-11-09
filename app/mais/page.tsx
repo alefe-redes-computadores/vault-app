@@ -1394,9 +1394,9 @@ export default function MaisPage() {
                 setHelpStep(0);
                 setHelpOpen(true);
               }}
-              className="flex min-h-16 w-full items-center gap-3 rounded-[22px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3.5 text-left shadow-sm transition-all hover:bg-emerald-400/[0.06] active:scale-[0.985]"
+              className="flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-violet-400/20 bg-surface p-3 text-left shadow-sm transition-all hover:bg-violet-400/[0.06] active:scale-[0.985]"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-400/10 text-violet-300">
                 <BookOpen size={19} />
               </div>
 

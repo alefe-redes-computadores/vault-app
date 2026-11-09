@@ -57,6 +57,7 @@ import {
 import {
   ExportCardButton,
 } from "@/components/ExportCardButton";
+import { exportDocumentSummariesToPDF } from "@/lib/document-summary-pdf";
 import {
   ScrollToTop,
 } from "@/components/ScrollToTop";
@@ -1165,7 +1166,7 @@ export default function DocumentsPage() {
                 {viewMode === "list" ? <Grid3X3 size={16} /> : <LayoutList size={16} />}
               </button>
               {filteredDocs.length > 0 && (
-                <ExportCardButton cards={getExportCards()} title="Meus Documentos" variant="secondary" size="sm" label="" className="h-10 w-10 shrink-0 rounded-xl p-0" />
+                <ExportCardButton cards={getExportCards()} onExport={() => exportDocumentSummariesToPDF(filteredDocs)} title="Resumo de documentos sem anexos" variant="secondary" size="sm" label="" className="h-10 w-10 shrink-0 rounded-xl p-0" />
               )}
             </div>
 

@@ -856,7 +856,11 @@ export default function MedicamentosListPage() {
         catalogIdentities[med.id];
 
       const activeIngredients =
-        catalogIdentity?.activeIngredients ?? [];
+        catalogIdentity?.activeIngredients?.length
+          ? catalogIdentity.activeIngredients
+          : catalogIdentity?.activeIngredient
+            ? [catalogIdentity.activeIngredient]
+            : [];
 
       const activeIngredient =
         activeIngredients.join(" + ");
@@ -1086,6 +1090,7 @@ export default function MedicamentosListPage() {
           density="compact"
           compactTight
           interactiveContent
+          className="min-h-[164px] min-[380px]:min-h-[172px]"
           navigationLabel={`Ver detalhes de ${med.nome}`}
           rail={(regulatoryProfile || receita) ? (
             <button
@@ -1143,6 +1148,9 @@ export default function MedicamentosListPage() {
                   </span>
                 )}
               </div>
+              {!activeIngredients.length && !isSuspenso && (
+                <p className="min-w-0 truncate text-[10px] leading-snug text-ink-faint" title="Referência farmacêutica ainda não confirmada para este cadastro">Princípio ativo · confirmar referência nos detalhes</p>
+              )}
               {showActiveIngredient && (
                 <>
                 <p className="sr-only" title={`Princípio ativo: ${activeIngredient}`}>
@@ -1449,7 +1457,7 @@ export default function MedicamentosListPage() {
 
         {/* M105: a rotina aparece antes dos filtros, na primeira dobra. */}
           {/* M92: resumo de progresso em primeiro plano; ajustes avançados por demanda. */}
-          <div className="mx-4 mb-2.5 mt-2 rounded-[22px] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/[.095] via-surface to-surface px-3.5 py-3 shadow-sm" aria-label="Progresso das doses programadas de hoje">
+          <div className="mx-4 mb-2.5 mt-2 rounded-[22px] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/[.095] via-surface to-surface px-4 py-3.5 shadow-sm" aria-label="Progresso das doses programadas de hoje">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
@@ -1457,7 +1465,7 @@ export default function MedicamentosListPage() {
               </div>
               <strong className="shrink-0 font-display text-2xl font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
             </div>
-            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-raised">
+            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised">
               <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{width:`${statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0}%`}} />
             </div>
           </div>

@@ -237,7 +237,12 @@ export async function deliverPdf(pdf: jsPDF, filename: string, title: string): P
   const path = `vault-export/${safeName}`;
   await Filesystem.writeFile({ path, data: encoded, directory: Directory.Cache, recursive: true });
   const { uri } = await Filesystem.getUri({ path, directory: Directory.Cache });
-  await Share.share({ title, url: uri, dialogTitle: "Salvar ou compartilhar PDF" });
+  try {
+    await Share.share({ title, files: [uri], dialogTitle: "Salvar ou compartilhar PDF" });
+  } catch (error) {
+    console.error("[pdfExport] Compartilhamento nativo indisponível:", error);
+    throw new Error("PDF preparado, mas o Android não abriu o compartilhamento. Confira o aplicativo e tente novamente.");
+  }
 }
 
 /** O html2canvas pode falhar com certos estilos ou imagens do WebView.

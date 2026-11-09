@@ -1892,20 +1892,20 @@ export default function HomePage() {
                   </button>
                 )}
 
-                {medicationCareOpportunities.length > 1 ? (
-                  <ClinicalDisclosure id="home-continuity-other" title={`Outras prioridades · ${medicationCareOpportunities.length - 1}`}
-                    description="Consultar mais medicamentos sem ampliar a primeira leitura"
-                    icon={<ClipboardList size={17}/>}>
-                    {() => <MedicationCareOpportunityQueue
-                      items={medicationCareOpportunities.slice(1)}
-                      onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-                    />}
-                  </ClinicalDisclosure>
-                ) : null}
+
                 <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
                   O Vault cruza seus próprios registros de estoque, renovação e tratamento. Isso não substitui orientação profissional.
                 </p>
               </div>
+              {medicationCareOpportunities.length > 1 ? (
+                <div className="mt-2">
+                  <ClinicalDisclosure id="home-continuity-other" title={`Outras prioridades · ${medicationCareOpportunities.length - 1}`}
+                    description="Outras ações de estoque, receita, compra e retirada" icon={<ClipboardList size={17}/> }>
+                    {() => <MedicationCareOpportunityQueue items={medicationCareOpportunities.slice(1)}
+                      onNavigate={(href) => { trigger("vibrate"); router.push(href); }}/>}
+                  </ClinicalDisclosure>
+                </div>
+              ) : null}
             </motion.section>
           )}
 

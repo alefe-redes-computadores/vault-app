@@ -24,6 +24,8 @@ export function HomeDoseQuantityFollowUp({
   onNavigate: (href: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [hasToggledDetails, setHasToggledDetails] = useState(false);
   const [error, setError] = useState("");
   if (!insight || !insight.id.startsWith("quantidade-confirmada-")) return null;
 
@@ -47,6 +49,13 @@ export function HomeDoseQuantityFollowUp({
 
   return (
     <section aria-label="Acompanhamento de registro de quantidade incomum" className="mx-0 rounded-[20px] border border-amber-400/20 bg-gradient-to-br from-amber-400/[.055] to-surface p-3.5">
+      <button type="button" className="flex min-h-12 w-full items-center gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300" aria-expanded={hasToggledDetails ? expanded : !checked} onClick={() => { const visible = hasToggledDetails ? expanded : !checked; setHasToggledDetails(true); setExpanded(!visible); }}>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-400/10 text-amber-300"><AlertTriangle size={17} aria-hidden="true"/></span>
+        <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wider text-amber-300">Acompanhamento de registro</span><strong className="mt-0.5 block line-clamp-1 text-sm text-ink-primary">{insight.titulo}</strong></span>
+        <span className="shrink-0 text-[10px] font-medium text-ink-muted">{checked ? "Conferido · detalhes" : "Revisar detalhes"}</span>
+        <ChevronRight size={15} className="shrink-0 text-ink-faint" aria-hidden="true" />
+      </button>
+      {(hasToggledDetails ? expanded : !checked) && <div className="mt-3 border-t border-surface-border/45 pt-3">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-300"><AlertTriangle size={17} aria-hidden="true"/></span>
         <div className="min-w-0 flex-1">
@@ -70,6 +79,7 @@ export function HomeDoseQuantityFollowUp({
       </button>
       {checked && <p role="note" className="mt-1.5 text-[10px] text-ink-muted">Conferência pessoal registrada; não equivale a avaliação profissional.</p>}
       {error && <p role="alert" className="mt-1.5 text-xs text-coral">{error}</p>}
+      </div>}
     </section>
   );
 }

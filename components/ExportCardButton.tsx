@@ -17,6 +17,7 @@ interface ExportCardButtonProps {
   compact?: boolean;
   onBeforeExport?: () => void | Promise<void>;
   onAfterExport?: () => void;
+  onExport?: () => Promise<void>;
 }
 
 export function ExportCardButton({
@@ -30,6 +31,7 @@ export function ExportCardButton({
   compact = false,
   onBeforeExport,
   onAfterExport,
+  onExport,
 }: ExportCardButtonProps) {
   const { trigger } = useHapticFeedback();
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +47,9 @@ export function ExportCardButton({
 
     try {
       await onBeforeExport?.();
-      if (cards && cards.length > 0) {
+      if (onExport) {
+        await onExport();
+      } else if (cards && cards.length > 0) {
         const refs = cards.map((c) => c.ref);
         await exportCardsToPDF({
           cards: refs,
@@ -68,7 +72,10 @@ export function ExportCardButton({
       trigger("success");
     } catch (err) {
       console.error("Erro ao exportar:", err);
-      setError("Erro ao gerar o PDF. Tente novamente.");
+      setError(err instanceof Error && (
+        err.message.startsWith("PDF preparado,") ||
+        err.message.startsWith("Nenhum documento")
+      ) ? err.message : "Não foi possível concluir o PDF. Os documentos originais não foram alterados.");
       trigger("error");
     } finally {
       onAfterExport?.();
