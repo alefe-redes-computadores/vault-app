@@ -65,7 +65,7 @@ const doctors = read("app/saude/medicos/page.tsx");
 const hospitals = read("app/saude/hospitais/page.tsx");
 const places = read("app/saude/locais/page.tsx");
 const pharmacies = read("app/saude/farmacias/page.tsx");
-assert(doctors.includes('badgeColor="text-violet-300"'));
+assert(doctors.includes('badgeColor="text-sky-300"'));
 assert(hospitals.includes('badgeColor="text-rose-300"'));
 assert(places.includes('badgeColor="text-cyan-300"'));
 for (const page of [doctors, places, pharmacies]) assert(page.includes("min-h-9 shrink-0 rounded-xl border"));

@@ -884,13 +884,13 @@ export default function MedicosPage() {
               : "profissionais"
           }`}
           badgeLabel="Rede médica"
-          badgeColor="text-violet-300"
+          badgeColor="text-sky-300"
           icon={
             <Stethoscope
               size={14}
             />
           }
-          iconColor="text-violet-300"
+          iconColor="text-sky-300"
         >
           <ListSearch
             value={search}
@@ -909,7 +909,7 @@ export default function MedicosPage() {
                 key={option.value}
                 type="button"
                 onClick={() => handleSortChange(option.value)}
-                className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${sortBy === option.value ? "border-violet-400/50 bg-violet-400/15 text-violet-200" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}
+                className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${sortBy === option.value ? "border-sky-400/50 bg-sky-400/15 text-sky-200" : "border-surface-border/40 bg-surface-raised text-ink-muted"}`}
               >
                 Ordenar: {option.label}
               </button>
@@ -1104,12 +1104,7 @@ export default function MedicosPage() {
                 medico,
                 index
               ) => {
-                const primaryColor =
-                  medico
-                    .tratamentos[
-                    0
-                  ]?.color ||
-                  "#38BDF8";
+                const primaryColor = "#38BDF8";
 
                 return (
                   <ListCard

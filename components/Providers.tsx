@@ -2,7 +2,7 @@
 import dynamic from "next/dynamic";
 const ContextualHelp = dynamic(() => import("@/components/help/ContextualHelp").then(module => module.ContextualHelp));
 import { isVaultNative } from "@/lib/native-runtime";
-import { resolveDoseNotificationDestination } from "@/lib/notification-dose-navigation";
+import { resolveDoseNotificationDestination, shouldSignalPendingDosesInPlace } from "@/lib/notification-dose-navigation";
 import { resolveHealthEventDestination, isSafeVaultNotificationRoute } from "@/lib/health-reminders/event-navigation";
 // components/Providers.tsx
 
@@ -899,7 +899,7 @@ export function Providers({
                   if (!isSafeVaultNotificationRoute(destination)) return;
 
                   runAfterVaultBiometricUnlock(() => {
-                    if (destination === "/?open=pending-doses") {
+                    if (shouldSignalPendingDosesInPlace(destination, window.location.pathname)) {
                       window.dispatchEvent(new Event("vault:open-pending-doses"));
                     }
                     router.push(destination!);
@@ -1108,7 +1108,7 @@ export function Providers({
                     runAfterVaultBiometricUnlock(() => {
                       const destination = resolveDoseNotificationDestination(data.type, data.horario)
                         ?? resolveDoseNotificationDestination(data.type);
-                      if (destination === "/?open=pending-doses") {
+                      if (shouldSignalPendingDosesInPlace(destination, window.location.pathname)) {
                         window.dispatchEvent(new Event("vault:open-pending-doses"));
                       }
                       router.push(destination ??

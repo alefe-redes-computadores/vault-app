@@ -16,3 +16,15 @@ export function resolveDoseNotificationDestination(type: unknown, horario?: unkn
       return null;
   }
 }
+
+/**
+ * M107: sinaliza o modal somente se a Home JA estiver montada.
+ * Em outra rota, a query /?open=pending-doses e a autoridade do destino.
+ * Funcao pura: nao confirma doses, nao escreve dados nem troca de pessoa.
+ */
+export function shouldSignalPendingDosesInPlace(
+  destination: string | null | undefined,
+  pathname: string,
+): boolean {
+  return destination === "/?open=pending-doses" && pathname === "/";
+}

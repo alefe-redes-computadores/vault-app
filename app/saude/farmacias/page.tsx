@@ -571,7 +571,7 @@ export default function FarmaciasPage() {
   // ==========================================================
 
   const corBase =
-    "#F59E0B";
+    "#10B981";
 
   return (
     <PageTransition>
@@ -579,13 +579,13 @@ export default function FarmaciasPage() {
         <ListPageHeader
           title="Farmácias"
           badgeLabel="Farmácias"
-          badgeColor="text-amber-400"
+          badgeColor="text-emerald-300"
           icon={
             <Store
               size={14}
             />
           }
-          iconColor="text-amber-400"
+          iconColor="text-emerald-300"
         >
           <ListSearch
             value={search}
@@ -617,7 +617,7 @@ export default function FarmaciasPage() {
               className={`min-h-9 shrink-0 rounded-xl border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
                 filtroStatus ===
                 "com_medicamentos"
-                  ? "border-amber-400 bg-amber-400/20 text-amber-300"
+                  ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
             >
@@ -727,7 +727,7 @@ export default function FarmaciasPage() {
                             `/saude/farmacias/editar?id=${farmacia.id}`
                           );
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:text-amber-400 active:scale-95"
+                        className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-ink-muted transition-colors hover:text-emerald-300 active:scale-95"
                         aria-label={`Editar ${farmacia.nome}`}
                       >
                         <Edit3
@@ -744,7 +744,7 @@ export default function FarmaciasPage() {
                       </h3>
 
                       {farmacia.isMaisEconomica && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-400 px-2 py-0.5 text-[9px] font-bold uppercase text-void">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-bold uppercase text-void">
                           <Award
                             size={10}
                           />
