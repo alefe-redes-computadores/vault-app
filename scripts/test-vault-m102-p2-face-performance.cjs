@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+'use strict';
+/* Hermetic test: no WebGL, database, requests, sensors or Android runtime. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const Module=require('node:module');
+const path=require('node:path');
+const ts=require('typescript');
+let count=0;
+const ok=(condition,label)=>{assert.ok(condition,`M102 P2: ${label}`);count++;};
+const read=(p)=>fs.readFileSync(p,'utf8');
+const purePath='lib/health-profile/avatar-face-detail-m102p2.ts';
+const source=read(purePath);
+const ast=ts.createSourceFile(purePath,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+ok(ast.parseDiagnostics.length===0,'módulo puro tem sintaxe TypeScript válida');
+const output=ts.transpileModule(source,{fileName:purePath,reportDiagnostics:true,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}});
+ok(!(output.diagnostics||[]).some(d=>d.category===ts.DiagnosticCategory.Error),'módulo puro transpila sem erros');
+const mod=new Module(path.resolve(purePath),module);mod.filename=path.resolve(purePath);
+mod.require=(id)=>{throw Error('M102 P2: dependência inesperada '+id);};mod._compile(output.outputText,mod.filename);
+const {avatarFaceIllustrationM102P2:project,AVATAR_IRIS_3D_M102P2:iris}=mod.exports;
+ok(typeof project==='function','seletor de expressão exportado');
+for(const value of ['neutral','happy','reflective']) {
+ const face=project(value);
+ ok(face && typeof face.eyebrows==='string'&&face.eyebrows.startsWith('M'),'sobrancelhas reais: '+value);
+ ok(typeof face.mouth==='string'&&face.mouth.startsWith('M'),'boca descrita: '+value);
+ ok(typeof face.upperLids==='string'&&face.upperLids.startsWith('M'),'pálpebras de baixo relevo: '+value);
+ ok(face.eyeHeight>0&&face.eyeHeight<2.2,'olhos com escala segura: '+value);
+ ok(face.highlightOpacity>0&&face.highlightOpacity<=.65,'um reflexo discreto por olho: '+value);
+ ok(project(value)===face,'perfil puro e estável: '+value);
+}
+const neutral=project('neutral');
+ok(project(undefined)===neutral,'sem humor não inventa expressão');
+ok(project(null)===neutral,'valor nulo mantém expressão neutra');
+ok(project({})===neutral,'objeto inesperado não inventa humor');
+ok(project('raiva')===neutral,'rótulo não cadastrado não muda o rosto');
+ok(project('hrv_rmssd')===neutral,'HRV não escolhe o humor');
+ok(project('passos')===neutral,'passos não escolhem o humor');
+ok(project('medicamento')===neutral,'medicamento não escolhe o humor');
+ok(project('happy')!==neutral&&project('reflective')!==neutral,'expressões declaradas diferem');
+ok(project('happy').mouth!==project('reflective').mouth,'sorriso e reflexão distintos');
+ok(Array.isArray(iris)&&iris.length===3&&iris[0]<.036&&iris[1]<.012&&iris[2]<=.009,'íris menor que a esclera 3D');
+ok(iris[0]>=.010&&iris[1]>=.010&&iris[2]>.002,'íris 3D não é um ponto invisível');
+const fallback=read('components/saude/HealthBody.tsx');
+const three=read('components/saude/HealthAvatar3D.tsx');
+for(const [name,content] of [['HealthBody',fallback],['HealthAvatar3D',three]]){
+ const parsed=ts.createSourceFile(name+'.tsx',content,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ ok(parsed.parseDiagnostics.length===0,`TSX ${name} sem erro de parsing`);
+}
+ok(fallback.includes('avatarFaceIllustrationM102P2(expression)'),'ilustração usa exclusivamente o valor de expressão recebido');
+ok(fallback.includes('d={faceM102P2.eyebrows}')&&fallback.includes('d={faceM102P2.mouth}'),'pálpebras e boca acompanham declaração');
+ok(fallback.includes('ry={faceM102P2.eyeHeight}')&&fallback.includes('fillOpacity={faceM102P2.highlightOpacity}'),'olhos/realces variam discretamente com a expressão');
+ok(fallback.includes('M102 P2: olhos de baixo relevo')&&fallback.includes('aria-hidden="true"'),'detalhes SVG são decorativos, sem acessibilidade duplicada');
+ok(fallback.includes('appearance.hairColor')&&fallback.includes('appearance.lips'),'personalização de sobrancelha e lábios preservada');
+ok(!/requestAnimationFrame|setInterval\(/.test(fallback),'fallback sem animação ou loop');
+ok(three.includes('oval(materials.iris,sign*.083,2.819,.224,AVATAR_IRIS_3D_M102P2)'),'3D atualiza somente geometria existente da íris');
+ok(three.includes('const expressionBrows:')&&three.includes('expressionLids.push({object:upperLid,sign})')&&three.includes('expressionEyes.push({object:pupil,restY:pupil.position.y})'),'registros faciais V208/V234 preservados');
+ok(three.includes('expressionLidScaleY.set(upperLid,upperLid.scale.y)')&&three.includes('expressionEyeScaleY.set(pupil,pupil.scale.y)'),'escalas-base V234 preservadas');
+ok(three.includes('object.scale.copy(base).multiplyScalar'),'micro-escala de brilho V272 preservada');
+ok(three.includes('const setExpression=(value:AvatarBodyContext[\'expression\'])=>{'),'função histórica de expressão preservada');
+ok(!three.includes('requestAnimationFrame(animate)')&&!three.includes('setAnimationLoop('),'sem loop de GPU contínuo');
+ok(three.includes("typeof ResizeObserver!=='undefined'")&&three.includes("typeof IntersectionObserver!=='undefined'"),'WebViews sem observers não quebram o Avatar');
+ok(three.includes('const visibilityObserver=new IntersectionObserver')&&three.includes('visibilityObserver.observe(element)'),'contrato M4 preservado com construtor protegido');
+ok(three.includes('visibilityObserver.disconnect()')&&three.includes('resizeObserver.disconnect()'),'contrato V173 preserva suspensão e liberação do renderer');
+ok(three.includes("window.addEventListener('resize',resize)")&&three.includes("window.removeEventListener('resize',resize)"),'fallback de resize possui cleanup');
+ok(three.includes('if(resizeObserver)resizeObserver.disconnect()')&&three.includes('if(visibilityObserver)visibilityObserver.disconnect()'),'limpeza protegida em WebViews antigos e contrato V173 preservado');
+ok(three.includes('renderer.forceContextLoss()')&&three.includes('renderer.dispose()'),'recursos WebGL liberados');
+const gate=read('scripts/test-v63-release-gate.mjs');
+ok(gate.includes('"scripts/test-vault-m102-p2-face-performance.cjs"'),'release gate registra P2');
+ok(gate.includes('"scripts/test-vault-m102-p1-avatar-brain.cjs"'),'release gate preserva P1');
+ok(read('docs/VAULT-M102-P2-ROSTO-RENDER.md').includes('Sem diagnósticos'),'limitações documentadas');
+console.log(`VAULT M102 P2: ${count} verificações herméticas aprovadas. Build real e inspeção visual do APK são gates separados.`);

@@ -7,11 +7,13 @@ import type { HealthDevice } from "@/lib/health-profile/types";
 import {avatarBraceSlots,type AvatarBodyContext,type AvatarBodyPart} from "@/lib/health-profile/avatar-body";
 import { avatarColor, avatarLayout, avatarShade } from "@/lib/health-profile/avatar";
 import { DEFAULT_AVATAR_STYLE, type AvatarStyle } from "@/lib/health-profile/avatar-style";
+import { avatarFaceIllustrationM102P2 } from "@/lib/health-profile/avatar-face-detail-m102p2";
 
 /** VAULT_AVATAR_V118: illustration and registered devices, independent of BMI. */
 export const HealthBody = memo(function HealthBody({ skin, devices, appearance=DEFAULT_AVATAR_STYLE, expanded = false, showControls = true, controlsContainer, expression="neutral", surgeryMarkers=[], onBodySelect, onDeviceSelect }: { skin: string; devices: HealthDevice[]; appearance?:AvatarStyle; expanded?: boolean; showControls?: boolean; controlsContainer?:HTMLElement|null; surgeryMarkers?:AvatarBodyContext["surgeryMarkers"];expression?:AvatarBodyContext["expression"];onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void;onDeviceSelect?:(id:string)=>void }) {
   const [view,setView]=useState<"front"|"left"|"right">("front");
   const angle=view==="front"?0:view==="left"?-18:18;
+  const faceM102P2=avatarFaceIllustrationM102P2(expression);
   const posture=expression==="reflective"?" translateY(1px) rotateZ(.35deg)":expression==="happy"?" translateY(-1px) rotateZ(-.2deg)":"";
   const uid = useId().replace(/:/g, "");
   const ids = { skin: `skin-${uid}`, cloth: `cloth-${uid}`, halo: `halo-${uid}`, metal: `metal-${uid}`, glass: `glass-${uid}`, title: `title-${uid}`, description: `description-${uid}` };
@@ -82,16 +84,25 @@ export const HealthBody = memo(function HealthBody({ skin, devices, appearance=D
         </g>}
         {appearance.earrings==='stud'?<g fill="#e2e8f0"><circle cx="68" cy="42" r="1.6"/><circle cx="112" cy="42" r="1.6"/></g>:appearance.earrings==='hoop'?<g fill="none" stroke="#e2e8f0" strokeWidth="1.3"><circle cx="67" cy="44" r="3.5"/><circle cx="113" cy="44" r="3.5"/></g>:null}
         <path d="M74 17 Q88 9 101 15" fill="none" stroke="#526273" strokeOpacity=".32" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M79 33 Q82 31 85 33 M96 33 Q99 31 102 33" fill="none" stroke={appearance.hairColor} strokeOpacity={appearance.brows==='soft'?.65:.9} strokeWidth={appearance.brows==='full'?2.4:appearance.brows==='defined'?1.8:1.3} strokeLinecap="round" />
-        <path d="M80 37 h3 M97 37 h3" stroke="#231f1e" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="81" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
-        <circle cx="98" cy="36.7" r=".45" fill="#f1f5f9" fillOpacity=".6" />
+        <path d={faceM102P2.eyebrows} fill="none" stroke={appearance.hairColor} strokeOpacity={appearance.brows==='soft'?.65:.9} strokeWidth={appearance.brows==='full'?2.4:appearance.brows==='defined'?1.8:1.3} strokeLinecap="round" />
+        {/* M102 P2: olhos de baixo relevo e brilho em uma camada, sem duplicar pupilas. */}
+        <g aria-hidden="true">
+          <ellipse cx="81.5" cy="36.6" rx="3.3" ry={faceM102P2.eyeHeight} fill="#dce4df" fillOpacity=".85" />
+          <ellipse cx="98.5" cy="36.6" rx="3.3" ry={faceM102P2.eyeHeight} fill="#dce4df" fillOpacity=".85" />
+          <circle cx="81.5" cy="36.6" r="1.2" fill="#5b3824" />
+          <circle cx="98.5" cy="36.6" r="1.2" fill="#5b3824" />
+          <circle cx="81.5" cy="36.6" r=".61" fill="#171a20" />
+          <circle cx="98.5" cy="36.6" r=".61" fill="#171a20" />
+          <circle cx="81.1" cy="36.3" r=".32" fill="#f1f5f9" fillOpacity={faceM102P2.highlightOpacity} />
+          <circle cx="98.1" cy="36.3" r=".32" fill="#f1f5f9" fillOpacity={faceM102P2.highlightOpacity} />
+          <path d={faceM102P2.upperLids} stroke={avatarShade(color, .70)} strokeOpacity=".6" strokeWidth=".75" fill="none" strokeLinecap="round" />
+        </g>
         <path d="M90 38 L88 44 Q90 45 92 44" fill="none" stroke="#30251f" strokeOpacity=".3" strokeWidth="1" strokeLinecap="round" />
         <path d="M76 43 Q80 47 84 46 M104 43 Q100 47 96 46" fill="none" stroke={avatarShade(color, 1.18)} strokeOpacity=".24" strokeWidth="1.2" strokeLinecap="round" />
         {appearance.facialHair==='stubble'?<path d="M75 46 Q76 59 90 62 Q104 59 106 46 Q101 58 90 59 Q79 58 75 46Z" fill={appearance.hairColor} opacity=".32"/>:null}
         {appearance.facialHair==='goatee'?<><path d="M85 51 Q90 55 96 51 L95 61 Q90 65 85 61Z" fill={appearance.hairColor} opacity=".9"/><path d="M84 47 Q90 44 97 47" stroke={appearance.hairColor} strokeWidth="2"/></>:null}
         {appearance.facialHair==='beard'?<><path d="M73 43 Q74 60 90 66 Q106 60 108 43 Q103 56 90 61 Q77 56 73 43Z" fill={appearance.hairColor} opacity=".92"/><path d="M83 47 Q90 43 98 47" stroke={appearance.hairColor} strokeWidth="2.4"/></>:null}
-        <path d={expression==='happy'?"M84 49 Q90 53 97 49":expression==='reflective'?"M84 49 Q90 45 97 49":"M84 49 L97 49"} fill="none" stroke={appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':faceDetail} strokeOpacity={appearance.lips==='natural'?.72:.95} strokeWidth={appearance.lips==='natural'?1.2:1.7} strokeLinecap="round" />
+        <path d={faceM102P2.mouth} fill="none" stroke={appearance.lips==='berry'?'#71324d':appearance.lips==='rose'?'#a85e6d':faceDetail} strokeOpacity={appearance.lips==='natural'?.72:.95} strokeWidth={appearance.lips==='natural'?1.2:1.7} strokeLinecap="round" />
 
         {/* V122: cheek light, hair texture and a more defined jaw. */}
         <path d="M73 32 Q70 44 78 50 M107 32 Q110 44 102 50" fill="none" stroke={avatarShade(color, 1.35)} strokeOpacity=".28" strokeWidth="2" strokeLinecap="round" />

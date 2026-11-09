@@ -12,6 +12,7 @@ import { watchModelByName } from "@/lib/health-profile/device-catalog";
 import { avatarAttentionColor, shortestAvatarAngle } from "@/lib/health-profile/avatar-context";
 import {avatarCameraFrame,avatarStyleGeometryKey,type AvatarFraming} from "@/lib/health-profile/avatar-framing";
 import type { AvatarStyle } from "@/lib/health-profile/avatar-style";
+import { AVATAR_IRIS_3D_M102P2 } from "@/lib/health-profile/avatar-face-detail-m102p2";
 
 type Controller = {preview:()=>void;viewport:(compact:boolean)=>void;style:(value:AvatarStyle)=>void;framing:(value:AvatarFraming)=>void; markers:(markers:AvatarSurgeryMarker[])=>void; attention: (rank:number)=>void; rotate: (angle: number) => void; zoom: (value: number) => void; nudge:(delta:number)=>void;expression:(value:AvatarBodyContext["expression"])=>void;weight:(visible:boolean)=>void };
 export default function HealthAvatar3D({ framing="body",onFramingChange,skin, appearance, devices, onUnavailable, attention=0, onDeviceSelect, onBrainSelect, onEmptyTap, controlsContainer, compact=false, body, onBodySelect }: { framing?:AvatarFraming;onFramingChange?:(value:AvatarFraming)=>void;skin: string; appearance: AvatarStyle; devices: HealthDevice[]; attention?:number; onDeviceSelect?:(id:string)=>void; onBrainSelect?:()=>void; onEmptyTap?:()=>void; compact?:boolean;body?:AvatarBodyContext;onBodySelect?:(part:AvatarBodyPart,markerKey?:string)=>void; controlsContainer?:HTMLElement|null; onUnavailable: () => void }) {
@@ -342,7 +343,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // V221: olhos de baixo relevo, integrados às pálpebras. Nenhuma esfera salta
       // da frente do rosto. Íris/pupila reutilizam a expressividade V208.
       const sclera=oval(materials.eyeWhite,sign*.083,2.82,.215,[.036,.012,.009]);sclera.raycast=()=>{};
-      oval(materials.iris,sign*.083,2.819,.224,[.012,.011,.004]).raycast=()=>{};
+      oval(materials.iris,sign*.083,2.819,.224,AVATAR_IRIS_3D_M102P2).raycast=()=>{};
       const pupil=oval(materials.dark,sign*.083,2.819,.229,[.005,.006,.0025]);pupil.raycast=()=>{};
       expressionEyes.push({object:pupil,restY:pupil.position.y}); expressionEyeScaleY.set(pupil,pupil.scale.y);
       // V245: ambos os reflexos recebem a mesma direção de luz do key light.
@@ -663,13 +664,23 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();
     },nudge:delta=>{transition=null;model.rotation.y+=delta;setDirection("custom");draw();},zoom:value=>{camera.zoom=avatarZoom(value)/100;camera.updateProjectionMatrix();draw();}};
-    const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(element);
+    // M102 P2: older Android WebViews can lack either observer. Degrade safely,
+    // without adding a frame loop or breaking the 2D fallback.
+    const resizeObserver=typeof ResizeObserver!=='undefined'?new ResizeObserver(resize):null;
+    resizeObserver?.observe(element);
+    if(!resizeObserver)window.addEventListener('resize',resize);
     // V223: cancel pending GPU work as soon as the avatar leaves the viewport.
-    const visibilityObserver=new IntersectionObserver(entries=>{
-      visible=entries[0]?.isIntersecting??false;
-      if(!visible&&frame){cancelAnimationFrame(frame);frame=0;}
-      if(visible)draw();
-    });visibilityObserver.observe(element);
+    // Preserve the V4 lifecycle contract while guarding unsupported WebViews.
+    // The constructor is only reached when IntersectionObserver exists.
+    const visibilityObserver=typeof IntersectionObserver!=='undefined'?(()=>{
+      const visibilityObserver=new IntersectionObserver(entries=>{
+        visible=entries[0]?.isIntersecting??false;
+        if(!visible&&frame){cancelAnimationFrame(frame);frame=0;}
+        if(visible)draw();
+      });
+      visibilityObserver.observe(element);
+      return visibilityObserver;
+    })():null;
     const visibility=()=>{if(!document.hidden)draw();};document.addEventListener("visibilitychange",visibility);
     let pointer:{id:number;x:number;y:number;angle:number;moved:boolean;rotating:boolean}|null=null;
     const raycaster=new THREE.Raycaster();
@@ -682,7 +693,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);element.addEventListener("lostpointercapture",up);renderer.domElement.addEventListener("webglcontextlost",lost);
     resize();
     return ()=>{
-      disposed=true;cancelAnimationFrame(frame);transition=null;cameraTransition=null;controller.current=null;resizeObserver.disconnect();visibilityObserver.disconnect();document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
+      disposed=true;cancelAnimationFrame(frame);transition=null;cameraTransition=null;controller.current=null;if(resizeObserver)resizeObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();if(!resizeObserver)window.removeEventListener('resize',resize);document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
       const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});[stage,stageRing].forEach(object=>{geometries.add(object.geometry);mats.add(object.material);});Object.values(materials).forEach(m=>mats.add(m));[markerGeometry,markerRingGeometry,markerHitGeometry].forEach(g=>geometries.add(g));Object.values(markerMaterials).forEach(m=>mats.add(m));markerLines.forEach(g=>geometries.add(g));Object.values(markerLineMaterials).forEach(m=>mats.add(m));mats.add(hitMaterial);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
     };
     // Signature includes every appearance field used by this scene; metadata updates keep the canvas.
