@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BellRing, ChevronDown, Clock3, RefreshCw, ShieldAlert, ShieldCheck, Smartphone } from "lucide-react";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
@@ -38,9 +38,15 @@ export function VaultDoseAlertPanelM99() {
   const [pauseUntil, setPauseUntil] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const android = isVaultAndroid();
+  // M103 P2: native permission queries can finish after a profile switch.
+  const activePersonRef=useRef(activePersonId);
+  const refreshRef=useRef(0);
+  activePersonRef.current=activePersonId;
 
   const refresh = useCallback(async () => {
     if (!activePersonId) return;
+    const person=activePersonId, request=++refreshRef.current;
+    const current=()=>activePersonRef.current===person && refreshRef.current===request;
     setMode(getVaultDoseAlertMode(activePersonId));
     setPauseUntil(getVaultDosePauseUntil(activePersonId));
     if (!android) {
@@ -53,25 +59,35 @@ export function VaultDoseAlertPanelM99() {
         LocalNotifications.checkExactNotificationSetting(),
         LocalNotifications.getPending(),
       ]);
-      const snoozed = summarizeSnoozedNotificationsM99P3(pending.notifications, activePersonId);
+      if (!current()) return;
+      const snoozed = summarizeSnoozedNotificationsM99P3(pending.notifications, person);
       setDiag({
         snoozed: snoozed.count, nextSnoozeAt: snoozed.nextAt,
         display: permissions.display === "granted" ? "granted" : permissions.display === "denied" ? "denied" : "prompt",
         exact: exact.exact_alarm === "granted" ? "granted" : exact.exact_alarm === "denied" ? "denied" : "prompt",
-        scheduled: summarizeNativeCareAgenda(pending.notifications, activePersonId).total,
+        scheduled: summarizeNativeCareAgenda(pending.notifications, person).total,
       });
     } catch {
-      setDiag({ display: "error", exact: "error", scheduled: null, snoozed: null, nextSnoozeAt: null });
+      if(current())setDiag({ display: "error", exact: "error", scheduled: null, snoozed: null, nextSnoozeAt: null });
     }
   }, [activePersonId, android]);
 
   useEffect(() => {
+    // Invalidate pending native results and remove another person's displayed diagnostic.
+    refreshRef.current+=1;
+    setDiag({ display: "unavailable", exact: "unavailable", scheduled: null, snoozed: null, nextSnoozeAt: null });
+    setFeedback("");
+    if(activePersonId){
+      setMode(getVaultDoseAlertMode(activePersonId));
+      setPauseUntil(getVaultDosePauseUntil(activePersonId));
+    }else setPauseUntil(null);
     void refresh();
     const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
     const onSettings = () => void refresh();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener(VAULT_DOSE_ALERT_MODE_EVENT, onSettings);
     return () => {
+      refreshRef.current+=1;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener(VAULT_DOSE_ALERT_MODE_EVENT, onSettings);
     };

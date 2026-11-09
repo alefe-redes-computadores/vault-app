@@ -20,6 +20,7 @@ import {
 
 import { cancelOverdueDoseNotification } from "@/lib/overdue-dose-notifications";
 import { snoozeDoseReminderM99P3 } from "@/lib/dose-snooze-m99p3";
+import { canApplyNativeDoseActionM103 } from "@/lib/dose-action-safety-m103";
 
 import {
   addDaysToLocalDate,
@@ -246,6 +247,11 @@ export function useDoseNotificationActions() {
                 return;
               }
 
+              // M103 P2: nunca gravar em data inferida de alarme legado ou
+              // obsoleto; revisão histórica continua disponível no app.
+              if ((event.actionId === "TOMEI" || event.actionId === "IGNORAR") &&
+                  !canApplyNativeDoseActionM103({data: exactNotificationDate, horario, personId, medicamentoId})) return;
+
               if (
                 event.actionId ===
                 "TOMEI"
@@ -258,6 +264,7 @@ export function useDoseNotificationActions() {
                   horario,
                   status:
                     "taken",
+                  onlyIfPending: true,
                 });
 
                 await cancelOverdueDoseNotification({
@@ -282,6 +289,7 @@ export function useDoseNotificationActions() {
                   horario,
                   status:
                     "ignored",
+                  onlyIfPending: true,
                 });
 
                 await cancelOverdueDoseNotification({
