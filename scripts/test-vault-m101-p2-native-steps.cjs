@@ -23,8 +23,8 @@ const load=(p,mocks={})=>{
 const types=load('lib/health-profile/types.ts');
 const metric=load('lib/health-profile/metrics.ts');
 const connectTypes=load('lib/health-connect/types.ts');
-check(connectTypes.CONNECT_METRICS.length===7,'exatamente 6 métricas antigas + passos');
-check(new Set(connectTypes.CONNECT_METRICS).size===7,'tipos canônicos não duplicados');
+check(connectTypes.CONNECT_METRICS.length===8,'seis métricas antigas + passos + HRV RMSSD opt-in');
+check(new Set(connectTypes.CONNECT_METRICS).size===8,'tipos canônicos não duplicados');
 check(connectTypes.CONNECT_METRICS.includes('passos') && connectTypes.CONNECT_METRICS.includes('caminhada'),'passos não substituem caminhada');
 check(types.METRICS.passos.unit==='passos' && types.METRICS.passos.category==='habito','unidade separada de duração de caminhada');
 metric.validateMetric('passos',1);metric.validateMetric('passos',11000);
@@ -62,10 +62,10 @@ check(kotlin.includes('"sono" to SleepSessionRecord::class') && kotlin.includes(
 const android=read('scripts/patch-android-health-connect-v113.mjs');
 check(android.includes('"READ_STEPS"') && !android.includes('"WRITE_STEPS"'),'manifest nativo solicita só leitura de passos');
 const v113=read('scripts/test-v113-health-connect.mjs');
-check(v113.includes('.length,7)') && v113.includes('READ_STEPS'),'V113 exige sete permissões em vez de relaxar teste');
+check(v113.includes('.length,8)') && v113.includes('READ_STEPS') && v113.includes('READ_HEART_RATE_VARIABILITY'),'V113 exige oito permissões READ sem relaxar teste');
 check(read('native/health-connect/PermissionsRationaleActivity.kt').includes('total diário de passos'),'rationale Android reflete acesso real');
 check(!read('lib/health-connect/evidence-m100.ts').includes('["Passos", "HRV"'),'aviso legado deixa de classificar passos como indisponível');
-check(read('lib/health-connect/evidence-m100.ts').includes('"HRV"'),'HRV continua explicitamente indisponível');
+check(!read('lib/health-connect/evidence-m100.ts').includes('"HRV"') && read('lib/health-connect/evidence-m100.ts').includes('"Estágios do sono"'),'HRV deixou de constar como indisponível; estágios do sono continuam');
 check(read('lib/health-profile/dashboard-index.ts').includes('"caminhada", "passos"'),'passos entram na projeção da Minha Saúde');
 check(read('lib/health-records.ts').includes('tipo: "passos"'),'identidade de hábito registrada no catálogo');
 const gate=read('scripts/test-v63-release-gate.mjs');

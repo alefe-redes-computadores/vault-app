@@ -1,7 +1,7 @@
 import type { RegistroSaude } from "@/lib/types";
 import type { HealthDevice, HealthMetric } from "./types";
 
-const DASHBOARD_METRICS = new Set<HealthMetric>(["sono", "peso", "pressao_arterial", "frequencia_cardiaca", "oxigenacao", "caminhada", "passos"]);
+const DASHBOARD_METRICS = new Set<HealthMetric>(["sono", "peso", "pressao_arterial", "frequencia_cardiaca", "oxigenacao", "caminhada", "passos", "hrv_rmssd"]);
 function validDashboardDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [y,m,d]=value.split("-").map(Number);

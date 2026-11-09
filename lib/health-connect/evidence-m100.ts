@@ -28,5 +28,5 @@ export function projectConnectEvidenceM100(connection: ConnectConnection | null 
     "Última importação há 3 dias ou mais; verifique quando desejar atualizar.";
   return { linked, permissionState, lastImportAt: validDate ? new Date(parsed).toISOString() : null, ageHours, recentImport, selectedMetrics: types.length, permittedMetrics: permitted, message };
 }
-export const UNSUPPORTED_CONNECT_METRICS_M100 = ["HRV", "Estágios do sono", "Glicose", "Energia ativa"] as const;
+export const UNSUPPORTED_CONNECT_METRICS_M100 = ["Estágios do sono", "Glicose", "Energia ativa"] as const;
 export const HEALTH_CONNECT_SOURCE_WARNING_M100 = "Samsung Health é o app de origem; a identificação individual de relógio ou anel não é comprovada automaticamente.";

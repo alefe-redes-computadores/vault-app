@@ -43,6 +43,7 @@ export function validateMetric(
     oxigenacao: [1, 100],
     caminhada: [1, 1440],
     passos: [1, 150000],
+    hrv_rmssd: [1, 200],
   };
   const [min, max] = ranges[type];
   if (

@@ -12,7 +12,8 @@ export type HealthMetric =
   | "frequencia_cardiaca"
   | "oxigenacao"
   | "caminhada"
-  | "passos";
+  | "passos"
+  | "hrv_rmssd";
 export interface HealthProfile {
   id: string;
   user_id: string;
@@ -65,6 +66,7 @@ export const METRICS: Record<
   oxigenacao: { label: "Oxigenação", unit: "%", category: "medicao" },
   caminhada: { label: "Caminhada", unit: "min", category: "habito" },
   passos: { label: "Passos", unit: "passos", category: "habito" },
+  hrv_rmssd: { label: "HRV (RMSSD)", unit: "ms", category: "medicao" },
 };
 export const DEVICE_COLORS = [
   "#34d399",

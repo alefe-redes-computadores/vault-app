@@ -31,7 +31,8 @@ class VaultHealthConnectPlugin : Plugin() {
         "sono" to SleepSessionRecord::class, "peso" to WeightRecord::class,
         "pressao_arterial" to BloodPressureRecord::class, "frequencia_cardiaca" to HeartRateRecord::class,
         "oxigenacao" to OxygenSaturationRecord::class, "caminhada" to ExerciseSessionRecord::class,
-        "passos" to StepsRecord::class
+        "passos" to StepsRecord::class,
+        "hrv_rmssd" to HeartRateVariabilityRmssdRecord::class
     )
     private val permissionContract = PermissionController.createRequestPermissionResultContract()
     private fun client(): HealthConnectClient {
@@ -53,6 +54,7 @@ class VaultHealthConnectPlugin : Plugin() {
         }
         val permissions = if(status == HealthConnectClient.SDK_AVAILABLE) client().permissionController.getGrantedPermissions() else emptySet()
         return JSObject().put("availability",value).put("granted",JSArray(types.filter { HealthPermission.getReadPermission(it.value) in permissions }.keys.toList()))
+            .put("supported",JSArray(types.keys.toList()))
     }
     private fun work(call: PluginCall, task: suspend () -> JSObject) {
         scope.launch {
@@ -136,6 +138,15 @@ class VaultHealthConnectPlugin : Plugin() {
                 }
                 day = day.plusDays(1)
             }
+        }
+        // M101 P3 — RMSSD é uma medição pontual (ms), não a frequência cardíaca.
+        // Somente registros Samsung com permissão de leitura explícita; não se
+        // infere sensor, média do dia nem estado clínico a partir dos valores.
+        if("hrv_rmssd" in allowed) {
+            readAll(hc,HeartRateVariabilityRmssdRecord::class,start,end)
+                .filter { !it.time.isAfter(end) && it.heartRateVariabilityMillis.isFinite()
+                    && it.heartRateVariabilityMillis in 1.0..200.0 }
+                .forEach { records.put(row(it.metadata.id,"hrv_rmssd",it.time,it.heartRateVariabilityMillis)) }
         }
         // Daily aggregation avoids importing thousands of heart-rate samples and counting wearable sources twice.
         if("frequencia_cardiaca" in allowed) {

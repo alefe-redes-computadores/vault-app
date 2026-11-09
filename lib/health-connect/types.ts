@@ -1,6 +1,6 @@
 import type { HealthMetric } from "@/lib/health-profile/types";
 export const SAMSUNG_ORIGIN = "com.sec.android.app.shealth";
-export const CONNECT_METRICS: HealthMetric[] = ["sono", "peso", "pressao_arterial", "frequencia_cardiaca", "oxigenacao", "caminhada", "passos"];
+export const CONNECT_METRICS: HealthMetric[] = ["sono", "peso", "pressao_arterial", "frequencia_cardiaca", "oxigenacao", "caminhada", "passos", "hrv_rmssd"];
 export interface ConnectRecord {
   id: string;
   origin: string;
@@ -49,4 +49,6 @@ export interface ConnectImport {
 export interface ConnectStatus {
   availability: "available" | "update_required" | "unavailable" | "web" | "apk_update";
   granted: HealthMetric[];
+  /** Declaração explícita do plugin Android. APK legado não tem esta chave. */
+  supported?: HealthMetric[];
 }

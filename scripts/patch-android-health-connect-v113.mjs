@@ -56,7 +56,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 p=Path("android/app/src/main/AndroidManifest.xml"); ns="http://schemas.android.com/apk/res/android"; a="{"+ns+"}"
 ET.register_namespace("android",ns);tree=ET.parse(p);root=tree.getroot()
-for name in ["READ_SLEEP","READ_WEIGHT","READ_BLOOD_PRESSURE","READ_HEART_RATE","READ_OXYGEN_SATURATION","READ_EXERCISE","READ_STEPS"]:
+for name in ["READ_SLEEP","READ_WEIGHT","READ_BLOOD_PRESSURE","READ_HEART_RATE","READ_OXYGEN_SATURATION","READ_EXERCISE","READ_STEPS","READ_HEART_RATE_VARIABILITY"]:
  full="android.permission.health."+name
  if not any(x.get(a+"name")==full for x in root.findall("uses-permission")):ET.SubElement(root,"uses-permission",{a+"name":full})
 queries=root.find("queries")

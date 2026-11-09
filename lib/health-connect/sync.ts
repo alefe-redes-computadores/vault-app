@@ -1,7 +1,8 @@
 "use client";
 import { db } from "@/lib/db";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
-import { healthConnectBridge, connectAvailable } from "./bridge";
+import { healthConnectBridge, connectAvailable, connectStatus } from "./bridge";
+import { filterReadableConnectTypesM101P3 } from "./supported-m101p3";
 import { importConnectRecords } from "@/lib/repositories/healthConnect";
 import type { ConnectSyncRun } from "./types";
 const flights = new Map<string,Promise<Awaited<ReturnType<typeof importConnectRecords>>>>();
@@ -25,8 +26,12 @@ export async function syncHealthConnect(uid: string, personId: string, automatic
           sync_history: [{ id: runId, started_at: startedAt, status: "running" as const }, ...(fresh.sync_history || []).map(run => run.status === "running" ? { ...run, completed_at: startedAt, status: "error" as const, error: "Interrompida antes de concluir; esta tentativa foi retomada." } : run)].slice(0, 10),
         });
       });
-      const response = await healthConnectBridge.read({types:connection.types,days:28});
-      if (!response.granted.some(t => connection.types.includes(t))) throw new Error("Autorize ao menos um tipo de dado no Health Connect.");
+      // APK antigo não suporta HRV; mantém os tipos anteriores em operação.
+      const nativeStatus = await connectStatus();
+      const readTypes = filterReadableConnectTypesM101P3(connection.types, nativeStatus.supported);
+      if (!readTypes.length) throw new Error("Este indicador exige o APK atualizado do Vault.");
+      const response = await healthConnectBridge.read({types:readTypes,days:28});
+      if (!response.granted.some(t => readTypes.includes(t))) throw new Error("Autorize ao menos um tipo de dado no Health Connect.");
       const result = await importConnectRecords(connection,response.records);
       const completedAt = new Date().toISOString();
       await db.transaction("rw", db.health_connect_connections, async () => {

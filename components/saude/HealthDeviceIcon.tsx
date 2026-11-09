@@ -46,6 +46,7 @@ export function HealthMetricIcon({
     oxigenacao: Wind,
     caminhada: Footprints,
     passos: Footprints,
+    hrv_rmssd: HeartPulse,
   }[type];
   return <Icon size={size} aria-hidden="true" />;
 }
@@ -57,4 +58,5 @@ export const METRIC_TONES: Record<HealthMetric, string> = {
   oxigenacao: "text-cyan-300",
   caminhada: "text-amber-300",
   passos: "text-sky-300",
+  hrv_rmssd: "text-violet-300",
 };

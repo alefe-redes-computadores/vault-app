@@ -22,6 +22,7 @@ export const HEALTH_RECORD_DEFINITIONS: readonly HealthRecordDefinition[] = [
   { categoria: "habito", tipo: "sono", nome: "Sono", unidade: "min", valor: "numero" },
   { categoria: "habito", tipo: "caminhada", nome: "Caminhada", unidade: "min", valor: "numero" },
   { categoria: "habito", tipo: "passos", nome: "Passos", unidade: "passos", valor: "numero" },
+  { categoria: "medicao", tipo: "hrv_rmssd", nome: "HRV (RMSSD)", unidade: "ms", valor: "numero" },
   { categoria: "medicao", tipo: "oxigenacao", nome: "Oxigenação", unidade: "%", valor: "numero" },
   { categoria: "habito", tipo: "agua", nome: "Água", unidade: "ml", valor: "numero" },
 ] as const;

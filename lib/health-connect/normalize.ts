@@ -28,6 +28,6 @@ export function normalizeConnectRecord(raw: ConnectRecord, now = Date.now()) {
     valor_medicao: raw.type === "pressao_arterial" ? `${raw.value}/${raw.second}` : `${raw.value} ${def.unit}`,
     unidade_medida: def.unit,
     duracao_minutos: ["sono", "caminhada"].includes(raw.type) ? raw.value : undefined,
-    observacoes: raw.dailyTotal ? "Samsung Health via Health Connect. Total diário agregado de passos da origem Samsung; sem identificação automática do aparelho." : raw.dailyAverage ? "Samsung Health via Health Connect. Média diária dos batimentos disponíveis, não uma medida pontual." : raw.type === "sono" ? "Samsung Health via Health Connect. Duração do intervalo da sessão; pode incluir períodos acordado." : "Samsung Health via Health Connect.",
+    observacoes: raw.type === "hrv_rmssd" ? "Samsung Health via Health Connect. HRV RMSSD pontual em milissegundos, sem média diária e sem identificar automaticamente o sensor. Não é diagnóstico clínico." : raw.dailyTotal ? "Samsung Health via Health Connect. Total diário agregado de passos da origem Samsung; sem identificação automática do aparelho." : raw.dailyAverage ? "Samsung Health via Health Connect. Média diária dos batimentos disponíveis, não uma medida pontual." : raw.type === "sono" ? "Samsung Health via Health Connect. Duração do intervalo da sessão; pode incluir períodos acordado." : "Samsung Health via Health Connect.",
   };
 }

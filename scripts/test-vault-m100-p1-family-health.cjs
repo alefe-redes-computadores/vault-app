@@ -59,7 +59,7 @@ ok(!ev.projectConnectEvidenceM100(connection,status,"p2",now).linked,"Health Con
 ok(ev.projectConnectEvidenceM100({...connection,last_synced:"2032-01-01T12:00:00Z"},status,"p1",now).lastImportAt===null,"importação futura inválida");
 ok(!ev.projectConnectEvidenceM100({...connection,last_synced:"2026-10-01T12:00:00Z"},status,"p1",now).recentImport,"importação antiga não é apresentada como recente");
 ok(ev.projectConnectEvidenceM100({...connection,last_error:"erro"},status,"p1",now).message.includes("alerta"),"falha de sincronização sinalizada");
-ok(ev.UNSUPPORTED_CONNECT_METRICS_M100.includes("HRV")&&ev.HEALTH_CONNECT_SOURCE_WARNING_M100.includes("não é comprovada"),"não promete métricas nem origem de dispositivo indisponíveis");
+ok(!ev.UNSUPPORTED_CONNECT_METRICS_M100.includes("HRV")&&ev.UNSUPPORTED_CONNECT_METRICS_M100.includes("Estágios do sono")&&ev.HEALTH_CONNECT_SOURCE_WARNING_M100.includes("não é comprovada"),"HRV opt-in avançou, estágios e origem de sensor não são presumidos");
 const persons=read("app/pessoas/page.tsx");
 ok(persons.includes("<FamilyProfileInlineM100 personId={personId} />")&&persons.includes("clearFamilyProfileM100(user.id, id)"),"página Pessoas integrada e limpeza após exclusão");
 const selector=read("components/PersonSelector.tsx");
