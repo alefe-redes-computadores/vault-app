@@ -29,6 +29,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { DoseLog, SyncQueueItem } from "@/lib/types";
 import { getSyncQueueState, summarizeSyncQueue } from "@/lib/sync/queue-health";
 import { runManualVaultSync } from "@/lib/sync/manual-sync";
+import { runVaultPullSingleFlight } from "@/lib/sync/coordinator";
 import { getPullFailureMessage } from "@/lib/sync/diagnostics";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 import { SyncDoseRefreshSummary } from "@/components/SyncDoseRefreshSummary";
@@ -227,7 +228,9 @@ export default function DiagnosticoPage() {
     trigger("vibrate");
     try {
       const operation = await runManualVaultSync({
+        ownerId: user.id,
         pull: () => pullAllData(user.id),
+        coordinatePull: task => runVaultPullSingleFlight(user.id, task, true),
         push: processQueue,
         pullIssue: () => getPullFailureMessage(),
       });
@@ -236,8 +239,8 @@ export default function DiagnosticoPage() {
         showToast(operation.error || "Há itens que precisam de revisão", "error");
       } else {
         showToast(
-          result.remaining === 0 ? "Sincronização concluída" : `${result.remaining} item(ns) continuam pendentes`,
-          result.remaining === 0 ? "success" : "info"
+          operation.phase === "synced" ? "Sincronização concluída" : result.offline ? "Sem conexão; alterações locais preservadas" : `${result.remaining} item(ns) continuam pendentes`,
+          operation.phase === "synced" ? "success" : "info"
         );
       }
     } catch (error) {

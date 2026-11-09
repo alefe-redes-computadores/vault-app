@@ -255,7 +255,7 @@ export function SyncStatusIndicator({
   // VAULT_SYNC_IDLE_TRUTH_V63
   // "idle" significa que nenhuma operação está rodando. Nunca mostrar
   // spinner nesse estado, mesmo antes da primeira sincronização da sessão.
-  if (syncRuntime.phase === "idle" && !syncRuntime.lastSyncedAt) {
+  if (syncRuntime.phase === "idle") {
     return (
       <div className="flex items-center gap-1.5 text-ink-muted" role="status">
         <RefreshCw size={14} />

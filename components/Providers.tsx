@@ -79,6 +79,7 @@ import {
 
 import {
   setVaultSyncRuntime,
+  setVaultSyncRuntimeOwner,
 } from "@/lib/sync/runtime-status";
 
 import {
@@ -380,6 +381,7 @@ export function Providers({
     hasPulledRef.current = false;
     setIsPullDone(false);
     setPullError(null);
+    setVaultSyncRuntimeOwner(nextUserId);
     setVaultSyncRuntime({ phase: "idle", error: null });
   }, [user?.id]);
 
@@ -514,6 +516,7 @@ export function Providers({
         window.setTimeout(
           () => {
             slowPullTimer = null;
+            if (pullUserRef.current !== user.id) return;
             console.info("Pull ainda ativo; continuando em segundo plano.");
             setVaultSyncRuntime({ phase: "background", error: null });
           },
@@ -527,6 +530,7 @@ export function Providers({
       )
         .then(
           () => {
+            if (pullUserRef.current !== user.id) return;
             console.log(
               "Pull concluído com sucesso."
             );
@@ -543,6 +547,7 @@ export function Providers({
           (
             error
           ) => {
+            if (pullUserRef.current !== user.id) return;
             console.error(
               "Erro no pull:",
               error

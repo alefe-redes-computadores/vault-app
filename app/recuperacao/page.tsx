@@ -27,6 +27,8 @@ import { SyncDoseRefreshSummary } from "@/components/SyncDoseRefreshSummary";
 import { pullAllData } from "@/lib/sync/pull";
 import { db } from "@/lib/db";
 import { runManualVaultSync } from "@/lib/sync/manual-sync";
+import { runVaultPullSingleFlight } from "@/lib/sync/coordinator";
+import { describeRecoveryStatusM103 } from "@/lib/sync/presentation-m103";
 import { summarizeSyncQueue } from "@/lib/sync/queue-health";
 import {
   getPullDiagnostics,
@@ -80,7 +82,9 @@ export default function RecoveryCenterPage() {
     try {
       // VAULT_FINAL_RELEASE_V69_RECOVERY_TRUTH
       const operation = await runManualVaultSync({
+        ownerId: user.id,
         pull: () => pullAllData(user.id),
+        coordinatePull: task => runVaultPullSingleFlight(user.id, task, true),
         push: processQueue,
         pullIssue: () => {
           return getPullFailureMessage();
@@ -114,7 +118,15 @@ export default function RecoveryCenterPage() {
   }, [isOnline, processQueue, syncBusy, user]);
 
   const hasPullFailures = diagnostics.tables.some((metric) => !metric.ok);
-  const healthy = isOnline && syncRuntime.phase !== "error" && !hasPullFailures;
+  const presentation = describeRecoveryStatusM103({
+    online: isOnline,
+    phase: syncRuntime.phase,
+    pending: queueHealth.total,
+    failed: queueHealth.failed,
+    pullFailures: diagnostics.tables.filter(metric => !metric.ok).length,
+  });
+  const healthy = presentation.tone === "confirmed";
+  const needsReview = presentation.tone === "issue";
 
   return (
     <PageTransition>
@@ -142,14 +154,14 @@ export default function RecoveryCenterPage() {
         <section className="mx-auto mt-5 max-w-2xl rounded-[26px] border border-surface-border bg-surface p-4">
           <div className="flex items-center gap-3">
             <div className={`rounded-2xl p-3 ${healthy ? "bg-ice/10 text-ice" : "bg-amber-400/10 text-amber-300"}`}>
-              {healthy ? <ShieldCheck size={22} /> : <TriangleAlert size={22} />}
+              {healthy ? <ShieldCheck size={22} /> : needsReview ? <TriangleAlert size={22} /> : <RefreshCw size={22} />}
             </div>
             <div>
               <p className="text-sm font-semibold">
-                {healthy ? "Vault operacional" : "Há algo para revisar"}
+                {presentation.title}
               </p>
               <p className="mt-0.5 text-xs text-ink-muted">
-                {isOnline ? "Conexão disponível" : "Offline · seus dados locais continuam acessíveis"}
+                {presentation.detail}
               </p>
             </div>
           </div>
