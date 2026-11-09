@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
 import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
+import { planMedicationTreatmentReconciliationM105 } from "@/lib/sync/medication-treatment-reconciliation-m105";
 
 import type { Table } from "dexie";
 import type { SyncQueueItem } from "@/lib/types";
@@ -1317,92 +1318,79 @@ async function performPullAllData(userId: string): Promise<void> {
     // MEDICAMENTO <-> TRATAMENTO
     // ----------------------------------------------------------
 
+    // M105: duas observacoes para zero vinculos; resposta vazia isolada nao
+    // e autoridade suficiente durante um delete+insert de outro aparelho.
+    const relationStartedAt = performance.now();
     try {
-      const {
-        data,
-        error,
-      } =
-        await supabase
-          .from(
-            "medicamento_tratamentos"
-          )
-          .select(
-            "medicamento_id, tratamento_id"
-          );
+      const { data, error } = await supabase
+        .from("medicamento_tratamentos")
+        .select("medicamento_id, tratamento_id");
+      if (error) throw new Error(error.message || "Falha ao consultar relacoes");
 
-      if (error) {
-        console.error(
-          "❌ [Pull] Erro em medicamento_tratamentos:",
-          error
-        );
-      } else {
-        const relations =
-          new Map<
-            string,
-            string[]
-          >();
-
-        for (
-          const row of
-            data ?? []
-        ) {
-          if (
-            typeof row.medicamento_id !==
-              "string" ||
-            typeof row.tratamento_id !==
-              "string"
-          ) {
-            continue;
+      const ownedMedications = await db.medicamentos.where("user_id").equals(userId).toArray();
+      const pendingIds = new Set<string>();
+      for (const medication of ownedMedications) {
+        if (medication.id && hasPendingOperation("medicamentos", medication.id)) pendingIds.add(medication.id);
+      }
+      const firstRows = data ?? [];
+      // A PostgREST query truncated by server cap is NOT authoritative.
+      if (firstRows.length >= 900) throw new Error("Relacoes extensas: paginacao segura necessaria antes de reconciliar");
+      const initial = planMedicationTreatmentReconciliationM105({
+        ownerId: userId,
+        medications: ownedMedications,
+        remoteRelations: firstRows,
+        pendingIds,
+      });
+      const confirmedEmptyIds = new Set<string>();
+      const confirmedRows = [...firstRows];
+      // Consultas grandes podem sofrer limite/paginacao na API; nesse caso
+      // nunca inferimos uma remocao pela ausencia de uma linha.
+      if (initial.needConfirmation.length && firstRows.length < 900) {
+        await new Promise<void>(resolve => setTimeout(resolve, 800));
+        for (let index = 0; index < initial.needConfirmation.length; index += 75) {
+          const batch = initial.needConfirmation.slice(index, index + 75);
+          const followUp = await supabase.from("medicamento_tratamentos")
+            .select("medicamento_id, tratamento_id")
+            .in("medicamento_id", batch);
+          if (followUp.error) {
+            throw new Error(followUp.error.message || "Falha na segunda leitura de relacoes");
           }
-
-          const ids =
-            relations.get(
-              row.medicamento_id
-            ) ?? [];
-
-          ids.push(
-            row.tratamento_id
-          );
-
-          relations.set(
-            row.medicamento_id,
-            ids
-          );
-        }
-
-        for (
-          const [
-            medicamentoId,
-            tratamentoIds,
-          ] of relations
-        ) {
-          if (
-            hasPendingOperation(
-              "medicamentos",
-              medicamentoId
-            )
-          ) {
-            continue;
+          const seen = new Set<string>();
+          for (const row of followUp.data ?? []) {
+            if (typeof row.medicamento_id !== "string" ||
+                typeof row.tratamento_id !== "string" || !row.tratamento_id) continue;
+            seen.add(row.medicamento_id);
+            confirmedRows.push(row);
           }
-
-          await db.medicamentos.update(
-            medicamentoId,
-            {
-              tratamento_ids:
-                Array.from(
-                  new Set(
-                    tratamentoIds
-                  )
-                ),
-            }
-          );
+          for (const id of batch) if (!seen.has(id)) confirmedEmptyIds.add(id);
         }
       }
+      const plan = planMedicationTreatmentReconciliationM105({
+        ownerId: userId,
+        medications: ownedMedications,
+        remoteRelations: confirmedRows,
+        pendingIds,
+        confirmedEmptyIds,
+      });
+      // A fila e o registro sao revistos na mesma transacao: uma alteracao
+      // local feita enquanto o pull aguardava rede nunca sera sobrescrita.
+      await db.transaction("rw", [db.medicamentos, db.syncQueue], async () => {
+        const queued = await db.syncQueue.toArray();
+        const latestPendingIds = new Set(queued.filter(item => item.table === "medicamentos")
+          .map(getPayloadId).filter((id): id is string => Boolean(id)));
+        for (const update of plan.updates) {
+          const current = await db.medicamentos.get(update.id);
+          if (!current || current.user_id !== userId || current.person_id !== update.personId ||
+              current.synced === false || pendingIds.has(update.id) || latestPendingIds.has(update.id)) continue;
+          const oldIds = [...new Set(current.tratamento_ids ?? [])].sort();
+          if (JSON.stringify(oldIds) === JSON.stringify(update.tratamentoIds)) continue;
+          await db.medicamentos.update(update.id, { tratamento_ids: update.tratamentoIds });
+        }
+      });
+      recordPullTable("medicamento_tratamentos", performance.now() - relationStartedAt, true);
     } catch (error) {
-      console.error(
-        "❌ [Pull] Falha ao reconstruir medicamento_tratamentos:",
-        error
-      );
+      recordPullTable("medicamento_tratamentos", performance.now() - relationStartedAt, false);
+      console.error("[Pull M105] Relacoes de tratamentos nao reconciliadas:", error);
     }
 
     // ----------------------------------------------------------

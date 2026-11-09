@@ -1182,6 +1182,23 @@ export default function MedicamentosListPage() {
                 )}
               </div>
               <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-[11px] [&>button:only-child]:col-span-2">
+                {!isSuspenso && canQuickDose && quickDoseLabel ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      trigger("vibrate");
+                      setQuickDoseMedId(med.id!);
+                    }}
+                    className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
+                    aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
+                  >
+                    <Zap size={12} fill="currentColor" />
+                    {quickDoseLabel}
+                    {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
+                  </button>
+                ) : null}
                 {careAction && (
                   <button
                     type="button"
@@ -1200,23 +1217,6 @@ export default function MedicamentosListPage() {
                     <span className="sr-only">{careAction.label}</span>
                   </button>
                 )}
-                {!isSuspenso && canQuickDose && quickDoseLabel ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      trigger("vibrate");
-                      setQuickDoseMedId(med.id!);
-                    }}
-                    className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
-                    aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
-                  >
-                    <Zap size={12} fill="currentColor" />
-                    {quickDoseLabel}
-                    {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
-                  </button>
-                ) : null}
                 {!isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
                   (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (
                   <MedicationRestockAction name={med.nome}
@@ -1447,6 +1447,21 @@ export default function MedicamentosListPage() {
           )}
         </ListPageHeader>
 
+        {/* M105: a rotina aparece antes dos filtros, na primeira dobra. */}
+          {/* M92: resumo de progresso em primeiro plano; ajustes avançados por demanda. */}
+          <div className="mx-4 mb-2.5 mt-2 rounded-[22px] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/[.095] via-surface to-surface px-4 py-3.5 shadow-sm" aria-label="Progresso das doses programadas de hoje">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
+                <p className="text-[10px] text-ink-muted">Somente doses programadas · SOS fora do total</p>
+              </div>
+              <strong className="shrink-0 font-display text-2xl font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
+            </div>
+            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised">
+              <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{width:`${statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0}%`}} />
+            </div>
+          </div>
+
         {/* P15 R9: filtros compactos, com disclosure acessível e sem grid permanente no Android. */}
         <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
 
@@ -1458,19 +1473,6 @@ export default function MedicamentosListPage() {
             <div className="min-w-0"><h2 className="text-base font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados · pendências não são doses perdidas</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
-          </div>
-          {/* M92: resumo de progresso em primeiro plano; ajustes avançados por demanda. */}
-          <div className="mb-2.5 rounded-2xl border border-emerald-300/15 bg-gradient-to-r from-emerald-300/[.055] to-surface/70 px-3.5 py-2.5" aria-label="Progresso das doses programadas de hoje">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
-                <p className="text-[10px] text-ink-muted">Somente doses programadas · SOS fora do total</p>
-              </div>
-              <strong className="shrink-0 text-base font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
-            </div>
-            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-raised">
-              <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{width:`${statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0}%`}} />
-            </div>
           </div>
           <details className="group mb-2.5 rounded-xl border border-surface-border/40 bg-surface/35 px-2.5" aria-label="Indicadores e organização avançada">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
