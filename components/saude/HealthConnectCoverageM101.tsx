@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import type { RegistroSaude } from "@/lib/types";
 import type { ConnectConnection, ConnectStatus } from "@/lib/health-connect/types";
 import { projectHealthConnectCoverageM101 } from "@/lib/health-connect/coverage-m101";
+import { evaluateConnectQualityM101P4 } from "@/lib/health-connect/quality-m101p4";
 
 const EMPTY_CONNECT_ROWS_M101: RegistroSaude[] = [];
 
@@ -25,6 +26,11 @@ export function HealthConnectCoverageM101({ userId, personId, connection, status
     () => projectHealthConnectCoverageM101(records, connection, status, userId, personId),
     [records, connection, status, userId, personId]
   );
+  const quality = useMemo(
+    () => evaluateConnectQualityM101P4(report, connection, status, userId, personId),
+    [report, connection, status, userId, personId]
+  );
+  const qualityByMetric = useMemo(() => new Map(quality.items.map(item => [item.metric, item])), [quality]);
   return (
     <section className="mt-3 rounded-2xl border border-surface-border/70 bg-void/30 p-3" aria-label="Cobertura de dados Health Connect">
       <button type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}
@@ -40,14 +46,22 @@ export function HealthConnectCoverageM101({ userId, personId, connection, status
             <span className="rounded-lg bg-surface-raised px-2.5 py-2"><Activity size={13} className="mr-1 inline"/>{report.samples28} registros importados em 28 dias</span>
             <span className="rounded-lg bg-surface-raised px-2.5 py-2"><ShieldCheck size={13} className="mr-1 inline"/>{report.permittedCount}/{report.selectedCount} tipos autorizados agora</span>
           </div>
+          <div className="mb-3 rounded-xl border border-surface-border/70 bg-surface-raised/30 px-3 py-2.5 text-[11px] leading-relaxed text-ink-muted">
+            <p className="font-semibold text-ink-primary">Continuidade e qualidade do vínculo</p>
+            <p className="mt-1">{quality.summary}</p>
+            {quality.lastAttemptAt && <p className="mt-1">Última tentativa: {new Date(quality.lastAttemptAt).toLocaleString("pt-BR")}</p>}
+            {quality.lastImportAt && <p className="mt-1">Última importação concluída: {new Date(quality.lastImportAt).toLocaleString("pt-BR")}</p>}
+            <p className="mt-1 text-[10px]">Essas datas não comprovam quando o relógio ou anel realizou a medição.</p>
+          </div>
           <div className="space-y-2">
             {report.metrics.filter(metric => metric.selected).map(metric => (
               <div key={metric.metric} className="rounded-xl border border-surface-border/70 bg-surface-raised/40 px-3 py-2.5">
                 <div className="flex justify-between gap-2 text-xs"><strong className="text-ink-primary">{metric.label}</strong>
-                  <span className={metric.permission === "granted" ? "text-emerald-300" : "text-amber-200"}>{metric.permission === "granted" ? "Permitido" : metric.permission === "denied" ? "Não autorizado" : "Permissão não verificada"}</span>
+                  <span className={metric.permission === "granted" ? "text-emerald-300" : "text-amber-200"}>{metric.permission === "granted" ? "Permitido" : metric.permission === "apk_update" ? "Requer APK atualizado" : metric.permission === "denied" ? "Não autorizado" : "Permissão não verificada"}</span>
                 </div>
                 <p className="mt-1 text-[11px] text-ink-muted">{metric.days7} dia(s) com registro em 7 · {metric.days28} dia(s) em 28 · {metric.samples28} leitura(s)</p>
                 <p className="mt-1 text-[10px] text-ink-muted">{metric.latestDay ? `Último registro importado: ${metric.latestDay.split("-").reverse().join("/")}` : "Nenhuma medição importada neste intervalo"}</p>
+                {qualityByMetric.get(metric.metric) && <p className="mt-2 border-t border-surface-border/60 pt-2 text-[10px] leading-relaxed text-ink-muted"><strong className="text-ink-secondary">{qualityByMetric.get(metric.metric)!.label}.</strong> {qualityByMetric.get(metric.metric)!.detail}</p>}
               </div>
             ))}
           </div>

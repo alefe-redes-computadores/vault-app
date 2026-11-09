@@ -42,7 +42,7 @@ export async function syncHealthConnect(uid: string, personId: string, automatic
           });
         }
       });
-      if (connection.types.some(t => !response.granted.includes(t))) {
+      if (readTypes.some(t => !response.granted.includes(t))) {
         await db.transaction("rw",db.health_connect_connections,async () => {
           if ((await db.health_connect_connections.get(uid))?.revision === connection.revision) await db.health_connect_connections.update(uid,{last_error:"Algumas permissões não estão ativas. A leitura incluiu apenas os tipos autorizados."});
         });

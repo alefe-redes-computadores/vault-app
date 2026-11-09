@@ -10,7 +10,7 @@ export type ConnectMetricCoverageM101 = {
   metric: HealthMetric;
   label: string;
   selected: boolean;
-  permission: "granted" | "denied" | "unknown";
+  permission: "granted" | "denied" | "unknown" | "apk_update";
   samples28: number;
   days7: number;
   days28: number;
@@ -83,7 +83,10 @@ export function projectHealthConnectCoverageM101(
       metric,
       label: METRICS[metric].label,
       selected: selected.has(metric),
-      permission: !available ? "unknown" as const : granted.has(metric) ? "granted" as const : "denied" as const,
+      // Plugin anterior à M101 P3 não declara HRV; isso NÃO é revogação.
+      permission: !available ? "unknown" as const :
+        metric === "hrv_rmssd" && !status?.supported?.includes("hrv_rmssd") ? "apk_update" as const :
+        granted.has(metric) ? "granted" as const : "denied" as const,
       samples28: group.ids.size,
       days7: group.days7.size,
       days28: group.days.size,

@@ -8,6 +8,7 @@ const contracts = [
   "scripts/test-vault-m95-monthly-safety.cjs",
   "scripts/test-vault-m96-care-episodes.cjs",
   "scripts/test-vault-m97-cross-evolutions.cjs",
+  "scripts/test-vault-m101-p4-quality.cjs",
   "scripts/test-vault-m101-p3-native-hrv.cjs",
   "scripts/test-vault-m101-p2-native-steps.cjs",
   "scripts/test-vault-m101-p1-connect-coverage.cjs",
