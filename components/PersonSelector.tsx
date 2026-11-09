@@ -6,6 +6,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Users, User } from "lucide-react";
 import { db } from "@/lib/db";
+import { useAuth } from "@/hooks/useAuth";
+import type { Person } from "@/lib/types";
+import { getFamilyProfileM100, familyRelationLabelM100, VAULT_FAMILY_PROFILE_EVENT_M100 } from "@/lib/family/local-profile-m100";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 
@@ -16,14 +19,23 @@ interface PersonSelectorProps {
 
 export function PersonSelector({ className = "", mode = "identity" }: PersonSelectorProps) {
   const { trigger } = useHapticFeedback();
+  const { user } = useAuth();
+  const [, refreshFamily] = useState(0);
+  useEffect(() => {
+    const onChange = () => refreshFamily(value => value + 1);
+    window.addEventListener(VAULT_FAMILY_PROFILE_EVENT_M100, onChange);
+    window.addEventListener("storage", onChange);
+    return () => { window.removeEventListener(VAULT_FAMILY_PROFILE_EVENT_M100, onChange); window.removeEventListener("storage", onChange); };
+  }, []);
   const { activePersonId, changePerson } = useActivePersonId();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // M100: perfis de outras contas não entram no seletor global.
   const persons = useLiveQuery(
-    () => db.persons.toArray(),
-    [],
-    []
+    () => user?.id ? db.persons.where("user_id").equals(user.id).toArray() : Promise.resolve([] as Person[]),
+    [user?.id],
+    [] as Person[]
   );
 
   const activePerson = persons.find((p) => p.id === activePersonId);
@@ -148,6 +160,11 @@ export function PersonSelector({ className = "", mode = "identity" }: PersonSele
                         <span className="block truncate text-sm font-medium text-ink-primary">
                           {person.name}
                         </span>
+                        {person.id && getFamilyProfileM100(user?.id ?? "", person.id).relation !== "nao_informado" && (
+                          <span className="block truncate text-[10px] text-ice">
+                            {familyRelationLabelM100(getFamilyProfileM100(user?.id ?? "", person.id).relation)} · neste aparelho
+                          </span>
+                        )}
                         {person.email && (
                           <span className="block truncate text-xs text-ink-muted">
                             {person.email}

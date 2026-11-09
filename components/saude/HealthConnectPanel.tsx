@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHapticFeedback } from "@/lib/haptics";
 import { HealthMetricIcon, HealthDeviceIcon, METRIC_TONES } from "./HealthDeviceIcon";
 import { HealthRelationPicker } from "./HealthRelationPicker";
+import { HealthConnectEvidenceM100 } from "./HealthConnectEvidenceM100";
 export function HealthConnectPanel({ personId, personName, devices }: { personId:string; personName:string; devices:HealthDevice[] }) {
   const { user } = useAuth(), { trigger } = useHapticFeedback();
   const connection = useLiveQuery(() => user?.id ? db.health_connect_connections.get(user.id) : undefined,[user?.id]);
@@ -36,6 +37,7 @@ export function HealthConnectPanel({ personId, personName, devices }: { personId
   }
   return <section className="rounded-[24px] border border-emerald-400/15 bg-surface p-4">
     <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-400/10 p-3 text-emerald-400"><Link2 size={21}/></span><div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Samsung Health</h2><p className="mt-1 text-[11px] text-ink-muted">Via Health Connect · leitura autorizada</p></div><ShieldCheck size={18} className="text-ink-muted"/></div>
+    <HealthConnectEvidenceM100 connection={linked ? connection : undefined} status={status} personId={personId} />
     {status?.availability === "web" ? <p className="mt-3 text-xs leading-relaxed text-ink-muted">Conecte pelo APK Android. Os registros importados aparecem aqui após a sincronização da sua conta; o registro manual continua disponível.</p> : status?.availability === "apk_update" ? <p className="mt-3 text-xs text-ink-muted">Instale o novo APK Vault para habilitar esta conexão.</p> : status && !native ? <div className="mt-3 space-y-3"><p className="text-xs text-ink-muted">{status.availability === "update_required" ? "Instale ou atualize o Health Connect no Android." : "Health Connect indisponível neste aparelho ou perfil do Android."}</p>{status.availability === "update_required" && <button type="button" disabled={busy} onClick={() => void action(() => healthConnectBridge.openSettings())} className="rounded-xl border border-surface-border px-3 py-2 text-xs">Abrir Health Connect</button>}</div> : !status ? <p className="mt-3 text-xs text-ink-muted">Verificando conexão…</p> : <>
       <p className="mt-3 text-xs leading-relaxed text-ink-muted">{linked ? `Vinculado a ${personName}. ${connection?.auto_sync ? "Atualização automática ao abrir ou voltar ao Vault, com intervalo mínimo de 10 minutos." : "Sincronização manual."}` : connection ? "Este celular está vinculado a outra pessoa. Confirme o novo vínculo antes de importar neste perfil." : "Conecte os dados publicados pelo Samsung Health ao histórico desta pessoa."}</p>
       {linked && connection?.auto_sync && <p className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-400"><Check size={13}/>Sincronização automática ativa</p>}

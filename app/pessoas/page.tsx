@@ -23,6 +23,9 @@ import { usePersons } from "@/hooks/usePersons";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useHapticFeedback } from "@/lib/haptics";
 import { personsRepository } from "@/lib/repositories/persons";
+import { useAuth } from "@/hooks/useAuth";
+import { FamilyProfileInlineM100 } from "@/components/FamilyProfileInlineM100";
+import { clearFamilyProfileM100 } from "@/lib/family/local-profile-m100";
 
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
@@ -37,6 +40,7 @@ import {
 
 export default function PessoasPage() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const { trigger } =
     useHapticFeedback();
@@ -229,6 +233,8 @@ export default function PessoasPage() {
         await personsRepository.delete(
           id
         );
+        // M100: remoção descritiva local só depois de o repositório concluir.
+        if (user?.id) clearFamilyProfileM100(user.id, id);
 
         if (
           typeof window !==
@@ -566,6 +572,7 @@ export default function PessoasPage() {
                             </p>
                           )}
                       </div>
+                      <FamilyProfileInlineM100 personId={personId} />
                     </ListCard>
                   );
                 }
