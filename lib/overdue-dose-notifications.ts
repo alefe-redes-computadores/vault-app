@@ -4,6 +4,7 @@ import { isVaultNative } from "@/lib/native-runtime";
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import { getVaultNotificationBrainSettings } from "@/lib/notification-brain";
 import { getVaultDoseAlertMode, doseAlertOffsetsForMode } from "@/lib/dose-alert-policy-m99";
+import { getVaultDosePauseUntil, shouldKeepOverdueReinforcement } from "@/lib/dose-alert-pause-m99p2";
 import {
   ensureVaultNotificationChannel,
   isNotificationPreferenceEnabled,
@@ -58,6 +59,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
   await ensureVaultNotificationChannel();
 
   const now=input.now??new Date();
+  const pauseUntil=getVaultDosePauseUntil(personId,now.getTime());
   const configuredOffsets=getVaultNotificationBrainSettings().doseOverdueOffsets.filter(value=>Number.isFinite(value)&&value>0).sort((a,b)=>a-b);
   const offsetMinutes=configuredOffsets[0]??30; // V87: primeiro aviso continua único no modo suave.
   const mode=getVaultDoseAlertMode(personId);
@@ -120,7 +122,7 @@ async function performOverdueDoseReconciliation(input: OverdueDoseInput){
     const body=slots.length===1?`A dose de ${first.horario} ainda não foi resolvida. Toque para registrar.`:`${names} — toque para revisar as doses de ${first.horario}.`;
     for(const offsetMinutes of alertOffsets){
       const at=new Date(first.base.getTime()+offsetMinutes*60000);
-      if(at<=now)continue;
+      if(!shouldKeepOverdueReinforcement(at,now,pauseUntil))continue;
       const id=hashToId(`dose-overdue-group:m99:${personId}:${first.data}:${first.horario}:${signature}:${offsetMinutes}`);
       candidates.push({id,title,body,at,personId,medicamentoIds,data:first.data,horario:first.horario,offsetMinutes});
     }

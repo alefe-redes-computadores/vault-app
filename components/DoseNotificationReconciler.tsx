@@ -10,6 +10,7 @@ import { reconcileScheduledDoseNotifications } from "@/lib/dose-notifications";
 import { reconcileOverdueDoseNotifications } from "@/lib/overdue-dose-notifications";
 import { createDoseNotificationPipeline } from "@/lib/dose-notification-pipeline";
 import { VAULT_NOTIFICATION_PREFERENCES_EVENT } from "@/lib/notification-preferences";
+import { useNotificationRecoveryM99P2 } from "@/hooks/useNotificationRecoveryM99P2";
 
 // VAULT_DOSE_NOTIFICATION_RECONCILER_V91
 // V228: pipeline singleton sequencial; preserva apenas o snapshot mais novo.
@@ -21,6 +22,11 @@ export function DoseNotificationReconciler() {
   const { activePersonId } = useActivePersonId();
   const { user } = useAuth();
   const [preferenceRevision, setPreferenceRevision] = useState(0);
+  const recoveryRevision = useNotificationRecoveryM99P2();
+
+  useEffect(() => {
+    if (recoveryRevision > 0) setPreferenceRevision((value) => value + 1);
+  }, [recoveryRevision]);
 
   const snapshot = useLiveQuery(async()=>{
     if(!activePersonId||!user?.id)return null;

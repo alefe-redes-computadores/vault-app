@@ -512,7 +512,7 @@ function scheduledDoseResolvedV51(index:ReturnType<typeof buildDoseSlotIndex>,me
   return doseSlotIsResolved(resolveDoseSlot(index,medicamentoId,data,horario));
 }
 
-// VAULT_V226_INCREMENTAL_NATIVE_REMINDERS
+// VAULT_V226_INCREMENTAL_NATIVE_REMINDERS\n// M99 P2: preservar substituicao da agenda ao trocar perfil (V226).
 // Own every generation of scheduled reminders, including legacy payloads.
 // This predicate is deliberately separate from overdue and event schedulers.
 function ownsScheduledDoseReminderV226(notification: {extra?: Record<string,unknown>}): boolean {

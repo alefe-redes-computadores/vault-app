@@ -75,6 +75,7 @@ const fakeImports={
     getVaultDoseAlertMode:x.getVaultDoseAlertMode,
     doseAlertOffsetsForMode:x.doseAlertOffsetsForMode,
   },
+  "@/lib/dose-alert-pause-m99p2":{getVaultDosePauseUntil:()=>null,shouldKeepOverdueReinforcement:(at,now)=>at>now},
   "@/lib/notifications":{
     ensureVaultNotificationChannel:async()=>{},isNotificationPreferenceEnabled:()=>true,VAULT_NOTIFICATION_CHANNEL_ID:"vault_reminders",
   },

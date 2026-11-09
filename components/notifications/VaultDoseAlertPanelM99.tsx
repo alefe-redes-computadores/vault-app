@@ -12,6 +12,7 @@ import {
   VAULT_DOSE_ALERT_MODE_EVENT,
 } from "@/lib/dose-alert-policy-m99";
 import { summarizeNativeCareAgenda } from "@/lib/dose-reminder-diagnostics";
+import { getVaultDosePauseUntil, setVaultDosePauseMinutes } from "@/lib/dose-alert-pause-m99p2";
 import { ensureVaultNotificationChannel, VAULT_NOTIFICATION_CHANNEL_ID } from "@/lib/notifications";
 
 const OPTIONS: Array<{id: VaultDoseAlertMode; title: string; description: string}> = [
@@ -31,12 +32,14 @@ export function VaultDoseAlertPanelM99() {
   const [mode, setMode] = useState<VaultDoseAlertMode>("suave");
   const [diag, setDiag] = useState<Diagnostic>({ display: "unavailable", exact: "unavailable", scheduled: null });
   const [busy, setBusy] = useState(false);
+  const [pauseUntil, setPauseUntil] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const android = isVaultAndroid();
 
   const refresh = useCallback(async () => {
     if (!activePersonId) return;
     setMode(getVaultDoseAlertMode(activePersonId));
+    setPauseUntil(getVaultDosePauseUntil(activePersonId));
     if (!android) {
       setDiag({ display: "unavailable", exact: "unavailable", scheduled: null });
       return;
@@ -75,6 +78,15 @@ export function VaultDoseAlertPanelM99() {
       setMode(value);
       setFeedback("Modo salvo neste aparelho para a pessoa ativa. Agenda em reconciliação.");
     } else setFeedback("Não foi possível salvar neste aparelho.");
+  };
+
+  const choosePause = (minutes: 0 | 15 | 30 | 60 | 120) => {
+    if (!activePersonId) return;
+    const saved = setVaultDosePauseMinutes(activePersonId, minutes);
+    setFeedback(saved
+      ? (minutes ? `Reforços de atraso pausados por ${minutes} minutos. Horários principais preservados.` : "Reforços retomados neste aparelho.")
+      : "Não foi possível alterar a pausa neste aparelho.");
+    if (saved) void refresh();
   };
 
   const configureExact = async () => {
@@ -139,6 +151,18 @@ export function VaultDoseAlertPanelM99() {
             <span><span className="block text-xs font-semibold text-ink-primary">{option.title}</span><span className="mt-0.5 block text-[11px] leading-relaxed text-ink-muted">{option.description}</span></span>
           </button>
         ))}
+      </div>
+      <div className="mt-4 rounded-2xl border border-surface-border/70 bg-void/30 p-3">
+        <p className="text-xs font-semibold text-ink-primary">Pausar reforços por um período</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Não adia o horário prescrito nem o aviso principal. Pausa apenas avisos repetidos de doses pendentes desta pessoa neste aparelho.</p>
+        {pauseUntil !== null && <p role="status" className="mt-2 text-[11px] text-amber-200">Reforços pausados até {new Date(pauseUntil).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})}.</p>}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {([15, 30, 60, 120] as const).map(minutes => (
+            <button key={minutes} type="button" disabled={!android || !activePersonId} onClick={() => choosePause(minutes)}
+              className="rounded-xl border border-surface-border px-3 py-2 text-[11px] font-semibold text-ink-primary disabled:opacity-40">{minutes < 60 ? `${minutes} min` : `${minutes / 60} h`}</button>
+          ))}
+          {pauseUntil !== null && <button type="button" onClick={() => choosePause(0)} className="rounded-xl border border-emerald-400/35 bg-emerald-400/10 px-3 py-2 text-[11px] font-semibold text-emerald-200">Retomar</button>}
+        </div>
       </div>
       <div className="mt-4 rounded-2xl border border-surface-border/70 bg-void/30 p-3">
         <div className="flex items-center justify-between gap-2"><p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><Smartphone size={15}/> Diagnóstico deste aparelho</p><button type="button" onClick={() => void refresh()} aria-label="Atualizar diagnóstico" className="rounded-lg p-2 text-ink-muted"><RefreshCw size={15}/></button></div>
