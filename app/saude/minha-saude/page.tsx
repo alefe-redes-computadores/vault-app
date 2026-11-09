@@ -82,6 +82,7 @@ import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index"
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
+import { AvatarEvidenceStripM102 } from "@/components/saude/AvatarEvidenceStripM102";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 import { PersonalHealthOverview } from "@/components/saude/PersonalHealthOverview";
@@ -328,6 +329,7 @@ function HealthDashboard({
               <div className="mt-3 grid grid-cols-1 items-start gap-3 min-[480px]:grid-cols-[minmax(0,46%)_minmax(0,1fr)]">
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-emerald-300/10 bg-emerald-300/[0.025] shadow-inner">
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight){setSelectedInsight(insight);return;}setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error||brainPulse.isLoading||!brainPulse.top?0:avatarContext.rank} expanded />
+                  <AvatarEvidenceStripM102 context={bodyContext} onOpenMood={()=>selectBody('mood')} />
                 </div>
                 <div className="grid min-w-0 grid-cols-3 gap-2 self-center min-[480px]:block min-[480px]:space-y-2" aria-label="Medidas principais do perfil">
                   <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
@@ -429,7 +431,7 @@ function HealthDashboard({
             </section>
             {/* VAULT_V321_AVATAR_CARE: Avatar and urgent summary remain in the first fold. */}
             <DeferredHealthSection id="avatar-care-workspace" title="Acompanhamento do Avatar" description="Plano contextual, vínculos clínicos e preparação detalhada" icon={<Brain size={18}/>} badge="explorar">
-              <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} onNavigate={goFromHealth}/>
+              <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id||""} topAlert={brainPulse.top} onNavigate={goFromHealth}/>
             </DeferredHealthSection>
             <DeferredHealthSection id="analises" title="Análises e tendências" description="Evolução das medidas e cobertura dos dados usados pelo Brain" icon={<BarChart3 size={18}/>} badge={intelligence.isLoading?"analisando":"sob demanda"}>
               {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}

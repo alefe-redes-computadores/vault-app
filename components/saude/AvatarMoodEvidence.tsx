@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { MOOD_CHOICES, readMoodContext, type AvatarBodyContext } from '@/lib/health-profile/avatar-body';
+import { projectAvatarPresenceM102 } from '@/lib/health-profile/avatar-presence-m102';
 
 const formatDate = (value: string) => value.split('-').reverse().join('/');
 
 export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) {
   const { moods, moodEvidence: evidence } = context;
+  const presence = projectAvatarPresenceM102(context);
   // V224: only actual reported days count toward facial expression evidence.
   const coverageDays = Math.max(0, Math.min(7, evidence.days));
   const coveragePercent = Math.round((coverageDays / 7) * 100);
@@ -26,6 +28,8 @@ export function AvatarMoodEvidence({ context }: { context: AvatarBodyContext }) 
   return <div className="mt-3 space-y-3">
     <div className={`rounded-[20px] border p-4 shadow-sm ${evidenceTone}`}>
       <h3 className="text-sm font-bold tracking-tight">{title}</h3>
+      <p className="mt-1 text-[11px] font-semibold text-ink-secondary">{presence.headline} · {presence.coverageDays}/7 dias com relatos</p>
+      <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">A expressão não indica seu humor neste instante. O Avatar não interpreta dados do relógio como emoções.</p>
       <p className="mt-1 text-xs leading-relaxed text-ink-primary">{explanation}</p>
       <p className="mt-2 text-[11px] text-ink-muted">{evidence.days} de 7 dias com relato{evidence.from ? ` · ${formatDate(evidence.from)} a ${formatDate(evidence.to)}` : ''}</p>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" role="progressbar" aria-label="Cobertura de humor declarado nos últimos sete dias" aria-valuemin={0} aria-valuemax={7} aria-valuenow={coverageDays}>

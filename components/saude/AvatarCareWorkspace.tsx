@@ -17,10 +17,13 @@ import { PrescriptionPlanningBrief } from "./PrescriptionPlanningBrief";
 import { CareFinancialOutlook } from "./CareFinancialOutlook";
 import { MedicationPurchaseRhythmBrief } from "./MedicationPurchaseRhythmBrief";
 import { ClinicalDisclosure } from "./ClinicalDisclosure";
+import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
+import { BrainFollowUpM102 } from "./BrainFollowUpM102";
 
-export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, command, onNavigate }: {
+export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, command, userId="", topAlert, onNavigate }: {
   context: HealthInsightContext | null | undefined;
   command?: CareCommandSnapshot | null;
+  userId?: string; topAlert?: BrainV5Alert | null;
   onNavigate: (href: string) => void;
 }) {
   if (!context) return null;
@@ -32,6 +35,7 @@ export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, 
   const hasCommandEvidence=Boolean(command?.documents?.items?.length || command?.plan?.items?.length || command?.readiness?.items?.length);
 
   return <section aria-label="Contexto integrado do Avatar" className="space-y-3">
+    <BrainFollowUpM102 alert={topAlert} userId={userId} personId={context.personId} onNavigate={onNavigate}/>
     <AvatarCareReadiness context={context} command={command} onNavigate={onNavigate}/>
     {command?.readiness?.items?.length ? <AvatarReadinessCounters counts={command.readiness.counts}/> : null}
     {(secondaryCount > 0 || hasCommandEvidence) ? <ClinicalDisclosure id="avatar-contexto-evidencias" title="Contexto e evidências do Avatar" description="Cuidado, medicamentos, rotinas e associações registradas" icon={<Layers3 size={16}/> }>
