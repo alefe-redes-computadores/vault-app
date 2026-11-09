@@ -80,6 +80,7 @@ import {
 } from "@/lib/diagnostics/eruda";
 import { summarizePersonalVault } from "@/lib/personal-vault-overview";
 import { NativeDoseAgendaInspection } from "@/components/saude/NativeDoseAgendaInspection";
+import { OperationalReadinessM103 } from "@/components/OperationalReadinessM103";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -947,6 +948,7 @@ export default function MaisPage() {
         </header>
 
         <section className="space-y-4 px-4 pt-3 sm:px-5">
+          <OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/>
           {/* ===================================================
               PERFIL
           =================================================== */}

@@ -1,5 +1,6 @@
 const CACHE_NAME = "vault-shell-v25-6";
 const OFFLINE_URL = "/offline.html";
+// M103 P1: atualiza o service worker e revalida o fallback offline sem limpar o cache de navegacao.
 const OPTIONAL_SHELL = ["/manifest.json", "/icon-v2-192x192.png", "/icon-v2-512x512.png", "/icon-maskable-v2-1024x1024.png", "/apple-icon.png?v=2"];
 
 self.addEventListener("install", (event) => {

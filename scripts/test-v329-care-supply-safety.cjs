@@ -34,7 +34,7 @@ assert(over.includes('/saude/fornecimento#documentos-pendentes'));
 assert(over.includes("Somente exigência explícita"));
 assert(safety.includes('VAULT_SAFETY_PLAN_PROGRESSIVE_V70'));
 for(const key of ["warningSigns","copingSteps","reasonsToStay","trustedPeople","professionalContacts","saferEnvironment"])assert(safety.includes(key),key);
-assert(safety.includes('readSafetyPlan(activePersonId)')&&safety.includes('saveSafetyPlan(activePersonId, plan)'));
+assert(safety.includes('readSafetyPlan(activePersonId, user?.id)')&&safety.includes('saveSafetyPlan(activePersonId, plan, user.id)')&&safety.includes('importLegacySafetyPlan(activePersonId,user.id)'),'plano V329 agora exige escopo de conta e migração consentida');
 assert(safety.includes('SAMU 192')&&safety.includes('CVV 188'));
 assert(safety.includes('mode === "consultar"')&&safety.includes('Alterações não salvas'));
 assert(!safety.includes("localStorage.clear("));

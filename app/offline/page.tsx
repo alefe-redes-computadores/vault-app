@@ -27,10 +27,10 @@ export default function OfflinePage() {
               Vault
             </p>
             <h1 className="mt-2 font-display text-[28px] font-semibold text-ink-primary">
-              Você está offline
+              Não foi possível abrir esta página
             </h1>
             <p className="mx-auto mt-3 max-w-xs text-sm leading-6 text-ink-muted">
-              Seus documentos continuam disponíveis no aparelho. Conecte-se à internet para voltar a sincronizar com a nuvem.
+              A conexão pode estar indisponível, ou a página ainda não foi guardada para acesso offline. Somente dados já salvos neste aparelho podem continuar acessíveis.
             </p>
           </div>
 
@@ -41,10 +41,10 @@ export default function OfflinePage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-ink-primary">
-                  Seus dados estão seguros
+                  O conteúdo local depende do cache
                 </p>
                 <p className="mt-1 text-xs leading-5 text-ink-muted">
-                  O modo local-first mantém seus documentos acessíveis mesmo sem conexão.
+                  O VAULT usa armazenamento local, mas nem toda página ou anexo está disponível sem internet. Não limpe dados nem desinstale o app antes de conferir a recuperação.
                 </p>
               </div>
             </div>

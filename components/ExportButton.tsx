@@ -32,7 +32,7 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
       const date = new Date().toISOString().split("T")[0];
       downloadJSON(data, `vault-backup-${date}.json`);
       trigger("success");
-      showToast("Dados exportados com segurança!", "success");
+      showToast("Download do JSON solicitado. Confira se o arquivo foi salvo; ele não é criptografado.", "success");
     } catch (error) {
       console.error("Erro ao exportar:", error);
       trigger("error");
@@ -70,7 +70,7 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-ink-primary">Exportar dados</p>
             <p className="truncate text-xs text-ink-muted">
-              {isExporting ? "Preparando backup..." : "Baixe uma cópia dos seus dados em JSON"}
+              {isExporting ? "Preparando backup..." : "JSON sem criptografia — guarde em local protegido"}
             </p>
           </div>
           <span aria-hidden className="text-base text-ink-faint">›</span>
@@ -91,7 +91,7 @@ export function ExportButton({ variant = "icon" }: ExportButtonProps) {
         onClose={() => setShowWarningModal(false)}
         onConfirm={handleConfirmExport}
         title="Exportar dados confidenciais"
-        message="O arquivo de backup gerado contém informações médicas sensíveis, históricos clínicos e credenciais. Armazene este arquivo em um local seguro e criptografado."
+        message="O download contém dados médicos, credenciais e outras informações confidenciais em JSON SEM criptografia. Verifique se o arquivo foi salvo e armazene-o em um local protegido e criptografado. O VAULT não verifica a conclusão do download."
         confirmLabel="Entendido, exportar"
         cancelLabel="Cancelar"
         type="warning"

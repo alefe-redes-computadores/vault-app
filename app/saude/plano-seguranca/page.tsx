@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, BookHeart, Check, HeartHandshake, Phone, ShieldAlert, ChevronRight, ClipboardCheck, Pencil, LockKeyhole, AlertCircle } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
-import { EMPTY_SAFETY_PLAN, readSafetyPlan, saveSafetyPlan, type SafetyPlan } from "@/lib/safety-plan";
+import { useAuth } from "@/hooks/useAuth";
+import { EMPTY_SAFETY_PLAN, readSafetyPlan, saveSafetyPlan, hasScopedSafetyPlan, hasLegacySafetyPlan, importLegacySafetyPlan, type SafetyPlan } from "@/lib/safety-plan";
 
 const sections: Array<{ key: keyof Omit<SafetyPlan, "updatedAt">; title: string; hint: string }> = [
   { key: "warningSigns", title: "Sinais de alerta", hint: "Mudanças, pensamentos ou situações que indicam que preciso pedir ajuda." },
@@ -19,20 +20,25 @@ const sections: Array<{ key: keyof Omit<SafetyPlan, "updatedAt">; title: string;
 export default function SafetyPlanPage() {
   const router = useRouter();
   const { activePersonId } = useActivePersonId();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [plan, setPlan] = useState<SafetyPlan>(EMPTY_SAFETY_PLAN);
   const [saved, setSaved] = useState(false);
   const [mode, setMode] = useState<"consultar" | "editar">("editar");
   const [changed, setChanged] = useState(false);
+  const [legacyAvailable, setLegacyAvailable] = useState(false);
+  const [legacyConfirm, setLegacyConfirm] = useState(false);
   const completed = sections.filter(section => Boolean(plan[section.key].trim())).length;
 
   useEffect(() => {
-    const existing = readSafetyPlan(activePersonId);
+    const existing = readSafetyPlan(activePersonId, user?.id);
     setPlan(existing);
     setMode(sections.some(section => Boolean(existing[section.key]?.trim())) ? "consultar" : "editar");
+    setLegacyAvailable(Boolean(user?.id && activePersonId && !hasScopedSafetyPlan(activePersonId, user.id) && hasLegacySafetyPlan(activePersonId)));
+    setLegacyConfirm(false);
     setChanged(false);
     setSaved(false);
-  }, [activePersonId]);
+  }, [activePersonId, user?.id]);
 
   function update(key: keyof SafetyPlan, value: string) {
     setChanged(true);
@@ -41,12 +47,29 @@ export default function SafetyPlanPage() {
   }
 
   function persist() {
-    if (!activePersonId) return showToast("Selecione uma pessoa antes de salvar.", "error");
-    setPlan(saveSafetyPlan(activePersonId, plan));
-    setSaved(true);
-    setChanged(false);
+    if (!activePersonId || !user?.id) return showToast("Entre na conta e selecione uma pessoa antes de salvar.", "error");
+    try {
+      setPlan(saveSafetyPlan(activePersonId, plan, user.id));
+      setLegacyAvailable(false);
+      setSaved(true);
+      setChanged(false);
+      setMode("consultar");
+      showToast("Plano salvo neste dispositivo para esta conta e pessoa.", "success");
+    } catch {
+      showToast("Não foi possível salvar neste dispositivo. Confira o armazenamento antes de sair.", "error");
+    }
+  }
+
+  function recoverLegacy() {
+    if (!activePersonId || !user?.id || !legacyConfirm || changed) return;
+    const imported=importLegacySafetyPlan(activePersonId,user.id);
+    if (!imported) return showToast("Não foi possível recuperar. O plano antigo foi preservado quando disponível.", "error");
+    setPlan(imported);
     setMode("consultar");
-    showToast("Plano salvo neste dispositivo.", "success");
+    setLegacyAvailable(false);
+    setLegacyConfirm(false);
+    setSaved(true);
+    showToast("Plano antigo vinculado a esta conta e pessoa neste dispositivo.", "success");
   }
 
   return (
@@ -66,6 +89,13 @@ export default function SafetyPlanPage() {
           <p className="mt-2 text-[10px] leading-relaxed text-ink-faint">O CVV oferece apoio emocional. Para urgência médica ou risco imediato, acione o SAMU 192 ou vá ao pronto atendimento.</p>
         </section>
 
+        {legacyAvailable ? <section aria-label="Recuperar plano anterior" className="rounded-2xl border border-amber-300/25 bg-amber-300/[.045] p-3.5">
+          <strong className="text-sm text-amber-200">Existe um plano do formato antigo neste aparelho</strong>
+          <p className="mt-1 text-xs leading-relaxed text-ink-muted">O formato antigo não registrava a conta proprietária. Ele não foi aberto automaticamente. Importe somente se você confirmar que pertence à pessoa ativa.</p>
+          {legacyConfirm ? <div className="mt-3 space-y-2"><p className="text-xs text-ink-secondary">Ao confirmar, a cópia passa a usar a conta e pessoa atuais. Não é possível verificar o proprietário original do arquivo.</p><div className="flex flex-wrap gap-2"><button type="button" disabled={changed} onClick={recoverLegacy} className="min-h-11 rounded-xl border border-amber-300/40 bg-amber-300/10 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40">Confirmar importação</button><button type="button" onClick={()=>setLegacyConfirm(false)} className="min-h-11 rounded-xl border border-surface-border px-3 text-xs text-ink-muted">Cancelar</button></div></div>
+          : <button type="button" disabled={changed} onClick={()=>setLegacyConfirm(true)} className="mt-3 min-h-11 rounded-xl border border-amber-300/30 px-3 text-xs font-semibold text-amber-200 disabled:opacity-40">Examinar recuperação do plano antigo</button>}
+        </section> : null}
+
         {/* VAULT_V329_SAFETY_WORKSPACE: consultation-first, local only, no automatic clinical inference. */}
         <section className="rounded-[24px] border border-surface-border/80 bg-surface p-4" aria-label="Progresso do meu plano de segurança">
           <div className="flex items-start gap-3"><BookHeart className="mt-0.5 shrink-0 text-violet-300" size={20}/><div className="min-w-0 flex-1"><h2 className="text-sm font-semibold text-ink-primary">Um roteiro feito por você</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Preencha de preferência em um momento estável. Revise com alguém de confiança ou profissional de saúde.</p></div></div>
@@ -75,7 +105,7 @@ export default function SafetyPlanPage() {
             <button type="button" aria-pressed={mode === "consultar"} onClick={() => setMode("consultar")} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold ${mode === "consultar" ? "border-violet-300/40 bg-violet-300/10 text-violet-200" : "border-surface-border text-ink-muted"}`}><ClipboardCheck size={15}/> Consultar</button>
             <button type="button" aria-pressed={mode === "editar"} onClick={() => setMode("editar")} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold ${mode === "editar" ? "border-violet-300/40 bg-violet-300/10 text-violet-200" : "border-surface-border text-ink-muted"}`}><Pencil size={15}/> Preencher</button>
           </div>
-          <div className="mt-3 flex items-start gap-2 text-[10px] text-ink-muted"><LockKeyhole size={13} className="mt-0.5 shrink-0"/><span>Informações pessoais neste dispositivo. Não são enviadas para o Brain nem compartilhadas automaticamente.</span></div>
+          <div className="mt-3 flex items-start gap-2 text-[10px] text-ink-muted"><LockKeyhole size={13} className="mt-0.5 shrink-0"/><span>Dados guardados apenas neste aparelho, separados por conta e pessoa. O armazenamento local não é criptografado; não são enviados ao Brain nem compartilhados automaticamente.</span></div>
         </section>
         {mode === "consultar" ? (
           <section className="space-y-2" aria-label="Consultar meu roteiro">
