@@ -1620,7 +1620,7 @@ export default function HojePage() {
         {/* =========================================================
             CONTEÚDO
         ========================================================= */}
-        <section className="space-y-3 px-4 pt-3">
+        <section className="space-y-2.5 px-4 pt-2.5">
           {/* M40 — O conteúdo clínico vem antes dos atalhos e painéis complementares. */}
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true" />
           {isHoje && !retroReviewMode ? <TodayAgendaOverview

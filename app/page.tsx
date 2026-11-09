@@ -1209,7 +1209,7 @@ export default function HomePage() {
               }} />
             <HomeQuickMetrics
               appointments={totalCompromissosHoje}
-              className="min-[380px]:grid-cols-4"
+              className="min-[380px]:grid-cols-4 min-w-0"
               pendingDoses={dosesPendentesAtrasadas.length}
               medications={medicamentosAtivos.length}
               extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}

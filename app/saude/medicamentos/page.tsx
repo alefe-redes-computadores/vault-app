@@ -1449,7 +1449,7 @@ export default function MedicamentosListPage() {
 
         {/* M105: a rotina aparece antes dos filtros, na primeira dobra. */}
           {/* M92: resumo de progresso em primeiro plano; ajustes avançados por demanda. */}
-          <div className="mx-4 mb-2.5 mt-2 rounded-[22px] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/[.095] via-surface to-surface px-4 py-3.5 shadow-sm" aria-label="Progresso das doses programadas de hoje">
+          <div className="mx-4 mb-2.5 mt-2 rounded-[22px] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/[.095] via-surface to-surface px-3.5 py-3 shadow-sm" aria-label="Progresso das doses programadas de hoje">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
@@ -1457,7 +1457,7 @@ export default function MedicamentosListPage() {
               </div>
               <strong className="shrink-0 font-display text-2xl font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
             </div>
-            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised">
+            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-raised">
               <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{width:`${statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0}%`}} />
             </div>
           </div>
@@ -1514,7 +1514,7 @@ export default function MedicamentosListPage() {
             />
           ) : (
             unifiedList ? (
-              <div className="space-y-2.5 pb-8" aria-label="Todos os medicamentos encontrados">
+              <div className="space-y-2 pb-8" aria-label="Todos os medicamentos encontrados">
                 <p role="status" className="text-xs text-ink-muted">Exibindo {Math.min(unifiedVisibleCount, listaProcessada.length)} de {listaProcessada.length} medicamento(s) · filtros e pesquisa consideram todos</p>
                 {listaProcessada.slice(0, unifiedVisibleCount).map(renderCard)}
                 {unifiedVisibleCount < listaProcessada.length && (
@@ -1525,7 +1525,7 @@ export default function MedicamentosListPage() {
                 )}
               </div>
             ) : (
-            <div className="space-y-2.5 pb-8">
+            <div className="space-y-2 pb-8">
               <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPlanejados.map(renderCard) : medsPlanejados.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Bell, CalendarDays, ChevronRight, Clock3, Pill } from "lucide-react";
+import { AlertTriangle, Bell, CalendarDays, ChevronDown, ChevronRight, Clock3, Pill } from "lucide-react";
 import type { VisualAgendaOverview, VisualAgendaRow } from "@/lib/today/agenda-overview";
 
 type Destination = VisualAgendaRow["destination"];
@@ -28,6 +28,13 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
     </div> : <p className="mt-2 text-xs text-ink-secondary">Nenhuma retirada atrasada ou dose pendente identificada neste resumo. Confira os demais compromissos abaixo.</p>}
     <div className="mt-3 border-t border-surface-border/40 pt-2.5">
       <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-bold text-ink-primary">Agenda por horário</h3>{overview.nextUpcoming ? <button type="button" onClick={()=>onJump(overview.nextUpcoming!.destination)} className="min-h-11 shrink-0 rounded-lg border border-ice/20 bg-ice/[.055] px-2 text-xs font-semibold tabular-nums text-ice" aria-label={`Ir para o próximo horário às ${overview.nextUpcoming.time}`}>Próximo · {overview.nextUpcoming.time}</button> : <span className="text-xs text-ink-muted">Prévia · todos os tipos</span>}</div>
+      {/* M106: alertas urgentes e próximo evento permanecem visíveis. */}
+      <details className="group mt-2 rounded-xl border border-surface-border/35 bg-surface/25 px-2.5">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+          <span>Ver horários do dia{overview.rows.length > 0 ? ` · ${overview.rows.length} na prévia` : ""}</span>
+          <ChevronDown size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none"/>
+        </summary>
+        <div className="border-t border-surface-border/30 pb-2 pt-1">
       {overview.rows.length > 0 ? <ol className="mt-2 space-y-1" aria-label="Horários combinados em ordem cronológica">
         {overview.rows.map((item, index) => {
           const Icon = kindIcon[item.kind];
@@ -46,6 +53,8 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
         {overview.untimedAppointments > 0 ? `${overview.untimedAppointments} compromisso(s) sem horário ficam na seção própria. ` : ""}
         Doses, lembretes e compromissos mantêm suas ações e estados independentes.
       </p>
+        </div>
+      </details>
       {remindersCount > 0 && <button type="button" onClick={() => onJump("hoje-agenda")} className="mt-1 min-h-11 text-xs font-semibold text-emerald-300 underline underline-offset-2">Ver todos os lembretes</button>}
     </div>
   </section>;

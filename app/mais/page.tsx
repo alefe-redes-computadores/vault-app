@@ -977,6 +977,13 @@ export default function MaisPage() {
               </div>
             </div>
 
+            {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
+            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <span>Preferências, lembretes e atualizações</span>
+                <ChevronDown size={16} aria-hidden="true" className="text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+              </summary>
+              <div className="space-y-3 border-t border-surface-border/35 pb-3 pt-3">
             <div>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências do aplicativo</h2>
               <div className="grid grid-cols-2 gap-2">
@@ -989,6 +996,8 @@ export default function MaisPage() {
             </div>
 
             <VaultUpdateCenter />
+              </div>
+            </details>
 
             <div>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Nuvem</h2>
