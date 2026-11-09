@@ -30,7 +30,8 @@ class VaultHealthConnectPlugin : Plugin() {
     private val types: Map<String, KClass<out Record>> = mapOf(
         "sono" to SleepSessionRecord::class, "peso" to WeightRecord::class,
         "pressao_arterial" to BloodPressureRecord::class, "frequencia_cardiaca" to HeartRateRecord::class,
-        "oxigenacao" to OxygenSaturationRecord::class, "caminhada" to ExerciseSessionRecord::class
+        "oxigenacao" to OxygenSaturationRecord::class, "caminhada" to ExerciseSessionRecord::class,
+        "passos" to StepsRecord::class
     )
     private val permissionContract = PermissionController.createRequestPermissionResultContract()
     private fun client(): HealthConnectClient {
@@ -111,6 +112,30 @@ class VaultHealthConnectPlugin : Plugin() {
         if("caminhada" in allowed) readAll(hc,ExerciseSessionRecord::class,start,end).filter { it.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_WALKING && !it.endTime.isAfter(end) }.forEach {
             val min = Duration.between(it.startTime,it.endTime).toMillis().toDouble().div(60000).roundToInt()
             records.put(row(it.metadata.id,"caminhada",it.endTime,min).put("start",it.startTime.toString()).put("end",it.endTime.toString()))
+        }
+        // M101 P2 — passos são cumulativos. Agregação por dia na origem Samsung,
+        // sem somar linhas repetidas nem converter ausência de leitura em zero.
+        // O Android pode gerar passos de outras origens; estes NÃO são atribuídos
+        // automaticamente ao relógio/anel nem à origem Samsung.
+        if("passos" in allowed) {
+            val zone = ZoneId.systemDefault()
+            var day = LocalDate.now(zone).minusDays(days.toLong()-1)
+            val today = LocalDate.now(zone)
+            while(!day.isAfter(today)) {
+                val a = maxOf(day.atStartOfDay(zone).toInstant(), start)
+                val b = minOf(day.plusDays(1).atStartOfDay(zone).toInstant(), end)
+                if(b.isAfter(a)) {
+                    val total = hc.aggregate(AggregateRequest(
+                        metrics = setOf(StepsRecord.COUNT_TOTAL),
+                        timeRangeFilter = TimeRangeFilter.between(a,b),
+                        dataOriginFilter = setOf(DataOrigin(origin))
+                    ))[StepsRecord.COUNT_TOTAL]
+                    if(total != null && total > 0L) records.put(
+                        row("daily-$day", "passos", b.minusMillis(1), total).put("dailyTotal",true)
+                    )
+                }
+                day = day.plusDays(1)
+            }
         }
         // Daily aggregation avoids importing thousands of heart-rate samples and counting wearable sources twice.
         if("frequencia_cardiaca" in allowed) {

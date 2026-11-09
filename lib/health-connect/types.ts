@@ -1,6 +1,6 @@
 import type { HealthMetric } from "@/lib/health-profile/types";
 export const SAMSUNG_ORIGIN = "com.sec.android.app.shealth";
-export const CONNECT_METRICS: HealthMetric[] = ["sono", "peso", "pressao_arterial", "frequencia_cardiaca", "oxigenacao", "caminhada"];
+export const CONNECT_METRICS: HealthMetric[] = ["sono", "peso", "pressao_arterial", "frequencia_cardiaca", "oxigenacao", "caminhada", "passos"];
 export interface ConnectRecord {
   id: string;
   origin: string;
@@ -11,6 +11,8 @@ export interface ConnectRecord {
   start?: string;
   end?: string;
   dailyAverage?: boolean;
+  /** Total diário agregado, nunca amostra pontual. */
+  dailyTotal?: boolean;
 }
 /** Configuration belongs to this phone and account, never to the active-person default. */
 export interface ConnectConnection {

@@ -42,6 +42,7 @@ export function validateMetric(
     frequencia_cardiaca: [20, 300],
     oxigenacao: [1, 100],
     caminhada: [1, 1440],
+    passos: [1, 150000],
   };
   const [min, max] = ranges[type];
   if (
@@ -51,6 +52,7 @@ export function validateMetric(
     ([
       "sono",
       "caminhada",
+      "passos",
       "pressao_arterial",
       "frequencia_cardiaca",
       "oxigenacao",

@@ -13,19 +13,21 @@ export function normalizeConnectRecord(raw: ConnectRecord, now = Date.now()) {
     if (duration !== raw.value || end !== time.toISOString()) throw new Error("Período e duração não correspondem.");
   } else if (raw.start || raw.end) throw new Error("Intervalo inesperado para esta medida.");
   if (raw.dailyAverage && raw.type !== "frequencia_cardiaca") throw new Error("Resumo diário inválido.");
+  if (raw.dailyTotal && raw.type !== "passos") throw new Error("Total diário inválido.");
+  if (raw.type === "passos" && raw.dailyTotal !== true) throw new Error("Passos exigem total diário verificado.");
   const date = `${time.getFullYear()}-${String(time.getMonth()+1).padStart(2,"0")}-${String(time.getDate()).padStart(2,"0")}`;
   const clock = `${String(time.getHours()).padStart(2,"0")}:${String(time.getMinutes()).padStart(2,"0")}`;
   const def = METRICS[raw.type];
   return {
     source_record_id: `${raw.origin}:${raw.type}:${raw.id}`,
     categoria: def.category, tipo: raw.type,
-    nome: raw.dailyAverage ? "Batimentos · média diária" : def.label,
+    nome: raw.dailyAverage ? "Batimentos · média diária" : raw.dailyTotal ? "Passos · total diário" : def.label,
     data: date, horario: clock,
     inicio_em: start, fim_em: end,
     valor_numerico: raw.type === "pressao_arterial" ? undefined : raw.value,
     valor_medicao: raw.type === "pressao_arterial" ? `${raw.value}/${raw.second}` : `${raw.value} ${def.unit}`,
     unidade_medida: def.unit,
     duracao_minutos: ["sono", "caminhada"].includes(raw.type) ? raw.value : undefined,
-    observacoes: raw.dailyAverage ? "Samsung Health via Health Connect. Média diária dos batimentos disponíveis, não uma medida pontual." : raw.type === "sono" ? "Samsung Health via Health Connect. Duração do intervalo da sessão; pode incluir períodos acordado." : "Samsung Health via Health Connect.",
+    observacoes: raw.dailyTotal ? "Samsung Health via Health Connect. Total diário agregado de passos da origem Samsung; sem identificação automática do aparelho." : raw.dailyAverage ? "Samsung Health via Health Connect. Média diária dos batimentos disponíveis, não uma medida pontual." : raw.type === "sono" ? "Samsung Health via Health Connect. Duração do intervalo da sessão; pode incluir períodos acordado." : "Samsung Health via Health Connect.",
   };
 }

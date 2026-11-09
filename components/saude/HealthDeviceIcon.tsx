@@ -45,6 +45,7 @@ export function HealthMetricIcon({
     frequencia_cardiaca: HeartPulse,
     oxigenacao: Wind,
     caminhada: Footprints,
+    passos: Footprints,
   }[type];
   return <Icon size={size} aria-hidden="true" />;
 }
@@ -55,4 +56,5 @@ export const METRIC_TONES: Record<HealthMetric, string> = {
   frequencia_cardiaca: "text-coral",
   oxigenacao: "text-cyan-300",
   caminhada: "text-amber-300",
+  passos: "text-sky-300",
 };

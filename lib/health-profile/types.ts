@@ -11,7 +11,8 @@ export type HealthMetric =
   | "pressao_arterial"
   | "frequencia_cardiaca"
   | "oxigenacao"
-  | "caminhada";
+  | "caminhada"
+  | "passos";
 export interface HealthProfile {
   id: string;
   user_id: string;
@@ -63,6 +64,7 @@ export const METRICS: Record<
   },
   oxigenacao: { label: "Oxigenação", unit: "%", category: "medicao" },
   caminhada: { label: "Caminhada", unit: "min", category: "habito" },
+  passos: { label: "Passos", unit: "passos", category: "habito" },
 };
 export const DEVICE_COLORS = [
   "#34d399",

@@ -41,7 +41,7 @@ try {
   const before=files.map(f=>fs.readFileSync(path.join(a,f),"utf8"));
   execFileSync(process.execPath,["scripts/patch-android-health-connect-v113.mjs"],{cwd:tmp});
   assert.deepEqual(files.map(f=>fs.readFileSync(path.join(a,f),"utf8")),before,"native patch must be idempotent");
-  const manifest=before[0];assert.equal((manifest.match(/android\.permission\.health\.READ_/g)||[]).length,6);assert.ok(!manifest.includes("WRITE_") && !manifest.includes("BACKGROUND"));assert.match(manifest,/START_VIEW_PERMISSION_USAGE/);
+  const manifest=before[0];assert.equal((manifest.match(/android\.permission\.health\.READ_/g)||[]).length,7);assert.match(manifest,/android\.permission\.health\.READ_STEPS/);assert.ok(!manifest.includes("WRITE_") && !manifest.includes("BACKGROUND"));assert.match(manifest,/START_VIEW_PERMISSION_USAGE/);
   const main=before[5];assert.equal((main.match(/void onCreate/g)||[]).length,1);assert.ok(main.indexOf("registerPlugin(")<main.indexOf("super.onCreate("));assert.match(main,/VAULT_EDGE_TO_EDGE_V28/);
   assert.match(before[2],/gradle:8\.9\.1/);assert.match(before[3],/compileSdkVersion = 36/);assert.match(before[4],/gradle-8\.11\.1/);
 } finally {fs.rmSync(tmp,{recursive:true,force:true});}
