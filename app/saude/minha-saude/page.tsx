@@ -431,7 +431,7 @@ function HealthDashboard({
             </section>
             {/* VAULT_V321_AVATAR_CARE: Avatar and urgent summary remain in the first fold. */}
             <DeferredHealthSection id="avatar-care-workspace" title="Acompanhamento do Avatar" description="Plano contextual, vínculos clínicos e preparação detalhada" icon={<Brain size={18}/>} badge="explorar">
-              <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id||""} topAlert={brainPulse.top} onNavigate={goFromHealth}/>
+              <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id||""} topAlert={brainPulse.top} alerts={brainPulse.records} onNavigate={goFromHealth}/>
             </DeferredHealthSection>
             <DeferredHealthSection id="analises" title="Análises e tendências" description="Evolução das medidas e cobertura dos dados usados pelo Brain" icon={<BarChart3 size={18}/>} badge={intelligence.isLoading?"analisando":"sob demanda"}>
               {safetyCoverage&&<MedicationSafetyCoverage coverage={safetyCoverage} compact/>}

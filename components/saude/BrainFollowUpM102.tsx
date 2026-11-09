@@ -3,55 +3,87 @@ import { useEffect, useState } from "react";
 import { BellOff, CalendarClock, ClipboardPlus, ShieldCheck } from "lucide-react";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { createFollowUpM102, followUpKeyM102, followUpStateM102, parseFollowUpM102, type BrainFollowUpPlanM102, type BrainFollowUpDelayM102 } from "@/lib/health-intelligence/followup-m102";
+import { cancelFollowUpQueueM102P4, followUpQueueKeyM102P4, selectedFollowUpM102P4, upsertFollowUpQueueM102P4 } from "@/lib/health-intelligence/followup-queue-m102p4";
 
 /** Explicit opt-in only; stores scheduling metadata, never symptoms or doses. */
-export function BrainFollowUpM102({ alert, userId, personId, onNavigate }: {
-  alert?: BrainV5Alert | null; userId: string; personId: string; onNavigate: (href: string) => void;
+export function BrainFollowUpM102({ alert, userId, personId, contextUserId, alerts=[], onNavigate }: {
+  alert?: BrainV5Alert | null; userId: string; personId: string; contextUserId?: string | null; alerts?: readonly BrainV5Alert[]; onNavigate: (href: string) => void;
 }) {
   const [plan, setPlan] = useState<BrainFollowUpPlanM102 | null>(null);
   const [ready, setReady] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const fingerprint = alert ? `${alert.key}:${alert.episode}:${alert.state}` : "";
   const storageKey = followUpKeyM102(userId, personId);
+  const queueKey = followUpQueueKeyM102P4(userId, personId);
+  const ownerMatches = Boolean(userId && contextUserId === userId);
   useEffect(() => {
     setReady(false);
-    if (!alert || !storageKey || alert.person_id !== personId || alert.state === "resolved") { setPlan(null); setReady(true); return; }
-    try { setPlan(parseFollowUpM102(localStorage.getItem(storageKey), alert, Date.now())); }
+    if (!alert || !storageKey || !ownerMatches || alert.person_id !== personId || alert.state === "resolved") { setPlan(null); setReady(true); return; }
+    try {
+      const clock = Date.now();
+      const legacy = parseFollowUpM102(localStorage.getItem(storageKey), alert, clock);
+      setPlan((queueKey ? selectedFollowUpM102P4(localStorage.getItem(queueKey), alert, clock) : null) ?? legacy);
+    }
     catch { setPlan(null); }
     setNow(Date.now());
     setReady(true);
-  }, [fingerprint, storageKey, personId]);
+  }, [fingerprint, storageKey, queueKey, ownerMatches, personId]);
   // M102 P3: update the voluntary review only when the user returns to the app.
   // No interval, background task, Android notification or health-record mutation.
   useEffect(() => {
-    if (!storageKey || !alert || alert.person_id !== personId || alert.state === "resolved") return;
+    if (!storageKey || !ownerMatches || !alert || alert.person_id !== personId || alert.state === "resolved") return;
     const refreshOnReturn = () => {
       if (document.visibilityState === "hidden") return;
       const clock = Date.now();
       setNow(clock);
-      try { setPlan(parseFollowUpM102(localStorage.getItem(storageKey), alert, clock)); }
+      try {
+        const legacy = parseFollowUpM102(localStorage.getItem(storageKey), alert, clock);
+        setPlan((queueKey ? selectedFollowUpM102P4(localStorage.getItem(queueKey), alert, clock) : null) ?? legacy);
+      }
       catch { setPlan(null); }
     };
     window.addEventListener("focus", refreshOnReturn);
     document.addEventListener("visibilitychange", refreshOnReturn);
     window.addEventListener("storage", refreshOnReturn);
+    window.addEventListener("vault:m102-followup-changed", refreshOnReturn);
     return () => {
       window.removeEventListener("focus", refreshOnReturn);
       document.removeEventListener("visibilitychange", refreshOnReturn);
       window.removeEventListener("storage", refreshOnReturn);
+      window.removeEventListener("vault:m102-followup-changed", refreshOnReturn);
     };
-  }, [fingerprint, storageKey, personId]);
-  if (!alert || !storageKey || alert.person_id !== personId || alert.state === "resolved") return null;
+  }, [fingerprint, storageKey, queueKey, ownerMatches, personId]);
+  if (!alert || !storageKey || !queueKey || !ownerMatches || alert.person_id !== personId || alert.state === "resolved") return null;
   function schedule(hours: BrainFollowUpDelayM102) {
-    if (!alert || !storageKey) return;
+    if (!alert || !storageKey || !queueKey || !ownerMatches) return;
     const created = createFollowUpM102(userId, personId, alert, hours, Date.now());
     if (!created) return;
-    try { localStorage.setItem(storageKey, JSON.stringify(created)); setPlan(created); setNow(Date.now()); }
+    try {
+      const clock = Date.now();
+      const queuePayload = upsertFollowUpQueueM102P4({
+        raw: localStorage.getItem(queueKey), legacyRaw: localStorage.getItem(storageKey),
+        alerts: [...alerts, alert], userId, contextUserId, personId, plan: created, alert, now: clock,
+      });
+      if (!queuePayload) throw new Error("O vínculo de revisão mudou.");
+      localStorage.setItem(queueKey, queuePayload);
+      // Keep the v1 slot for older P1 clients. The v2 queue holds all episodes.
+      try { localStorage.setItem(storageKey, JSON.stringify(created)); } catch { /* v2 already saved */ }
+      setPlan(created); setNow(clock);
+      window.dispatchEvent(new Event("vault:m102-followup-changed"));
+    }
     catch { /* Storage unavailable: do not pretend this plan was saved. */ setPlan(null); }
   }
   function cancel() {
-    if (!storageKey) return;
-    try { localStorage.removeItem(storageKey); setPlan(null); } catch { /* preserve honest status */ }
+    if (!storageKey || !queueKey || !alert || !ownerMatches) return;
+    try {
+      const next = alert ? cancelFollowUpQueueM102P4(localStorage.getItem(queueKey), alert, Date.now()) : null;
+      if (!next) throw new Error("Preferência inválida.");
+      localStorage.setItem(queueKey, next);
+      // V1 belongs to one episode; never wipe a different episode's slot.
+      if (alert && parseFollowUpM102(localStorage.getItem(storageKey), alert, Date.now())) localStorage.removeItem(storageKey);
+      setPlan(null);
+      window.dispatchEvent(new Event("vault:m102-followup-changed"));
+    } catch { /* preserve honest status */ }
   }
   const state = followUpStateM102(plan, now);
   return <section aria-label="Revisão opcional do Brain" className="rounded-2xl border border-violet-400/20 bg-violet-400/[.035] p-3.5">

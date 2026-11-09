@@ -19,12 +19,13 @@ import { MedicationPurchaseRhythmBrief } from "./MedicationPurchaseRhythmBrief";
 import { ClinicalDisclosure } from "./ClinicalDisclosure";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { BrainFollowUpM102 } from "./BrainFollowUpM102";
+import { BrainReviewInboxM102P4 } from "./BrainReviewInboxM102P4";
 import { FenixBrainTraceM102P3 } from "./FenixBrainTraceM102P3";
 
-export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, command, userId="", topAlert, onNavigate }: {
+export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, command, userId="", topAlert, alerts=[], onNavigate }: {
   context: HealthInsightContext | null | undefined;
   command?: CareCommandSnapshot | null;
-  userId?: string; topAlert?: BrainV5Alert | null;
+  userId?: string; topAlert?: BrainV5Alert | null; alerts?: readonly BrainV5Alert[];
   onNavigate: (href: string) => void;
 }) {
   if (!context) return null;
@@ -36,7 +37,8 @@ export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, 
   const hasCommandEvidence=Boolean(command?.documents?.items?.length || command?.plan?.items?.length || command?.readiness?.items?.length);
 
   return <section aria-label="Contexto integrado do Avatar" className="space-y-3">
-    <BrainFollowUpM102 alert={topAlert} userId={userId} personId={context.personId} onNavigate={onNavigate}/>
+    <BrainFollowUpM102 alert={topAlert} userId={userId} personId={context.personId} contextUserId={context.userId} alerts={alerts || []} onNavigate={onNavigate}/>
+    <BrainReviewInboxM102P4 userId={userId} contextUserId={context.userId} personId={context.personId} alerts={alerts || []} onNavigate={onNavigate}/>
     <AvatarCareReadiness context={context} command={command} onNavigate={onNavigate}/>
     {command?.readiness?.items?.length ? <AvatarReadinessCounters counts={command.readiness.counts}/> : null}
     {(secondaryCount > 0 || hasCommandEvidence || Boolean(topAlert)) ? <ClinicalDisclosure id="avatar-contexto-evidencias" title="Contexto e evidências do Avatar" description="Cuidado, medicamentos, rotinas e associações registradas" icon={<Layers3 size={16}/> }>
