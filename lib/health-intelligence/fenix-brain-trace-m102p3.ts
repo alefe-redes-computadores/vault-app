@@ -63,7 +63,7 @@ export function projectFenixBrainTraceM102P3(input: FenixBrainTraceInputM102P3):
       label: alert.state === "active" ? "Alerta do Brain em acompanhamento" : "Registro do Brain em acompanhamento",
       title: clean(alert.snapshot?.titulo) || "Contexto registrado pelo Brain",
       authority: "Alerta independente · não é diagnóstico",
-      explanation: "Este alerta mantém a própria prioridade, mesmo quando o plano operacional da Fênix apresenta outra próxima ação.",
+      explanation: "Este alerta mantém a própria prioridade, mesmo quando o plano operacional do Avatar apresenta outra próxima ação.",
       evidenceCount: evidenceCount(alert.snapshot?.evidencias),
       href,
     });
@@ -73,7 +73,7 @@ export function projectFenixBrainTraceM102P3(input: FenixBrainTraceInputM102P3):
     const descriptor = EVIDENCE[decision.evidenceKind] ?? EVIDENCE.missing_data;
     entries.push({
       kind: "fenix",
-      label: "Próxima ação planejada pela Fênix",
+      label: "Próxima ação planejada pelo Avatar",
       title: clean(decision.title) || "Revisar próxima etapa",
       authority: descriptor.label,
       explanation: descriptor.explanation,

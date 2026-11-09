@@ -394,6 +394,7 @@ export default function HojePage() {
     setFiltroPeriodo("todos");
   }, [commandDoseStatus, setFiltroStatus, setFiltroPeriodo]);
   const [mostrarConcluidas,setMostrarConcluidas]=useState(false);
+  const [mostrarTodosCompromissos, setMostrarTodosCompromissos] = useState(false);
   const [filtroCompromisso,setFiltroCompromisso]=useState<FiltroCompromisso>("todos");
 
   const [
@@ -1832,12 +1833,13 @@ export default function HojePage() {
               </div>
 
               <div className="space-y-2.5">
-                {compromissosFiltrados.map((item: any) => (
+                {(mostrarTodosCompromissos ? compromissosFiltrados : compromissosFiltrados.slice(0, 3)).map((item: any) => (
                   <TodayAppointmentCard key={item.id} item={item}
                     medication={item.tipo === "retirada" ? medicamentosById.get(item.medicamento_id) : undefined}
                     today={hoje} dayLabel={dataSelecionadaLabel} overview={supplyOverview}
                     onOpen={() => navegarCompromisso(item)}/>
                 ))}
+                {compromissosFiltrados.length > 3 && <button type="button" aria-expanded={mostrarTodosCompromissos} onClick={() => setMostrarTodosCompromissos(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodosCompromissos ? "Recolher compromissos" : `Ver mais ${compromissosFiltrados.length - 3} compromisso(s)`}</button>}
               </div>
             </div>
           )}

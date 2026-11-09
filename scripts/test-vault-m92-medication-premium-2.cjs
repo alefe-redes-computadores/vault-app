@@ -39,7 +39,7 @@ ok('Grupos por prioridade e dose rápida preservados',med.includes('medsPriorida
 ok('Classificação regulatória interativa preservada',med.includes('regulatoryProfile?.label') && med.includes('setSelectedRegulatory(regulatoryProfile)'));
 ok('Botão único preenche sua linha sem criar ações fictícias',med.includes('[&>button:only-child]:col-span-2') && med.includes('aria-label="Ações do medicamento"'));
 ok('Retirada, dose SOS e reposição ainda independentes',med.includes('router.push(careAction.href)') && med.includes('MedicationRestockAction name={med.nome}') && med.includes('quickDoseLabel'));
-ok('Estados preservados, dois indicadores mais compactos',strip.includes('doseOutcome==="ignored"') && strip.includes('stockTone==="empty"') && (strip.match(/flex min-h-11 min-w-0 items-center/g)||[]).length===2);
+ok('Estados preservados, dois indicadores mais compactos',strip.includes('doseOutcome==="ignored"') && strip.includes('stockTone==="empty"') && (strip.match(/flex min-h-8 min-w-0 items-center/g)||[]).length===2);
 ok('Aviso de estoque é inspecionável sem romper altura',med.includes('Unidade do estoque diferente · revisar') && med.includes('min-h-9 cursor-pointer') && med.includes('className="min-w-0 flex-1 truncate"'));
 ok('Cabeçalho do editor aceita as duas cores do oblongo',editor.includes('formato === "oblongo"') && editor.includes('formato === "oblongo_sulcado"'));
 ok('Salvar visível em qualquer aba de edição',/\{editIntent !==\s*"menu" && \(/.test(editor) && !/"menu" &&\s*hasChanges && \(/.test(editor));
@@ -53,6 +53,6 @@ ok('Ícones oblongos são distintos no picker e nos cards',fmt.includes('export 
 ok('Ícones de outras telas aceitam novas apresentações',icon.includes('normalizedFormat === "oblongo"') && icon.includes('normalizedFormat === "oblongo_sulcado"'));
 ok('Estoque mantém unidade comprimido sem conversão',catalog.includes('oblongo:["comprimido","comp"]') && catalog.includes('oblongo_sulcado:["comprimido","comp"]') && catalog.includes('return "comprimido(s)"'));
 ok('Catálogo mantém compatibilidade do formato oficial',catalog.includes('inferVaultFormatFromOfficialPresentation') && catalog.includes('formatMatchesCatalog'));
-ok('Legados de densidade alinhados, sem remover suas garantias',read('scripts/test-vault-m71-final-visual-contract.cjs').includes('flex min-h-11 min-w-0 items-center') && read('scripts/test-vault-m25-premium-longlist-hotpath.cjs').includes('flex min-h-11 min-w-0 items-center'));
+ok('Legados de densidade alinhados, sem remover suas garantias',read('scripts/test-vault-m71-final-visual-contract.cjs').includes('flex min-h-8 min-w-0 items-center') && read('scripts/test-vault-m25-premium-longlist-hotpath.cjs').includes('flex min-h-8 min-w-0 items-center'));
 ok('Gate canônico começa pela M92',read('scripts/test-v63-release-gate.mjs').includes('const contracts = [\n  "scripts/test-vault-m92-medication-premium-2.cjs",'));
 console.log(`M92: ${checks} contratos específicos aprovados, sem operação clínica.`);

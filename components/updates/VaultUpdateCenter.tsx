@@ -140,6 +140,7 @@ export function VaultUpdateCenter() {
       {release ? <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/25 px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
         <div className="flex items-center gap-2"><PackageCheck size={13} className="shrink-0 text-emerald-300" /> Release certificada · {humanDate(release.publishedAt)}</div>
         <p className="mt-1">Download via GitHub Releases, sem expiração automática de 7 dias. Disponibilidade depende da manutenção da release.</p>
+        <p className="mt-1">O SHA-256 informado na release pode ser copiado para conferência. O Vault abre o download no navegador e não verifica automaticamente o arquivo baixado.</p>
         {release.highlights.length > 0 ? <div className="mt-2 border-t border-surface-border/40 pt-2"><p className="flex items-center gap-1 font-semibold text-ink-secondary"><Sparkles size={13}/> Novidades desta compilação</p>{release.highlights.map((item,i)=><p key={i} className="mt-1">• {item}</p>)}</div> : null}
         <div className="mt-2 grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-2">
           <button type="button" onClick={()=>void copyChecksum()} className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-surface-border/60 text-[10px] font-semibold text-ink-secondary"><Copy size={12}/> Copiar SHA-256</button>

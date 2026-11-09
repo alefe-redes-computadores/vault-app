@@ -873,6 +873,7 @@ export default function HomePage() {
   }, []);
 
   const [mostrarTodasRetiradas, setMostrarTodasRetiradas] = useState(false);
+  const [mostrarTodosCompromissos, setMostrarTodosCompromissos] = useState(false);
 
   const [
     mostrarTodosAlertas,
@@ -1521,7 +1522,7 @@ export default function HomePage() {
               <div
                 className="space-y-2"
               >
-                {consultasHoje.map(
+                {(mostrarTodosCompromissos ? consultasHoje : consultasHoje.slice(0, 3)).map(
                   (
                     consulta: any
                   ) => (
@@ -1570,7 +1571,7 @@ export default function HomePage() {
                   )
                 )}
 
-                {cirurgiasHoje.map(
+                {(mostrarTodosCompromissos ? cirurgiasHoje : cirurgiasHoje.slice(0, Math.max(0, 3 - consultasHoje.length))).map(
                   (
                     cirurgia: any
                   ) => (
@@ -1616,7 +1617,7 @@ export default function HomePage() {
                   )
                 )}
 
-                {examesHoje.map(
+                {(mostrarTodosCompromissos ? examesHoje : examesHoje.slice(0, Math.max(0, 3 - consultasHoje.length - cirurgiasHoje.length))).map(
                   (
                     exame: any
                   ) => (
@@ -1660,6 +1661,12 @@ export default function HomePage() {
                       </span>
                     </button>
                   )
+                )}
+
+                {consultasHoje.length + cirurgiasHoje.length + examesHoje.length > 3 && (
+                  <button type="button" aria-expanded={mostrarTodosCompromissos} onClick={() => setMostrarTodosCompromissos(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                    {mostrarTodosCompromissos ? "Recolher compromissos" : `Ver mais ${consultasHoje.length + cirurgiasHoje.length + examesHoje.length - 3} compromisso(s)`}
+                  </button>
                 )}
 
                 {(mostrarTodasRetiradas ? retiradasHoje : retiradasHoje.slice(0, 3)).map(

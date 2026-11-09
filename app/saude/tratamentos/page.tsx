@@ -44,6 +44,8 @@ import {
   useTratamentos,
 } from "@/hooks/useTratamentos";
 
+import { useActivePersonId } from "@/hooks/useActivePersonId";
+
 import {
   useMedicamentos,
 } from "@/hooks/useMedicamentos";
@@ -192,6 +194,7 @@ function normalizeSearch(
 // ============================================================
 
 function TratamentoListContent() {
+  const { loading: personLoading } = useActivePersonId();
   const {
     trigger,
   } =
@@ -682,7 +685,7 @@ function TratamentoListContent() {
   // RENDER
   // ==========================================================
 
-  if (treatmentsLoading || medicationsLoading) {
+  if (personLoading || treatmentsLoading || medicationsLoading) {
     return (
       <main className="min-h-[100dvh] bg-void px-5 pb-24 pt-6" aria-busy="true" aria-label="Carregando tratamentos">
         <p role="status" className="sr-only">Carregando tratamentos da pessoa selecionada.</p>

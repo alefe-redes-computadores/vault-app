@@ -264,8 +264,8 @@ function TratamentoContent() {
 
   const id = searchParams.get("id") || "";
 
-  const { activePersonId } = useActivePersonId();
-  const {user}=useAuth();
+  const { activePersonId, loading: personLoading } = useActivePersonId();
+  const {user, loading: authLoading}=useAuth();
   const {retiradas}=useRetiradas();
   const supply=useHealthSupply();
 
@@ -283,7 +283,7 @@ function TratamentoContent() {
       : undefined,
     [id, activePersonId, user?.id],
   );
-  const isLoading = Boolean(id && activePersonId && user?.id && relationSnapshot === undefined);
+  const isLoading = Boolean(id && (personLoading || authLoading || (activePersonId && user?.id && relationSnapshot === undefined)));
   const tratamento = relationSnapshot?.tratamento ?? null;
   const linkedMedicamentos = relationSnapshot?.medicamentos ?? [];
   const possibleMedications = relationSnapshot?.possibleMedications ?? [];

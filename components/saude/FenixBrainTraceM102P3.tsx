@@ -22,7 +22,7 @@ export function FenixBrainTraceM102P3({ userId, contextUserId, personId, alert, 
   return <details data-fenix-brain-trace-m102p3 className="rounded-2xl border border-violet-300/15 bg-surface/60 p-3">
     <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
       <Layers3 size={17} className="shrink-0 text-violet-300" aria-hidden="true" />
-      <span className="min-w-0 flex-1">Fênix + Brain · origem das decisões</span>
+      <span className="min-w-0 flex-1">Avatar + Brain · origem das decisões</span>
       <ChevronRight size={15} className="shrink-0 text-ink-muted" aria-hidden="true" />
     </summary>
     <div className="space-y-2 border-t border-surface-border/60 pt-3">

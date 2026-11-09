@@ -1466,9 +1466,9 @@ export default function MedicamentosListPage() {
                 <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
                 <p className="text-[10px] text-ink-muted">Somente doses programadas · SOS fora do total</p>
               </div>
-              <strong className="shrink-0 text-sm font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
+              <strong className="shrink-0 text-base font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
             </div>
-            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised">
+            <div role="progressbar" aria-label="Doses confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0} className="mt-2 h-2 overflow-hidden rounded-full bg-surface-raised">
               <div className="h-full rounded-full bg-emerald-400 transition-[width] motion-reduce:transition-none" style={{width:`${statsProgresso.total > 0 ? Math.min(100, Math.round(statsProgresso.completados / statsProgresso.total * 100)) : 0}%`}} />
             </div>
           </div>
