@@ -21,6 +21,26 @@ export function BrainFollowUpM102({ alert, userId, personId, onNavigate }: {
     setNow(Date.now());
     setReady(true);
   }, [fingerprint, storageKey, personId]);
+  // M102 P3: update the voluntary review only when the user returns to the app.
+  // No interval, background task, Android notification or health-record mutation.
+  useEffect(() => {
+    if (!storageKey || !alert || alert.person_id !== personId || alert.state === "resolved") return;
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "hidden") return;
+      const clock = Date.now();
+      setNow(clock);
+      try { setPlan(parseFollowUpM102(localStorage.getItem(storageKey), alert, clock)); }
+      catch { setPlan(null); }
+    };
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("storage", refreshOnReturn);
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("storage", refreshOnReturn);
+    };
+  }, [fingerprint, storageKey, personId]);
   if (!alert || !storageKey || alert.person_id !== personId || alert.state === "resolved") return null;
   function schedule(hours: BrainFollowUpDelayM102) {
     if (!alert || !storageKey) return;

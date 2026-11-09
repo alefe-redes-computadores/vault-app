@@ -19,6 +19,7 @@ import { MedicationPurchaseRhythmBrief } from "./MedicationPurchaseRhythmBrief";
 import { ClinicalDisclosure } from "./ClinicalDisclosure";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { BrainFollowUpM102 } from "./BrainFollowUpM102";
+import { FenixBrainTraceM102P3 } from "./FenixBrainTraceM102P3";
 
 export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, command, userId="", topAlert, onNavigate }: {
   context: HealthInsightContext | null | undefined;
@@ -38,18 +39,20 @@ export const AvatarCareWorkspace = memo(function AvatarCareWorkspace({ context, 
     <BrainFollowUpM102 alert={topAlert} userId={userId} personId={context.personId} onNavigate={onNavigate}/>
     <AvatarCareReadiness context={context} command={command} onNavigate={onNavigate}/>
     {command?.readiness?.items?.length ? <AvatarReadinessCounters counts={command.readiness.counts}/> : null}
-    {(secondaryCount > 0 || hasCommandEvidence) ? <ClinicalDisclosure id="avatar-contexto-evidencias" title="Contexto e evidências do Avatar" description="Cuidado, medicamentos, rotinas e associações registradas" icon={<Layers3 size={16}/> }>
-      {() => <AvatarEvidenceWorkspace context={context} command={command} onNavigate={onNavigate}/>}
+    {(secondaryCount > 0 || hasCommandEvidence || Boolean(topAlert)) ? <ClinicalDisclosure id="avatar-contexto-evidencias" title="Contexto e evidências do Avatar" description="Cuidado, medicamentos, rotinas e associações registradas" icon={<Layers3 size={16}/> }>
+      {() => <AvatarEvidenceWorkspace context={context} command={command} userId={userId} topAlert={topAlert} onNavigate={onNavigate}/>}
     </ClinicalDisclosure> : null}
   </section>;
 });
 
-const AvatarEvidenceWorkspace = memo(function AvatarEvidenceWorkspace({ context, command, onNavigate }: {
+const AvatarEvidenceWorkspace = memo(function AvatarEvidenceWorkspace({ context, command, userId, topAlert, onNavigate }: {
   context: HealthInsightContext;
   command?: CareCommandSnapshot | null;
+  userId: string; topAlert?: BrainV5Alert | null;
   onNavigate: (href: string) => void;
 }) {
   return <div className="vault-deferred space-y-3.5 [content-visibility:auto] [contain-intrinsic-size:760px]">
+    <FenixBrainTraceM102P3 userId={userId} contextUserId={context.userId} personId={context.personId} alert={topAlert} decision={command?.decision} onNavigate={onNavigate}/>
     {command?.documents?<CareAccessBrief portfolio={command.documents} onNavigate={onNavigate} compact/>:null}
     <DoseEvidenceBrief context={context} onNavigate={onNavigate} compact/>
     <PlannedRealizedBrief context={context} onNavigate={onNavigate} compact/>
