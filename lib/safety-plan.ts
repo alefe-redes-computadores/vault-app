@@ -1,4 +1,12 @@
 /** Plano pessoal voluntário. Armazenamento local não é criptografado: não compartilhar o aparelho desbloqueado. */
+export type TrustedContactChannel = "call" | "sms" | "none";
+export interface TrustedContact {
+  id: string;
+  name: string;
+  relationship: string;
+  phone: string;
+  preferredChannel: TrustedContactChannel;
+}
 export interface SafetyPlan {
   warningSigns: string;
   copingSteps: string;
@@ -6,11 +14,12 @@ export interface SafetyPlan {
   trustedPeople: string;
   professionalContacts: string;
   saferEnvironment: string;
+  trustedContacts: TrustedContact[];
   updatedAt: string;
 }
 export const EMPTY_SAFETY_PLAN: SafetyPlan = {
   warningSigns: "", copingSteps: "", reasonsToStay: "", trustedPeople: "",
-  professionalContacts: "", saferEnvironment: "", updatedAt: "",
+  professionalContacts: "", saferEnvironment: "", trustedContacts: [], updatedAt: "",
 };
 const FIELDS = ["warningSigns", "copingSteps", "reasonsToStay", "trustedPeople", "professionalContacts", "saferEnvironment"] as const;
 // Apenas para migração CONSCIENTE; nunca carregar automaticamente a chave legada sem escopo de conta.
@@ -29,6 +38,9 @@ function parsePlan(value: unknown): SafetyPlan | null {
   const entry = value as Record<string, unknown>;
   if (FIELDS.some(field => entry[field] !== undefined && typeof entry[field] !== "string")) return null;
   if (entry.updatedAt !== undefined && typeof entry.updatedAt !== "string") return null;
+  const trustedContacts = Array.isArray(entry.trustedContacts)
+    ? entry.trustedContacts.map(normalizeTrustedContact).filter((item): item is TrustedContact => Boolean(item)).slice(0, 12)
+    : [];
   return {
     warningSigns: entry.warningSigns as string || "",
     copingSteps: entry.copingSteps as string || "",
@@ -36,8 +48,19 @@ function parsePlan(value: unknown): SafetyPlan | null {
     trustedPeople: entry.trustedPeople as string || "",
     professionalContacts: entry.professionalContacts as string || "",
     saferEnvironment: entry.saferEnvironment as string || "",
+    trustedContacts,
     updatedAt: entry.updatedAt as string || "",
   };
+}
+export function normalizeTrustedContact(value: unknown): TrustedContact | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row=value as Record<string,unknown>;
+  const name=typeof row.name==="string"?row.name.trim().slice(0,80):"";
+  const relationship=typeof row.relationship==="string"?row.relationship.trim().slice(0,80):"";
+  const phone=typeof row.phone==="string"?row.phone.replace(/[^\d+]/g,"").slice(0,20):"";
+  const preferredChannel:TrustedContactChannel=row.preferredChannel==="call"||row.preferredChannel==="sms"?row.preferredChannel:"none";
+  if(!name)return null;
+  return {id:typeof row.id==="string"&&row.id.trim()?row.id.slice(0,80):`contact-${Date.now()}`,name,relationship,phone,preferredChannel:phone?preferredChannel:"none"};
 }
 function freshEmpty(): SafetyPlan { return {...EMPTY_SAFETY_PLAN}; }
 export function hasScopedSafetyPlan(personId?: string | null, userId?: string | null): boolean {
@@ -65,6 +88,37 @@ export function saveSafetyPlan(personId: string, plan: SafetyPlan, userId?: stri
   next.updatedAt = new Date().toISOString();
   localStorage.setItem(ownerKey(personId,userId!),JSON.stringify(next));
   return next;
+}
+
+const protectedKey=(personId:string,userId:string)=>`vault:safety-plan:m114:protected:${encodeURIComponent(userId)}:${encodeURIComponent(personId)}`;
+export function hasProtectedSafetyPlan(personId?:string|null,userId?:string|null):boolean{
+  if(typeof window==="undefined"||!validScope(personId,userId))return false;
+  try{return localStorage.getItem(protectedKey(personId!,userId!))!==null;}catch{return false;}
+}
+export async function protectSafetyPlan(personId:string,userId:string,plan:SafetyPlan,passphrase:string):Promise<void>{
+  if(typeof window==="undefined"||!validScope(personId,userId))throw Error("Escopo ausente.");
+  const {sealPrivateJsonM114,openPrivateJsonM114}=await import("@/lib/private-local-vault-m114");
+  const envelope=await sealPrivateJsonM114("safety-plan",userId,personId,plan,passphrase);
+  const finalKey=protectedKey(personId,userId),temporaryKey=`${finalKey}:pending`;
+  localStorage.setItem(temporaryKey,JSON.stringify(envelope));
+  try{
+    const pending=JSON.parse(localStorage.getItem(temporaryKey)??"");
+    const verified=await openPrivateJsonM114<SafetyPlan>("safety-plan",userId,personId,pending,passphrase);
+    if(!parsePlan(verified))throw Error("Falha ao verificar cópia protegida.");
+    localStorage.setItem(finalKey,JSON.stringify(pending));
+    localStorage.removeItem(ownerKey(personId,userId));
+  }finally{localStorage.removeItem(temporaryKey);}
+}
+export async function unlockSafetyPlan(personId:string,userId:string,passphrase:string):Promise<SafetyPlan>{
+  if(typeof window==="undefined"||!validScope(personId,userId))throw Error("Escopo ausente.");
+  const raw=localStorage.getItem(protectedKey(personId,userId));if(!raw)throw Error("Plano protegido não encontrado.");
+  const {openPrivateJsonM114}=await import("@/lib/private-local-vault-m114");
+  const plan=await openPrivateJsonM114<SafetyPlan>("safety-plan",userId,personId,JSON.parse(raw),passphrase);
+  const parsed=parsePlan(plan);if(!parsed)throw Error("Plano protegido inválido.");return parsed;
+}
+export async function saveProtectedSafetyPlan(personId:string,userId:string,plan:SafetyPlan,passphrase:string):Promise<SafetyPlan>{
+  const next=parsePlan({...plan,updatedAt:new Date().toISOString()});if(!next)throw Error("Plano inválido.");
+  await protectSafetyPlan(personId,userId,next,passphrase);return next;
 }
 /** Só deve ser chamada após confirmação explícita do usuário de que o arquivo v1 é seu. */
 export function importLegacySafetyPlan(personId: string, userId?: string | null): SafetyPlan | null {

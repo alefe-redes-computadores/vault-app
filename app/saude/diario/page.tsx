@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
 import { buildPatternTimelineM113 } from "@/lib/health-intelligence/pattern-timeline-m113";
-import { eraseJournalM113, readJournalM113, saveJournalM113, therapySummaryM113, MAX_JOURNAL_ENTRIES, type M113DiaryEntry } from "@/lib/private-journal-m113";
+import { eraseJournalM113, eraseProtectedJournalM114, readJournalM113, saveJournalM113, therapySummaryM113, hasProtectedJournalM114, protectJournalM114, unlockJournalM114, saveProtectedJournalM114, MAX_JOURNAL_ENTRIES, type M113DiaryEntry } from "@/lib/private-journal-m113";
 
 const dateLabel = (stamp:string) => {const d=new Date(stamp);return Number.isFinite(d.getTime())?d.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"}):"Registro sem data";};
 export default function PersonalTherapyJournalM113(){
@@ -18,15 +18,16 @@ export default function PersonalTherapyJournalM113(){
   const [draft,setDraft]=useState(""),[entries,setEntries]=useState<M113DiaryEntry[]>([]);
   const [consent,setConsent]=useState(false),[selected,setSelected]=useState<string[]>([]),[includeTimeline,setIncludeTimeline]=useState(false);
   const [feedback,setFeedback]=useState("");
+  const [protectedMode,setProtectedMode]=useState(false),[unlocked,setUnlocked]=useState(true),[passphrase,setPassphrase]=useState(""),[privacyBusy,setPrivacyBusy]=useState(false);
   const ready=Boolean(user?.id&&activePersonId);
   useEffect(()=>{
     setDraft("");setConsent(false);setSelected([]);setIncludeTimeline(false);setFeedback("");
-    setEntries(readJournalM113(user?.id,activePersonId));
+    const isProtected=hasProtectedJournalM114(user?.id,activePersonId);setProtectedMode(isProtected);setUnlocked(!isProtected);setPassphrase("");setEntries(isProtected?[]:readJournalM113(user?.id,activePersonId));
   },[user?.id,activePersonId]);
   const timeline=useMemo(()=>ready&&!health.error&&!health.isLoading&&health.context&&health.context.userId===user?.id&&health.context.personId===activePersonId
     ? buildPatternTimelineM113(health.context):null,[ready,health.error,health.isLoading,health.context,user?.id,activePersonId]);
   const summary=useMemo(()=>therapySummaryM113(entries,selected,includeTimeline?timeline:null),[entries,selected,includeTimeline,timeline]);
-  function save(){
+  async function save(){
     if(!user?.id||!activePersonId){setFeedback("Entre na conta e selecione uma pessoa.");return;}
     if(!consent){setFeedback("Marque o consentimento para guardar texto não criptografado neste dispositivo.");return;}
     const text=draft.trim();
@@ -34,19 +35,21 @@ export default function PersonalTherapyJournalM113(){
     if(entries.length>=MAX_JOURNAL_ENTRIES){setFeedback("Limite de entradas neste aparelho. Exclua entradas antigas antes de salvar.");return;}
     try{
       const id=`entry_${Date.now()}_${Math.random().toString(36).slice(2,11)}`;
-      const saved=saveJournalM113(user.id,activePersonId,[{id,createdAt:new Date().toISOString(),text},...entries],true);
+      const saved=protectedMode?await saveProtectedJournalM114(user.id,activePersonId,[{id,createdAt:new Date().toISOString(),text},...entries],passphrase):saveJournalM113(user.id,activePersonId,[{id,createdAt:new Date().toISOString(),text},...entries],true);
       setEntries(saved);setSelected(current=>[id,...current]);setDraft("");setFeedback("Salvo somente neste dispositivo. Não sincronizado e não compartilhado.");
     }catch{setFeedback("Não foi possível salvar. O texto continua no editor.");}
   }
-  function remove(id:string){
+  async function remove(id:string){
     if(!user?.id||!activePersonId)return;
     const rest=entries.filter(e=>e.id!==id);
-    try{setEntries(saveJournalM113(user.id,activePersonId,rest,true));setSelected(v=>v.filter(x=>x!==id));setFeedback("Entrada excluída do armazenamento deste dispositivo.");}
+    try{setEntries(protectedMode?await saveProtectedJournalM114(user.id,activePersonId,rest,passphrase):saveJournalM113(user.id,activePersonId,rest,true));setSelected(v=>v.filter(x=>x!==id));setFeedback("Entrada excluída do armazenamento deste dispositivo.");}
     catch{setFeedback("Não foi possível excluir agora.");}
   }
+  async function unlock(){if(!user?.id||!activePersonId)return;setPrivacyBusy(true);try{setEntries(await unlockJournalM114(user.id,activePersonId,passphrase));setUnlocked(true);setFeedback("Diário desbloqueado somente nesta tela.");}catch{setFeedback("Não foi possível desbloquear. Confira a frase; o arquivo foi preservado.");}finally{setPrivacyBusy(false);}}
+  async function enableProtection(){if(!user?.id||!activePersonId||passphrase.length<10){setFeedback("Use uma frase com pelo menos 10 caracteres.");return;}setPrivacyBusy(true);try{await protectJournalM114(user.id,activePersonId,entries,passphrase);setProtectedMode(true);setUnlocked(true);setConsent(true);setFeedback("Proteção local ativada. A cópia aberta foi removida somente após verificação.");}catch{setFeedback("A proteção não foi concluída; as notas atuais foram preservadas.");}finally{setPrivacyBusy(false);}}
   function clearAll(){
     if(!user?.id||!activePersonId||!window.confirm("Excluir TODAS as notas deste aparelho para esta pessoa? Essa ação não pode ser desfeita."))return;
-    try{eraseJournalM113(user.id,activePersonId);setEntries([]);setSelected([]);setFeedback("Todas as notas locais desta pessoa foram excluídas.");}catch{setFeedback("Não foi possível excluir.");}
+    try{if(protectedMode)eraseProtectedJournalM114(user.id,activePersonId);else eraseJournalM113(user.id,activePersonId);setEntries([]);setSelected([]);setProtectedMode(false);setUnlocked(true);setPassphrase("");setFeedback("Todas as notas locais desta pessoa foram excluídas.");}catch{setFeedback("Não foi possível excluir.");}
   }
   async function copySummary(){
     if(!summary){setFeedback("Selecione notas ou a cronologia antes de preparar o resumo.");return;}
@@ -56,12 +59,15 @@ export default function PersonalTherapyJournalM113(){
   return <main className="min-h-screen bg-void px-4 pb-28 pt-5 header-safe-top text-ink-primary">
     <div className="mx-auto max-w-2xl space-y-3">
       <header className="flex items-start gap-3"><button onClick={()=>router.push("/inteligencia/alertas")} aria-label="Voltar" className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={18}/></button><div><p className="text-[10px] font-bold uppercase tracking-[.17em] text-violet-300">VAULT · Expressão emocional</p><h1 className="mt-1 text-xl font-bold">Diário para conversas difíceis</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Escreva com suas palavras. O aplicativo não interpreta, diagnostica ou envia este texto automaticamente.</p></div></header>
+      {protectedMode&&!unlocked?<section className="rounded-[22px] border border-violet-300/25 bg-surface p-4"><h2 className="flex items-center gap-2 text-sm font-bold"><LockKeyhole size={18} className="text-violet-200"/>Diário protegido neste aparelho</h2><p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Digite sua frase. Ela não é salva e não existe recuperação automática.</p><input type="password" autoComplete="current-password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm" placeholder="Frase de proteção"/><button type="button" onClick={()=>void unlock()} disabled={privacyBusy||passphrase.length<10} className="mt-2 min-h-12 w-full rounded-xl bg-violet-300 font-bold text-void disabled:opacity-40">Desbloquear localmente</button><p className="mt-2 text-[10px] text-ink-faint">A proteção vale para o conteúdo em repouso; mantenha também o bloqueio do aparelho.</p></section>:null}
+      {!protectedMode&&unlocked?<details className="rounded-[18px] border border-violet-300/20 bg-violet-300/[.035] px-3"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-xs font-bold text-violet-200"><LockKeyhole size={16}/>Proteger notas com frase secreta</summary><div className="space-y-2 border-t border-surface-border/50 py-3"><p className="text-[11px] leading-relaxed text-ink-muted">A frase não é armazenada. Esquecê-la significa perder o acesso às notas cifradas.</p><input type="password" autoComplete="new-password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} className="min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm" placeholder="No mínimo 10 caracteres"/><button type="button" onClick={()=>void enableProtection()} disabled={privacyBusy||passphrase.length<10} className="min-h-12 w-full rounded-xl border border-violet-300/30 text-xs font-bold text-violet-200 disabled:opacity-40">Cifrar, verificar e remover cópia aberta</button></div></details>:null}
+      {protectedMode&&!unlocked?null:<>
       <section className="rounded-[22px] border border-violet-300/20 bg-surface p-4">
         <div className="flex items-center gap-2"><NotebookPen size={19} className="text-violet-300"/><h2 className="text-sm font-bold">O que você gostaria de conseguir explicar?</h2></div>
         <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Pode escrever sobre o dia, situações difíceis, algo que ajudou ou o que deseja conversar na próxima consulta. Você decide o conteúdo.</p>
         <textarea value={draft} onChange={e=>setDraft(e.target.value.slice(0,6000))} disabled={!ready} rows={6} placeholder="Hoje eu gostaria de conseguir dizer que…" aria-label="Meu texto privado" className="mt-3 w-full resize-y rounded-xl border border-surface-border bg-surface-raised p-3 text-sm leading-relaxed text-ink-primary outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-50"/>
         <p className="mt-1 text-right font-mono text-[10px] text-ink-muted">{draft.length}/6000</p>
-        <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.04] p-3 text-[11px] leading-relaxed text-ink-muted"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-0.5 size-4 accent-violet-300"/><span><strong>Autorizo salvar somente neste aparelho.</strong> As notas ficam no armazenamento local do navegador, <strong>sem criptografia</strong>. Quem acessar o aparelho desbloqueado poderá ter acesso a elas. Não há sincronização nem backup automático.</span></label>
+        <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.04] p-3 text-[11px] leading-relaxed text-ink-muted"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-0.5 size-4 accent-violet-300"/><span><strong>Autorizo salvar somente neste aparelho.</strong> {protectedMode?"As notas usam criptografia local com a frase desta sessão; ela não é salva.":"Sem a criptografia opcional, ficam abertas no armazenamento local."} Quem acessar o aplicativo já desbloqueado poderá vê-las. Não há sincronização nem backup automático.</span></label>
         <button type="button" onClick={save} disabled={!ready||!draft.trim()||!consent} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-300 px-3 text-sm font-bold text-void disabled:opacity-40"><Check size={17}/> Salvar nota localmente</button>
       </section>
       <section className="rounded-[22px] border border-surface-border bg-surface p-4" aria-label="Notas locais privadas">
@@ -76,7 +82,7 @@ export default function PersonalTherapyJournalM113(){
         <button type="button" onClick={()=>void copySummary()} disabled={!summary} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-300/10 text-xs font-bold text-emerald-200 disabled:opacity-40"><ClipboardCopy size={16}/> Copiar resumo escolhido</button>
       </section>
       <section className="rounded-2xl border border-rose-300/15 bg-rose-300/[.04] p-3"><p className="flex items-start gap-2 text-[11px] leading-relaxed text-ink-muted"><ShieldAlert size={16} className="mt-0.5 shrink-0 text-rose-200"/><span>Se precisar de ajuda agora, um diário não substitui apoio presencial. Seu plano de segurança fica separado destas notas. Em risco imediato, procure emergência (SAMU 192).</span></p><button type="button" onClick={()=>router.push("/saude/plano-seguranca")} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-300/20 text-xs font-bold text-rose-200"><HeartHandshake size={16}/> Abrir plano pessoal de segurança</button></section>
-      <p className="flex gap-2 text-[10px] leading-relaxed text-ink-faint"><LockKeyhole size={14} className="shrink-0"/> Sem envio automático, sem leitura pelo Brain, sem criptografia em repouso. Para informações muito sensíveis, prefira não salvar em um aparelho compartilhado.</p>
+      <p className="flex gap-2 text-[10px] leading-relaxed text-ink-faint"><LockKeyhole size={14} className="shrink-0"/> Sem envio automático e sem leitura pelo Brain. {protectedMode?"Protegido em repouso por frase secreta nesta pessoa e conta; a tela desbloqueada continua exigindo cuidado.":"Sem proteção criptográfica enquanto você não ativar a opção acima."}</p></>}
       {feedback&&<p role="status" className="rounded-xl border border-violet-300/20 p-3 text-xs text-violet-200">{feedback}</p>}
     </div>
   </main>;

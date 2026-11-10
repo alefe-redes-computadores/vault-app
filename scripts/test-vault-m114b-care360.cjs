@@ -1,0 +1,12 @@
+const fs=require("fs"),assert=require("assert");
+const read=p=>fs.readFileSync(p,"utf8");
+const safety=read("lib/safety-plan.ts"),page=read("app/saude/plano-seguranca/page.tsx"),contacts=read("components/saude/TrustedContactsM114.tsx");
+assert(safety.includes("trustedContacts: TrustedContact[]")&&safety.includes("normalizeTrustedContact"));
+assert(page.includes("TrustedContactsM114")&&contacts.includes("O VAULT nunca liga nem envia mensagens sozinho"));
+assert(contacts.includes("tel:${contact.phone}")&&contacts.includes("sms:${contact.phone}"));
+const domain=read("lib/health-reminders/domain.ts"),scheduler=read("lib/health-reminders/scheduler.ts");
+assert(domain.includes('health_record:humor')&&domain.includes("sem interpretar ausência"));
+assert(scheduler.includes('privateCheckIn')&&scheduler.includes('Lembrete do Vault')&&scheduler.includes('atividade que você configurou'));
+const home=read("components/home/HomeCommandCenter.tsx");
+assert(home.includes("Modo Essencial")&&home.includes('vault:home:essential:v1')&&home.includes("!essential?<ClinicalDisclosure"));
+console.log("VAULT M114 B: contatos explícitos, check-in privado e mesma Home em modo essencial OK.");

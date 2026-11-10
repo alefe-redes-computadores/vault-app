@@ -113,10 +113,14 @@ export async function reconcileHealthReminderNotifications(
     .flatMap((rule) => occurrences(rule).map((at) => ({ rule, at })))
     .sort((left, right) => left.at.getTime() - right.at.getTime())
     .slice(0, MAX_PENDING)
-    .map(({ rule, at }) => ({
+    .map(({ rule, at }) => {
+      const privateCheckIn=rule.target_type==="health_record:humor";
+      const title=privateCheckIn?"Lembrete do Vault":rule.title;
+      const body=privateCheckIn?"Abra o aplicativo para revisar uma atividade que você configurou.":rule.body||"Hora de registrar no Vault.";
+      return ({
       id: notificationId(rule.id, at),
-      title: rule.title,
-      body: rule.body || "Hora de registrar no Vault.",
+      title,
+      body,
       channelId: CHANNEL_ID,
       schedule: { at, allowWhileIdle: true },
       extra: {
@@ -128,13 +132,13 @@ export async function reconcileHealthReminderNotifications(
         [VAULT_NOTIFICATION_FINGERPRINT]: vaultNotificationFingerprint([
           rule.id,
           rule.person_id,
-          rule.title,
-          rule.body,
+          title,
+          body,
           rule.target_route,
           at.getTime(),
         ]),
       },
-    }));
+    });});
 
   await reconcileVaultNotificationSet(notifications, owns);
   return { native: true, permission, scheduled: notifications.length };

@@ -11,6 +11,7 @@ export const HEALTH_REMINDER_TARGETS = [
   { type: "health_record:agua", route: "/saude/hidratacao", label: "Registrar hidratação", description: "Abre os atalhos e o histórico de água." },
   { type: "health_record:medicao", route: "/saude/registros/novo?preset=medicao", label: "Registrar medição", description: "Abre um novo registro já preparado para uma medição." },
   { type: "health_record:sintoma", route: "/saude/registros/novo?preset=sintoma", label: "Registrar sintoma", description: "Abre um novo registro já preparado para um sintoma." },
+  { type: "health_record:humor", route: "/saude/registros/novo?preset=humor", label: "Check-in opcional", description: "Abre um registro de como você se sente, sem interpretar ausência." },
 ] as const;
 
 export type HealthReminderTargetType = typeof HEALTH_REMINDER_TARGETS[number]["type"];

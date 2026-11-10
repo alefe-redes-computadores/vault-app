@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
@@ -23,6 +24,9 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
+  const [essential,setEssential]=useState(false);
+  useEffect(()=>{try{setEssential(localStorage.getItem("vault:home:essential:v1")==="1");}catch{}},[]);
+  const toggleEssential=()=>setEssential(value=>{const next=!value;try{localStorage.setItem("vault:home:essential:v1",next?"1":"0");}catch{}return next;});
 
   return (
     <section className="vault-deferred-lg space-y-3" aria-label="Central do Vault">
@@ -30,6 +34,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações principais primeiro; demais áreas sob demanda</p></div>
         <Stethoscope size={16} className="text-ink-muted"/>
       </div>
+      <button type="button" aria-pressed={essential} onClick={toggleEssential} className="flex min-h-11 w-full items-center justify-between rounded-2xl border border-surface-border bg-surface px-3 text-left"><span><strong className="block text-xs text-ink-primary">Modo Essencial</strong><span className="block text-[10px] text-ink-muted">{essential?"Somente ações principais":"Mostrar todas as áreas"}</span></span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${essential?"bg-emerald-300 text-void":"bg-surface-raised text-ink-muted"}`}>{essential?"ATIVO":"OPCIONAL"}</span></button>
 
       <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-1.5" aria-label="Medicamentos, retiradas e fornecimento">
         <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-emerald-400/20 bg-surface px-3 py-3 w-full text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
@@ -39,19 +44,22 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <HomeSupplyAccessTiles onNavigate={go} withdrawalPath="/saude/retiradas" supplyPath="/saude/fornecimento" />
       </div>
 
-      <ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
+      <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-12 w-full items-center gap-2.5 rounded-[18px] border border-rose-300/20 bg-rose-300/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-200">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-rose-300/10 text-rose-200"><BookHeart size={17}/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Apoio humano e plano pessoal</strong><span className="block text-[10px] text-ink-muted">Contatos escolhidos, CVV 188 e SAMU 192</span></span><ChevronRight size={15} className="text-rose-200"/>
+      </button>
+
+      {!essential?<ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
         {() => <div className="grid min-w-0 grid-cols-2 gap-2.5">
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
           <HomeClinicalAreaTile label="Cirurgias" description="Procedimentos" path="/saude/cirurgias" Icon={ReceiptText} tone="border-rose-400/20 bg-rose-400/[0.06] text-rose-300" onNavigate={go} />
-          <HomeClinicalAreaTile label="Plano de segurança" description="Apoio e contatos" path="/saude/plano-seguranca" Icon={BookHeart} tone="border-rose-300/20 bg-rose-300/[0.055] text-rose-200" onNavigate={go} />
         </div>}
-      </ClinicalDisclosure>
+      </ClinicalDisclosure>:null}
 
-      <ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>} iconClassName="text-amber-300">
+      {!essential?<ClinicalDisclosure id="home-organizacao" title="Organização do cuidado" description="Documentos, custos e rede clínica" icon={<FileText size={18}/>} iconClassName="text-amber-300">
         {() => <div className="space-y-2"><HomeCareOrganizationTiles onNavigate={go} gastoMes={gastoMes} diferencaMes={diferencaMes} totalRede={totalRede}
           documentPath="/saude/documentos" purchasePath="/saude/renovacao" networkPath="/saude/rede" networkTone="text-emerald-300/80" />
         <button type="button" onClick={() => go("/ajuda?topico=home")} className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/35 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como usar a Home e organizar o cuidado</button></div>}
-      </ClinicalDisclosure>
+      </ClinicalDisclosure>:null}
     </section>
   );
 }

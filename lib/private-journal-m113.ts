@@ -34,6 +34,36 @@ export function eraseJournalM113(user:string,person:string):void{
   if(typeof window==="undefined"||!validScope(user,person))throw Error("Identificação ausente.");
   localStorage.removeItem(journalKeyM113(user,person));
 }
+const protectedJournalKey=(user:string,person:string)=>`vault:private-journal:m114:protected:${encodeURIComponent(user)}:${encodeURIComponent(person)}`;
+export function hasProtectedJournalM114(user?:string|null,person?:string|null):boolean{
+  if(typeof window==="undefined"||!validScope(user,person))return false;try{return localStorage.getItem(protectedJournalKey(user!,person!))!==null;}catch{return false;}
+}
+export async function protectJournalM114(user:string,person:string,entries:readonly M113DiaryEntry[],passphrase:string):Promise<void>{
+  if(typeof window==="undefined"||!validScope(user,person)||entries.some(e=>!validEntry(e)))throw Error("Diário inválido.");
+  const {sealPrivateJsonM114,openPrivateJsonM114}=await import("@/lib/private-local-vault-m114");
+  const envelope=await sealPrivateJsonM114("private-journal",user,person,entries,passphrase);
+  const finalKey=protectedJournalKey(user,person),temporaryKey=`${finalKey}:pending`;
+  localStorage.setItem(temporaryKey,JSON.stringify(envelope));
+  try{
+    const pending=JSON.parse(localStorage.getItem(temporaryKey)??"");
+    const verified=fresh(await openPrivateJsonM114<unknown>("private-journal",user,person,pending,passphrase));
+    if(verified.length!==entries.length)throw Error("Falha ao verificar cópia protegida.");
+    localStorage.setItem(finalKey,JSON.stringify(pending));
+    localStorage.removeItem(journalKeyM113(user,person));
+  }finally{localStorage.removeItem(temporaryKey);}
+}
+export async function unlockJournalM114(user:string,person:string,passphrase:string):Promise<M113DiaryEntry[]>{
+  if(typeof window==="undefined"||!validScope(user,person))throw Error("Escopo ausente.");
+  const raw=localStorage.getItem(protectedJournalKey(user,person));if(!raw)throw Error("Diário protegido não encontrado.");
+  const {openPrivateJsonM114}=await import("@/lib/private-local-vault-m114");
+  return fresh(await openPrivateJsonM114<unknown>("private-journal",user,person,JSON.parse(raw),passphrase));
+}
+export async function saveProtectedJournalM114(user:string,person:string,entries:readonly M113DiaryEntry[],passphrase:string):Promise<M113DiaryEntry[]>{
+  const next=entries.map(e=>({...e})).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||a.id.localeCompare(b.id));await protectJournalM114(user,person,next,passphrase);return next;
+}
+export function eraseProtectedJournalM114(user:string,person:string):void{
+  if(typeof window==="undefined"||!validScope(user,person))throw Error("Identificação ausente.");localStorage.removeItem(protectedJournalKey(user,person));
+}
 /** Explicit selection, no names, no diagnostics, no automatic upload or sharing. */
 export function therapySummaryM113(entries:readonly M113DiaryEntry[],selectedIds:readonly string[],timeline?:M113Timeline|null):string{
   const selected=new Set(selectedIds);

@@ -797,7 +797,7 @@ export default function HomePage() {
         ) {
           return {
             eyebrow:
-              "Tudo sob controle",
+              "Registros disponíveis",
 
             title:
               "Rotina em dia",
@@ -818,13 +818,13 @@ export default function HomePage() {
 
         return {
           eyebrow:
-            "Tudo sob controle",
+            "Registros disponíveis",
 
           title:
-            "Seu dia está tranquilo",
+            "Nenhuma pendência identificada",
 
           description:
-            "Nenhuma pendência clínica pede atenção agora.",
+            "Nenhuma pendência foi identificada nos registros disponíveis. Isso não confirma ausência de necessidade ou sofrimento.",
 
           color:
             "#34D399",
