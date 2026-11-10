@@ -7,6 +7,8 @@ const moduleObject={exports:{}};
 new Function('module','exports','require',output)(moduleObject,moduleObject.exports,(id)=> {
   if(id.includes('dose-quantity-safety')) return {assessDoseQuantitySafety:()=>({level:'normal'})};
   if(id.includes('medication-longitudinal-risk')) return {buildMedicationLongitudinalRiskInsights:()=>[]};
+  // M112: this M104 harness tests quantity handling; V5.2 has an independent behavior suite.
+  if(id.includes('brain-v52-context')) return {buildBrainV52ContextInsights:()=>[]};
   throw new Error('Import inesperado: '+id);
 });
 const {buildMedicationSafetyInsights}=moduleObject.exports;

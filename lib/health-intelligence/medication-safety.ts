@@ -1,6 +1,7 @@
 import type { HealthInsight, HealthInsightContext } from "@/lib/health-insights";
 import { assessDoseQuantitySafety } from "@/lib/health-intelligence/dose-quantity-safety";
 import { buildMedicationLongitudinalRiskInsights } from "@/lib/health-intelligence/medication-longitudinal-risk";
+import { buildBrainV52ContextInsights } from "@/lib/health-intelligence/brain-v52-context";
 
 type Medication = HealthInsightContext["medicamentos"][number];
 type Dose = HealthInsightContext["doseLogs"][number];
@@ -433,5 +434,7 @@ export function buildMedicationSafetyInsights(context: HealthInsightContext): He
   const serotonergicCombination = buildSerotonergicCombination(scoped, now);
   // VAULT_BRAIN_V5_3_LONGITUDINAL_MEDICATION_RISK
   const longitudinalMedicationRisk = buildMedicationLongitudinalRiskInsights(scoped, now);
-  return [...quantityAlerts, ...scheduleAlerts, ...(opioidCombination ? [opioidCombination] : []), ...(!opioidCombination && combination ? [combination] : []), ...(serotonergicCombination ? [serotonergicCombination] : []), ...longitudinalMedicationRisk, ...patterns];
+  // M112 V5.2: independent, owner-scoped, explicit temporal associations; no clinical writes.
+  const brainV52Insights = buildBrainV52ContextInsights(scoped);
+  return [...quantityAlerts, ...scheduleAlerts, ...(opioidCombination ? [opioidCombination] : []), ...(!opioidCombination && combination ? [combination] : []), ...(serotonergicCombination ? [serotonergicCombination] : []), ...longitudinalMedicationRisk, ...brainV52Insights, ...patterns];
 }
