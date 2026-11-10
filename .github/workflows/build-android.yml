@@ -117,6 +117,11 @@ jobs:
       - name: Configurar alarmes exatos M99 com autorização especial
         run: node scripts/patch-android-exact-alarms-m99.mjs
 
+      - name: Integrar atualização nativa segura M111
+        run: |
+          node scripts/apply-android-native-updater-m111.mjs
+          node scripts/check-android-native-updater-m111.mjs
+
       - name: Instalar ícone de notificações Android
         run: |
           test -f assets/android/ic_stat_vault.xml
@@ -301,6 +306,8 @@ jobs:
           test -s "$APK"
           cp "$APK" "$DIR/Vault-App.apk"
           SHA256="$(sha256sum "$DIR/Vault-App.apk" | awk '{print $1}')"
+          CERT_SHA256="$(keytool -exportcert -keystore "$RUNNER_TEMP/vault-debug.keystore" -alias androiddebugkey -storepass android | sha256sum | awk '{print $1}')"
+          test "${#CERT_SHA256}" -eq 64
           VERSION="$(node -p 'require("./package.json").version')"
           COMMIT_SUBJECT="$(git log -1 --pretty=%s | tr '\n' ' ' | cut -c1-160)"
           {
@@ -308,6 +315,8 @@ jobs:
             echo "VAULT_BUILD=$GITHUB_RUN_NUMBER"
             echo "VAULT_COMMIT=$GITHUB_SHA"
             echo "VAULT_APK_SHA256=$SHA256"
+            echo "VAULT_APP_ID=com.alefejohsefe.vault"
+            echo "VAULT_CERT_SHA256=$CERT_SHA256"
             echo
             echo '## Novidades'
             printf -- '- %s\n' "$COMMIT_SUBJECT"

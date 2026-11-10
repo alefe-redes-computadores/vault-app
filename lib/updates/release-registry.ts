@@ -9,6 +9,9 @@ export type VaultApprovedRelease = {
   version: string;
   commit: string;
   checksum: string;
+  /** Present on releases built with the M111 native contract. */
+  appId?: string | null;
+  signerSha256?: string | null;
   apkUrl: string;
   releaseUrl: string;
   publishedAt: string;
@@ -57,6 +60,10 @@ export function parseVaultApprovedRelease(raw: unknown): VaultApprovedRelease | 
   const version = field("VAULT_VERSION");
   const commit = field("VAULT_COMMIT");
   const checksum = field("VAULT_APK_SHA256");
+  const appId = field("VAULT_APP_ID");
+  const signerSha256 = field("VAULT_CERT_SHA256");
+  // Older certified releases remain visible; only M111 metadata enables native installation.
+  if ((appId && appId !== "com.alefejohsefe.vault") || (signerSha256 && !validSha256(signerSha256))) return null;
   if (!/^\d+\.\d+\.\d+$/.test(version) || !validSha(commit) || !validSha256(checksum)) return null;
   if (field("VAULT_BUILD") !== String(build)) return null;
   if (text(r.target_commitish) !== commit) return null;
@@ -68,7 +75,9 @@ export function parseVaultApprovedRelease(raw: unknown): VaultApprovedRelease | 
   const highlights = newSection.split(/^## /m)[0].split(/\r?\n/)
     .filter(line => /^- /u.test(line)).map(line => line.slice(2).trim())
     .filter(Boolean).slice(0, 4).map(item => item.slice(0, 160));
-  return {tag, build, version, commit, checksum: checksum.toLowerCase(), apkUrl, releaseUrl, publishedAt, bytes, highlights};
+  return {tag, build, version, commit, checksum: checksum.toLowerCase(),
+    appId: appId || null, signerSha256: signerSha256 ? signerSha256.toLowerCase() : null,
+    apkUrl, releaseUrl, publishedAt, bytes, highlights};
 }
 
 export function parseVaultWorkflowRun(raw: unknown): VaultWorkflowRun | null {

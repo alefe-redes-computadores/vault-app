@@ -399,6 +399,7 @@ const contracts = [
   "scripts/test-vault-m109-medication-list-density.cjs",
   "scripts/test-vault-m110-home-today.cjs",
   "scripts/test-vault-m107-closure.cjs",
+  "scripts/test-vault-m111-native-updates.cjs",
 ];
 
 for (const contract of contracts) {
