@@ -1,7 +1,7 @@
 /**
  * VAULT M113 · Diário opcional e exclusivamente local, sem backend.
- * ATENÇÃO: localStorage NÃO é criptografado. O usuário deve aceitar isso
- * explicitamente antes de salvar. Nenhuma análise automática do texto.
+ * O formato legado permanece aberto localmente. A proteção M114 usa envelope
+ * cifrado opt-in e só remove a cópia aberta depois de verificá-lo.
  */
 import type { M113Timeline } from "@/lib/health-intelligence/pattern-timeline-m113";
 export type M113DiaryEntry={id:string;createdAt:string;text:string};

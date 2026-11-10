@@ -1,4 +1,4 @@
-/** Plano pessoal voluntário. Armazenamento local não é criptografado: não compartilhar o aparelho desbloqueado. */
+/** Plano voluntário: pode permanecer aberto localmente ou usar o envelope cifrado opt-in M114. */
 export type TrustedContactChannel = "call" | "sms" | "none";
 export interface TrustedContact {
   id: string;

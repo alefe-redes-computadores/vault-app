@@ -24,12 +24,23 @@ export default function PersonalTherapyJournalM113(){
     setDraft("");setConsent(false);setSelected([]);setIncludeTimeline(false);setFeedback("");
     const isProtected=hasProtectedJournalM114(user?.id,activePersonId);setProtectedMode(isProtected);setUnlocked(!isProtected);setPassphrase("");setEntries(isProtected?[]:readJournalM113(user?.id,activePersonId));
   },[user?.id,activePersonId]);
+  function lockProtectedSession(message="Diário bloqueado; use sua frase para abrir novamente."){
+    if(!protectedMode)return;
+    setEntries([]);setSelected([]);setDraft("");setIncludeTimeline(false);setConsent(false);setPassphrase("");setUnlocked(false);setFeedback(message);
+  }
+  useEffect(()=>{
+    if(!protectedMode||!unlocked)return;
+    const onVisibility=()=>{if(document.visibilityState!=="visible")lockProtectedSession("Diário bloqueado ao sair do aplicativo.");};
+    const onPageHide=()=>lockProtectedSession("Diário bloqueado ao sair do aplicativo.");
+    document.addEventListener("visibilitychange",onVisibility);window.addEventListener("pagehide",onPageHide);
+    return()=>{document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pagehide",onPageHide);};
+  },[protectedMode,unlocked]);
   const timeline=useMemo(()=>ready&&!health.error&&!health.isLoading&&health.context&&health.context.userId===user?.id&&health.context.personId===activePersonId
     ? buildPatternTimelineM113(health.context):null,[ready,health.error,health.isLoading,health.context,user?.id,activePersonId]);
   const summary=useMemo(()=>therapySummaryM113(entries,selected,includeTimeline?timeline:null),[entries,selected,includeTimeline,timeline]);
   async function save(){
     if(!user?.id||!activePersonId){setFeedback("Entre na conta e selecione uma pessoa.");return;}
-    if(!consent){setFeedback("Marque o consentimento para guardar texto não criptografado neste dispositivo.");return;}
+    if(!consent){setFeedback(protectedMode?"Confirme o salvamento cifrado somente neste aparelho.":"Confirme o salvamento aberto somente neste aparelho.");return;}
     const text=draft.trim();
     if(!text||text.length>6000){setFeedback("Escreva entre 1 e 6000 caracteres.");return;}
     if(entries.length>=MAX_JOURNAL_ENTRIES){setFeedback("Limite de entradas neste aparelho. Exclua entradas antigas antes de salvar.");return;}
@@ -61,6 +72,7 @@ export default function PersonalTherapyJournalM113(){
       <header className="flex items-start gap-3"><button onClick={()=>router.push("/inteligencia/alertas")} aria-label="Voltar" className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={18}/></button><div><p className="text-[10px] font-bold uppercase tracking-[.17em] text-violet-300">VAULT · Expressão emocional</p><h1 className="mt-1 text-xl font-bold">Diário para conversas difíceis</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Escreva com suas palavras. O aplicativo não interpreta, diagnostica ou envia este texto automaticamente.</p></div></header>
       {protectedMode&&!unlocked?<section className="rounded-[22px] border border-violet-300/25 bg-surface p-4"><h2 className="flex items-center gap-2 text-sm font-bold"><LockKeyhole size={18} className="text-violet-200"/>Diário protegido neste aparelho</h2><p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Digite sua frase. Ela não é salva e não existe recuperação automática.</p><input type="password" autoComplete="current-password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} className="mt-3 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm" placeholder="Frase de proteção"/><button type="button" onClick={()=>void unlock()} disabled={privacyBusy||passphrase.length<10} className="mt-2 min-h-12 w-full rounded-xl bg-violet-300 font-bold text-void disabled:opacity-40">Desbloquear localmente</button><p className="mt-2 text-[10px] text-ink-faint">A proteção vale para o conteúdo em repouso; mantenha também o bloqueio do aparelho.</p></section>:null}
       {!protectedMode&&unlocked?<details className="rounded-[18px] border border-violet-300/20 bg-violet-300/[.035] px-3"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-xs font-bold text-violet-200"><LockKeyhole size={16}/>Proteger notas com frase secreta</summary><div className="space-y-2 border-t border-surface-border/50 py-3"><p className="text-[11px] leading-relaxed text-ink-muted">A frase não é armazenada. Esquecê-la significa perder o acesso às notas cifradas.</p><input type="password" autoComplete="new-password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} className="min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm" placeholder="No mínimo 10 caracteres"/><button type="button" onClick={()=>void enableProtection()} disabled={privacyBusy||passphrase.length<10} className="min-h-12 w-full rounded-xl border border-violet-300/30 text-xs font-bold text-violet-200 disabled:opacity-40">Cifrar, verificar e remover cópia aberta</button></div></details>:null}
+      {protectedMode&&unlocked?<button type="button" onClick={()=>lockProtectedSession()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-300/25 text-xs font-bold text-violet-200"><LockKeyhole size={15}/>Bloquear diário agora</button>:null}
       {protectedMode&&!unlocked?null:<>
       <section className="rounded-[22px] border border-violet-300/20 bg-surface p-4">
         <div className="flex items-center gap-2"><NotebookPen size={19} className="text-violet-300"/><h2 className="text-sm font-bold">O que você gostaria de conseguir explicar?</h2></div>

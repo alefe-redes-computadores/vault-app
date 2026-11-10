@@ -42,6 +42,18 @@ export default function SafetyPlanPage() {
     setChanged(false);
     setSaved(false);
   }, [activePersonId, user?.id]);
+  function lockProtectedSession(message="Plano bloqueado; use sua frase para abrir novamente."){
+    if(!protectedMode)return;
+    setPlan({...EMPTY_SAFETY_PLAN,trustedContacts:[]});setPassphrase("");setUnlocked(false);setChanged(false);setSaved(false);setMode("consultar");
+    showToast(message,"success");
+  }
+  useEffect(()=>{
+    if(!protectedMode||!unlocked)return;
+    const onVisibility=()=>{if(document.visibilityState!=="visible")lockProtectedSession("Plano bloqueado ao sair do aplicativo.");};
+    const onPageHide=()=>lockProtectedSession("Plano bloqueado ao sair do aplicativo.");
+    document.addEventListener("visibilitychange",onVisibility);window.addEventListener("pagehide",onPageHide);
+    return()=>{document.removeEventListener("visibilitychange",onVisibility);window.removeEventListener("pagehide",onPageHide);};
+  },[protectedMode,unlocked]);
 
   function update(key: keyof SafetyPlan, value: string) {
     setChanged(true);
@@ -99,6 +111,7 @@ export default function SafetyPlanPage() {
 
         {!protectedMode&&unlocked?<details className="rounded-[18px] border border-violet-300/20 bg-violet-300/[.035] px-3"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-xs font-bold text-violet-200"><LockKeyhole size={16}/>Proteger este plano com frase secreta</summary><div className="space-y-2 border-t border-surface-border/50 py-3"><p className="text-[11px] leading-relaxed text-ink-muted">A frase não é armazenada. Se esquecê-la, o VAULT não consegue recuperar o conteúdo protegido.</p><input type="password" autoComplete="new-password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} className="min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm" placeholder="No mínimo 10 caracteres"/><button type="button" disabled={privacyBusy||passphrase.length<10} onClick={()=>void enableProtection()} className="min-h-12 w-full rounded-xl border border-violet-300/30 text-xs font-bold text-violet-200 disabled:opacity-40">Cifrar, verificar e remover cópia aberta</button></div></details>:null}
 
+        {protectedMode&&unlocked?<button type="button" onClick={()=>lockProtectedSession()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-300/25 text-xs font-bold text-violet-200"><LockKeyhole size={15}/>Bloquear plano agora</button>:null}
         {protectedMode&&!unlocked?null:<>
 
         {legacyAvailable ? <section aria-label="Recuperar plano anterior" className="rounded-2xl border border-amber-300/25 bg-amber-300/[.045] p-3.5">
@@ -117,7 +130,7 @@ export default function SafetyPlanPage() {
             <button type="button" aria-pressed={mode === "consultar"} onClick={() => setMode("consultar")} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold ${mode === "consultar" ? "border-violet-300/40 bg-violet-300/10 text-violet-200" : "border-surface-border text-ink-muted"}`}><ClipboardCheck size={15}/> Consultar</button>
             <button type="button" aria-pressed={mode === "editar"} onClick={() => setMode("editar")} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold ${mode === "editar" ? "border-violet-300/40 bg-violet-300/10 text-violet-200" : "border-surface-border text-ink-muted"}`}><Pencil size={15}/> Preencher</button>
           </div>
-          <div className="mt-3 flex items-start gap-2 text-[10px] text-ink-muted"><LockKeyhole size={13} className="mt-0.5 shrink-0"/><span>Dados guardados apenas neste aparelho, separados por conta e pessoa. O armazenamento local não é criptografado; não são enviados ao Brain nem compartilhados automaticamente.</span></div>
+          <div className="mt-3 flex items-start gap-2 text-[10px] text-ink-muted"><LockKeyhole size={13} className="mt-0.5 shrink-0"/><span>{protectedMode?"Conteúdo cifrado neste aparelho para esta conta e pessoa. A frase não é salva e a sessão bloqueia ao sair do aplicativo.":"Conteúdo aberto no armazenamento local deste aparelho enquanto a proteção opcional não for ativada; este modo não é criptografado."} Não é enviado ao Brain nem compartilhado automaticamente.</span></div>
         </section>
         <TrustedContactsM114 contacts={plan.trustedContacts} editing={mode==="editar"} onChange={trustedContacts=>{setPlan(current=>({...current,trustedContacts}));setChanged(true);setSaved(false);}}/>
         {mode === "consultar" ? (
