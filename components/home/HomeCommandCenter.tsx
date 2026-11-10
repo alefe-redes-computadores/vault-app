@@ -14,7 +14,7 @@ const clinical = [
   { label: "Minha saúde", sub: "Perfil, sono e medidas", path: "/saude/minha-saude", icon: HeartPulse, tone: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" },
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
   { label: "Exames", sub: "Pedidos e resultados", path: "/saude/exames", icon: FlaskConical, tone: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" },
-  { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
+  { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-ice/20 bg-ice/[0.06] text-ice" },
   { label: "Lembretes", sub: "Sua agenda de saúde", path: "/saude/lembretes", icon: Bell, tone: "border-amber-400/20 bg-amber-400/[0.06] text-amber-400" },
   { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/[0.06] text-coral" },
 ] as const;
@@ -31,7 +31,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <Stethoscope size={16} className="text-ink-muted"/>
       </div>
 
-      <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Medicamentos, retiradas e fornecimento">
+      <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-1.5" aria-label="Medicamentos, retiradas e fornecimento">
         <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-emerald-400/20 bg-surface px-3 py-3 w-full text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300" aria-hidden="true"><Pill size={19}/></span>
           <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-xs text-ink-muted">Rotina, estoque e histórico</span></span><ChevronRight size={17} className="shrink-0 text-emerald-300" aria-hidden="true"/>

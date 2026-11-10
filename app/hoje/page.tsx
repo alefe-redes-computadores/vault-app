@@ -393,6 +393,12 @@ export default function HojePage() {
     setFiltroStatus("pendentes");
     setFiltroPeriodo("todos");
   }, [commandDoseStatus, setFiltroStatus, setFiltroPeriodo]);
+  // M110: links para doses já tomadas/ignoradas preservam o filtro explícito.
+  useEffect(() => {
+    if (commandDoseStatus !== "tomados" && commandDoseStatus !== "ignorados") return;
+    setFiltroStatus(commandDoseStatus);
+    setFiltroPeriodo("todos");
+  }, [commandDoseStatus, setFiltroStatus, setFiltroPeriodo]);
   const [mostrarConcluidas,setMostrarConcluidas]=useState(false);
   const [mostrarTodosCompromissos, setMostrarTodosCompromissos] = useState(false);
   const [filtroCompromisso,setFiltroCompromisso]=useState<FiltroCompromisso>("todos");
@@ -1630,10 +1636,9 @@ export default function HojePage() {
               trigger("vibrate");
               document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
+            onJumpDose={(time) => { trigger("vibrate"); router.push(`/hoje?focus=doses&status=pendentes&time=${encodeURIComponent(time)}`); }}
             onOpenWithdrawals={() => { trigger("vibrate"); router.push("/saude/retiradas"); }}
           /> : null}
-          {/* VAULT_V321_DAILY_FOCUS: real Brain command is visible before long dose lists. */}
-          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
           <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-semibold tracking-tight text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
@@ -1649,6 +1654,10 @@ export default function HojePage() {
                 onShowResolved={(value) => { trigger("vibrate"); setMostrarConcluidas(value); }} onReset={limparFiltros} />
             </div>
           </div>
+          {isHoje && filtroStatus !== "todos" && <div role="status" className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-ice/20 bg-ice/[0.045] px-3 py-1.5 text-xs">
+            <span className="min-w-0 text-ink-secondary">Exibindo {filtroStatus === "tomados" ? "doses tomadas" : filtroStatus === "ignorados" ? "doses ignoradas" : "doses pendentes"}{focusDoseTime ? ` · ${focusDoseTime}` : ""}</span>
+            <button type="button" onClick={limparFiltros} className="shrink-0 font-semibold text-ice underline underline-offset-2">Ver tudo</button>
+          </div>}
           {retroReviewMode ? (
             <TodayRetroReviewPanel
               summary={retroReviewSummary}
@@ -1657,6 +1666,9 @@ export default function HojePage() {
             />
           ) : null}
 
+          {/* M110: briefing após filtros, sempre antes da fila de doses. */}
+          {/* VAULT_V321_DAILY_FOCUS: real Brain command is visible before long dose lists. */}
+          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
           {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <TodayBatchAction count={dosesElegiveisLote.length}

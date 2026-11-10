@@ -20,7 +20,7 @@ export function HomeCareOrganizationTiles({ gastoMes, diferencaMes, totalRede, d
     ? ` · ${diferencaMes > 0 ? "+" : "-"} R$ ${money(Math.abs(diferencaMes))}`
     : "";
   const networkCount = Number.isFinite(totalRede) ? Math.max(0, Math.floor(totalRede)) : 0;
-  const base = "flex min-h-16 w-full items-center gap-3 px-3.5 py-3 text-left transition-[background-color,transform] hover:bg-surface-raised/70 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice";
+  const base = "flex min-h-[56px] w-full items-center gap-3 px-3 py-2.5 text-left transition-[background-color,transform] hover:bg-surface-raised/70 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice";
   return <div className="overflow-hidden rounded-2xl border border-surface-border/60 bg-surface" aria-label="Acessos de organização do cuidado">
     <button type="button" onClick={() => onNavigate(documentPath)} className={`${base} border-b border-surface-border/50`}>
       <FileText size={18} className="shrink-0 text-amber-300" aria-hidden="true"/>

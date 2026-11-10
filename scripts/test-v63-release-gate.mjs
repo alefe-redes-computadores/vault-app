@@ -397,6 +397,7 @@ const contracts = [
   "scripts/test-v277-dose-slot-notification-authority.cjs",
   "scripts/test-vault-m108-ux-pdf.cjs",
   "scripts/test-vault-m109-medication-list-density.cjs",
+  "scripts/test-vault-m110-home-today.cjs",
   "scripts/test-vault-m107-closure.cjs",
 ];
 

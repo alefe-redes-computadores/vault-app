@@ -1477,7 +1477,7 @@ function TratamentoContent() {
                   <DetailInfoRow
                     key={medico.id}
                     icon={<Stethoscope size={18} />}
-                    iconClassName="bg-ice/10 text-ice"
+                    iconClassName="bg-sky-400/10 text-sky-300"
                     label="Profissional"
                     action={
                       <ChevronRight size={17} className="text-ink-faint" />
@@ -1490,7 +1490,7 @@ function TratamentoContent() {
 
                         router.push(`/saude/medicos/detalhes?id=${medico.id}`);
                       }}
-                      className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-ice"
+                      className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-sky-300"
                     >
                       Dr(a). {medico.nome}
                     </button>
@@ -1501,7 +1501,7 @@ function TratamentoContent() {
                   <DetailInfoRow
                     key={hospital.id}
                     icon={<Building2 size={18} />}
-                    iconClassName="bg-violet-400/10 text-violet-400"
+                    iconClassName="bg-rose-400/10 text-rose-300"
                     label="Hospital / Clínica"
                     action={
                       <ChevronRight size={17} className="text-ink-faint" />
@@ -1516,7 +1516,7 @@ function TratamentoContent() {
                           `/saude/hospitais/detalhes?id=${hospital.id}`,
                         );
                       }}
-                      className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-violet-400"
+                      className="max-w-full truncate text-left text-sm font-semibold text-ink-primary transition-colors hover:text-rose-300"
                     >
                       {hospital.nome}
                     </button>

@@ -2,6 +2,9 @@
 export type VisualAgendaDose = {
   horario: string;
   medicamentoNome?: string;
+  /** Vínculo de apresentação com o medicamento; não altera o evento. */
+  formato?: string;
+  cores?: string[];
   tomada: boolean;
   ignorada: boolean;
   isDataConflict?: boolean;
@@ -16,6 +19,8 @@ export type VisualAgendaRow = {
   title: string;
   context: string;
   kind: "dose" | "reminder" | "appointment";
+  formato?: string;
+  cores?: string[];
   destination: "hoje-doses" | "hoje-agenda" | "hoje-compromissos";
 };
 export type VisualAgendaOverview = {
@@ -51,7 +56,7 @@ export function buildTodayAgendaOverview(input: {
     if (validTime(input.now) && dose.horario <= input.now) dueDoseCount++;
     candidates.push({ time: dose.horario, title: dose.medicamentoNome || "Medicamento",
       context: validTime(input.now) && dose.horario > input.now ? "Dose prevista" : "Dose a revisar",
-      kind: "dose", destination: "hoje-doses", order: order++ });
+      kind: "dose", destination: "hoje-doses", formato: dose.formato, cores: dose.cores, order: order++ });
   }
   for (const reminder of input.reminders) {
     if (!validTime(reminder.time)) continue;

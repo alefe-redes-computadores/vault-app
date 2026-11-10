@@ -3,6 +3,7 @@
 import { selectHomeDocumentAlerts, countHomeTakenDoseLogs, selectHomeOverdueWithdrawals } from "@/lib/home/home-view-projections";
 import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
 import { safeReturnTarget } from "@/lib/navigation/return-context";
+import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -1212,6 +1213,7 @@ export default function HomePage() {
               className="min-[380px]:grid-cols-4 min-w-0"
               pendingDoses={dosesPendentesAtrasadas.length}
               medications={medicamentosAtivos.length}
+              completedDoses={dosesTomadasDaRotinaHoje}
               extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
               onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
               onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
@@ -1818,9 +1820,7 @@ export default function HomePage() {
                         {primaryMedicationCareOpportunity.latestRenewalKind === "receita"
                           ? "Última receita registrada: "
                           : "Última aquisição registrada: "}
-                        {
-                          primaryMedicationCareOpportunity.latestRenewalDate
-                        }
+                        {formatVaultClinicalDateBR(primaryMedicationCareOpportunity.latestRenewalDate)}
                       </p>
                     )}
                   </div>

@@ -18,7 +18,7 @@ export function HomeClinicalAreaTile({ label, description, path, Icon, tone: are
   return (
     <button type="button" onClick={() => onNavigate(path)}
       aria-label={`${label}: ${description}`}
-      className={`group flex h-full min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-3 rounded-[20px] border px-3.5 py-3.5 text-left shadow-sm transition-[background-color,border-color,transform] hover:bg-surface-raised/55 hover:border-emerald-300/25 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 border-surface-border/60 bg-surface ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
+      className={`group flex h-full min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-2.5 rounded-[18px] border px-3 py-2.5 text-left shadow-sm transition-[background-color,border-color,transform] hover:bg-surface-raised/55 hover:border-emerald-300/25 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 border-surface-border/60 bg-surface ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
       <span className={`grid size-9 shrink-0 place-items-center rounded-xl bg-surface-raised/60 transition-transform motion-safe:group-active:scale-95 ${tone}`} aria-hidden="true"><Icon size={17}/></span>
       <span className="min-w-0 flex-1">
         <strong className="block break-words text-sm font-bold leading-snug text-ink-primary">{label}</strong>

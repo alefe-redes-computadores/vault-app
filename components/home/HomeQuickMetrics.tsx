@@ -9,6 +9,8 @@ type HomeQuickMetricsProps = {
   className: string;
   pendingDoses: number;
   medications: number;
+  /** M110: valor real de doses programadas concluídas; opcional para consumidores legados. */
+  completedDoses?: number;
   extrasTaken: number;
   onNavigate: (href: string) => void;
   onOpenPending: () => void;
@@ -20,12 +22,12 @@ type HomeQuickMetricsProps = {
  * Componente isolado para evitar manter quatro cartões dentro da Home pesada.
  */
 export const HomeQuickMetrics = memo(function HomeQuickMetrics({
-  appointments, className, pendingDoses, medications, extrasTaken, onNavigate, onOpenPending,
+  appointments, className, pendingDoses, medications, completedDoses, extrasTaken, onNavigate, onOpenPending,
 }: HomeQuickMetricsProps) {
   const metrics = [
     { key: "agenda", label: "Agenda", value: appointments, Icon: CalendarDays, accent: "text-ice", action: () => onNavigate("/hoje") },
     { key: "pendentes", label: "Pendentes", value: pendingDoses, Icon: Clock3, accent: pendingDoses > 0 ? "text-coral" : "text-emerald-300", action: onOpenPending },
-    { key: "medicamentos", label: "Remédios", value: medications, Icon: Pill, accent: "text-emerald-300", action: () => onNavigate("/saude/medicamentos") },
+    { key: "medicamentos", label: completedDoses === undefined ? "Remédios" : "Concluídas", value: completedDoses ?? medications, Icon: completedDoses === undefined ? Pill : CheckCircle2, accent: "text-emerald-300", action: () => onNavigate(completedDoses === undefined ? "/saude/medicamentos" : "/hoje?focus=doses&status=tomados") },
     { key: "extra", label: "SOS / extra", value: extrasTaken, Icon: CheckCircle2, accent: "text-violet-300", action: () => onNavigate("/hoje?focus=doses") },
   ];
   return <nav aria-label="Atalhos de saúde da Home" className={`grid grid-cols-4 border-t border-surface-border/40 ${className}`}>
