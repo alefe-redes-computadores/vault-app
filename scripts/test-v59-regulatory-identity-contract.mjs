@@ -73,8 +73,8 @@ ok(
  * O indicador primário deixou de ser o antigo
  * ponto baseado diretamente em .accent.
  *
- * A borda/rail agora é a identidade principal,
- * acompanhada pela etiqueta vertical.
+ * A borda continua como identidade principal,
+ * acompanhada por faixa vertical fina e acessível.
  */
 
 ok(
@@ -86,7 +86,7 @@ ok(
 
 ok(
   meds.includes(
-    "VAULT_REGULATORY_EDGE_LABEL_V76_1"
+    'railSize="slim"'
   ),
   "etiqueta regulatória acompanha a borda"
 );

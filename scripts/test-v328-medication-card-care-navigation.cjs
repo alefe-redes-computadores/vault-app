@@ -12,15 +12,14 @@ for (const [path, source, kind] of [["ListCard.tsx",card,ts.ScriptKind.TSX],["me
   const parsed=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,kind);
   assert.equal(parsed.parseDiagnostics.length,0,`${path}: JSX/TS válido`);
 }
-assert(meds.includes("rail={(regulatoryProfile || receita) ? ("), "classificação foi para o rail");
-assert(meds.includes('style={{writingMode: "vertical-rl"'),"texto vertical no rail");
+assert(meds.includes('railSize="slim"') && meds.includes('aria-label={`Ver classificação da receita:'), "classificação permanece interativa em faixa fina");
+assert(meds.includes('writingMode: "vertical-rl"'),"classificação vertical compacta preservada");
 assert.equal((meds.match(/setSelectedRegulatory\(regulatoryProfile\)/g)||[]).length,1,"uma ação regulatória, não duas");
-assert(meds.includes('regulatoryProfile?.verified === false ? "Receita n/c"'),"incerteza regulatória preservada");
-assert(!meds.includes('className="inline-flex min-h-7 max-w-full items-center'),"badges regulatórios redundantes eliminados");
+assert(meds.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'),"incerteza e abreviação regulatórias preservadas");
 assert(meds.includes('"Conferir SUS"') && meds.includes('"Revisar continuidade"'),"CTAs curtos, sem perda de título completo");
 assert(meds.includes('router.push(careAction.href)') && meds.includes('setQuickDoseMedId(med.id!)'),"ações reais preservadas");
 assert(meds.includes('aria-label={`${careAction.description} para ${med.nome}`}'),"rótulo completo preservado");
-assert(card.includes('isTight ? "p-2.5 pl-8" : "p-3 pl-8"'),"padding compacto opt-in sem afetar outras listagens");
+assert(card.includes('railSize === "slim"') && card.includes('isTight ? "p-2.5 pl-6" : "p-3 pl-6"'),"padding fino opt-in sem afetar outras listagens");
 assert(details.includes('navigateCareAction(brainCareAction?.href || careDecision.actionHref'),"próxima etapa não reabre mesma rota");
 assert(details.includes('navigateCareAction(accessAction.href'),"alerta secundário não reabre mesma rota");
 assert(details.includes('document.getElementById(destination.sectionId)?.scrollIntoView'),"revela seção real");
@@ -35,4 +34,4 @@ assert.deepEqual(resolve({href:self,currentMedicationId:"m x",title:"Registrar r
 assert.deepEqual(resolve({href:self,currentMedicationId:"outro",title:"Revisar continuidade"}),{kind:"route",href:self});
 assert.deepEqual(resolve({href:"/saude/renovacao/novo?medicamento_id=m",currentMedicationId:"m"}),{kind:"route",href:"/saude/renovacao/novo?medicamento_id=m"});
 assert(meds.includes('supplyRoute?.mode === "hybrid"'), "SUS e comprado independentes");
-console.log("VAULT V328: rail regulatório, densidade e ações de cuidado sem navegação silenciosa OK");
+console.log("VAULT V328/M109: identidade regulatória, densidade e ações de cuidado sem navegação silenciosa OK");

@@ -37,7 +37,7 @@ assert(medFilter.includes('aria-pressed={value === key}')
   'filter selection remains accessible and persisted');
 assert(med.includes('medicationFilter === "todos" ? <details')&&med.includes('Ir para um grupo'),'duplicate primary/secondary navigation collapsed');
 assert(med.includes('<MedicationPortfolioOverview')&&med.includes('medsSOS.map(renderCard)'),'care overview and real SOS cards kept');
-assert(med.includes('density="compact"')&&med.includes('rail={(regulatoryProfile || receita)'), 'compact cards and regulatory rail retained');
+assert(med.includes('density="compact"')&&med.includes('railSize="slim"')&&med.includes('rail={(regulatoryProfile || receita)'), 'compact cards and slim regulatory rail retained');
 assert(overview.includes('text-[10px] font-bold uppercase')&&overview.includes('min-h-10'),'compact information hierarchy and actionable decision');
 assert(overview.includes('ignored > 0')&&overview.includes('O percentual considera somente doses marcadas como tomadas'),'ignored doses never count as taken');
 assert(overview.includes('Entender origens, doses e estados')&&overview.includes('portfolio.asNeeded > 0')&&overview.includes('portfolio.temporaryCoursesOpen > 0'),'all original disclosures remain');

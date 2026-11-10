@@ -11,6 +11,7 @@ import {
 } from "@/lib/medication-catalog/authority";
 import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
 import { persistMedicationCatalogSnapshot } from "@/lib/medication-catalog/persisted-snapshot";
+import { medicationCatalogSnapshotFingerprint } from "@/lib/medication-catalog/snapshot-fingerprint";
 import {
   resolveMedicationRegulatoryVisual,
   type MedicationRegulatoryVisual,
@@ -161,6 +162,7 @@ function medicationFingerprint(medication: Medicamento): string {
     medication.formato || "",
     medication.forma_farmaceutica || "",
     medication.tipo_receita || "",
+    medicationCatalogSnapshotFingerprint(medication),
   ].join("|");
 }
 

@@ -103,7 +103,7 @@ import {
 import { medicationIgnoredStatus } from "@/lib/medication-availability";
 import { medicationStockUnitReview } from "@/lib/health-intelligence/medication-presentation-review";
 import { normalizeMedicationText } from "@/lib/medication-intelligence/normalize";
-import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visual";
+import { getMedicationRegulatorySurface, medicationRegulatoryShortLabel } from "@/lib/medication-regulatory-visual";
 import { medicationPersonalAccent, medicationPersonalAccentStyle } from "@/lib/medications/list-personal-accent";
 import type { MedicationRegulatoryVisual } from "@/lib/medication-regulatory-visual";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
@@ -1090,8 +1090,9 @@ export default function MedicamentosListPage() {
           density="compact"
           compactTight
           interactiveContent
-          className="min-h-[164px] min-[380px]:min-h-[172px]"
+          className="min-h-0"
           navigationLabel={`Ver detalhes de ${med.nome}`}
+          railSize="slim"
           rail={(regulatoryProfile || receita) ? (
             <button
               type="button"
@@ -1102,19 +1103,16 @@ export default function MedicamentosListPage() {
                 event.preventDefault();
                 event.stopPropagation();
                 trigger("vibrate");
-                if (regulatoryProfile) {
-                  setSelectedRegulatory(regulatoryProfile);
-                } else {
-                  router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-agora`);
-                }
+                if (regulatoryProfile) setSelectedRegulatory(regulatoryProfile);
+                else router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-agora`);
               }}
-              className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-1 text-[9px] font-bold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ice"
+              className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-1 text-[8px] font-black leading-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
             >
               <span
-                className={`block max-h-full overflow-hidden text-center tracking-[0.02em] ${regulatoryProfile?.verified === false || regulatoryProfile?.tone === "unknown" ? "text-white" : "text-void"}`}
+                className={`block max-h-full overflow-hidden whitespace-nowrap text-center tracking-[-0.01em] ${regulatoryProfile?.verified === false || regulatoryProfile?.tone === "unknown" ? "text-white" : "text-void"}`}
                 style={{writingMode: "vertical-rl", transform: "rotate(180deg)"}}
               >
-                {regulatoryProfile?.verified === false ? "Receita n/c" : regulatoryProfile?.label || receita?.sigla || "Receita"}
+                {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}
               </span>
             </button>
           ) : null}
@@ -1163,7 +1161,6 @@ export default function MedicamentosListPage() {
               )}
               </div>
               <div className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px]">
-                {/* VAULT_REGULATORY_EDGE_LABEL_V76_1 — VAULT_REGULATORY_RAIL_LABEL_V76_2: classificação acessível na faixa lateral V328 */}
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
@@ -1477,9 +1474,9 @@ export default function MedicamentosListPage() {
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
-          <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
-            <div className="min-w-0"><h2 className="text-base font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
-              <p className="mt-1 text-xs leading-relaxed text-ink-muted">Atenção primeiro; rotina, SOS e histórico separados · pendências não são doses perdidas</p></div>
+          <div className="mb-2 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
+            <div className="min-w-0"><h2 className="text-sm font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
+              <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-muted">Prioridades primeiro · rotina e SOS separados</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
           <details className="group mb-2.5 rounded-xl border border-surface-border/40 bg-surface/35 px-2.5" aria-label="Indicadores e organização avançada">
@@ -1537,7 +1534,7 @@ export default function MedicamentosListPage() {
               <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPlanejados.map(renderCard) : medsPlanejados.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Acesso rápido sem misturar com a rotina programada" count={medsSOS.length} icon={Zap} tone="sos" defaultOpen={medsSOS.length > 0} forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Uso eventual, separado da rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSuspensos.map(renderCard) : medsSuspensos.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
             </div>
             )

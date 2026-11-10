@@ -39,7 +39,7 @@ check(accent.medicationPersonalAccent({cor_principal:'var(--unsafe)',cores:['red
 check(accent.medicationPersonalAccentStyle({cor_principal:'#cafe99'}).borderColor==='#CAFE9955','borda semântica translúcida');
 check(accent.medicationPersonalAccentStyle({cor_principal:'bad'})===undefined,'sem cor não inventa borda');
 const list=file('app/saude/medicamentos/page.tsx');
-// M64 R2: verify the JSX ownership of the regulatory rail, not source indentation.
+// M109 R2: verify the JSX ownership of the slim regulatory rail, not indentation.
 // The visual accent is restricted to the icon and never takes over ListCard.color.
 const listAst = ts.createSourceFile('medications-list.tsx',list,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 const cards = [];
@@ -56,8 +56,10 @@ check(Boolean(cardColorAttribute && ts.isJsxAttribute(cardColorAttribute) &&
  cardColorAttribute.initializer && ts.isJsxExpression(cardColorAttribute.initializer) &&
  cardColorAttribute.initializer.expression && ts.isIdentifier(cardColorAttribute.initializer.expression) &&
  cardColorAttribute.initializer.expression.text === 'regulatoryBorderColor' &&
- cardRailAttribute && /const\s+regulatoryBorderColor\s*=\s*regulatorySurface\.rail\s*;/.test(list)),
- 'classificação na faixa regulatória preservada via AST e origem do valor');
+ cardRailAttribute && list.includes('railSize="slim"') &&
+ /const\s+regulatoryBorderColor\s*=\s*regulatorySurface\.rail\s*;/.test(list) &&
+ list.includes('aria-label={`Ver classificação da receita:')),
+ 'classificação na borda e etiqueta regulatória preservada via AST');
 check(list.includes('style={medicationPersonalAccentStyle(med)}'),'cor pessoal limitada ao ícone');
 check(list.includes('const personalAccent = medicationPersonalAccent(med);'),'uma resolução por medicamento');
 check(list.includes('aria-hidden="true" className="inline-block h-2 w-2'),'marca visual decorativa sem redundância');

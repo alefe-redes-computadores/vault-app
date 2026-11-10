@@ -15,8 +15,8 @@ const ok = (value, message) => {
 };
 
 ok(
-  page.includes("VAULT_REGULATORY_EDGE_LABEL_V76_1"),
-  "etiqueta regulatória vertical"
+  page.includes('railSize="slim"'),
+  "etiqueta regulatória vertical fina"
 );
 
 ok(
@@ -25,12 +25,11 @@ ok(
 );
 
 ok(
-  page.includes('"Notif. "'),
+  page.includes('medicationRegulatoryShortLabel'),
   "Notificação compactada"
 );
 
 ok(
-  page.includes("VAULT_REGULATORY_RAIL_LABEL_V76_2") &&
   page.includes("setSelectedRegulatory(regulatoryProfile)"),
   "identidade visual regulatória preservada"
 );

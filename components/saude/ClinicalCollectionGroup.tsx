@@ -26,7 +26,7 @@ const tones = {
 } as const;
 
 /** Progressive hierarchy for large clinical lists. Keeps secondary groups out of the first viewport. */
-export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,children,defaultOpen=false,forceOpen=false,tone="neutral",progressive=false,pageSize=6}:ClinicalCollectionGroupProps){
+export function ClinicalCollectionGroup({id,title,description,count,icon:Icon,children,defaultOpen=false,forceOpen=false,tone="neutral",progressive=false,pageSize=3}:ClinicalCollectionGroupProps){
   const [open,setOpen]=useState(defaultOpen);
   const [visibleCount,setVisibleCount]=useState(Math.max(1,pageSize));
   const groupRef=useRef<HTMLDetailsElement>(null);

@@ -22,9 +22,9 @@ assert(btn.includes('if (onExport) {')&&btn.includes('await onBeforeExport?.()')
 assert(docs.includes('onExport={() => exportDocumentSummariesToPDF(filteredDocs)}')&&docs.includes('getExportCards()'),"Escopo filtrado preservado; cards legados intactos");
 const med=read(paths[4]);
 assert(med.includes('statsProgresso.completados}/{statsProgresso.total}')&&med.includes('if (item.isSOS || item.isSuspenso) continue;'),"Doses oficiais e SOS fora do total");
-assert(med.includes('mt-3 h-2.5 overflow-hidden')&&med.includes('min-h-[164px]'),"Progresso M105 e base compacta dos cards");
+assert(med.includes('role="progressbar"')&&med.includes('density="compact"')&&med.includes('compactTight'),"Progresso e base compacta dos cards");
 assert(med.includes('catalogIdentity?.activeIngredient')&&med.includes('Princípio ativo · confirmar referência nos detalhes'),"Sem inferir principio ativo inexistente");
-assert(med.includes('aria-label="Ações do medicamento"')&&med.includes('regulatoryBorderColor')&&med.includes('MedicationOperationalStrip'),"Acoes, faixa regulatoria e estoque continuam");
+assert(med.includes('aria-label="Ações do medicamento"')&&med.includes('regulatoryBorderColor')&&med.includes('MedicationOperationalStrip'),"Acoes, identidade regulatoria e estoque continuam");
 const follow=read(paths[5]);
 assert(follow.includes('hasToggledDetails ? expanded : !checked')&&follow.includes('insight.titulo')&&follow.includes('onMarkChecked(insight)'),"Aviso revisado compacto, nao revisado acessivel");
 assert(follow.includes('não equivale a avaliação profissional')&&follow.includes('procure orientação médica'),"Ressalvas clinicas preservadas");

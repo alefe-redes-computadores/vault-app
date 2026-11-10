@@ -39,14 +39,14 @@ ok(
 );
 
 ok(
-  page.includes("VAULT_REGULATORY_RAIL_LABEL_V76_2") &&
+  page.includes('railSize="slim"') &&
     page.includes("setSelectedRegulatory(regulatoryProfile)"),
   "identidade visual regulatória preservada"
 );
 
 ok(
-  page.includes("VAULT_REGULATORY_EDGE_LABEL_V76_1"),
-  "etiqueta vertical presente"
+  page.includes('aria-label={`Ver classificação da receita:'),
+  "etiqueta vertical fina e acessível presente"
 );
 
 ok(

@@ -16,6 +16,8 @@ export interface ListCardProps {
   icon: ReactNode;
   /** Conteúdo opcional dentro da barra lateral */
   rail?: ReactNode;
+  /** Faixa fina opt-in para listas densas; o padrão preserva outros cards. */
+  railSize?: "standard" | "slim";
   /** Conteúdo principal do card */
   children: ReactNode;
   /** Ações internas – renderizadas fora do botão principal */
@@ -47,6 +49,7 @@ export function ListCard({
   onClick,
   icon,
   rail,
+  railSize = "standard",
   children,
   actions,
   className = "",
@@ -100,7 +103,7 @@ export function ListCard({
         className={`
           absolute
           bottom-0 left-0 top-0
-          ${rail ? "w-6" : "w-1.5"}
+          ${rail ? (railSize === "slim" ? "w-4" : "w-6") : "w-1.5"}
           ${isDisabled && !rail ? "bg-coral" : ""}
         `}
         style={!isDisabled || rail ? { backgroundColor: color } : undefined}
@@ -112,7 +115,9 @@ export function ListCard({
         className={
           rail
             ? isCompact
-              ? (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
+              ? railSize === "slim"
+                ? (isTight ? "p-2.5 pl-6" : "p-3 pl-6")
+                : (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
               : "p-4 pl-10"
             : isCompact
             ? (isTight ? "p-2.5 pl-3.5" : "p-3 pl-4")

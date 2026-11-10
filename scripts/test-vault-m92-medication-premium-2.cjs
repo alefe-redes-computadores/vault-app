@@ -34,12 +34,12 @@ ok('Indicadores avançados deixam de ocupar a primeira dobra',med.includes('Indi
 ok('Preserva panorama canônico sob demanda',med.includes('MedicationPortfolioOverview portfolio=') && med.includes('ClinicalDisclosure key='));
 ok('Dois filtros rápidos e demais em disclosure', !/const PRIMARY:[\s\S]*?\["sos", "SOS"\][\s\S]*?const ADDITIONAL/.test(filter) && /const ADDITIONAL:[\s\S]*?\["sos", "SOS"\]/.test(filter));
 ok('Busca e categorias de filtros permanecem',med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>') && filter.includes('setExpanded(false)'));
-ok('SOS aberto por padrão e progressivo',med.includes('tone="sos" defaultOpen={medsSOS.length > 0}') && med.includes('medsSOS.slice(0, limit).map(renderCard)'));
+ok('SOS recolhido no panorama e progressivo',med.includes('tone="sos" forceOpen=') && !med.includes('tone="sos" defaultOpen=') && med.includes('medsSOS.slice(0, limit).map(renderCard)'));
 ok('Grupos por prioridade e dose rápida preservados',med.includes('medsPrioridade.map(renderCard)') && med.includes('setQuickDoseMedId(med.id!)'));
 ok('Classificação regulatória interativa preservada',med.includes('regulatoryProfile?.label') && med.includes('setSelectedRegulatory(regulatoryProfile)'));
 ok('Botão único preenche sua linha sem criar ações fictícias',med.includes('[&>button:only-child]:col-span-2') && med.includes('aria-label="Ações do medicamento"'));
 ok('Retirada, dose SOS e reposição ainda independentes',med.includes('router.push(careAction.href)') && med.includes('MedicationRestockAction name={med.nome}') && med.includes('quickDoseLabel'));
-ok('Estados preservados, dois indicadores mais compactos',strip.includes('doseOutcome==="ignored"') && strip.includes('stockTone==="empty"') && (strip.match(/flex min-h-8 min-w-0 items-center/g)||[]).length===2);
+ok('Estados preservados em linha operacional compacta',strip.includes('doseOutcome==="ignored"') && strip.includes('stockTone==="empty"') && strip.includes('flex min-w-0 flex-wrap') && strip.includes('Package size={12}'));
 ok('Aviso de estoque é inspecionável sem romper altura',med.includes('Unidade do estoque diferente · revisar') && med.includes('min-h-9 cursor-pointer') && med.includes('className="min-w-0 flex-1 truncate"'));
 ok('Cabeçalho do editor aceita as duas cores do oblongo',editor.includes('formato === "oblongo"') && editor.includes('formato === "oblongo_sulcado"'));
 ok('Salvar visível em qualquer aba de edição',/\{editIntent !==\s*"menu" && \(/.test(editor) && !/"menu" &&\s*hasChanges && \(/.test(editor));
@@ -53,6 +53,6 @@ ok('Ícones oblongos são distintos no picker e nos cards',fmt.includes('export 
 ok('Ícones de outras telas aceitam novas apresentações',icon.includes('normalizedFormat === "oblongo"') && icon.includes('normalizedFormat === "oblongo_sulcado"'));
 ok('Estoque mantém unidade comprimido sem conversão',catalog.includes('oblongo:["comprimido","comp"]') && catalog.includes('oblongo_sulcado:["comprimido","comp"]') && catalog.includes('return "comprimido(s)"'));
 ok('Catálogo mantém compatibilidade do formato oficial',catalog.includes('inferVaultFormatFromOfficialPresentation') && catalog.includes('formatMatchesCatalog'));
-ok('Legados de densidade alinhados, sem remover suas garantias',read('scripts/test-vault-m71-final-visual-contract.cjs').includes('flex min-h-8 min-w-0 items-center') && read('scripts/test-vault-m25-premium-longlist-hotpath.cjs').includes('flex min-h-8 min-w-0 items-center'));
+ok('Legados de densidade alinhados, sem remover suas garantias',read('scripts/test-vault-m71-final-visual-contract.cjs').includes('flex min-w-0 flex-wrap') && read('scripts/test-vault-m25-premium-longlist-hotpath.cjs').includes('flex min-w-0 flex-wrap'));
 ok('Gate canônico começa pela M92',read('scripts/test-v63-release-gate.mjs').includes('const contracts = [\n  "scripts/test-vault-m92-medication-premium-2.cjs",'));
 console.log(`M92: ${checks} contratos específicos aprovados, sem operação clínica.`);

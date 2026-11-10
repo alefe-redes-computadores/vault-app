@@ -31,6 +31,20 @@ export type MedicationRegulatorySurface = {
   glowClass: string;
 };
 
+/** M109 R2 — abreviação visual; nunca altera a classificação regulatória. */
+export function medicationRegulatoryShortLabel(
+  profile?: Pick<MedicationRegulatoryVisual, "label" | "verified"> | null,
+  fallback?: string | null
+): string {
+  if (profile?.verified === false) return "Receita n/c";
+  const label = `${profile?.label || fallback || "Receita"}`.trim();
+  if (/notifica[cç][aã]o\s+b2/i.test(label)) return "Notif. B2";
+  if (/notifica[cç][aã]o\s+b/i.test(label)) return "Notif. B";
+  if (/notifica[cç][aã]o\s+a/i.test(label)) return "Notif. A";
+  if (/especial|controle/i.test(label)) return "Especial";
+  return "Receita";
+}
+
 // VAULT_REGULATORY_IDENTITY_V59
 const UNKNOWN: MedicationRegulatoryVisual = {
   tone: "unknown",

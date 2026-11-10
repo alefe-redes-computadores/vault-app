@@ -21,7 +21,7 @@ const mood=by('components/saude/AvatarMoodEvidence.tsx'),workspace=by('component
 ok(mood.includes('evidence.reason')&&mood.includes('Dias sem registro continuam desconhecidos')&&mood.includes('aria-valuenow={coverageDays}'),'Fenix emotion remains user-declared only');
 ok(workspace.includes('ClinicalDisclosure')&&workspace.includes('vault-deferred')&&workspace.includes('memo(function AvatarCareWorkspace'),'Fenix expensive evidence stays deferred');
 const strip=by('components/saude/MedicationOperationalStrip.tsx'),portfolio=by('components/saude/MedicationPortfolioOverview.tsx');
-ok(strip.includes('stockTone==="empty"')&&strip.includes('doseOutcome==="ignored"')&&strip.includes('flex min-h-8 min-w-0 items-center')&&strip.includes('min-[320px]:grid-cols-2'),'Medications show dose and stock states separately');
+ok(strip.includes('stockTone==="empty"')&&strip.includes('doseOutcome==="ignored"')&&strip.includes('flex min-w-0 flex-wrap')&&strip.includes('aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}.'),'Medications show dose and stock states separately');
 ok(portfolio.includes('listActiveCount !== portfolio.active')&&portfolio.includes('Doses SOS não entram nessa meta')&&portfolio.includes('MedicationScopeReconciliation'),'Medication counts SOS and Brain/list scopes preserved');
 const network=by('components/saude/MedicationCareNetworkDetails.tsx'),evidence=by('components/saude/MedicationDecisionEvidenceContext.tsx'),preview=by('components/saude/MedicationIdentityPreview.tsx');
 ok(network.includes('size-12')&&network.includes('onCall(')&&network.includes('onMap(')&&network.includes('onNavigate('),'Detail network actions keep authoritative destinations');
