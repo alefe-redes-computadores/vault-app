@@ -7,6 +7,7 @@ import {
   ensureVaultNotificationChannel,
 } from "@/lib/notifications";
 import { nextHealthReminderOccurrence, reminderRunsOnWeekday } from "./domain";
+import { quietAtM115,readQuietHoursM115 } from "@/lib/health-reminders/quiet-hours-m115";
 import type { HealthReminderRule } from "./types";
 import {
   reconcileVaultNotificationSet,
@@ -17,6 +18,7 @@ import {
 const DAYS_AHEAD = 21;
 const MAX_PENDING = 60;
 const CHANNEL_ID = "vault-health-reminders";
+const PRIVATE_CHECKIN_CHANNEL_ID="vault-health-checkin-private-m115";
 
 export type HealthReminderScheduleResult = {
   native: boolean;
@@ -109,8 +111,15 @@ export async function reconcileHealthReminderNotifications(
     vibration: true,
   }).catch(() => undefined);
 
+  await LocalNotifications.createChannel({
+    id: PRIVATE_CHECKIN_CHANNEL_ID, name: "Lembretes privados do Vault",
+    description: "Atividades privadas configuradas voluntariamente",
+    importance: 3, visibility: -1, vibration: false,
+  }).catch(() => undefined);
+  const quiet=readQuietHoursM115();
   const notifications = active
     .flatMap((rule) => occurrences(rule).map((at) => ({ rule, at })))
+    .filter(({at})=>!quietAtM115(at,quiet))
     .sort((left, right) => left.at.getTime() - right.at.getTime())
     .slice(0, MAX_PENDING)
     .map(({ rule, at }) => {
@@ -121,7 +130,7 @@ export async function reconcileHealthReminderNotifications(
       id: notificationId(rule.id, at),
       title,
       body,
-      channelId: CHANNEL_ID,
+      channelId: privateCheckIn ? PRIVATE_CHECKIN_CHANNEL_ID : CHANNEL_ID,
       schedule: { at, allowWhileIdle: true },
       extra: {
         vaultHealthReminder: true,

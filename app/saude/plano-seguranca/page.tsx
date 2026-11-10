@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookHeart, Check, HeartHandshake, Phone, ShieldAlert, ChevronRight, ClipboardCheck, Pencil, LockKeyhole, AlertCircle } from "lucide-react";
+import { EncryptedRecoveryM115 } from "@/components/saude/EncryptedRecoveryM115";
 import { useToast } from "@/components/ToastProvider";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
@@ -112,6 +113,7 @@ export default function SafetyPlanPage() {
         {!protectedMode&&unlocked?<details className="rounded-[18px] border border-violet-300/20 bg-violet-300/[.035] px-3"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 text-xs font-bold text-violet-200"><LockKeyhole size={16}/>Proteger este plano com frase secreta</summary><div className="space-y-2 border-t border-surface-border/50 py-3"><p className="text-[11px] leading-relaxed text-ink-muted">A frase não é armazenada. Se esquecê-la, o VAULT não consegue recuperar o conteúdo protegido.</p><input type="password" autoComplete="new-password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} className="min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm" placeholder="No mínimo 10 caracteres"/><button type="button" disabled={privacyBusy||passphrase.length<10} onClick={()=>void enableProtection()} className="min-h-12 w-full rounded-xl border border-violet-300/30 text-xs font-bold text-violet-200 disabled:opacity-40">Cifrar, verificar e remover cópia aberta</button></div></details>:null}
 
         {protectedMode&&unlocked?<button type="button" onClick={()=>lockProtectedSession()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-300/25 text-xs font-bold text-violet-200"><LockKeyhole size={15}/>Bloquear plano agora</button>:null}
+        {user?.id&&activePersonId?<EncryptedRecoveryM115 kind="safety-plan" userId={user.id} personId={activePersonId}/>:null}
         {protectedMode&&!unlocked?null:<>
 
         {legacyAvailable ? <section aria-label="Recuperar plano anterior" className="rounded-2xl border border-amber-300/25 bg-amber-300/[.045] p-3.5">

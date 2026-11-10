@@ -1,5 +1,6 @@
 "use client";
 import { SupplyChoiceIcon } from "./SupplyChoiceIcon";
+import { CareAccessWindowM115 } from "@/components/saude/CareAccessWindowM115";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { useMemo, useState } from "react";
@@ -175,6 +176,7 @@ export function SupplyPreparation({
             </p>
           ) : null
         )}
+        <CareAccessWindowM115 userId={process.user_id} personId={pid} cycleId={cycle.id} withdrawalDate={withdrawal?.data}/>
         {editable ? (
           <form
             className="space-y-3"

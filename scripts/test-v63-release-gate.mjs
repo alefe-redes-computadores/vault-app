@@ -405,6 +405,7 @@ const contracts = [
   "scripts/test-vault-m114a-private-care.cjs",
   "scripts/test-vault-m114b-care360.cjs",
   "scripts/test-vault-m114c-private-session.cjs",
+  "scripts/test-vault-m115-continuity.cjs",
 ];
 
 for (const contract of contracts) {

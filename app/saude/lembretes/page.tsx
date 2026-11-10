@@ -1,6 +1,8 @@
 // app/saude/lembretes/page.tsx
 "use client";
 import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
+import {QuietHoursSettingsM115} from "@/components/saude/QuietHoursSettingsM115";
+import {MoodContinuityM115} from "@/components/saude/MoodContinuityM115";
 import { expandReminderInterval } from "@/lib/health-reminders/interval-plan";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
@@ -297,6 +299,8 @@ export default function HealthRemindersPage() {
         )}
       </section>
 
+      <QuietHoursSettingsM115/>
+      <MoodContinuityM115 onConfigure={()=>{setEditing(null);setTargetType("health_record:humor");setTitle("Check-in opcional");setTime("20:00");setFrequency("daily");setWeekdays([]);setIntervalHours(0);setFormOpen(true);}}/>
       {formOpen && <section className="mx-auto mt-4 max-w-xl rounded-[24px] border border-amber-400/20 bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="mb-3 flex items-center justify-between">
           <strong>{editing ? "Editar lembrete" : "Novo lembrete"}</strong>

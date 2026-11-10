@@ -1,0 +1,72 @@
+/* M115: synthetic, owner-scoped tests; no real health data or network. */
+const assert=require("node:assert/strict"),fs=require("node:fs"),Module=require("node:module"),ts=require("typescript");
+const read=p=>fs.readFileSync(p,"utf8");
+const mockStore=new Map();
+global.window={localStorage:{getItem:k=>mockStore.has(k)?mockStore.get(k):null,setItem:(k,v)=>mockStore.set(k,String(v)),removeItem:k=>mockStore.delete(k)}};
+global.localStorage=global.window.localStorage;
+global.crypto=require("node:crypto").webcrypto;
+global.btoa=x=>Buffer.from(x,"binary").toString("base64");
+global.atob=x=>Buffer.from(x,"base64").toString("binary");
+function load(file,mocks={}){
+  const js=ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  const mod=new Module(file,module);mod.filename=file;mod.paths=module.paths;mod.require=id=>id in mocks?mocks[id]:require(id);mod._compile(js,file);return mod.exports;
+}
+(async()=>{
+const quiet=load("lib/health-reminders/quiet-hours-m115.ts"),settings={enabled:true,start:"22:00",end:"08:00"};
+assert.equal(quiet.quietAtM115(new Date(2026,10,10,23,15),settings),true);
+assert.equal(quiet.quietAtM115(new Date(2026,10,11,7,59),settings),true);
+assert.equal(quiet.quietAtM115(new Date(2026,10,11,8,0),settings),false);
+assert.equal(quiet.quietAtM115(new Date(2026,10,10,13,0),{enabled:true,start:"12:00",end:"14:00"}),true);
+assert.equal(quiet.quietAtM115(new Date(2026,10,10,14,0),{enabled:true,start:"12:00",end:"14:00"}),false);
+assert.equal(quiet.quietAtM115(new Date(2026,10,10,23,0),{...settings,enabled:false}),false);
+assert.throws(()=>quiet.validateQuietHoursM115({enabled:true,start:"10:00",end:"10:00"}));
+assert.equal(quiet.readQuietHoursM115().enabled,false);
+assert.deepEqual(quiet.saveQuietHoursM115(settings),settings);assert.deepEqual(quiet.readQuietHoursM115(),settings);
+const access=load("lib/health-supply/access-window-m115.ts");
+assert.equal(access.readAccessWindowM115("A","P","C"),null);
+const one=access.saveAccessWindowM115("A","P","C",{cutoff:"14:00",source:"unidade municipal",documents:"RG e receita"});
+assert.equal(one.cutoff,"14:00");assert.equal(access.readAccessWindowM115("A","P","C").source,"unidade municipal");
+assert.equal(access.readAccessWindowM115("A","outra","C"),null);assert.equal(access.readAccessWindowM115("B","P","C"),null);
+assert.throws(()=>access.saveAccessWindowM115("A","P","C",{cutoff:"27:00",source:"unidade",documents:""}));
+access.eraseAccessWindowM115("A","P","C");assert.equal(access.readAccessWindowM115("A","P","C"),null);
+const core=load("lib/private-local-vault-m114.ts");
+const recovery=load("lib/private-recovery-m115.ts",{"@/lib/private-local-vault-m114":core});
+const journal=[{id:"entry1",createdAt:"2026-11-10T15:00:00Z",text:"relato sintético"}];
+const envelope=await core.sealPrivateJsonM114("private-journal","contaA","pessoaA",journal,"uma-frase-bastante-forte");
+const path="vault:private-journal:m114:protected:contaA:pessoaA";
+localStorage.setItem(path,JSON.stringify(envelope));
+const backup=recovery.exportEncryptedM115("journal","contaA","pessoaA");
+assert(!backup.includes("relato sintético"));
+await assert.rejects(()=>recovery.importEncryptedM115("journal","contaA","pessoaA",backup,"uma-frase-bastante-forte"),/Já existem dados/);
+localStorage.removeItem(path);
+await assert.rejects(()=>recovery.importEncryptedM115("journal","contaB","pessoaA",backup,"uma-frase-bastante-forte"));
+await assert.rejects(()=>recovery.importEncryptedM115("journal","contaA","pessoaA",backup,"frase-completamente-incorreta"));
+assert.equal(localStorage.getItem(path),null);
+await recovery.importEncryptedM115("journal","contaA","pessoaA",backup,"uma-frase-bastante-forte");
+assert.deepEqual(await core.openPrivateJsonM114("private-journal","contaA","pessoaA",JSON.parse(localStorage.getItem(path)),"uma-frase-bastante-forte"),journal);
+assert.equal([...mockStore.keys()].some(x=>x.includes("m115-importing")),false);
+const safety={warningSigns:"",copingSteps:"",reasonsToStay:"",trustedPeople:"",professionalContacts:"",saferEnvironment:"",trustedContacts:[],updatedAt:""};
+const sbox=await core.sealPrivateJsonM114("safety-plan","contaA","pessoaA",safety,"uma-frase-bastante-forte");
+localStorage.setItem("vault:safety-plan:m114:protected:contaA:pessoaA",JSON.stringify(sbox));
+const sbackup=recovery.exportEncryptedM115("safety-plan","contaA","pessoaA");
+assert.match(sbackup,/vault-private-backup-m115/);
+await assert.rejects(()=>recovery.importEncryptedM115("journal","contaA","outra",sbackup,"uma-frase-bastante-forte"),/cofre selecionado/);
+const page=read("app/saude/lembretes/page.tsx"),sch=read("lib/health-reminders/scheduler.ts"),supply=read("components/saude/SupplyPreparation.tsx"),diary=read("app/saude/diario/page.tsx"),plan=read("app/saude/plano-seguranca/page.tsx"),visit=read("components/saude/TreatmentVisitBrief.tsx");
+assert(page.includes("<MoodContinuityM115")&&page.includes("<QuietHoursSettingsM115"));
+assert(sch.includes(".filter(({at})=>!quietAtM115(at,quiet))")&&sch.includes("visibility: -1")&&sch.includes("PRIVATE_CHECKIN_CHANNEL_ID"));
+assert(supply.includes("<CareAccessWindowM115")&&diary.includes("<EncryptedRecoveryM115")&&plan.includes("<EncryptedRecoveryM115"));
+assert(diary.includes("O que me ajudou")&&visit.includes("selectedSummary")&&visit.includes("Escolha o que vai no resumo")&&visit.includes("dossier.synopsis")&&visit.includes("Copiar resumo para consulta"));
+// M115 R2: run the real new helper against sparse M11/M51 fixtures, including mock-hook state reuse.
+const helperMatch=visit.match(/function selectiveVisitBriefM115\([\s\S]*?(?=export function TreatmentVisitBrief)/);
+assert.ok(helperMatch,"Resumo seletivo não localizado");
+const helperJs=ts.transpileModule(helperMatch[0]+"\nmodule.exports=selectiveVisitBriefM115;",{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const mod=new Module("m115-selection-legacy",module);mod._compile(helperJs,"m115-selection-legacy");
+const choose=mod.exports;
+const sparse={synopsis:"Registros locais",medications:[{id:"m1"}],symptoms:[],consultations:[{id:"c1"}],documents:[],upcoming:[{id:"c1",data:"2026-11-07",especialidade:"A"}],pendingLocal:1};
+assert.equal(choose(sparse,{medications:false,symptoms:false,consultations:false,documents:false},""),"");
+const summarySparse=choose(sparse,{medications:true,symptoms:true,consultations:true,documents:true},"Pergunta relevante");
+assert(summarySparse.includes("não identificado nos dados disponíveis")&&!summarySparse.includes("undefined")&&summarySparse.includes("Pergunta relevante"));
+assert(choose(sparse,{},"Doc-Beta").includes("Doc-Beta"));
+
+console.log("VAULT M115: Garantias sintéticas de privacidade, consentimento, janelas, escolha de relato e notificações OK.");
+})().catch(err=>{console.error(err);process.exit(1)});
