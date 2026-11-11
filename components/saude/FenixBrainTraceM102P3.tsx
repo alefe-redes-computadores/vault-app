@@ -37,6 +37,7 @@ export function FenixBrainTraceM102P3({ userId, contextUserId, personId, alert, 
         <p className="mt-1 text-[10px] text-ink-faint">{item.evidenceCount} item(ns) de evidência referenciado(s) · conferência no detalhe</p>
         {item.href && <button type="button" className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-xl border border-surface-border px-3 text-xs font-medium text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" onClick={() => onNavigate(item.href!)}>Ver registro original <ChevronRight size={13} aria-hidden="true"/></button>}
       </div>)}
+      <button type="button" onClick={() => onNavigate("/saude/minha-saude#avatar-evidence-lens-m122")} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.04] px-3 text-[11px] font-semibold text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">Explorar fontes na lente da Fênix <ChevronRight size={15} aria-hidden="true" /></button>
       <p className="text-[10px] leading-relaxed text-ink-muted">{report.note} Não confirma diagnóstico, causalidade ou conclusão de cuidados.</p>
     </div>
   </details>;

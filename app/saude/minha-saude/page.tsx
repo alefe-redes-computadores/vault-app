@@ -83,6 +83,7 @@ import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
 import { AvatarEvidenceStripM102 } from "@/components/saude/AvatarEvidenceStripM102";
+import { AvatarEvidenceLensM122 } from "@/components/saude/AvatarEvidenceLensM122";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medication-safety-coverage";
 import { PersonalHealthOverview } from "@/components/saude/PersonalHealthOverview";
@@ -373,8 +374,11 @@ function HealthDashboard({
                     <p className="mt-0.5 text-base font-semibold">{index ?? "—"}</p>
                   </div>
                 </div>
-              </div>
-              <details className="mt-2 rounded-xl border border-emerald-300/10 bg-void/15 px-3 text-[11px] text-ink-muted">
+               </div>
+               <div className="mt-3">
+                 <AvatarEvidenceLensM122 context={intelligence.context} userId={person?.user_id||""} personId={personId||""} today={today} insights={!intelligence.error&&!intelligence.isLoading?intelligence.insights:[]} onNavigate={goFromHealth} onExplain={(insight)=>setSelectedInsight(insight)} />
+               </div>
+               <details className="mt-2 rounded-xl border border-emerald-300/10 bg-void/15 px-3 text-[11px] text-ink-muted">
                  <summary className="flex min-h-11 cursor-pointer items-center text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como explorar seu Avatar</summary>
                  <p className="pb-3 leading-relaxed">O 3D funciona quando o aparelho permite. Toque no avatar para ampliar e ajustar aparência, enquadramento e acessórios; a ilustração continua como alternativa. As marcações representam registros, não um diagnóstico.</p>
                </details>
