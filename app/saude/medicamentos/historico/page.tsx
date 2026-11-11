@@ -140,6 +140,7 @@ function HistoryContent() {
   const { activePersonId } = useActivePersonId();
   const { trigger } = useHapticFeedback();
   const medicationId = searchParams.get("id") || "";
+  const review28 = searchParams.get("review") === "28";
   const today = getLocalTodayISO();
   const [monthKey, setMonthKey] = useState(() => currentMonthKey());
   const [selectedDate, setSelectedDate] = useState(today);
@@ -166,6 +167,24 @@ function HistoryContent() {
     },
     [medicationId, activePersonId]
   );
+
+  // M118: review only recorded administrations for this person's medication, no inference from missing slots.
+  const reviewDays = useMemo(() => {
+    if (!review28 || !logs) return [] as Array<{date:string;total:number;sos:number}>;
+    const limit = new Date(`${today}T12:00:00`);
+    limit.setDate(limit.getDate()-27);
+    const since = `${limit.getFullYear()}-${String(limit.getMonth()+1).padStart(2,"0")}-${String(limit.getDate()).padStart(2,"0")}`;
+    const days = new Map<string,{date:string;total:number;sos:number}>();
+    for (const log of logs) {
+      const date = typeof log.data === "string" ? log.data.slice(0,10) : "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < since || date > today || !log.tomado_em) continue;
+      const item = days.get(date) || {date,total:0,sos:0};
+      item.total++;
+      if (log.dose_kind === "sos" || log.dose_kind === "extra") item.sos++;
+      days.set(date,item);
+    }
+    return [...days.values()].sort((a,b)=>b.date.localeCompare(a.date));
+  },[review28,logs,today]);
 
   const doseSafety = useMemo(() => user?.id && activePersonId ? indexConfirmedDoseSafetyEpisodes(
     logs || [], brainEpisodes, user.id, activePersonId
@@ -264,6 +283,16 @@ function HistoryContent() {
         </header>
 
         <div className="space-y-4 px-4 pt-4">
+          {review28 && <section aria-label="Revisão dos registros da análise" className="rounded-[22px] border border-violet-400/25 bg-violet-400/[.04] p-3.5">
+            <h2 className="text-sm font-bold text-violet-200">Revisar registros · últimos 28 dias</h2>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Lançamentos confirmados para este medicamento e pessoa. As datas sem registros não provam que a dose não foi tomada. Se houver erro, revise o dia pelo fluxo existente.</p>
+            {!reviewDays.length ? <p className="mt-3 text-xs text-ink-muted">Nenhuma tomada confirmada nesta janela.</p> :
+              <div className="mt-3 space-y-1.5">{reviewDays.map(day => <button key={day.date} type="button" onClick={() => {setMonthKey(day.date.slice(0,7));setSelectedDate(day.date);}} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border bg-surface px-3 text-left text-xs">
+                <span className="font-semibold text-ink-primary">{day.date.split("-").reverse().join("/")}</span>
+                <span className="text-ink-secondary">{day.total} tomada(s){day.sos?` · ${day.sos} SOS/extra`:""} · abrir dia</span>
+              </button>)}</div>}
+            <p className="mt-3 text-[10px] text-ink-muted">Ações de correção exigem confirmação e permanecem no histórico canônico; esta lista não grava doses.</p>
+          </section>}
           <section className="overflow-hidden rounded-[28px] border border-surface-border/60 bg-surface p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <button
@@ -275,8 +304,8 @@ function HistoryContent() {
                 <ChevronLeft size={16} />
               </button>
               <div className="text-center">
-                <p className="text-sm font-bold capitalize text-ink-primary">
-                  {model.monthLabel}
+                <p className="text-sm font-bold text-ink-primary">
+                  {model.monthLabel.charAt(0).toLocaleUpperCase("pt-BR")+model.monthLabel.slice(1)}
                 </p>
                 <p className="mt-0.5 text-[9px] text-ink-faint">
                   Baseado somente em registros salvos

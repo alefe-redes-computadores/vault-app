@@ -78,6 +78,9 @@ function getDestinationLabel(
     insight.link ||
     "";
 
+  if (link.startsWith("/saude/medicamentos/historico")) {
+    return "Revisar registros de doses";
+  }
   if (
     link.startsWith(
       "/saude/renovacao"
@@ -627,6 +630,9 @@ export function HealthInsightExplanationSheet({
                   </p>
                 </div>
 
+                {insight.link?.startsWith("/saude/medicamentos/historico") && (
+                  <p role="note" className="rounded-xl border border-violet-400/20 bg-violet-400/[.04] p-3 text-[11px] leading-relaxed text-ink-muted">Confira as datas e os registros na fonte original. A contagem apresentada acima não substitui a conferência de cada lançamento; somente você pode confirmar uma correção.</p>
+                )}
                 {insight.link && (
                   <button
                     type="button"

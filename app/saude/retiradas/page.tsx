@@ -19,7 +19,6 @@ import {
 
   Store,
   XCircle,
-  Plus,
   PackageCheck,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -341,11 +340,6 @@ export default function RetiradasPage() {
           title="Retiradas"
           badgeLabel="AGENDA DE MEDICAMENTOS"
           badgeColor="text-emerald-300"
-          rightAction={
-            <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/retiradas/nova"); }} className="flex h-11 items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/[.08] px-3 text-[10px] font-bold uppercase tracking-wide text-emerald-300 active:scale-95" aria-label="Agendar nova retirada">
-              <Plus size={15}/>Agendar
-            </button>
-          }
         >
           {notificationDate && <div role="status" className="order-1 flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-400/25 bg-emerald-400/[.06] px-3 py-2 text-xs text-emerald-200">
             <span>Retiradas de {notificationDate.split("-").reverse().join("/")} · abertas pela notificação</span>

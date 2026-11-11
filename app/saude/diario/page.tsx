@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Clipboard } from "@capacitor/clipboard";
 import { ArrowLeft, BookHeart, Check, ClipboardCopy, HeartHandshake, LockKeyhole, NotebookPen, ShieldAlert, Trash2 } from "lucide-react";
 import { EncryptedRecoveryM115 } from "@/components/saude/EncryptedRecoveryM115";
+import { privateActivityReviewsM118 } from "@/lib/private-activity-review-m118";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
@@ -17,17 +18,18 @@ export default function PersonalTherapyJournalM113(){
   const {user}=useAuth(), {activePersonId}=useActivePersonId();
   const health=useSharedHealthIntelligence({includeAudit:false});
   const [draft,setDraft]=useState(""),[entries,setEntries]=useState<M113DiaryEntry[]>([]);
+  const [activity,setActivity]=useState(""),[before,setBefore]=useState(""),[after,setAfter]=useState(""),[perception,setPerception]=useState("");
   const [consent,setConsent]=useState(false),[selected,setSelected]=useState<string[]>([]),[includeTimeline,setIncludeTimeline]=useState(false);
   const [feedback,setFeedback]=useState("");
   const [protectedMode,setProtectedMode]=useState(false),[unlocked,setUnlocked]=useState(true),[passphrase,setPassphrase]=useState(""),[privacyBusy,setPrivacyBusy]=useState(false);
   const ready=Boolean(user?.id&&activePersonId);
   useEffect(()=>{
-    setDraft("");setConsent(false);setSelected([]);setIncludeTimeline(false);setFeedback("");
+    setDraft("");setActivity("");setBefore("");setAfter("");setPerception("");setConsent(false);setSelected([]);setIncludeTimeline(false);setFeedback("");
     const isProtected=hasProtectedJournalM114(user?.id,activePersonId);setProtectedMode(isProtected);setUnlocked(!isProtected);setPassphrase("");setEntries(isProtected?[]:readJournalM113(user?.id,activePersonId));
   },[user?.id,activePersonId]);
   function lockProtectedSession(message="Diário bloqueado; use sua frase para abrir novamente."){
     if(!protectedMode)return;
-    setEntries([]);setSelected([]);setDraft("");setIncludeTimeline(false);setConsent(false);setPassphrase("");setUnlocked(false);setFeedback(message);
+    setEntries([]);setSelected([]);setDraft("");setActivity("");setBefore("");setAfter("");setPerception("");setIncludeTimeline(false);setConsent(false);setPassphrase("");setUnlocked(false);setFeedback(message);
   }
   useEffect(()=>{
     if(!protectedMode||!unlocked)return;
@@ -39,6 +41,15 @@ export default function PersonalTherapyJournalM113(){
   const timeline=useMemo(()=>ready&&!health.error&&!health.isLoading&&health.context&&health.context.userId===user?.id&&health.context.personId===activePersonId
     ? buildPatternTimelineM113(health.context):null,[ready,health.error,health.isLoading,health.context,user?.id,activePersonId]);
   const summary=useMemo(()=>therapySummaryM113(entries,selected,includeTimeline?timeline:null),[entries,selected,includeTimeline,timeline]);
+  const activityReviews=useMemo(()=>privateActivityReviewsM118(entries),[entries]);
+  function prepareActivityReview(){
+    const item=activity.trim(),b=before.trim(),a=after.trim(),p=perception.trim();
+    if(!item||!b||!a){setFeedback("Informe a situação e como se sentiu antes e depois; nada foi salvo.");return;}
+    const text=["O que me ajudou (se eu quiser contar):",`Situação ou atividade: ${item}`,`Como me senti antes: ${b}`,`Como me senti depois: ${a}`,`O que percebi: ${p||"Não informado"}`].join("\n");
+    setDraft(old=>[old.trim(),text].filter(Boolean).join("\n\n").slice(0,6000));
+    setFeedback("Relato preparado no editor. Confira e escolha se deseja salvar.");
+    setActivity("");setBefore("");setAfter("");setPerception("");
+  }
   async function save(){
     if(!user?.id||!activePersonId){setFeedback("Entre na conta e selecione uma pessoa.");return;}
     if(!consent){setFeedback(protectedMode?"Confirme o salvamento cifrado somente neste aparelho.":"Confirme o salvamento aberto somente neste aparelho.");return;}
@@ -79,7 +90,14 @@ export default function PersonalTherapyJournalM113(){
       <section className="rounded-[22px] border border-violet-300/20 bg-surface p-4">
         <div className="flex items-center gap-2"><NotebookPen size={19} className="text-violet-300"/><h2 className="text-sm font-bold">O que você gostaria de conseguir explicar?</h2></div>
         <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Pode escrever sobre o dia, situações difíceis, algo que ajudou ou o que deseja conversar na próxima consulta. Você decide o conteúdo.</p>
-        <button type="button" onClick={()=>setDraft(value=>[value.trim(),"O que me ajudou (se eu quiser contar):","Situação ou atividade:","Como me senti antes:","Como me senti depois:","O que percebi:"].filter(Boolean).join("\n").slice(0,6000))} className="mt-2 min-h-11 w-full rounded-xl border border-violet-300/20 text-xs text-violet-200">Preencher roteiro opcional: o que me ajudou</button>
+        <details className="mt-2 rounded-xl border border-violet-300/20 p-3">
+          <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-violet-200">O que me ajudou · relato guiado (opcional)</summary>
+          <div className="space-y-2 border-t border-violet-300/10 pt-3">
+            <p className="text-[10px] leading-relaxed text-ink-muted">Compare apenas o que você relatou. Não comprova efeito ou tratamento.</p>
+            {([["Situação ou atividade",activity,setActivity],["Como me senti antes",before,setBefore],["Como me senti depois",after,setAfter],["O que percebi (opcional)",perception,setPerception]] as const).map(([label,value,update],index)=><label key={label} className="block text-[11px] text-ink-secondary">{label}<input value={value} onChange={e=>update(e.target.value.slice(0,300))} maxLength={300} placeholder={index===0?"Ex.: descanso, conversa, caminhada":"Em minhas próprias palavras"} className="mt-1 min-h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary"/></label>)}
+            <button type="button" onClick={prepareActivityReview} className="min-h-11 w-full rounded-xl border border-violet-300/30 text-xs font-semibold text-violet-200">Preparar texto para revisar antes de salvar</button>
+          </div>
+        </details>
         <textarea value={draft} onChange={e=>setDraft(e.target.value.slice(0,6000))} disabled={!ready} rows={6} placeholder="Hoje eu gostaria de conseguir dizer que…" aria-label="Meu texto privado" className="mt-3 w-full resize-y rounded-xl border border-surface-border bg-surface-raised p-3 text-sm leading-relaxed text-ink-primary outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-50"/>
         <p className="mt-1 text-right font-mono text-[10px] text-ink-muted">{draft.length}/6000</p>
         <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.04] p-3 text-[11px] leading-relaxed text-ink-muted"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} className="mt-0.5 size-4 accent-violet-300"/><span><strong>Autorizo salvar somente neste aparelho.</strong> {protectedMode?"As notas usam criptografia local com a frase desta sessão; ela não é salva.":"Sem a criptografia opcional, ficam abertas no armazenamento local."} Quem acessar o aplicativo já desbloqueado poderá vê-las. Não há sincronização nem backup automático.</span></label>
@@ -89,6 +107,13 @@ export default function PersonalTherapyJournalM113(){
         <div className="flex items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-bold"><BookHeart size={17} className="text-violet-200"/> Minhas notas ({entries.length})</h2>{entries.length>0&&<button type="button" onClick={clearAll} className="flex min-h-10 items-center gap-1 text-[11px] text-rose-200"><Trash2 size={13}/> Apagar todas</button>}</div>
         {!entries.length?<p className="mt-3 text-xs text-ink-muted">Nenhuma nota salva neste aparelho para esta pessoa.</p>:<div className="mt-3 space-y-2">{entries.map(e=><div key={e.id} className="rounded-xl border border-surface-border/70 bg-surface-raised/40 p-3"><div className="flex items-start gap-2"><label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-[11px] text-ink-muted"><input type="checkbox" checked={selected.includes(e.id)} onChange={event=>setSelected(old=>event.target.checked?[...old,e.id]:old.filter(x=>x!==e.id))} className="size-4 accent-violet-300"/> Incluir no resumo · {dateLabel(e.createdAt)}</label><button type="button" onClick={()=>remove(e.id)} aria-label="Excluir nota" className="flex size-9 items-center justify-center rounded-lg text-rose-200"><Trash2 size={15}/></button></div><p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-ink-secondary">{e.text}</p></div>)}</div>}
       </section>
+      {activityReviews.length>0 && <details className="rounded-[20px] border border-violet-300/20 bg-surface p-3" aria-label="Comparações voluntárias de atividades">
+        <summary className="min-h-11 cursor-pointer text-xs font-bold text-violet-200">Meus relatos antes e depois ({activityReviews.length})</summary>
+        <div className="space-y-2 border-t border-surface-border/40 pt-3">{activityReviews.slice(0,10).map(item=><div key={item.id} className="rounded-xl bg-surface-raised/40 p-3 text-xs leading-relaxed">
+          <strong className="block text-ink-primary">{item.activity}</strong>
+          <span className="mt-1 block text-ink-muted">Antes: {item.before}</span><span className="block text-ink-muted">Depois: {item.after}</span>
+        </div>)}<p className="text-[10px] text-ink-faint">Relatos particulares, não resultados clínicos. Comparação não indica causalidade. O Brain não recebe esse conteúdo.</p></div>
+      </details>}
       <section className="rounded-[22px] border border-emerald-300/15 bg-surface p-4" aria-label="Resumo escolhido para terapia">
         <h2 className="flex items-center gap-2 text-sm font-bold"><ClipboardCopy size={18} className="text-emerald-300"/> Preparar resumo para terapia</h2>
         <p className="mt-2 text-[11px] text-ink-muted">Somente as notas marcadas entram no resumo. Você também pode incluir uma cronologia objetiva de eventos já registrados no VAULT.</p>

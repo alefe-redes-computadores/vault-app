@@ -71,7 +71,7 @@ function escalation(c:HealthInsightContext,m:Medication,p:Profile,now:Date):Heal
  const ratio=Math.max(frequencyRatio,quantityRatio);if(!(ratio>=1.5&&(unplanned>0||recent.length>=7)))return null;
  return {id:`longitudinal-escalation-${p.substance}-${m.id}`,kind:"pattern",categoria:"rotina",titulo:`${m.nome}: padrão recente aumentou em relação ao próprio histórico`,
  mensagem:`Nos últimos 7 dias, frequência/quantidade registrada ficou cerca de ${ratio.toFixed(1)}× o ritmo das 3 semanas anteriores. Para este medicamento, aumento sustentado merece revisão clínica. O padrão isolado não demonstra tolerância, dependência ou uso inadequado.`,
- urgencia:ratio>=2?"alta":"media",gravidadeSeguranca:ratio>=2?"importante":"atencao",confianca:baseline.length>=10?"alta":"media",amostra:recent.length+baseline.length,periodoDias:28,entidadeTipo:"medicamento",entidadeId:m.id,link:`/saude/medicamentos/historico?id=${m.id}`,
+ urgencia:ratio>=2?"alta":"media",gravidadeSeguranca:ratio>=2?"importante":"atencao",confianca:baseline.length>=10?"alta":"media",amostra:recent.length+baseline.length,periodoDias:28,entidadeTipo:"medicamento",entidadeId:m.id,link:`/saude/medicamentos/historico?id=${m.id}&review=28`,
  evidencias:[`${recent.length} tomada(s) nos últimos 7 dias`,`${baseline.length} tomada(s) na janela anterior de 21 dias`,`${unplanned} dose(s) SOS/extra na janela recente`,`Mudança relativa: ${ratio.toFixed(1)}×`],
  fontesInternas:["Histórico de doses","Doses SOS/extra","Baseline longitudinal da própria pessoa"],fontesExternas:[p.source],
  acaoSegura:"Revise os registros e converse com o prescritor antes de aumentar, reduzir ou interromper a medicação. O Vault não recomenda ajuste de dose.",

@@ -22,7 +22,6 @@ import {
   MessageCircle,
   Receipt,
   Store,
-  Plus,
 } from "lucide-react";
 
 import {
@@ -743,30 +742,6 @@ export default function RenovacoesPage() {
           title="Receitas e aquisições"
           badgeLabel="ACESSO A MEDICAMENTOS"
           badgeColor="text-ice"
-          rightAction={
-            <button
-              type="button"
-              onClick={() => {
-                trigger(
-                  "vibrate"
-                );
-
-                navigateWithReturn(
-                  "/saude/renovacao/nova"
-                );
-              }}
-              className="flex min-h-11 items-center gap-2 rounded-2xl border border-ice/35 bg-ice/[.09] px-3 text-xs font-bold uppercase tracking-wide text-ice transition-all active:scale-95"
-              aria-label="Registrar aquisição de medicamento"
-            >
-              <Plus
-                size={
-                  15
-                }
-              />
-
-              Aquisição
-            </button>
-          }
         >
           <ListSearch
             value={

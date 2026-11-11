@@ -20,7 +20,7 @@ const changed=[
 for(const path of changed){const text=read(path),parsed=ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);ok(parsed.parseDiagnostics.length===0,`${path}: TSX ${parsed.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')).join('; ')}`)}
 const [treatment,health,links,symptoms,stock,history,acquisition,journey,metrics,three,avatar]=changed.map(read);
 ok(treatment.includes('label="Áreas do tratamento" layout="grid" density="compact" priorityCount={3}')&&treatment.includes('label:"Medicamentos"')&&treatment.includes('label:"Rede"'), 'Tratamento prioriza ações clínicas e conserva âncoras');
-ok(health.includes('label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={4}')&&health.includes('id:"historico"'), 'Minha Saúde prioriza visão, Avatar, fontes e indicadores; histórico acessível');
+ok(health.includes('label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5}')&&health.includes('id:"historico"'), 'Minha Saúde prioriza visão, Avatar, fontes e indicadores; histórico acessível');
 ok(treatment.includes('panorama.renovacoes>0 || panorama.medicamentosPrecisandoAtencao>0')&&treatment.includes('Sem aquisições ou pendências registradas'), 'Panorama vazio não vira duas métricas zero');
 ok(treatment.includes('Nenhum evento clínico vinculado a este tratamento.')&&treatment.includes('timeline.map('), 'Linha clínica vazia compacta; timeline real mantida');
 ok(links.includes('<TreatmentLinkedMetrics items={counts}/>')&&links.includes('counts.some(item=>item.value>0)')&&links.includes('visibleProcesses.map(')&&links.includes('visibleWithdrawals.map('), 'Contadores extraídos; processos e retiradas canônicos intactos');

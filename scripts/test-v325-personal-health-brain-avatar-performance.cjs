@@ -16,7 +16,7 @@ const result=buildPersonalHealthPortfolio(context);
 assert.equal(result.records7d,3);assert.equal(result.records30d,5);assert.equal(result.activeDays30d,5);assert.equal(result.metricsObserved,3);assert.equal(result.deviceRecords30d,2);assert.equal(result.manualRecords30d,3);assert.equal(result.latestDate,'2026-10-29');assert.equal(result.coverage,'recent');
 const command=read('lib/health-intelligence/care-command.ts'),health=read('app/saude/minha-saude/page.tsx'),avatar=read('components/saude/HealthAvatar.tsx'),overview=read('components/saude/PersonalHealthOverview.tsx'),readiness=read('components/saude/AvatarCareReadiness.tsx');
 assert(command.includes('buildPersonalHealthPortfolio(context)')&&command.includes('health: PersonalHealthPortfolio'));
-assert(health.includes('<PersonalHealthOverview')&&health.indexOf('<PersonalHealthOverview')<health.indexOf('<ClinicalSectionNav'));
+assert(health.includes('<PersonalHealthOverview')&&health.includes('<ClinicalSectionNav')&&health.includes('<CareJourney360')&&health.includes('id:"historico"'),'Minha Saúde mantém Panorama, Mapa 360 e cinco destinos acessíveis');
 assert(avatar.includes("const shouldMount3D=ready&&expanded&&mode==='3d'&&documentVisible&&!unavailable&&")&&avatar.includes('shouldMount3D?<Avatar3DBoundary'));
 assert(avatar.includes("size==='expanded'||previewVisible")&&avatar.includes('visibilitychange'),'compact preview unmounts GPU out of viewport and when backgrounded');
 assert(avatar.includes('chooseMode(\'illustration\')'),'explicit illustration preference remains available');

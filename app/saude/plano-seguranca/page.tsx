@@ -32,6 +32,7 @@ export default function SafetyPlanPage() {
   const [legacyAvailable, setLegacyAvailable] = useState(false);
   const [legacyConfirm, setLegacyConfirm] = useState(false);
   const [protectedMode,setProtectedMode]=useState(false),[unlocked,setUnlocked]=useState(true),[passphrase,setPassphrase]=useState(""),[privacyBusy,setPrivacyBusy]=useState(false);
+  const totalParts = sections.length + 1; // The structured contacts are a seventh, independent part.
   const completed = sections.filter(section => Boolean(plan[section.key].trim())).length+(plan.trustedContacts.length?1:0);
 
   useEffect(() => {
@@ -128,8 +129,8 @@ export default function SafetyPlanPage() {
         {/* VAULT_V329_SAFETY_WORKSPACE: consultation-first, local only, no automatic clinical inference. */}
         <section className="rounded-[24px] border border-surface-border/80 bg-surface p-4" aria-label="Progresso do meu plano de segurança">
           <div className="flex items-start gap-3"><BookHeart className="mt-0.5 shrink-0 text-violet-300" size={20}/><div className="min-w-0 flex-1"><h2 className="text-sm font-semibold text-ink-primary">Um roteiro feito por você</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Preencha de preferência em um momento estável. Revise com alguém de confiança ou profissional de saúde.</p></div></div>
-          <div className="mt-4 flex items-center justify-between gap-2"><strong className="text-xs text-ink-primary">{completed} de {sections.length} partes preenchidas</strong><span className="text-[10px] text-ink-muted">{changed ? "Alterações não salvas" : saved ? "Salvo neste dispositivo" : plan.updatedAt ? "Plano disponível offline" : "Comece pelo que fizer sentido"}</span></div>
-          <div role="progressbar" aria-label="Preenchimento do plano" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={sections.length} className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised"><div className="h-full rounded-full bg-violet-300 transition-all" style={{width:`${completed / sections.length * 100}%`}}/></div>
+          <div className="mt-4 flex items-center justify-between gap-2"><strong className="text-xs text-ink-primary">{completed} de {totalParts} partes preenchidas</strong><span className="text-[10px] text-ink-muted">{changed ? "Alterações não salvas" : saved ? "Salvo neste dispositivo" : plan.updatedAt ? "Plano disponível offline" : "Comece pelo que fizer sentido"}</span></div>
+          <div role="progressbar" aria-label="Preenchimento do plano" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={totalParts} className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-raised"><div className="h-full rounded-full bg-violet-300 transition-all" style={{width:`${completed / totalParts * 100}%`}}/></div>
           <div className="mt-4 grid grid-cols-2 gap-2" role="group" aria-label="Modo do plano">
             <button type="button" aria-pressed={mode === "consultar"} onClick={() => setMode("consultar")} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold ${mode === "consultar" ? "border-violet-300/40 bg-violet-300/10 text-violet-200" : "border-surface-border text-ink-muted"}`}><ClipboardCheck size={15}/> Consultar</button>
             <button type="button" aria-pressed={mode === "editar"} onClick={() => setMode("editar")} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold ${mode === "editar" ? "border-violet-300/40 bg-violet-300/10 text-violet-200" : "border-surface-border text-ink-muted"}`}><Pencil size={15}/> Preencher</button>

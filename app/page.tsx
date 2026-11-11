@@ -100,6 +100,7 @@ import {
 } from "@/components/PendingDosesModal";
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
+import { HomeEssentialToggleM118 } from "@/components/home/HomeEssentialToggleM118";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { countHomeTodayAppointments } from "@/lib/home/appointment-metrics";
@@ -1179,6 +1180,7 @@ export default function HomePage() {
         <section className="mx-auto max-w-3xl space-y-5 px-4 pt-4 sm:px-5">
 
           <VaultUpdateHomePromptM117 />
+          <HomeEssentialToggleM118 />
 
           {/* ===================================================
               HOJE

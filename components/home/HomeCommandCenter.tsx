@@ -25,8 +25,11 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
   const { trigger } = useHapticFeedback();
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
   const [essential,setEssential]=useState(false);
-  useEffect(()=>{try{setEssential(localStorage.getItem("vault:home:essential:v1")==="1");}catch{}},[]);
-  const toggleEssential=()=>setEssential(value=>{const next=!value;try{localStorage.setItem("vault:home:essential:v1",next?"1":"0");}catch{}return next;});
+  useEffect(()=>{
+    const sync=()=>{try{setEssential(localStorage.getItem("vault:home:essential:v1")==="1");}catch{setEssential(false);}};
+    sync();window.addEventListener("vault:home:essential-changed",sync);
+    return()=>window.removeEventListener("vault:home:essential-changed",sync);
+  },[]);
 
   return (
     <section className="vault-deferred-lg space-y-3" aria-label="Central do Vault">
@@ -34,7 +37,6 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações principais primeiro; demais áreas sob demanda</p></div>
         <Stethoscope size={16} className="text-ink-muted"/>
       </div>
-      <button type="button" aria-pressed={essential} onClick={toggleEssential} className="flex min-h-11 w-full items-center justify-between rounded-2xl border border-surface-border bg-surface px-3 text-left"><span><strong className="block text-xs text-ink-primary">Modo Essencial</strong><span className="block text-[10px] text-ink-muted">{essential?"Somente ações principais":"Mostrar todas as áreas"}</span></span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${essential?"bg-emerald-300 text-void":"bg-surface-raised text-ink-muted"}`}>{essential?"ATIVO":"OPCIONAL"}</span></button>
 
       <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-1.5" aria-label="Medicamentos, retiradas e fornecimento">
         <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-emerald-400/20 bg-surface px-3 py-3 w-full text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">

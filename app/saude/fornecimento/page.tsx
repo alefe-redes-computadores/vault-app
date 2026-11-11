@@ -1228,9 +1228,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           })}</div></details>}
           {/* VAULT_V321_SUPPLY_FOCUS: no synthetic SUS/private funding classification. */}
           {processView.activeProcesses.length > 0 && !creating && (
-            <div className="mb-2 flex min-h-12 items-center justify-between gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] px-3 py-2">
+            <div className="mb-2 flex min-h-12 items-center gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] px-3 py-2">
               <span className="text-[11px] font-medium text-ink-muted">{processView.activeProcesses.length} processo{processView.activeProcesses.length === 1 ? "" : "s"} ativo{processView.activeProcesses.length === 1 ? "" : "s"}</span>
-              <button type="button" disabled={busy} onClick={() => {setSeed(null);setEditing(false);setCycleId("");setCreating(true);}} className="min-h-10 shrink-0 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 text-xs font-semibold text-emerald-300 disabled:opacity-50">Novo fornecimento</button>
             </div>
           )}
           <div id="processos" className="mb-3 grid min-w-0 scroll-mt-24 grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Selecionar fornecimento">

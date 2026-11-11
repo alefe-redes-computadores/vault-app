@@ -21,7 +21,6 @@ import {
   AlertTriangle,
   History,
   Pill,
-  Plus,
 } from "lucide-react";
 
 import {
@@ -705,7 +704,6 @@ function TratamentoListContent() {
           title="Tratamentos"
           badgeLabel="CUIDADO CONECTADO"
           badgeColor="text-emerald-300"
-          rightAction={<button type="button" onClick={handleCreate} className="flex min-h-11 items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/[.09] px-3 text-xs font-bold uppercase tracking-wide text-emerald-300 active:scale-95"><Plus size={15}/>Novo</button>}
           subtitle={
             filtroStatus ===
               "todos" &&
