@@ -1,6 +1,7 @@
 import type { DoseLog, Medicamento, RegistroSaude } from "@/lib/types";
 import type { BrainV5Alert } from "@/lib/health-intelligence/brain-v5";
 import { indexConfirmedDoseSafetyEpisodes, type ClinicalDoseSafetyEpisode } from "@/lib/clinical-safety-episodes";
+import { aggregateClinicalMonthRecords, buildSupplyBarriers, dedupeClinicalBrainInsights, groupClinicalMonthDoses, type ClinicalMonthBarrier, type ClinicalMonthDoseDay } from "@/lib/clinical-month-presentation";
 
 export interface ClinicalMonthDoseRow {
   id: string;
@@ -20,7 +21,10 @@ export interface ClinicalMonthReport {
   monthKey: string;
   monthLabel: string;
   doses: ClinicalMonthDoseRow[];
+  doseDays: ClinicalMonthDoseDay[];
+  barriers: ClinicalMonthBarrier[];
   records: ClinicalMonthRecordRow[];
+  biometricSourceNote: string | null;
   alerts: ClinicalDoseSafetyEpisode[];
   brainInsights: ClinicalMonthBrainInsight[];
   summary: { taken: number; ignored: number; sos: number; extra: number; daysWithRecords: number };
@@ -57,15 +61,12 @@ export function buildClinicalMonthReport({
     reason: log.motivo?.trim() || null,
     safety: log.id ? safety.get(log.id) || null : safety.get(log.tomado_em || "") || null,
   })).sort((a, b) => b.date.localeCompare(a.date) || (b.confirmedAt || b.scheduledTime || "").localeCompare(a.confirmedAt || a.scheduledTime || "") || a.id.localeCompare(b.id));
-  const records = healthRecords.filter(record => record.user_id === userId && record.person_id === personId &&
-    record.data.startsWith(`${monthKey}-`) && dateIsValid(record.data)).map(record => ({
-      date: record.data,
-      title: record.nome || record.tipo || "Registro de saúde",
-      detail: [record.valor_medicao, typeof record.intensidade === "number" ? `Intensidade ${record.intensidade}/10` : "", record.observacoes].filter(Boolean).join(" · "),
-    })).sort((a, b) => b.date.localeCompare(a.date));
+  const ownRecords = healthRecords.filter(record => record.user_id === userId && record.person_id === personId &&
+    record.data.startsWith(`${monthKey}-`) && dateIsValid(record.data));
+  const { rows: records, biometricSourceNote } = aggregateClinicalMonthRecords(ownRecords);
   const alerts = doses.flatMap(row => row.safety ? [row.safety] : []);
   // Detection is attributed to its stored detection date, never backdated to an event.
-  const brainInsights: ClinicalMonthBrainInsight[] = brainLedger.filter(item =>
+  const brainInsights = dedupeClinicalBrainInsights(brainLedger.filter(item =>
     item.person_id === personId && !item.insight_id.startsWith("quantidade-confirmada-") &&
     typeof item.first_detected_at === "string" && item.first_detected_at.startsWith(`${monthKey}-`) &&
     dateIsValid(item.first_detected_at.slice(0, 10))
@@ -75,13 +76,14 @@ export function buildClinicalMonthReport({
     message: item.snapshot.mensagem,
     severity: item.snapshot.gravidade_seguranca || "informativa",
     feedback: item.feedback || null,
-  })).sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
+  })).sort((a, b) => b.detectedAt.localeCompare(a.detectedAt)));
   const days = new Set([...doses.map(row => row.date), ...records.map(row => row.date)]);
   const [year, month] = monthKey.split("-").map(Number);
   return {
     monthKey,
     monthLabel: new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1, 12)),
-    doses, records, alerts, brainInsights,
+    doses, doseDays: groupClinicalMonthDoses(doses), barriers: buildSupplyBarriers(doses),
+    records, biometricSourceNote, alerts, brainInsights,
     summary: {
       taken: doses.filter(row => row.status === "taken").length,
       ignored: doses.filter(row => row.status === "ignored").length,

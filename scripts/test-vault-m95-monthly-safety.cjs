@@ -17,7 +17,8 @@ function loadPure(p,dependencies={}){
  return target.exports;
 }
 const safety=loadPure('lib/clinical-safety-episodes.ts');
-const monthly=loadPure('lib/clinical-month-report.ts',{'@/lib/clinical-safety-episodes':safety});
+const presentation=loadPure('lib/clinical-month-presentation.ts');
+const monthly=loadPure('lib/clinical-month-report.ts',{'@/lib/clinical-safety-episodes':safety,'@/lib/clinical-month-presentation':presentation});
 const dose={id:'d1',user_id:'u1',person_id:'p1',medicamento_id:'m1',data:'2026-11-03',horario:'23:00',tomado_em:'2026-11-04T02:11:00.000Z',quantidade:40,dose_kind:'sos',motivo:'Conforme anotação da pessoa'};
 const alert={key:'k1',person_id:'p1',insight_id:'quantidade-confirmada-m1-d1',state:'resolved',first_detected_at:'2026-11-04T02:12:00.000Z',last_detected_at:'2026-11-04T02:12:00.000Z',feedback:'already_knew',feedback_updated_at:'2026-11-05T01:01:00.000Z',snapshot:{kind:'alert',entidade_tipo:'medicamento',entidade_id:'m1',titulo:'Quantidade confirmada fora do padrão',mensagem:'Comparação interna; não determina dose segura.',gravidade_seguranca:'importante',evidencias:['Quantidade registrada: 40 gotas','Referência interna: 5 gotas','Horário salvo: 2026-11-04T02:11:00.000Z']}};
 const log2={...dose,id:'d2',quantidade:5,data:'2026-11-04',dose_kind:'scheduled',tomado_em:'2026-11-04T10:30:00.000Z'};

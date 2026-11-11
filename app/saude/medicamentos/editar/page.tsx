@@ -13,7 +13,7 @@ import { catalogUniquelyInferredFormats } from "@/lib/medications/catalog-unique
 import { useMedicationCatalogDismiss } from "@/hooks/useMedicationCatalogDismiss";
 
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
-import { TEMPORARY_COURSE_PREFIX } from "@/lib/health-supply/temporary-course";
+import { TEMPORARY_COURSE_PREFIX, parseTemporaryCourseNote } from "@/lib/health-supply/temporary-course";
 import { TemporaryCourseFields, emptyTemporaryCourseDraft, readTemporaryCourseDraft, type TemporaryCourseDraft } from "@/components/saude/TemporaryCourseFields";
 
 import {
@@ -1318,10 +1318,20 @@ function EditarMedicamentoContent() {
                 `${log.data}T${log.horario}` > `${todayISO}T${new Date().toTimeString().slice(0,5)}`);
               const note = futureLogs.at(-1)?.motivo || courseLogs.at(-1)?.motivo || "";
               const currentCourseLogs = courseLogs.filter(log => log.motivo === note);
-              const match = /^Tratamento temporário · (\d{4}-\d{2}-\d{2}) · (\d+) dia\(s\)$/.exec(note);
-              if (match && (item.tipo_uso === "esporadico" || item.tipo_uso === "sos")) setTipoUso("temporario");
+              const parsedCourse = parseTemporaryCourseNote(note);
+              if (parsedCourse && (item.tipo_uso === "esporadico" || item.tipo_uso === "sos")) setTipoUso("temporario");
               setHasExistingTemporaryCourse(futureLogs.length > 0);
-              setTemporaryCourse(match ? { enabled: futureLogs.length > 0, start: match[1], days: match[2], times: [...new Set(currentCourseLogs.map(log => log.horario))].sort(), quantityPerDose: String(currentCourseLogs.find(log => log.quantidade)?.quantidade ?? item.estoque_unidade_por_dose ?? "") } : emptyTemporaryCourseDraft);
+              const usesInterval = Boolean(parsedCourse?.intervalHours && parsedCourse.firstDoseAt);
+              setTemporaryCourse(parsedCourse ? {
+                enabled: futureLogs.length > 0,
+                mode: usesInterval ? "interval" : "times",
+                start: parsedCourse.start,
+                days: String(parsedCourse.days),
+                times: usesInterval ? [] : [...new Set(currentCourseLogs.map(log => log.horario))].sort(),
+                firstTime: usesInterval ? parsedCourse.firstDoseAt!.slice(11, 16) : "",
+                intervalHours: usesInterval ? String(parsedCourse.intervalHours) : "",
+                quantityPerDose: String(currentCourseLogs.find(log => log.quantidade)?.quantidade ?? item.estoque_unidade_por_dose ?? ""),
+              } : emptyTemporaryCourseDraft);
             }
 
             setMedicoNome(

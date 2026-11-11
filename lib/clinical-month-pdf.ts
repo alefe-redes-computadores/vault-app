@@ -8,11 +8,6 @@ function dateLabel(iso: string): string {
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;
 }
-function clock(iso: string | null): string {
-  if (!iso) return "Não informado";
-  const parsed = new Date(iso);
-  return Number.isNaN(parsed.getTime()) ? "Não informado" : parsed.toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"});
-}
 
 export async function exportClinicalMonthPdf(report: ClinicalMonthReport): Promise<void> {
   const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4", compress:true });
@@ -55,18 +50,6 @@ export async function exportClinicalMonthPdf(report: ClinicalMonthReport): Promi
   line(`${report.summary.sos} SOS  |  ${report.summary.extra} extras  |  ${report.summary.daysWithRecords} dias documentados`);
   line(`${report.alerts.length} episódio(s) com evidência original preservada no Brain`);
   paragraph("Ausência de registro não comprova que uma dose não foi tomada. Contagens não representam adesão clínica.",0,8,[93,103,106]);
-  heading("Diário de doses");
-  if (!report.doses.length) paragraph("Nenhum registro de tomada ou de dose ignorada neste mês.");
-  for (const row of report.doses) {
-    nextPage(22);
-    pdf.setFont("helvetica", "bold");pdf.setFontSize(10);pdf.setTextColor(31,48,52);
-    pdf.text(`${dateLabel(row.date)}  ·  ${fmt(row.medication).slice(0,75)}`, left, y); y += 5;
-    line(`${row.status === "taken" ? "Tomada" : "Ignorada"} · ${row.doseKind} · Quantidade: ${row.quantity === null ? "não informada" : String(row.quantity)}`);
-    line(`Horário previsto: ${row.scheduledTime || "não informado"}  |  Registro real: ${clock(row.confirmedAt)}`);
-    if (row.reason) paragraph(`Motivo registrado: ${row.reason}`, 2, 8);
-    if (row.safety) paragraph(`ATENÇÃO — avaliação preservada: ${row.safety.title}. Ver seção Alertas.`,2,8,[162,66,35]);
-    y += 3;
-  }
   heading("Alertas com evidência preservada");
   if (!report.alerts.length) paragraph("Nenhum alerta de quantidade vinculado a uma dose neste mês foi encontrado na memória persistida. Isso não atesta segurança das doses.");
   for (const episode of report.alerts) {
@@ -78,6 +61,20 @@ export async function exportClinicalMonthPdf(report: ClinicalMonthReport): Promi
     paragraph(episode.message,0,8);
     y += 3;
   }
+  heading("Barreiras de fornecimento documentadas");
+  if (!report.barriers.length) paragraph("Nenhuma interrupção por falta de estoque foi explicitamente registrada neste período.");
+  for (const barrier of report.barriers) line(`${barrier.medication} · ${barrier.affectedDays} dia(s) afetado(s) · ${barrier.ignoredDoses} dose(s) ignorada(s) · ${barrier.detail}`);
+  paragraph("Este bloco resume somente motivos registrados; não presume falha de fornecimento quando não há evidência.",0,8,[93,103,106]);
+  heading("Diário de doses por dia");
+  paragraph("Registro real: horários confirmados permanecem nos registros individuais; a visão abaixo é compacta.",0,8,[93,103,106]);
+  if (!report.doseDays.length) paragraph("Nenhum registro de tomada ou de dose ignorada neste mês.");
+  for (const day of report.doseDays) {
+    nextPage(10);
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(31,48,52);
+    pdf.text(dateLabel(day.date), left, y); y += 5;
+    for (const compactLine of day.lines) paragraph(compactLine, 2, 8);
+    y += 1;
+  }
   heading("Outros alertas e insights registrados pelo Brain");
   if (!report.brainInsights.length) paragraph("Nenhum outro insight persistido com detecção neste mês. Isso não indica ausência de sinais de saúde.");
   for (const insight of report.brainInsights) {
@@ -88,6 +85,7 @@ export async function exportClinicalMonthPdf(report: ClinicalMonthReport): Promi
     y += 2;
   }
   heading("Outros registros de saúde");
+  if (report.biometricSourceNote) paragraph(report.biometricSourceNote, 0, 8, [93,103,106]);
   if (!report.records.length) paragraph("Nenhum outro registro de saúde disponível neste mês.");
   for (const row of report.records) line(`${dateLabel(row.date)} · ${row.title}${row.detail ? ` · ${row.detail}` : ""}`);
   heading("Origem e limitações");
