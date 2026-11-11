@@ -1,0 +1,30 @@
+/* M123: Android workflow and native updater static readiness contract, no device/network. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+let passed=0;
+const read=p=>fs.readFileSync(p,'utf8');
+function check(label,yes){assert.ok(yes,`M123 ANDROID: ${label}`);passed++;}
+const native=read('native/updates/VaultApkUpdaterPlugin.java');
+const flow=read('components/updates/VaultNativeUpdateFlow.tsx');
+const bridge=read('lib/updates/native-apk-updater.ts');
+const workflow=read('.github/workflows/build-android.yml');
+const checker=read('scripts/check-android-native-updater-m111.mjs');
+const notes=read('docs/VAULT-M123-FECHAMENTO-GLOBAL.md');
+check('instalador inspeciona assinatura, versão e APK',native.includes('verifyPackage('));
+check('permissão desconhecida não é ignorada',native.includes('canRequestPackageInstalls()'));
+check('instalador oficial recebe URI restrita',native.includes('FileProvider.getUriForFile')&&native.includes('FLAG_GRANT_READ_URI_PERMISSION'));
+check('gestão explícita da instalação',native.includes('ACTION_VIEW'));
+check('download pode ser cancelado',native.includes('cancelDownload')&&flow.includes('cancelDownload()'));
+check('pacote verificado antes de instalar',flow.includes('downloadVerified(metadata)')&&flow.includes('installVerified(metadata)'));
+check('permissão checada após retorno das configurações',flow.includes('checkInstallPermission()'));
+check('bridge isolada e exposta',bridge.includes('getVaultNativeUpdater'));
+check('integração nativa M111 permanece certificada',checker.includes('verifyPackage(')&&checker.includes('cancelDownload'));
+check('build Android roda gate antes do export',workflow.indexOf('npm run test:release')<workflow.indexOf('node scripts/ci-build-export-resilient.cjs'));
+check('APK exige compilação Gradle',workflow.includes('./gradlew clean assembleDebug'));
+check('APK exige ferramentas de inspeção',workflow.includes('apksigner')&&workflow.includes('aapt'));
+check('APK verifica versionName',workflow.includes('versionName'));
+check('não certificar instalação física sem aparelho',notes.includes('QA manual pós-publicação'));
+check('canal check-in é privado',read('lib/health-reminders/scheduler.ts').includes('visibility: -1'));
+check('alertas comuns não são declarados privados',read('lib/health-reminders/scheduler.ts').includes('visibility: 1'));
+check('gate M123 continua registrado',read('scripts/test-v63-release-gate.mjs').includes('scripts/verify-vault-android-m123.cjs'));
+console.log(`M123 ANDROID: ${passed} verificações de prontidão estática OK. Sem simulação de APK instalado.`);

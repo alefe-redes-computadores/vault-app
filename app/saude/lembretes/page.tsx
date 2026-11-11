@@ -2,6 +2,9 @@
 "use client";
 import {HealthTimePicker} from "@/components/saude/HealthTimePicker";
 import {QuietHoursSettingsM115} from "@/components/saude/QuietHoursSettingsM115";
+import {NotificationLabM123} from "@/components/notifications/NotificationLabM123";
+import {useAuth} from "@/hooks/useAuth";
+import {useActivePersonId} from "@/hooks/useActivePersonId";
 import {MoodContinuityM115} from "@/components/saude/MoodContinuityM115";
 import { expandReminderInterval } from "@/lib/health-reminders/interval-plan";
 import { isVaultNative } from "@/lib/native-runtime";
@@ -77,6 +80,8 @@ function nextLabel(value: Date | null, now: Date) {
 
 export default function HealthRemindersPage() {
   const {backTarget,preserveReturn} = useReturnContext("/saude/registros");
+  const {user: reminderOwner} = useAuth();
+  const {activePersonId: reminderPerson} = useActivePersonId();
   const router = useRouter();
   const { showToast } = useToast();
   const { trigger } = useHapticFeedback();
@@ -300,6 +305,7 @@ export default function HealthRemindersPage() {
       </section>
 
       <QuietHoursSettingsM115/>
+      <NotificationLabM123 reminders={reminders} userId={reminderOwner?.id||""} personId={reminderPerson||""} permission={permission}/>
       <MoodContinuityM115 onConfigure={()=>{setEditing(null);setTargetType("health_record:humor");setTitle("Check-in opcional");setTime("20:00");setFrequency("daily");setWeekdays([]);setIntervalHours(0);setFormOpen(true);}}/>
       {formOpen && <section className="mx-auto mt-4 max-w-xl rounded-[24px] border border-amber-400/20 bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="mb-3 flex items-center justify-between">

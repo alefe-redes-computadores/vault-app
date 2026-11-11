@@ -40,6 +40,29 @@ export function exportEncryptedM115(kind:PrivateRecoveryKindM115,user:string,per
   if(!isPrivateEnvelopeM114(envelope))throw Error("Envelope cifrado inválido.");
   return JSON.stringify({format:"vault-private-backup-m115",version:1,kind,envelope},null,2);
 }
+/** Dry-run inspection: only decrypts in memory; never writes or replaces local data. */
+export type PrivateRecoveryInspectionM123 = Readonly<{
+  kind:PrivateRecoveryKindM115;
+  validated:true;
+  count:number;
+  details:string;
+  requiresEmptyDestination:true;
+}>;
+export async function inspectEncryptedM123(kind:PrivateRecoveryKindM115,user:string,person:string,raw:string,passphrase:string):Promise<PrivateRecoveryInspectionM123>{
+  requireScope(user,person);
+  if(raw.length>1500000||raw.length<40)throw Error("Arquivo de recuperação vazio ou acima do limite de 1,5 MB.");
+  let parsed:unknown;try{parsed=JSON.parse(raw);}catch{throw Error("Arquivo JSON inválido.");}
+  const backup=parseBackup(parsed,kind);
+  const value=await openPrivateJsonM114<unknown>(namespace(kind),user,person,backup.envelope,passphrase);
+  if(!validPlain(kind,value))throw Error("Conteúdo recuperado não corresponde ao formato de dados esperado.");
+  if(kind==="journal")return {kind,validated:true,count:(value as unknown[]).length,
+    details:"Entradas do diário cifrado validadas; nenhum texto foi exibido.",requiresEmptyDestination:true};
+  const plan=value as Record<string,unknown>;
+  const fields=["warningSigns","copingSteps","reasonsToStay","trustedPeople","professionalContacts","saferEnvironment"];
+  return {kind,validated:true,count:fields.filter(field=>String(plan[field]||"").trim().length>0).length,
+    details:"Campos preenchidos do plano cifrado validados; nenhum conteúdo foi exibido.",requiresEmptyDestination:true};
+}
+
 /** Fail closed: never overwrite an existing encrypted or plaintext local dataset. */
 export async function importEncryptedM115(kind:PrivateRecoveryKindM115,user:string,person:string,raw:string,passphrase:string):Promise<void>{
   requireScope(user,person);
