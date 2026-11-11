@@ -571,6 +571,7 @@ export default function NovoRegistroSaudePage() {
     );
 
   const [mood,setMood]=useState<MoodChoice|"">("");
+  const [showMoodFollowupM116,setShowMoodFollowupM116]=useState(false);
   const [
     intensidade,
     setIntensidade,
@@ -1237,6 +1238,7 @@ export default function NovoRegistroSaudePage() {
 
       isSubmitLocked.current =
         true;
+      const offerFollowupM116 = categoria === "humor" && mood === "muito_triste";
 
       try {
         await submitAction.run(
@@ -1284,6 +1286,8 @@ export default function NovoRegistroSaudePage() {
               cid_ids:
                 cidsSelecionados,
             });
+            // After a verified save only; never auto-create alarms or interpret mood as risk.
+            if (offerFollowupM116) setShowMoodFollowupM116(true);
           },
           {
             successMessage:
@@ -1293,7 +1297,7 @@ export default function NovoRegistroSaudePage() {
               "Erro ao salvar registro",
 
             goBackOnSuccess:
-              true,
+              !offerFollowupM116,
           }
         );
       } finally {
@@ -1305,6 +1309,20 @@ export default function NovoRegistroSaudePage() {
   // ==========================================================
   // RENDER
   // ==========================================================
+
+  if (showMoodFollowupM116) return (
+    <PageTransition><main className="min-h-[100dvh] bg-void px-4 pb-24 pt-12 text-ink-primary">
+      <section className="mx-auto max-w-xl rounded-[26px] border border-violet-300/25 bg-surface p-5" aria-label="Acompanhamento voluntário após o registro">
+        <CheckCircle2 size={26} className="text-emerald-300"/>
+        <h1 className="mt-3 text-xl font-bold">Seu registro foi salvo</h1>
+        <p className="mt-2 text-sm leading-relaxed text-ink-muted">Você informou como se sentiu. Se quiser, pode escolher um lembrete discreto para registrar novamente em outro momento. Nada será agendado automaticamente.</p>
+        <button type="button" onClick={()=>router.push("/saude/lembretes")} className="mt-5 min-h-12 w-full rounded-xl border border-violet-300/35 bg-violet-300/10 px-3 text-sm font-semibold text-violet-200">Escolher um lembrete opcional</button>
+        <button type="button" onClick={()=>router.push("/saude/plano-seguranca")} className="mt-2 min-h-12 w-full rounded-xl border border-rose-300/25 px-3 text-sm font-semibold text-rose-200">Abrir meu plano de apoio</button>
+        <button type="button" onClick={()=>router.replace(backTarget)} className="mt-2 min-h-12 w-full rounded-xl border border-surface-border px-3 text-sm font-semibold text-ink-primary">Concluir sem lembrete</button>
+        <p className="mt-3 text-[11px] leading-relaxed text-ink-faint">O VAULT não conclui risco, diagnóstico ou tratamento por um registro isolado. Em necessidade urgente de ajuda, procure apoio humano presencial; no Brasil, SAMU 192.</p>
+      </section>
+    </main></PageTransition>
+  );
 
   return (
     <PageTransition>
