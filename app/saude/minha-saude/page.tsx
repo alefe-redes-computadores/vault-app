@@ -89,6 +89,7 @@ import { PersonalHealthOverview } from "@/components/saude/PersonalHealthOvervie
 import { CareRelationshipRoutes } from "@/components/saude/CareRelationshipRoutes";
 import { CareJourney360 } from "@/components/saude/CareJourney360";
 import { CareTrustPanelM119 } from "@/components/saude/CareTrustPanelM119";
+import { CareHorizonM121 } from "@/components/saude/CareHorizonM121";
 const HealthConnectPanel = dynamic(() => import("@/components/saude/HealthConnectPanel").then(m => m.HealthConnectPanel), { loading: () => <p className="p-3 text-xs text-ink-muted">Preparando sincronização…</p> });
 const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/MedicationSafetyCoverage").then(m => m.MedicationSafetyCoverage));
 
@@ -294,6 +295,7 @@ function HealthDashboard({
               </div>
             </details>
             <CareTrustPanelM119 context={intelligence.context} userId={person?.user_id || ""} personId={personId} onNavigate={goFromHealth} />
+            <CareHorizonM121 context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id || ""} personId={personId} today={today} onNavigate={goFromHealth} />
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />

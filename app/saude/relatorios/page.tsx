@@ -11,6 +11,7 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { buildClinicalReport360, type Report360Mode, type Report360Section } from "@/lib/clinical-report-360";
+import { ConsultationChangeM121 } from "@/components/saude/ConsultationChangeM121";
 
 const SECTIONS: {id:Report360Section;label:string}[] = [
   {id:"medications",label:"Medicamentos"},{id:"doses",label:"Doses"},{id:"symptoms",label:"Sintomas/humor"},
@@ -66,6 +67,7 @@ export default function Reports360Page(){
   return <PageTransition><main className="min-h-screen bg-void px-4 pb-32 pt-5 header-safe-top text-ink-primary">
     <header className="mx-auto flex max-w-2xl items-start gap-3"><button type="button" onClick={()=>router.back()} aria-label="Voltar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={19}/></button><div className="min-w-0 flex-1"><p className="font-mono text-[10px] font-bold uppercase tracking-widest text-emerald-300">VAULT · M98</p><h1 className="mt-1 text-xl font-bold">Central de Relatórios 360</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Prepare um arquivo clínico com dados reais, seu período e suas escolhas. Funciona offline.</p></div></header>
     <div className="mx-auto mt-4 max-w-2xl space-y-3">
+      <ConsultationChangeM121 context={health.context} ownerId={user?.id || ""} personId={activePersonId || ""} today={today} onPrepare={(date)=>{setStart(date);setEnd(today);setMode("consultation");setMessage("Período preparado. Confira as seções, a prévia e o destinatário antes de exportar.");}} />
       <section className="rounded-[22px] border border-surface-border bg-surface p-4"><div className="flex items-center gap-2 text-xs font-bold"><Users size={17} className="text-violet-300"/>Pessoa e período</div>
         <label className="mt-3 block text-[11px] text-ink-muted" htmlFor="m98-person">Pessoa selecionada</label>
         <details className="group mt-1 rounded-xl border border-surface-border bg-void">
