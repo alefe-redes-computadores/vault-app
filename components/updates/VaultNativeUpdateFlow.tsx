@@ -8,7 +8,7 @@ import {
   getVaultNativeUpdater, nativeMetadataForRelease, type VaultNativeDownloadProgress,
 } from "@/lib/updates/native-apk-updater";
 
-type Stage = "idle" | "downloading" | "verified" | "permission" | "installing" | "error";
+type Stage = "idle" | "downloading" | "verified" | "permission" | "permitted" | "installing" | "error";
 
 /** Read-only until explicitly tapped. Native plugin owns integrity, version and signer checks. */
 export function VaultNativeUpdateFlow({ release, installedBuild, available }: {
@@ -35,6 +35,29 @@ export function VaultNativeUpdateFlow({ release, installedBuild, available }: {
     return () => { void listener.current?.remove(); listener.current = null; };
   }, [release?.build]);
 
+  // M117: check permission only after returning from Android settings.
+  // Missing method on pre-M117 APKs is tolerated; the manual retry remains available.
+  useEffect(() => {
+    if (stage !== "permission" || !native) return;
+    let active = true;
+    const check = async () => {
+      try {
+        const status = await native.checkInstallPermission();
+        if (active && status.granted) setStage("permitted");
+      } catch { /* Old APK bridge: continue using manual installation retry. */ }
+    };
+    const onFocus = () => { void check(); };
+    const onVisible = () => { if (document.visibilityState === "visible") void check(); };
+    void check();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [stage, native]);
+
   async function download() {
     if (!enabled || !native || !metadata || busy.current) return;
     busy.current = true;
@@ -48,6 +71,16 @@ export function VaultNativeUpdateFlow({ release, installedBuild, available }: {
       const result = await native.downloadVerified(metadata);
       if (!result.verified || result.build !== metadata.build) throw new Error("O Android não confirmou a integridade do arquivo.");
       setProgress(100); setReceived(metadata.bytes); setStage("verified");
+      // Finance-style one-tap flow: the Android bridge revalidates the APK before opening.
+      try {
+        const opened = await native.installVerified(metadata);
+        if (opened.permissionRequired) setStage("permission");
+        else if (!opened.opened) throw new Error("O Android não abriu o instalador.");
+      } catch (error) {
+        // The verified private APK stays available: retry does not redownload.
+        setStage("verified");
+        setProblem(error instanceof Error ? error.message : "Toque em abrir instalador para continuar.");
+      }
     } catch (err) {
       setProblem(err instanceof Error ? err.message : "Falha no download. Confira a conexão e tente novamente.");
       setStage("error");
@@ -57,7 +90,7 @@ export function VaultNativeUpdateFlow({ release, installedBuild, available }: {
     }
   }
   async function install() {
-    if (!native || !metadata || busy.current || (stage !== "verified" && stage !== "permission")) return;
+    if (!native || !metadata || busy.current || (stage !== "verified" && stage !== "permission" && stage !== "permitted")) return;
     busy.current = true; setProblem(""); setStage("installing");
     try {
       const result = await native.installVerified(metadata);
@@ -96,12 +129,13 @@ export function VaultNativeUpdateFlow({ release, installedBuild, available }: {
       <p className="text-[10px] text-ink-muted">{(received / 1048576).toFixed(1)} de {(metadata.bytes / 1048576).toFixed(1)} MB. Se a rede cair, você pode tentar novamente.</p>
       <button type="button" onClick={() => void cancel()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-border px-3 text-xs font-semibold text-ink-secondary"><XCircle size={15}/> Cancelar download</button>
     </div>}
-    {(stage === "idle" || stage === "error") && <button type="button" onClick={() => void download()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400/15 text-sm font-bold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><Download size={17}/>{stage === "error" ? "Tentar baixar novamente" : `Baixar e verificar · Build ${metadata.build}`}</button>}
-    {(stage === "verified" || stage === "installing" || stage === "permission") && <div className="space-y-2">
+    {(stage === "idle" || stage === "error") && <button type="button" onClick={() => void download()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400/15 text-sm font-bold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><Download size={17}/>{stage === "error" ? "Tentar baixar novamente" : `Baixar e atualizar no VAULT · Build ${metadata.build}`}</button>}
+    {(stage === "verified" || stage === "installing" || stage === "permission" || stage === "permitted") && <div className="space-y-2">
       <p className="flex items-center gap-2 text-xs font-semibold text-emerald-300"><CheckCircle2 size={16}/> APK íntegro e assinatura conferida</p>
-      {stage === "permission" && <p className="text-xs leading-relaxed text-amber-200">Permita instalações desta origem nas configurações do Android e volte para tocar em "Abrir instalador".</p>}
+      {stage === "permission" && <p className="text-xs leading-relaxed text-amber-200">Autorize instalações desta origem nas configurações do Android. Ao retornar, o VAULT verificará a permissão.</p>}
+      {stage === "permitted" && <p role="status" className="flex min-h-11 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] px-3 text-xs font-bold text-emerald-300"><CheckCircle2 size={16}/> Permissão concedida</p>}
       {stage === "permission" && <button type="button" onClick={() => void permit()} className="flex min-h-11 w-full items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/[.07] text-xs font-semibold text-amber-200">Autorizar instalação no Android</button>}
-      <button type="button" disabled={stage === "installing"} onClick={() => void install()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400/15 text-sm font-bold text-emerald-300 disabled:opacity-60"><ShieldCheck size={17}/>{stage === "installing" ? "Conferindo APK…" : "Abrir instalador do Android"}</button>
+      {stage !== "permission" ? <button type="button" disabled={stage === "installing"} onClick={() => void install()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400/15 text-sm font-bold text-emerald-300 disabled:opacity-60"><ShieldCheck size={17}/>{stage === "installing" ? "Conferindo APK…" : stage === "permitted" ? "Continuar instalação" : "Abrir instalador do Android"}</button> : <button type="button" onClick={() => void install()} className="min-h-11 w-full rounded-xl border border-surface-border text-xs font-semibold text-ink-secondary">Já autorizei · continuar</button>}
     </div>}
     {problem && <p role="alert" className="flex items-start gap-2 text-xs leading-relaxed text-amber-200"><AlertTriangle size={15} className="mt-0.5 shrink-0"/>{problem}</p>}
     {stage === "downloading" && <span className="sr-only"><Loader2/>Download em andamento</span>}

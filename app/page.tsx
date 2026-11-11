@@ -112,6 +112,7 @@ import { HomeDoseQuantityFollowUp } from "@/components/home/HomeDoseQuantityFoll
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
 import { HomeSectionNav } from "@/components/home/HomeSectionNav";
+import { VaultUpdateHomePromptM117 } from "@/components/updates/VaultUpdateHomePromptM117";
 import { VaultBrainCommand } from "@/components/health-intelligence/VaultBrainCommand";
 import { AlertRow, getAlertIcon, type DashboardAlert } from "@/components/home/HomeAlertRow";
 
@@ -1176,6 +1177,8 @@ export default function HomePage() {
         </header>
 
         <section className="mx-auto max-w-3xl space-y-5 px-4 pt-4 sm:px-5">
+
+          <VaultUpdateHomePromptM117 />
 
           {/* ===================================================
               HOJE

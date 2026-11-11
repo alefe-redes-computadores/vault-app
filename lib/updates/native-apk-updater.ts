@@ -23,6 +23,7 @@ type VaultNativePlugin = {
   cancelDownload(): Promise<{ requested: boolean }>;
   installVerified(options: VaultNativeApkMetadata): Promise<VaultNativeInstallResult>;
   openInstallSettings(): Promise<void>;
+  checkInstallPermission(): Promise<{ granted: boolean }>;
   addListener(event: "downloadProgress", callback: (event: VaultNativeDownloadProgress) => void): Promise<PluginListenerHandle>;
 };
 const plugin = registerPlugin<VaultNativePlugin>("VaultApkUpdater");

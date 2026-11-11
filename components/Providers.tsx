@@ -95,6 +95,7 @@ import { runAfterVaultBiometricUnlock } from "@/lib/notification-navigation";
 import { HealthConnectRuntime } from "@/components/saude/HealthConnectRuntime";
 import { GlobalSyncIssueAlert } from "@/components/GlobalSyncIssueAlert";
 import { VaultUpdateReconciler } from "@/components/updates/VaultUpdateReconciler";
+import { VAULT_UPDATE_DESTINATION_M117 } from "@/lib/updates/update-navigation-m117";
 
 import { resolveMedicationStockReview } from "@/lib/medication-availability";
 import { HealthIntelligenceProvider } from "@/contexts/HealthIntelligenceContext";
@@ -831,7 +832,7 @@ export function Providers({
 
             // M89: update notifications contain no clinical or person identifiers.
             if (data.type === "vault_update_available") {
-              runAfterVaultBiometricUnlock(() => router.push("/mais"));
+              runAfterVaultBiometricUnlock(() => router.push(VAULT_UPDATE_DESTINATION_M117));
               return;
             }
 

@@ -33,7 +33,7 @@ export async function notifyVaultUpdateOnce(s: VaultUpdateSnapshot): Promise<voi
     await LocalNotifications.schedule({notifications: [{
       id: 1867000000 + (build % 100000),
       title: "Atualização do VAULT disponível",
-      body: `Build ${build} pronto. Abra Mais para atualizar com segurança.`,
+      body: `Build ${build} pronto. Toque para abrir a Central de Atualizações.`,
       schedule: {at: new Date(Date.now() + 2500)},
       smallIcon: "ic_stat_vault",
       extra: {type:"vault_update_available"},

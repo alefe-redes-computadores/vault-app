@@ -17,6 +17,7 @@ import {
 import { getVaultTemporaryArtifactStatus } from "@/lib/updates/artifacts";
 import { APP_VERSION } from "@/lib/app-version";
 import { VaultNativeUpdateFlow } from "@/components/updates/VaultNativeUpdateFlow";
+import { VAULT_UPDATE_FRAGMENT_M117 } from "@/lib/updates/update-navigation-m117";
 import { VaultUpdateHistory } from "@/components/updates/VaultUpdateHistory";
 
 const humanDate = (date: string): string => {
@@ -36,6 +37,20 @@ export function VaultUpdateCenter() {
   useEffect(() => {
     setNotifyEnabled(vaultUpdateNotificationsEnabled());
     void checkVaultUpdates();
+  }, []);
+  // M117: only the fixed updates fragment expands the existing preferences group.
+  useEffect(() => {
+    const reveal = () => {
+      if (window.location.hash !== VAULT_UPDATE_FRAGMENT_M117) return;
+      const target = document.getElementById("vault-updates");
+      if (!target) return;
+      const disclosure = target.closest("details");
+      if (disclosure && !disclosure.open) disclosure.open = true;
+      window.requestAnimationFrame(() => target.scrollIntoView({ block: "start", behavior: "auto" }));
+    };
+    reveal();
+    window.addEventListener("hashchange", reveal);
+    return () => window.removeEventListener("hashchange", reveal);
   }, []);
   const native = state.runtime === "android";
   const release = state.release;
@@ -105,7 +120,7 @@ export function VaultUpdateCenter() {
       initial={reducedMotion ? false : {opacity: 0, y: 8}}
       animate={{opacity: 1, y: 0}}
       transition={{duration: reducedMotion ? 0 : 0.24}}
-      className="relative overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface p-3.5 shadow-sm">
+      className="relative scroll-mt-24 overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface p-3.5 shadow-sm">
       <span aria-hidden="true" className="pointer-events-none absolute -right-12 -top-14 size-40 rounded-full bg-emerald-400/[.035] blur-3xl" />
       <div className="relative flex items-start gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-400/15 bg-emerald-400/10 text-emerald-300"><Smartphone size={19} /></span>

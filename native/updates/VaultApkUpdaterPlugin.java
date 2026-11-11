@@ -280,6 +280,15 @@ public class VaultApkUpdaterPlugin extends Plugin {
     });
   }
 
+  /** M117: read-only; permission is still granted solely by Android settings. */
+  @PluginMethod
+  public void checkInstallPermission(PluginCall call) {
+    JSObject response = new JSObject();
+    response.put("granted", Build.VERSION.SDK_INT < 26 ||
+      getContext().getPackageManager().canRequestPackageInstalls());
+    call.resolve(response);
+  }
+
   @PluginMethod
   public void openInstallSettings(PluginCall call) {
     if (Build.VERSION.SDK_INT < 26) { call.resolve(); return; }
