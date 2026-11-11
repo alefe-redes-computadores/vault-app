@@ -1,0 +1,16 @@
+const fs=require('fs'),assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+const utility=read('lib/medications/manufacturer-experience.ts');
+const form=read('app/saude/renovacao/nova/page.tsx');
+const detail=read('app/saude/renovacao/detalhes/page.tsx');
+const icons=read('lib/medications/form-presentation.tsx');
+const batch=read('app/saude/renovacao/lote/page.tsx');
+assert(utility.includes('[VAULT:PRODUTO]')&&utility.includes('stripManufacturerMetadata'),'fabricante precisa preservar notas humanas');
+assert(utility.includes('O Vault não conclui equivalência ou superioridade clínica.'),'comparação precisa ser relato não causal');
+assert(form.includes('Laboratório / fabricante')&&form.includes('attachManufacturerMetadata'),'aquisição registra fabricante no próprio evento');
+assert(detail.includes('ManufacturerBadge')&&detail.includes('stripManufacturerMetadata'),'detalhe apresenta fabricante sem vazar metadado');
+assert(icons.includes('SublingualPillIcon')&&icons.includes('{ id: "sublingual", label: "Sublingual", icon: SublingualPillIcon }'),'sublingual possui ícone próprio');
+assert(batch.includes('Uma revisão, históricos separados')&&batch.includes('Cada item será auditável separadamente'),'lote múltiplo explicita autoridade independente');
+assert(batch.includes('somenteReceita: onlyPrescription')&&batch.includes('somenteAquisicao: onlyAcquisition'),'cada item escolhe receita, aquisição ou ambos');
+const gate=read('scripts/test-v63-release-gate.mjs');assert(gate.includes('scripts/test-vault-m126-manufacturer-batch-closure.cjs'),'M126 integra gate canônico');
+console.log('VAULT M126 — FABRICANTE HISTÓRICO + SUBLINGUAL: OK');

@@ -8,6 +8,7 @@ import { MedicationAcquisitionQuantityGuide } from "@/components/saude/Medicatio
 import { medicationScheduleSupplyHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
+import { attachManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 
 import {
   Suspense,
@@ -723,6 +724,8 @@ function NovaRenovacaoContent() {
     useState(
       ""
     );
+
+  const [fabricante, setFabricante] = useState("");
 
   const [
     validadeProduto,
@@ -1591,9 +1594,7 @@ function NovaRenovacaoContent() {
                 anexo_url:
                   uploadedStorageUrl,
 
-                observacoes:
-                  observacoes.trim() ||
-                  undefined,
+                observacoes: attachManufacturerMetadata(observacoes, { manufacturer: fabricante }),
               },
               {
                 somenteAquisicao: true,
@@ -2324,6 +2325,13 @@ function NovaRenovacaoContent() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+                <Input
+                  label="Laboratório / fabricante"
+                  value={fabricante}
+                  onChange={(event) => setFabricante(event.target.value)}
+                  placeholder="Ex.: Eurofarma"
+                  autoComplete="organization"
+                />
                 <Input
                   label="Lote (opcional)"
                   value={

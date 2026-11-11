@@ -772,6 +772,7 @@ export default function RenovacoesPage() {
                 ]}
               />
               <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/nova-receita"); }} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[.055] text-xs font-bold text-violet-200 active:scale-[.99]"><FileText size={14}/>Registrar somente uma receita</button>
+              <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/renovacao/lote"); }} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] text-xs font-bold text-emerald-200 active:scale-[.99]"><Receipt size={14}/>Registrar vários medicamentos</button>
             </div>
           )}
           {datasFuturas > 0 && <div className="order-5 w-full rounded-2xl border border-ice/25 bg-ice/[0.07] px-4 py-3 text-xs text-ice"><strong>{datasFuturas} aquisição(ões) planejada(s).</strong> Permanecem fora do gasto e do estoque até a confirmação.</div>}

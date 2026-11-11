@@ -5,6 +5,8 @@ import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
 import { presentRenewalEvent } from "@/lib/health-supply/renewal-event-presentation";
 import { useLocalDay } from "@/hooks/useLocalDay";
+import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
+import { readManufacturerMetadata, stripManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 
 import {
   Suspense,
@@ -982,7 +984,7 @@ function DetalhesRenovacaoContent() {
 
             {/* OBS */}
 
-            {renovacao.observacoes && (
+            {stripManufacturerMetadata(renovacao.observacoes) && (
               <div className="mt-4">
                 <DetailInfoRow
                   icon={
@@ -997,7 +999,7 @@ function DetalhesRenovacaoContent() {
                 >
                   <p className="text-sm leading-relaxed text-ink-primary">
                     {
-                      renovacao.observacoes
+                      stripManufacturerMetadata(renovacao.observacoes)
                     }
                   </p>
                 </DetailInfoRow>
@@ -1125,6 +1127,7 @@ function DetalhesRenovacaoContent() {
               ================================================== */}
 
           {(renovacao.lote ||
+            readManufacturerMetadata(renovacao.observacoes).manufacturer ||
             renovacao.validade_produto) && (
             <motion.div id="renovacao-produto"
               variants={
@@ -1150,6 +1153,11 @@ function DetalhesRenovacaoContent() {
               />
 
               <div className="space-y-3">
+                {readManufacturerMetadata(renovacao.observacoes).manufacturer && (
+                  <DetailInfoRow icon={<Pill size={14}/>} iconClassName="bg-sky-400/10 text-sky-300" label="Laboratório / fabricante">
+                    <ManufacturerBadge manufacturer={readManufacturerMetadata(renovacao.observacoes).manufacturer}/>
+                  </DetailInfoRow>
+                )}
                 {renovacao.lote && (
                   <DetailInfoRow
                     icon={

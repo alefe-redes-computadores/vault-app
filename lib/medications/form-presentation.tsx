@@ -31,6 +31,11 @@ export function SplitPillIcon({ size, fill = "currentColor", stroke = "none" }: 
   return <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><line x1="12" y1="3" x2="12" y2="21" stroke="rgba(0,0,0,0.35)" strokeWidth="2" strokeLinecap="round" /></svg>;
 }
 
+/** Comprimido sob a língua: identidade visual; não orienta administração. */
+export function SublingualPillIcon({ size, fill = "currentColor", stroke = "none", className }: MedicationFormatIconProps) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke === "none" ? "currentColor" : stroke} className={className} aria-hidden="true"><circle cx="12" cy="8.5" r="5.5" fill={fill} stroke="none"/><path d="M5 17.5c2.2 2.3 4.5 3.3 7 3.3s4.8-1 7-3.3" strokeWidth="1.8" strokeLinecap="round"/><path d="M8.5 16.7c1.1-1 2.3-1.5 3.5-1.5s2.4.5 3.5 1.5" strokeWidth="1.6" strokeLinecap="round"/></svg>;
+}
+
 /** M92: oblongo inteiro ou com sulco apenas como identidade visual.
  * O sulco NÃO constitui orientação para dividir o medicamento. */
 export function OblongPillIcon({ size, fill = "currentColor", stroke = "none", className }: MedicationFormatIconProps) {
@@ -70,7 +75,7 @@ export const MEDICATION_ADDITIONAL_FORMATS: readonly MedicationFormatOption[] = 
   { id: "po", label: "Pó", icon: Package },
   { id: "granulado", label: "Granulado", icon: Package },
   { id: "sache", label: "Sachê", icon: Package },
-  { id: "sublingual", label: "Sublingual", icon: CirclePillIcon },
+  { id: "sublingual", label: "Sublingual", icon: SublingualPillIcon },
   { id: "bucal", label: "Bucal", icon: CirclePillIcon },
   { id: "mastigavel", label: "Mastigável", icon: CirclePillIcon },
   { id: "efervescente", label: "Efervescente", icon: Activity },
