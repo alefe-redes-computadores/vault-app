@@ -26,6 +26,7 @@ import {
 import type {
   HealthInsight,
 } from "@/lib/health-insights";
+import { EvidenceReceiptM119 } from "@/components/health-intelligence/EvidenceReceiptM119";
 
 import type {
   HealthIntelligenceSource,
@@ -549,6 +550,8 @@ export function HealthInsightExplanationSheet({
                   </div>
                   <p className="mt-2 text-[9px] leading-relaxed text-ink-faint">Fontes internas do histórico da pessoa ativa; não representam diagnóstico nem literatura médica externa.</p>
                 </div>
+
+                <EvidenceReceiptM119 insight={insight} />
 
                 {insight.evidencias &&
                   insight.evidencias.length >

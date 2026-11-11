@@ -88,6 +88,7 @@ import { buildMedicationSafetyCoverage } from "@/lib/health-intelligence/medicat
 import { PersonalHealthOverview } from "@/components/saude/PersonalHealthOverview";
 import { CareRelationshipRoutes } from "@/components/saude/CareRelationshipRoutes";
 import { CareJourney360 } from "@/components/saude/CareJourney360";
+import { CareTrustPanelM119 } from "@/components/saude/CareTrustPanelM119";
 const HealthConnectPanel = dynamic(() => import("@/components/saude/HealthConnectPanel").then(m => m.HealthConnectPanel), { loading: () => <p className="p-3 text-xs text-ink-muted">Preparando sincronização…</p> });
 const MedicationSafetyCoverage = dynamic(() => import("@/components/saude/MedicationSafetyCoverage").then(m => m.MedicationSafetyCoverage));
 
@@ -292,6 +293,7 @@ function HealthDashboard({
                 <ClinicalDisclosure id="minha-saude-relacoes" title="Explorar áreas relacionadas" description="Medicamentos, tratamentos, fornecimento e documentos · acesso sob demanda" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">{() => <CareRelationshipRoutes onNavigate={goFromHealth} compact/>}</ClinicalDisclosure>
               </div>
             </details>
+            <CareTrustPanelM119 context={intelligence.context} userId={person?.user_id || ""} personId={personId} onNavigate={goFromHealth} />
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
