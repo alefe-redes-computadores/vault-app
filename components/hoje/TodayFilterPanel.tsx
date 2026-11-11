@@ -63,7 +63,7 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
     </div>
   );
 
-  return <details ref={detailsRef} className="group relative z-30 shrink-0">
+  return <details ref={detailsRef} data-vault-today-filters className="group relative z-30 shrink-0">
     <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${activeCount ? "border-ice/45 bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised/60 text-ink-secondary"}`}
       aria-label={activeCount ? `Filtros, ${activeCount} ativo${activeCount === 1 ? "" : "s"}` : "Abrir filtros da linha do tempo"}>
       <SlidersHorizontal size={15} aria-hidden="true" />

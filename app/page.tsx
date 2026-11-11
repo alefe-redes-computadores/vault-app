@@ -1181,6 +1181,7 @@ export default function HomePage() {
 
           <VaultUpdateHomePromptM117 />
           <HomeEssentialToggleM118 />
+          <p className="px-1 text-[10px] leading-snug text-ink-muted" role="note">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências.</p>
 
           {/* ===================================================
               HOJE

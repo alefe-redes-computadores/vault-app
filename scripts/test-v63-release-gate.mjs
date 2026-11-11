@@ -410,6 +410,7 @@ const contracts = [
   "scripts/test-vault-m117-update-ux.cjs",
   "scripts/test-vault-m118-global-ux.cjs",
   "scripts/test-vault-m119-trust-spine.cjs",
+  "scripts/test-vault-m120-daily-command.cjs",
 ];
 
 for (const contract of contracts) {

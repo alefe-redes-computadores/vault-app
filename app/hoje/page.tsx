@@ -26,6 +26,9 @@ import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 
 import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { withReturnTarget } from "@/lib/navigation/return-context";
+import { buildTodayContextUrlM120, consumeTodayActionM120, todayOriginM120 } from "@/lib/navigation/today-context-m120";
+import { TodayNavigationContextM120 } from "@/components/hoje/TodayNavigationContextM120";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
@@ -152,46 +155,16 @@ export default function HojePage() {
 
   const { dataSelecionada, isHoje, isPassado, isFuturo, ontem, amanha, dataSelecionadaLabel, dataSelecionadaDescricao } = describeTodayDate(hoje, requestedDate);
 
-  const buildTimelineUrl =
-    (
-      date:
-        string
-    ) => {
-      const params =
-        new URLSearchParams();
-
-      if (
-        date !==
-        hoje
-      ) {
-        params.set(
-          "data",
-          date
-        );
-      }
-
-      if (
-        retroReviewMode &&
-        retroReviewMedicationId
-      ) {
-        params.set(
-          "retro",
-          "1"
-        );
-
-        params.set(
-          "medicamento",
-          retroReviewMedicationId
-        );
-      }
-
-      const query =
-        params.toString();
-
-      return query
-        ? `/hoje?${query}`
-        : "/hoje";
-    };
+  // M120: restaura filtros efetivos, data e origem segura ao atravessar módulos.
+  // Não transfere autoridade clínica ou ID de pessoa pela URL.
+  const buildTimelineUrl = (date: string) => buildTodayContextUrlM120({
+    date, today: hoje, query: searchParams,
+    status: filtroStatus, period: filtroPeriodo,
+    appointment: filtroCompromisso, showResolved: mostrarConcluidas,
+  });
+  const navigateWithReturnM120 = (href: string) =>
+    router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)));
+  const originM120 = todayOriginM120(searchParams);
 
   const navegarData =
     (
@@ -402,6 +375,24 @@ export default function HojePage() {
   const [mostrarConcluidas,setMostrarConcluidas]=useState(false);
   const [mostrarTodosCompromissos, setMostrarTodosCompromissos] = useState(false);
   const [filtroCompromisso,setFiltroCompromisso]=useState<FiltroCompromisso>("todos");
+  // M120: um link explícito prevalece sobre a preferência persistida.
+  const periodFromLinkM120 = searchParams.get("periodo");
+  const appointmentFromLinkM120 = searchParams.get("compromisso");
+  const resolvedFromLinkM120 = searchParams.get("concluidas");
+  useEffect(() => {
+    if (periodFromLinkM120 === "manha" || periodFromLinkM120 === "tarde" || periodFromLinkM120 === "noite") {
+      setFiltroPeriodo(periodFromLinkM120);
+    }
+  }, [periodFromLinkM120, setFiltroPeriodo]);
+  useEffect(() => {
+    if (appointmentFromLinkM120 === "consultas" || appointmentFromLinkM120 === "cirurgias" ||
+        appointmentFromLinkM120 === "exames" || appointmentFromLinkM120 === "retiradas") {
+      setFiltroCompromisso(appointmentFromLinkM120);
+    }
+  }, [appointmentFromLinkM120]);
+  useEffect(() => {
+    if (resolvedFromLinkM120 === "1") setMostrarConcluidas(true);
+  }, [resolvedFromLinkM120]);
 
   const [
     processandoDoseId,
@@ -518,7 +509,7 @@ export default function HojePage() {
 
     if (action === "dose") {
       setIsDoseModalOpen(true);
-      router.replace("/hoje");
+      router.replace(consumeTodayActionM120(searchParams, dataSelecionada, hoje));
     } else if (action === "sintoma") {
       router.replace("/saude/registros/novo");
     }
@@ -1589,7 +1580,7 @@ export default function HojePage() {
 
     if (rota && item.id) {
       router.push(
-        `${rota}?id=${item.id}`
+        withReturnTarget(`${rota}?id=${encodeURIComponent(String(item.id))}`, buildTimelineUrl(dataSelecionada))
       );
     }
   };
@@ -1620,6 +1611,13 @@ export default function HojePage() {
             pending={totalPendentes} unconfirmed={totalEsperadasSemConfirmacao}
             completed={totalTomadas} ignored={totalIgnoradas} recorded={totalRegistros}
             projected={totalItensPlanejados} percentage={percentualConclusao} />
+          <TodayNavigationContextM120
+            status={filtroStatus} period={filtroPeriodo} time={focusDoseTime}
+            isPast={isPassado} isFuture={isFuturo} origin={originM120}
+            showContext={Boolean(requestedDate || focusDoseQueue || searchParams.get("status") || searchParams.get("periodo") || searchParams.get("compromisso") || originM120)}
+            onBack={() => { if (originM120) router.push(originM120); }}
+            onOpenFilters={() => { const panel=document.querySelector<HTMLDetailsElement>("[data-vault-today-filters]"); if(panel) {panel.open=true;panel.querySelector("summary")?.focus();} }}
+          />
           <span className="sr-only">Doses futuras não estão atrasadas antes do horário. Registros contraditórios exigem revisão separada.</span>
         </header>
 
@@ -1637,7 +1635,7 @@ export default function HojePage() {
               document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
             onJumpDose={(time) => { trigger("vibrate"); router.push(`/hoje?focus=doses&status=pendentes&time=${encodeURIComponent(time)}`); }}
-            onOpenWithdrawals={() => { trigger("vibrate"); router.push("/saude/retiradas"); }}
+            onOpenWithdrawals={() => { trigger("vibrate"); navigateWithReturnM120("/saude/retiradas"); }}
           /> : null}
           <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0">
@@ -1668,7 +1666,7 @@ export default function HojePage() {
 
           {/* M110: briefing após filtros, sempre antes da fila de doses. */}
           {/* VAULT_V321_DAILY_FOCUS: real Brain command is visible before long dose lists. */}
-          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => router.push(href)}/> : null}
+          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => navigateWithReturnM120(href)}/> : null}
           {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <TodayBatchAction count={dosesElegiveisLote.length}
@@ -1753,7 +1751,7 @@ export default function HojePage() {
             <TodayUnscheduledRoutine medications={medicamentosSemHorario}
               onEdit={(medicationId) => {
                 trigger("vibrate");
-                router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(medicationId)}`);
+                navigateWithReturnM120(`/saude/medicamentos/editar?id=${encodeURIComponent(medicationId)}`);
               }} />
           )}
 
@@ -1778,7 +1776,7 @@ export default function HojePage() {
 
 
           {remindersDoDia.length > 0 && (
-            <TodayRemindersPanel reminders={remindersDoDia} onNavigate={(href) => router.push(href)} />
+            <TodayRemindersPanel reminders={remindersDoDia} onNavigate={(href) => navigateWithReturnM120(href)} />
           )}
 
           {/* =======================================================
