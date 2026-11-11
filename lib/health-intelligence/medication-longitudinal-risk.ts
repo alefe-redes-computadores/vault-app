@@ -26,6 +26,23 @@ const logsFor=(c:HealthInsightContext,id:string)=>c.doseLogs.filter(d=>d.person_
 const observedDays=(logs:Dose[],from:Date,to:Date)=>new Set(logs.filter(d=>{const t=at(d)!;return t>=from&&t<=to}).map(d=>d.data||at(d)!.toISOString().slice(0,10))).size;
 const windowLogs=(logs:Dose[],now:Date,fromDays:number,toDays=0)=>{const from=new Date(now.getTime()-fromDays*86400000),to=new Date(now.getTime()-toDays*86400000);return logs.filter(d=>{const t=at(d)!;return t>=from&&t<to})};
 
+function confirmedSuspension(c:HealthInsightContext,m:Medication,p:Profile,now:Date):HealthInsight|null{
+ if(!m.id||m.status!=="descontinuado"||m.tipo_uso==="sos"||m.tipo_uso==="esporadico"||!m.data_descontinuacao||!m.motivo_descontinuacao?.trim())return null;
+ const stoppedAt=new Date(`${m.data_descontinuacao.slice(0,10)}T12:00:00`);if(!Number.isFinite(stoppedAt.getTime())||stoppedAt>now)return null;
+ const logs=logsFor(c,m.id).filter(d=>at(d)!<=stoppedAt),last=logs.at(-1);if(!last)return null;
+ const lastAt=at(last)!;const days=observedDays(logs.filter(d=>d.dose_kind!=="sos"&&d.dose_kind!=="extra"),new Date(stoppedAt.getTime()-21*86400000),stoppedAt);if(days<p.minObservedDays)return null;
+ const elapsed=Math.max(0,Math.floor((now.getTime()-stoppedAt.getTime())/86400000));
+ const important=p.substance==="metadona"||p.substance==="clonazepam";
+ const reason=m.motivo_descontinuacao.trim();
+ return {id:`longitudinal-confirmed-suspension-${p.substance}-${m.id}`,kind:"alert",categoria:"tratamento",titulo:`${m.nome}: interrupção registrada merece acompanhamento`,
+ mensagem:`A suspensão foi registrada há ${elapsed} dia(s), após uso recorrente documentado. Motivo informado: ${reason}. Para ${p.withdrawalLabel}, a fonte regulatória orienta evitar interrupção abrupta ou redução rápida sem acompanhamento. O Vault não conclui que sintomas atuais sejam causados pela suspensão.`,
+ urgencia:important?"alta":"media",gravidadeSeguranca:important?"importante":"atencao",confianca:"alta",amostra:logs.length,periodoDias:21,entidadeTipo:"medicamento",entidadeId:m.id,link:`/saude/medicamentos/detalhes?id=${m.id}`,
+ evidencias:[`Suspensão registrada em ${m.data_descontinuacao.slice(0,10).split("-").reverse().join("/")}`,`Motivo declarado: ${reason}`,`${days} dia(s) com tomada registrada nos 21 dias anteriores`],
+ fontesInternas:["Cadastro do medicamento","Motivo e data informados pela pessoa","Histórico de doses"],fontesExternas:[p.source],
+ acaoSegura:"Se a interrupção foi real, informe ao prescritor ou ao serviço responsável quanto tempo está sem usar e o motivo registrado. Não retome, compense ou ajuste a dose por conta própria; após uma pausa, a orientação para reinício pode ser diferente da rotina anterior.",
+ limitacaoSeguranca:"O motivo e a data são declarações da pessoa. O Vault não diagnostica abstinência, não atribui sintomas à interrupção e não define reinício ou desmame."};
+}
+
 function interruption(c:HealthInsightContext,m:Medication,p:Profile,now:Date):HealthInsight|null{
  if(!m.id||m.status==="descontinuado"||m.tipo_uso==="sos"||m.tipo_uso==="esporadico")return null;
  const logs=logsFor(c,m.id).filter(d=>at(d)!<=now);if(!logs.length)return null;const last=at(logs.at(-1)!)!,gap=hours(last,now);if(gap<p.interruptionHours)return null;
@@ -78,5 +95,5 @@ function escalation(c:HealthInsightContext,m:Medication,p:Profile,now:Date):Heal
  limitacaoSeguranca:"Mudança de frequência ou quantidade pode ter várias explicações. Este padrão é sinal para revisão, não diagnóstico de tolerância, dependência física ou transtorno por uso de substância."};
 }
 export function buildMedicationLongitudinalRiskInsights(c:HealthInsightContext,now:Date):HealthInsight[]{
- const out:HealthInsight[]=[];for(const m of c.medicamentos.filter(x=>x.person_id===c.personId)){const p=profileFor(m);if(!p)continue;const a=interruption(c,m,p,now),b=escalation(c,m,p,now);if(a)out.push(a);if(b)out.push(b)}return out;
+ const out:HealthInsight[]=[];for(const m of c.medicamentos.filter(x=>x.person_id===c.personId)){const p=profileFor(m);if(!p)continue;const confirmed=confirmedSuspension(c,m,p,now);if(confirmed){out.push(confirmed);continue}const a=interruption(c,m,p,now),b=escalation(c,m,p,now);if(a)out.push(a);if(b)out.push(b)}return out;
 }

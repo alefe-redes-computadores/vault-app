@@ -67,6 +67,17 @@ export function buildBrainPortfolio(items: readonly BrainV5Alert[], focusLimit =
 
   const selected: BrainV5Journey[] = [];
   const usedDomains = new Set<BrainDomain>();
+  // Important/critical journeys keep their place before domain diversity is
+  // applied. Diversity prevents repetition; it must never hide a stronger
+  // safety signal merely because another domain has not appeared yet.
+  const safetyReserve = candidates.filter(item =>
+    item.lane === "now" && ["critica", "importante"].includes(item.primary.snapshot.gravidade_seguranca ?? "")
+  );
+  for (const journey of safetyReserve) {
+    if (selected.length >= Math.max(0, focusLimit)) break;
+    selected.push(journey);
+    if (journey.primary.domain) usedDomains.add(journey.primary.domain);
+  }
   while (selected.length < Math.max(0, focusLimit) && selected.length < candidates.length) {
     const differentDomain = candidates.find(item => !selected.includes(item) && item.primary.domain && !usedDomains.has(item.primary.domain));
     const next = differentDomain ?? candidates.find(item => !selected.includes(item));

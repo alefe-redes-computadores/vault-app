@@ -3,6 +3,7 @@
 import {AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, Database, ExternalLink, FileSearch, Layers3, ShieldAlert, ShieldCheck, X} from "lucide-react";
 import {brainV5IsSnoozed, brainV5Lane, brainV5Presentation, brainV5PriorityReason, brainV5RequiresAttention, formatSnoozeDate} from "@/lib/health-intelligence/brain-v5";
 import type {BrainV5Alert, BrainV5Feedback} from "@/lib/health-intelligence/brain-v5";
+import {useState} from "react";
 import {useDialogGuard} from "@/hooks/useDialogGuard";
 import {summarizeRegulatorySources} from "@/lib/health-intelligence/regulatory-evidence";
 
@@ -18,6 +19,13 @@ function formatDate(iso: string) {
     : "Data indisponível";
 }
 
+function formatEvidence(value: string) {
+  return value.replace(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))/g, raw => {
+    const date = new Date(raw);
+    return Number.isFinite(date.getTime()) ? date.toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : raw;
+  });
+}
+
 export function BrainV5DetailSheet({alert, related=[], familyLabel, stateLabel, onClose, onContext, onFeedback, onSnooze, onToggleResolved, onSelectRelated}: {
   alert: BrainV5Alert;
   related?: BrainV5Alert[];
@@ -31,6 +39,7 @@ export function BrainV5DetailSheet({alert, related=[], familyLabel, stateLabel, 
   onSelectRelated?: (alert: BrainV5Alert) => void;
 }) {
   useDialogGuard(true, onClose);
+  const [showAllRelated,setShowAllRelated]=useState(false);
   const presentation = brainV5Presentation(alert);
   const urgent = brainV5RequiresAttention(alert);
   const PriorityIcon = urgent ? ShieldAlert : CheckCircle2;
@@ -67,7 +76,7 @@ export function BrainV5DetailSheet({alert, related=[], familyLabel, stateLabel, 
 
           <section className="rounded-2xl border border-surface-border/60 p-4">
             <div className="flex items-center gap-2"><FileSearch size={15} className="text-violet-300"/><h3 className="text-sm font-bold">Evidências</h3></div>
-            <div className="mt-3 space-y-2">{alert.snapshot.evidencias.length ? alert.snapshot.evidencias.map(evidence => <p key={evidence} className="flex gap-2 text-xs leading-relaxed text-ink-muted"><span className="text-violet-300">•</span><span>{evidence}</span></p>) : <p className="text-xs text-ink-muted">Esta regra não forneceu evidências textuais adicionais.</p>}</div>
+            <div className="mt-3 space-y-2">{alert.snapshot.evidencias.length ? alert.snapshot.evidencias.map(evidence => <p key={evidence} className="flex gap-2 text-xs leading-relaxed text-ink-muted"><span className="text-violet-300">•</span><span>{formatEvidence(evidence)}</span></p>) : <p className="text-xs text-ink-muted">Esta regra não forneceu evidências textuais adicionais.</p>}</div>
             <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-surface-border/50 bg-surface-border/50 text-[10px] text-ink-muted"><span className="bg-surface p-2.5">Confiança <strong className="block capitalize text-ink-primary">{alert.snapshot.confianca}</strong></span><span className="bg-surface p-2.5">Amostra <strong className="block text-ink-primary">{alert.snapshot.amostra}</strong></span><span className="bg-surface p-2.5">Primeira análise<strong className="block text-ink-primary">{formatDate(alert.first_detected_at)}</strong></span><span className="bg-surface p-2.5">Atualização<strong className="block text-ink-primary">{formatDate(alert.last_detected_at)}</strong></span></div>
             <p className="mt-3 text-[9px] leading-relaxed text-ink-faint">{alert.occurrences} atualização(ões) da análise · episódio {alert.episode || 1}{alert.snapshot.periodo_dias ? ` · janela ${alert.snapshot.periodo_dias} dias` : ""}. Atualizações não representam novas ocorrências clínicas.</p>
           </section>
@@ -76,7 +85,7 @@ export function BrainV5DetailSheet({alert, related=[], familyLabel, stateLabel, 
           {regulatory.sources.length > 0 && <details className="group rounded-2xl border border-surface-border/60 p-4"><summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-bold"><Database size={15} className="text-ice"/>Fontes regulatórias revisadas<span className="ml-auto text-ink-faint">{regulatory.current} atuais{regulatory.reviewDue?` · ${regulatory.reviewDue} revisar`:""}</span></summary><div className="border-t border-surface-border/50 pt-2">{regulatory.sources.map(({source,freshness}) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="flex min-h-11 items-start gap-2 py-2 text-xs leading-relaxed text-ice"><ExternalLink size={12} className="mt-0.5 shrink-0"/><span>{source.autoridade} · {source.titulo}<small className={`mt-1 block text-[8px] ${freshness==="current"?"text-emerald-300":"text-amber-300"}`}>Revisada em {source.revisadoEm.split("-").reverse().join("/")} · {freshness==="current"?"atual":"revisão necessária"}</small></span></a>)}</div></details>}
           {alert.snapshot.comparacao && <section className="grid grid-cols-2 gap-2 rounded-2xl border border-surface-border/60 p-4 text-xs text-ink-muted"><p>{alert.snapshot.comparacao.janelaAnterior}<strong className="mt-1 block text-ink-primary">{alert.snapshot.comparacao.valorAnterior}</strong></p><p>{alert.snapshot.comparacao.janelaAtual}<strong className="mt-1 block text-ink-primary">{alert.snapshot.comparacao.valorAtual}</strong></p>{alert.snapshot.cobertura_dias && <p className="col-span-2 text-[10px]">Evidências em {alert.snapshot.cobertura_dias.observados} de {alert.snapshot.cobertura_dias.total} dias.</p>}</section>}
 
-          {related.length > 0 && <section className="rounded-2xl border border-violet-400/15 bg-violet-400/[.035] p-4"><div className="flex items-center gap-2"><Layers3 size={15} className="text-violet-300"/><h3 className="text-sm font-bold">Sinais da mesma jornada</h3><span className="ml-auto rounded-full bg-violet-400/10 px-2 py-1 text-[9px] font-bold text-violet-300">{related.length}</span></div><p className="mt-1 text-[9px] leading-relaxed text-ink-muted">Estes sinais compartilham o mesmo contexto. Continuam auditáveis separadamente, mas uma resposta nesta jornada vale para o conjunto.</p><div className="mt-3 space-y-2">{related.map(item=><button type="button" key={item.key} onClick={()=>onSelectRelated?.(item)} className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-surface-border/50 bg-surface/70 p-3 text-left"><span className="min-w-0 flex-1"><strong className="block line-clamp-1 text-xs text-ink-primary">{item.snapshot.titulo}</strong><span className="mt-0.5 block line-clamp-1 text-[9px] text-ink-muted">{brainV5PriorityReason(item)}</span></span><ChevronRight size={14} className="shrink-0 text-violet-300"/></button>)}</div></section>}
+          {related.length > 0 && <section className="rounded-2xl border border-violet-400/15 bg-violet-400/[.035] p-4"><div className="flex items-center gap-2"><Layers3 size={15} className="text-violet-300"/><h3 className="text-sm font-bold">Sinais da mesma jornada</h3><span className="ml-auto rounded-full bg-violet-400/10 px-2 py-1 text-[9px] font-bold text-violet-300">{related.length}</span></div><p className="mt-1 text-[9px] leading-relaxed text-ink-muted">O Brain agrupou sinais do mesmo contexto para reduzir repetição. Continuam auditáveis separadamente; cada evidência permanece disponível para consulta.</p><div className="mt-3 space-y-2">{(showAllRelated?related:related.slice(0,3)).map(item=><button type="button" key={item.key} onClick={()=>onSelectRelated?.(item)} className="flex min-h-12 w-full items-center gap-2 rounded-xl border border-surface-border/50 bg-surface/70 p-3 text-left"><span className="min-w-0 flex-1"><strong className="block line-clamp-1 text-xs text-ink-primary">{item.snapshot.titulo}</strong><span className="mt-0.5 block line-clamp-1 text-[9px] text-ink-muted">{brainV5PriorityReason(item)}</span></span><ChevronRight size={14} className="shrink-0 text-violet-300"/></button>)}{related.length>3&&<button type="button" onClick={()=>setShowAllRelated(value=>!value)} className="min-h-11 w-full rounded-xl border border-violet-400/20 px-3 text-xs font-semibold text-violet-300">{showAllRelated?"Mostrar menos":`Ver mais ${related.length-3} sinais`}</button>}</div></section>}
 
           <section className="rounded-2xl border border-surface-border/60 p-4"><div className="flex items-center gap-2"><CalendarClock size={15} className="text-amber-300"/><h3 className="text-sm font-bold">Retomar no momento certo</h3></div><p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Sai das prioridades da Home e Hoje, mas permanece na memória e volta automaticamente. Uma mudança importante reabre antes do prazo.</p>{brainV5IsSnoozed(alert)&&<p className="mt-2 text-xs font-semibold text-amber-300">Programado para {formatSnoozeDate(alert.snoozed_until!)}</p>}<div className="mt-3 grid grid-cols-3 gap-2">{[[1,"Amanhã"],[7,"7 dias"],[30,"30 dias"]].map(([days,label])=><button type="button" key={days} onClick={()=>onSnooze(Number(days))} className="min-h-11 rounded-xl border border-amber-400/20 bg-amber-400/[.04] px-2 text-[10px] font-semibold text-amber-200">{label}</button>)}</div></section>
 

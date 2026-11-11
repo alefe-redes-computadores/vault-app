@@ -25,7 +25,7 @@ for(const name of ['Venvanse','Metadona','Metadon','Zolpidem']) {
  assert.ok(result[0].fontesExternas[0].url.startsWith('https://'));
  assert.match(result[0].acaoSegura,/Não reinicie/i);
  assert.equal(build({...c,medicamentos:[{...c.medicamentos[0],tipo_uso:'sos'}]},now).length,0);
- assert.equal(build({...c,medicamentos:[{...c.medicamentos[0],status:'descontinuado'}]},now).length,0);
+ assert.equal(build({...c,medicamentos:[{...c.medicamentos[0],status:'descontinuado'}]},now).length,0,'suspensão sem data e motivo não é evidência suficiente');
  assert.equal(build({...c,doseLogs:c.doseLogs.map(d=>d.tomado_em?{...d,dose_kind:'sos'}:d)},now).length,0,'histórico exclusivamente SOS não é uso regular');
  assert.equal(build({...c,doseLogs:c.doseLogs.map(d=>d.ignorado_em?{...d,ignorado_em:'2026-11-01T09:00:00'}:d)},now).length,0,'confirmação futura não é evidência atual');
  const missing={...c,doseLogs:c.doseLogs.filter(d=>!d.ignorado_em)};
@@ -40,6 +40,14 @@ for(const name of ['Venvanse','Metadona','Metadon','Zolpidem']) {
  c.doseLogs.push({person_id:'p',medicamento_id:'m',data:day(12),horario:'09:00',tomado_em:`${day(12)}T09:00:00`});
  assert.equal(build(c,now).length,0,'tomada recente encerra o sinal de interrupção');
 }
+const suspended=context('Metadona');
+suspended.medicamentos=[{...suspended.medicamentos[0],status:'descontinuado',data_descontinuacao:'2026-10-10',motivo_descontinuacao:'Sem acesso ao medicamento'}];
+const confirmed=build(suspended,now);
+assert.equal(confirmed.length,1,'suspensão explicitamente registrada deve permanecer visível ao Brain');
+assert.match(confirmed[0].id,/^longitudinal-confirmed-suspension-metadona-/);
+assert.equal(confirmed[0].gravidadeSeguranca,'importante');
+assert.match(confirmed[0].mensagem,/Motivo informado: Sem acesso ao medicamento/);
+assert.match(confirmed[0].limitacaoSeguranca,/não atribui sintomas/i);
 const partial=context('Metadona',['09:00','18:00']);partial.doseLogs=partial.doseLogs.filter(d=>!(d.data===day(11)&&d.horario==='18:00'));
 assert.equal(build(partial,now).length,0,'ignorar apenas parte da rotina não confirma interrupção completa');
 const unknown=context('Nome não reconhecido');assert.equal(build(unknown,now).length,0);
