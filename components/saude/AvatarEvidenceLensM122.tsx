@@ -33,6 +33,9 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
   const [opened,setOpened]=useState(false);
   const [activeDomain,setActiveDomain]=useState<AvatarEvidenceDomainIdM122|null>(null);
   const detailsRef=useRef<HTMLDetailsElement>(null);
+  // M136: never retain an inner expanded lens across user/person changes.
+  useEffect(()=>{setActiveDomain(null);},[userId,personId]);
+  useEffect(()=>{if(!opened)setActiveDomain(null);},[opened]);
   // A trilha da Fênix pode apontar diretamente para a lente; revelar sob demanda.
   useEffect(()=>{
     const reveal=()=>{
@@ -70,7 +73,7 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
         <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2" aria-label="Categorias de evidência da pessoa">
           {view.domains.map(domain=>{
             const Icon=icons[domain.id];
-            const expanded=activeDomain===domain.id;
+            const expanded=opened&&activeDomain===domain.id;
             return <section key={domain.id} className={`min-w-0 self-start rounded-2xl border p-2.5 ${tones[domain.id]}`}>
               <button type="button" aria-expanded={expanded} aria-controls={`fenix-domain-${domain.id}`} onClick={()=>setActiveDomain(current=>current===domain.id?null:domain.id)} className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-black/10"><Icon size={15} aria-hidden="true"/></span>

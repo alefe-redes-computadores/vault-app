@@ -1142,14 +1142,14 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="relative flex min-w-0 flex-col gap-0.5">
+          <div className="relative flex min-w-0 flex-col gap-px">
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
-                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-sm font-bold leading-snug text-ink-primary">
+                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-sm font-bold leading-[1.125rem] text-ink-primary">
                   {med.nome}
                 </h3>
                 {med.dosagem && (

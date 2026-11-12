@@ -258,7 +258,8 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       }
     }
     const neck=limb(.082,.108,.22,materials.skin,0,2.45,-.006);neck.scale.z=.9;
-    const shirtShape=new THREE.Shape();shirtShape.moveTo(-.26,0);shirtShape.lineTo(.26,0);shirtShape.lineTo(.29,.5);shirtShape.lineTo(.33,.67);shirtShape.lineTo(.26,.77);shirtShape.lineTo(-.26,.77);shirtShape.lineTo(-.33,.67);shirtShape.lineTo(-.29,.5);shirtShape.closePath();
+    // M136: softer shoulder/waist outline using the SAME existing extruded garment mesh.
+    const shirtShape=new THREE.Shape();shirtShape.moveTo(-.255,0);shirtShape.quadraticCurveTo(0,-.012,.255,0);shirtShape.quadraticCurveTo(.28,.23,.29,.5);shirtShape.quadraticCurveTo(.342,.61,.32,.68);shirtShape.quadraticCurveTo(.313,.755,.25,.77);shirtShape.lineTo(-.25,.77);shirtShape.quadraticCurveTo(-.313,.755,-.32,.68);shirtShape.quadraticCurveTo(-.342,.61,-.29,.5);shirtShape.quadraticCurveTo(-.28,.23,-.255,0);shirtShape.closePath();
     const shirtGeometry=new THREE.ExtrudeGeometry(shirtShape,{depth:.34,bevelEnabled:true,bevelSize:.012,bevelThickness:.012,bevelSegments:1});shirtGeometry.translate(0,0,-.17);
     mesh(shirtGeometry,materials.top,0,1.665,0);
     if(appearance.topStyle==='hoodie'){
@@ -286,7 +287,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // V207: trapezius planes bridge neck and shoulder so the silhouette reads
       // as one body instead of a head resting on independent shoulder blocks.
       const trapezius=mesh(taperedBox(.064,.092,.135,.026),materials.top,sign*.112,2.405,-.035);trapezius.rotation.z=-sign*.72;trapezius.rotation.x=-.08;trapezius.raycast=()=>{};
-      const shoulderCap=mesh(softBox(.235,.205,.27,.072),materials.top,sign*.303,2.315,0);shoulderCap.rotation.z=sign*.16;shoulderCap.raycast=()=>{};
+      const shoulderCap=mesh(softBox(.235,.205,.27,.087),materials.top,sign*.303,2.315,0);shoulderCap.rotation.z=sign*.16;shoulderCap.raycast=()=>{};
       const deltoidSeam=mesh(new THREE.CapsuleGeometry(.004,.078,2,7),materials.shirtDetail,sign*.305,2.327,.142);deltoidSeam.rotation.z=sign*.42;deltoidSeam.raycast=()=>{};
       const scapulaPlane=mesh(taperedBox(.10,.14,.105,.018),materials.shirtDetail,sign*.178,2.322,-.184);scapulaPlane.rotation.z=sign*.24;scapulaPlane.raycast=()=>{};
     }

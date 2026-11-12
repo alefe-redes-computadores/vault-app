@@ -15,6 +15,7 @@ const contracts = [
   "scripts/test-vault-m133-home-brain-grouping.cjs",
   "scripts/test-vault-m134-fenix-branding.cjs",
   "scripts/test-vault-m135-sync-integrity.cjs",
+  "scripts/test-vault-m136-visual-navigation.cjs",
   "scripts/test-vault-m95-monthly-safety.cjs",
   "scripts/test-vault-m96-care-episodes.cjs",
   "scripts/test-vault-m97-cross-evolutions.cjs",

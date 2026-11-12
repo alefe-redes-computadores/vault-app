@@ -2,7 +2,7 @@
 "use client";
 import { selectHomeDocumentAlerts, countHomeTakenDoseLogs, selectHomeOverdueWithdrawals } from "@/lib/home/home-view-projections";
 import { projectHomeDashboardAlerts } from "@/lib/home/home-dashboard-alerts";
-import { safeReturnTarget } from "@/lib/navigation/return-context";
+import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
 import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
@@ -1196,7 +1196,7 @@ export default function HomePage() {
 
           <VaultUpdateHomePromptM117 />
           <HomeEssentialToggleM118 />
-          <p className="px-1 text-[10px] leading-snug text-ink-muted" role="note">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências.</p>
+          <p className="px-1 text-[10px] leading-snug text-ink-muted" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
 
           {/* ===================================================
               HOJE
@@ -1229,6 +1229,12 @@ export default function HomePage() {
                 if (resumoContextual.href === "/?open=pending-doses") setModalPendenciasAberto(true);
                 else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));
               }} />
+            {/* M136: métricas redundantes permanecem acessíveis, sem tomar a primeira dobra. */}
+            <details className="group mx-3 mb-1 overflow-hidden rounded-xl border border-surface-border/40 bg-surface/25">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <span className="flex items-center gap-2"><CalendarDays size={14} aria-hidden="true"/> Indicadores da rotina</span>
+                <span className="text-[10px] font-normal text-ink-muted">Expandir detalhes <ChevronRight size={14} className="inline-block transition-transform group-open:rotate-90"/></span>
+              </summary>
             <HomeQuickMetrics
               appointments={totalCompromissosHoje}
               className="min-[380px]:grid-cols-4 min-w-0"
@@ -1239,12 +1245,17 @@ export default function HomePage() {
               onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
               onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
             />
+            </details>
             <HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
               surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
               overdueWithdrawals={retiradasAtrasadas.length}
               onNavigate={(href) => { trigger("vibrate"); router.push(href); }} />
           </motion.section>
 
+          {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
+          <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
+            diferencaMes={metricasFinanceiras.diff}
+            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
           {/* ===================================================
               ATENÇÃO
           =================================================== */}
@@ -1573,7 +1584,7 @@ export default function HomePage() {
                         );
 
                         router.push(
-                          `/saude/consultas/detalhes?id=${consulta.id}`
+                          withReturnTarget(`/saude/consultas/detalhes?id=${consulta.id}`, "/")
                         );
                       }}
                       className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
@@ -1622,7 +1633,7 @@ export default function HomePage() {
                         );
 
                         router.push(
-                          `/saude/cirurgias/detalhes?id=${cirurgia.id}`
+                          withReturnTarget(`/saude/cirurgias/detalhes?id=${cirurgia.id}`, "/")
                         );
                       }}
                       className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
@@ -1668,7 +1679,7 @@ export default function HomePage() {
                         );
 
                         router.push(
-                          `/saude/exames/detalhes?id=${exame.id}`
+                          withReturnTarget(`/saude/exames/detalhes?id=${exame.id}`, "/")
                         );
                       }}
                       className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
@@ -1720,7 +1731,7 @@ export default function HomePage() {
                         );
 
                         router.push(
-                          `/saude/retiradas/detalhes?id=${retirada.id}`
+                          withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")
                         );
                       }}
                       className="flex w-full items-center gap-3 rounded-[20px] border border-ice/25 bg-ice/[0.04] p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
@@ -2078,7 +2089,7 @@ export default function HomePage() {
                           );
 
                           router.push(
-                            `/saude/tratamentos/detalhes?id=${tratamento.id}`
+                            withReturnTarget(`/saude/tratamentos/detalhes?id=${tratamento.id}`, "/")
                           );
                         }}
                         className="flex min-h-[82px] w-full items-center justify-between overflow-hidden rounded-[20px] border bg-surface p-3 text-left shadow-sm transition-all active:scale-[0.985]"
@@ -2154,6 +2165,7 @@ export default function HomePage() {
               gastoMes={metricasFinanceiras.gastoMesAtual}
               diferencaMes={metricasFinanceiras.diff}
               totalRede={medicos.length + farmacias.length + hospitais.length + locais.length}
+              mode="secondary"
             />
           </div>
 

@@ -9,7 +9,7 @@ import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
 import { HomeSupplyAccessTiles } from "@/components/home/HomeSupplyAccessTiles";
 import { HomeCareOrganizationTiles } from "@/components/home/HomeCareOrganizationTiles";
 
-type Props = { gastoMes: number; diferencaMes: number; totalRede: number };
+type Props = { gastoMes: number; diferencaMes: number; totalRede: number; mode?: "all" | "primary" | "secondary" };
 
 const clinical = [
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
@@ -19,7 +19,7 @@ const clinical = [
   { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/[0.06] text-coral" },
 ] as const;
 
-export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) {
+export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "all" }: Props) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
@@ -31,7 +31,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
   },[]);
 
   return (
-    <section className="vault-deferred-lg space-y-3" aria-label="Central do Vault">
+    <section className="vault-deferred-lg space-y-3" aria-label={mode === "primary" ? "Acessos principais da Home" : "Central do Vault"}>
+      {mode !== "secondary" && <>
       <div className="flex items-end justify-between gap-3">
         <div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações principais primeiro; demais áreas sob demanda</p></div>
         <Stethoscope size={16} className="text-ink-muted"/>
@@ -39,8 +40,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
 
       {/* M131: dois destinos principais, com cores e componentes canônicos. */}
       <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Acessos principais de saúde e medicamentos">
-        <div className="grid min-w-0 grid-cols-2 gap-2" aria-label="Medicamentos e Minha saúde">
-          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-2 rounded-[18px] border border-emerald-400/20 bg-surface px-2.5 py-2.5 text-left shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+        <div className="grid min-w-0 grid-cols-2 gap-2 items-stretch" aria-label="Medicamentos e Minha saúde">
+          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex h-full min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-2 rounded-[18px] border border-emerald-400/20 bg-surface px-2.5 py-2.5 text-left shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300" aria-hidden="true"><Pill size={17}/></span>
             <span className="min-w-0 flex-1"><strong className="block break-words text-sm font-bold leading-snug text-ink-primary">Medicamentos</strong><span className="mt-1 block line-clamp-2 break-words text-xs leading-snug text-ink-muted">Rotina e estoque</span></span>
           </button>
@@ -58,6 +59,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         </details>
       </div>
 
+      </>}
+      {mode !== "primary" && <>
       <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-12 w-full items-center gap-2.5 rounded-[18px] border border-rose-300/20 bg-rose-300/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-200">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-rose-300/10 text-rose-200"><BookHeart size={17}/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Apoio humano e plano pessoal</strong><span className="block text-[10px] text-ink-muted">Contatos escolhidos, CVV 188 e SAMU 192</span></span><ChevronRight size={15} className="text-rose-200"/>
       </button>
@@ -74,6 +77,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
           documentPath="/saude/documentos" purchasePath="/saude/renovacao" networkPath="/saude/rede" networkTone="text-emerald-300/80" />
         <button type="button" onClick={() => go("/ajuda?topico=home")} className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/35 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como usar a Home e organizar o cuidado</button></div>}
       </ClinicalDisclosure>:null}
+      </>}
     </section>
   );
 }

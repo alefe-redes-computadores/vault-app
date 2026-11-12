@@ -242,6 +242,16 @@ function HistoryContent() {
   const selectedDay =
     model.days.find((day) => day.date === selectedDate) || model.days[0];
   const daySafety = [...doseSafety.values()].filter(item => item.date === selectedDay.date);
+  // M136: consumption is a confirmed event, never inferred from an empty slot.
+  const recordedDailyEvents = selectedDay.events.filter(event => event.kind !== "planned");
+  const dailyTakenEvents = recordedDailyEvents.filter(event => event.kind === "scheduled_taken" || (event.kind === "avulsa" && Boolean(event.tomadoEm)));
+  const knownDailyQuantity = dailyTakenEvents.reduce((total, event) =>
+    total + (typeof event.quantidade === "number" && Number.isFinite(event.quantidade) && event.quantidade > 0 ? event.quantidade : 0), 0);
+  const dailyUnknownQuantity = dailyTakenEvents.filter(event => !(typeof event.quantidade === "number" && Number.isFinite(event.quantidade) && event.quantidade > 0)).length;
+  const monthlyDays = model.days.filter(day => day.inMonth);
+  const monthlyEvents = monthlyDays.flatMap(day => day.events).filter(event => event.kind !== "planned");
+  const monthlyDaysWithRecords = monthlyDays.filter(day => day.events.some(event => event.kind !== "planned")).length;
+  const monthlyDaysUnconfirmed = monthlyDays.filter(day => day.unconfirmed > 0).length;
   const canGoNext = monthKey < currentMonthKey();
   const unit = medication.forma_farmaceutica === "gota" ||
     String(medication.formato || "").toLocaleLowerCase("pt-BR").includes("gota")
@@ -351,7 +361,18 @@ function HistoryContent() {
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-2">
+          <section aria-label="Resumo do mês selecionado" className="space-y-2">
+            <div className="flex items-end justify-between gap-3 px-1">
+              <div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">Mês selecionado</p>
+              <h2 className="mt-1 text-sm font-bold capitalize text-ink-primary">{model.monthLabel}</h2></div>
+              <span className="text-[10px] text-ink-muted">{monthlyDaysWithRecords} dia(s) com registros · {monthlyDaysUnconfirmed} com horários sem confirmação</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2" aria-label="Eventos e unidades do mês">
+              <div className="rounded-xl border border-surface-border/55 bg-surface p-3"><strong className="block text-lg font-mono text-ink-primary">{monthlyEvents.length}</strong><span className="text-[10px] text-ink-muted">eventos registrados no mês</span></div>
+              <div className="rounded-xl border border-surface-border/55 bg-surface p-3"><strong className="block text-lg font-mono text-ink-primary">{formatQuantity(model.summary.knownQuantity)}</strong><span className="block text-[10px] text-ink-muted">{unit} com quantidade no mês</span>{model.summary.logsWithoutQuantity > 0 && <span className="block text-[10px] text-amber-300">{model.summary.logsWithoutQuantity} evento(s) sem quantidade · soma parcial</span>}</div>
+            </div>
+          </section>
+          <section className="grid grid-cols-2 gap-2" aria-label="Situação dos horários do mês">
             <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-400/5 p-3">
               <CheckCircle2 size={14} className="text-emerald-400" />
               <p className="mt-2 font-mono text-lg font-bold text-emerald-400">{model.summary.taken}</p>
@@ -413,7 +434,13 @@ function HistoryContent() {
                   Revisar
                 </button>
               )}
+              </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Eventos e unidades do dia selecionado">
+              <div className="rounded-xl border border-ice/20 bg-ice/[.035] p-3"><strong className="block text-base font-mono text-ink-primary">{recordedDailyEvents.length}</strong><span className="text-[10px] text-ink-muted">eventos registrados neste dia</span></div>
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.035] p-3"><strong className="block text-base font-mono text-ink-primary">{formatQuantity(knownDailyQuantity)}</strong><span className="block text-[10px] text-ink-muted">{unit} com quantidade neste dia</span>{dailyUnknownQuantity > 0 && <span className="block text-[10px] text-amber-300">{dailyUnknownQuantity} evento(s) sem quantidade · soma parcial</span>}</div>
             </div>
+            <p className="mt-2 text-[10px] leading-snug text-ink-muted">{selectedDay.takenScheduled} tomada(s) da rotina · {selectedDay.ignoredScheduled} ignorada(s) · {selectedDay.avulsas} SOS/avulsa(s) · {selectedDay.unconfirmed} horário(s) sem confirmação. Registro ausente não comprova dose não tomada.</p>
 
             <div className="mt-4 space-y-2">
               {selectedDay.expectedSlots.map((slot) => {
@@ -497,19 +524,6 @@ function HistoryContent() {
             </div>
           </section>
 
-          {model.summary.knownQuantity > 0 && (
-            <section className="rounded-[22px] border border-surface-border/50 bg-surface p-4">
-              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-ink-muted">Quantidade registrada no mês</p>
-              <p className="mt-1 font-mono text-lg font-bold text-ink-primary">
-                {formatQuantity(model.summary.knownQuantity)} {unit}
-              </p>
-              {model.summary.logsWithoutQuantity > 0 && (
-                <p className="mt-1 text-[9px] text-amber-400">
-                  Soma parcial: {model.summary.logsWithoutQuantity} registro(s) não possuem quantidade.
-                </p>
-              )}
-            </section>
-          )}
         </div>
       </main>
     </PageTransition>

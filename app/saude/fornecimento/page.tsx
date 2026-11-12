@@ -1202,7 +1202,10 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{item.medicationName}</strong><span className="mt-0.5 block text-[10px] font-semibold text-amber-200">{item.requirement.label}</span><span className="mt-1 block text-[10px] leading-snug text-ink-muted">{item.requirement.detail}</span><span className="mt-1 block text-[9px] text-ink-faint">Origem: {item.routeLabel}</span></span><ChevronRight size={15} className="shrink-0 text-amber-300"/>
           </button>))}</div>}
       </section>
-      <MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} access={healthIntelligence.careCommand?.access} onNavigate={navigateSupplyAction}/>
+      <details className="rounded-xl border border-surface-border/45 bg-surface/40 px-3 py-1">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-secondary">Mapa de medicamentos e acesso · consultar detalhes</summary>
+        <div className="pb-2"><MedicationAuthorityMap portfolio={healthIntelligence.careCommand?.medications} access={healthIntelligence.careCommand?.access} onNavigate={navigateSupplyAction}/></div>
+      </details>
       {busy ? (
         <p role="status" className="mb-3 text-xs text-ink-primary">
           Salvando…
@@ -1300,14 +1303,28 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
                   return <div className="space-y-3">
-                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"} withdrawalProgress={process.origem==="comprado"?undefined:summarizeWithdrawalProgress(processWithdrawals,getLocalTodayISO())}/>
+                    <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Ver etapas e jornada completa</summary>
+                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"} withdrawalProgress={process.origem==="comprado"?undefined:summarizeWithdrawalProgress(processWithdrawals,getLocalTodayISO())}/></details>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{processRouteLabel}</span>
                       {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Rotas independentes</span>}
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
-                    {selectedRelationshipMap ? <SupplyRelationshipMap value={selectedRelationshipMap}/> : null}
+                    <section aria-label="Estado e próxima providência do fornecimento" className="space-y-2 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.035] p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-200">Estado atual · {process.status === "ativo" ? "processo ativo" : "histórico"}</p>
+                      <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 text-[11px] text-ink-secondary">
+                        <span>Última retirada: <strong className="text-ink-primary">{processWithdrawals.find(r => r.status === "realizada") ? fmt(processWithdrawals.find(r => r.status === "realizada")!.data) : "Não registrada"}</strong></span>
+                        <span>Próxima cadastrada: <strong className="text-ink-primary">{processWithdrawals.filter(r => r.status === "agendada").sort((a,b)=>a.data.localeCompare(b.data))[0]?.data ? fmt(processWithdrawals.filter(r => r.status === "agendada").sort((a,b)=>a.data.localeCompare(b.data))[0].data) : "Não cadastrada"}</strong></span>
+                        <span>Ciclos registrados: <strong className="text-ink-primary">{processCycles.length}</strong></span>
+                        <span>Documentos vinculados: <strong className="text-ink-primary">{processDocs.length}</strong></span>
+                      </div>
+                      {process.status === "ativo" && process.origem !== "comprado" && processWithdrawals.some(r => r.status === "realizada") && !cycles.some(c => c.status === "preparando" || c.status === "protocolado") && (
+                        <button type="button" onClick={() => { const el = document.getElementById("supply-next-cycle-m136") as HTMLDetailsElement | null; if(el){el.open=true;el.scrollIntoView({behavior:"smooth",block:"center"});} }} className="min-h-11 w-full rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 text-left text-xs font-bold text-emerald-200">Retirada registrada. Preparar o próximo ciclo? <span className="block text-[10px] font-normal text-ink-muted">Apenas abrir o planejamento; não gera autorização nem agendamento.</span></button>
+                      )}
+                      {process.status === "ativo" && cycles.some(c => c.status === "preparando" || c.status === "protocolado") && <p className="text-[11px] text-ink-muted">Já existe ciclo em preparação; continue o registro antes de criar outro.</p>}
+                    </section>
+                    {selectedRelationshipMap ? <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Mapa relacional e vínculos completos</summary><SupplyRelationshipMap value={selectedRelationshipMap}/></details> : null}
                     {/* V329: keep missing requirements visible on the selected process, not buried in closed history. */}
                     {missingDocumentItems.filter(item => {
                       try { return new URL(item.href, "https://vault.local").searchParams.get("id") === process.id; }
@@ -1411,7 +1428,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                     ))}
                   </HealthRelationPicker>
                 </label>
-                <details className="mt-3 rounded-xl border border-surface-border p-3">
+                <details id="supply-next-cycle-m136" className="mt-3 scroll-mt-28 rounded-xl border border-surface-border p-3">
                   <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Preparar outro ciclo / renovação</summary>
                 <label className="mt-3 block text-xs text-ink-muted">
                   Motivo do próximo ciclo
