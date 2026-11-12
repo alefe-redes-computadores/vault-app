@@ -1080,7 +1080,7 @@ export default function MedicamentosListPage() {
               );
 
               router.push(
-                `/saude/medicamentos/detalhes?id=${med.id}`
+                `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent("/saude/medicamentos")}`
               );
             }
           }
@@ -1104,7 +1104,7 @@ export default function MedicamentosListPage() {
                 event.stopPropagation();
                 trigger("vibrate");
                 if (regulatoryProfile) setSelectedRegulatory(regulatoryProfile);
-                else router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-agora`);
+                else router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent("/saude/medicamentos")}#medicamento-agora`);
               }}
               className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-1 text-[8px] font-black leading-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
             >

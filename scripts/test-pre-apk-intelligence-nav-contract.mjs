@@ -74,8 +74,9 @@ const medRegion =
   );
 
 ok(
-  medRegion.includes("router.back()"),
-  "Voltar tenta histórico interno"
+  !medRegion.includes("router.back()") &&
+    medRegion.includes("safeReturnTarget"),
+  "Voltar não reabre histórico transitório e valida a origem explícita"
 );
 
 ok(

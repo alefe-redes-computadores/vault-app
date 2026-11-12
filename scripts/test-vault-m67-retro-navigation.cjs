@@ -43,8 +43,8 @@ check(review.includes('onClick={goBack} aria-label="Voltar ao medicamento"'),"se
 check(review.includes('onClick={goBack} className="min-h-12 rounded-2xl')&&review.includes('Agora não'),"Agora não compartilha decisão");
 check(review.includes('onClick={goBack} disabled={saving}')&&review.includes('Concluir ou revisar depois'),"conclusão compartilha decisão");
 check(review.includes('router.replace("/saude/medicamentos")')&&review.includes('Outro medicamento'),"outra medicação não deixa revisão no histórico");
-check(details.includes('router.push(`${retroReviewHref(med.id!)}&origem=detalhes`);'),"entrada pelos detalhes marca origem sem modificar link canônico");
-check(details.includes('const handleSafeBack')&&details.includes('router.back();')&&details.includes('"/saude/medicamentos"'),"voltar dos detalhes mantém histórico normal e fallback");
+check(details.includes('withReturnTarget(`${retroReviewHref(med.id!)}&origem=detalhes`,returnTo)'),"entrada pelos detalhes preserva proprietário e origem explícitos");
+check(details.includes('const handleSafeBack')&&!details.match(/const handleSafeBack[\s\S]{0,900}router\.back\(\)/)&&details.includes('safeReturnTarget(searchParams.get("return_to"), "/saude/medicamentos")'),"voltar dos detalhes usa proprietário explícito e fallback");
 for(const fragment of [
  'doseLogsRepository.setStatus({', 'onlyIfPending: true', 'adjustStock: debit',
  'requireRegisteredStock: debit','setConfirmReal(false)',

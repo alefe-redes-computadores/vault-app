@@ -622,7 +622,7 @@ export default function HomePage() {
     [documents, activePersonId]
   );
 
-  const unifiedAlerts = useMemo<DashboardAlert[]>(
+  const operationalAlerts = useMemo<DashboardAlert[]>(
     () => projectHomeDashboardAlerts(healthInsights, documentInsights, {
       getLevel: mapUrgenciaToAlertLevel,
       getIcon: getAlertIcon,
@@ -794,7 +794,7 @@ export default function HomePage() {
         }
 
         if (
-          unifiedAlerts.length >
+          operationalAlerts.length >
           0
         ) {
           return {
@@ -805,8 +805,8 @@ export default function HomePage() {
               "Rotina em dia",
 
             description:
-              `${unifiedAlerts.length} lembrete${
-                unifiedAlerts.length ===
+              `${operationalAlerts.length} lembrete${
+                operationalAlerts.length ===
                 1
                   ? ""
                   : "s"
@@ -841,9 +841,19 @@ export default function HomePage() {
         medicationCareOpportunities,
         retiradasAtrasadas.length,
         totalCompromissosHoje,
-        unifiedAlerts.length,
+        operationalAlerts.length,
       ]
     );
+
+  // M130: a decisão principal não volta como um segundo cartão com o mesmo
+  // destino. A autoridade e a fila continuam intactas; muda apenas a projeção
+  // compacta da Home.
+  const unifiedAlerts = useMemo(
+    () => operationalAlerts.filter(alert => safeReturnTarget(alert.href, "") !== safeReturnTarget(resumoContextual.href, "")),
+    [operationalAlerts, resumoContextual.href]
+  );
+  const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
+  const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item => item.id === quantityFollowUpInsight.id));
 
   // ==========================================================
   // FINANCEIRO
@@ -1261,13 +1271,13 @@ export default function HomePage() {
 
           {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
               Não gera nova interpretação nem substitui alertas de segurança. */}
-          <HomeDoseQuantityFollowUp
-            insight={healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null}
-            feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === healthIntelligence.insights.find(insight => insight.id.startsWith("quantidade-confirmada-"))?.id)}
+          {!quantityAlreadyInBrain&&<HomeDoseQuantityFollowUp
+            insight={quantityFollowUpInsight}
+            feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
             nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
             onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
             onNavigate={href => { trigger("vibrate"); router.push(href); }}
-          />
+          />}
 
           {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
                     {/* ===================================================

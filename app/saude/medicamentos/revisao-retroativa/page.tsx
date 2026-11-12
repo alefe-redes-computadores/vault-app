@@ -16,6 +16,7 @@ import { doseLogsRepository } from "@/lib/repositories/doseLogs";
 import { addDaysToLocalDate, getLocalTodayISO } from "@/lib/health-utils";
 import { buildRetroBatchSlots, mayDebitHistoricalStock, retroDateTimeISO, validRetroDate } from "@/lib/today/retro-batch-review";
 import { retroReviewExitAction } from "@/lib/today/retro-review-navigation";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
 
 function RetroBatchReviewContent() {
   const router = useRouter();
@@ -32,7 +33,7 @@ function RetroBatchReviewContent() {
   const yesterday = addDaysToLocalDate(today, -1);
   const acquisitionDate = search.get("data_aquisicao") ?? "";
   const initialStart = validRetroDate(acquisitionDate) && acquisitionDate <= yesterday ? acquisitionDate : yesterday;
-  const returnTo = medId ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(medId)}` : "/saude/medicamentos";
+  const returnTo = safeReturnTarget(search.get("return_to"), medId ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(medId)}` : "/saude/medicamentos");
   const medication = medicamentos.find(m => m.id === medId && m.user_id === user?.id && m.person_id === activePersonId);
   const [from, setFrom] = useState(initialStart);
   const [to, setTo] = useState(yesterday);

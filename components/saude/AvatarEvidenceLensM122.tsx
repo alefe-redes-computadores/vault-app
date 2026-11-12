@@ -31,6 +31,7 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
 }) {
   const [period,setPeriod]=useState<AvatarEvidencePeriodM122>(30);
   const [opened,setOpened]=useState(false);
+  const [activeDomain,setActiveDomain]=useState<AvatarEvidenceDomainIdM122|null>(null);
   const detailsRef=useRef<HTMLDetailsElement>(null);
   // A trilha da Fênix pode apontar diretamente para a lente; revelar sob demanda.
   useEffect(()=>{
@@ -69,13 +70,14 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
         <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2" aria-label="Categorias de evidência da pessoa">
           {view.domains.map(domain=>{
             const Icon=icons[domain.id];
-            return <details key={domain.id} className={`group/domain min-w-0 rounded-2xl border p-2.5 ${tones[domain.id]}`}>
-              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
+            const expanded=activeDomain===domain.id;
+            return <section key={domain.id} className={`min-w-0 self-start rounded-2xl border p-2.5 ${tones[domain.id]}`}>
+              <button type="button" aria-expanded={expanded} aria-controls={`fenix-domain-${domain.id}`} onClick={()=>setActiveDomain(current=>current===domain.id?null:domain.id)} className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-black/10"><Icon size={15} aria-hidden="true"/></span>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-[11px] text-ink-primary">{domain.title}</strong><span className="mt-0.5 block text-[10px] text-ink-muted">{domain.count} registro(s)</span></span>
-                <ChevronDown size={14} className="shrink-0 transition-transform group-open/domain:rotate-180" aria-hidden="true"/>
-              </summary>
-              <div className="mt-2 space-y-2 border-t border-current/10 pt-2 text-[10px] text-ink-muted">
+                <ChevronDown size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${expanded?"rotate-180":""}`} aria-hidden="true"/>
+              </button>
+              {expanded&&<div id={`fenix-domain-${domain.id}`} className="mt-2 space-y-2 border-t border-current/10 pt-2 text-[10px] text-ink-muted">
                 <p>{domain.scope==="current_snapshot"?"Cadastro atual, não uma série de eventos.":`${domain.observedDays??0} dia(s) com lançamento na janela.`}</p>
                 {domain.scope==="recorded_period"&&<p>Último lançamento no recorte: {fmt(domain.lastRecordedDay)}</p>}
                 <p className="leading-relaxed">{domain.limitation}</p>
@@ -83,8 +85,8 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
                   <span className="min-w-0 flex-1"><strong className="block break-words text-[11px] text-ink-primary">{entry.title}</strong><span className="mt-1 block text-[10px] leading-snug text-ink-muted">{entry.day?`${fmt(entry.day)} · `:""}{entry.description}</span></span><ArrowUpRight size={14} className="shrink-0" aria-hidden="true"/>
                 </button>)}
                 <button type="button" onClick={()=>onNavigate(domain.route)} className="min-h-11 w-full rounded-lg border border-current/20 px-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">Abrir origem da categoria</button>
-              </div>
-            </details>;
+              </div>}
+            </section>;
           })}
         </div>
         <section aria-label="Brain, evidências declaradas" className="rounded-xl border border-violet-300/20 bg-violet-300/[.035] p-3">

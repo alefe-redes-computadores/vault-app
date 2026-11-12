@@ -29,6 +29,7 @@ import { MedicationBehaviorEvidence } from "@/components/saude/MedicationBehavio
 import { MedicationCatalogNameComparison } from "@/components/saude/MedicationCatalogNameComparison";
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
+import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
@@ -421,39 +422,16 @@ function MedicamentoDetalhesContent() {
     useHapticFeedback();
 
   // VAULT_SAFE_BACK_V71_1
-  // WebView/PWA pode abrir a tela sem histórico interno confiável.
-  // Tenta o histórico e possui fallback determinístico para a lista.
+  // M130: histórico do navegador não é autoridade de retorno. Um anexo externo,
+  // deep link ou reabertura do WebView não pode devolver a pessoa à tela errada.
   const handleSafeBack =
     () => {
       trigger("vibrate");
-
-      if (
-        typeof window !== "undefined" &&
-        window.history.length > 1
-      ) {
-        router.back();
-
-        window.setTimeout(
-          () => {
-            if (
-              window.location.pathname.includes(
-                "/saude/medicamentos/detalhes"
-              )
-            ) {
-              router.replace(
-                "/saude/medicamentos"
-              );
-            }
-          },
-          350
-        );
-
-        return;
-      }
-
-      router.replace(
-        "/saude/medicamentos"
-      );
+      const requestedTarget = safeReturnTarget(searchParams.get("return_to"), "/saude/medicamentos");
+      const returnTarget = requestedTarget.startsWith("/saude/medicamentos/detalhes")
+        ? "/saude/medicamentos"
+        : requestedTarget;
+      router.replace(returnTarget);
     };
 
   const {
@@ -550,6 +528,7 @@ function MedicamentoDetalhesContent() {
 
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteAuthorized, setDeleteAuthorized] = useState(false);
+  const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState<string | null>(null);
   const {
     authenticate: authenticateDeletion,
     isAvailable: deletionBiometricAvailable,
@@ -2210,11 +2189,7 @@ function MedicamentoDetalhesContent() {
         "vibrate"
       );
 
-      window.open(
-        url,
-        "_blank",
-        "noopener,noreferrer"
-      );
+      setAttachmentPreviewUrl(url);
     };
 
   const compartilharWhatsApp =
@@ -3203,7 +3178,8 @@ function MedicamentoDetalhesContent() {
           }}/>
           {med.id && med.tipo_uso !== "sos" && med.tipo_uso !== "esporadico" && <button type="button" onClick={() => {
             trigger("vibrate");
-            router.push(`${retroReviewHref(med.id!)}&origem=detalhes`);
+            const returnTo=`/saude/medicamentos/detalhes?${searchParams.toString()}`;
+            router.push(withReturnTarget(`${retroReviewHref(med.id!)}&origem=detalhes`,returnTo));
           }} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/[.045] px-4 py-3 text-left text-xs font-semibold text-ice">
             <span>Revisar várias doses antigas</span><span className="text-[10px] text-ink-muted">Selecionar dias e horários</span>
           </button>}
@@ -3694,6 +3670,16 @@ function MedicamentoDetalhesContent() {
           type="danger"
           showActions={isVaultNative() && deleteAuthorized}
         />
+
+        <BottomSheet isOpen={Boolean(attachmentPreviewUrl)} onClose={()=>setAttachmentPreviewUrl(null)} title="Anexo da receita">
+          <div className="space-y-3 p-4">
+            <div className="h-[64vh] overflow-hidden rounded-2xl border border-surface-border bg-black/20">
+              {attachmentPreviewUrl?<iframe src={attachmentPreviewUrl} title="Visualização do anexo da receita" className="h-full w-full"/>:null}
+            </div>
+            <p className="text-[11px] leading-relaxed text-ink-muted">A visualização permanece no VAULT para preservar o caminho de retorno. Se o formato não abrir aqui, use a opção externa abaixo.</p>
+            {attachmentPreviewUrl?<a href={attachmentPreviewUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary"><ExternalLink size={15}/>Abrir externamente</a>:null}
+          </div>
+        </BottomSheet>
 
       </main>
     </PageTransition>
