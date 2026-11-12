@@ -10,7 +10,10 @@ for (const [file,code] of [['medicamentos/page.tsx',page],['ListCard.tsx',card]]
   const source=ts.createSourceFile(file,code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   assert.equal(source.parseDiagnostics.length,0,`${file}: JSX/TSX válido`);
 }
-assert.match(page,/density="compact"\s+compactTight\s+interactiveContent/);
+assert.match(page,/density="compact"\s+compactTight=\{compactCards\}\s+interactiveContent/, 'M132: cards recebem a preferencia de densidade sem perder a navegacao');
+assert.match(page,/const \[compactCards, setCompactCards\] = useState\(true\)/, 'M132: compacto permanece padrao');
+assert.match(page,/setCompactCards\(window\.localStorage\.getItem\("@vault:meds_density_v1"\) !== "comfortable"\)/, 'M132: preferencia Conforto e opt-in');
+assert.match(page,/aria-pressed=\{compactCards\}/, 'M132: escolha de densidade acessivel');
 assert.match(card,/compactTight\?: boolean/);
 assert.match(card,/isTight \? "116px"/);
 assert.match(page,/VAULT_V318_COMPACT_IDENTITY/);

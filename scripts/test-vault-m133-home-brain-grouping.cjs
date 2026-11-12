@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+"use strict";
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const Module=require('node:module');
+const ts=require('typescript');
+const {resolve}=require('node:path');
+const read=p=>fs.readFileSync(p,'utf8');
+const pure='lib/home/brain-evidence-groups.ts',ui='components/home/HomeBrainEvidenceGroup.tsx',home='app/page.tsx';
+let count=0;const ok=(condition,message)=>{assert.ok(condition,'M133: '+message);count++;};
+for(const f of [pure,ui,home]){
+  const code=read(f),ast=ts.createSourceFile(f,code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  ok(ast.parseDiagnostics.length===0,'sintaxe TS/TSX '+f);
+}
+const src=read(pure),compiled=ts.transpileModule(src,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+const m=new Module(resolve(pure),module);m._compile(compiled.outputText,resolve(pure));
+const {groupHomeBrainEvidence,highestHomeBrainSeverity}=m.exports;
+const sample=(id,entity,medicationId,severity,title)=>({id,entidadeTipo:entity,entidadeId:medicationId,gravidadeSeguranca:severity,kind:'alert',titulo:title,confianca:'alta',amostra:10,mensagem:'Registro preservado'});
+const quantity=sample('quantidade-confirmada-1','medicamento','med-1','importante','Medicamento A: quantidade confirmada fora do padrão');
+const increase=sample('longitudinal-escalation-1','medicamento','med-1','atencao','Medicamento A: padrão recente aumentou');
+const another=sample('q2','medicamento','med-2','critica','Medicamento B: sinal');
+const orphan=sample('no-id','tratamento',null,'importante','Tratamento: atenção');
+const unlinked=sample('unknown','medicamento',undefined,'atencao','Medicamento não vinculado');
+const input=[increase,orphan,quantity,another,unlinked];
+const groups=groupHomeBrainEvidence(input);
+ok(groups.length===4,'cinco sinais viram quatro grupos e não são descartados');
+ok(groups[0].insights[0]===increase&&groups[0].insights[1]===quantity,'mesmo medicamento agrupa sinais por ID real sem alterar ordem');
+ok(groups.flatMap(g=>g.insights).length===input.length,'multiplicidade e referências originais intactas');
+ok(groups.every(g=>g.insights.length===1||g.insights.every(i=>i.entidadeId===g.insights[0].entidadeId)),'nunca mistura entidades diferentes');
+ok(groups.some(g=>g.insights[0]===orphan)&&groups.some(g=>g.insights[0]===unlinked),'sinais sem ID não são agrupados por nome');
+ok(highestHomeBrainSeverity(groups[0].insights)===quantity,'maior gravidade não é rebaixada por ordenação');
+ok(highestHomeBrainSeverity([another,increase])===another,'crítico permanece crítico');
+ok(highestHomeBrainSeverity([])===null,'grupo vazio não inventa gravidade');
+const page=read(home),card=read(ui),gate=read('scripts/test-v63-release-gate.mjs');
+ok(page.includes('longitudinalHighlights.map(')&&page.includes('groupHomeBrainEvidence(longitudinalHighlights)'),'lista original mantida e agrupamento visível adicionado');
+ok(page.includes('if (!group) return null')&&page.includes('group.insights.length > 1'),'uma superfície por medicamento, não um cartão repetido por sinal');
+ok(page.includes('setInsightExplicado(selected)')&&page.includes('setInsightExplicado('),'cada sinal abre o mesmo detalhe canônico');
+ok(card.includes('onOpen(insight)')&&card.includes('insights.map('),'todas as evidências acessíveis individualmente');
+ok(card.includes('aria-label={`Abrir observação')&&card.includes('min-h-11'),'ações acessíveis no Android');
+ok(card.includes('highestHomeBrainSeverity(insights)')&&card.includes('text-red-300')&&card.includes('text-coral')&&card.includes('text-amber-300'),'cor e maior gravidade preservadas');
+ok(card.includes('confiança {insight.confianca}')&&card.includes('amostra {insight.amostra}'),'qualidade da evidência permanece visível');
+ok(page.includes('suppressOperationalOverlap(')&&page.includes('HomeAttentionRail alerts={unifiedAlerts}'),'sem nova filtragem ou duplicação no trilho Atenção');
+ok(gate.includes('"scripts/test-vault-m132-mobile-medication-density.cjs"')&&gate.includes('"scripts/test-vault-m133-home-brain-grouping.cjs"'),'gate contém M132 + M133');
+console.log('VAULT M133: '+count+' contratos aprovados. Somente apresentação do Brain.');

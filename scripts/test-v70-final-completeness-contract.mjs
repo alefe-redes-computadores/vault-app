@@ -146,13 +146,13 @@ ok(
 );
 
 ok(
-  more.includes("Vault Insight"),
-  "Mais apresenta Vault Insight"
+  more.includes('label: "VAULT Brain"'),
+  "Mais apresenta VAULT Brain com acesso real"
 );
 
 ok(
-  intelligence.includes("VAULT INSIGHT"),
-  "Central preserva identidade Vault Insight"
+  intelligence.includes(">VAULT Brain</p>") && intelligence.includes(">Central do Brain</h1>"),
+  "Central preserva identidade VAULT Brain"
 );
 
 ok(

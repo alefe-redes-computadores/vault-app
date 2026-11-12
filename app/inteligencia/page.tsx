@@ -107,11 +107,11 @@ export default function VaultIntelligencePage() {
   return <PageTransition><main className="min-h-screen bg-void px-5 pb-32 pt-5 header-safe-top text-ink-primary">
     <header className="mx-auto flex max-w-2xl items-start gap-3">
       <button type="button" onClick={() => router.replace(backTarget)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border bg-surface text-ink-muted" aria-label="Voltar"><ChevronLeft size={20}/></button>
-      <div className="min-w-0"><p className="font-mono text-xs uppercase tracking-[0.16em] text-ice">VAULT INSIGHT</p><h1 className="font-display text-2xl font-bold tracking-tight text-ink-primary">Vault Insight</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Um próximo passo em destaque. Evidências, plano e histórico disponíveis sob demanda, sem presumir que algo foi realizado.</p></div>
+      <div className="min-w-0"><p className="font-mono text-xs uppercase tracking-[0.16em] text-ice">VAULT Brain</p><h1 className="font-display text-2xl font-bold tracking-tight text-ink-primary">Central do Brain</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Um próximo passo em destaque. Evidências, plano e histórico disponíveis sob demanda, sem presumir que algo foi realizado.</p></div>
     </header>
 
     <div className="mx-auto mt-5 max-w-2xl space-y-3">
-      <ClinicalSectionNav label="Áreas do Vault Insight" layout="grid" density="compact" items={[
+      <ClinicalSectionNav label="Áreas do VAULT Brain" layout="grid" density="compact" items={[
         {id:"insight-decisoes",label:"Decisões",icon:<BrainCircuit size={14}/>,iconClassName:"text-violet-300",},
         {id:"insight-evidencias",label:"Evidências",icon:<ShieldCheck size={14}/>,iconClassName:"text-cyan-300",},
         {id:"insight-saude",label:"Saúde",icon:<AlertTriangle size={14}/>,iconClassName:"text-amber-300",},

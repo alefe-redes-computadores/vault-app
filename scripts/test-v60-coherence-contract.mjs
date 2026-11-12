@@ -17,6 +17,6 @@ ok(m.includes("useMedicationRegulatoryProfiles")&&m.includes("regulatorySurface.
 ok(t.includes("useMedicationRegulatoryProfiles")&&t.includes("getMedicationRegulatorySurface"),"Tratamento regulatório");
 ok(c.includes("VAULT_CONTEXTUAL_SURFACE_V60")&&c.includes('VaultBrainIdentity compact context="Insight"'),"Insight V60");
 ok(c.includes('withReturnTarget(href, currentHref)')&&c.includes('openWithReturn('),"Insight abre Central");
-ok(z.includes("VAULT INSIGHT"),"Central V60");
+ok(z.includes(">VAULT Brain</p>") && z.includes(">Central do Brain</h1>"),"Central V60 com identidade VAULT Brain");
 
 console.log("VAULT SUPER V60 R2 — CONTRATO OK");

@@ -92,13 +92,13 @@ export function MedicationFilterBar({ value, onChange }: {
       </div>
       {expanded && (
         <div id="medication-more-filters" ref={panelRef}
-          className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-surface-border/35 bg-void/40 p-2"
+          className="mt-2 grid grid-cols-2 min-[390px]:grid-cols-3 gap-1.5 rounded-xl border border-surface-border/35 bg-void/40 p-1.5"
           aria-label="Categorias adicionais">
           {ADDITIONAL.map(([key, label]) => (
             <button key={key} type="button" aria-pressed={value === key}
               onClick={() => choose(key)}
-              className={`${controlClass(value === key, false)} justify-between text-left min-h-11`}>
-              <span>{label}</span>{value === key && <Check size={14} aria-hidden="true"/>}
+              className={`${controlClass(value === key, false)} min-w-0 justify-between gap-1 px-2 text-left text-[11px] leading-tight min-h-11`}>
+              <span className="min-w-0 break-words">{label}</span>{value === key && <Check size={14} className="shrink-0" aria-hidden="true"/>}
             </button>
           ))}
         </div>

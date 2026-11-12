@@ -112,6 +112,8 @@ import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
 import { HomeDoseQuantityFollowUp } from "@/components/home/HomeDoseQuantityFollowUp";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
+import { HomeBrainEvidenceGroup } from "@/components/home/HomeBrainEvidenceGroup";
+import { groupHomeBrainEvidence } from "@/lib/home/brain-evidence-groups";
 import { HomeSectionNav } from "@/components/home/HomeSectionNav";
 import { VaultUpdateHomePromptM117 } from "@/components/updates/VaultUpdateHomePromptM117";
 import { VaultBrainCommand } from "@/components/health-intelligence/VaultBrainCommand";
@@ -699,6 +701,9 @@ export default function HomePage() {
         medicationCareOpportunities,
       ]
     );
+
+  // M133: somente projeção visual; todos os insights originais permanecem na lista.
+  const homeBrainGroups = useMemo(() => groupHomeBrainEvidence(longitudinalHighlights), [longitudinalHighlights]);
 
   const resumoContextual =
     useMemo(
@@ -1371,7 +1376,7 @@ export default function HomePage() {
                   key={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") ? "priority" : "routine"}
                   id="home-health-evidence"
                   title="Ver observações do Brain"
-                  description={`${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"} · abrir para consultar`}
+                  description={`${homeBrainGroups.length} grupo${homeBrainGroups.length === 1 ? "" : "s"} · ${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"}`}
                   icon={<Activity size={18}/>}
                   defaultOpen={false}
                 >
@@ -1380,7 +1385,19 @@ export default function HomePage() {
                 {longitudinalHighlights.map(
                   (
                     insight
-                  ) => (
+                  ) => {
+                    const group = homeBrainGroups.find(candidate => candidate.insights[0]?.id === insight.id);
+                    // Só o primeiro insight do grupo monta o cartão; os demais ficam acessíveis dentro dele.
+                    if (!group) return null;
+                    if (group.insights.length > 1) return (
+                      <HomeBrainEvidenceGroup key={group.key} insights={group.insights}
+                        onOpen={selected => {
+                          trigger("vibrate");
+                          setMostrarFontesInteligencia(false);
+                          setInsightExplicado(selected);
+                        }}/>
+                    );
+                    return (
                     <button
                       key={
                         insight.id
@@ -1453,12 +1470,13 @@ export default function HomePage() {
                         className="shrink-0 text-violet-300"
                       />
                     </button>
-                  )
+                    );
+                  }
                 )}
               </div>
 
               {longitudinalHighlights.length > 1 && (
-                <div className="flex items-center justify-between px-1"><span className="text-xs text-ink-muted">Observações disponíveis para revisão</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
+                <div className="flex items-center justify-between px-1"><span className="text-xs text-ink-muted">Todas as observações continuam acessíveis por sinal</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
               )}
 
               </>}

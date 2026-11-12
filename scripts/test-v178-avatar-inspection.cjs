@@ -28,7 +28,7 @@ const shell = fs.readFileSync("components/saude/HealthAvatar.tsx", "utf8");
 const scene = fs.readFileSync("components/saude/HealthAvatar3D.tsx", "utf8");
 assert(shell.includes("parseAvatarFraming(stored)"));
 assert(shell.includes("onFramingChange={chooseFraming}"));
-assert(shell.includes("Sua representação pessoal e de saúde"));
+assert(shell.includes('<FenixMark size="xs" label/>') && shell.includes('Seu avatar personalizável · registros não são diagnósticos') && shell.includes('avatarDisplayName(avatarName,personName)'));
 assert(shell.includes("Ajustar visualização"));
 assert(shell.includes('<details open className="group mx-auto mt-3 max-w-[520px]') && shell.includes("onEmptyTap={size==='expanded'?undefined:toggleExpanded}"));
 assert(scene.includes('max-w-[440px]'));

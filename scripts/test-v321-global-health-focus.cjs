@@ -33,7 +33,7 @@ for(const term of ['relationalIndex.processes.filter(', 'medicationSupplyRoute('
   assert(supply.includes(term),`fornecimento mantém ${term}`);
 }
 assert(health.includes('VAULT_V321_AVATAR_CARE')&&health.includes('<DeferredHealthSection id="avatar-care-workspace"'),'projeção Avatar sob demanda');
-assert(health.includes('<HealthBody key={personId}')&&health.includes('Vault Intelligence'),'Avatar 3D e atenção visíveis');
+assert(health.includes('<HealthBody key={personId}')&&health.includes('>VAULT Brain <ChevronDown')&&health.includes('<FenixMark size="xs" label />'),'Avatar 3D, atenção e identidade Fênix visíveis');
 assert(health.includes('VAULT_V321_HEALTH_DEEP_LINK')&&health.includes('window.addEventListener("hashchange", reveal)'),'links revelam painéis fechados');
 assert(health.includes('<DeferredHealthSection id="analises"')&&health.includes('<DeferredHealthSection id="fontes"'),'seções anteriores preservadas');
 assert(disclosure.includes('{open && (')&&disclosure.includes('if (hash === id) setOpen(true)'),'disclosure remonta conteúdo só na abertura');

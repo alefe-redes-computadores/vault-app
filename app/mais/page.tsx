@@ -852,7 +852,7 @@ export default function MaisPage() {
     {
       id: "inteligencia",
       icon: BrainCircuit,
-      label: "Vault Insight",
+      label: "VAULT Brain",
       description: "Inteligência local, longitudinal e explicável",
       tone: "border-violet-400/20 bg-violet-400/10 text-violet-300",
       onClick: () => {

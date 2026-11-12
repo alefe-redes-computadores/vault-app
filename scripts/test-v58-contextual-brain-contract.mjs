@@ -17,5 +17,5 @@ for (const [f,t] of [
   ok(s.includes("ContextualHealthIntelligence"), `${t}: superfície`);
   ok(s.includes(`entityType="${t}"`), `${t}: identidade`);
 }
-ok(r("app/inteligencia/page.tsx").includes("VAULT INSIGHT"), "Central mantém identidade Vault Insight");
+ok(r("app/inteligencia/page.tsx").includes(">VAULT Brain</p>") && r("app/inteligencia/page.tsx").includes(">Central do Brain</h1>"), "Central mantém identidade VAULT Brain e o destino contextual");
 console.log("VAULT V58 — CONTRATO OK");

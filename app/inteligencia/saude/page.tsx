@@ -175,9 +175,9 @@ export default function HealthIntelligenceLabPage() {
           </button>
           <div className="min-w-0">
             <p className="font-mono text-xs uppercase tracking-[0.16em] text-violet-300">
-              VAULT INTELLIGENCE
+              VAULT Brain
             </p>
-            <h1 className="text-2xl font-bold">Inteligência de saúde</h1>
+            <h1 className="text-2xl font-bold">Análises de saúde</h1>
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               Timeline, evidências, padrões e preparação para consulta. O Vault descreve o histórico registrado; não faz diagnóstico.
             </p>
@@ -437,7 +437,7 @@ export default function HealthIntelligenceLabPage() {
           <div className="flex gap-3">
             <Database size={17} className="mt-0.5 shrink-0 text-ink-faint" />
             <p className="text-xs leading-relaxed text-ink-muted">
-              O Vault Intelligence usa somente dados registrados no Vault. Relações temporais não provam causa. Confiança mede força do conjunto de dados e das evidências disponíveis, não certeza médica.
+              O VAULT Brain usa somente dados registrados no Vault. Relações temporais não provam causa. Confiança mede força do conjunto de dados e das evidências disponíveis, não certeza médica.
             </p>
           </div>
         </section>

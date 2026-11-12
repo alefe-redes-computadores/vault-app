@@ -295,6 +295,18 @@ export default function MedicamentosListPage() {
   // M80: view preference changes presentation only; the same filtered rows and
   // clinical actions remain authoritative in both modes.
   const [unifiedList, setUnifiedList] = useState(false);
+  // M132: preferencia exclusivamente visual, sem mudar dados, filtros ou dose.
+  const [compactCards, setCompactCards] = useState(true);
+  useEffect(() => {
+    try { setCompactCards(window.localStorage.getItem("@vault:meds_density_v1") !== "comfortable"); }
+    catch { /* preferencia opcional; privacidade/armazenamento bloqueado nao quebra a lista */ }
+  }, []);
+  const chooseCardDensity = (next: boolean) => {
+    trigger("vibrate");
+    setCompactCards(next);
+    try { window.localStorage.setItem("@vault:meds_density_v1", next ? "compact" : "comfortable"); }
+    catch { /* somente apresentacao, sem impacto clinico */ }
+  };
   // M83: a lista única é incremental para evitar montar centenas de cards
   // no Android. Busca e filtros continuam operando no conjunto completo.
   const [unifiedVisibleCount, setUnifiedVisibleCount] = useState(12);
@@ -1088,7 +1100,7 @@ export default function MedicamentosListPage() {
             isSuspenso
           }
           density="compact"
-          compactTight
+          compactTight={compactCards}
           interactiveContent
           className="min-h-0"
           navigationLabel={`Ver detalhes de ${med.nome}`}
@@ -1495,6 +1507,14 @@ export default function MedicamentosListPage() {
               <button type="button" aria-pressed={unifiedList} onClick={() => setUnifiedList(true)} className={`min-h-11 rounded-lg px-2.5 text-xs font-semibold ${unifiedList ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Lista única</button>
             </div>
           </div>
+          {/* M132: controle visual opt-in; resultados e acoes continuam os mesmos. */}
+          <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface/45 px-3 py-2" aria-label="Densidade dos cartões de medicamentos">
+            <span className="min-w-0 text-[11px] font-semibold text-ink-secondary">Cartões</span>
+            <div className="inline-flex shrink-0 rounded-xl border border-surface-border/60 p-0.5" role="group" aria-label="Escolher densidade dos cartões">
+              <button type="button" aria-pressed={compactCards} onClick={() => chooseCardDensity(true)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Compactos</button>
+              <button type="button" aria-pressed={!compactCards} onClick={() => chooseCardDensity(false)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${!compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Conforto</button>
+            </div>
+          </div>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {!unifiedList && listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
@@ -1531,11 +1551,11 @@ export default function MedicamentosListPage() {
               </div>
             ) : (
             <div className="space-y-2 pb-8">
-              <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsPlanejados.map(renderCard) : medsPlanejados.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Uso eventual, separado da rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"} progressive={medicationFilter === "todos" && !searchQuery}>{(limit) => limit === undefined ? medsSuspensos.map(renderCard) : medsSuspensos.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-planejados" title="Próximas etapas" description="Planejamento futuro, sem tratar como realizado" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsPlanejados.map(renderCard) : medsPlanejados.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Uso eventual, separado da rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsSuspensos.map(renderCard) : medsSuspensos.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
             </div>
             )
           )}

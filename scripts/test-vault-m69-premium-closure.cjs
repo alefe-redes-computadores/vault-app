@@ -36,7 +36,7 @@ ok(todayAction.includes('pendingDoses > 0')&&todayAction.includes('onOpenDoses')
 ok(today.includes('dosesElegiveisLote.length > 1')&&today.includes('handleTomarTodos()')&&today.includes('retroReviewMode'), 'Today batching and retroactive navigation stay canonical');
 const groups=read(files[5]),nav=read(files[6]),relations=read(files[7]),supply=read(files[8]);
 ok(groups.includes('forceOpen||open')&&groups.includes('if(count===0)return null')&&groups.includes('vault:reveal-clinical-section'), 'Medication groups remain lazy, deep-link aware');
-ok(groups.includes('className="mt-0.5 block line-clamp-2 break-words text-xs leading-relaxed text-ink-muted"'), 'M50 legacy readable group description and improved 12px text retained');
+ok(groups.includes('className={`mt-0.5 block line-clamp-2 break-words leading-relaxed text-ink-muted ${compact ? "text-[11px]" : "text-xs"}`}') && groups.includes('aria-label={`${title}. ${count} itens. ${description}`}'), 'M50 legacy readable group description and improved 12px text retained');
 ok(hero.includes('min-h-[104px]')&&hero.includes('min-[380px]:min-h-[116px]'), 'M24/M64 original mobile min-height retained while larger screens gain room');
 ok(nav.includes('M11_FIVE_TABS_ONE_ROW')&&nav.includes('grid-cols-5')&&nav.includes('hashchange')&&nav.includes('IntersectionObserver'), 'Clinical anchors maintain old navigation and accessibility');
 ok(relations.includes('grid grid-cols-2 gap-2')&&relations.includes('onNavigate(href)')&&relations.includes('Cuidado conectado'), 'Care relationships use readable mobile grid without altered destinations');

@@ -39,6 +39,7 @@ import { avatarInsightContext } from "@/lib/health-profile/avatar-context";
 import { AvatarHealthContext } from "@/components/saude/AvatarHealthContext";
 import { HealthTrendsExplorer } from "@/components/saude/HealthTrendsExplorer";
 import { HealthAvatar as HealthBody } from "@/components/saude/HealthAvatar";
+import { FenixMark } from "@/components/saude/FenixMark";
 import {
   HealthDeviceIcon,
   HealthMetricIcon,
@@ -279,7 +280,7 @@ function HealthDashboard({
           <>
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             {/* M118: five real navigation destinations; care relationship panels do not precede the Avatar. */}
-            <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Avatar",icon:<UserRound size={14}/>,iconClassName:"text-emerald-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
+            <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Fênix",icon:<FenixMark size="xs"/>,iconClassName:"text-amber-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
             <details className="group rounded-[18px] border border-emerald-400/15 bg-surface/40 p-3">
               <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
                 <span className="flex items-center gap-2"><HeartPulse size={17} className="text-emerald-300"/> Panorama, mapa e vínculos do cuidado</span>
@@ -317,9 +318,10 @@ function HealthDashboard({
                   <h2 className="min-w-0 break-words font-semibold leading-snug">
                     {person?.name || "Seu perfil"}
                   </h2>
-                  <p className="text-xs text-ink-muted">
-                    {age !== null ? `${age} anos · ` : ""}Avatar, corpo e medidas principais
-                  </p>
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <FenixMark size="xs" label />
+                    <span className="text-[10px] leading-snug text-ink-muted">{age !== null ? `${age} anos · ` : ""}Corpo e medidas</span>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -417,7 +419,7 @@ function HealthDashboard({
               <div className="flex items-center gap-3">
                 <span className={`rounded-xl p-3 ${!intelligence.error&&!intelligence.isLoading&&intelligence.insights.some(x=>x.urgencia==='alta'||x.gravidadeSeguranca==='critica')?'bg-rose-400/10 text-rose-300':!intelligence.error&&!intelligence.isLoading&&intelligence.insights.some(x=>x.urgencia==='media')?'bg-amber-400/10 text-amber-300':'bg-violet-400/10 text-violet-300'}`}><Brain size={20}/></span>
                 <div className="min-w-0 flex-1">
-                  <button type="button" aria-expanded={brainSummaryOpen} onClick={()=>setBrainSummaryOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between text-left text-sm font-semibold">Vault Intelligence <ChevronDown size={16} className={brainSummaryOpen?"rotate-180":""}/></button>
+                  <button type="button" aria-expanded={brainSummaryOpen} onClick={()=>setBrainSummaryOpen(v=>!v)} className="flex min-h-11 w-full items-center justify-between text-left text-sm font-semibold">VAULT Brain <ChevronDown size={16} className={brainSummaryOpen?"rotate-180":""}/></button>
                   <p className="mt-1 text-xs text-ink-muted">
                     {intelligence.isLoading
                       ? "Analisando os registros disponíveis…"
