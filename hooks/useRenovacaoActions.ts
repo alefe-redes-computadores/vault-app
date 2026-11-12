@@ -13,5 +13,10 @@ export function useRenovacaoActions() {
     await renovacoesRepository.delete(id, activePersonId);
   }, [activePersonId]);
 
-  return { deleteRenovacao };
+  const updateRenovacao = useCallback(async (id: string, data: { observacoes?: string | null }) => {
+    if (!activePersonId) throw new Error("Pessoa ativa não identificada.");
+    await renovacoesRepository.update(id, activePersonId, data);
+  }, [activePersonId]);
+
+  return { deleteRenovacao, updateRenovacao };
 }

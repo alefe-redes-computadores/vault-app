@@ -13,6 +13,10 @@ export const clinicalLabel = (value: string | null | undefined): string => LABEL
 export function sanitizeClinicalText(value: unknown): string {
   let text = String(value ?? "").replace(/[\u0000-\u001f]+/g, " ").replace(/\$([^$]+)\$/g, "$1").replace(/~/g, " ");
   for (const [key, label] of Object.entries(LABELS)) text = text.replace(new RegExp(`\\b${key}\\b`, "g"), label);
+  // M127: relatórios humanos não exibem ISO cru, mas mantêm a data explícita.
+  text = text.replace(/\b(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?/g,
+    (_, year, month, day, hour, minute) => `${day}/${month}/${year} às ${hour}:${minute}`);
+  text = text.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (_, year, month, day) => `${day}/${month}/${year}`);
   return text.replace(/\s{2,}/g, " ").trim();
 }
 

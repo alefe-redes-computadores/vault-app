@@ -103,6 +103,14 @@ export function WithdrawalPreparationView({
             <p className="text-[11px] text-ink-muted">{prep.recipe}</p>
           ) : null}
           <p className="text-[10px] leading-relaxed text-ink-faint">Conferir documentos não registra retirada, não altera estoque e não substitui a confirmação do atendimento.</p>
+          {(r.exige_nova_receita || prep.pending.some(item => /receita/i.test(item))) && (
+            <Link
+              href={`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(r.medicamento_id)}&retirada_id=${encodeURIComponent(r.id!)}&mode=plan&return_to=${encodeURIComponent(`/saude/retiradas/detalhes?id=${r.id}`)}`}
+              className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-amber-400/25 bg-amber-400/[.07] px-3 py-3 text-xs font-bold text-amber-200"
+            >
+              <span>Solicitar ou renovar receita</span><ArrowUpRight size={15}/>
+            </Link>
+          )}
           <Link
             href={`/saude/fornecimento?medicamento_id=${encodeURIComponent(
               r.medicamento_id

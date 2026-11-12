@@ -34,9 +34,12 @@ export function manufacturerIdentity(value?: string | null) {
 
 export function attachManufacturerMetadata(notes: string | null | undefined, metadata: ManufacturerMetadata) {
   const visible = stripManufacturerMetadata(notes);
+  // Check-ins pertencem ao histórico da aquisição e nunca são apagados
+  // quando se edita somente o fabricante.
+  const checkIns = String(notes ?? "").split(/\r?\n/).filter(line => line.startsWith("[VAULT:RELATO-FABRICANTE]"));
   const clean = Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key, normalized(value)]).filter(([, value]) => value));
-  if (!Object.keys(clean).length) return visible || undefined;
-  return [visible, `${META_PREFIX}${JSON.stringify(clean)}`].filter(Boolean).join("\n");
+  if (!Object.keys(clean).length) return [visible, ...checkIns].filter(Boolean).join("\n") || undefined;
+  return [visible, ...checkIns, `${META_PREFIX}${JSON.stringify(clean)}`].filter(Boolean).join("\n");
 }
 
 export function readManufacturerMetadata(notes?: string | null): ManufacturerMetadata {
@@ -49,7 +52,7 @@ export function readManufacturerMetadata(notes?: string | null): ManufacturerMet
 }
 
 export function stripManufacturerMetadata(notes?: string | null) {
-  return String(notes ?? "").split(/\r?\n/).filter(line => !line.startsWith(META_PREFIX)).join("\n").trim();
+  return String(notes ?? "").split(/\r?\n/).filter(line => !line.startsWith(META_PREFIX) && !line.startsWith("[VAULT:RELATO-FABRICANTE]")).join("\n").trim();
 }
 
 export type ManufacturerExperienceCheckIn = {

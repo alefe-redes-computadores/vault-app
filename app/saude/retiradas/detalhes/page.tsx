@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { CustomDatePicker } from "@/components/DatePicker";
-import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
+import { parseWithdrawalTimeM127, maskWithdrawalTimeM127 } from "@/lib/health-intelligence/withdrawal-time-m127";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import {useRenovacoes} from "@/hooks/useRenovacoes";
 import {WithdrawalPreparationSummary} from "@/components/saude/WithdrawalPreparationSummary";
@@ -310,6 +310,12 @@ function DetalhesRetiradaContent() {
         return;
       }
 
+      // M127: um horário inválido nunca vira null silenciosamente.
+      const confirmedTime = parseWithdrawalTimeM127(rescheduleTime);
+      if (confirmedTime === null) {
+        showToast("Horário inválido. Informe HH:MM entre 00:00 e 23:59.", "error");
+        return;
+      }
       setProcessing(
         true
       );
@@ -337,7 +343,7 @@ function DetalhesRetiradaContent() {
               rescheduleDate,
 
             novo_horario:
-              rescheduleTime ||
+              confirmedTime ||
               null,
 
             motivo:
@@ -356,7 +362,7 @@ function DetalhesRetiradaContent() {
               rescheduleDate,
 
             horario:
-              rescheduleTime ||
+              confirmedTime ||
               null,
 
             status:
@@ -1058,20 +1064,18 @@ function DetalhesRetiradaContent() {
                     Horário
                   </span>
 
-                  <HealthTimePicker
-
-                    value={
-                      rescheduleTime
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setRescheduleTime(
-                        event
-                      )
-                    }
-                    className="mt-1.5 w-full rounded-2xl border border-surface-border bg-surface-raised px-3.5 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    aria-label="Horário da retirada no formato HH:MM"
+                    placeholder="HH:MM"
+                    maxLength={5}
+                    value={rescheduleTime}
+                    onChange={event => setRescheduleTime(maskWithdrawalTimeM127(event.target.value))}
+                    className="mt-1.5 min-h-12 w-full rounded-2xl border border-surface-border bg-surface-raised px-3.5 py-3 text-sm text-ink-primary outline-none focus:border-ice/50"
                   />
+                  <span className="mt-1 block text-[10px] leading-relaxed text-ink-muted">Opcional. Toque e digite HH:MM; deixe vazio somente quando não houver horário informado.</span>
                 </label>
               </div>
 

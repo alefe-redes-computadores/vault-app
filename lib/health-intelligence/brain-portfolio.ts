@@ -71,7 +71,8 @@ export function buildBrainPortfolio(items: readonly BrainV5Alert[], focusLimit =
   // applied. Diversity prevents repetition; it must never hide a stronger
   // safety signal merely because another domain has not appeared yet.
   const safetyReserve = candidates.filter(item =>
-    item.lane === "now" && ["critica", "importante"].includes(item.primary.snapshot.gravidade_seguranca ?? "")
+    (item.lane === "now" || item.lane === "next") &&
+    ["critica", "importante"].includes(item.primary.snapshot.gravidade_seguranca ?? "")
   );
   for (const journey of safetyReserve) {
     if (selected.length >= Math.max(0, focusLimit)) break;

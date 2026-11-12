@@ -33,7 +33,8 @@ export default function BatchRenewalPage() {
   const [review, setReview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const selected = useMemo(() => medicamentos.filter(item => item.id && drafts[item.id]?.selected), [medicamentos, drafts]);
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const selected = useMemo(() => medicamentos.filter(item => item.id && drafts[item.id]?.selected && !completedIds.includes(item.id)), [medicamentos, drafts, completedIds]);
   const patchDraft = (id: string, patch: Partial<Draft>) => setDrafts(current => {
     const base: Draft = current[id] ?? { selected: false, mode: "aquisicao", quantity: "", price: "", lot: "", manufacturer: "" };
     return { ...current, [id]: { ...base, ...patch } };
@@ -63,11 +64,14 @@ export default function BatchRenewalPage() {
           exige_nova_receita: origin === "sus" ? true : undefined,
         }, { somenteReceita: onlyPrescription, somenteAquisicao: onlyAcquisition });
         completed += 1;
+        // Evita reenviar itens confirmados após falha parcial nesta sessão.
+        setCompletedIds(current => current.includes(id) ? current : [...current, id]);
       }
       setMessage(`${completed} registro(s) concluído(s), cada um com histórico independente.`);
       setTimeout(() => router.push('/saude/renovacao'), 700);
     } catch (error) {
-      setMessage(`${completed ? `${completed} concluído(s). ` : ''}${error instanceof Error ? error.message : 'Não foi possível concluir o lote.'}`);
+      setReview(false);
+      setMessage(`${completed ? `${completed} concluído(s) nesta sessão e retirado(s) da seleção. ` : ''}${error instanceof Error ? error.message : 'Não foi possível concluir o lote.'} Antes de tentar novamente após reiniciar o app, confira os históricos.`);
     } finally { setSaving(false); }
   }
 

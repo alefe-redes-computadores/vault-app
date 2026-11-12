@@ -6,6 +6,7 @@ import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
 import { presentRenewalEvent } from "@/lib/health-supply/renewal-event-presentation";
 import { useLocalDay } from "@/hooks/useLocalDay";
 import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
+import { ManufacturerExperiencePanelM127 } from "@/components/saude/ManufacturerExperiencePanelM127";
 import { readManufacturerMetadata, stripManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 
 import {
@@ -199,7 +200,7 @@ function DetalhesRenovacaoContent() {
   } =
     useHapticFeedback();
 
-  const { deleteRenovacao } = useRenovacaoActions();
+  const { deleteRenovacao, updateRenovacao } = useRenovacaoActions();
   const { activePersonId } = useActivePersonId();
   const { user } = useAuth();
 
@@ -1483,6 +1484,17 @@ function DetalhesRenovacaoContent() {
         </section>
 
         {(relationSnapshot?.documento || linkedWithdrawals.length > 0) && <section aria-label="Relações deste evento" className="mx-5 mt-4 space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4"><div><p className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-ink-muted">Relações comprovadas</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Documento e retiradas</h2></div>{relationSnapshot?.documento?.id && <button type="button" onClick={()=>router.push(`/saude/documentos/detalhes?id=${encodeURIComponent(relationSnapshot.documento!.id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.06] px-3 text-left text-xs font-semibold text-violet-200"><FileText size={14}/><span className="flex-1">Abrir documento de saúde vinculado</span><ChevronRight size={14}/></button>}{linkedWithdrawals.map(item=><button type="button" key={item.id} onClick={()=>router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(item.id!)}`)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 text-left text-xs font-semibold text-emerald-300"><Receipt size={14}/><span className="flex-1">{item.renovacao_realizada_id===renovacao.id?"Recebimento":"Origem"} · retirada de {formatDateDisplay(item.data)}</span><ChevronRight size={14}/></button>)}</section>}
+        {renovacao.id && renovacao.data_aquisicao && readManufacturerMetadata(renovacao.observacoes).manufacturer && (
+          <div className="px-5">
+            <ManufacturerExperiencePanelM127
+              key={renovacao.id}
+              acquisitionId={renovacao.id}
+              manufacturer={readManufacturerMetadata(renovacao.observacoes).manufacturer!}
+              observations={renovacao.observacoes}
+              onSave={(notes) => updateRenovacao(renovacao.id!, { observacoes: notes })}
+            />
+          </div>
+        )}
         <div className="px-5 pt-4"><HealthSupplyEntry medicamentoId={renovacao.medicamento_id}/></div>
 
         <ContextualHealthIntelligence
