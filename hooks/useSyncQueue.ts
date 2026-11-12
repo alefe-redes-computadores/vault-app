@@ -57,6 +57,11 @@ import {
   SYNC_MAX_RETRIES,
 } from "@/lib/sync/queue-health";
 import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
+import {
+  blockedSyncDependency,
+  syncEntityKey,
+  type SyncEntityKey,
+} from "@/lib/sync/dependency-order";
 
 // ============================================================
 // CONSTANTES
@@ -5470,6 +5475,12 @@ export function useSyncQueue() {
               let highestRetry =
                 0;
 
+              // Dependências que falharam nesta passagem impedem somente os
+              // filhos relacionados. O filho permanece intacto e sem consumir
+              // tentativa; no próximo reenvio o pai volta a ser processado
+              // primeiro pela ordem canônica acima.
+              const failedEntities = new Set<SyncEntityKey>();
+
               for (
                 const item of queue
               ) {
@@ -5490,6 +5501,16 @@ export function useSyncQueue() {
                 }
 
                 result.processed++;
+
+                const blockedBy = blockedSyncDependency(item, failedEntities);
+                if (blockedBy) {
+                  result.processed--;
+                  addLog(
+                    `${item.table} aguardando a sincronização do registro relacionado (${blockedBy.split(":")[0]}). A fila foi preservada.`,
+                    "info"
+                  );
+                  continue;
+                }
 
                 const retryCount =
                   item.retry_count ||
@@ -5591,6 +5612,9 @@ export function useSyncQueue() {
                       : String(
                           error
                         );
+
+                  const failedKey = syncEntityKey(item);
+                  if (failedKey) failedEntities.add(failedKey);
 
                   if (
                     item.id

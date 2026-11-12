@@ -10,6 +10,7 @@ import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-sto
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
 import { attachManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { ManufacturerFieldM129 } from "@/components/saude/ManufacturerFieldM129";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
 
 import {
   Suspense,
@@ -450,9 +451,7 @@ function NovaRenovacaoContent() {
   const medicationReturnTo = autoSelectMedId
     ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(autoSelectMedId)}`
     : "/saude/renovacao";
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
-    ? rawReturnTo
-    : medicationReturnTo;
+  const returnTo = safeReturnTarget(rawReturnTo, medicationReturnTo);
 
   const {
     run,

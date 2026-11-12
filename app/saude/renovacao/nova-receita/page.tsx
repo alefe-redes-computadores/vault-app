@@ -83,6 +83,9 @@ import {
   TextArea,
 } from "@/components/ui/TextArea";
 import { formatPrescriptionAttachmentSize, validatePrescriptionAttachment } from "@/lib/health-documents/prescription-attachment";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
+import { db } from "@/lib/db";
+import { healthSupplyRepository } from "@/lib/repositories/healthSupply";
 
 function NovaReceitaContent() {
   const router =
@@ -128,6 +131,7 @@ function NovaReceitaContent() {
       "medicamento_id"
     ) ||
     "";
+  const withdrawalIdParam = searchParams.get("retirada_id") || "";
   const [planOnly, setPlanOnly] = useState(searchParams.get("mode") === "plan");
   const [plannedDate, setPlannedDate] = useState("");
 
@@ -136,11 +140,7 @@ function NovaReceitaContent() {
       "return_to"
     );
 
-  const returnTo =
-    rawReturnTo?.startsWith("/") &&
-    !rawReturnTo.startsWith("//")
-      ? rawReturnTo
-      : "/saude/renovacao";
+  const returnTo = safeReturnTarget(rawReturnTo, "/saude/renovacao");
 
   const medicamentosAtivos =
     useMemo(
@@ -458,6 +458,32 @@ function NovaReceitaContent() {
               null,
           }
         );
+
+        // Se a receita nasceu dentro de uma retirada já organizada em ciclo,
+        // o mesmo documento satisfaz o vínculo relacional explícito. O método
+        // é idempotente e mantém receita/LME/comprovante como tipos distintos.
+        if (withdrawalIdParam && createdDocumentId) {
+          const withdrawal = await db.retiradas.get(withdrawalIdParam);
+          if (
+            withdrawal?.person_id === activePersonId &&
+            withdrawal.medicamento_id === selectedMedicamento.id &&
+            withdrawal.fornecimento_ciclo_id
+          ) {
+            try {
+              await healthSupplyRepository.linkDocument(
+                activePersonId,
+                withdrawal.fornecimento_ciclo_id,
+                createdDocumentId,
+                "receita",
+                withdrawal.id || null
+              );
+            } catch (linkError) {
+              // A receita e o evento já foram salvos com sucesso. Uma falha
+              // relacional não pode apagá-los nem deixar Renovacao órfã.
+              console.warn("[NovaReceita] Receita salva; vínculo do ciclo requer conferência:", linkError);
+            }
+          }
+        }
 
         trigger(
           "success"

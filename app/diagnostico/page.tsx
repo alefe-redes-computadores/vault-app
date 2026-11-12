@@ -33,6 +33,7 @@ import { runVaultPullSingleFlight } from "@/lib/sync/coordinator";
 import { getPullFailureMessage } from "@/lib/sync/diagnostics";
 import { useVaultSyncRuntime } from "@/lib/sync/runtime-status";
 import { SyncDoseRefreshSummary } from "@/components/SyncDoseRefreshSummary";
+import { presentSyncError } from "@/lib/sync/error-presentation";
 
 interface TableCheck {
   key: string;
@@ -384,14 +385,14 @@ export default function DiagnosticoPage() {
               <h2 className="text-sm font-semibold">Motivo da falha</h2>
             </div>
             <div className="mt-2 space-y-2">
-              {failedItems.map((item) => (
-                <div key={item.id} className="rounded-xl bg-void/70 px-3 py-2.5">
-                  <p className="text-xs font-semibold text-ink-primary">{item.table}</p>
-                  <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-muted">
-                    {item.error || "O servidor não informou o motivo da falha."}
-                  </p>
-                </div>
-              ))}
+              {failedItems.map((item) => {
+                const failure = presentSyncError(item.error);
+                return <div key={item.id} className="rounded-xl bg-void/70 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2"><p className="text-xs font-semibold text-ink-primary">{failure.title}</p><span className="rounded-full border border-surface-border px-2 py-0.5 font-mono text-[8px] uppercase text-ink-muted">{item.table}</span></div>
+                  <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-muted">{failure.explanation}</p>
+                  <details className="mt-2"><summary className="cursor-pointer text-[10px] font-semibold text-ice">Ver diagnóstico técnico</summary><p className="mt-2 break-words rounded-lg border border-surface-border bg-surface p-2 font-mono text-[9px] leading-relaxed text-ink-faint">{failure.technical}</p></details>
+                </div>;
+              })}
             </div>
           </section>
         )}
