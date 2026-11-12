@@ -1165,6 +1165,7 @@ export default function MedicamentosListPage() {
                     {med.dosagem}
                   </span>
                 )}
+                {med.laboratorio_etiqueta && <span title={`Laboratório na etiqueta: ${med.laboratorio_etiqueta}`} className="inline-flex max-w-full items-center truncate rounded-md border border-violet-300/20 bg-violet-300/[.045] px-1.5 py-0.5 text-[10px] font-medium leading-snug text-violet-200">Lab. {med.laboratorio_etiqueta}</span>}
               </div>
               {!activeIngredients.length && !isSuspenso && (
                 <span className="sr-only">Princípio ativo · confirmar referência nos detalhes</span>

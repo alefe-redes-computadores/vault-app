@@ -787,6 +787,8 @@ export interface Medicamento {
 
   medico: string;
   farmacia?: string;
+  /** Etiqueta visual declarada, separada do fabricante por aquisição M126-M129. */
+  laboratorio_etiqueta?: string | null;
 
   data_receita: string;
   proxima_renovacao: string;
@@ -889,6 +891,7 @@ export type NullableMedicamentoFields = {
   local_id?: string | null;
 
   farmacia?: string | null;
+  laboratorio_etiqueta?: string | null;
 
   data_receita?: string | null;
   proxima_renovacao?: string | null;

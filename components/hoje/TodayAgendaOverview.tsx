@@ -41,10 +41,10 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
         {overview.rows.map((item, index) => {
           const Icon = kindIcon[item.kind];
           return <li key={`${item.kind}-${item.destination}-${item.time}-${index}`}>
-            <button type="button" onClick={() => item.kind === "dose" && onJumpDose ? onJumpDose(item.time) : onJump(item.destination)} className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-surface-border/40 bg-surface/60 px-2.5 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+            <button type="button" onClick={() => item.kind === "dose" && onJumpDose ? onJumpDose(item.time) : onJump(item.destination)} className="flex min-h-12 w-full min-w-0 items-center gap-2.5 rounded-xl border border-surface-border/40 bg-surface/60 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               <span className="w-12 shrink-0 font-mono text-xs font-semibold tabular-nums text-ice">{item.time}</span>
               {item.kind === "dose" ? <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-surface-raised" aria-hidden="true"><MedicationFormatIcon formato={item.formato} cores={item.cores} size={16}/></span> : <Icon size={14} className="shrink-0 text-ink-muted" aria-hidden="true"/>}
-              <span className="min-w-0 flex-1"><strong className="block truncate text-xs font-semibold text-ink-primary">{item.title}</strong><span className="block truncate text-xs text-ink-muted">{item.context}</span></span>
+              <span className="min-w-0 flex-1"><strong className="block break-words text-xs font-semibold text-ink-primary">{item.title}</strong><span className="block truncate text-xs text-ink-muted">{item.context}</span></span>
               <ChevronRight size={14} className="shrink-0 text-ink-muted" aria-hidden="true"/>
             </button>
           </li>;

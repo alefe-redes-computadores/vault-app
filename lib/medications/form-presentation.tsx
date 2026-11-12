@@ -89,7 +89,7 @@ export const MEDICATION_FORMATS: readonly MedicationFormatOption[] = [
 ];
 
 export const MEDICATION_IDENTITY_COLORS = [
-  "#FFFFFF", "#FCA5A5", "#F87171", "#EF4444", "#FB923C", "#F97316",
+  "#FFFFFF", "#000000", "#111827", "#FCA5A5", "#F87171", "#EF4444", "#FB923C", "#F97316",
   "#FBBF24", "#FACC15", "#A3E635", "#34D399", "#22C55E", "#2DD4BF",
   "#22D3EE", "#60A5FA", "#3B82F6", "#818CF8", "#A78BFA", "#8B5CF6",
   "#F472B6", "#EC4899", "#9CA3AF", "#64748B",

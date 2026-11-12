@@ -5,6 +5,7 @@ import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-
 import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
+import { MedicationCustomColorEditorM138 } from "@/components/saude/MedicationCustomColorEditorM138";
 import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
 import { MedicationCatalogFormatNotice } from "@/components/saude/MedicationCatalogFormatNotice";
 import { MedicationCatalogQuickOption } from "@/components/saude/MedicationCatalogQuickOption";
@@ -400,6 +401,8 @@ export default function NovoMedicamentoPage() {
     useState(
       false
     );
+
+  const [laboratorioEtiqueta, setLaboratorioEtiqueta] = useState("");
 
   const [
     cores,
@@ -2159,6 +2162,7 @@ export default function NovoMedicamentoPage() {
                 formato,
 
                 cores,
+                laboratorio_etiqueta: laboratorioEtiqueta.trim() || undefined,
 
                 tipo_uso:
                   tipoUso,
@@ -3673,7 +3677,11 @@ export default function NovoMedicamentoPage() {
                 </div>
 
                 <MedicationAppearancePanel title="Identidade Visual">
-                  <MedicationIdentityPreview name={nome} format={formato} colors={cores} />
+                  <MedicationIdentityPreview name={nome} format={formato} colors={cores} laboratorio={laboratorioEtiqueta} />
+                  <div className="mb-4 rounded-2xl border border-violet-300/15 bg-violet-300/[.035] p-3">
+                    <ManufacturerFieldM129 label="Laboratório na etiqueta (opcional)" value={laboratorioEtiqueta} onChange={setLaboratorioEtiqueta} />
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Identificação visual da embalagem. Não registra uma compra nem modifica fabricantes de aquisições anteriores.</p>
+                  </div>
 
                   <MedicationFormatPicker
                     selectedFormat={formato}
@@ -3691,6 +3699,7 @@ export default function NovoMedicamentoPage() {
 
                   <MedicationAppearanceColors>
                     <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="regular" />
+                    <MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor} />
                   </MedicationAppearanceColors>
                 </MedicationAppearancePanel>
 

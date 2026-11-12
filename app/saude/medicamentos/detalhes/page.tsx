@@ -2775,6 +2775,7 @@ function MedicamentoDetalhesContent() {
                     )}
                   </div>
 
+                  {med.laboratorio_etiqueta && <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-violet-200" title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}><span className="min-w-0 break-words">Etiqueta visual · {med.laboratorio_etiqueta}</span></p>}
                   <p className="mt-1 text-sm font-medium leading-relaxed text-ink-secondary">
                     {med.dosagem}
                     <span>

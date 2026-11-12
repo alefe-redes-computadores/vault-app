@@ -1249,7 +1249,8 @@ export default function HomePage() {
             <HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
               surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
               overdueWithdrawals={retiradasAtrasadas.length}
-              onNavigate={(href) => { trigger("vibrate"); router.push(href); }} />
+              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
+              onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} />
           </motion.section>
 
           {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
@@ -1513,6 +1514,7 @@ export default function HomePage() {
           {totalCompromissosHoje >
             0 && (
             <motion.section
+              id="home-compromissos"
               initial={{
                 opacity: 0,
                 y: 10,

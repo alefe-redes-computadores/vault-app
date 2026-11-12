@@ -6,6 +6,8 @@ import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/compone
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { MedicationManufacturerOverviewM128 } from "@/components/saude/MedicationManufacturerOverviewM128";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
+import { MedicationCustomColorEditorM138 } from "@/components/saude/MedicationCustomColorEditorM138";
+import { ManufacturerFieldM129 } from "@/components/saude/ManufacturerFieldM129";
 import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
 import { MedicationCatalogFormatNotice } from "@/components/saude/MedicationCatalogFormatNotice";
 import { MedicationCatalogQuickOption } from "@/components/saude/MedicationCatalogQuickOption";
@@ -533,6 +535,8 @@ function EditarMedicamentoContent() {
     useRef<HTMLDivElement>(
       null
     );
+
+  const [laboratorioEtiqueta, setLaboratorioEtiqueta] = useState("");
 
   const [
     cores,
@@ -1306,6 +1310,8 @@ function EditarMedicamentoContent() {
                     "#FFFFFF",
                   ]
             );
+
+            setLaboratorioEtiqueta(item.laboratorio_etiqueta || "");
 
             setTipoUso(
               item.tipo_uso ||
@@ -3125,6 +3131,7 @@ function EditarMedicamentoContent() {
               formato,
 
               cores,
+              laboratorio_etiqueta: laboratorioEtiqueta.trim() || null,
 
               tipo_uso:
                 tipoUso,
@@ -4952,7 +4959,11 @@ function EditarMedicamentoContent() {
                 className="space-y-6"
               >
                 <MedicationAppearancePanel title="Aparência do Remédio">
-                  <MedicationIdentityPreview name={nome} format={formato} colors={cores} />
+                  <MedicationIdentityPreview name={nome} format={formato} colors={cores} laboratorio={laboratorioEtiqueta} />
+                  <div className="mb-4 rounded-2xl border border-violet-300/15 bg-violet-300/[.035] p-3">
+                    <ManufacturerFieldM129 label="Laboratório na etiqueta (opcional)" value={laboratorioEtiqueta} onChange={value => {setLaboratorioEtiqueta(value); markChanged();}} />
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Altera somente a etiqueta visual. Para trocar o fabricante de uma aquisição, edite o registro correspondente no histórico.</p>
+                  </div>
 
                   <MedicationFormatPicker
                     selectedFormat={formato}
@@ -4970,6 +4981,7 @@ function EditarMedicamentoContent() {
 
                   <MedicationAppearanceColors>
                     <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="compact" />
+                    <MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor} />
                   </MedicationAppearanceColors>
                 </MedicationAppearancePanel>
 
