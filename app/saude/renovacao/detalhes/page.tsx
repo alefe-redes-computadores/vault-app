@@ -7,6 +7,7 @@ import { presentRenewalEvent } from "@/lib/health-supply/renewal-event-presentat
 import { useLocalDay } from "@/hooks/useLocalDay";
 import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
 import { ManufacturerExperiencePanelM127 } from "@/components/saude/ManufacturerExperiencePanelM127";
+import { ManufacturerTransitionPanelM129 } from "@/components/saude/ManufacturerTransitionPanelM129";
 import { readManufacturerMetadata, stripManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 
 import {
@@ -1492,6 +1493,17 @@ function DetalhesRenovacaoContent() {
               manufacturer={readManufacturerMetadata(renovacao.observacoes).manufacturer!}
               observations={renovacao.observacoes}
               onSave={(notes) => updateRenovacao(renovacao.id!, { observacoes: notes })}
+            />
+          </div>
+        )}
+        {renovacao.id && renovacao.data_aquisicao && readManufacturerMetadata(renovacao.observacoes).manufacturer && (
+          <div className="px-5">
+            <ManufacturerTransitionPanelM129
+              key={`transition-${renovacao.id}`}
+              acquisition={renovacao}
+              history={historicoRenovacoes}
+              medication={medicamento}
+              onSave={(nextObservations) => updateRenovacao(renovacao.id!, { observacoes: nextObservations })}
             />
           </div>
         )}

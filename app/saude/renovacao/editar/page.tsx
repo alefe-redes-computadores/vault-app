@@ -40,6 +40,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDocumentActions } from "@/hooks/useDocuments";
 import { uploadFile, deleteFile } from "@/lib/supabase/storage";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
+import { ManufacturerFieldM129 } from "@/components/saude/ManufacturerFieldM129";
 import { readManufacturerMetadata, stripManufacturerMetadata, mergeManufacturerAcquisitionEditM128 } from "@/lib/medications/manufacturer-experience";
 
 import {
@@ -2234,8 +2235,7 @@ function EditarRenovacaoContent() {
             <motion.div variants={fadeUp} initial="initial" animate="animate" className="rounded-[28px] border border-violet-400/20 bg-violet-400/[.04] p-4 shadow-sm">
               <div className="flex items-center gap-2"><Package size={16} className="text-violet-300"/><h3 className="text-sm font-semibold text-ink-primary">Laboratório / fabricante da aquisição</h3></div>
               <p className="mt-2 text-xs leading-relaxed text-ink-muted">Informe o fabricante real da caixa ou frasco deste recebimento. Não modifica outros lotes, histórico de estoque ou receita.</p>
-              <label className="mt-3 block text-xs font-medium text-ink-primary" htmlFor="m128-acquisition-lab">Fabricante deste registro</label>
-              <input id="m128-acquisition-lab" type="text" autoComplete="off" maxLength={120} value={fabricante} onChange={event=>setFabricante(event.target.value)} placeholder="Ex.: Eurofarma, Medley, EMS…" className="mt-1 min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary outline-none focus:border-violet-400" />
+              <div className="mt-3"><ManufacturerFieldM129 label="Fabricante deste registro" value={fabricante} onChange={setFabricante}/></div>
               {fabricante.trim() && <p className="mt-2 text-[11px] text-ink-muted">Fabricante informado: <span className="font-semibold text-violet-200">{fabricante.trim()}</span></p>}
               <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Se já houver relatos D1/D3/D7/D30, a troca de fabricante não altera o nome original gravado neles.</p>
             </motion.div>

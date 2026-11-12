@@ -1,4 +1,5 @@
 const META_PREFIX = "[VAULT:PRODUTO]";
+const TRANSITION_PREFIX_M129 = "[VAULT:TROCA-FABRICANTE]";
 
 export type ManufacturerMetadata = {
   manufacturer?: string;
@@ -28,7 +29,7 @@ export function manufacturerIdentity(value?: string | null) {
   if (known) return known;
   let hash = 0;
   for (const char of raw.toLocaleLowerCase("pt-BR")) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  const fallback = ["#2563EB", "#7C3AED", "#0891B2", "#059669", "#C2410C", "#BE123C"];
+  const fallback = ["#93C5FD", "#C4B5FD", "#67E8F9", "#86EFAC", "#FDBA74", "#FDA4AF"];
   return { label: raw || "Fabricante não informado", color: fallback[hash % fallback.length] };
 }
 
@@ -37,9 +38,10 @@ export function attachManufacturerMetadata(notes: string | null | undefined, met
   // Check-ins pertencem ao histórico da aquisição e nunca são apagados
   // quando se edita somente o fabricante.
   const checkIns = String(notes ?? "").split(/\r?\n/).filter(line => line.startsWith("[VAULT:RELATO-FABRICANTE]"));
+  const transition = String(notes ?? "").split(/\r?\n/).filter(line => line.startsWith(TRANSITION_PREFIX_M129));
   const clean = Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key, normalized(value)]).filter(([, value]) => value));
-  if (!Object.keys(clean).length) return [visible, ...checkIns].filter(Boolean).join("\n") || undefined;
-  return [visible, ...checkIns, `${META_PREFIX}${JSON.stringify(clean)}`].filter(Boolean).join("\n");
+  if (!Object.keys(clean).length) return [visible, ...checkIns, ...transition].filter(Boolean).join("\n") || undefined;
+  return [visible, ...checkIns, ...transition, `${META_PREFIX}${JSON.stringify(clean)}`].filter(Boolean).join("\n");
 }
 
 export function readManufacturerMetadata(notes?: string | null): ManufacturerMetadata {
@@ -52,7 +54,7 @@ export function readManufacturerMetadata(notes?: string | null): ManufacturerMet
 }
 
 export function stripManufacturerMetadata(notes?: string | null) {
-  return String(notes ?? "").split(/\r?\n/).filter(line => !line.startsWith(META_PREFIX) && !line.startsWith("[VAULT:RELATO-FABRICANTE]")).join("\n").trim();
+  return String(notes ?? "").split(/\r?\n/).filter(line => !line.startsWith(META_PREFIX) && !line.startsWith("[VAULT:RELATO-FABRICANTE]") && !line.startsWith(TRANSITION_PREFIX_M129)).join("\n").trim();
 }
 
 /**
@@ -66,7 +68,7 @@ export function mergeManufacturerAcquisitionEditM128(
   manufacturer: string | undefined,
 ): string | null {
   const historical = String(originalNotes ?? "").split(/\r?\n/)
-    .filter(line => line.startsWith("[VAULT:RELATO-FABRICANTE]"));
+    .filter(line => line.startsWith("[VAULT:RELATO-FABRICANTE]") || line.startsWith(TRANSITION_PREFIX_M129));
   const originalMetadata = readManufacturerMetadata(originalNotes);
   const cleanHumanNotes = stripManufacturerMetadata(humanNotes);
   const complete = [cleanHumanNotes, ...historical].filter(Boolean).join("\n");

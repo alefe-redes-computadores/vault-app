@@ -9,6 +9,7 @@ import { medicationScheduleSupplyHref } from "@/lib/health-intelligence/medicati
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
 import { attachManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
+import { ManufacturerFieldM129 } from "@/components/saude/ManufacturerFieldM129";
 
 import {
   Suspense,
@@ -2325,13 +2326,7 @@ function NovaRenovacaoContent() {
               </div>
 
               <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
-                <Input
-                  label="Laboratório / fabricante"
-                  value={fabricante}
-                  onChange={(event) => setFabricante(event.target.value)}
-                  placeholder="Ex.: Eurofarma"
-                  autoComplete="organization"
-                />
+                <ManufacturerFieldM129 label="Laboratório / fabricante" value={fabricante} onChange={setFabricante} />
                 <Input
                   label="Lote (opcional)"
                   value={
