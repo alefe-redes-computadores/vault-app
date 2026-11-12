@@ -12,7 +12,6 @@ import { HomeCareOrganizationTiles } from "@/components/home/HomeCareOrganizatio
 type Props = { gastoMes: number; diferencaMes: number; totalRede: number };
 
 const clinical = [
-  { label: "Minha saúde", sub: "Perfil, sono e medidas", path: "/saude/minha-saude", icon: HeartPulse, tone: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" },
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
   { label: "Exames", sub: "Pedidos e resultados", path: "/saude/exames", icon: FlaskConical, tone: "border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" },
   { label: "Hidratação", sub: "Registros em ml", path: "/saude/hidratacao", icon: Droplets, tone: "border-ice/20 bg-ice/[0.06] text-ice" },
@@ -38,19 +37,32 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede }: Props) 
         <Stethoscope size={16} className="text-ink-muted"/>
       </div>
 
-      <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-1.5" aria-label="Medicamentos, retiradas e fornecimento">
-        <button type="button" onClick={() => go("/saude/medicamentos")} className="col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border border-emerald-400/20 bg-surface px-3 py-3 w-full text-left transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300" aria-hidden="true"><Pill size={19}/></span>
-          <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Medicamentos</strong><span className="mt-0.5 block text-xs text-ink-muted">Rotina, estoque e histórico</span></span><ChevronRight size={17} className="shrink-0 text-emerald-300" aria-hidden="true"/>
-        </button>
-        <HomeSupplyAccessTiles onNavigate={go} withdrawalPath="/saude/retiradas" supplyPath="/saude/fornecimento" />
+      {/* M131: dois destinos principais, com cores e componentes canônicos. */}
+      <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Acessos principais de saúde e medicamentos">
+        <div className="grid min-w-0 grid-cols-2 gap-2" aria-label="Medicamentos e Minha saúde">
+          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-2 rounded-[18px] border border-emerald-400/20 bg-surface px-2.5 py-2.5 text-left shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300" aria-hidden="true"><Pill size={17}/></span>
+            <span className="min-w-0 flex-1"><strong className="block break-words text-sm font-bold leading-snug text-ink-primary">Medicamentos</strong><span className="mt-1 block line-clamp-2 break-words text-xs leading-snug text-ink-muted">Rotina e estoque</span></span>
+          </button>
+          <HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude" Icon={HeartPulse} tone="border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" onNavigate={go} />
+        </div>
+        {/* Acessos operacionais continuam disponíveis no Essencial, sem ocupar a primeira dobra. */}
+        <details className="group overflow-hidden rounded-xl border border-surface-border/50 bg-surface/60">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-1 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+            <span>Retiradas e fornecimento</span>
+            <ChevronRight size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"/>
+          </summary>
+          <div className="border-t border-surface-border/35 p-2">
+            <HomeSupplyAccessTiles onNavigate={go} withdrawalPath="/saude/retiradas" supplyPath="/saude/fornecimento" />
+          </div>
+        </details>
       </div>
 
       <button type="button" onClick={() => go("/saude/plano-seguranca")} className="flex min-h-12 w-full items-center gap-2.5 rounded-[18px] border border-rose-300/20 bg-rose-300/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-200">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-rose-300/10 text-rose-200"><BookHeart size={17}/></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Apoio humano e plano pessoal</strong><span className="block text-[10px] text-ink-muted">Contatos escolhidos, CVV 188 e SAMU 192</span></span><ChevronRight size={15} className="text-rose-200"/>
       </button>
 
-      {!essential?<ClinicalDisclosure id="home-outras-areas" defaultOpen title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
+      {!essential?<ClinicalDisclosure id="home-outras-areas" title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
         {() => <div className="grid min-w-0 grid-cols-2 gap-2.5">
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
           <HomeClinicalAreaTile label="Cirurgias" description="Procedimentos" path="/saude/cirurgias" Icon={ReceiptText} tone="border-rose-400/20 bg-rose-400/[0.06] text-rose-300" onNavigate={go} />

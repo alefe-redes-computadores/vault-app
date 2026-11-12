@@ -41,7 +41,7 @@ ok(portfolio.includes('!activeMedicationIds.has(item.medicationId)')&&portfolio.
 ok(portfolio.includes('activeMedicationIds.has(item.medicationId)'),'ações do Brain usam o mesmo conjunto ativo');
 ok(home.includes('<HomeSupplyAccessTiles')&&home.includes('withdrawalPath="/saude/retiradas"')&&home.includes('supplyPath="/saude/fornecimento"'),'Home preserva rotas e extrai interface');
 ok(home.includes('const go = (path: string) => { trigger("vibrate"); router.push(path); };'),'haptics e navegação permanecem no pai');
-ok(home.includes('id="home-outras-areas" defaultOpen')&&home.includes('id="home-organizacao"'),'divulgações da Home mantidas');
+ok(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen')&&home.includes('id="home-organizacao"'),'divulgações da Home mantidas');
 ok(tiles.includes('onNavigate(withdrawalPath)')&&tiles.includes('onNavigate(supplyPath)')&&!/db\.|supabase|fetch\(/.test(tiles),'atalhos são puros e reais');
 ok(tiles.includes('motion-reduce:transition-none')&&tiles.includes('focus-visible:outline'),'acessibilidade e movimento reduzido');
 ok(tiles.includes('Programações, locais e histórico de retirada')&&read('scripts/test-home-today-v9-contract.mjs').includes('supplyTiles.includes("onNavigate(withdrawalPath)")'),'descrição V9 preservada no componente modular e rota testada');

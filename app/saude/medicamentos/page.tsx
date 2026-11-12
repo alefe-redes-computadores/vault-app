@@ -1133,21 +1133,21 @@ export default function MedicamentosListPage() {
           <div className="relative flex min-w-0 flex-col gap-0.5">
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
-            <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
-                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold leading-snug text-ink-primary">
+                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-sm font-bold leading-snug text-ink-primary">
                   {med.nome}
                 </h3>
                 {med.dosagem && (
-                  <span title={med.dosagem} className="min-w-0 max-w-full text-xs font-semibold leading-snug text-ink-secondary">
+                  <span title={med.dosagem} className="min-w-0 max-w-full text-[11px] font-semibold leading-snug text-ink-secondary">
                     {med.dosagem}
                   </span>
                 )}
               </div>
               {!activeIngredients.length && !isSuspenso && (
-                <p className="min-w-0 truncate text-[10px] leading-snug text-ink-faint" title="Referência farmacêutica ainda não confirmada para este cadastro">Princípio ativo · confirmar referência nos detalhes</p>
+                <span className="sr-only">Princípio ativo · confirmar referência nos detalhes</span>
               )}
               {showActiveIngredient && (
                 <>
@@ -1160,7 +1160,7 @@ export default function MedicamentosListPage() {
                 </>
               )}
               </div>
-              <div className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px]">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
@@ -1186,6 +1186,12 @@ export default function MedicamentosListPage() {
                   </span>
                 )}
               </div>
+              {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
+              <MedicationOperationalStrip today={todayStatus}
+              stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
+              stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
+              stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
+              doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
               <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-[11px] [&>button:only-child]:col-span-2">
                 {!isSuspenso && canQuickDose && quickDoseLabel ? (
                   <button
@@ -1240,12 +1246,6 @@ export default function MedicamentosListPage() {
                 Indicações, médico e tratamentos ficam nos Detalhes.
                 A lista preserva apenas identidade, rotina, estoque e exceções. */}
 
-            {/* VAULT_V318_OPERATIONAL_STRIP: summary only, no repeated mini-dashboard */}
-            <MedicationOperationalStrip today={todayStatus}
-              stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
-              stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
-              stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
-              doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
             {stockReview && <details className="group mt-1 rounded-lg border border-amber-300/25 bg-amber-300/[.05] px-2.5 py-1 text-amber-200">
               <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
                 <AlertTriangle size={14} className="shrink-0" aria-hidden="true"/>
@@ -1256,7 +1256,7 @@ export default function MedicamentosListPage() {
             </details>}
 
             {/* VAULT_CARD_RHYTHM_V97_2_R1
-                Ações rápidas ficam junto da dose, antes do painel operacional.
+                Ações rápidas ficam após a situação de dose/estoque.
                 Nenhuma faixa inferior altera a altura do card. */}
           </div>
         </ListCard>

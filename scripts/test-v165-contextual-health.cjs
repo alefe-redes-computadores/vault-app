@@ -31,7 +31,7 @@ const identityStart = medicine.indexOf("VAULT_V318_COMPACT_IDENTITY");
 const identityEnd = medicine.indexOf("VAULT_MEDICATION_LIST_HIERARCHY_V98", identityStart);
 assert(identityStart > 0 && identityEnd > identityStart, "hierarquia do card presente");
 const identity = medicine.slice(identityStart, identityEnd);
-assert.match(identity, /flex min-w-0 flex-col gap-1/, "cabeçalho vertical preserva largura do nome");
+assert.match(identity, /flex min-w-0 flex-col gap-0\.5/, "cabeçalho vertical compacto M131 preserva largura do nome");
 assert.match(identity, /line-clamp-2 break-words font-display/, "nome não truncado");
 assert.doesNotMatch(identity, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "coluna rígida não pode retornar");
 assert.match(identity, /aria-label="Ações do medicamento" className="mt-1\.5 grid min-w-0 grid-cols-2 gap-1\.5 border-t/, "ações independentes em faixa separada e grade premium");

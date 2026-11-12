@@ -71,8 +71,8 @@ ok(overview.includes('Doses SOS não entram nessa meta programada'),'Meta da rot
 ok(list.includes('med.tipo_aquisicao === "comprado"')&&list.includes('Comprado · cadastro'),'Origem comprada declarada tem indicação própria');
 ok(list.includes('med.tipo_aquisicao === "sus"')&&list.includes('SUS · cadastro'),'Origem SUS declarada tem indicação própria');
 ok(list.includes('Origens históricas · conferir')&&list.includes('supplyRoute?.mode === "hybrid" ? ('),'Coexistência histórica não vira fornecimento comprovado');
-ok(home.includes('home-acessos-medicamentos')&&home.includes('home-organizacao')&&home.includes('id="home-outras-areas" defaultOpen'),'Apenas outras áreas abre inicialmente; outras seções continuam navegáveis');
-ok(home.includes('go("/saude/medicamentos")')&&home.includes('min-h-12 items-center'),'Medicamentos permanece navegável como atalho secundário compacto');
+ok(home.includes('home-acessos-medicamentos')&&home.includes('home-organizacao')&&home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen'),'Apenas outras áreas abre inicialmente; outras seções continuam navegáveis');
+ok(home.includes('go("/saude/medicamentos")')&&home.includes('grid min-w-0 grid-cols-2 gap-2')&&home.includes('label="Minha saúde"'),'Medicamentos permanece navegável como atalho secundário compacto');
 ok(today.includes('isPassado ? "inline-flex items-center gap-1 text-ink-muted"')&&today.includes('<CalendarDays size={12}'),'Previsões e histórico não recebem ícone de urgência do Hoje');
 ok(today.includes('!isFuturo && recorded > 0')&&today.includes('safePercentage'),'Progresso só usa realização registrada; previsão mantém sua autoridade');
 ok(!read('lib/health-intelligence/medication-care-decision.ts').includes('document_id === valid'),'Vínculo documental não é validade forçada');

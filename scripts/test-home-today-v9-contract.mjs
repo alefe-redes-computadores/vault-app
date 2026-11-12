@@ -17,10 +17,13 @@ ok("retiradas explicam programação e histórico", hub.includes("<HomeSupplyAcc
   hub.includes('withdrawalPath="/saude/retiradas"') &&
   supplyTiles.includes("onNavigate(withdrawalPath)") &&
   supplyTiles.includes("Programações, locais e histórico de retirada"));
-// M6: verifica cada categoria em sua rota, não a antiga lista global azul/ciano.
+// M131 R4: Minha Saúde agora é acesso principal, com componente canônico.
+// As demais áreas conservam sua cor semântica no catálogo secundário.
 const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));
+const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-emerald-400"[^>]*onNavigate=\{go\}/.test(hub);
 ok("atalhos clínicos possuem cores semânticas",
-  hasClinicalTone("/saude/minha-saude", "emerald-400") &&
+  primaryHealthTone &&
+  !hasClinicalTone("/saude/minha-saude", "emerald-400") &&
   hasClinicalTone("/saude/consultas", "violet-300") &&
   hasClinicalTone("/saude/exames", "emerald-400") &&
   hasClinicalTone("/saude/lembretes", "amber-400") &&

@@ -24,9 +24,12 @@ export const HomeDailyHero = memo(function HomeDailyHero({
   const safeProgress = scheduled > 0 && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
   // R9 R7: visual count cannot exceed the real planned denominator (SOS is separate).
   const safeCompleted = scheduled > 0 && Number.isFinite(scheduled) && Number.isFinite(completed) ? Math.max(0, Math.min(Math.floor(scheduled), Math.floor(completed))) : 0;
+  // M131: sem doses pendentes no denominador, o topo não ocupa altura de alerta.
+  // Acesso à rotina, texto e progresso permanecem disponíveis.
+  const quietRoutine = scheduled <= 0 || safeCompleted >= scheduled;
   return <>
     <button type="button" onClick={onOpen}
-      className="group relative isolate flex min-h-[104px] min-[380px]:min-h-[116px] w-full items-center justify-between gap-2.5 overflow-hidden rounded-t-[22px] bg-[radial-gradient(ellipse_at_94%_0%,rgba(47,227,201,0.16),transparent_52%)] px-3.5 pb-2.5 pt-3 text-left transition-colors hover:bg-surface-raised/40 motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+      className={`group relative isolate flex ${quietRoutine ? "min-h-[86px]" : "min-h-[104px] min-[380px]:min-h-[116px]"} w-full items-center justify-between gap-2.5 overflow-hidden rounded-t-[22px] bg-[radial-gradient(ellipse_at_94%_0%,rgba(47,227,201,0.16),transparent_52%)] px-3.5 ${quietRoutine ? "pb-2 pt-2" : "pb-2.5 pt-3"} text-left transition-colors hover:bg-surface-raised/40 motion-reduce:transition-none active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice`}
       aria-label={`${title}. ${ctaLabel}`}>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{color}}><CalendarDays size={14} aria-hidden="true" />{eyebrow}</span>
@@ -36,7 +39,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
       </span>
       <span className="grid size-10 shrink-0 place-items-center rounded-2xl border shadow-sm transition-transform motion-safe:group-active:scale-95" style={{borderColor:`${color}35`,backgroundColor:`${color}14`,color}} aria-hidden="true"><HeartPulse size={19}/></span>
     </button>
-    <div className="border-t border-surface-border/35 bg-surface/25 px-3.5 pb-2.5 pt-2">
+    <div className={`border-t border-surface-border/35 bg-surface/25 px-3.5 ${quietRoutine ? "pb-1.5 pt-1.5" : "pb-2.5 pt-2"}`}>
       <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-ink-muted">
         <span>Rotina programada de hoje</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${safeCompleted}/${scheduled}` : "Sem horários"}</span>
       </div>

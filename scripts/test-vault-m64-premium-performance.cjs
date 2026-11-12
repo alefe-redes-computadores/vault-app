@@ -120,7 +120,10 @@ check(network.includes('text-sky-300" label="Médico Prescritor"'),'médico iden
  // Existing V9 semantics: preserve each clinical route's original color exactly.
  const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>
    line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));
- check(hasClinicalTone('/saude/minha-saude','emerald-400') &&
+ // M131 R3: Minha Saude agora e primaria. Confirmar rota e cor no componente
+ // de destaque, mantendo intactas as outras cinco cores de rota V9.
+ const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-emerald-400"[^>]*onNavigate=\{go\}/.test(hub);
+ check(primaryHealthTone &&
    hasClinicalTone('/saude/consultas','violet-300') &&
    hasClinicalTone('/saude/exames','emerald-400') &&
    hasClinicalTone('/saude/lembretes','amber-400') &&

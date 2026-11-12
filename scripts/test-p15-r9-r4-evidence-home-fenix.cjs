@@ -44,8 +44,8 @@ ok(ready.includes('`Cadastro: ${routeEvidence.declaredLabel}`')&&ready.includes(
 const tile=read(files[2]),home=read(files[3]);
 ok(home.includes('<HomeClinicalAreaTile key={path}')&&tile.includes('onNavigate(path)'),'Home modulariza 6 atalhos e mantém handler de haptics no pai');
 ok(tile.includes('aria-label={`${label}: ${description}`}')&&tile.includes('focus-visible:outline')&&tile.includes('motion-reduce:transition-none'),'atalhos acessíveis e com reduced-motion');
-ok(tile.includes('path === "/saude/minha-saude"')&&home.includes('label: "Minha saúde"'),'Minha Saúde possui destaque contextual');
-ok(home.includes('id="home-outras-areas" defaultOpen')&&home.includes('id="home-acessos-medicamentos"')&&home.includes('id="home-organizacao"'),'somente Outras áreas aberta por padrão');
+ok(tile.includes('path === "/saude/minha-saude"')&&home.includes('label="Minha saúde"'),'Minha Saúde possui destaque contextual');
+ok(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen')&&home.includes('id="home-acessos-medicamentos"')&&home.includes('id="home-organizacao"'),'somente Outras áreas aberta por padrão');
 ok(home.includes('"/saude/medicamentos"')&&home.includes('"/saude/retiradas"')&&home.includes('"/saude/fornecimento"'),'rotas críticas preservadas');
 const avatar=read(files[4]);
 ok(avatar.includes('Brain · {brief.posture}')&&avatar.includes('planFocus.priorityScore')&&avatar.includes('authorityLabel ?? brief.authority'),'Fênix mantém postura e evidência do Brain');

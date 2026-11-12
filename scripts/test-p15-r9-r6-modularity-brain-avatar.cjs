@@ -16,9 +16,9 @@ check(!/\bfetch\(|supabase|\.toArray\(|getServerSideProps/.test(tiles),'componen
 check(tiles.includes('motion-reduce:transition-none')&&tiles.includes('focus-visible:outline'),'home touch, movimento reduzido e foco');
 check(tiles.includes('Number.isFinite(diferencaMes)')&&tiles.includes('Number.isFinite(value)'),'valores financeiros inválidos não são exibidos como NaN');
 check(home.includes('<HomeSupplyAccessTiles')&&home.includes('home-acessos-medicamentos'),'fornecimento anterior preservado');
-check(home.includes('id="home-outras-areas" defaultOpen'),'preferência de abertura preservada');
+check(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen'),'preferência de abertura preservada');
 check(home.includes('networkTone="text-emerald-300/80"')&&tiles.includes('${networkTone}')&&!home.includes('networkTone="text-cyan-400/70"'),'M6 conserva a cor contextual da rede e a prop de apresentação sem ciano excessivo');
-check(home.includes('col-span-2 flex min-h-12 items-center gap-2.5 rounded-[20px] border'),'V196: card principal com raio premium preservado após extração');
+check(home.includes('grid min-w-0 grid-cols-2 gap-2') && home.includes('rounded-[18px] border border-emerald-400/20') && home.includes('label="Minha saúde"'),'V196: card principal com raio premium preservado após extração');
 check(today.includes('<TodayTimelineGuide isHoje={isHoje} isPassado={isPassado} isFuturo={isFuturo} />'),'Hoje recebe guia temporal sem novo estado');
 check(today.includes('visibleTimelineItems(dosesFiltradas')&&today.includes('filterTimelineItems(doses,'),'motor canônico de filtros não alterado');
 check(guide.includes('Doses futuras são previsões')&&guide.includes('Falta de confirmação no histórico não significa uma dose ignorada'),'futuro e passado não viram realizados');

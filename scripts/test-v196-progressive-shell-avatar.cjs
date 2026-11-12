@@ -30,7 +30,13 @@ assert(appointmentCard.includes("onClick={onOpen}") && appointmentCard.includes(
 
 assert(more.match(/className="vault-deferred/g)?.length >= 5);
 assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.includes('<ClinicalDisclosure'));
-assert(command.includes("rounded-[20px]"));
+// M131 R5: o cartão único de 20px foi substituído por dois destinos premium.
+// Valida os novos alvos visíveis, o raio, as rotas e a identidade verde da Minha Saúde.
+assert(command.includes('grid min-w-0 grid-cols-2 gap-2') &&
+  /<button[^>]*onClick=\{\(\) => go\("\/saude\/medicamentos"\)\}[^>]*className="[^"]*min-h-\[84px\][^"]*rounded-\[18px\]/.test(command) &&
+  command.includes('<HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude"') &&
+  command.includes('tone="border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" onNavigate={go}'));
+
 
 assert(avatar.includes("V196: o mesmo orçamento de meshes"));
 assert(avatar.includes("taperedBox(.205,.264,.108,.398)"));
