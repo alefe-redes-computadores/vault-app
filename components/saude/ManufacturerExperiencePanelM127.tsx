@@ -19,7 +19,10 @@ export function ManufacturerExperiencePanelM127({acquisitionId, manufacturer, ob
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const checkins = readManufacturerCheckInsM127(observations, acquisitionId);
+  const allCheckins = readManufacturerCheckInsM127(observations, acquisitionId);
+  const labKey = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const checkins = allCheckins.filter(item => labKey(item.manufacturer) === labKey(manufacturer));
+  const historicalOtherLab = allCheckins.filter(item => labKey(item.manufacturer) !== labKey(manufacturer));
   useEffect(() => {setDay(1);setNotes("");setFeedback("");}, [acquisitionId]);
   useEffect(() => {setNotes(checkins.find(item => item.day === day)?.notes ?? "");}, [day, observations, acquisitionId]);
   async function save() {
@@ -42,6 +45,7 @@ export function ManufacturerExperiencePanelM127({acquisitionId, manufacturer, ob
     </label>
     <button type="button" disabled={saving||!notes.trim()} onClick={()=>void save()} className="mt-3 min-h-11 w-full rounded-xl bg-violet-400 px-3 text-sm font-bold text-void disabled:opacity-40">{saving?"Salvando…":checkins.some(x=>x.day===day)?"Atualizar relato pessoal":"Salvar relato pessoal"}</button>
     {feedback&&<p role="status" className="mt-2 text-xs text-violet-200">{feedback}</p>}
+    {historicalOtherLab.length>0&&<details className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/[.04] p-3"><summary className="cursor-pointer text-xs font-semibold text-amber-200">{historicalOtherLab.length} relato(s) preservado(s) com fabricante anterior</summary><p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Alterar o fabricante do registro não reatribui os relatos existentes. Os relatos antigos permanecem auditáveis com o laboratório informado à época.</p><div className="mt-2 space-y-2">{historicalOtherLab.map(item=><div key={`${item.manufacturer}:${item.day}`} className="rounded-lg bg-surface/70 p-2 text-xs text-ink-secondary"><strong className="block text-amber-200">{item.manufacturer} · D{item.day}</strong><p className="mt-1 whitespace-pre-wrap break-words">{item.notes}</p></div>)}</div></details>}
     <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-ink-muted"><ShieldCheck size={14} className="mt-0.5 shrink-0"/>O Vault não determina superioridade, bioequivalência individual nem causalidade a partir de relatos.</p>
   </section>;
 }

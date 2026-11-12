@@ -16,7 +16,9 @@ export function manufacturerCheckInLinesM127(source?: string | null): string[] {
   return String(source ?? "").split(/\r?\n/).filter(line => line.startsWith(PREFIX));
 }
 export function readManufacturerCheckInsM127(source?: string | null, acquisitionId?: string): ManufacturerCheckInM127[] {
-  const results = new Map<number, ManufacturerCheckInM127>();
+  // Mesmo dia pode conservar relatos de laboratórios distintos após correção
+  // do fabricante do evento; a atualização nunca reatribui a experiência.
+  const results = new Map<string, ManufacturerCheckInM127>();
   for (const line of manufacturerCheckInLinesM127(source)) {
     try {
       const data: unknown = JSON.parse(line.slice(PREFIX.length));
@@ -28,7 +30,7 @@ export function readManufacturerCheckInsM127(source?: string | null, acquisition
         typeof item.recordedAt !== "string" || !Number.isFinite(Date.parse(item.recordedAt)) ||
         typeof item.notes !== "string" || item.notes.length > 1200) continue;
       if (acquisitionId && item.acquisitionId !== acquisitionId) continue;
-      results.set(item.day, item as ManufacturerCheckInM127);
+      results.set(`${item.day}:${item.manufacturer.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()}`, item as ManufacturerCheckInM127);
     } catch { /* histórico malformado não deve impedir leitura de outras notas */ }
   }
   return [...results.values()].sort((a, b) => a.day - b.day);
@@ -36,7 +38,9 @@ export function readManufacturerCheckInsM127(source?: string | null, acquisition
 export function upsertManufacturerCheckInM127(source: string | null | undefined, item: ManufacturerCheckInM127): string {
   if (!item.acquisitionId.trim() || !item.manufacturer.trim() || !allowedDays.has(item.day) ||
     !Number.isFinite(Date.parse(item.recordedAt))) throw new Error("Relato incompleto.");
-  const existing = readManufacturerCheckInsM127(source, item.acquisitionId).filter(x => x.day !== item.day);
+  const labKey = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const existing = readManufacturerCheckInsM127(source, item.acquisitionId)
+    .filter(x => x.day !== item.day || labKey(x.manufacturer) !== labKey(item.manufacturer));
   const otherLines = String(source ?? "").split(/\r?\n/).filter(line => !line.startsWith(PREFIX));
   const preserved = manufacturerCheckInLinesM127(source).filter(line => {
     try {return JSON.parse(line.slice(PREFIX.length))?.acquisitionId !== item.acquisitionId;} catch {return true;}

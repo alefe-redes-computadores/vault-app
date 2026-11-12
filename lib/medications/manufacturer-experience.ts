@@ -55,6 +55,28 @@ export function stripManufacturerMetadata(notes?: string | null) {
   return String(notes ?? "").split(/\r?\n/).filter(line => !line.startsWith(META_PREFIX) && !line.startsWith("[VAULT:RELATO-FABRICANTE]")).join("\n").trim();
 }
 
+/**
+ * M128: edição de observações NÃO pode apagar relatos antigos.
+ * Apenas as notas humanas e o fabricante declarado no evento são editáveis.
+ * Dados históricos de experiências mantêm a identificação de origem.
+ */
+export function mergeManufacturerAcquisitionEditM128(
+  originalNotes: string | null | undefined,
+  humanNotes: string,
+  manufacturer: string | undefined,
+): string | null {
+  const historical = String(originalNotes ?? "").split(/\r?\n/)
+    .filter(line => line.startsWith("[VAULT:RELATO-FABRICANTE]"));
+  const originalMetadata = readManufacturerMetadata(originalNotes);
+  const cleanHumanNotes = stripManufacturerMetadata(humanNotes);
+  const complete = [cleanHumanNotes, ...historical].filter(Boolean).join("\n");
+  const result = attachManufacturerMetadata(complete, {
+    ...originalMetadata,
+    ...(manufacturer === undefined ? {} : { manufacturer: manufacturer.trim().slice(0, 120) }),
+  });
+  return result || null;
+}
+
 export type ManufacturerExperienceCheckIn = {
   acquisitionId: string;
   manufacturer: string;

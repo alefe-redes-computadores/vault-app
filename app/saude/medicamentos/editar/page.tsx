@@ -4,6 +4,7 @@ import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-revie
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
 import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
+import { MedicationManufacturerOverviewM128 } from "@/components/saude/MedicationManufacturerOverviewM128";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
 import { MedicationAdditionalFormatsSheet } from "@/components/saude/MedicationAdditionalFormatsSheet";
 import { MedicationCatalogFormatNotice } from "@/components/saude/MedicationCatalogFormatNotice";
@@ -4120,7 +4121,7 @@ function EditarMedicamentoContent() {
                       </h3>
 
                       <p className="mt-0.5 text-xs text-ink-muted">
-                        Saldo atual, valores e dispensação pública
+                        Saldo atual, fabricantes, valores e dispensação pública
                       </p>
                     </div>
                   </div>
@@ -4512,6 +4513,7 @@ function EditarMedicamentoContent() {
                 exit="exit"
                 className="space-y-6"
               >
+                {id && user?.id && personId && <MedicationManufacturerOverviewM128 medicationId={id} userId={user.id} personId={personId}/>}
                 <div className="space-y-4 rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="mb-2 flex items-center gap-2">
                     <Store
