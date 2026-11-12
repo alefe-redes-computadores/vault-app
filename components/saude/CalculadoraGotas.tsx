@@ -42,6 +42,9 @@ interface Props {
         string
     ) => void;
 
+  frascos: string;
+  setFrascos: (value: string) => void;
+
   gotasPorMl:
     string;
 
@@ -74,6 +77,8 @@ export function CalculadoraGotas({
   setMlTotal,
   gotasPorMl,
   setGotasPorMl,
+  frascos,
+  setFrascos,
   onEstoqueCalculado,
 }: Props) {
   const {
@@ -124,12 +129,10 @@ export function CalculadoraGotas({
     gotasMl >
       0;
 
-  const totalGotas =
-    possuiVolumeValido &&
-    possuiConversaoValida
-      ? ml *
-        gotasMl
-      : 0;
+  const recipientes = Number(frascos);
+  const recipientesValidos = Number.isInteger(recipientes) && recipientes > 0 && recipientes <= 1000;
+  const totalGotas = possuiVolumeValido && possuiConversaoValida && recipientesValidos
+    ? recipientes * ml * gotasMl : 0;
 
   // ==========================================================
   // ATUALIZA ESTOQUE CALCULADO
@@ -152,7 +155,8 @@ export function CalculadoraGotas({
        */
       if (
         !possuiVolumeValido ||
-        !possuiConversaoValida
+        !possuiConversaoValida ||
+        !recipientesValidos
       ) {
         return;
       }
@@ -165,6 +169,7 @@ export function CalculadoraGotas({
       isAtivo,
       possuiVolumeValido,
       possuiConversaoValida,
+      recipientesValidos,
       totalGotas,
     ]
   );
@@ -227,9 +232,11 @@ export function CalculadoraGotas({
 
       {isAtivo && (
         <div className="animate-in space-y-3 border-t border-surface-border/40 pt-3 duration-200 fade-in">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
+            <Input label="Frascos adquiridos" type="number" inputMode="numeric" min="1" placeholder="Ex.: 1" value={frascos}
+              onChange={event => setFrascos(event.target.value)} />
             <Input
-              label="Volume do frasco (ml)"
+              label="Volume por frasco (ml)"
               type="number"
               inputMode="decimal"
               min="0"
@@ -248,7 +255,7 @@ export function CalculadoraGotas({
             />
 
             <Input
-              label="Gotas por ml"
+              label="Gotas por ml (conversão informada)"
               type="number"
               inputMode="decimal"
               min="0"
@@ -276,7 +283,7 @@ export function CalculadoraGotas({
                 className="text-ice"
               />
 
-              Total calculado
+              Saldo operacional calculado
             </span>
 
             <span className="text-right font-mono font-bold text-ice">
@@ -296,7 +303,7 @@ export function CalculadoraGotas({
             />
 
             <p className="text-[10px] leading-relaxed text-ink-muted">
-              Informe a conversão indicada para o medicamento ou embalagem. O Vault não assume automaticamente uma quantidade de gotas por ml.
+              O saldo é frascos × ml por frasco × gotas/ml, somente quando todos os valores forem informados. A aquisição é de frascos; o controle operacional fica em gotas. O Vault não presume uma conversão universal.
             </p>
           </div>
         </div>

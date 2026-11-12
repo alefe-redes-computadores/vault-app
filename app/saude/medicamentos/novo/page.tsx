@@ -107,6 +107,8 @@ import {
 } from "@/lib/repositories/medicamentos";
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
 import { TemporaryCourseFields, emptyTemporaryCourseDraft, readTemporaryCourseDraft, type TemporaryCourseDraft } from "@/components/saude/TemporaryCourseFields";
+import { ManufacturerFieldM129 } from "@/components/saude/ManufacturerFieldM129";
+import { attachManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 
 import {
   supabaseMedicationCatalogProvider,
@@ -422,6 +424,8 @@ export default function NovoMedicamentoPage() {
       "continuo"
     );
   const [temporaryCourse, setTemporaryCourse] = useState<TemporaryCourseDraft>(emptyTemporaryCourseDraft);
+  const [frascosAdquiridos, setFrascosAdquiridos] = useState("1");
+  const [fabricanteAquisicao, setFabricanteAquisicao] = useState("");
 
   const [
     vezesAoDia,
@@ -2291,6 +2295,8 @@ export default function NovoMedicamentoPage() {
 
                 tipo_aquisicao:
                   tipoAquisicao,
+
+                observacoes: fabricanteAquisicao.trim() ? attachManufacturerMetadata("", { manufacturer: fabricanteAquisicao }) : undefined,
 
                 data_proxima_retirada:
                   dataRetornoSusISO,
@@ -4366,10 +4372,10 @@ export default function NovoMedicamentoPage() {
                       />
                     </button>
                   </div>
-                </div>
-
-                <CalculadoraGotas
-                  isAtivo={
+                </div>                  <CalculadoraGotas
+                    frascos={frascosAdquiridos}
+                    setFrascos={setFrascosAdquiridos}
+isAtivo={
                     isGotas
                   }
                   onToggle={
@@ -4416,6 +4422,10 @@ export default function NovoMedicamentoPage() {
                   }
                 />
 
+                {gerenciarRenovacao && <div className="rounded-[22px] border border-violet-400/20 bg-violet-400/[0.035] p-3.5">
+                  <ManufacturerFieldM129 label="Laboratório deste frasco ou caixa" value={fabricanteAquisicao} onChange={setFabricanteAquisicao}/>
+                  <p className="mt-2 text-[11px] text-ink-muted">Opcional. Pertence somente a esta aquisição inicial e não altera fabricantes de lotes anteriores.</p>
+                </div>}
                 <div className="rounded-[28px] border border-surface-border/50 bg-surface p-5 shadow-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -4481,7 +4491,7 @@ export default function NovoMedicamentoPage() {
                             }`}
                           >
                             <Input
-                              label="Qtd Comprada / Retirada"
+                              label={isGotas && estoqueGotasCalculado > 0 ? "Saldo calculado em gotas" : "Qtd Comprada / Retirada"}
                               type="number"
                               inputMode="decimal"
                               min="0"

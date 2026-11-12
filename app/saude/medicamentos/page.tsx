@@ -6,6 +6,9 @@ import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-pre
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
+import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
+import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
+import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { decideMedicationCarePath, medicationCarePresentation, medicationCareStageIsPlanning, medicationCareStageNeedsAttention } from "@/lib/health-intelligence/medication-care-decision";
 import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
 import { ownedMedicationRenewals } from "@/lib/health-intelligence/medication-owner-events";
@@ -1045,6 +1048,11 @@ export default function MedicamentosListPage() {
       const careDecision = careDecisionsByMedication.get(med.id!) ?? decideMedicationCarePath({ medication: med, renewals: [], today: hojeString, needsPrescription: false, needsStock: false });
       const brainCareItem = brainCareByMedication.get(med.id!);
       const supplyRoute = supplyRouteByMedication.get(med.id!);
+      // Fabricante é evidência da última aquisição concluída, nunca identidade fixa do princípio ativo.
+      const latestAcquisition = ownedMedicationRenewals(renewalsByMedication.get(med.id!) ?? [], med)
+        .filter(row => !isPrescriptionOnly(row) && !isFutureAcquisition(row, hojeString))
+        .sort((a, b) => renewalEventDate(b).localeCompare(renewalEventDate(a)))[0];
+      const latestManufacturer = readManufacturerMetadata(latestAcquisition?.observacoes).manufacturer;
       // V299: preservar prioridade Brain, exceto contradicao com aquisicao/retirada comprovada.
       const brainSuggestion = brainCareItem && brainCareItem.lane === "now"
         ? { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason }
@@ -1175,6 +1183,9 @@ export default function MedicamentosListPage() {
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
+                {latestManufacturer && <span title="Fabricante informado na última aquisição registrada. Não indica fabricante do estoque físico atual.">
+                  <ManufacturerBadge manufacturer={latestManufacturer} className="!min-h-6 !px-1.5 !py-0.5 !text-[9px]" />
+                </span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">Revisar identidade</span>
                 )}

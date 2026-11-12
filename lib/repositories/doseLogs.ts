@@ -1227,7 +1227,11 @@ export const doseLogsRepository = {
                   )
                 : undefined,
 
-            motivo: status === "ignored" ? (motivo?.trim() || existing?.motivo || "nao_realizada") : undefined,
+            motivo: status === "ignored"
+              ? (motivo?.trim() || existing?.motivo || "nao_realizada")
+              : existing?.dose_kind === "planned" && existing?.motivo?.startsWith(TEMPORARY_COURSE_PREFIX)
+                ? existing.motivo
+                : undefined,
 
             ignorado_em:
               status ===
@@ -1306,9 +1310,9 @@ export const doseLogsRepository = {
     const safePersonId = requirePersonId(personId);
     const safeMedicamentoId = requireMedicamentoId(medicamentoId);
     const user = await requireAuthenticatedUser();
-    const now = new Date();
-    const localNow = `${getLocalTodayISO()}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    const desired = course ? temporaryCourseSlots(course).filter(slot => `${slot.date}T${slot.time}` > localNow) : [];
+    // M137: o curso contém inclusive horários já passados, sem assumir desfecho.
+    // Alertas nativos continuam filtrando somente os horários futuros.
+    const desired = course ? temporaryCourseSlots(course) : [];
     const reason = course ? temporaryCourseNote(course) : "";
     return db.transaction("rw", [db.doseLogs, db.medicamentos, db.syncQueue], async () => {
       const medication = await getMedicamentoForPerson(safeMedicamentoId, safePersonId, user.id);
@@ -1316,23 +1320,26 @@ export const doseLogsRepository = {
       const rows = (await db.doseLogs.where("person_id").equals(safePersonId).toArray())
         .filter(row => row.medicamento_id === safeMedicamentoId && row.user_id === user.id);
       const oldPending = rows.filter(row => row.id && row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX) &&
-        !row.tomado_em && !row.ignorado_em && `${row.data}T${row.horario}` > localNow);
+        !row.tomado_em && !row.ignorado_em);
       const oldBySlot = new Map(oldPending.map(row => [`${row.data}T${row.horario}`, row]));
-      // Uma tomada/ignorada já registrada no mesmo slot satisfaz o plano.
-      // Reconciliar nunca recria esse DoseLog nem consome estoque outra vez.
-      const settledBySlot = new Set(rows.filter(row => row.tomado_em || row.ignorado_em)
+      if (oldBySlot.size !== oldPending.length) throw new Error("Há agendamentos duplicados no período. Revise-os antes de continuar.");
+      // Não converter tomadas/ignoradas históricas em slots novos nem reaplicar consumo.
+      const resolved = rows.filter(row => Boolean(row.tomado_em || row.ignorado_em));
+      const settledBySlot = new Set(resolved.filter(row => row.dose_kind === "planned" && row.motivo?.startsWith(TEMPORARY_COURSE_PREFIX))
         .map(row => `${row.data}T${row.horario}`));
       const desiredKeys = new Set(desired.map(slot => `${slot.date}T${slot.time}`));
       for (const key of desiredKeys) {
+        // Um evento real não associado ao curso não é reclassificado silenciosamente.
         if (rows.some(row => `${row.data}T${row.horario}` === key && !oldBySlot.has(key) && !settledBySlot.has(key)))
-          throw new Error(`Já existe uma dose nesse horário (${key}). Revise antes de alterar o período.`);
+          throw new Error(`Já existe um registro neste horário (${key}). Confira o histórico antes de alterar o período.`);
       }
       let cancelled = 0, scheduled = 0;
       for (const row of oldPending) {
         const key = `${row.data}T${row.horario}`;
         if (desiredKeys.has(key)) {
-          if (row.motivo !== reason) {
-            await db.doseLogs.update(row.id!, { motivo: reason, updated_at: new Date().toISOString(), synced: false });
+          const targetQuantity = resolveDoseQuantity(medication, course?.quantityPerDose);
+          if (row.motivo !== reason || row.quantidade !== targetQuantity) {
+            await db.doseLogs.update(row.id!, { motivo: reason, quantidade: targetQuantity, updated_at: new Date().toISOString(), synced: false });
             const updated = await db.doseLogs.get(row.id!);
             if (updated) await enfileirarOperacao("doseLogs", "update", updated);
           }

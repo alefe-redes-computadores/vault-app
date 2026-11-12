@@ -24,6 +24,7 @@ type Props = {
   hours: readonly string[];
   takenHours: ReadonlySet<string>;
   ignoredHours: ReadonlySet<string>;
+  scheduleKind?: "temporary" | "continuous";
   lastDose: LastDose | null;
   hasStockControl: boolean;
 };
@@ -34,7 +35,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
     sos, takenToday, todayQuantity, todayQuantityLabel, todayQuantityPartial,
     takenLast7Days, last7DaysQuantity, last7DaysQuantityPartial,
     resolvedToday, plannedToday, takenScheduledToday, ignoredScheduledToday,
-    quantityPerDose, doseUnit, hours, takenHours, ignoredHours, lastDose, hasStockControl,
+    quantityPerDose, doseUnit, hours, takenHours, ignoredHours, lastDose, hasStockControl, scheduleKind,
   } = props;
   const plannedSafe = Number.isFinite(plannedToday) ? Math.max(0, plannedToday) : 0;
   const resolvedSafe = Number.isFinite(resolvedToday) ? Math.max(0, resolvedToday) : 0;
@@ -89,7 +90,7 @@ export const MedicationRoutineSummary = memo(function MedicationRoutineSummary(p
               <p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{quantityPerDose !== null ? doseUnit : "quantidade não configurada"}</p>
             </div>
           </div>
-          <MedicationDoseHourChips hours={hours} taken={takenHours} ignored={ignoredHours} />
+          <MedicationDoseHourChips hours={hours} taken={takenHours} ignored={ignoredHours} scheduleKind={scheduleKind} />
         </div>
       )}
       {lastDose && (

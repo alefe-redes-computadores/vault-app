@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./vault-calendar.css";
@@ -54,6 +54,7 @@ export function CustomDatePicker({
   className,
   minDate, maxDate, disabled,
 }: CustomDatePickerProps) {
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const parsedDate = value ? parse(value, "yyyy-MM-dd", new Date()) : null;
   const selectedDate = parsedDate && isValid(parsedDate) ? parsedDate : null;
 
@@ -61,6 +62,7 @@ export function CustomDatePicker({
     if (date) {
       const formatted = format(date, "yyyy-MM-dd");
       onChange(formatted);
+      setCalendarOpen(false);
     } else {
       onChange("");
     }
@@ -75,6 +77,11 @@ export function CustomDatePicker({
       )}
 
       <DatePicker
+        open={calendarOpen}
+        onInputClick={() => setCalendarOpen(true)}
+        onClickOutside={() => setCalendarOpen(false)}
+        onCalendarClose={() => setCalendarOpen(false)}
+        shouldCloseOnSelect
         disabled={disabled}
         minDate={minDate ? parse(minDate, "yyyy-MM-dd", new Date()) : undefined}
         maxDate={maxDate ? parse(maxDate, "yyyy-MM-dd", new Date()) : undefined}

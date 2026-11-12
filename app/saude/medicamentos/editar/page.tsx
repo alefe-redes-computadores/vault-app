@@ -563,6 +563,7 @@ function EditarMedicamentoContent() {
       "continuo"
     );
   const [temporaryCourse, setTemporaryCourse] = useState<TemporaryCourseDraft>(emptyTemporaryCourseDraft);
+  const [frascosEdicao, setFrascosEdicao] = useState("1");
   const [hasExistingTemporaryCourse, setHasExistingTemporaryCourse] = useState(false);
 
   const [
@@ -4974,6 +4975,8 @@ function EditarMedicamentoContent() {
 
                 {isGotas && (
                   <CalculadoraGotas
+                    frascos={frascosEdicao}
+                    setFrascos={value => { setFrascosEdicao(value); markChanged(); }}
                     isAtivo={
                       isGotasCalcAtivo
                     }

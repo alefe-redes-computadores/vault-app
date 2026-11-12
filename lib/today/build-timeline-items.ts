@@ -1,4 +1,6 @@
 import { buildDoseSlotIndex, resolveDoseSlot } from "@/lib/dose-slot-authority";
+// M137: tipo apenas; testes M19/M23/V94 usam importações de runtime fechadas.
+import type { DosePlanOrigin } from "@/lib/dose-plan-authority";
 import { earliestAcquisitionByMedication } from "@/lib/today/acquisition-date-index";
 import { getDaysUntil } from "@/lib/health-utils";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
@@ -36,6 +38,7 @@ export interface TodayTimelineItem {
   isAvulsa?: boolean;
   motivoAvulsa?: string;
   doseKind?: "sos" | "extra" | "planned";
+  scheduleOrigin?: DosePlanOrigin;
   logId?: string;
   isExpectedUnconfirmed?: boolean;
   isDataConflict?: boolean;
@@ -147,7 +150,7 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
         farmaciaNome: pharmacy?.nome, farmaciaId: pharmacy?.id, estabelecimentoNome: hospital?.nome,
         estabelecimentoId: hospital?.id, proximaRenovacao: med.proxima_renovacao,
         diasRestantes, insight, receitaVencida, comportamento,
-        isAvulsa: false, isExpectedUnconfirmed: !input.isHoje && slot.state === "absent",
+        isAvulsa: false, scheduleOrigin: "continuous", isExpectedUnconfirmed: !input.isHoje && slot.state === "absent",
       });
     }
   }
@@ -160,6 +163,14 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     const med = medicationById.get(log.medicamento_id);
     if (!med) continue;
     const scheduled = scheduledKeys.has(`${med.id}-${log.horario}`);
+    // Prefixo canônico de lib/health-supply/temporary-course.ts.
+    // Sem import runtime novo: contrato histórico M19/M23/V94 usa loader fechado.
+    const courseSlot = log.dose_kind === "planned" && typeof log.motivo === "string" &&
+      log.motivo.startsWith("Tratamento temporário · ");
+    const planOrigin: DosePlanOrigin = log.dose_kind === "planned"
+      ? courseSlot ? "temporary_course" : log.motivo?.trim() ? "ad_hoc" : "unknown"
+      : log.dose_kind === "sos" ? "sos"
+      : log.dose_kind === "extra" ? "extra" : "unknown";
     const displaySeparately = !scheduled || log.dose_kind === "extra" || log.dose_kind === "sos" || log.dose_kind === "planned";
     if (!displaySeparately || (!log.tomado_em && log.dose_kind !== "planned") || existingLogIds.has(log.id)) continue;
     const treatment = treatmentById.get((med.tratamento_ids || [])[0]);
@@ -167,13 +178,17 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
     const stock = stockFor(med);
     list.push({
       medicamentoId: med.id, medicamentoNome: med.nome, dosagem: med.dosagem, formato: med.formato, cores: med.cores,
-      horario: log.horario || "00:00", tomada: Boolean(log.tomado_em), ignorada: false,
+      horario: log.horario || "00:00", tomada: Boolean(log.tomado_em), ignorada: Boolean(log.ignorado_em),
       cor: treatment?.cor || med.cor_principal || "#8B5CF6", estoqueRestante: stock.registeredQuantity,
       estoqueTotal: stock.registeredQuantity, unidadeMedida: med.estoque_unidade_medida || "unidades",
       unidadePorDose: log.quantidade ?? med.estoque_unidade_por_dose, unidadeDose: doseUnit(med),
       medicoNome: doctor?.nome || med.medico, tratamentoNome: treatment?.nome, tratamentoId: treatment?.id,
-      tratamentoCor: treatment?.cor, isAvulsa: true,
-      motivoAvulsa: log.motivo || (log.dose_kind === "planned" ? "Dose avulsa agendada" : log.dose_kind === "extra" ? "Dose extra" : "Dose avulsa / SOS"),
+      tratamentoCor: treatment?.cor,
+      // SOS e extra continuam avulsos; só o curso declarado é rotina programada.
+      ...(courseSlot
+        ? { isAvulsa: false, scheduleOrigin: planOrigin }
+        : { isAvulsa: true, scheduleOrigin: planOrigin }),
+      motivoAvulsa: courseSlot ? undefined : log.motivo || (log.dose_kind === "planned" ? "Dose avulsa agendada" : log.dose_kind === "extra" ? "Dose extra" : "Dose avulsa / SOS"),
       doseKind: log.dose_kind === "planned" ? "planned" : log.dose_kind === "extra" ? "extra" : "sos", logId: log.id,
     });
     existingLogIds.add(log.id);

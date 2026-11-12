@@ -7,6 +7,7 @@ import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharm
 import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseSortTimestamp, formatQuantidade, getKnownDoseQuantity, summarizeKnownQuantity, formatKnownQuantitySummary } from "@/lib/health-intelligence/medication-detail-presenters";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
+import { isTemporaryCoursePlannedDose, contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
 import { medicationAccessAction, scheduledWithdrawalForOwnedMedication } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
@@ -1332,7 +1333,7 @@ function MedicamentoDetalhesContent() {
 
   const horariosConfigurados = Array.from(new Set(
     (isTemporary
-      ? logsHoje.filter(log => log.dose_kind === "planned").map(log => log.horario)
+      ? logsHoje.filter(log => isTemporaryCoursePlannedDose(log)).map(log => log.horario)
       : med.tipo_uso === "continuo" && Array.isArray(med.estoque_horarios)
         ? med.estoque_horarios
         : [])
@@ -3155,10 +3156,9 @@ function MedicamentoDetalhesContent() {
                 resolvedToday={dosesResolvidasHoje}
                 plannedToday={dosesEsperadasHoje}
                 takenScheduledToday={dosesTomadasProgramadasHoje}
-                ignoredScheduledToday={dosesIgnoradasProgramadasHoje}
-                quantityPerDose={unidadePorDose !== null ? formatQuantidade(unidadePorDose) : null}
-                doseUnit={med.estoque_unidade_medida || "unidade(s)"}
-                hours={horariosConfigurados}
+                ignoredScheduledToday={dosesIgnoradasProgramadasHoje}                 quantityPerDose={(() => { const slot = isTemporary ? logsHoje.find(log => isTemporaryCoursePlannedDose(log)) : undefined; const quantity = contextualDoseQuantity(med, slot); return quantity !== null ? formatQuantidade(quantity) : null; })()}
+                doseUnit={med.estoque_unidade_medida || "unidade(s)"}                 scheduleKind={isTemporary ? "temporary" : "continuous"}
+                 hours={horariosConfigurados}
                 takenHours={horariosTomadosHoje}
                 ignoredHours={horariosIgnoradosHoje}
                 lastDose={ultimaDose ? {date:formatDate(ultimaDose.data),time:ultimaDose.horario || ""} : null}

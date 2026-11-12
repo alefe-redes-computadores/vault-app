@@ -7,16 +7,17 @@ type Props = {
   hours: readonly string[];
   taken: ReadonlySet<string>;
   ignored: ReadonlySet<string>;
+  scheduleKind?: "temporary" | "continuous";
 };
 
 /** Somente leitura: os conjuntos chegam da autoridade de slots da página. */
-export const MedicationDoseHourChips = memo(function MedicationDoseHourChips({ hours, taken, ignored }: Props) {
+export const MedicationDoseHourChips = memo(function MedicationDoseHourChips({ hours, taken, ignored, scheduleKind = "continuous" }: Props) {
   const [expanded, setExpanded] = useState(false);
   const visibleHours = expanded ? hours : hours.slice(0, 8);
   if (hours.length === 0) {
     return (
       <p className="border-t border-surface-border/50 pt-4 text-xs text-amber-400">
-        Este medicamento está marcado como contínuo, mas não possui horários configurados.
+        {scheduleKind === "temporary" ? "Sem horários de tratamento por período neste dia. Confira o planejamento e, se necessário, revise os dias anteriores." : "Este medicamento está marcado como contínuo, mas não possui horários configurados."}
       </p>
     );
   }

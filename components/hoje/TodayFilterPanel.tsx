@@ -82,8 +82,8 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
         <input type="checkbox" checked={showResolved} disabled={status !== "todos"} onChange={event => onShowResolved(event.target.checked)} className="size-4 accent-emerald-400" />
         Mostrar registros concluídos na visualização padrão
       </label>}
-      <button type="button" aria-label="Aplicar filtros e fechar" onClick={() => { if (detailsRef.current) detailsRef.current.open = false; }}
-        className="min-h-11 w-full rounded-xl bg-ice/15 text-sm font-bold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Aplicar e voltar</button>
+      <button type="button" aria-label="Fechar filtros" onClick={() => { if (detailsRef.current) { detailsRef.current.open = false; detailsRef.current.querySelector<HTMLElement>("summary")?.focus(); } }}
+        className="min-h-11 w-full rounded-xl bg-ice/15 text-sm font-bold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Fechar filtros</button>
       <p className="text-xs leading-relaxed text-ink-muted">As escolhas são aplicadas imediatamente. Estes filtros não modificam registros ou planejamento.</p>
     </div>
   </details>;

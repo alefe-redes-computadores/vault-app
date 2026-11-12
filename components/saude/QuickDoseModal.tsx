@@ -73,6 +73,7 @@ import type {
 } from "@/lib/types";
 
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { contextualDoseQuantity, isTemporaryCoursePlannedDose } from "@/lib/dose-plan-authority";
 
 // ============================================================
 // TIPOS
@@ -434,26 +435,8 @@ function findRecommendedSchedule(
   );
 }
 
-function resolveDefaultDoseQuantity(
-  medicamento?: Medicamento
-): number {
-  const candidate =
-    Number(
-      medicamento
-        ?.estoque_unidade_por_dose
-    );
-
-  if (
-    Number.isFinite(
-      candidate
-    ) &&
-    candidate >
-      0
-  ) {
-    return candidate;
-  }
-
-  return 1;
+function resolveDefaultDoseQuantity(medicamento?: Medicamento, slot?: DoseLog): number {
+  return contextualDoseQuantity(medicamento, slot) ?? 0;
 }
 
 function resolveQuantityStep(
@@ -627,7 +610,7 @@ export function QuickDoseModal({
     doseQtd,
     setDoseQtd,
   ] =
-    useState(1);
+    useState(0);
 
   const [
     doseHora,
@@ -708,13 +691,11 @@ export function QuickDoseModal({
 
   const horariosProgramados =
     useMemo(
-      () =>
-        normalizeSchedules(
-          selectedMed
-        ),
-      [
-        selectedMed,
-      ]
+      () => selectedMed?.tipo_uso === "temporario"
+        ? Array.from(new Set(doseLogs.filter(log => log.medicamento_id === selectedMed.id && log.data === doseDate && isTemporaryCoursePlannedDose(log))
+          .map(log => log.horario))).sort()
+        : normalizeSchedules(selectedMed),
+      [selectedMed, doseLogs, doseDate]
     );
 
   const existingScheduledLog =
@@ -749,11 +730,8 @@ export function QuickDoseModal({
 
   const doseMode:
     DoseMode =
-    selectedMed?.tipo_uso ===
-      "continuo" &&
-    horariosProgramados.includes(
-      doseHora
-    ) &&
+    (selectedMed?.tipo_uso === "continuo" && horariosProgramados.includes(doseHora) ||
+      selectedMed?.tipo_uso === "temporario" && isTemporaryCoursePlannedDose(existingScheduledLog)) &&
     !registerAsExtra
       ? "scheduled"
       : "ad-hoc";
@@ -934,7 +912,7 @@ export function QuickDoseModal({
       );
 
       setDoseQtd(
-        1
+        0
       );
 
       setRegisterAsExtra(false);
@@ -969,17 +947,19 @@ export function QuickDoseModal({
       }
 
       setDoseQtd(
-        resolveDefaultDoseQuantity(
-          selectedMed
-        )
+        resolveDefaultDoseQuantity(selectedMed, existingScheduledLog)
       );
 
-      // V70: dose extra começa no horário real.
-      setDoseHora(getCurrentTime());
+      // M137: não substituir o horário escolhido ao atualizar quantidade.
+      // O efeito de abertura já define o horário inicial.
     },
     [
       isOpen,
       selectedMed?.id,
+      doseDate,
+      doseHora,
+      existingScheduledLog?.id,
+      existingScheduledLog?.quantidade,
     ]
   );
 
@@ -1259,6 +1239,12 @@ export function QuickDoseModal({
         return;
       }
 
+      if (selectedMed.tipo_uso === "temporario" && doseMode === "ad-hoc" &&
+          (!registerAsExtra || !doseReason.trim())) {
+        showToast("Horário fora do período: selecione uma dose programada ou marque explicitamente como extra e informe o motivo.", "error");
+        return;
+      }
+
       if (
         !Number.isFinite(
           doseQtd
@@ -1453,9 +1439,9 @@ export function QuickDoseModal({
               doseQtd,
 
             doseKind:
-              selectedMed.tipo_uso === "continuo"
-                ? "extra"
-                : "sos",
+              selectedMed.tipo_uso === "sos" || selectedMed.tipo_uso === "esporadico"
+                ? "sos"
+                : "extra",
 
             motivo:
               doseReason,
@@ -1486,9 +1472,9 @@ export function QuickDoseModal({
               ? scheduledAlreadyTaken
                 ? `Registro de ${selectedMed.nome} atualizado.`
                 : `Dose de ${selectedMed.nome} registrada.`
-              : selectedMed.tipo_uso === "continuo"
-                ? `Dose extra de ${selectedMed.nome} registrada.`
-                : `Tomada SOS de ${selectedMed.nome} registrada.`,
+              : selectedMed.tipo_uso === "sos" || selectedMed.tipo_uso === "esporadico"
+                ? `Tomada SOS de ${selectedMed.nome} registrada.`
+                : `Dose extra de ${selectedMed.nome} registrada.`,
           "success"
         );
 
@@ -2442,14 +2428,13 @@ export function QuickDoseModal({
               HORÁRIOS PROGRAMADOS
               ================================================== */}
 
-          {selectedMed?.tipo_uso ===
-              "continuo" &&
+          {(selectedMed?.tipo_uso === "continuo" || selectedMed?.tipo_uso === "temporario") &&
             horariosProgramados.length >
               0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
-                    Rotina de hoje
+                    {selectedMed?.tipo_uso === "temporario" ? "Horários do período" : "Rotina de hoje"}
                   </label>
 
                   <span className="text-[10px] text-ink-faint">
@@ -2470,7 +2455,7 @@ export function QuickDoseModal({
                             log.medicamento_id ===
                               selectedMed.id &&
                             log.data ===
-                              today &&
+                              doseDate &&
                             log.horario ===
                               horario
                         );
@@ -2696,6 +2681,14 @@ export function QuickDoseModal({
               </div>
             )}
 
+          {selectedMed?.tipo_uso === "temporario" && doseMode === "ad-hoc" && <div role="note" className="rounded-xl border border-amber-300/30 bg-amber-300/[.04] px-3 py-3 text-xs text-amber-200">
+            Este horário está fora do período registrado. Não será tratado como SOS automaticamente.
+            <button type="button" aria-pressed={registerAsExtra} onClick={() => setRegisterAsExtra(value => !value)}
+              className="mt-2 flex min-h-11 w-full items-center justify-center rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 font-semibold">
+              {registerAsExtra ? "Dose extra selecionada" : "Registrar explicitamente como dose extra"}
+            </button>
+            <p className="mt-1 text-[10px]">Informe um motivo abaixo antes de registrar. Se a dose pertence ao período, selecione o horário programado.</p>
+          </div>}
           {selectedMed && doseMode === "ad-hoc" && (
             <label className="block">
               <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
