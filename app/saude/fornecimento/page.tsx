@@ -30,6 +30,8 @@ import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { isSupplyMedicationEligible, canTrackSupplyMedication } from "@/lib/health-supply/medication-eligibility";
 import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
 import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
+import { supplyOperationalSnapshotM140 } from "@/lib/health-supply/operational-snapshot-m140";
+import { SupplyOperationalCommandM140 } from "@/components/saude/SupplyOperationalCommandM140";
 import { treatmentSupplyMedicationIds, cycleDocumentContext } from "@/lib/health-supply/cycle-context";
 import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { medicationSupplyRoute } from "@/lib/health-supply/route-authority";
@@ -561,6 +563,7 @@ function CyclePanel({
     [kind, setKind] = useState<SupplyDocumentKind>(process.origem === "estadual_ceaf" ? "lme" : "receita");
   const links = data.documentos.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id),
     items = data.itens.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id);
+  const availableCycleDocuments = prioritizedSupplyDocuments(documents, pid, process.user_id, new Set(items.map(i => i.medicamento_id)));
   const documentContext = cycleDocumentContext(process, cycle, data, documents);
   const estimate =
     process.renovacao_meses && start
@@ -604,6 +607,18 @@ function CyclePanel({
       </details>
       <div hidden={cycleView!=='documents'} role="tabpanel" id={`pane-${cycle.id}-documents`} aria-labelledby={`tab-${cycle.id}-documents`} className={panel}>
         <p className="mb-3 text-xs leading-relaxed text-ink-muted">Receitas, LME e papéis com datas ou orientações ficam em Documentos de Saúde. Vincule o arquivo existente ou anexe um novo; a retirada continua sendo o mesmo registro.</p>
+        <section aria-label="Documentos existentes no acervo" className="mb-3 space-y-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.035] p-3">
+          <p className="text-xs font-bold text-ink-primary">Documentos já cadastrados · {availableCycleDocuments.length}</p>
+          <p className="text-[11px] leading-relaxed text-ink-muted">Arquivo existente é diferente de documento vinculado a este ciclo. Confira finalidade, validade e se a unidade exige nova via; nada será vinculado automaticamente.</p>
+          {availableCycleDocuments.length ? <div className="space-y-2">{availableCycleDocuments.slice(0, 5).map(d => {
+            const already = links.some(l => l.document_id === d.id);
+            return <div key={d.id} className="flex min-w-0 flex-col gap-2 rounded-xl border border-surface-border/60 bg-surface-raised p-2.5 min-[390px]:flex-row min-[390px]:items-center">
+              <div className="min-w-0 flex-1"><p className="break-words text-xs font-semibold text-ink-primary">{d.title}</p><p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{d.type} · {d.attachments.length} anexo(s) · {already ? "Já vinculado neste ciclo" : "No acervo, ainda não vinculado neste ciclo"}</p></div>
+              <div className="flex shrink-0 gap-2"><Link href={`/saude/documentos/detalhes?id=${encodeURIComponent(d.id!)}`} className="inline-flex min-h-11 items-center rounded-lg border border-surface-border px-3 text-[11px] font-semibold text-violet-200">Ver</Link>
+              <button type="button" className="min-h-11 rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 text-[11px] font-semibold text-violet-200" onClick={() => { setDocId(d.id!); const form = document.getElementById(`supply-link-existing-m140-${cycle.id}`) as HTMLDetailsElement | null; if (form) { form.open = true; requestAnimationFrame(() => form.scrollIntoView({behavior:"smooth",block:"center"})); } }}>Selecionar</button></div>
+            </div>;
+          })}{availableCycleDocuments.length > 5 && <p className="text-[11px] text-ink-muted">Mais {availableCycleDocuments.length-5} arquivo(s) disponíveis no seletor abaixo.</p>}</div> : <p className="text-[11px] text-ink-muted">Nenhum arquivo de Saúde cadastrado para esta pessoa. Você pode anexar um novo documento abaixo.</p>}
+        </section>
         <h2 className="text-sm font-bold text-ink-primary">
           Documentos deste fornecimento
         </h2>
@@ -719,7 +734,7 @@ function CyclePanel({
           })}
         </div>
         {links.length === 0 ? <p className="mt-3 text-xs text-ink-muted">Nenhum documento vinculado a este ciclo. Seus arquivos existentes continuam em Documentos de Saúde.</p> : null}
-        <details className="mt-4 rounded-xl border border-surface-border p-3">
+        <details id={`supply-link-existing-m140-${cycle.id}`} className="mt-4 rounded-xl border border-surface-border p-3">
           <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Adicionar ou vincular documento</summary>
         <form
           className="mt-4 space-y-2"
@@ -769,7 +784,7 @@ function CyclePanel({
                 ))}
             </HealthRelationPicker>
           </label>
-          <button className={button}>Vincular documento</button>
+          <button type="submit" className={button} disabled={!docId || links.some(l => l.document_id === docId && l.tipo === kind && l.retirada_id === (kind === "receita" ? withdrawal?.id || null : null))}>{links.some(l => l.document_id === docId && l.tipo === kind && l.retirada_id === (kind === "receita" ? withdrawal?.id || null : null)) ? "Vínculo já registrado" : "Vincular documento existente"}</button>
         </form>
         <Link
           className={button + " mt-3 block text-center"}
@@ -1302,6 +1317,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const processWithdrawals = (relationalIndex.withdrawalsByProcess.get(process.id) || []).slice().sort((a,b) => b.data.localeCompare(a.data));
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
+                  const snapshotM140 = supplyOperationalSnapshotM140({process,cycle,data,documents,withdrawals:retiradas,personId});
                   return <div className="space-y-3">
                     <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Ver etapas e jornada completa</summary>
                     <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"} withdrawalProgress={process.origem==="comprado"?undefined:summarizeWithdrawalProgress(processWithdrawals,getLocalTodayISO())}/></details>
@@ -1311,6 +1327,11 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
+                    {snapshotM140 && <SupplyOperationalCommandM140 snapshot={snapshotM140}
+                      onReviewWithdrawal={id => { if (cycle?.id) { setSeed(null); setWithdrawalId(id); setCycleId(cycle.id); requestAnimationFrame(()=>document.getElementById("ciclo-atual")?.scrollIntoView({behavior:"smooth",block:"start"})); } else router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(id)}`); }}
+                      onOpenDocuments={() => { if (cycle?.id) { document.getElementById(`tab-${cycle.id}-documents`)?.click(); requestAnimationFrame(()=>document.getElementById("ciclo-atual")?.scrollIntoView({behavior:"smooth",block:"start"})); } }}
+                      onOpenCycle={() => { const el=document.getElementById("supply-next-cycle-m136") as HTMLDetailsElement|null; if (el) { el.open=true; el.scrollIntoView({behavior:"smooth",block:"center"}); } }} />}
+                    <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Indicadores detalhados do processo</summary>
                     <section aria-label="Estado e próxima providência do fornecimento" className="space-y-2 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.035] p-3">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-200">Estado atual · {process.status === "ativo" ? "processo ativo" : "histórico"}</p>
                       <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 text-[11px] text-ink-secondary">
@@ -1323,7 +1344,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                         <button type="button" onClick={() => { const el = document.getElementById("supply-next-cycle-m136") as HTMLDetailsElement | null; if(el){el.open=true;el.scrollIntoView({behavior:"smooth",block:"center"});} }} className="min-h-11 w-full rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 text-left text-xs font-bold text-emerald-200">Retirada registrada. Preparar o próximo ciclo? <span className="block text-[10px] font-normal text-ink-muted">Apenas abrir o planejamento; não gera autorização nem agendamento.</span></button>
                       )}
                       {process.status === "ativo" && cycles.some(c => c.status === "preparando" || c.status === "protocolado") && <p className="text-[11px] text-ink-muted">Já existe ciclo em preparação; continue o registro antes de criar outro.</p>}
-                    </section>
+                    </section></details>
                     {selectedRelationshipMap ? <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Mapa relacional e vínculos completos</summary><SupplyRelationshipMap value={selectedRelationshipMap}/></details> : null}
                     {/* V329: keep missing requirements visible on the selected process, not buried in closed history. */}
                     {missingDocumentItems.filter(item => {
@@ -1430,6 +1451,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 </label>
                 <details id="supply-next-cycle-m136" className="mt-3 scroll-mt-28 rounded-xl border border-surface-border p-3">
                   <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-primary">Preparar outro ciclo / renovação</summary>
+                  <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Abra o histórico antes de duplicar qualquer solicitação. Este planejamento não cria uma retirada e não certifica autorização.</p>
                 <label className="mt-3 block text-xs text-ink-muted">
                   Motivo do próximo ciclo
                   <HealthRelationPicker title="Motivo do ciclo" renderIcon={value=><SupplyChoiceIcon group="reason" value={value}/>}
