@@ -438,6 +438,7 @@ const contracts = [
   "scripts/verify-vault-android-m123.cjs",
   "scripts/test-vault-m125-continuity-triage.cjs",
   "scripts/test-vault-brain-v7-universal.cjs",
+  "scripts/test-vault-supply-shield-ss7.cjs",
 ];
 
 for (const contract of contracts) {

@@ -5,6 +5,8 @@ import {useRetiradas} from "@/hooks/useRetiradas";
 import {MedicationFormatIcon} from "@/components/saude/MedicationFormatIcon";
 import {MedicationEventBoundary} from "@/components/saude/MedicationEventBoundary";
 import { MedicationAcquisitionQuantityGuide } from "@/components/saude/MedicationAcquisitionQuantityGuide";
+import { MedicationPackageConversionSS7 } from "@/components/saude/MedicationPackageConversionSS7";
+import { stripPackageEvidenceSS7, writePackageEvidenceSS7, packageEvidenceMatchesSS7 } from "@/lib/health-supply/package-evidence-ss7";
 import { medicationScheduleSupplyHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { getClinicalStockSnapshot } from "@/lib/health-intelligence/clinical-stock";
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
@@ -1349,6 +1351,11 @@ function NovaRenovacaoContent() {
           "Preço inválido";
       }
 
+      // SS7: never retain evidence for a different medication/unit/quantity.
+      if (!packageEvidenceMatchesSS7(observacoes, medicamentoId, parsePositiveNumber(quantidadeAdicionar) ?? NaN, selectedMedicamento?.estoque_unidade_medida || "")) {
+        newErrors.quantidadeAdicionar = "A conferência de caixas não corresponde ao medicamento, unidade ou quantidade atual. Revise a embalagem.";
+      }
+
       setErrors(
         newErrors
       );
@@ -1702,6 +1709,12 @@ function NovaRenovacaoContent() {
       : validadeCanonica
           ?.diasRestantes ??
         null;
+
+  // SS7: manual quantity editing invalidates an earlier box confirmation.
+  function updateQuantitySS7(value: string) {
+    setQuantidadeAdicionar(value);
+    setObservacoes(previous => stripPackageEvidenceSS7(previous));
+  }
 
   // ==========================================================
   // RENDER
@@ -2309,7 +2322,7 @@ function NovaRenovacaoContent() {
                     (
                       event
                     ) =>
-                      setQuantidadeAdicionar(
+                      updateQuantitySS7(
                         event.target.value
                       )
                   }
@@ -2319,6 +2332,7 @@ function NovaRenovacaoContent() {
                 />
 
                 <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
+                <MedicationPackageConversionSS7 key={selectedMedicamento?.id || "none"} medication={selectedMedicamento} onApply={evidence=>{setQuantidadeAdicionar(String(evidence.totalUnits));setObservacoes(previous=>writePackageEvidenceSS7(previous,evidence));}}/>
                 <p className="mt-1.5 text-xs text-ink-muted">
                   A quantidade recebida será somada ao saldo confirmado depois de salvar.
                 </p>
@@ -2483,7 +2497,7 @@ function NovaRenovacaoContent() {
                     (
                       event
                     ) =>
-                      setQuantidadeAdicionar(
+                      updateQuantitySS7(
                         event.target.value
                       )
                   }
@@ -2493,6 +2507,7 @@ function NovaRenovacaoContent() {
                 />
 
                 <MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>
+                <MedicationPackageConversionSS7 key={selectedMedicamento?.id || "none"} medication={selectedMedicamento} onApply={evidence=>{setQuantidadeAdicionar(String(evidence.totalUnits));setObservacoes(previous=>writePackageEvidenceSS7(previous,evidence));}}/>
                 <p className="mt-1.5 text-xs text-ink-muted">
                   A quantidade recebida será somada ao saldo confirmado depois de salvar.
                 </p>

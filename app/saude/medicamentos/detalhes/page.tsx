@@ -3198,6 +3198,11 @@ function MedicamentoDetalhesContent() {
                   trigger("vibrate");
                   router.push(medicationStockCountHref(med.id!, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}`));
                 }} />
+                <MedicationRestockAction name={med.nome} label="+ Registrar aquisição" onOpen={() => {
+                  trigger("vibrate");
+                  const returnTo = `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-estoque`;
+                  router.push(medicationRestockHref(med.id!, returnTo));
+                }} />
               </div>
             </section>
           )}
@@ -3243,6 +3248,9 @@ function MedicamentoDetalhesContent() {
                 ) : null}
               </section>
             )}
+
+          {/* SS7: independent stock/planning console; no new stock writes. */}
+          {med.id && <button type="button" onClick={() => { trigger("vibrate");router.push('/saude/supply-shield'); }} className="mt-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/[.04] px-3 text-left text-xs font-semibold text-emerald-200">Supply Shield · ver planejamento <span aria-hidden="true">›</span></button>}
 
           {/* ==================================================
               SUSPENSÃO / SUBSTITUIÇÃO
