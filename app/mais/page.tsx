@@ -82,6 +82,7 @@ import {
 import { summarizePersonalVault } from "@/lib/personal-vault-overview";
 import { NativeDoseAgendaInspection } from "@/components/saude/NativeDoseAgendaInspection";
 import { OperationalReadinessM103 } from "@/components/OperationalReadinessM103";
+import { formatPtBrQuantity } from "@/lib/ui/quantity-ptbr";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -993,15 +994,17 @@ export default function MaisPage() {
               {isNativeApp && isNotificationsEnabled && activePersonId ? <NativeDoseAgendaInspection key={activePersonId} personId={activePersonId} /> : null}
             </div>
 
-            <VaultUpdateCenter />
               </div>
             </details>
+
+            {/* M146: o Update Center permanece visível mesmo ao recolher as preferências. */}
+            <VaultUpdateCenter />
 
             <div>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Nuvem</h2>
               <button type="button" onClick={() => pendingQueueCount > 0 ? router.push("/diagnostico") : handleSync()} disabled={!isOnline && pendingQueueCount === 0} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${pendingQueueCount > 0 ? "border-coral/30 bg-coral/[0.06]" : "border-emerald-400/15 bg-emerald-400/[0.035]"}`}>
                 <div className={`flex h-10 w-10 items-center justify-center rounded-full ${pendingQueueCount > 0 ? "bg-coral/10 text-coral" : "bg-emerald-400/10 text-emerald-400"}`}>{isSyncing ? <Loader2 size={17} className="animate-spin" /> : pendingQueueCount > 0 || syncRuntime.phase === "error" ? <AlertTriangle size={17} /> : syncRuntime.phase === "synced" && isOnline ? <CheckCircle2 size={17} /> : <RefreshCw size={17} />}</div>
-                <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">{isSyncing ? "Sincronizando" : pendingQueueCount > 0 || syncRuntime.phase === "error" ? "Sincronização precisa de revisão" : syncRuntime.phase === "synced" && isOnline ? "Sincronização concluída" : "Conferir sincronização"}</p><p className="truncate text-[10px] text-ink-muted">{!isOnline ? "Sem conexão" : pendingQueueCount > 0 ? `${pendingQueueCount} item(ns) aguardando · abrir diagnóstico` : `${totalLocalItems} registros locais · toque para sincronizar`}</p></div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">{isSyncing ? "Sincronizando" : pendingQueueCount > 0 || syncRuntime.phase === "error" ? "Sincronização precisa de revisão" : syncRuntime.phase === "synced" && isOnline ? "Sincronização concluída" : "Conferir sincronização"}</p><p className="text-xs leading-snug text-ink-muted">{!isOnline ? "Sem conexão" : pendingQueueCount > 0 ? `${formatPtBrQuantity(pendingQueueCount, "item", "itens")} aguardando · abrir diagnóstico` : `${totalLocalItems} registros locais · toque para sincronizar`}</p></div>
                 <ChevronRight size={16} className="text-ink-faint" />
               </button>
             </div>
@@ -1050,7 +1053,7 @@ export default function MaisPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-ink-primary">{item.label}</p>
-                      <p className={`${item.id === "inteligencia" ? "mt-1 text-[10px]" : "mt-0.5 line-clamp-2 text-[11px]"} leading-snug text-ink-muted`}>{item.description}</p>
+                      <p className={`${item.id === "inteligencia" ? "mt-1 text-[11px]" : "mt-0.5 line-clamp-2 text-[11px]"} leading-snug text-ink-muted`}>{item.description}</p>
                     </div>
                   </button>
                 );

@@ -281,21 +281,6 @@ function HealthDashboard({
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             {/* M118: five real navigation destinations; care relationship panels do not precede the Avatar. */}
             <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Fênix",icon:<FenixMark size="xs"/>,iconClassName:"text-amber-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
-            <details className="group rounded-[18px] border border-emerald-400/15 bg-surface/40 p-3">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-                <span className="flex items-center gap-2"><HeartPulse size={17} className="text-emerald-300"/> Panorama, mapa e vínculos do cuidado</span>
-                <ChevronDown size={16} className="shrink-0 text-emerald-300 transition-transform group-open:rotate-180"/>
-              </summary>
-              <div className="space-y-2 border-t border-surface-border/40 pt-3">
-                <ClinicalDisclosure id="minha-saude-panorama" title="Panorama do cuidado" description="Tratamentos, acompanhamento e próximos passos registrados" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">
-                  {() => <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>}
-                </ClinicalDisclosure>
-                <ClinicalDisclosure id="minha-saude-mapa-cuidado" title="Mapa do cuidado 360" description="Medicamentos, retiradas, SUS, documentos e prioridades com suas origens preservadas" icon={<HeartPulse size={18}/>} iconClassName="text-violet-300">
-                  {() => <CareJourney360 command={intelligence.careCommand} onNavigate={goFromHealth} compact />}
-                </ClinicalDisclosure>
-                <ClinicalDisclosure id="minha-saude-relacoes" title="Explorar áreas relacionadas" description="Medicamentos, tratamentos, fornecimento e documentos · acesso sob demanda" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">{() => <CareRelationshipRoutes onNavigate={goFromHealth} compact/>}</ClinicalDisclosure>
-              </div>
-            </details>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
@@ -450,6 +435,22 @@ function HealthDashboard({
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
+            {/* M146: mapa completo só depois da Fênix; nenhuma rota foi removida. */}
+            <details className="group rounded-[18px] border border-emerald-400/15 bg-surface/40 p-3">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+                <span className="flex items-center gap-2"><HeartPulse size={17} className="text-emerald-300"/> Panorama, mapa e vínculos do cuidado</span>
+                <ChevronDown size={16} className="shrink-0 text-emerald-300 transition-transform group-open:rotate-180"/>
+              </summary>
+              <div className="space-y-2 border-t border-surface-border/40 pt-3">
+                <ClinicalDisclosure id="minha-saude-panorama" title="Panorama do cuidado" description="Tratamentos, acompanhamento e próximos passos registrados" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">
+                  {() => <PersonalHealthOverview command={intelligence.careCommand} onNavigate={goFromHealth}/>}
+                </ClinicalDisclosure>
+                <ClinicalDisclosure id="minha-saude-mapa-cuidado" title="Mapa do cuidado 360" description="Medicamentos, retiradas, SUS, documentos e prioridades com suas origens preservadas" icon={<HeartPulse size={18}/>} iconClassName="text-violet-300">
+                  {() => <CareJourney360 command={intelligence.careCommand} onNavigate={goFromHealth} compact />}
+                </ClinicalDisclosure>
+                <ClinicalDisclosure id="minha-saude-relacoes" title="Explorar áreas relacionadas" description="Medicamentos, tratamentos, fornecimento e documentos · acesso sob demanda" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">{() => <CareRelationshipRoutes onNavigate={goFromHealth} compact/>}</ClinicalDisclosure>
+              </div>
+            </details>
             {/* M145: Vínculos/continuidade após a Fênix e o destaque do Brain. */}
             <CareTrustPanelM119 context={intelligence.context} userId={person?.user_id || ""} personId={personId} onNavigate={goFromHealth} />
             <CareHorizonM121 context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id || ""} personId={personId} today={today} onNavigate={goFromHealth} />

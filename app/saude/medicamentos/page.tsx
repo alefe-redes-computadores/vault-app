@@ -608,7 +608,15 @@ export default function MedicamentosListPage() {
               return;
             }
 
-            const precisaAcao = (attentionReasonsM143.get(item.med.id||"")?.length??0)>0;
+            // M146: a mesma regra executiva alimenta tanto o filtro como o agrupamento.
+            const medId = item.med.id || "";
+            const brainLane = brainCareByMedication.get(medId)?.lane;
+            const decisionNeedsAttention = medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage ?? "stable");
+            const reasons = attentionReasonsM143.get(medId) ?? [];
+            const executiveReason = (brainLane === "now" || brainLane === "prepare") &&
+              reasons.includes("Prioridade atual do Brain");
+            const precisaAcao = decisionNeedsAttention || executiveReason ||
+              reasons.some(reason => reason !== "Prioridade atual do Brain");
 
             if (precisaAcao) {
               prioridade.push(
@@ -1245,7 +1253,7 @@ export default function MedicamentosListPage() {
                 )}
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
-              {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-[10px] leading-snug text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
+              {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
               <MedicationOperationalStrip today={todayStatus}
               stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}

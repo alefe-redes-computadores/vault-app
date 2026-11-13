@@ -1,5 +1,6 @@
 // app/saude/renovacao/detalhes/page.tsx
 "use client";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
@@ -186,9 +187,7 @@ function DetalhesRenovacaoContent() {
     useSearchParams();
 
   const rawReturnTo = searchParams.get("return_to");
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
-    ? rawReturnTo
-    : "/saude/renovacao";
+  const returnTo = safeReturnTarget(rawReturnTo, "/saude/renovacao");
 
   const id =
     searchParams.get(

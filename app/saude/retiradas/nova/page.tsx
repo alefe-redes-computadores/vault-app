@@ -1,5 +1,6 @@
 // app/saude/retiradas/nova/page.tsx
 "use client";
+import { safeReturnTarget } from "@/lib/navigation/return-context";
 import { HealthRelationPicker } from "@/components/saude/HealthRelationPicker";
 import { CustomDatePicker } from "@/components/DatePicker";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
@@ -193,7 +194,7 @@ function NovaRetiradaContent() {
       "medicamento_id"
     );
   const rawReturnTo = params.get("return_to");
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : "/saude/retiradas";
+  const returnTo = safeReturnTarget(rawReturnTo, "/saude/retiradas");
 
   useEffect(() => {
     if (
