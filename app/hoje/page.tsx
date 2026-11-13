@@ -1772,6 +1772,21 @@ export default function HojePage() {
             </details>
           )}
 
+          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
+          {isHoje && !retroReviewMode && (
+            <section id="hoje-diario" aria-label="Diário rápido do dia" className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como você está se sentindo?</p><p className="mt-0.5 truncate text-xs text-ink-muted">Registro opcional de humor e sintomas.</p></div>
+                <Calendar size={15} className="shrink-0 text-violet-300"/>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
+              </div>
+              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300">Ver resumo longitudinal</button>
+            </section>
+          )}
+
           <span id="hoje-agenda" className="block scroll-mt-24" aria-hidden="true"/>
 
 
@@ -1865,21 +1880,6 @@ export default function HojePage() {
               <DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} context={healthIntelligence.context} onNavigate={(href)=>router.push(href)} />
             </ClinicalDisclosure>
           )}
-          {/* V225 R2 — One-tap journal: reuses existing person-owned repository and sync queue. */}
-          {isHoje && !retroReviewMode && (
-            <details id="hoje-diario" aria-label="Diário rápido do dia" className="group scroll-mt-24 rounded-[20px] border border-violet-400/15 bg-gradient-to-r from-violet-400/[.065] to-surface px-3 py-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
-                <div className="min-w-0"><p className="text-xs font-semibold text-ink-primary">Como foi seu dia?</p><p className="mt-0.5 truncate text-xs text-ink-muted">Humor e sintomas ajudam o Brain sem presumir ausência.</p></div>
-                <ChevronRight size={15} className="shrink-0 text-violet-300 transition group-open:rotate-90"/>
-              </summary>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
-                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
-              </div>
-              <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300">Ver resumo longitudinal</button>
-            </details>
-          )}
-
           {isHoje && (
             <section className="pt-2" aria-label="Versículo do dia">
               <VersiculoDia />

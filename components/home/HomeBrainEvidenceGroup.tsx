@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, AlertCircle, ChevronRight, Pill } from "lucide-react";
+import { useState } from "react";
 import type { HealthInsight } from "@/lib/health-insights";
 import { highestHomeBrainSeverity } from "@/lib/home/brain-evidence-groups";
 
@@ -11,6 +12,7 @@ type Props = {
 
 /** Um cartão por medicamento, todas as observações e evidências continuam individuais. */
 export function HomeBrainEvidenceGroup({ insights, onOpen }: Props) {
+  const [expandedM143,setExpandedM143]=useState(false);
   if (insights.length < 2) return null;
   const primary = highestHomeBrainSeverity(insights);
   const firstTitle = insights[0].titulo || "Medicamento";
@@ -52,7 +54,7 @@ export function HomeBrainEvidenceGroup({ insights, onOpen }: Props) {
             <button type="button" key={`${insight.id}:${index}`}
               onClick={() => onOpen(insight)}
               aria-label={`Abrir observação ${index + 1} de ${insights.length}: ${insight.titulo}. ${severityText}`}
-              className="flex min-h-11 w-full min-w-0 items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised/50 active:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+              className={`${insights.length>3 && index>=2 && !expandedM143 ? 'hidden' : 'flex'} min-h-11 w-full min-w-0 items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-surface-raised/50 active:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300`}>
               <span className="min-w-0 flex-1">
                 <span className="block text-[12px] font-semibold leading-snug text-ink-primary">{title}</span>
                 <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-ink-muted">{insight.mensagem}</span>
@@ -63,6 +65,11 @@ export function HomeBrainEvidenceGroup({ insights, onOpen }: Props) {
           );
         })}
       </div>
+      {insights.length>3 && <button type="button" aria-expanded={expandedM143}
+        onClick={()=>setExpandedM143(value=>!value)}
+        className="min-h-11 w-full border-t border-surface-border/30 px-3 py-2 text-left text-xs font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+        {expandedM143 ? 'Recolher evidências adicionais' : `Ver mais ${insights.length-2} evidências deste medicamento`}
+      </button>}
     </section>
   );
 }

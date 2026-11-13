@@ -110,7 +110,7 @@ function NovaReceitaContent() {
     useAuth();
 
   const {
-    medicamentos = [],
+    medicamentosIncluindoDescontinuados: medicamentos = [],
     updateMedicamento,
   } =
     useMedicamentos();
@@ -150,8 +150,6 @@ function NovaReceitaContent() {
             (
               medicamento
             ) =>
-              medicamento.status !==
-                "descontinuado" &&
               (
                 !activePersonId ||
                 medicamento.person_id ===
@@ -649,6 +647,7 @@ function NovaReceitaContent() {
                       {medicamento.dosagem
                         ? ` · ${medicamento.dosagem}`
                         : ""}
+                      {medicamento.status === "descontinuado" ? " · Histórico (não reativa)" : ""}
                     </option>
                   )
                 )}

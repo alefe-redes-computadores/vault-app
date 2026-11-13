@@ -440,8 +440,10 @@ const contracts = [
   "scripts/test-vault-brain-v7-universal.cjs",
   "scripts/test-vault-supply-shield-ss7.cjs",  "scripts/test-vault-visual-studio-v8.cjs",
   "scripts/test-vault-v8p2-integration.cjs", // V8P2_INTEGRATED
-
-
+  "scripts/test-vault-m143-p1-r3.cjs",
+  "scripts/test-vault-m143-p2-consolidated.cjs",
+  "scripts/test-vault-m143-p3-closure.cjs",
+  "scripts/test-vault-m144-integration.cjs",
 ];
 
 for (const contract of contracts) {

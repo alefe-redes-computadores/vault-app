@@ -23,6 +23,7 @@ import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisi
 import { MedicationDecisionEvidenceContext } from "@/components/saude/MedicationDecisionEvidenceContext";
 import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
 import { MedicationPrescriptionCard } from "@/components/saude/MedicationPrescriptionCard";
+import { PrescriptionAttachmentViewerM143 } from "@/components/saude/PrescriptionAttachmentViewerM143";
 import { MedicationStockOverview } from "@/components/saude/MedicationStockOverview";
 import { MedicationSuspensionSummary } from "@/components/saude/MedicationSuspensionSummary";
 import { MedicationRoutineSummary } from "@/components/saude/MedicationRoutineSummary";
@@ -3688,9 +3689,12 @@ function MedicamentoDetalhesContent() {
 
         <BottomSheet isOpen={Boolean(attachmentPreviewUrl)} onClose={()=>setAttachmentPreviewUrl(null)} title="Anexo da receita">
           <div className="space-y-3 p-4">
-            <div className="h-[64vh] overflow-hidden rounded-2xl border border-surface-border bg-black/20">
-              {attachmentPreviewUrl?<iframe src={attachmentPreviewUrl} title="Visualização do anexo da receita" className="h-full w-full"/>:null}
-            </div>
+            {attachmentPreviewUrl ? (
+              <PrescriptionAttachmentViewerM143
+                url={attachmentPreviewUrl}
+                fileType={documento?.attachments?.[0]?.type}
+              />
+            ) : null}
             <p className="text-[11px] leading-relaxed text-ink-muted">A visualização permanece no VAULT para preservar o caminho de retorno. Se o formato não abrir aqui, use a opção externa abaixo.</p>
             {attachmentPreviewUrl?<a href={attachmentPreviewUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary"><ExternalLink size={15}/>Abrir externamente</a>:null}
           </div>

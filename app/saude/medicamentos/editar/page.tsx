@@ -4,6 +4,7 @@ import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-revie
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
 import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
+import { PillStudioV8 } from "@/components/saude/visual-studio/PillStudioV8";
 import { MedicationManufacturerOverviewM128 } from "@/components/saude/MedicationManufacturerOverviewM128";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
 import { MedicationCustomColorEditorM138 } from "@/components/saude/MedicationCustomColorEditorM138";
@@ -5070,6 +5071,24 @@ function EditarMedicamentoContent() {
                     </h3>
                   </div>
 
+                  {/* M144_STUDIO_EDITOR_READONLY: prévia do que está na edição, nunca altera o registro. */}
+                  <div className="sticky top-2 z-10 mb-3 flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-void/95 px-3 py-2 backdrop-blur-md">
+                    <div className="w-[92px] shrink-0"><PillStudioV8 medication={{ formato, forma_farmaceutica: undefined, cores, cor_principal: cores[0] || undefined, cor_secundaria: cores[1] || undefined }} /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-ink-primary">Apresentação no cadastro</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Prévia ilustrativa do formato e cores selecionados. Não confirma a aparência do fabricante nem modifica estoque, dose ou receita.</p>
+                      <a href="/saude/visual-studio" className="mt-1 inline-flex min-h-9 items-center text-xs font-semibold text-emerald-300 underline underline-offset-4">Abrir Visual Studio V8</a>
+                    </div>
+                  </div>
+                  {/* M143 P3: clinical status and mode are independent, neither is inferred. */}
+                  <div role="status" className="mb-4 rounded-2xl border border-surface-border/60 bg-surface-raised/60 px-3 py-3">
+                    <p className="text-xs font-semibold text-ink-primary">
+                      Cadastro: {statusAtivo ? "Em uso" : "Suspenso"} · Uso: {tipoUso === "continuo" ? "Contínuo" : tipoUso === "temporario" ? "Por período" : "SOS / Conforme necessidade"}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                      Alterar o tipo de uso não retoma um medicamento suspenso e não confirma nenhuma dose. Para retomar ou suspender, revise também o Status Atual.
+                    </p>
+                  </div>
                   <div className="mb-5 grid grid-cols-3 gap-2">
                     <button
                       type="button"
@@ -5143,6 +5162,10 @@ function EditarMedicamentoContent() {
                       <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                         O encerramento anterior permanece no histórico. Novos usos são doses avulsas/SOS, sem criar rotina ou próxima dose.
                       </p>
+                      <button type="button" onClick={() => { trigger("vibrate"); setEditIntent("suspensao"); }}
+                        className="mt-3 min-h-11 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] px-3 text-xs font-semibold text-amber-200">
+                        Abrir Status Atual para retomar
+                      </button>
                     </div>
                   )}
 
@@ -5956,7 +5979,7 @@ function EditarMedicamentoContent() {
                       </h3>
 
                       <p className="mt-0.5 text-xs text-ink-muted">
-                        O medicamento está em uso?
+                        O medicamento está em uso? O tipo SOS/contínuo é configurado separadamente em Posologia & Uso.
                       </p>
                     </div>
 

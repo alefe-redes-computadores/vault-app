@@ -1750,7 +1750,7 @@ export default function HomePage() {
 
                         <p className="truncate text-xs text-ink-muted">
                           {isOverdueWithdrawal(retirada, hoje)
-                            ? `Pendente há ${withdrawalDaysOverdue(retirada.data, hoje)} dia(s) · revise ou reagende`
+                            ? `Pendente há ${withdrawalDaysOverdue(retirada.data, hoje)} ${withdrawalDaysOverdue(retirada.data, hoje) === 1 ? "dia" : "dias"} · revise ou reagende`
                             : retirada.tipo === "sus"
                               ? "Retirada programada no SUS"
                               : "Retirada programada"}
@@ -1946,11 +1946,12 @@ export default function HomePage() {
               </div>
               {medicationCareOpportunities.length > 1 ? (
                 <div className="mt-2">
-                  <ClinicalDisclosure id="home-continuity-other" title={`Outras prioridades · ${medicationCareOpportunities.length - 1}`}
-                    description="Outras ações de estoque, receita, compra e retirada" icon={<ClipboardList size={17}/> }>
-                    {() => <MedicationCareOpportunityQueue items={medicationCareOpportunities.slice(1)}
-                      onNavigate={(href) => { trigger("vibrate"); router.push(href); }}/>}
-                  </ClinicalDisclosure>
+                  <div id="home-continuity-other">
+                    <MedicationCareOpportunityQueue
+                      items={medicationCareOpportunities.slice(1)}
+                      onNavigate={(href)=>{trigger("vibrate");router.push(href);}}
+                    />
+                  </div>
                 </div>
               ) : null}
             </motion.section>

@@ -118,6 +118,7 @@ import { MedicationFilterBar } from "@/components/saude/MedicationFilterBar";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
 import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
+import { medicationListAttentionReasonsM143, medicationNextPendingClockM143 } from "@/lib/health-intelligence/medication-list-attention-m143";
 
 type MedicationListFilter =
   | "todos"
@@ -297,7 +298,7 @@ export default function MedicamentosListPage() {
     useState<MedicationListFilter>("todos");
   // M80: view preference changes presentation only; the same filtered rows and
   // clinical actions remain authoritative in both modes.
-  const [unifiedList, setUnifiedList] = useState(false);
+  const [unifiedList, setUnifiedList] = useState(true);
   // M132: preferencia exclusivamente visual, sem mudar dados, filtros ou dose.
   const [compactCards, setCompactCards] = useState(true);
   useEffect(() => {
@@ -312,7 +313,7 @@ export default function MedicamentosListPage() {
   };
   // M83: a lista única é incremental para evitar montar centenas de cards
   // no Android. Busca e filtros continuam operando no conjunto completo.
-  const [unifiedVisibleCount, setUnifiedVisibleCount] = useState(12);
+  const [unifiedVisibleCount, setUnifiedVisibleCount] = useState(24);
 
   const showDescontinuados =
     medicationFilter === "encerrados";
@@ -440,6 +441,26 @@ export default function MedicamentosListPage() {
   }),[listaBase,catalogIdentities]);
   const medicationSearchMatches=useMemo(()=>new Set(filterLocalSearchIndex(medicationSearchIndex,deferredSearchQuery)),[medicationSearchIndex,deferredSearchQuery]);
 
+  const [attentionClockM143,setAttentionClockM143]=useState("");
+  useEffect(()=>{
+    const update=()=>setAttentionClockM143(new Date().toTimeString().slice(0,5));
+    update();
+    const handle=window.setInterval(update,60000);
+    return ()=>window.clearInterval(handle);
+  },[]);
+  const attentionReasonsM143=useMemo(()=>{
+    const map=new Map<string,string[]>();
+    for(const item of listaBase){
+      if(!item.med.id)continue;
+      map.set(item.med.id,medicationListAttentionReasonsM143(
+        item,careDecisionsByMedication.get(item.med.id)?.stage??"stable",
+        brainCareByMedication.get(item.med.id)?.lane,
+        doseLogs||[],attentionClockM143
+      ));
+    }
+    return map;
+  },[listaBase,careDecisionsByMedication,brainCareByMedication,doseLogs,attentionClockM143]);
+
   const listaProcessada =
     useMemo(() => {
       const processados = listaBase.filter((item) => {
@@ -452,8 +473,12 @@ export default function MedicamentosListPage() {
 
         if (medicationFilter === "atencao") {
           const brainLane=brainCareByMedication.get(medId)?.lane;
-          return brainLane === "now" || brainLane === "prepare" || medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage ?? "stable") ||
-            item.dosesPendentesHoje > 0 || item.dosesIgnoradasHoje > 0;
+          const decisionNeedsAttention=medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage??"stable");
+          const reasons=attentionReasonsM143.get(medId)??[];
+          const executiveReason=(brainLane === "now" || brainLane === "prepare") &&
+            reasons.includes("Prioridade atual do Brain");
+          return decisionNeedsAttention || executiveReason ||
+            reasons.some(reason=>reason!=="Prioridade atual do Brain");
         }
 
         if (medicationFilter === "continuos") {
@@ -478,8 +503,7 @@ export default function MedicamentosListPage() {
       medicationFilter,
       medicationSearchMatches,
       regulatoryProfiles,
-      careDecisionsByMedication,
-      brainCareByMedication,
+      attentionReasonsM143,
     ]);
 
   // ==========================================================
@@ -584,11 +608,7 @@ export default function MedicamentosListPage() {
               return;
             }
 
-            const precisaAcao =
-              ["now","prepare"].includes(brainCareByMedication.get(item.med.id || "")?.lane || "") ||
-              medicationCareStageNeedsAttention(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable") ||
-              item.dosesPendentesHoje >
-                0 || item.dosesIgnoradasHoje > 0;
+            const precisaAcao = (attentionReasonsM143.get(item.med.id||"")?.length??0)>0;
 
             if (precisaAcao) {
               prioridade.push(
@@ -684,6 +704,7 @@ export default function MedicamentosListPage() {
       },
       [
         listaProcessada,
+        attentionReasonsM143,
         careDecisionsByMedication,
         brainCareByMedication,
       ]
@@ -944,7 +965,7 @@ export default function MedicamentosListPage() {
             ? "Estoque baixo"
             : "Estoque disponível";
 
-      const todayStatus =
+      const todayStatusBaseM143 =
         isSuspenso
           ? {
               label:
@@ -1022,6 +1043,18 @@ export default function MedicamentosListPage() {
                       tone:
                         "text-ink-muted",
                     };
+
+      // M143 P3: a future unconfirmed dose is not an overdue dose.
+      const nextPendingClockM143 = medicationNextPendingClockM143(med, doseLogs || [], attentionClockM143);
+      const futureScheduleOnlyM143 = Boolean(nextPendingClockM143) && !isSOS && !isSuspenso &&
+        dosesPendentesHoje > 0 && dosesIgnoradasHoje === 0 &&
+        !(attentionReasonsM143.get(med.id || "") || []).includes("Dose do horário já vencido");
+      const todayStatus = futureScheduleOnlyM143 ? {
+        ...todayStatusBaseM143,
+        label: rotinaParcial ? `${dosesTomadasHoje}/${dosesEsperadasHoje} doses · próxima às ${nextPendingClockM143}` : `Próxima dose às ${nextPendingClockM143}`,
+        detail: "Horário futuro · não está atrasado",
+        tone: "text-emerald-400",
+      } : todayStatusBaseM143;
 
       const canQuickDose =
         !isSuspenso &&
@@ -1183,6 +1216,7 @@ export default function MedicamentosListPage() {
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
+                {isSOS && med.status === "descontinuado" && <span title="Cadastro suspenso; uso SOS permanece disponível, mas a rotina não foi retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
                 {latestManufacturer && <span title="Fabricante informado na última aquisição registrada. Não indica fabricante do estoque físico atual.">
                   <ManufacturerBadge manufacturer={latestManufacturer} className="!min-h-6 !px-1.5 !py-0.5 !text-[9px]" />
@@ -1211,6 +1245,7 @@ export default function MedicamentosListPage() {
                 )}
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
+              {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-[10px] leading-snug text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
               <MedicationOperationalStrip today={todayStatus}
               stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
@@ -1475,6 +1510,17 @@ export default function MedicamentosListPage() {
             </div>
           )}
         </ListPageHeader>
+        {!isSearchOpen && (
+          <div className="px-4 pt-2">
+            <button type="button"
+              aria-label="Buscar medicamento pelo nome ou princípio ativo"
+              onClick={()=>{trigger("vibrate");setIsSearchOpen(true);}}
+              className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-emerald-300/20 bg-surface-raised/70 px-3 text-left text-xs font-semibold text-ink-secondary">
+              <Search size={16} className="shrink-0 text-emerald-300" aria-hidden="true"/>
+              <span className="min-w-0 flex-1">Buscar medicamento pelo nome ou princípio ativo</span>
+            </button>
+          </div>
+        )}
 
         {/* M105: a rotina aparece antes dos filtros, na primeira dobra. */}
           {/* M92: resumo de progresso em primeiro plano; ajustes avançados por demanda. */}
@@ -1500,7 +1546,7 @@ export default function MedicamentosListPage() {
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
           <div className="mb-2 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
             <div className="min-w-0"><h2 className="text-sm font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
-              <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-muted">Prioridades primeiro · rotina e SOS separados</p></div>
+              <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-muted">{unifiedList ? "Lista única · acesso direto aos medicamentos" : "Prioridades primeiro · rotina e SOS separados"}</p></div>
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
           <details className="group mb-2.5 rounded-xl border border-surface-border/40 bg-surface/35 px-2.5" aria-label="Indicadores e organização avançada">
@@ -1552,9 +1598,13 @@ export default function MedicamentosListPage() {
           ) : (
             unifiedList ? (
               <div className="space-y-2 pb-8" aria-label="Todos os medicamentos encontrados">
-                <p role="status" className="text-xs text-ink-muted">Exibindo {Math.min(unifiedVisibleCount, listaProcessada.length)} de {listaProcessada.length} medicamento(s) · filtros e pesquisa consideram todos</p>
-                {listaProcessada.slice(0, unifiedVisibleCount).map(renderCard)}
-                {unifiedVisibleCount < listaProcessada.length && (
+                <p role="status" className="text-xs text-ink-muted">
+                  Exibindo {(medicationFilter !== "todos" || deferredSearchQuery.trim()) ? listaProcessada.length : Math.min(unifiedVisibleCount, listaProcessada.length)} de {listaProcessada.length} medicamentos
+                </p>
+                {(medicationFilter !== "todos" || deferredSearchQuery.trim()
+                  ? listaProcessada
+                  : listaProcessada.slice(0, unifiedVisibleCount)).map(renderCard)}
+                {medicationFilter === "todos" && !deferredSearchQuery.trim() && unifiedVisibleCount < listaProcessada.length && (
                   <button type="button" onClick={() => setUnifiedVisibleCount(count => count + 12)}
                     className="flex min-h-12 w-full items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-300/[.06] px-4 text-xs font-bold text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
                     Mostrar mais {Math.min(12, listaProcessada.length - unifiedVisibleCount)} medicamentos

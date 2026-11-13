@@ -27,6 +27,7 @@ import { useCids } from "@/hooks/useCids";
 import { getClinicalTheme } from "@/lib/health-utils";
 import { SupplyChoiceIcon } from "@/components/saude/SupplyChoiceIcon";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { supplyVisualTreatmentM143 } from "@/lib/health-supply/process-visual-m143";
 import { isSupplyMedicationEligible, canTrackSupplyMedication } from "@/lib/health-supply/medication-eligibility";
 import { calculateBottleReference } from "@/lib/health-supply/bottle-reference";
 import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
@@ -74,6 +75,7 @@ import type {
 import type {
   Medicamento,
   Retirada,
+  Renovacao,
   Document as HealthDocument,
 } from "@/lib/types";
 import { estimatedCycleEnd, supplyChecklist } from "@/lib/health-supply/rules";
@@ -97,12 +99,14 @@ function ProcessForm({
   onSave,
   run,
   meds,
+  excludedMeds = [],
   seed,
   personId,
   withdrawals,
 }: {
   personId: string;
   withdrawals: Retirada[];
+  excludedMeds?: Medicamento[];
   seed?: Retirada | null;
   initial?: SupplyProcess;
   medicationId: string | null;
@@ -246,6 +250,14 @@ function ProcessForm({
       {!initial && (
         <fieldset>
           <legend className="text-xs text-ink-muted">Medicamentos deste processo</legend>
+          {excludedMeds.length>0 && <details className="mt-2 rounded-xl border border-amber-300/20 bg-amber-300/[.035] p-3">
+            <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-amber-200">Medicamentos não disponíveis neste processo · {excludedMeds.length}</summary>
+            <p className="mb-2 text-[11px] text-ink-muted">Podem estar descontinuados ou vinculados a outro processo. Registrar uma receita histórica não reativa a rotina.</p>
+            {excludedMeds.slice(0,50).map(m=><div key={m.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-border/40 py-2">
+              <span className="min-w-0 text-xs text-ink-primary">{m.nome} · {m.status==='descontinuado'?'Cadastro histórico':'Verificar processo existente'}</span>
+              <Link href={`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(m.id!)}&return_to=%2Fsaude%2Ffornecimento`} className="inline-flex min-h-11 items-center rounded-lg border border-violet-400/25 px-3 text-[11px] font-semibold text-violet-200">Registrar receita</Link>
+            </div>)}
+          </details>}
           {!meds.some(m => m.id && canTrackSupplyMedication(m, withdrawals, personId, user?.id || "")) && <p className="mt-2 text-xs text-amber-200">Nenhum medicamento disponível. Confira os processos ativos ou cadastre um medicamento na área de Medicamentos.</p>}
           <div className="mt-2 space-y-2">
             {meds
@@ -529,6 +541,7 @@ function CyclePanel({
   data,
   documents,
   meds,
+  renewals,
   withdrawal,
   withdrawals,
   run,
@@ -539,6 +552,7 @@ function CyclePanel({
   data: SupplyData;
   documents: HealthDocument[];
   meds: Medicamento[];
+  renewals: Renovacao[];
   withdrawal?: Retirada;
   withdrawals: Retirada[];
   run: Run;
@@ -570,10 +584,20 @@ function CyclePanel({
     items = data.itens.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id);
   // Only the current withdrawal's medication (or this cycle's medications) may appear by default.
   const relevantMedicationIds = new Set(withdrawal?.medicamento_id ? [withdrawal.medicamento_id] : items.map(i => i.medicamento_id));
-  const availableCycleDocuments = prioritizedSupplyDocuments(documents, pid, process.user_id, relevantMedicationIds);
-  const unassignedCycleDocuments = unassignedSupplyDocuments(documents, pid, process.user_id).filter(d => !links.some(l => l.document_id === d.id));
+  const availableCycleDocuments = prioritizedSupplyDocuments(documents, pid, process.user_id, relevantMedicationIds, meds, renewals);
+  const unassignedCycleDocuments = unassignedSupplyDocuments(documents, pid, process.user_id, meds, renewals).filter(d => !links.some(l => l.document_id === d.id));
   const selectableCycleDocuments = showUnassignedDocuments ? [...availableCycleDocuments, ...unassignedCycleDocuments] : availableCycleDocuments;
   const deliveredDocumentCount = links.filter(l => l.estado === 'entregue').length;
+  // Same issuance date is only an invitation to review: never deduplicate or remove records.
+  const prescriptionDates = new Map<string,number>();
+  for (const d of availableCycleDocuments) {
+    if (d.type !== 'receita') continue;
+    const candidate = d.metadata?.data_receita ?? d.metadata?.data_emissao ?? d.metadata?.prescription_date;
+    const day = typeof candidate === 'string' ? candidate.slice(0,10) : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    prescriptionDates.set(day,(prescriptionDates.get(day) || 0)+1);
+  }
+  const sameDateReview = [...prescriptionDates].some(([,count])=>count>1);
   const documentContext = cycleDocumentContext(process, cycle, data, documents);
   const estimate =
     process.renovacao_meses && start
@@ -631,6 +655,7 @@ function CyclePanel({
             <span className="text-[11px] font-semibold text-violet-200">{availableCycleDocuments.length} encontrado(s)</span>
           </div>
           <p className="text-[11px] leading-relaxed text-ink-muted">Somente documentos com identificação deste medicamento ou dos medicamentos do ciclo, começando pelos mais recentes. Receitas de outros medicamentos não aparecem aqui.</p>
+          {sameDateReview && <p role="status" className="rounded-xl border border-amber-400/20 p-2.5 text-[11px] text-amber-200">Há receitas com a mesma data informada. Confira os arquivos antes de registrar outro: datas iguais não comprovam duplicação.</p>}
           {availableCycleDocuments.length ? <div className="space-y-2">{availableCycleDocuments.slice(0,5).map(d => {
             const already = links.some(l => l.document_id === d.id);
             return <div key={d.id} className={`flex min-w-0 flex-col gap-2 rounded-xl border p-2.5 min-[390px]:flex-row min-[390px]:items-center ${already ? 'border-emerald-400/25 bg-emerald-400/[.055]' : 'border-surface-border/60 bg-surface-raised'}`}>
@@ -835,7 +860,7 @@ function CyclePanel({
         </details>
       </div>
       <div hidden={cycleView!=='overview'} role="tabpanel" id={`pane-${cycle.id}-overview`} aria-labelledby={`tab-${cycle.id}-overview`} className={panel}>
-        <SupplyCycleSummary process={process} cycle={cycle} data={data} documents={documents} medications={meds} withdrawals={withdrawals} personId={pid} onOpen={view=>{setCycleView(view);requestAnimationFrame(()=>document.getElementById(`tab-${cycle.id}-${view}`)?.focus());}}/>
+        <SupplyCycleSummary process={process} cycle={cycle} data={data} documents={documents} medications={meds} renewals={renewals} withdrawals={withdrawals} personId={pid} onOpen={view=>{setCycleView(view);requestAnimationFrame(()=>document.getElementById(`tab-${cycle.id}-${view}`)?.focus());}}/>
         <p className="mt-4 text-xs font-bold uppercase tracking-wider text-ink-primary">
           Ciclo de fornecimento
         </p>
@@ -1178,13 +1203,14 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
   };
   const processMedicationIds=relationalIndex.medicationIdsByProcess;
   const renderProcess = (p: SupplyProcess) => {
-    const treatment = relationalIndex.treatmentsByProcess.get(p.id)?.[0];
-    const theme = getClinicalTheme(treatment?.nome || p.titulo);
-    const Icon = getVaultTreatmentIcon(treatment?.nome || p.titulo);
+    const treatment = supplyVisualTreatmentM143(p.titulo, relationalIndex.treatmentsByProcess.get(p.id) || []);
+    const visualName = treatment?.nome || p.titulo;
+    const theme = getClinicalTheme(visualName);
+    const Icon = getVaultTreatmentIcon(visualName);
     const color = /^#[0-9a-f]{6}$/i.test(treatment?.cor || "") ? treatment!.cor! : theme.hex;
     const ids=processMedicationIds.get(p.id)||new Set<string>();
     const hasPrivateRoute=[...ids].some(id=>medicationSupplyRoute(id,data,renovacoes,personId||"",p.user_id).hasPrivatePurchase);
-    const routeLabel=p.origem!=="comprado"&&hasPrivateRoute?`${SUPPLY_ORIGIN_LABELS[p.origem]} + comprado`:SUPPLY_ORIGIN_LABELS[p.origem];
+    const routeLabel=SUPPLY_ORIGIN_LABELS[p.origem];
     return (
               <button
                 type="button"
@@ -1273,12 +1299,12 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           {/* V156: a treatment is not a funding source; each process retains its own origin. */}
           {/* Mixed origins remain accessible without duplicating one-process navigation. */}
           {processView.treatmentGroups.length>0&&<details className="mb-3 rounded-2xl border border-surface-border bg-surface px-3 py-1"><summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink-primary">Tratamentos · SUS e compras ({processView.treatmentGroups.length})</summary><div className="mt-2 space-y-2">{processView.treatmentGroups.map(({treatment:t,linked,purchased})=>{
-            const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:"#8b5cf6";
+            const Icon=getVaultTreatmentIcon(t.nome),color=/^#[0-9a-f]{6}$/i.test(t.cor||"")?t.cor!:getClinicalTheme(t.nome).hex;
             return <section key={t.id} className="rounded-xl border bg-surface p-3" style={{borderColor:`${color}30`,borderLeftColor:color,borderLeftWidth:3}} aria-label={`Fornecimentos de ${t.nome}`}>
               <div className="flex items-center gap-2"><Icon size={18} style={{color}}/><span className="flex-1 text-xs font-semibold">{t.nome}</span><span className="text-[10px] text-ink-muted">{linked.length} fornecimentos · {purchased.length} comprados</span></div>
               <div className="mt-2 flex flex-wrap gap-2">{linked.map(p=><button type="button" key={p.id} onClick={()=>{setSelected(p.id);setCreating(false);setEditing(false);setCycleId("");}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] text-ink-primary"><span className="font-bold">{SUPPLY_ORIGIN_LABELS[p.origem]}</span><span className="block text-ink-muted">{p.titulo}</span></button>)}</div>
               {purchased.length>0?<div className="mt-2 space-y-1.5"><p className="text-xs font-bold uppercase tracking-wider text-rose-300">Comprados · registros existentes</p>{purchased.map(m=><Link key={m.id} href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(m.id!)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/15 bg-rose-400/[0.035] px-3 text-xs text-ink-primary"><MedicationFormatIcon formato={m.formato} cores={m.cores} size={20}/><span className="min-w-0 flex-1 break-words leading-snug">{m.nome} · {m.dosagem}</span><span className="text-rose-300">Compra ›</span></Link>)}</div>:null}
-              <p className="mt-2 text-xs text-ink-muted">Visão conjunta: as origens, aquisições, autorizações e retiradas permanecem independentes.</p>
+              <p className="mt-2 text-xs text-ink-muted">Visão por tratamento: compras particulares e processos SUS permanecem independentes. Um vínculo ao tratamento não é prova de fornecimento pelo SUS.</p>
             </section>;
           })}</div></details>}
           {/* VAULT_V321_SUPPLY_FOCUS: no synthetic SUS/private funding classification. */}
@@ -1320,6 +1346,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   key={personId + "create" + (seed?.id || "") + (medId || "")}
                   seed={seed}
                   meds={availableMedications}
+                  excludedMeds={medicamentos.filter(m=>m.id && m.person_id===personId && m.user_id===user?.id && !availableMedications.some(a=>a.id===m.id))}
                   withdrawals={retiradas}
                   medicationId={[seed?.medicamento_id, medId, withdrawal?.medicamento_id].find(id => id && !occupiedMedicationIds.has(id)) || null}
                   run={run}
@@ -1343,7 +1370,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const place = relationalIndex.placeById.get(process.local_id || "");
                   const purchases = acquisitionSummary(ids);
                   const hasPrivateInProcess=[...ids].some(id=>medicationSupplyRoute(id,data,renovacoes,personId,process.user_id).hasPrivatePurchase);
-                  const processRouteLabel=process.origem!=="comprado"&&hasPrivateInProcess?`${SUPPLY_ORIGIN_LABELS[process.origem]} + comprado`:SUPPLY_ORIGIN_LABELS[process.origem];
+                  const processRouteLabel=SUPPLY_ORIGIN_LABELS[process.origem];
                   const processWithdrawals = (relationalIndex.withdrawalsByProcess.get(process.id) || []).slice().sort((a,b) => b.data.localeCompare(a.data));
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
@@ -1351,7 +1378,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   return <div className="w-full min-w-0 max-w-full space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{processRouteLabel}</span>
-                      {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Rotas independentes</span>}
+                      {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Compra particular registrada separadamente</span>}
                       {process.status !== "ativo" && <span className="rounded-full border border-surface-border px-3 py-1 text-[11px] text-ink-muted">Arquivado · histórico preservado</span>}
                     </div>
                     <h2 className="text-lg font-bold text-ink-primary">{process.titulo}</h2>
@@ -1536,6 +1563,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   data={data}
                   documents={documents.filter(d => d.person_id === personId && d.user_id === process.user_id)}
                   meds={medicamentos.filter(m => m.person_id === personId && m.user_id === process.user_id)}
+                  renewals={renovacoes}
                   withdrawal={withdrawal}
                   withdrawals={retiradas}
                   run={run}

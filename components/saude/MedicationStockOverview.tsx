@@ -26,6 +26,18 @@ type Props = {
   formatQuantity: (value: number) => string;
 };
 
+/** M143 P3: grammatical unit rendering. Does not infer or convert measurement units. */
+export function medicationStockUnitLabelM143(quantity:number, unit:string):string {
+  const clean=unit.trim().toLocaleLowerCase('pt-BR').replace(/\(s\)$/,'');
+  const pairs:[string,string][]=[
+    ['comprimido','comprimidos'],['cápsula','cápsulas'],['capsula','capsulas'],
+    ['gota','gotas'],['unidade','unidades'],['frasco','frascos'],
+    ['ampola','ampolas'],['dose','doses']
+  ];
+  const pair=pairs.find(([singular,plural])=>clean===singular||clean===plural);
+  return pair ? pair[quantity===1?0:1] : unit;
+}
+
 /** P15 R5: apresentação exclusivamente de leitura. O dossiê mantém toda a autoridade de estoque. */
 export function MedicationStockOverview({
   statusLabel, statusColor, statusBackground, statusIcon, quantity, unit,
@@ -49,7 +61,7 @@ export function MedicationStockOverview({
           <p className={`font-display text-2xl font-bold tabular-nums ${statusColor}`}>
             {formatQuantity(quantity)}
           </p>
-          <span className="min-w-0 break-words text-sm font-medium text-ink-secondary">{unit}</span>
+          <span className="min-w-0 break-words text-sm font-medium text-ink-secondary">{medicationStockUnitLabelM143(quantity,unit)}</span>
           {equivalentMl !== null && (
             <span className="text-xs text-ink-faint">≈ {formatQuantity(equivalentMl)} ml</span>
           )}
@@ -60,7 +72,7 @@ export function MedicationStockOverview({
             <AlertTriangle size={14} className="mt-0.5 shrink-0 text-coral" aria-hidden="true" />
             <p className="text-xs leading-relaxed text-coral/90">
               Os registros de uso ultrapassaram o saldo informado. O saldo interno é{" "}
-              <b>{formatQuantity(registeredBalance)} {unit}</b>. Revise o estoque físico para reconciliar o valor.
+              <b>{formatQuantity(registeredBalance)} {medicationStockUnitLabelM143(registeredBalance,unit)}</b>. Revise o estoque físico para reconciliar o valor.
             </p>
           </div>
         )}
@@ -86,7 +98,7 @@ export function MedicationStockOverview({
           Origem do saldo e cálculo <span aria-hidden="true" className="text-ink-muted group-open:rotate-180">▾</span>
         </summary>
         <div className="flex flex-col gap-1.5 pb-2 sm:flex-row sm:justify-between">
-          <span>Quantidade por dose: <b className="text-ink-primary">{doseQuantity !== null ? `${formatQuantity(doseQuantity)} ${unit}` : "Não configurada"}</b></span>
+          <span>Quantidade por dose: <b className="text-ink-primary">{doseQuantity !== null ? `${formatQuantity(doseQuantity)} ${medicationStockUnitLabelM143(doseQuantity,unit)}` : "Não configurada"}</b></span>
           <span>Saldo informado em: <b className="text-ink-primary">{referenceDay}</b></span>
         </div>
       </details>

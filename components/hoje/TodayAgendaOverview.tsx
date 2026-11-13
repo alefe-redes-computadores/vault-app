@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Bell, CalendarDays, ChevronDown, ChevronRight, Clock3, Pill } from "lucide-react";
+import { Activity, AlertTriangle, Bell, CalendarDays, ChevronDown, ChevronRight, Clock3, FlaskConical, PackageCheck, Pill, Stethoscope } from "lucide-react";
 import type { VisualAgendaOverview, VisualAgendaRow } from "@/lib/today/agenda-overview";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 
@@ -39,7 +39,13 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
         <div className="border-t border-surface-border/30 pb-2 pt-1">
       {overview.rows.length > 0 ? <ol className="mt-2 space-y-1" aria-label="Horários combinados em ordem cronológica">
         {overview.rows.map((item, index) => {
-          const Icon = kindIcon[item.kind];
+          const Icon = item.kind === "appointment"
+            ? item.title === "Retirada" ? PackageCheck
+              : item.title === "Consulta" ? Stethoscope
+              : item.title === "Cirurgia" ? Activity
+              : item.title === "Exame" ? FlaskConical
+              : CalendarDays
+            : kindIcon[item.kind];
           return <li key={`${item.kind}-${item.destination}-${item.time}-${index}`}>
             <button type="button" onClick={() => item.kind === "dose" && onJumpDose ? onJumpDose(item.time) : onJump(item.destination)} className="flex min-h-12 w-full min-w-0 items-center gap-2.5 rounded-xl border border-surface-border/40 bg-surface/60 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               <span className="w-12 shrink-0 font-mono text-xs font-semibold tabular-nums text-ice">{item.time}</span>
