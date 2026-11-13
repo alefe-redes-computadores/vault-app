@@ -33,7 +33,7 @@ import { SupplyCycleSummary } from "@/components/saude/SupplyCycleSummary";
 import { supplyOperationalSnapshotM140 } from "@/lib/health-supply/operational-snapshot-m140";
 import { SupplyOperationalCommandM140 } from "@/components/saude/SupplyOperationalCommandM140";
 import { treatmentSupplyMedicationIds, cycleDocumentContext } from "@/lib/health-supply/cycle-context";
-import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
+import { resolveProcessSelection, purchaseHistory, compatibleCycleWithdrawals, documentMedicationId, prioritizedSupplyDocuments, unassignedSupplyDocuments, monthlySupplyReference, supplyDocumentLabel } from "@/lib/health-supply/presentation";
 import { medicationSupplyRoute } from "@/lib/health-supply/route-authority";
 import { useSearchParams } from "next/navigation";
 import { useReturnContext } from "@/hooks/useReturnContext";
@@ -545,7 +545,12 @@ function CyclePanel({
   pid: string;
 }) {
   const [cycleView,setCycleView]=useState<'overview'|'documents'|'medications'|'withdrawals'>(withdrawal?'withdrawals':'overview');
-  useEffect(()=>{if(withdrawal?.id)setCycleView('withdrawals');},[withdrawal?.id]);
+  const [showUnassignedDocuments, setShowUnassignedDocuments] = useState(false);
+  // Returning from a document created within Fornecimento must reopen its saved state.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('aba') === 'documentos') setCycleView('documents');
+    else if (withdrawal?.id) setCycleView('withdrawals');
+  }, [withdrawal?.id]);
   const [status, setStatus] = useState(cycle.status),
     [start, setStart] = useState(cycle.inicio || ""),
     [end, setEnd] = useState(cycle.fim || ""),
@@ -563,7 +568,12 @@ function CyclePanel({
     [kind, setKind] = useState<SupplyDocumentKind>(process.origem === "estadual_ceaf" ? "lme" : "receita");
   const links = data.documentos.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id),
     items = data.itens.filter((x) => x.ciclo_id === cycle.id && x.processo_id === process.id && x.person_id === pid && x.user_id === process.user_id);
-  const availableCycleDocuments = prioritizedSupplyDocuments(documents, pid, process.user_id, new Set(items.map(i => i.medicamento_id)));
+  // Only the current withdrawal's medication (or this cycle's medications) may appear by default.
+  const relevantMedicationIds = new Set(withdrawal?.medicamento_id ? [withdrawal.medicamento_id] : items.map(i => i.medicamento_id));
+  const availableCycleDocuments = prioritizedSupplyDocuments(documents, pid, process.user_id, relevantMedicationIds);
+  const unassignedCycleDocuments = unassignedSupplyDocuments(documents, pid, process.user_id).filter(d => !links.some(l => l.document_id === d.id));
+  const selectableCycleDocuments = showUnassignedDocuments ? [...availableCycleDocuments, ...unassignedCycleDocuments] : availableCycleDocuments;
+  const deliveredDocumentCount = links.filter(l => l.estado === 'entregue').length;
   const documentContext = cycleDocumentContext(process, cycle, data, documents);
   const estimate =
     process.renovacao_meses && start
@@ -571,7 +581,7 @@ function CyclePanel({
       : null;
   const returnRoute = `/saude/fornecimento?id=${encodeURIComponent(
     process.id
-  )}&ciclo_id=${encodeURIComponent(cycle.id)}${
+  )}&ciclo_id=${encodeURIComponent(cycle.id)}&aba=documentos${
     withdrawal?.id ? `&retirada_id=${encodeURIComponent(withdrawal.id)}` : ""
   }`;
   const newDoc = (type: "lme" | "receita" | "documento_sus") =>
@@ -607,17 +617,34 @@ function CyclePanel({
       </details>
       <div hidden={cycleView!=='documents'} role="tabpanel" id={`pane-${cycle.id}-documents`} aria-labelledby={`tab-${cycle.id}-documents`} className={panel}>
         <p className="mb-3 text-xs leading-relaxed text-ink-muted">Receitas, LME e papéis com datas ou orientações ficam em Documentos de Saúde. Vincule o arquivo existente ou anexe um novo; a retirada continua sendo o mesmo registro.</p>
-        <section aria-label="Documentos existentes no acervo" className="mb-3 space-y-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.035] p-3">
-          <p className="text-xs font-bold text-ink-primary">Documentos já cadastrados · {availableCycleDocuments.length}</p>
-          <p className="text-[11px] leading-relaxed text-ink-muted">Arquivo existente é diferente de documento vinculado a este ciclo. Confira finalidade, validade e se a unidade exige nova via; nada será vinculado automaticamente.</p>
-          {availableCycleDocuments.length ? <div className="space-y-2">{availableCycleDocuments.slice(0, 5).map(d => {
+        <section aria-label="Estado dos documentos deste ciclo" role="status" className={`mb-3 space-y-2 rounded-2xl border p-3 ${links.length ? 'border-emerald-400/25 bg-emerald-400/[.055]' : 'border-amber-400/20 bg-amber-400/[.035]'}`}>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold text-ink-primary">{links.length ? 'Vínculos registrados neste ciclo' : 'Ainda sem vínculo documental neste ciclo'}</p>
+            <span className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold ${links.length ? 'bg-emerald-400/10 text-emerald-200' : 'bg-amber-400/10 text-amber-200'}`}>{links.length} vinculado(s)</span>
+          </div>
+          <p className="text-xs leading-relaxed text-ink-muted">{links.length ? `${deliveredDocumentCount} marcado(s) como entregue(s) · ${links.length - deliveredDocumentCount} ainda sem entrega registrada. Consulte os arquivos vinculados abaixo.` : 'Encontre um arquivo do medicamento abaixo ou cadastre um novo. Ter a receita no acervo não a vincula automaticamente.'}</p>
+          <p className="text-[11px] leading-relaxed text-ink-muted">Vínculo salvo, entrega informada e exigência atendida são estados diferentes. Nenhum deles autoriza automaticamente o ciclo.</p>
+        </section>
+        <section aria-label="Documentos do medicamento neste acervo" className="mb-3 space-y-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.035] p-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-bold text-ink-primary">Arquivos deste(s) medicamento(s)</p>
+            <span className="text-[11px] font-semibold text-violet-200">{availableCycleDocuments.length} encontrado(s)</span>
+          </div>
+          <p className="text-[11px] leading-relaxed text-ink-muted">Somente documentos com identificação deste medicamento ou dos medicamentos do ciclo, começando pelos mais recentes. Receitas de outros medicamentos não aparecem aqui.</p>
+          {availableCycleDocuments.length ? <div className="space-y-2">{availableCycleDocuments.slice(0,5).map(d => {
             const already = links.some(l => l.document_id === d.id);
-            return <div key={d.id} className="flex min-w-0 flex-col gap-2 rounded-xl border border-surface-border/60 bg-surface-raised p-2.5 min-[390px]:flex-row min-[390px]:items-center">
-              <div className="min-w-0 flex-1"><p className="break-words text-xs font-semibold text-ink-primary">{d.title}</p><p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{d.type} · {d.attachments.length} anexo(s) · {already ? "Já vinculado neste ciclo" : "No acervo, ainda não vinculado neste ciclo"}</p></div>
-              <div className="flex shrink-0 gap-2"><Link href={`/saude/documentos/detalhes?id=${encodeURIComponent(d.id!)}`} className="inline-flex min-h-11 items-center rounded-lg border border-surface-border px-3 text-[11px] font-semibold text-violet-200">Ver</Link>
-              <button type="button" className="min-h-11 rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 text-[11px] font-semibold text-violet-200" onClick={() => { setDocId(d.id!); const form = document.getElementById(`supply-link-existing-m140-${cycle.id}`) as HTMLDetailsElement | null; if (form) { form.open = true; requestAnimationFrame(() => form.scrollIntoView({behavior:"smooth",block:"center"})); } }}>Selecionar</button></div>
+            return <div key={d.id} className={`flex min-w-0 flex-col gap-2 rounded-xl border p-2.5 min-[390px]:flex-row min-[390px]:items-center ${already ? 'border-emerald-400/25 bg-emerald-400/[.055]' : 'border-surface-border/60 bg-surface-raised'}`}>
+              <div className="min-w-0 flex-1"><p className="break-words text-xs font-semibold text-ink-primary">{d.title}</p><p className="mt-0.5 text-[11px] leading-snug text-ink-muted">{d.type} · {d.attachments?.length || 0} anexo(s) · {already ? 'Vínculo salvo neste ciclo' : 'No acervo, ainda não vinculado'}</p></div>
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2"><Link href={`/saude/documentos/detalhes?id=${encodeURIComponent(d.id!)}`} className="inline-flex min-h-11 items-center rounded-lg border border-surface-border px-3 text-[11px] font-semibold text-violet-200">Ver</Link>
+              {already ? <span className="inline-flex min-h-11 items-center rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-3 text-[11px] font-bold text-emerald-200"><CheckCircle2 size={14} className="mr-1"/>Vinculado</span> : <button type="button" className="min-h-11 rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 text-[11px] font-semibold text-violet-200" onClick={() => { setDocId(d.id!); const form=document.getElementById(`supply-link-existing-m140-${cycle.id}`) as HTMLDetailsElement | null; if(form){form.open=true;requestAnimationFrame(()=>form.scrollIntoView({behavior:'smooth',block:'center'}));} }}>Vincular</button>}</div>
             </div>;
-          })}{availableCycleDocuments.length > 5 && <p className="text-[11px] text-ink-muted">Mais {availableCycleDocuments.length-5} arquivo(s) disponíveis no seletor abaixo.</p>}</div> : <p className="text-[11px] text-ink-muted">Nenhum arquivo de Saúde cadastrado para esta pessoa. Você pode anexar um novo documento abaixo.</p>}
+          })}{availableCycleDocuments.length > 5 && <p className="text-[11px] text-ink-muted">Outros {availableCycleDocuments.length-5} arquivo(s) do medicamento no seletor abaixo.</p>}</div> : <p className="text-[11px] text-ink-muted">Nenhum arquivo identificado para este medicamento neste acervo. Você pode cadastrar um novo ou revisar os documentos sem medicamento definido.</p>}
+          {unassignedCycleDocuments.length > 0 ? <details className="rounded-xl border border-surface-border/70 bg-surface/60 px-3 py-2">
+            <summary className="min-h-11 cursor-pointer py-2 text-[11px] font-semibold text-ink-muted">Revisar {unassignedCycleDocuments.length} documento(s) sem medicamento identificado</summary>
+            <p className="mb-2 text-[11px] leading-relaxed text-ink-muted">Esses documentos não foram identificados como pertencentes a este medicamento. Confira o conteúdo antes de qualquer vínculo; nenhuma associação é feita automaticamente.</p>
+            <button type="button" onClick={() => {setShowUnassignedDocuments(v=>!v);setDocId('');}} className="min-h-11 w-full rounded-lg border border-surface-border bg-surface-raised px-3 text-left text-[11px] font-semibold text-ink-primary">{showUnassignedDocuments ? 'Ocultar documentos não identificados do seletor' : 'Permitir escolher documento não identificado após conferir'}</button>
+            {unassignedCycleDocuments.slice(0,5).map(d => <Link key={d.id} href={`/saude/documentos/detalhes?id=${encodeURIComponent(d.id!)}`} className="mt-2 block min-h-11 break-words rounded-lg border border-surface-border/50 px-3 py-2.5 text-[11px] text-ink-muted">Conferir · {d.title}</Link>)}
+          </details> : null}
         </section>
         <h2 className="text-sm font-bold text-ink-primary">
           Documentos deste fornecimento
@@ -776,7 +803,7 @@ function CyclePanel({
               onValueChange={(e) => setDocId(e)}
             >
               <option value="">Selecione um documento</option>
-              {prioritizedSupplyDocuments(documents, pid, process.user_id, new Set(items.map(i=>i.medicamento_id)))
+              {selectableCycleDocuments
                 .map((d) => (
                   <option key={d.id} value={d.id}>
                     {supplyDocumentLabel(d)}
@@ -784,7 +811,8 @@ function CyclePanel({
                 ))}
             </HealthRelationPicker>
           </label>
-          <button type="submit" className={button} disabled={!docId || links.some(l => l.document_id === docId && l.tipo === kind && l.retirada_id === (kind === "receita" ? withdrawal?.id || null : null))}>{links.some(l => l.document_id === docId && l.tipo === kind && l.retirada_id === (kind === "receita" ? withdrawal?.id || null : null)) ? "Vínculo já registrado" : "Vincular documento existente"}</button>
+          <p className="text-[11px] leading-relaxed text-ink-muted">A seleção não cria outra receita. Confirme o vínculo apenas se o arquivo realmente pertence a este medicamento e a este ciclo.</p>
+          <button type="submit" className={button} disabled={!docId || !selectableCycleDocuments.some(d => d.id === docId) || links.some(l => l.document_id === docId && l.tipo === kind && l.retirada_id === (kind === "receita" ? withdrawal?.id || null : null))}>{links.some(l => l.document_id === docId && l.tipo === kind && l.retirada_id === (kind === "receita" ? withdrawal?.id || null : null)) ? "Vínculo já registrado" : "Confirmar vínculo com este ciclo"}</button>
         </form>
         <Link
           className={button + " mt-3 block text-center"}
@@ -797,7 +825,7 @@ function CyclePanel({
           )}
         >
           <Plus size={14} className="mr-1 inline" />
-          Novo documento com anexo
+          Cadastrar novo documento (somente se necessário)
         </Link>
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
           O arquivo é salvo uma vez em Documentos de Saúde. Médico e local ficam

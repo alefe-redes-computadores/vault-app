@@ -5,15 +5,17 @@ import {Pill,FileText,CalendarDays,ChevronRight} from 'lucide-react';
 import type {Document,Medicamento,Retirada} from '@/lib/types';
 import type {SupplyCycle,SupplyData,SupplyProcess} from '@/lib/health-supply/types';
 import {supplyCycleSummary,type SupplyCycleView} from '@/lib/health-supply/cycle-summary';
+import {prioritizedSupplyDocuments} from '@/lib/health-supply/presentation';
 export function SupplyCycleSummary({process,cycle,data,documents,medications,withdrawals,personId,onOpen}:{
  process:SupplyProcess;cycle:SupplyCycle;data:SupplyData;documents:Document[];medications:Medicamento[];withdrawals:Retirada[];personId:string;onOpen:(view:SupplyCycleView)=>void;
 }) {
  const summary=useMemo(()=>supplyCycleSummary(process,cycle,data,documents,medications,withdrawals,personId),[process,cycle,data,documents,medications,withdrawals,personId]);
  if(!summary)return null;
- const availableHealthDocuments=documents.filter(d=>d.id&&d.category_id==='saude'&&d.person_id===personId&&d.user_id===process.user_id).length;
+ const medicationIds=new Set(data.itens.filter(i=>i.person_id===personId&&i.user_id===process.user_id&&i.processo_id===process.id&&i.ciclo_id===cycle.id).map(i=>i.medicamento_id));
+ const availableMedicationDocuments=prioritizedSupplyDocuments(documents,personId,process.user_id,medicationIds).length;
  const rows=[
   {view:'medications' as const,title:'Medicamentos',Icon:Pill,tone:'text-emerald-300',text:`${summary.medicationCount} vinculado(s)`,detail:summary.unavailableMedications?`${summary.unavailableMedications} cadastro(s) indisponível(is)`:summary.medicationCount?'Consultar doses e quantidades':'Selecionar medicamentos existentes'},
-  {view:'documents' as const,title:'Documentos',Icon:FileText,tone:'text-violet-300',text:`${summary.documentCount} vínculo(s)`,detail:summary.unavailableDocuments?`${summary.unavailableDocuments} arquivo(s) indisponível(is)`:summary.documentCount?'Consultar arquivos e entrega':availableHealthDocuments?`${availableHealthDocuments} arquivo(s) na Saúde · conferir vínculo deste ciclo`:'Nenhum arquivo no acervo · adicionar se exigido'},
+  {view:'documents' as const,title:'Documentos',Icon:FileText,tone:'text-violet-300',text:`${summary.documentCount} vínculo(s)`,detail:summary.unavailableDocuments?`${summary.unavailableDocuments} arquivo(s) indisponível(is)`:summary.documentCount?'Consultar arquivos e entrega':availableMedicationDocuments?`${availableMedicationDocuments} arquivo(s) do medicamento no acervo · falta vincular`:'Sem arquivo identificado para o medicamento · conferir se necessário'},
   {view:'withdrawals' as const,title:'Retiradas',Icon:CalendarDays,tone:'text-amber-300',text:`${summary.withdrawalCount} vinculada(s)`,detail:summary.scheduledCount?`${summary.scheduledCount} agendada(s)`:summary.withdrawalCount?'Consultar registros':'Selecione um registro em Vincular outra retirada'},
  ];
  return <section aria-label="Situação salva do ciclo" className="space-y-2">

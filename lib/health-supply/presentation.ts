@@ -21,9 +21,24 @@ export function documentMedicationId(ids:string[], withdrawalMedicationId?:strin
   if (withdrawalMedicationId) return ids.includes(withdrawalMedicationId) ? withdrawalMedicationId : "";
   return ids.length===1 ? ids[0] : "";
 }
-export function prioritizedSupplyDocuments(rows:Document[],pid:string,uid:string,medicationIds:Set<string>) {
-  const related=(d:Document)=>d.entidade_tipo==='medicamento' && medicationIds.has(d.entidade_id||'') || typeof d.metadata?.medicamento_id==='string' && medicationIds.has(d.metadata.medicamento_id);
-  return rows.filter(d=>d.id && d.category_id==='saude' && d.person_id===pid && d.user_id===uid).sort((a,b)=>Number(related(b))-Number(related(a)) || a.title.localeCompare(b.title,'pt-BR'));
+/** M142: Identity from persisted medication IDs; never infer by document title. */
+export function supplyDocumentMedicationId(d: Document): string | null {
+  if (d.entidade_tipo === 'medicamento' && typeof d.entidade_id === 'string' && d.entidade_id.trim()) return d.entidade_id.trim();
+  const metaId = d.metadata?.medicamento_id;
+  return typeof metaId === 'string' && metaId.trim() ? metaId.trim() : null;
+}
+function isOwnedSupplyDocument(d: Document, pid: string, uid: string): boolean {
+  return Boolean(d.id && d.category_id === 'saude' && d.person_id === pid && d.user_id === uid);
+}
+/** Return ONLY medication-matched candidates. A different medication is never an option. */
+export function prioritizedSupplyDocuments(rows: Document[], pid: string, uid: string, medicationIds: Set<string>): Document[] {
+  return rows.filter(d => isOwnedSupplyDocument(d, pid, uid) && !!supplyDocumentMedicationId(d) && medicationIds.has(supplyDocumentMedicationId(d)!))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.title.localeCompare(b.title, 'pt-BR'));
+}
+/** Explicit secondary review: unclassified health records are never mixed with matched candidates. */
+export function unassignedSupplyDocuments(rows: Document[], pid: string, uid: string): Document[] {
+  return rows.filter(d => isOwnedSupplyDocument(d, pid, uid) && !supplyDocumentMedicationId(d))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.title.localeCompare(b.title, 'pt-BR'));
 }
 
 export function monthlySupplyReference(amount:number, months:number) { return Number.isFinite(amount)&&amount>0&&Number.isInteger(months)&&months>0&&months<=24 ? amount/months : null; }
