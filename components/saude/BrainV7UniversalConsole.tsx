@@ -128,6 +128,8 @@ export function BrainV7UniversalConsole() {
       <section className="rounded-2xl border border-violet-400/25 bg-violet-400/[.05] p-4">
         <p className={`${title} text-violet-200`}><Sparkles size={17}/>Brain V7 observacional</p>
         <p className={`mt-2 ${subtle}`}>Este painel organiza informações declaradas e registros reais. Não determina dose segura, não interpreta tolerância como proteção e não reduz alertas de interações.</p>
+        {/* V8_VISUAL_STUDIO: independent clinical presentation with no changes to Brain calculations. */}
+        <Link href="/saude/visual-studio" className="mt-3 flex min-h-11 items-center justify-between rounded-xl border border-emerald-400/25 bg-emerald-400/[.055] px-3 text-xs font-semibold text-emerald-200">Visual Studio V8 · Fênix, PillStudio e dossiê <span aria-hidden="true">›</span></Link>
         <Link href="/saude/pharmalens" className="mt-3 inline-flex min-h-11 items-center text-xs font-bold text-violet-200 underline underline-offset-2">Abrir PharmaLens · experiência por fabricante</Link>
       </section>
       {authLoading ? <p role="status" className={subtle}>Restaurando sessão…</p>
