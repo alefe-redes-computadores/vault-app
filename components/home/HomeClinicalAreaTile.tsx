@@ -21,9 +21,9 @@ export function HomeClinicalAreaTile({ label, description, path, Icon, tone: are
   return (
     <button type="button" onClick={() => onNavigate(path)}
       aria-label={`${label}: ${description}`}
-      className={`group flex h-full min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-2.5 rounded-[18px] border px-3 py-2.5 text-left shadow-sm transition-[background-color,border-color,transform] hover:bg-surface-raised/55 hover:border-emerald-300/25 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${surface || "border-surface-border/60 bg-surface"} ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
+      className={`group flex h-full min-h-[84px] min-[380px]:min-h-[92px] w-full min-w-0 items-start gap-2.5 rounded-[18px] border px-3 py-2.5 text-left touch-manipulation shadow-sm transition-[background-color,border-color,transform] hover:bg-surface-raised/55 hover:border-emerald-300/25 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${surface || "border-surface-border/60 bg-surface"} ${primary ? "ring-1 ring-inset ring-emerald-400/15" : ""}`}>
       <span className={`grid size-9 shrink-0 place-items-center rounded-xl bg-surface-raised/60 transition-transform motion-safe:group-active:scale-95 ${tone}`} aria-hidden="true"><Icon size={17}/></span>
-      <span className="flex min-w-0 flex-1 flex-col justify-center self-stretch">
+      <span className="flex min-w-0 flex-1 flex-col justify-center self-stretch gap-0.5">
         <strong className="block break-words text-sm font-bold leading-snug text-ink-primary">{label}</strong>
         <span className="mt-1 block line-clamp-2 break-words text-xs leading-relaxed text-ink-muted">{description}</span>
       </span>

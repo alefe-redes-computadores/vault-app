@@ -111,7 +111,7 @@ function DeferredHealthSection({id,title,description,badge,icon,children}:{id:st
   return <section id={id} className="scroll-mt-24 overflow-hidden rounded-2xl border border-surface-border bg-surface/80">
     <button type="button" aria-expanded={open} aria-controls={`${id}-content`} onClick={()=>setOpen(value=>!value)} className="flex min-h-[60px] w-full items-center gap-2.5 px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-raised text-emerald-200">{icon}</span>
-      <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">{title}</strong><span className="mt-0.5 block line-clamp-2 text-[10px] leading-snug text-ink-muted">{description}</span></span>
+      <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">{title}</strong><span className="mt-0.5 block line-clamp-2 break-words text-[11px] leading-snug text-ink-muted">{description}</span></span>
       {badge?<span className="shrink-0 rounded-full border border-surface-border px-2 py-1 font-mono text-[9px] text-ink-muted">{badge}</span>:null}
       <ChevronDown size={16} className={`shrink-0 text-ink-muted transition-transform ${open?"rotate-180":""}`}/>
     </button>
@@ -238,14 +238,14 @@ function HealthDashboard({
     );
   }
   return (
-    <main className="min-h-screen bg-void px-4 pb-28 pt-6 text-ink-primary">
+    <main className="min-h-[100dvh] bg-void px-3.5 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5 min-[420px]:pt-6 text-ink-primary min-[420px]:px-4">
       <div className="mx-auto max-w-xl space-y-4">
         <header className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => go("/")}
             aria-label="Voltar ao início"
-            className="rounded-2xl border border-surface-border bg-surface p-3"
+            className="grid size-11 shrink-0 place-items-center rounded-2xl border border-surface-border bg-surface text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
           >
             <ArrowLeft size={20} />
           </button>
@@ -258,7 +258,7 @@ function HealthDashboard({
           <button
             type="button"
             onClick={() => go("/saude/lembretes")}
-            className="p-3 text-ink-muted"
+            className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface/65 text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
             aria-label="Configurar lembretes"
           >
             <Bell size={20} />
@@ -347,7 +347,7 @@ function HealthDashboard({
                   <HealthBody key={personId} preferenceKey={avatarPreferenceKey(person?.user_id||"",personId||"")} personName={person?.name||""} skin={profile?.skin_tone || SKIN_TONES[2]} devices={devices} body={bodyContext} onBodySelect={selectBody} onBrainSelect={()=>{const insight=!intelligence.error&&!intelligence.isLoading?avatarContext.primary:null;if(insight){setSelectedInsight(insight);return;}setBrainSummaryOpen(true);}} onDeviceSelect={id=>{if(!devices.some(d=>d.id===id&&d.person_id===personId&&d.user_id===person?.user_id))return;setEditDevice(id);open("device");}} attention={intelligence.isLoading||intelligence.error||brainPulse.isLoading||!brainPulse.top?0:avatarContext.rank} expanded />
                   <AvatarEvidenceStripM102 context={bodyContext} onOpenMood={()=>selectBody('mood')} />
                 </div>
-                <div className="grid min-w-0 grid-cols-3 gap-2 self-center min-[480px]:block min-[480px]:space-y-2" aria-label="Medidas principais do perfil">
+                <div className="grid min-w-0 grid-cols-2 gap-2 self-center min-[420px]:grid-cols-3 min-[480px]:block min-[480px]:space-y-2" aria-label="Medidas principais do perfil">
                   <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
                     <p className="text-xs uppercase tracking-wide text-ink-faint">Altura</p>
                     <p className="mt-0.5 text-base font-semibold">
@@ -371,7 +371,7 @@ function HealthDashboard({
                       </p>
                     )}
                   </button>
-                  <div className="rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
+                  <div className="col-span-2 min-[420px]:col-span-1 rounded-xl border border-surface-border/60 bg-black/10 px-3 py-2">
                     <p className="text-xs uppercase tracking-wide text-ink-faint">IMC calculado</p>
                     <p className="mt-0.5 text-base font-semibold">{index ?? "—"}</p>
                   </div>
@@ -618,10 +618,10 @@ function HealthDashboard({
                 </button>
               </div>
               <div className="mb-3"><CustomDatePicker label="Dia do histórico" value={historyDate} maxDate={today} onChange={v => setHistoryDate(v || today)} /></div>
-              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
-                <button type="button" disabled={!adjacentDays.previous} onClick={()=>{if(adjacentDays.previous)setHistoryDate(adjacentDays.previous);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Anterior com dados</button>
+              <div className="mt-3 grid grid-cols-1 gap-1.5 min-[350px]:grid-cols-3 sm:gap-2">
+                <button type="button" disabled={!adjacentDays.previous} onClick={()=>{if(adjacentDays.previous)setHistoryDate(adjacentDays.previous);}} className="min-h-11 min-w-0 rounded-xl border border-surface-border px-2 text-[11px] leading-snug text-ink-muted disabled:opacity-40">Anterior com dados</button>
                 <button type="button" disabled={historyDate===today} onClick={()=>setHistoryDate(today)} className="min-h-11 rounded-xl border border-emerald-400/25 px-2 text-xs text-emerald-300 disabled:opacity-40">Hoje</button>
-                <button type="button" disabled={!adjacentDays.next} onClick={()=>{if(adjacentDays.next)setHistoryDate(adjacentDays.next);}} className="min-h-11 rounded-xl border border-surface-border px-2 text-[10px] text-ink-muted disabled:opacity-40">Próximo com dados</button>
+                <button type="button" disabled={!adjacentDays.next} onClick={()=>{if(adjacentDays.next)setHistoryDate(adjacentDays.next);}} className="min-h-11 min-w-0 rounded-xl border border-surface-border px-2 text-[11px] leading-snug text-ink-muted disabled:opacity-40">Próximo com dados</button>
               </div>
               <p className="mb-3 rounded-xl bg-black/15 px-3 py-2 text-xs leading-relaxed text-ink-muted">{daySummary.total} registros no dia · {daySummary.imported} importados · {daySummary.manual} manuais{daySummary.unknown>0?` · ${daySummary.unknown} sem origem informada`:""}</p>
               <div className="mb-3 flex flex-wrap gap-2">
@@ -657,7 +657,7 @@ function HealthDashboard({
               {visible.length ? (
                 Array.from(dayGroups.entries()).filter(([,group])=>group.length>0).map(([type, group]) => (
                   <details key={`${historyDate}:${type}`} className="group border-t border-surface-border">
-                    <summary className="flex cursor-pointer items-center gap-3 py-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
+                    <summary className="flex min-h-11 cursor-pointer items-center gap-3 py-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                       <span className={METRIC_TONES[type as HealthMetric]}><HealthMetricIcon type={type as HealthMetric} /></span>
                       <span className="flex-1">{METRICS[type as HealthMetric]?.label || type}</span>
                       <span className="text-ink-muted">{group.length} registro(s) · {group[0].horario || "—"}</span>

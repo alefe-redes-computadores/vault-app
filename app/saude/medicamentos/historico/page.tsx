@@ -109,13 +109,15 @@ function DayCell({
     <button
       type="button"
       onClick={onSelect}
-      className={"relative min-h-[58px] rounded-2xl border p-1.5 text-left transition-all active:scale-95 " +
+      className={"relative min-h-[58px] min-w-0 rounded-xl border p-1.5 text-left transition-colors active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice " +
         (selected
           ? "border-ice bg-ice/15"
           : day.inMonth
             ? "border-surface-border/50 bg-surface-raised/60"
             : "border-transparent bg-transparent opacity-30")}
-      aria-label={formatDate(day.date)}
+      aria-label={`${formatDate(day.date)}. ${day.takenScheduled} tomada(s) programada(s), ${day.ignoredScheduled} ignorada(s), ${day.unconfirmed} sem confirmação.`}
+      aria-pressed={selected}
+      aria-current={day.date === today ? "date" : undefined}
     >
       <span className={"text-[10px] font-bold " +
         (day.date === today ? "text-ice" : "text-ink-primary")}
@@ -265,26 +267,26 @@ function HistoryContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/90 px-5 pb-4 pt-4 backdrop-blur-xl">
           <div className="flex items-center gap-3 pt-3">
             <button
               type="button"
               onClick={() => router.replace("/saude/medicamentos/detalhes?id=" + medicationId)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-raised text-ink-muted active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-secondary active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
               aria-label="Voltar aos detalhes do medicamento"
             >
               <ArrowLeft size={18} />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ice">
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ice">
                 Histórico de doses
               </p>
               <h1 className="mt-1 truncate font-display text-lg font-bold text-ink-primary">
                 {medication.nome}
               </h1>
               {medication.dosagem && (
-                <p className="mt-0.5 truncate text-[10px] text-ink-muted">
+                <p className="mt-0.5 break-words text-[11px] leading-snug text-ink-muted">
                   {medication.dosagem}
                 </p>
               )}
@@ -308,7 +310,7 @@ function HistoryContent() {
               <button
                 type="button"
                 onClick={() => navigateMonth(-1)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-raised text-ink-muted active:scale-95"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-secondary active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
                 aria-label="Mês anterior"
               >
                 <ChevronLeft size={16} />
@@ -317,7 +319,7 @@ function HistoryContent() {
                 <p className="text-sm font-bold text-ink-primary">
                   {model.monthLabel.charAt(0).toLocaleUpperCase("pt-BR")+model.monthLabel.slice(1)}
                 </p>
-                <p className="mt-0.5 text-[9px] text-ink-faint">
+                <p className="mt-0.5 text-[11px] text-ink-faint">
                   Baseado somente em registros salvos
                 </p>
               </div>
@@ -325,7 +327,7 @@ function HistoryContent() {
                 type="button"
                 onClick={() => navigateMonth(1)}
                 disabled={!canGoNext}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-raised text-ink-muted active:scale-95 disabled:opacity-25"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised text-ink-secondary active:scale-95 disabled:opacity-25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
                 aria-label="Próximo mês"
               >
                 <ChevronRight size={16} />
@@ -334,7 +336,7 @@ function HistoryContent() {
 
             <div className="mt-4 grid grid-cols-7 gap-1.5">
               {WEEKDAYS.map((day, index) => (
-                <div key={day + index} className="pb-1 text-center font-mono text-[8px] font-bold text-ink-faint">
+                <div key={day + index} className="pb-1 text-center font-mono text-[10px] font-bold text-ink-faint">
                   {day}
                 </div>
               ))}
@@ -353,7 +355,7 @@ function HistoryContent() {
               ))}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-x-3 gap-y-2 border-t border-surface-border/50 pt-3 text-[9px] text-ink-muted">
+            <div className="mt-4 flex flex-wrap gap-x-3 gap-y-2 border-t border-surface-border/50 pt-3 text-[11px] text-ink-muted">
               <span className="flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Tomada</span>
               <span className="flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-amber-400" />Ignorada</span>
               <span className="flex items-center gap-1.5"><i className="h-1.5 w-1.5 rounded-full bg-coral" />Sem confirmação</span>
@@ -362,8 +364,8 @@ function HistoryContent() {
           </section>
 
           <section aria-label="Resumo do mês selecionado" className="space-y-2">
-            <div className="flex items-end justify-between gap-3 px-1">
-              <div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ice">Mês selecionado</p>
+            <div className="flex flex-col items-start gap-1.5 px-1 min-[420px]:flex-row min-[420px]:items-end min-[420px]:justify-between min-[420px]:gap-3">
+              <div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ice">Mês selecionado</p>
               <h2 className="mt-1 text-sm font-bold capitalize text-ink-primary">{model.monthLabel}</h2></div>
               <span className="text-[10px] text-ink-muted">{monthlyDaysWithRecords} dia(s) com registros · {monthlyDaysUnconfirmed} com horários sem confirmação</span>
             </div>
@@ -376,30 +378,30 @@ function HistoryContent() {
             <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-400/5 p-3">
               <CheckCircle2 size={14} className="text-emerald-400" />
               <p className="mt-2 font-mono text-lg font-bold text-emerald-400">{model.summary.taken}</p>
-              <p className="text-[9px] text-ink-muted">tomadas programadas</p>
+              <p className="text-[11px] text-ink-muted">tomadas programadas</p>
             </div>
             <div className="rounded-[20px] border border-coral/20 bg-coral/5 p-3">
               <Clock3 size={14} className="text-coral" />
               <p className="mt-2 font-mono text-lg font-bold text-coral">{model.summary.unconfirmed}</p>
-              <p className="text-[9px] text-ink-muted">sem confirmação</p>
+              <p className="text-[11px] text-ink-muted">sem confirmação</p>
             </div>
             <div className="rounded-[20px] border border-ice/20 bg-ice/5 p-3">
               <CalendarDays size={14} className="text-ice" />
               <p className="mt-2 font-mono text-lg font-bold text-ice">
                 {model.summary.recordCoveragePercent === null ? "—" : model.summary.recordCoveragePercent + "%"}
               </p>
-              <p className="text-[9px] text-ink-muted">horários revisados</p>
+              <p className="text-[11px] text-ink-muted">horários revisados</p>
             </div>
             <div className="rounded-[20px] border border-violet-400/20 bg-violet-400/5 p-3">
               <Zap size={14} className="text-violet-400" />
               <p className="mt-2 font-mono text-lg font-bold text-violet-300">{model.summary.avulsas}</p>
-              <p className="text-[9px] text-ink-muted">SOS / avulsas</p>
+              <p className="text-[11px] text-ink-muted">SOS / avulsas</p>
             </div>
           </section>
 
           <div className="flex items-start gap-2 rounded-2xl border border-ice/15 bg-ice/5 p-3">
             <Info size={14} className="mt-0.5 shrink-0 text-ice" />
-            <p className="text-[9px] leading-relaxed text-ink-muted">
+            <p className="text-[11px] leading-relaxed text-ink-muted">
               “Sem confirmação” significa apenas que o Vault não encontrou um registro para o horário previsto. Isso não prova que a dose não foi tomada.
             </p>
           </div>
@@ -416,7 +418,7 @@ function HistoryContent() {
           <section className="rounded-[26px] border border-surface-border/60 bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ice">Dia selecionado</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ice">Dia selecionado</p>
                 <h2 className="mt-1 text-sm font-bold capitalize text-ink-primary">{formatDate(selectedDay.date)}</h2>
               </div>
               {selectedDay.date <= today && (
@@ -428,7 +430,7 @@ function HistoryContent() {
                       "/hoje?data=" + selectedDay.date + "&retro=1&medicamento=" + medicationId
                     );
                   }}
-                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-ice/10 px-3 py-2 text-[9px] font-bold text-ice active:scale-95"
+                  className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-ice/20 bg-ice/10 px-3 py-2 text-[11px] font-bold text-ice active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
                 >
                   <RotateCcw size={12} />
                   Revisar
@@ -461,7 +463,7 @@ function HistoryContent() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-xs font-bold text-ink-primary">{slot}</p>
-                      <p className="mt-0.5 text-[9px] text-ink-muted">
+                      <p className="mt-0.5 text-[11px] text-ink-muted">
                         {event?.kind === "scheduled_taken"
                           ? takenTime && takenTime !== slot
                             ? "Tomada registrada às " + takenTime
@@ -472,7 +474,7 @@ function HistoryContent() {
                       </p>
                     </div>
                     {event?.quantidade !== undefined && (
-                      <span className="text-[9px] font-semibold text-ink-muted">
+                      <span className="text-[11px] font-semibold text-ink-muted">
                         {formatQuantity(event.quantidade)} {unit}
                       </span>
                     )}
@@ -492,7 +494,7 @@ function HistoryContent() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-xs font-bold text-ink-primary">{event.horario}</p>
-                      <p className="mt-0.5 text-[9px] text-ink-muted">
+                      <p className="mt-0.5 text-[11px] text-ink-muted">
                         {event.kind === "avulsa"
                           ? event.origin === "extra"
                             ? "Dose extra registrada"
@@ -501,7 +503,7 @@ function HistoryContent() {
                       </p>
                     </div>
                     {event.quantidade !== undefined && (
-                      <span className="text-[9px] font-semibold text-violet-300">
+                      <span className="text-[11px] font-semibold text-violet-300">
                         {formatQuantity(event.quantidade)} {unit}
                       </span>
                     )}
@@ -512,7 +514,7 @@ function HistoryContent() {
                 <div className="py-6 text-center">
                   <Pill size={22} className="mx-auto text-ink-faint" />
                   <p className="mt-2 text-xs font-semibold text-ink-muted">Nenhuma dose registrada neste dia</p>
-                  <p className="mt-1 text-[9px] text-ink-faint">
+                  <p className="mt-1 text-[11px] text-ink-faint">
                     {medication.tipo_uso === "sos"
                       ? "Medicamentos SOS não possuem rotina diária presumida."
                       : selectedDay.future

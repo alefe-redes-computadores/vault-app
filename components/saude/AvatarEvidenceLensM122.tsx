@@ -66,7 +66,7 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] font-semibold text-sky-200">Janela de registros</span>
           <div className="inline-flex gap-1 rounded-xl border border-surface-border/70 bg-void/40 p-1" role="group" aria-label="Intervalo para evidências da Fênix">
-            {([7,30] as const).map(days=><button key={days} type="button" aria-pressed={period===days} onClick={()=>setPeriod(days)} className={`min-h-10 rounded-lg px-3 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 ${period===days?"bg-sky-300/15 text-sky-200":"text-ink-muted"}`}>{days} dias</button>)}
+            {([7,30] as const).map(days=><button key={days} type="button" aria-pressed={period===days} onClick={()=>setPeriod(days)} className={`min-h-10 min-[350px]:min-h-11 rounded-lg px-3 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 ${period===days?"bg-sky-300/15 text-sky-200":"text-ink-muted"}`}>{days} dias</button>)}
           </div>
         </div>
         <p className="text-[10px] leading-relaxed text-ink-faint">{fmt(view.from)} a {fmt(view.to)} para eventos; medicamentos e tratamentos mostram o cadastro atual.</p>
@@ -74,18 +74,18 @@ export function AvatarEvidenceLensM122({ context, userId, personId, today, insig
           {view.domains.map(domain=>{
             const Icon=icons[domain.id];
             const expanded=opened&&activeDomain===domain.id;
-            return <section key={domain.id} className={`min-w-0 self-start rounded-2xl border p-2.5 ${tones[domain.id]}`}>
+            return <section key={domain.id} className={`min-w-0 self-start rounded-2xl border p-3 ${expanded ? "min-[380px]:col-span-2" : ""} ${tones[domain.id]}`}>
               <button type="button" aria-expanded={expanded} aria-controls={`fenix-domain-${domain.id}`} onClick={()=>setActiveDomain(current=>current===domain.id?null:domain.id)} className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-black/10"><Icon size={15} aria-hidden="true"/></span>
-                <span className="min-w-0 flex-1"><strong className="block truncate text-[11px] text-ink-primary">{domain.title}</strong><span className="mt-0.5 block text-[10px] text-ink-muted">{domain.count} registro(s)</span></span>
+                <span className="min-w-0 flex-1"><strong className="block break-words text-xs leading-snug text-ink-primary">{domain.title}</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{domain.count} registro(s)</span></span>
                 <ChevronDown size={14} className={`shrink-0 transition-transform motion-reduce:transition-none ${expanded?"rotate-180":""}`} aria-hidden="true"/>
               </button>
-              {expanded&&<div id={`fenix-domain-${domain.id}`} className="mt-2 space-y-2 border-t border-current/10 pt-2 text-[10px] text-ink-muted">
+              {expanded&&<div id={`fenix-domain-${domain.id}`} className="mt-2 space-y-2 border-t border-current/10 pt-3 text-[11px] leading-relaxed text-ink-muted">
                 <p>{domain.scope==="current_snapshot"?"Cadastro atual, não uma série de eventos.":`${domain.observedDays??0} dia(s) com lançamento na janela.`}</p>
                 {domain.scope==="recorded_period"&&<p>Último lançamento no recorte: {fmt(domain.lastRecordedDay)}</p>}
                 <p className="leading-relaxed">{domain.limitation}</p>
                 {domain.examples.map(entry=><button type="button" key={entry.key} onClick={()=>onNavigate(entry.href)} className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-surface-border/40 bg-surface/65 px-2.5 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
-                  <span className="min-w-0 flex-1"><strong className="block break-words text-[11px] text-ink-primary">{entry.title}</strong><span className="mt-1 block text-[10px] leading-snug text-ink-muted">{entry.day?`${fmt(entry.day)} · `:""}{entry.description}</span></span><ArrowUpRight size={14} className="shrink-0" aria-hidden="true"/>
+                  <span className="min-w-0 flex-1"><strong className="block break-words text-[11px] text-ink-primary">{entry.title}</strong><span className="mt-1 block break-words text-[11px] leading-relaxed text-ink-muted">{entry.day?`${fmt(entry.day)} · `:""}{entry.description}</span></span><ArrowUpRight size={14} className="shrink-0" aria-hidden="true"/>
                 </button>)}
                 <button type="button" onClick={()=>onNavigate(domain.route)} className="min-h-11 w-full rounded-lg border border-current/20 px-2 text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">Abrir origem da categoria</button>
               </div>}

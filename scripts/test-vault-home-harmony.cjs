@@ -19,7 +19,7 @@ function load(file) {
   assert.equal(result.diagnostics.length, 0, file);
   const mod = new Module(path.resolve(file), module);
   mod.require = id => {
-    if (id === 'react') return { memo: f => f };
+    if (id === 'react') return { memo: f => f, useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}], useEffect: () => {} };
     if (id === 'react/jsx-runtime') return jsx;
     if (id === 'lucide-react') return icons;
     if (id === 'next/navigation') return { useRouter: () => ({ push: href => routes.push(href) }) };
@@ -47,14 +47,14 @@ const text = value => Array.isArray(value) ? value.map(text).join(' ') : value &
 const { HomeCommandCenter } = load('components/home/HomeCommandCenter.tsx');
 const center = expand(HomeCommandCenter({ gastoMes: 20, diferencaMes: -2, totalRede: 3 }));
 const primary = nodes(center).filter(n => n.type === 'button' && /^(Medicamentos|Retiradas de medicamentos|Fornecimento SUS e documentos)/.test(text(n).trim()));
-check(primary.length === 3, 'All three operational routes are visible without opening a disclosure');
+check(primary.length === 3, 'Operational routes stay mounted and navigable in their documented sections');
 primary.forEach(n => n.props.onClick());
 assert.deepEqual(routes, ['/saude/medicamentos', '/saude/retiradas', '/saude/fornecimento']); checks++;
 check(haptics.length === 3, 'Every operational route retains haptic feedback');
 check(nodes(center).some(n => n.props.id === 'home-organizacao'), 'Organization anchor preserved');
 const { HomeClinicalAreaTile } = load('components/home/HomeClinicalAreaTile.tsx');
 const tile = HomeClinicalAreaTile({ label: 'Consulta', description: 'Agenda', path: '/saude/consultas', Icon: 'icon-calendar', tone: 'border-violet-400/20 bg-violet-400/[0.06] text-violet-300', onNavigate: href => routes.push(href) });
-check(!tile.props.className.includes('bg-violet'), 'Custom tone does not color the whole area card');
+check(tile.props.className.includes('bg-violet-400/[0.06]') && tile.props.className.includes('border-violet-400/20'), 'M132 keeps both canonical area background and border without recoloring the icon');
 check(nodes(tile).some(n => n.props.className?.includes('text-violet-300')), 'Identity color remains on the icon');
 check(!nodes(tile).some(n => n.props.className?.includes('border-current')), 'No inherited white icon outline');
 tile.props.onClick(); check(routes.at(-1) === '/saude/consultas', 'Card preserves exact destination');

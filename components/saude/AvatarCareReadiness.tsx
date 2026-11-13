@@ -59,10 +59,10 @@ export const AvatarCareReadiness = memo(function AvatarCareReadiness({ context, 
         {healthSignal?.records7d ? <span>{healthSignal.records7d} registro(s) de saúde nos últimos 7 dias</span> : null}
         {medicationSignal?.temporaryCoursesOpen ? <span>{medicationSignal.temporaryCoursesOpen} período(s) temporário(s) em acompanhamento</span> : null}
       </span>
-      {portfolio.counts.unknown > 0 ? <span className="block text-[10px] text-amber-200" title="Informação incompleta não constitui diagnóstico ou falha de tratamento">{portfolio.counts.unknown} etapa(s) ainda sem confirmação documental ou operacional</span> : null}
+      {portfolio.counts.unknown > 0 ? <span className="block text-[11px] leading-snug text-amber-200" title="Informação incompleta não constitui diagnóstico ou falha de tratamento">{portfolio.counts.unknown} etapa(s) ainda sem confirmação documental ou operacional</span> : null}
       <span data-care-status={carePosture.tone} className={`inline-flex max-w-full items-center rounded-lg border border-surface-border/30 bg-surface/50 px-2 py-1 text-[10px] font-medium motion-reduce:transition-none ${carePosture.tone === "urgent" ? "text-coral" : carePosture.tone === "planning" ? "text-amber-200" : "text-ink-muted"}`}>{carePosture.label}</span>
       <AvatarEvidenceBoundary kind={planFocus?.evidenceKind} />
-      <span className="block line-clamp-1 text-[10px] text-violet-200">Abrir explicação e evidências</span>
+      <span className="block line-clamp-1 break-words text-[11px] font-medium text-violet-200 min-[350px]:line-clamp-2">Abrir explicação e evidências</span>
     </span>
     <ChevronRight size={16} aria-hidden="true" className="mt-2 shrink-0 text-violet-300"/>
   </button>;

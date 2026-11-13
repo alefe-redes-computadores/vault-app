@@ -18,6 +18,8 @@ const contracts = [
   "scripts/test-vault-m136-visual-navigation.cjs",
   "scripts/test-vault-m137-temporary-course-integrity.cjs",
   "scripts/test-vault-m138-visual-identity.cjs",
+  "scripts/test-vault-m139-global-visual.cjs",
+  "scripts/test-vault-home-harmony.cjs",
   "scripts/test-vault-m95-monthly-safety.cjs",
   "scripts/test-vault-m96-care-episodes.cjs",
   "scripts/test-vault-m97-cross-evolutions.cjs",
