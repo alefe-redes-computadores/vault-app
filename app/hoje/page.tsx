@@ -1787,6 +1787,8 @@ export default function HojePage() {
             </section>
           )}
 
+          {/* VAULT_M144_TODAY_ENTRY — doses > check-in > agenda e contexto */}
+          {isHoje && !retroReviewMode ? <section className="mb-3 rounded-2xl border border-surface-border/70 bg-surface/70 p-3" aria-label="Check-in e plano de segurança"><p className="text-xs font-semibold text-ink-primary">Check-in rápido e segurança</p><p className="mt-1 text-[11px] text-ink-muted">Registre os quatro eixos ou documente uma contingência, sem confirmar doses automaticamente.</p><div className="mt-2 grid grid-cols-2 gap-2"><a href="/saude/visual-studio" className="flex min-h-11 items-center justify-center rounded-xl border border-sky-300/25 bg-sky-300/5 px-2 text-center text-xs font-semibold text-sky-200">Check-in 4 eixos</a><a href="/saude/central-m144" className="flex min-h-11 items-center justify-center rounded-xl border border-amber-300/25 bg-amber-300/5 px-2 text-center text-xs font-semibold text-amber-200">Ciclos e contingências</a></div><a href="/saude/plano-seguranca" className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-rose-300/25 bg-rose-300/[.04] px-3 text-xs font-bold text-rose-200">Abrir plano de segurança SOS</a></section>:null}
           <span id="hoje-agenda" className="block scroll-mt-24" aria-hidden="true"/>
 
 

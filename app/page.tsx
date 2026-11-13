@@ -2269,6 +2269,8 @@ export default function HomePage() {
             );
           }}
         />
+      {/* VAULT_M144_HOME_ENTRY — atalhos complementares, sem novas prioridades */}
+        <div className="mx-4 mb-4 rounded-2xl border border-surface-border/70 bg-surface/60 p-3"><a href="/saude/central-m144" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/20 px-3 text-xs font-semibold text-emerald-200">Continuidade clínica, contingências e imunizações</a></div>
       </main>
     </PageTransition>
   );

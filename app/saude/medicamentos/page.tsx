@@ -1767,6 +1767,8 @@ export default function MedicamentosListPage() {
             </section>
           </div>
         )}
+      {/* VAULT_M144_LIST_ENTRY — M146 continua dona da prioridade operacional */}
+        <div className="mx-4 mb-5 rounded-2xl border border-emerald-400/15 bg-surface/60 p-3"><a href="/saude/central-m144" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] px-3 text-xs font-semibold text-emerald-200">Contingências, ciclos e imunizações · M144</a></div>
       </main>
     </PageTransition>
   );

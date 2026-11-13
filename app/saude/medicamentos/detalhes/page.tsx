@@ -3700,6 +3700,8 @@ function MedicamentoDetalhesContent() {
           </div>
         </BottomSheet>
 
+      {/* VAULT_M144_DETAIL_ENTRY — painel observacional sem regravar histórico */}
+        <div className="mx-4 mt-4 rounded-2xl border border-emerald-300/15 bg-surface/70 p-3"><a href="/saude/central-m144" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-300/[.06] px-3 text-center text-xs font-semibold text-emerald-200">Abrir contexto clínico, ciclos e imunizações · M144</a></div>
       </main>
     </PageTransition>
   );
