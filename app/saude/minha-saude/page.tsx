@@ -296,8 +296,6 @@ function HealthDashboard({
                 <ClinicalDisclosure id="minha-saude-relacoes" title="Explorar áreas relacionadas" description="Medicamentos, tratamentos, fornecimento e documentos · acesso sob demanda" icon={<HeartPulse size={18}/>} iconClassName="text-emerald-300">{() => <CareRelationshipRoutes onNavigate={goFromHealth} compact/>}</ClinicalDisclosure>
               </div>
             </details>
-            <CareTrustPanelM119 context={intelligence.context} userId={person?.user_id || ""} personId={personId} onNavigate={goFromHealth} />
-            <CareHorizonM121 context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id || ""} personId={personId} today={today} onNavigate={goFromHealth} />
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
@@ -452,6 +450,9 @@ function HealthDashboard({
                 Ver análise e histórico completos <ChevronRight size={15} />
               </button>
             </section>
+            {/* M145: Vínculos/continuidade após a Fênix e o destaque do Brain. */}
+            <CareTrustPanelM119 context={intelligence.context} userId={person?.user_id || ""} personId={personId} onNavigate={goFromHealth} />
+            <CareHorizonM121 context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id || ""} personId={personId} today={today} onNavigate={goFromHealth} />
             {/* VAULT_V321_AVATAR_CARE: Avatar and urgent summary remain in the first fold. */}
             <DeferredHealthSection id="avatar-care-workspace" title="Acompanhamento do Avatar" description="Plano contextual, vínculos clínicos e preparação detalhada" icon={<Brain size={18}/>} badge="explorar">
               <AvatarCareWorkspace context={intelligence.context} command={intelligence.careCommand} userId={person?.user_id||""} topAlert={brainPulse.top} alerts={brainPulse.records} onNavigate={goFromHealth}/>

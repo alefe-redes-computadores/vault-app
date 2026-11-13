@@ -964,7 +964,7 @@ function DetalhesRetiradaContent() {
             </div>
           )}
 
-          {retirada.renovacao_realizada_id ? <button type="button" onClick={()=>router.push(`/saude/renovacao/detalhes?id=${encodeURIComponent(retirada.renovacao_realizada_id!)}`)} className="min-h-[44px] w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-xs font-bold text-emerald-400">Recebimento registrado · ver aquisição</button> : retirada.status === "realizada" && (
+          {retirada.renovacao_realizada_id ? <button type="button" onClick={()=>router.push(withReturnTarget(`/saude/renovacao/detalhes?id=${encodeURIComponent(retirada.renovacao_realizada_id!)}`, `/saude/retiradas/detalhes?id=${encodeURIComponent(retirada.id!)}&return_to=${encodeURIComponent(backTarget)}`))} className="min-h-[44px] w-full rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-xs font-bold text-emerald-400">Recebimento registrado · ver aquisição</button> : retirada.status === "realizada" && (
             <button
               type="button"
               onClick={() =>

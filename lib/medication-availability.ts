@@ -7,10 +7,10 @@ export function hasKnownEmptyMedicationStock(med: Pick<Medicamento, "estoque_qua
 
 export function medicationIgnoredStatus(input: { taken: number; ignored: number; pending: number; emptyStock: boolean }) {
   const { taken, ignored, pending, emptyStock } = input;
-  const parts = [taken > 0 ? `${taken} tomada(s)` : "Não conta como tomada", pending > 0 ? `${pending} pendente(s)` : "Sem dose pendente"];
+  const parts = [taken > 0 ? `${taken} ${taken === 1 ? "tomada" : "tomadas"}` : "Não conta como tomada", pending > 0 ? `${pending} ${pending === 1 ? "pendente" : "pendentes"}` : "Sem dose pendente"];
   if (emptyStock) parts.push("Estoque registrado zerado");
   return {
-    label: taken > 0 ? `${taken} tomada(s) · ${ignored} ignorada(s)` : ignored === 1 ? "Dose ignorada" : `${ignored} doses ignoradas`,
+    label: taken > 0 ? `${taken} ${taken === 1 ? "tomada" : "tomadas"} · ${ignored} ${ignored === 1 ? "ignorada" : "ignoradas"}` : ignored === 1 ? "Dose ignorada" : `${ignored} doses ignoradas`,
     detail: parts.join(" · "),
     tone: "text-amber-400",
   };

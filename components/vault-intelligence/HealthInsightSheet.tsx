@@ -30,8 +30,8 @@ export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral
   const urgent=insight.urgencia==="alta"||insight.gravidadeSeguranca==="critica"||insight.gravidadeSeguranca==="importante";
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <section role="dialog" aria-modal="true" aria-labelledby="health-insight-title" onClick={(event) => event.stopPropagation()} className="max-h-[calc(92dvh-env(safe-area-inset-top,0px))] w-full overscroll-contain overflow-y-auto rounded-t-[30px] border-t border-surface-border bg-surface px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4 sm:px-5">
+    <div className="fixed inset-0 z-[140] isolate flex items-end bg-black/85 backdrop-blur-md" onClick={onClose}>
+      <section role="dialog" aria-modal="true" aria-labelledby="health-insight-title" onClick={(event) => event.stopPropagation()} className="max-h-[calc(92dvh-env(safe-area-inset-top,0px))] w-full overscroll-contain overflow-y-auto rounded-t-[30px] border-t border-surface-border bg-void shadow-[0_-24px_70px_rgba(0,0,0,.65)] px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-4 sm:px-5">
         <div className="mx-auto max-w-2xl">
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-surface-border" />
           <div className="flex items-start gap-3">

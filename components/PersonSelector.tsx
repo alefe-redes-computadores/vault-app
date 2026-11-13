@@ -14,7 +14,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 
 interface PersonSelectorProps {
   className?: string;
-  mode?: "identity" | "action";
+  mode?: "identity" | "action" | "compact";
 }
 
 export function PersonSelector({ className = "", mode = "identity" }: PersonSelectorProps) {
@@ -81,7 +81,7 @@ export function PersonSelector({ className = "", mode = "identity" }: PersonSele
           borderColor: activePerson?.color ? `${activePerson.color}60` : undefined,
         }}
       >
-        {mode === "action" ? (
+        {mode === "action" || mode === "compact" ? (
           <Users size={16} className="text-ice" />
         ) : activePerson?.avatar_url ? (
           <img

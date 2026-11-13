@@ -858,7 +858,12 @@ export default function HomePage() {
     [operationalAlerts, resumoContextual.href]
   );
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
-  const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item => item.id === quantityFollowUpInsight.id));
+  const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item =>
+    item.id === quantityFollowUpInsight.id ||
+    (item.entidadeTipo === "medicamento" && Boolean(item.entidadeId) && item.entidadeId === quantityFollowUpInsight.entidadeId &&
+      /quantidade confirmada fora do padrão/i.test(item.titulo) &&
+      /quantidade confirmada fora do padrão/i.test(quantityFollowUpInsight.titulo))
+  ));
 
   // ==========================================================
   // FINANCEIRO
@@ -1253,260 +1258,7 @@ export default function HomePage() {
               onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} />
           </motion.section>
 
-          {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
-          <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
-            diferencaMes={metricasFinanceiras.diff}
-            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
-          {/* ===================================================
-              ATENÇÃO
-          =================================================== */}
-
-          {unifiedAlerts.length >
-            0 && (
-            <motion.section
-              id="home-atencao"
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.24,
-                delay: 0.04,
-              }}
-              className="vault-deferred space-y-3"
-            >
-              {/* P15 R8: renderização read-only; a autoridade e a ordem vêm de unifiedAlerts. */}
-              <HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}
-                onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}
-                renderAlert={alert => <AlertRow alert={alert} />} />
-            </motion.section>
-          )}
-
-          {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
-              Não gera nova interpretação nem substitui alertas de segurança. */}
-          {!quantityAlreadyInBrain&&<HomeDoseQuantityFollowUp
-            insight={quantityFollowUpInsight}
-            feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
-            nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
-            onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
-            onNavigate={href => { trigger("vibrate"); router.push(href); }}
-          />}
-
-          {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
-                    {/* ===================================================
-              INTELIGÊNCIA DE SAÚDE — PULSO + RAIL PRIORIZADO
-          =================================================== */}
-
-          {(longitudinalHighlights.length > 0 ||
-            (!brainV5Pulse.isLoading &&
-              (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))) && (
-            <motion.section
-              id="home-brain"
-              initial={{
-                opacity: 0,
-                y: 10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              transition={{
-                duration: 0.24,
-                delay: 0.05,
-              }}
-              className="vault-deferred space-y-3"
-            >
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Activity
-                      size={15}
-                      className="text-violet-400"
-                    />
-
-                    <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central de Inteligência">
-                      <h2 className="font-display text-base font-semibold tracking-tight text-ink-primary">VAULT Brain</h2>
-                      <ChevronRight size={13} className="text-violet-300" />
-                    </button>
-                  </div>
-
-                  <p className="mt-0.5 text-xs text-ink-muted">
-                    {healthIntelligence.maturity.totalRecords} registros analisados
-                    {brainV5Pulse.journeys.some(item => item.requires_attention) ? ` · ${brainV5Pulse.journeys.filter(item => item.requires_attention).length} decisões em atenção` : brainV5Pulse.brief.total > 0 ? ` · ${brainV5Pulse.brief.total} decisões acompanhadas` : ""}
-                    {brainV5Pulse.counters.new > 0 ? ` · ${brainV5Pulse.counters.new} novo${brainV5Pulse.counters.new === 1 ? "" : "s"}` : ""}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    trigger(
-                      "vibrate"
-                    );
-
-                    setInsightExplicado(
-                      null
-                    );
-
-                    setMostrarFontesInteligencia(
-                      true
-                    );
-                  }}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-violet-300 transition-all active:scale-95"
-                  aria-label="Ver cobertura e fontes usadas pela inteligência do Vault"
-                >
-                  <Info
-                    size={11}
-                  />
-
-                  {
-                    healthIntelligence
-                      .maturity
-                      .sourcesWithData
-                  }
-
-                  /
-
-                  {
-                    healthIntelligence
-                      .maturity
-                      .totalSources
-                  }
-
-                  {" cobertura"}
-                </button>
-              </div>
-
-              {/* VAULT_V321_HOME_EVIDENCE: urgent evidence defaults open; routine analysis stays optional. */}
-              {/* M10_HOME_FOCUS: Brain abre em prioridade se não houver trilho operacional; não duplica a atenção. */}
-              {longitudinalHighlights.length > 0 && (
-                <ClinicalDisclosure
-                  key={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") ? "priority" : "routine"}
-                  id="home-health-evidence"
-                  title="Ver observações do Brain"
-                  description={`${homeBrainGroups.length} grupo${homeBrainGroups.length === 1 ? "" : "s"} · ${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"}`}
-                  icon={<Activity size={18}/>}
-                  defaultOpen={false}
-                >
-              {() => <>
-              <div className="grid grid-cols-1 gap-2 min-[620px]:grid-cols-2" aria-label="Sinais do Brain organizados por prioridade">
-                {longitudinalHighlights.map(
-                  (
-                    insight
-                  ) => {
-                    const group = homeBrainGroups.find(candidate => candidate.insights[0]?.id === insight.id);
-                    // Só o primeiro insight do grupo monta o cartão; os demais ficam acessíveis dentro dele.
-                    if (!group) return null;
-                    if (group.insights.length > 1) return (
-                      <HomeBrainEvidenceGroup key={group.key} insights={group.insights}
-                        onOpen={selected => {
-                          trigger("vibrate");
-                          setMostrarFontesInteligencia(false);
-                          setInsightExplicado(selected);
-                        }}/>
-                    );
-                    return (
-                    <button
-                      key={
-                        insight.id
-                      }
-                      type="button"
-                      onClick={() => {
-                        trigger(
-                          "vibrate"
-                        );
-
-                        setMostrarFontesInteligencia(
-                          false
-                        );
-
-                        setInsightExplicado(
-                          insight
-                        );
-                      }}
-                      className={`flex min-w-0 items-start gap-2.5 rounded-[16px] border p-3 text-left transition-colors active:bg-surface-raised ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
-                    >
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-violet-400/10 text-violet-300"}`}>
-                        {(insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ? <AlertCircle size={17}/> : <Activity
-                          size={17}
-                        />}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-violet-300">
-                            {
-                              insight
-                                .categoria
-                                .replace(
-                                  "_",
-                                  " "
-                                )
-                            }
-                          </span>
-
-                          <span className="text-[9px] text-ink-faint">
-                            Confiança{" "}
-                            {
-                              insight.confianca
-                            }
-
-                            {" · amostra "}
-
-                            {
-                              insight.amostra
-                            }
-                          </span>
-                          {insight.gravidadeSeguranca && <span className={`rounded-md px-1.5 py-0.5 font-mono text-[11px] uppercase ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-cyan-400/10 text-cyan-300"}`}>{insight.gravidadeSeguranca}</span>}
-                        </div>
-
-                        <p className="mt-1 line-clamp-1 text-xs font-bold text-ink-primary">
-                          {
-                            insight.titulo
-                          }
-                        </p>
-
-                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">
-                          {
-                            insight.mensagem
-                          }
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        size={15}
-                        className="shrink-0 text-violet-300"
-                      />
-                    </button>
-                    );
-                  }
-                )}
-              </div>
-
-              {longitudinalHighlights.length > 1 && (
-                <div className="flex items-center justify-between px-1"><span className="text-xs text-ink-muted">Todas as observações continuam acessíveis por sinal</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
-              )}
-
-              </>}
-
-                </ClinicalDisclosure>
-              )}
-
-              {longitudinalHighlights.length === 0 && brainV5Pulse.top && (
-                <button type="button" onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainV5Pulse.top!.insight_id)}`)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left active:scale-[0.985]">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={16}/></div>
-                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-xs text-ink-muted">{brainV5Pulse.brief.headline} · {brainV5PriorityReason(brainV5Pulse.top)}</p></div>
-                  <ChevronRight size={14} className="shrink-0 text-violet-300"/>
-                </button>
-              )}
-
-            </motion.section>
-          )}
-
+          {/* M145: Compromissos reais primeiro; análises e cards de evidência vêm depois. */}
           {/* ===================================================
               COMPROMISSOS DE HOJE
           =================================================== */}
@@ -1769,6 +1521,260 @@ export default function HomePage() {
 
                 {retiradasHoje.length > 3 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${retiradasHoje.length - 3} retirada(s)`}</button>}
               </div>
+            </motion.section>
+          )}
+
+          {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
+          <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
+            diferencaMes={metricasFinanceiras.diff}
+            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
+          {/* ===================================================
+              ATENÇÃO
+          =================================================== */}
+
+          {unifiedAlerts.length >
+            0 && (
+            <motion.section
+              id="home-atencao"
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.04,
+              }}
+              className="vault-deferred space-y-3"
+            >
+              {/* P15 R8: renderização read-only; a autoridade e a ordem vêm de unifiedAlerts. */}
+              <HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}
+                onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}
+                renderAlert={alert => <AlertRow alert={alert} />} />
+            </motion.section>
+          )}
+
+          {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
+              Não gera nova interpretação nem substitui alertas de segurança. */}
+          {!quantityAlreadyInBrain&&<HomeDoseQuantityFollowUp
+            insight={quantityFollowUpInsight}
+            feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
+            nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
+            onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
+            onNavigate={href => { trigger("vibrate"); router.push(href); }}
+          />}
+
+          {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
+                    {/* ===================================================
+              INTELIGÊNCIA DE SAÚDE — PULSO + RAIL PRIORIZADO
+          =================================================== */}
+
+          {(longitudinalHighlights.length > 0 ||
+            (!brainV5Pulse.isLoading &&
+              (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))) && (
+            <motion.section
+              id="home-brain"
+              initial={{
+                opacity: 0,
+                y: 10,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              transition={{
+                duration: 0.24,
+                delay: 0.05,
+              }}
+              className="vault-deferred space-y-3"
+            >
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Activity
+                      size={15}
+                      className="text-violet-400"
+                    />
+
+                    <button type="button" onClick={() => router.push("/inteligencia/alertas")} className="flex items-center gap-1.5 text-left active:scale-[0.98]" aria-label="Abrir Central de Inteligência">
+                      <h2 className="font-display text-base font-semibold tracking-tight text-ink-primary">VAULT Brain</h2>
+                      <ChevronRight size={13} className="text-violet-300" />
+                    </button>
+                  </div>
+
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    {healthIntelligence.maturity.totalRecords} registros analisados
+                    {brainV5Pulse.journeys.some(item => item.requires_attention) ? ` · ${brainV5Pulse.journeys.filter(item => item.requires_attention).length} decisões em atenção` : brainV5Pulse.brief.total > 0 ? ` · ${brainV5Pulse.brief.total} decisões acompanhadas` : ""}
+                    {brainV5Pulse.counters.new > 0 ? ` · ${brainV5Pulse.counters.new} novo${brainV5Pulse.counters.new === 1 ? "" : "s"}` : ""}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    trigger(
+                      "vibrate"
+                    );
+
+                    setInsightExplicado(
+                      null
+                    );
+
+                    setMostrarFontesInteligencia(
+                      true
+                    );
+                  }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 font-mono text-[9px] font-semibold text-violet-300 transition-all active:scale-95"
+                  aria-label="Ver cobertura e fontes usadas pela inteligência do Vault"
+                >
+                  <Info
+                    size={11}
+                  />
+
+                  {
+                    healthIntelligence
+                      .maturity
+                      .sourcesWithData
+                  }
+
+                  /
+
+                  {
+                    healthIntelligence
+                      .maturity
+                      .totalSources
+                  }
+
+                  {" cobertura"}
+                </button>
+              </div>
+
+              {/* VAULT_V321_HOME_EVIDENCE: urgent evidence defaults open; routine analysis stays optional. */}
+              {/* M10_HOME_FOCUS: Brain abre em prioridade se não houver trilho operacional; não duplica a atenção. */}
+              {longitudinalHighlights.length > 0 && (
+                <ClinicalDisclosure
+                  key={longitudinalHighlights.some(item => item.gravidadeSeguranca === "critica" || item.gravidadeSeguranca === "importante" || item.gravidadeSeguranca === "atencao") ? "priority" : "routine"}
+                  id="home-health-evidence"
+                  title="Ver observações do Brain"
+                  description={`${homeBrainGroups.length} grupo${homeBrainGroups.length === 1 ? "" : "s"} · ${longitudinalHighlights.length} análise${longitudinalHighlights.length === 1 ? "" : "s"}`}
+                  icon={<Activity size={18}/>}
+                  defaultOpen={false}
+                >
+              {() => <>
+              <div className="grid grid-cols-1 gap-2 min-[620px]:grid-cols-2" aria-label="Sinais do Brain organizados por prioridade">
+                {longitudinalHighlights.map(
+                  (
+                    insight
+                  ) => {
+                    const group = homeBrainGroups.find(candidate => candidate.insights[0]?.id === insight.id);
+                    // Só o primeiro insight do grupo monta o cartão; os demais ficam acessíveis dentro dele.
+                    if (!group) return null;
+                    if (group.insights.length > 1) return (
+                      <HomeBrainEvidenceGroup key={group.key} insights={group.insights}
+                        onOpen={selected => {
+                          trigger("vibrate");
+                          setMostrarFontesInteligencia(false);
+                          setInsightExplicado(selected);
+                        }}/>
+                    );
+                    return (
+                    <button
+                      key={
+                        insight.id
+                      }
+                      type="button"
+                      onClick={() => {
+                        trigger(
+                          "vibrate"
+                        );
+
+                        setMostrarFontesInteligencia(
+                          false
+                        );
+
+                        setInsightExplicado(
+                          insight
+                        );
+                      }}
+                      className={`flex min-w-0 items-start gap-2.5 rounded-[16px] border p-3 text-left transition-colors active:bg-surface-raised ${insight.gravidadeSeguranca === "critica" ? "border-red-400/35 bg-red-400/[0.07]" : insight.gravidadeSeguranca === "importante" ? "border-coral/30 bg-coral/[0.06]" : insight.gravidadeSeguranca === "atencao" ? "border-amber-400/25 bg-amber-400/[0.05]" : "border-violet-400/20 bg-violet-400/[0.04]"}`}
+                    >
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-violet-400/10 text-violet-300"}`}>
+                        {(insight.gravidadeSeguranca === "critica" || insight.gravidadeSeguranca === "importante") ? <AlertCircle size={17}/> : <Activity
+                          size={17}
+                        />}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md bg-violet-400/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-violet-300">
+                            {
+                              insight
+                                .categoria
+                                .replace(
+                                  "_",
+                                  " "
+                                )
+                            }
+                          </span>
+
+                          <span className="text-[9px] text-ink-faint">
+                            Confiança{" "}
+                            {
+                              insight.confianca
+                            }
+
+                            {" · amostra "}
+
+                            {
+                              insight.amostra
+                            }
+                          </span>
+                          {insight.gravidadeSeguranca && <span className={`rounded-md px-1.5 py-0.5 font-mono text-[11px] uppercase ${insight.gravidadeSeguranca === "critica" ? "bg-red-400/10 text-red-300" : insight.gravidadeSeguranca === "importante" ? "bg-coral/10 text-coral" : insight.gravidadeSeguranca === "atencao" ? "bg-amber-400/10 text-amber-300" : "bg-cyan-400/10 text-cyan-300"}`}>{insight.gravidadeSeguranca}</span>}
+                        </div>
+
+                        <p className="mt-1 line-clamp-1 text-xs font-bold text-ink-primary">
+                          {
+                            insight.titulo
+                          }
+                        </p>
+
+                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-muted">
+                          {
+                            insight.mensagem
+                          }
+                        </p>
+                      </div>
+
+                      <ChevronRight
+                        size={15}
+                        className="shrink-0 text-violet-300"
+                      />
+                    </button>
+                    );
+                  }
+                )}
+              </div>
+
+              {longitudinalHighlights.length > 1 && (
+                <div className="flex items-center justify-between px-1"><span className="text-xs text-ink-muted">Todas as observações continuam acessíveis por sinal</span><span className="font-mono text-[9px] text-violet-300/80">{longitudinalHighlights.length} insights</span></div>
+              )}
+
+              </>}
+
+                </ClinicalDisclosure>
+              )}
+
+              {longitudinalHighlights.length === 0 && brainV5Pulse.top && (
+                <button type="button" onClick={() => router.push(`/inteligencia/alertas?insight=${encodeURIComponent(brainV5Pulse.top!.insight_id)}`)} className="flex w-full items-center gap-3 rounded-[20px] border border-violet-400/20 bg-violet-400/[0.04] p-3.5 text-left active:scale-[0.985]">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/10 text-violet-300"><Activity size={16}/></div>
+                  <div className="min-w-0 flex-1"><p className="line-clamp-1 text-xs font-bold text-ink-primary">{brainV5Pulse.top.snapshot.titulo}</p><p className="mt-1 line-clamp-1 text-xs text-ink-muted">{brainV5Pulse.brief.headline} · {brainV5PriorityReason(brainV5Pulse.top)}</p></div>
+                  <ChevronRight size={14} className="shrink-0 text-violet-300"/>
+                </button>
+              )}
+
             </motion.section>
           )}
 

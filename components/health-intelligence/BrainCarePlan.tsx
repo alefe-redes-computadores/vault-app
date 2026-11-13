@@ -3,6 +3,8 @@
 import { BrainCircuit, CalendarClock, ChevronRight, CircleDollarSign, MessageCircle, Search } from "lucide-react";
 import type { BrainCarePlan as BrainCarePlanModel, BrainCarePlanLane } from "@/lib/health-intelligence/care-plan";
 import { useEffect, useId, useState } from "react";
+import { useLocalDay } from "@/hooks/useLocalDay";
+import { isFutureDosePlanningM145 } from "@/lib/health-intelligence/plan-display-m145";
 import { compareCarePlan, readCarePlanMemory, writeCarePlanMemory, type CarePlanChange } from "@/lib/health-intelligence/care-plan-memory";
 import { CarePlanHistory } from "./CarePlanHistory";
 import { VaultBrainIdentity } from "./VaultBrainIdentity";
@@ -24,12 +26,19 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
   const [change, setChange] = useState<CarePlanChange | null>(null);
   const planItemsId = useId();
   const [expanded, setExpanded] = useState(false);
+  const todayM145 = useLocalDay();
   useEffect(() => {
     const previous = readCarePlanMemory(plan.ownerKey);
     setChange(compareCarePlan(previous, plan));
     writeCarePlanMemory(plan);
   }, [plan]);
-  const visible = expanded && !compact ? plan.items : plan.focus.slice(0, 2);
+  const futureScheduleM145 = plan.items.filter(item => isFutureDosePlanningM145(item, todayM145));
+  const preferredM145 = (expanded && !compact ? plan.items : plan.focus.slice(0, 2))
+    .filter(item => !isFutureDosePlanningM145(item, todayM145));
+  // When both focus items are future doses, recover the next genuine priority.
+  const visible = preferredM145.length || expanded || compact
+    ? preferredM145
+    : plan.items.filter(item => !isFutureDosePlanningM145(item, todayM145)).slice(0, 2);
   const formatDate = (value?: string | null) => value ? value.split("-").reverse().join("/") : null;
   return <section aria-label="Plano do Brain" className="vault-brain-enter mx-auto mt-4 max-w-2xl overflow-hidden rounded-[24px] border border-surface-border/70 bg-gradient-to-br from-surface-raised/70 via-surface to-emerald-400/[0.035] shadow-sm">
     <div className="flex items-start gap-3 px-4 py-3.5">
@@ -51,6 +60,10 @@ export function BrainCarePlan({ plan, onNavigate, compact = false }: {
       </button>;
     })}</div> : <div className="p-4 text-xs text-emerald-200">Nenhuma etapa prioritária produzida pelos registros atuais.</div>}
     {!compact && plan.items.length > 2 ? <button type="button" aria-expanded={expanded} aria-controls={visible.length ? planItemsId : undefined} onClick={() => setExpanded(value => !value)} className="mx-3 mb-3 min-h-11 w-[calc(100%-1.5rem)] rounded-xl border border-surface-border bg-surface-raised/35 text-xs font-semibold text-ink-primary transition-colors hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{expanded ? "Mostrar somente prioridades" : `Ver plano completo · ${plan.items.length} etapas`}</button> : null}
+    {futureScheduleM145.length > 0 && !compact ? <details className="border-t border-surface-border/50 bg-void/10">
+      <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-4 text-xs font-semibold text-sky-200">Agendadas para depois · não são atraso <span className="rounded-full bg-sky-300/10 px-2 py-1 text-xs tabular-nums">{futureScheduleM145.length}</span></summary>
+      <div className="space-y-2 px-3 pb-3">{futureScheduleM145.map(item => <button key={item.id} type="button" onClick={() => onNavigate(item.href)} className="flex min-h-11 w-full items-start justify-between gap-3 rounded-xl border border-surface-border/50 bg-surface/55 p-3 text-left text-xs text-ink-secondary"><span className="min-w-0 flex-1"><strong className="block text-ink-primary">{item.title}</strong><span className="mt-1 block text-[11px] text-ink-muted">Projeção futura · {item.dueDate?.split("-").reverse().join("/")}</span></span><ChevronRight size={14} className="shrink-0"/></button>)}</div>
+    </details> : null}
     {!compact ? <details className="border-t border-surface-border/50"><summary className="min-h-11 cursor-pointer content-center px-4 text-xs font-semibold text-violet-200">Consulta, custos e histórico do plano</summary><div className="border-t border-surface-border/50 px-4 py-3"><div className="flex items-center gap-2 text-[10px] font-semibold text-violet-200"><CalendarClock size={14}/><span>Desde a última consulta</span></div><p className="mt-1 text-xs leading-relaxed text-ink-muted">{plan.consultationWindow.start ? `${plan.consultationWindow.days} dia(s) de registros explícitos` : "Sem consulta realizada anterior identificada"} · {plan.consultationWindow.healthRecords} registro(s) de saúde · {plan.consultationWindow.takenDoses + plan.consultationWindow.ignoredDoses} desfecho(s) de dose · {plan.consultationWindow.realizedWithdrawals} retirada(s)</p><p className="mt-1 text-xs text-ink-faint">Dias sem registro não são tratados como falha ou não adesão.</p></div><div className="flex items-center gap-3 border-t border-surface-border/50 px-4 py-3 text-[9px] text-ink-muted"><CircleDollarSign size={15} className="text-emerald-300"/><span className="min-w-0 flex-1">30 dias: {plan.projectedCost30d > 0 ? `${brl(plan.projectedCost30d)} estimados` : "sem custo projetado conhecido"} · cobertura {plan.projectedCostCoverage30d}%</span></div><div className="p-3 pt-0"><CarePlanHistory ownerKey={plan.ownerKey}/></div></details> : null}
   </section>;
 }

@@ -31,14 +31,17 @@ export function CareTrustPanelM119({ context, userId, personId, onNavigate }: Pr
           <>
             <p className="text-[11px] leading-relaxed text-ink-muted">Recorte disponível: {audit.observed.medications} medicamentos, {audit.observed.treatments} tratamentos e {audit.observed.documents} documentos. {reviewCount} referência(s) exigem conferência nos primeiros {audit.findings.length} achados visíveis. Ausência no recorte não comprova exclusão.</p>
             {audit.total === 0 ? <p role="status" className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] p-3 text-xs text-emerald-200">Nenhuma divergência detectada nos vínculos examinados. Isso não certifica completude clínica nem sincronização com o servidor.</p> : (
-              <ul className="space-y-2">
+              <details className="rounded-xl border border-sky-300/15 bg-void/20 p-2.5">
+                <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 text-xs font-semibold text-sky-200">Revisar vínculos individuais <span className="rounded-full bg-sky-300/10 px-2 py-1 tabular-nums">{audit.findings.length}</span></summary>
+                <ul className="space-y-2 border-t border-surface-border/40 pt-2">
                 {audit.findings.map(item => <li key={item.key} className="rounded-xl border border-surface-border/50 bg-surface/60 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1"><p className="break-words text-xs font-semibold text-ink-primary">{item.title}</p><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{item.detail}</p><span className="mt-1 inline-block text-[10px] text-sky-300">{item.level === 'review' ? 'Conferir referência' : 'Observação, não correção'}</span></div>
                     <button type="button" onClick={() => onNavigate(item.route)} className="grid size-11 shrink-0 place-items-center rounded-lg border border-sky-400/20 text-sky-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300" aria-label={`Abrir registro para conferir: ${item.title}`}><ArrowUpRight size={18}/></button>
                   </div>
                 </li>)}
-              </ul>
+                </ul>
+              </details>
             )}
             {audit.truncated && <p className="text-[11px] text-amber-200">Exibidos os primeiros {audit.findings.length} de {audit.total} achados; nenhum foi alterado.</p>}
           </>

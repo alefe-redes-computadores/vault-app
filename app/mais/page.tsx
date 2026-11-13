@@ -950,7 +950,6 @@ export default function MaisPage() {
         </header>
 
         <section className="space-y-4 px-4 pt-3 sm:px-5">
-          <OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/>
           {/* ===================================================
               PERFIL
           =================================================== */}
@@ -961,9 +960,8 @@ export default function MaisPage() {
               <div className="flex items-center gap-3">
                 <div className="relative shrink-0">
                   {avatarUrl ? <img src={avatarUrl} alt={displayName} loading="lazy" className="h-14 w-14 rounded-full border-2 border-ice/20 object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-xl text-ink-muted">{displayName.charAt(0).toUpperCase()}</div>}
-                  <button type="button" onClick={handleEditProfile} className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-void bg-ice text-void active:scale-95" aria-label="Editar perfil"><Pencil size={13} /></button>
                 </div>
-                <div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-ink-faint">Conta Vault</p><h2 className="truncate font-display text-lg font-semibold text-ink-primary">{displayName}</h2><p className="mt-1 truncate text-sm text-ink-muted">{user?.email}</p></div>
+                <div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">Conta Vault</p><h2 className="truncate font-display text-lg font-semibold text-ink-primary">{displayName}</h2><p className="mt-1 truncate text-sm text-ink-muted">{user?.email}</p></div>
                 <button type="button" onClick={handleEditProfile} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações do perfil"><Settings size={17} /></button>
               </div>
             </div>
@@ -972,13 +970,13 @@ export default function MaisPage() {
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Perfis do Vault</h2>
               <button type="button" onClick={()=>router.push("/saude/minha-saude")} className="mb-2 flex w-full items-center justify-between rounded-[20px] border border-emerald-400/15 bg-surface p-3 text-left"><span className="text-sm font-semibold text-emerald-400">Minha saúde</span><span className="text-[10px] text-ink-muted">Perfil, aparelhos e registros →</span></button>
               <div className="flex items-center justify-between gap-3 rounded-[20px] border border-orange-400/15 bg-orange-400/[0.035] p-3">
-                <div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">Pessoa ativa</p><p className="truncate text-[10px] text-ink-muted">Os registros de saúde seguem este perfil</p></div>
-                <PersonSelector mode="identity" className="shrink-0" />
+                <div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">Pessoa ativa</p><p className="truncate text-xs text-ink-muted">Os registros de saúde seguem este perfil</p></div>
+                <PersonSelector mode="compact" className="shrink-0" />
               </div>
             </div>
 
             {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
-            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
+            <details open className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span>Preferências, lembretes e atualizações</span>
                 <ChevronDown size={16} aria-hidden="true" className="text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
@@ -1045,14 +1043,14 @@ export default function MaisPage() {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className={`group flex items-center gap-3 rounded-[18px] border border-surface-border/50 bg-surface px-3 py-2.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${item.id === "inteligencia" ? "col-span-2 min-h-[64px] border-violet-400/20 bg-gradient-to-r from-violet-400/[0.08] to-surface" : "min-h-[72px]"}`}
+                    className={`group flex items-center gap-3 rounded-[18px] border border-surface-border/50 bg-surface px-3 py-2.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${item.id === "inteligencia" ? "col-span-2 min-h-[64px] border-violet-400/20 bg-gradient-to-r from-violet-400/[0.08] to-surface" : "col-span-2 min-h-[72px] sm:col-span-1"}`}
                   >
                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105 ${item.tone}`}>
                       <Icon size={18} />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-ink-primary">{item.label}</p>
-                      <p className={`${item.id === "inteligencia" ? "mt-1 text-[10px]" : "mt-0.5 line-clamp-2 text-[9px]"} leading-snug text-ink-muted`}>{item.description}</p>
+                      <p className={`${item.id === "inteligencia" ? "mt-1 text-[10px]" : "mt-0.5 line-clamp-2 text-[11px]"} leading-snug text-ink-muted`}>{item.description}</p>
                     </div>
                   </button>
                 );
@@ -1166,6 +1164,8 @@ export default function MaisPage() {
             </h2>
 
             <div className="space-y-2">
+              {/* M145: Prontidão sob Dados & Nuvem, sem consumir primeira dobra. */}
+              <div className="mb-2"><OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/></div>
               {/* VAULT_RECOVERY_CENTER_V68 */}
               <button
                 type="button"
