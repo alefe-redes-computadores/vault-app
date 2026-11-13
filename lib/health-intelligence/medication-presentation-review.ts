@@ -14,7 +14,7 @@ const normalized = (value?: string) => (typeof value === "string" ? value : "").
 export function medicationStockUnitReview(med: StockFields): string | null {
   if (typeof med.estoque_quantidade !== "number" || !Number.isFinite(med.estoque_quantidade)) return null;
   const unit = normalized(med.estoque_unidade_medida);
-  const presentation = normalized(med.forma_farmaceutica || med.formato);
+  const presentation = normalized(med.formato || med.forma_farmaceutica);
   if (!unit) {
     return "Há quantidade registrada, mas falta a unidade. Confira se o saldo está em comprimidos, cápsulas, gotas ou ml.";
   }
@@ -27,5 +27,5 @@ export function medicationStockUnitReview(med: StockFields): string | null {
   const mismatch = (capsules && unitTablets) || (tablets && unitCapsules) ||
     (drops && (unitCapsules || unitTablets)) || ((capsules || tablets) && unitDrops);
   if (!mismatch) return null;
-  return `Apresentação ${med.forma_farmaceutica || med.formato || "não informada"} e unidade de estoque ${med.estoque_unidade_medida} divergem. Confira o cadastro antes de interpretar o saldo.`;
+  return `Formato ${med.formato || med.forma_farmaceutica || "não informado"} e unidade de estoque salva ${med.estoque_unidade_medida} divergem. Confira o cadastro em Editar medicamento → Estoque, Compra & SUS → Saldo Atual de Estoque → Unidade do estoque. A divergência não comprova erro na dose.`;
 }

@@ -2094,7 +2094,7 @@ export default function HomePage() {
                             withReturnTarget(`/saude/tratamentos/detalhes?id=${tratamento.id}`, "/")
                           );
                         }}
-                        className="flex min-h-[82px] w-full items-center justify-between overflow-hidden rounded-[20px] border bg-surface p-3 text-left shadow-sm transition-all active:scale-[0.985]"
+                        className="flex min-h-[70px] w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-[20px] border bg-surface px-3 py-2.5 text-left shadow-sm transition-colors active:scale-[0.985] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
                         style={{
                           borderColor:
                             `${cor}30`,

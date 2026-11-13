@@ -1578,12 +1578,7 @@ function EditarMedicamentoContent() {
 
             setEstoqueUnidade(
               item.estoque_unidade_medida ||
-                (
-                  item.formato ===
-                  "gota"
-                    ? "gota(s)"
-                    : "comprimido(s)"
-                )
+                getEstoqueUnidadePorFormato(item.formato || "comprimido")
             );
 
             setEstoqueUnidadePorDose(
@@ -4891,6 +4886,15 @@ function EditarMedicamentoContent() {
                           </div>
                         </div>
 
+                        <div id="unidade-estoque-m141" className="min-w-0 rounded-2xl border border-amber-300/20 bg-amber-300/[.035] p-3">
+                          <label className="block text-xs font-semibold text-ink-primary" htmlFor="estoque-unidade-m141">Unidade do estoque registrado</label>
+                          <input id="estoque-unidade-m141" type="text" value={estoqueUnidade} onChange={event => { setEstoqueUnidade(event.target.value); markChanged(); }} autoComplete="off" placeholder="Ex.: cápsula(s), comprimido(s), ml" className="mt-2 min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary outline-none focus-visible:border-emerald-300 focus-visible:ring-2 focus-visible:ring-emerald-300/25"/>
+                          <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                            <span className="min-w-0 break-words text-[11px] leading-snug text-ink-muted">Formato cadastrado: {getCatalogFormatLabel(formato) || formato || "não informado"}</span>
+                            <button type="button" onClick={() => { setEstoqueUnidade(getEstoqueUnidadePorFormato(formato)); markChanged(); }} className="min-h-11 rounded-xl border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-xs font-semibold text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Usar unidade do formato</button>
+                          </div>
+                          <p className="mt-2 text-[11px] leading-relaxed text-ink-secondary">Este campo é independente do formato. Corrigir a unidade não converte a quantidade nem modifica doses. Confira o saldo e salve a edição.</p>
+                        </div>
                         <div
                           className={`transition-all ${
                             shakeFields.includes(

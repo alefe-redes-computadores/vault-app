@@ -64,7 +64,7 @@ ok(bar.props['aria-valuenow']===100,'visual progress is bounded, no invalid ARIA
 ok(text(hero).includes('2/5'),'original completed/planned count visible');
 const {HomeClinicalAreaTile}=load(files[2]);
 let target='';const tile=HomeClinicalAreaTile({label:'Minha saúde',description:'Cuidado vinculado',path:'/saude/minha-saude',Icon,tone:'tone',onNavigate:x=>target=x});
-ok(buttons(tile).length===1&&String(buttons(tile)[0].props.className).includes('min-[380px]:min-h-[92px]'),'clinical tile remains large tactile target');
+ok(buttons(tile).length===1&&String(buttons(tile)[0].props.className).includes('min-h-[84px]')&&String(buttons(tile)[0].props.className).includes('items-center'),'clinical tile preserves >=84px tactile area with centered compact content');
 buttons(tile)[0].props.onClick();ok(target==='/saude/minha-saude','clinical tile routes through Home authority');
 const {HomeCareOrganizationTiles}=load(files[3]);
 nav=[];let org=HomeCareOrganizationTiles({gastoMes:12.3,diferencaMes:1.5,totalRede:3,documentPath:'/saude/documentos',purchasePath:'/saude/compras',networkPath:'/saude/rede',networkTone:'tone',onNavigate:x=>nav.push(x)});

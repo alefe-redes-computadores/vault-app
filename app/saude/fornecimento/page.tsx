@@ -86,7 +86,7 @@ const input =
   "mt-1 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/60";
 const button =
   "min-h-11 rounded-xl bg-surface-raised px-3 py-3 text-xs font-bold text-ink-primary disabled:opacity-40";
-const panel = "rounded-[24px] border border-surface-border/60 bg-surface p-4";
+const panel = "box-border w-full min-w-0 max-w-full rounded-[20px] border border-surface-border/60 bg-surface p-3 sm:p-4 [overflow-wrap:anywhere]";
 const originTone:Record<SupplyProcess["origem"],string>={comprado:"border-rose-400/20 bg-rose-400/10 text-rose-300",municipal:"border-emerald-400/20 bg-emerald-400/10 text-emerald-300",estadual_ceaf:"border-violet-400/20 bg-violet-400/10 text-violet-300",farmacia_popular:"border-amber-400/20 bg-amber-400/10 text-amber-300",outro:"border-surface-border bg-surface-raised text-ink-muted"};
 const fmt = (v: string | null) =>
   v ? v.split("-").reverse().join("/") : "Não confirmado";
@@ -583,9 +583,9 @@ function CyclePanel({
       withdrawal?.id ? `&retirada_id=${encodeURIComponent(withdrawal.id)}` : ""
     }&return_to=${encodeURIComponent(returnRoute)}`;
   return (
-    <div className="space-y-4">
+    <div className="box-border w-full min-w-0 max-w-full space-y-3 [overflow-wrap:anywhere]">
       <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-emerald-200">Ciclo registrado no aplicativo · etapa: {cycle.status}. Cadastro salvo não significa autorização confirmada.</p>
-      <div role="tablist" aria-label="Tarefa do ciclo" className="grid grid-cols-2 gap-2">{([['overview','Resumo'],['withdrawals',process.origem==='comprado'?'Aquisições':'Retiradas'],['documents',process.origem==='comprado'?'Receitas':'Documentos'],['medications','Medicamentos']] as const).map(([key,label],index)=><button key={key} type="button" role="tab" tabIndex={cycleView===key?0:-1} onKeyDown={event=>{const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;if(next!==null){event.preventDefault();setCycleView((['overview','withdrawals','documents','medications'] as const)[next]);event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();}}} id={`tab-${cycle.id}-${key}`} aria-selected={cycleView===key} aria-controls={`pane-${cycle.id}-${key}`} onClick={()=>setCycleView(key)} className={`min-h-11 rounded-xl border px-3 py-2 text-xs font-semibold ${cycleView===key?'border-violet-400/40 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>
+      <div role="tablist" aria-label="Tarefa do ciclo" className="flex w-full min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none]">{([['overview','Resumo'],['withdrawals',process.origem==='comprado'?'Aquisições':'Retiradas'],['documents',process.origem==='comprado'?'Receitas':'Documentos'],['medications','Medicamentos']] as const).map(([key,label],index)=><button key={key} type="button" role="tab" tabIndex={cycleView===key?0:-1} onKeyDown={event=>{const next=event.key==='ArrowRight'?(index+1)%4:event.key==='ArrowLeft'?(index+3)%4:event.key==='Home'?0:event.key==='End'?3:null;if(next!==null){event.preventDefault();setCycleView((['overview','withdrawals','documents','medications'] as const)[next]);event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();}}} id={`tab-${cycle.id}-${key}`} aria-selected={cycleView===key} aria-controls={`pane-${cycle.id}-${key}`} onClick={()=>setCycleView(key)} className={`flex min-h-11 min-w-[76px] flex-1 shrink-0 items-center justify-center break-words rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${cycleView===key?'border-violet-400/40 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{label}</button>)}</div>
       {process.origem === 'estadual_ceaf' && cycleView==='overview' ? <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
         <p className="text-sm font-semibold text-ink-primary">LME e período autorizado</p>
         <p className="mt-2 text-xs text-ink-muted">{documentContext.lmeDelivered ? 'LME marcada como entregue neste ciclo.' : documentContext.lmeLinked ? 'LME vinculada; confirme a entrega quando ocorrer.' : 'Vincule a LME já existente abaixo, sem cadastrar o arquivo novamente.'}</p>
@@ -1166,7 +1166,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 style={{borderLeftColor: color, borderLeftWidth: 3, ...(process?.id === p.id ? {borderColor: `${color}50`, backgroundColor: "#10151c"} : {})}}
                 key={p.id}
                 className={
-                  "flex min-h-12 w-full min-w-0 items-center rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
+                  "box-border flex min-h-12 w-full min-w-0 max-w-full items-center rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors [overflow-wrap:anywhere] " + (process?.id === p.id ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-200" : "border-surface-border bg-surface-raised text-ink-primary")
                 }
                 onClick={() => {
                   setSeed(null); setWithdrawalId("");
@@ -1176,7 +1176,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   setCreating(false);
                 }}
               >
-                <span className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="min-w-0 break-words text-ink-primary">{p.titulo}</span><span className={`shrink-0 text-[9px] font-normal ${hasPrivateRoute&&p.origem!=="comprado"?"text-amber-300":"text-ink-muted"}`}>{routeLabel}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
+                <span className="flex w-full min-w-0 items-center gap-2"><span className="shrink-0 rounded-lg p-1" style={{backgroundColor:`${color}18`}}><Icon size={16} style={{color}} /></span><span className="min-w-0 flex-1 break-words text-ink-primary">{p.titulo}</span><span className={`max-w-[45%] shrink-0 break-words text-right text-[10px] leading-snug font-normal ${hasPrivateRoute&&p.origem!=="comprado"?"text-amber-300":"text-ink-muted"}`}>{routeLabel}</span>{p.status!=="ativo"?<span className="text-[10px] font-normal text-ink-muted">Histórico</span>:<span className="sr-only">Em andamento</span>}</span>
               </button>
     );
   };
@@ -1194,13 +1194,22 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
         badgeColor="text-emerald-300"
         backUrl={backTarget}
       />
-      <div className="min-w-0 space-y-3 px-4 pt-4 sm:px-5">
+      <div className="mx-auto box-border w-full max-w-3xl min-w-0 space-y-3 px-4 pt-4 sm:px-5 [&>*]:min-w-0 [&>*]:max-w-full">
       <div id="fornecimento-agora" className="scroll-mt-24">
-      <AccessCommandOverview command={healthIntelligence.careCommand} onNavigate={navigateSupplyAction}/>
+      <details className="group min-w-0 overflow-hidden rounded-2xl border border-emerald-400/20 bg-surface/50 px-3 py-1">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="min-w-0 flex-1 break-words">Acesso 360 · abrir panorama completo</span><ChevronRight size={16} className="shrink-0 text-emerald-300 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true"/></summary>
+        <div className="min-w-0 pb-2"><AccessCommandOverview command={healthIntelligence.careCommand} onNavigate={navigateSupplyAction}/></div>
+      </details>
       </div>
-      <ClinicalSectionNav label="Áreas do fornecimento" items={[{id:"fornecimento-agora",label:"Agora",icon:<PackageCheck size={14}/>,badge:processView.cyclesInProgress},{id:"processos",label:"Processos",icon:<FolderHeart size={14}/>,badge:processView.activeProcesses.length},{id:"processo-atual",label:"Processo atual",icon:<CheckCircle2 size={14}/>},{id:"ciclo-atual",label:"Ciclo",icon:<FileText size={14}/>,badge:cycles.length}]}/>
+      <ClinicalSectionNav label="Áreas do fornecimento" density="compact" items={[{id:"fornecimento-agora",label:"Agora",icon:<PackageCheck size={14}/>,badge:processView.cyclesInProgress},{id:"processos",label:"Processos",icon:<FolderHeart size={14}/>,badge:processView.activeProcesses.length},{id:"processo-atual",label:"Processo atual",icon:<CheckCircle2 size={14}/>},{id:"ciclo-atual",label:"Ciclo",icon:<FileText size={14}/>,badge:cycles.length}]}/>
+      <section id="processos" className="w-full min-w-0 scroll-mt-28 space-y-2" aria-label="Selecionar fornecimento">
+        {!contextLoading && processView.activeProcesses.length > 0 && !creating && <>
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1"><h2 className="text-sm font-bold text-ink-primary">Processos ativos · {processView.activeProcesses.length}</h2><span className="text-[11px] text-ink-muted">Selecione para acompanhar</span></div>
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">{processView.activeProcesses.map(renderProcess)}</div>
+        </>}
+      </section>
       {/* VAULT_V329_DOCUMENT_FOCUS: a real list of unmet linked requirements. */}
-      <section id="documentos-pendentes" className={`scroll-mt-28 rounded-[20px] border p-3 ${missingDocumentItems.length ? "border-amber-300/25 bg-amber-300/[0.035]" : "border-surface-border/60 bg-surface/60"}`} aria-label="Documentos que exigem conferência">
+      <section id="documentos-pendentes" className={`min-w-0 max-w-full overflow-hidden scroll-mt-28 rounded-[20px] border p-3 ${missingDocumentItems.length ? "border-amber-300/25 bg-amber-300/[0.035]" : "border-surface-border/60 bg-surface/60"}`} aria-label="Documentos que exigem conferência">
         <div className="flex items-start gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-300/10 text-amber-300"><FileText size={17}/></span>
           <div className="min-w-0 flex-1">
@@ -1209,13 +1218,13 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           </div>
           <span className="rounded-full border border-amber-300/15 px-2 py-1 text-[10px] font-bold text-amber-200">{missingDocumentItems.length}</span>
         </div>
-        {missingDocumentItems.length > 0 && <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{missingDocumentItems.map(item => (
+        {missingDocumentItems.length > 0 && <details className="mt-3 rounded-xl border border-amber-300/20 bg-surface/30 px-2.5 py-1"><summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 text-xs font-semibold text-amber-200"><span>Conferir {missingDocumentItems.length} exigência(s) documental(is)</span><ChevronRight size={15} className="shrink-0" aria-hidden="true"/></summary><div className="grid min-w-0 grid-cols-1 gap-2 pb-2 pt-1 sm:grid-cols-2">{missingDocumentItems.map(item => (
           <button key={`${item.medicationId}-${item.requirement.lane}`} type="button"
             onClick={() => navigateSupplyAction(item.href.startsWith("/saude/fornecimento") ? `${item.href}#processo-atual` : item.href)}
             className="flex min-h-16 w-full items-center gap-2 rounded-xl border border-amber-300/15 bg-surface p-3 text-left transition-colors hover:border-amber-300/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300"
             aria-label={`Ver ${item.requirement.label} de ${item.medicationName}`}>
             <span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">{item.medicationName}</strong><span className="mt-0.5 block text-[10px] font-semibold text-amber-200">{item.requirement.label}</span><span className="mt-1 block text-[10px] leading-snug text-ink-muted">{item.requirement.detail}</span><span className="mt-1 block text-[9px] text-ink-faint">Origem: {item.routeLabel}</span></span><ChevronRight size={15} className="shrink-0 text-amber-300"/>
-          </button>))}</div>}
+          </button>))}</div></details>}
       </section>
       <details className="rounded-xl border border-surface-border/45 bg-surface/40 px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-secondary">Mapa de medicamentos e acesso · consultar detalhes</summary>
@@ -1245,14 +1254,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             </section>;
           })}</div></details>}
           {/* VAULT_V321_SUPPLY_FOCUS: no synthetic SUS/private funding classification. */}
-          {processView.activeProcesses.length > 0 && !creating && (
-            <div className="mb-2 flex min-h-12 items-center gap-2 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] px-3 py-2">
-              <span className="text-[11px] font-medium text-ink-muted">{processView.activeProcesses.length} processo{processView.activeProcesses.length === 1 ? "" : "s"} ativo{processView.activeProcesses.length === 1 ? "" : "s"}</span>
-            </div>
-          )}
-          <div id="processos" className="mb-3 grid min-w-0 scroll-mt-24 grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Selecionar fornecimento">
-            {processView.activeProcesses.map(renderProcess)}
-          </div>
+
       <details className="rounded-[18px] border border-surface-border/60 bg-surface px-3 py-1">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><FolderHeart size={18} /> Ajuda e catálogo SUS</summary>
         <p className="border-t border-surface-border/60 pt-3 text-xs leading-relaxed text-ink-muted">
@@ -1303,7 +1305,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
             </section>
           )}
           {process && !creating && (
-            <fieldset id="processo-atual" disabled={busy} className="scroll-mt-24 space-y-4 [content-visibility:auto] [contain-intrinsic-size:900px]">
+            <fieldset id="processo-atual" disabled={busy} className="box-border w-full min-w-0 max-w-full scroll-mt-36 space-y-3 [overflow-wrap:anywhere]">
               <div className={panel}>
                 {/* V130 RELATIONAL EXPERIENCE: a single treatment identity and contextual navigation. */}
                 {(() => {
@@ -1318,9 +1320,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                   const processDocs = relationalIndex.documentsByProcess.get(process.id) || [];
                   const processCycles = relationalIndex.cyclesByProcess.get(process.id) || [];
                   const snapshotM140 = supplyOperationalSnapshotM140({process,cycle,data,documents,withdrawals:retiradas,personId});
-                  return <div className="space-y-3">
-                    <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Ver etapas e jornada completa</summary>
-                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"} withdrawalProgress={process.origem==="comprado"?undefined:summarizeWithdrawalProgress(processWithdrawals,getLocalTodayISO())}/></details>
+                  return <div className="w-full min-w-0 max-w-full space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={"inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold "+originTone[process.origem]}><SupplyChoiceIcon group="origin" value={process.origem}/>{processRouteLabel}</span>
                       {hasPrivateInProcess&&process.origem!=="comprado"&&<span className="rounded-full border border-amber-300/25 bg-amber-300/[.06] px-3 py-1 text-[10px] text-amber-200">Rotas independentes</span>}
@@ -1331,6 +1331,8 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                       onReviewWithdrawal={id => { if (cycle?.id) { setSeed(null); setWithdrawalId(id); setCycleId(cycle.id); requestAnimationFrame(()=>document.getElementById("ciclo-atual")?.scrollIntoView({behavior:"smooth",block:"start"})); } else router.push(`/saude/retiradas/detalhes?id=${encodeURIComponent(id)}`); }}
                       onOpenDocuments={() => { if (cycle?.id) { document.getElementById(`tab-${cycle.id}-documents`)?.click(); requestAnimationFrame(()=>document.getElementById("ciclo-atual")?.scrollIntoView({behavior:"smooth",block:"start"})); } }}
                       onOpenCycle={() => { const el=document.getElementById("supply-next-cycle-m136") as HTMLDetailsElement|null; if (el) { el.open=true; el.scrollIntoView({behavior:"smooth",block:"center"}); } }} />}
+                    <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Ver etapas e jornada completa</summary>
+                    <SupplyProcessJourney hasProcess hasCycle={processCycles.length>0} documents={processDocs.length} events={process.origem==="comprado"?purchases.count:processWithdrawals.length} privateRoute={process.origem==="comprado"} withdrawalProgress={process.origem==="comprado"?undefined:summarizeWithdrawalProgress(processWithdrawals,getLocalTodayISO())}/></details>
                     <details className="rounded-xl border border-surface-border/50 bg-surface/40 px-3 py-1"><summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Indicadores detalhados do processo</summary>
                     <section aria-label="Estado e próxima providência do fornecimento" className="space-y-2 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.035] p-3">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-200">Estado atual · {process.status === "ativo" ? "processo ativo" : "histórico"}</p>
@@ -1498,7 +1500,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
                 <p className="mt-2 text-xs text-ink-muted">{compatibleCycleWithdrawals(retiradas, personId, process.user_id, process.id, cycle.id, new Set(data.itens.filter(i=>i.ciclo_id===cycle.id&&i.processo_id===process.id&&i.person_id===personId&&i.user_id===process.user_id).map(i=>i.medicamento_id))).length} retirada(s) compatível(is) disponível(is). Selecionar mostra o registro; somente Vincular retirada a este ciclo salva a relação. A quantidade retirada não define automaticamente a quantidade mensal.</p>
               </details>}
               {cycle && (
-                <div id="ciclo-atual" className="scroll-mt-24">
+                <div id="ciclo-atual" className="box-border w-full min-w-0 max-w-full scroll-mt-36 [overflow-wrap:anywhere]">
                 <CyclePanel
                   key={personId + cycle.id}
                   cycle={cycle}
