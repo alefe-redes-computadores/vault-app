@@ -6,6 +6,7 @@ import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-in
 import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
 import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseSortTimestamp, formatQuantidade, getKnownDoseQuantity, summarizeKnownQuantity, formatKnownQuantitySummary } from "@/lib/health-intelligence/medication-detail-presenters";
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
+import { PharmaLensMedicationEntryV7 } from "@/components/saude/PharmaLensMedicationEntryV7";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
 import { isTemporaryCoursePlannedDose, contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
@@ -3289,6 +3290,11 @@ function MedicamentoDetalhesContent() {
           <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Receita, aquisição e retirada · etapas registradas ou planejadas" icon={<CalendarDays size={18}/>} iconClassName="text-sky-300">
             <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
           </ClinicalDisclosure>
+          {med.id && med.person_id && activePersonId === med.person_id ? (
+            <ClinicalDisclosure id="pharmalens-v7" title="PharmaLens · fabricantes" description="Trocas, experiências e evidências pessoais por fabricante" icon={<LineChart size={18}/>} iconClassName="text-violet-300">
+              {() => <PharmaLensMedicationEntryV7 medicationId={med.id!} userId={med.user_id} personId={med.person_id!}/>}
+            </ClinicalDisclosure>
+          ) : null}
           <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Fornecimento público ou particular e documentos relacionados" icon={<Package size={18}/>} iconClassName="text-emerald-300">
             <HealthSupplyEntry medicamentoId={med.id!}/>
           </ClinicalDisclosure>

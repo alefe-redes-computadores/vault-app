@@ -379,6 +379,10 @@ function HealthDashboard({
                </div>
                <div className="mt-3">
                  <AvatarEvidenceLensM122 context={intelligence.context} userId={person?.user_id||""} personId={personId||""} today={today} insights={!intelligence.error&&!intelligence.isLoading?intelligence.insights:[]} onNavigate={goFromHealth} onExplain={(insight)=>setSelectedInsight(insight)} />
+                 {/* VAULT_PL7_P2_FENIX_LINK — lente observacional independente do Brain clínico */}
+                 <button type="button" onClick={() => goFromHealth('/saude/pharmalens')} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-violet-400/[.06] px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+                   <span className="min-w-0"><strong className="block text-xs text-violet-200">PharmaLens · fabricantes</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">Trocas documentadas, doses e contexto de saúde para consulta</span></span><ChevronRight size={17} className="shrink-0 text-violet-300"/>
+                 </button>
                </div>
                <details className="mt-2 rounded-xl border border-emerald-300/10 bg-void/15 px-3 text-[11px] text-ink-muted">
                  <summary className="flex min-h-11 cursor-pointer items-center text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como explorar seu Avatar</summary>
