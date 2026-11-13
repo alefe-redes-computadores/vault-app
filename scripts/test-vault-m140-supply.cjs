@@ -66,11 +66,11 @@ ok(!/\b(fetch\(|supabase|indexedDB|\.put\(|\.add\(|\.delete\(|\.update\(|setTime
 ok(!view.includes('repo.')&&!view.includes('fetch(')&&view.includes('onReviewWithdrawal')&&view.includes('onOpenDocuments')&&view.includes('onOpenCycle'),'componente apenas apresenta e delega ações');
 ok(view.includes('Nenhuma vinculada')&&view.includes('Retirada realizada')&&view.includes('sem vínculo')&&view.includes('Ciclo encerrado no histórico'),'estado claro não confunde retirada, ciclo e vínculo');
 ok(page.includes('<SupplyOperationalCommandM140 snapshot={snapshotM140}')&&page.includes('supplyOperationalSnapshotM140({process,cycle,data,documents,withdrawals:retiradas,personId})'),'comando montado com registros canônicos reais');
-ok(page.includes('already ? "Já vinculado neste ciclo"')&&page.includes('No acervo, ainda não vinculado neste ciclo')&&page.includes('supply-link-existing-m140-'),'arquivo existente reaproveitável com estado explícito');
+ok(page.includes('links.some(l => l.document_id === d.id)')&&page.includes('Vínculo salvo neste ciclo')&&page.includes('No acervo, ainda não vinculado')&&page.includes('supply-link-existing-m140-')&&page.includes('selectableCycleDocuments.some(d => d.id === docId)')&&page.includes('showUnassignedDocuments ? [...availableCycleDocuments, ...unassignedCycleDocuments]'),'documento reaproveitável com vínculo explícito e seleção restrita');
 ok(page.includes('links.some(l => l.document_id === docId && l.tipo === kind')&&page.includes('Vínculo já registrado'),'botão impede vínculo repetido na apresentação');
 ok(page.includes('Retirada registrada. Preparar o próximo ciclo?')&&page.includes('id="supply-next-cycle-m136"')&&page.includes('Estado e próxima providência do fornecimento'),'M136 preservado sem amputar contratos históricos');
 ok(page.includes('compatibleCycleWithdrawals(')&&page.includes('repo.linkDocument(')&&page.includes('repo.newCycle('),'ações canônicas preservadas com confirmação');
-ok(summary.includes('availableHealthDocuments')&&summary.includes('conferir vínculo deste ciclo'),'resumo reconhece documentos existentes sem tratá-los como vinculados');
+ok(summary.includes('availableMedicationDocuments')&&!summary.includes('availableHealthDocuments')&&summary.includes('arquivo(s) do medicamento no acervo · falta vincular'),'resumo documental restrito ao medicamento e com vínculo explícito');
 // M140 R2: o V289 de 2024 exige a antiga prop `badge:renovacoes.length`.
 // A M139 publicada usa o componente de navegação com contador explícito.
 // Preservar contador e entrada canônica, sem voltar ao código legado.
@@ -78,5 +78,5 @@ const medicationDetails=read('app/saude/medicamentos/detalhes/page.tsx');
 ok(medicationDetails.includes('historyCount={renovacoes.length}')&&medicationDetails.includes('<MedicationDetailNavigation')&&medicationDetails.includes('<HealthSupplyEntry medicamentoId={med.id!}/>'),
   'contador real e entrada canônica de fornecimento preservados na navegação atual');
 const gate=read('scripts/test-v63-release-gate.mjs');
-ok(gate.includes('"scripts/test-vault-m140-supply.cjs"')&&gate.includes('"scripts/test-vault-m139-global-visual.cjs"'),'M139 e M140 integrados ao gate global');
+ok(gate.includes('"scripts/test-vault-m140-supply.cjs"')&&gate.includes('"scripts/test-vault-m139-global-visual.cjs"')&&gate.includes('"scripts/test-vault-m142-documents.cjs"'),'M139, M140 e M142 integrados ao gate global');
 console.log(`VAULT M140: ${n} verificações da jornada do fornecimento aprovadas.`);
