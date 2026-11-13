@@ -37,6 +37,8 @@ const imports={
  '@/components/saude/MedicationDoseHourChips':{MedicationDoseHourChips:()=>null},
  '@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:()=>null},
  '@/components/ui/AvatarMedicamento':{AvatarMedicamento:()=>null},
+ '@/components/saude/visual-studio/PillStudioV8':{PillStudioV8:()=>null}, // V8P2_INTEGRATED_M59_MOCK
+
  '@/lib/medications/form-presentation':{
    MEDICATION_PRIMARY_FORMATS:[{id:'comprimido',label:'Comprimido',icon:Icon},{id:'gotas',label:'Gotas',icon:Icon}],
    MEDICATION_ADDITIONAL_FORMATS:[{id:'spray',label:'Spray',icon:Icon}],

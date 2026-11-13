@@ -3,6 +3,8 @@
 import { memo } from "react";
 import { Factory } from "lucide-react";
 import { AvatarMedicamento } from "@/components/ui/AvatarMedicamento";
+import { PillStudioV8 } from "@/components/saude/visual-studio/PillStudioV8"; // V8P2_INTEGRATED
+
 
 /** M138: etiqueta visual declarada; fabricante de aquisição mantém sua autoridade histórica. */
 export const MedicationIdentityPreview = memo(function MedicationIdentityPreview({
@@ -24,6 +26,12 @@ export const MedicationIdentityPreview = memo(function MedicationIdentityPreview
       <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Cores selecionadas para este medicamento">
         {colors.filter(color => /^#[0-9a-fA-F]{6}$/.test(color)).slice(0, 2).map((color, index) => <span key={`${color}-${index}`} className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-surface-border/60 bg-surface px-2 text-[10px] font-medium text-ink-muted" aria-label={`Cor ${index + 1}: ${color}`}><span className="size-4 rounded-full border border-white/25 shadow-sm" style={{backgroundColor:color}} aria-hidden="true"/><span>Cor {index + 1}</span></span>)}
       </div>
+      {/* V8P2_INTEGRATED: shared live preview for New/Edit, with no writes or new form state. */}
+      <details className="mt-3 rounded-xl border border-emerald-400/15 bg-void/35 p-2">
+        <summary className="flex min-h-10 cursor-pointer items-center text-xs font-semibold text-emerald-200">Visualizar apresentação ilustrativa 3D-SVG</summary>
+        <div className="mx-auto mt-2 max-w-[145px]"><PillStudioV8 medication={{formato:format,cores:colors}} /></div>
+        <p className="mt-2 text-center text-[10px] leading-relaxed text-ink-muted">Prévia baseada apenas no formato e nas cores escolhidas. Não representa a embalagem real nem altera doses, estoque ou fabricante.</p>
+      </details>
     </div>
   </div>;
 });

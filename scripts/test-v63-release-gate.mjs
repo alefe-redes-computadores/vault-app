@@ -439,6 +439,8 @@ const contracts = [
   "scripts/test-vault-m125-continuity-triage.cjs",
   "scripts/test-vault-brain-v7-universal.cjs",
   "scripts/test-vault-supply-shield-ss7.cjs",  "scripts/test-vault-visual-studio-v8.cjs",
+  "scripts/test-vault-v8p2-integration.cjs", // V8P2_INTEGRATED
+
 
 ];
 

@@ -14,6 +14,9 @@ import { PillStudioV8 } from './visual-studio/PillStudioV8';
 import { FenixSceneV8 } from './visual-studio/FenixSceneV8';
 import { AxisCheckinV8 } from './visual-studio/AxisCheckinV8';
 import { ClinicalDossierV8 } from './visual-studio/ClinicalDossierV8';
+import { AxisTimelineV8P2 } from './visual-studio/AxisTimelineV8P2'; // V8P2_INTEGRATED
+import { WearableEvidenceV8P2 } from './visual-studio/WearableEvidenceV8P2';
+
 
 const palette=['#e5e7eb','#22d3ee','#34d399','#fb7185','#a78bfa','#fbbf24','#64748b','#f8fafc'];
 export function VisualStudioWorkspaceV8(){
@@ -61,9 +64,12 @@ export function VisualStudioWorkspaceV8(){
         </>:<p className="mt-3 text-xs text-ink-muted">Nenhum medicamento cadastrado para esta pessoa.</p>}
       </section>
       <FenixSceneV8 snapshot={studio}/>
+      {/* V8P2_INTEGRATED: display provenance separately from the original avatar scene. */}
+      <WearableEvidenceV8P2 snapshot={studio}/>
       <section className="rounded-[25px] border border-surface-border bg-surface/80 p-4"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-sm font-bold text-ink-primary"><Eye size={16} className="text-sky-300"/>Eixos observados</h2><div className="flex gap-1">{([7,14,30] as const).map(n=><button key={n} type="button" aria-pressed={range===n} onClick={()=>setRange(n)} className={`min-h-10 rounded-lg border px-2 text-xs ${range===n?'border-sky-300/40 bg-sky-300/10 text-sky-200':'border-surface-border text-ink-muted'}`}>{n}d</button>)}</div></div>
         <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Cada barra corresponde a um dia registrado; dias sem informação não são contados como zero nem preenchidos artificialmente.</p>
-        <div className="mt-4 space-y-3">{studio.axes.map(axis=><div key={axis.kind}><div className="flex items-center justify-between gap-2 text-xs"><span className="font-semibold text-ink-primary">{axis.label}</span><span className="text-ink-muted">{axis.documentedDays} dia(s) · {axis.latest?`${axis.latest.value}/10`:'—'}</span></div><div className="mt-2 flex h-12 items-end gap-1 overflow-x-auto border-b border-surface-border pb-0.5" role="img" aria-label={`${axis.label}: ${axis.points.map(p=>`${p.day} ${p.value}/10`).join(', ')||'sem observações'}`}>{axis.points.length?axis.points.map(p=><span key={p.day} title={`${p.day}: ${p.value}/10`} className="w-3 min-w-3 rounded-t bg-sky-300/65" style={{height:`${Math.max(4,p.value*9)}%`}}/>):<span className="self-center text-[11px] text-ink-muted">Sem registros neste intervalo</span>}</div></div>)}</div>
+        {/* V8P2_INTEGRATED: full calendar, explicit missing days, inspectable evidence. */}
+        <AxisTimelineV8P2 snapshot={studio} range={range}/>
         {studio.vitals.length>0&&<div className="mt-4 flex flex-wrap gap-2">{studio.vitals.map(v=><span key={v.tipo} className="rounded-xl border border-surface-border px-2 py-1 text-[11px] text-ink-muted">{v.tipo}: {v.value} · {v.source} {v.deviceName?`· ${v.deviceName}`:''}</span>)}</div>}
       </section>
       <AxisCheckinV8 snapshot={studio} today={today} enabled={ready}/>
