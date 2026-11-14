@@ -37,6 +37,7 @@ import {
   Monitor,
   Smartphone,
   BookOpen,
+  Compass,
   CheckCircle2,
   Bug,
 } from "lucide-react";
@@ -968,6 +969,13 @@ export default function MaisPage() {
             </div>
 
             <div>
+              <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/mapa?return_to=%2Fmais"); }}
+                className="mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-emerald-300/25 bg-emerald-300/[.06] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
+                aria-label="Abrir mapa de todas as áreas de saúde">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><Compass size={19}/></span>
+                <span className="min-w-0 flex-1"><strong className="block text-sm font-bold text-ink-primary">Explorar áreas de saúde</strong><span className="block text-[11px] text-ink-muted">Encontre todas as funções por tarefa</span></span>
+                <ChevronRight size={16} className="shrink-0 text-emerald-300"/>
+              </button>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Perfis do Vault</h2>
               <button type="button" onClick={()=>router.push("/saude/minha-saude")} className="mb-2 flex w-full items-center justify-between rounded-[20px] border border-emerald-400/15 bg-surface p-3 text-left"><span className="text-sm font-semibold text-emerald-400">Minha saúde</span><span className="text-[10px] text-ink-muted">Perfil, aparelhos e registros →</span></button>
               <div className="flex items-center justify-between gap-3 rounded-[20px] border border-orange-400/15 bg-orange-400/[0.035] p-3">

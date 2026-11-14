@@ -41,7 +41,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
     </button>
     <div className={`border-t border-surface-border/35 bg-surface/25 px-3.5 ${quietRoutine ? "pb-1.5 pt-1.5" : "pb-2.5 pt-2"}`}>
       <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-ink-muted">
-        <span>Rotina programada de hoje</span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${safeCompleted}/${scheduled}` : "Sem horários"}</span>
+        <span title="Na Home, este contador considera apenas medicamentos de uso contínuo. No Hoje, a linha do tempo pode ter outro total, incluindo tratamentos por período.">Rotina programada de hoje <span className="text-[10px] text-ink-faint">· contínuos</span></span><span className="font-mono tabular-nums text-ink-primary">{scheduled > 0 ? `${safeCompleted}/${scheduled}` : "Sem horários"}</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" role="progressbar" aria-label="Progresso da rotina programada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={safeProgress} aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas` : "Sem horários programados"}>
         <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-300 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />

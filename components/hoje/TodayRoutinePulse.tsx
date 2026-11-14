@@ -39,7 +39,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
         </div>
         <div className="shrink-0 text-right">
           <strong className={`font-mono text-lg font-bold tabular-nums ${isFuturo ? "text-violet-300" : "text-ink-primary"}`}>{isFuturo ? projected : isPassado && recorded===0 ? "—" : `${safePercentage}%`}</strong>
-          <span className="ml-1 text-xs text-ink-muted">{isFuturo ? "previstas" : isPassado && recorded===0 ? "sem registros" : "rotina"}</span>
+          <span className="ml-1 text-xs text-ink-muted" title="O Hoje resume a linha do tempo da data selecionada, com um recorte diferente da Home, que considera apenas medicamentos contínuos.">{isFuturo ? "previstas" : isPassado && recorded===0 ? "sem registros" : "rotina do dia"}</span>
         </div>
       </div>
       <span className="sr-only">{isFuturo ? "Planejamento futuro não significa dose tomada." : isPassado ? "Sem confirmação histórica não significa dose ignorada." : "Doses ignoradas e pendentes não contam como tomadas."}</span>

@@ -35,7 +35,12 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
       {mode !== "secondary" && <>
       <div className="flex items-end justify-between gap-3">
         <div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações principais primeiro; demais áreas sob demanda</p></div>
-        <Stethoscope size={16} className="text-ink-muted"/>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => go("/saude/mapa?return_to=%2F")}
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-emerald-300/25 bg-emerald-300/[.065] px-2.5 text-[11px] font-semibold text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
+            aria-label="Explorar todas as áreas de saúde">Ver todas <ChevronRight size={14} aria-hidden="true"/></button>
+          <Stethoscope size={16} className="text-ink-muted"/>
+        </div>
       </div>
 
       {/* M131: dois destinos principais, com cores e componentes canônicos. */}
