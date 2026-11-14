@@ -112,7 +112,15 @@ ok(drops.includes('Frascos adquiridos')&&drops.includes('recipientes * ml * gota
 ok(drops.includes('recipientesValidos')&&drops.includes('possuiConversaoValida'),'conversão ausente não inventa saldo');
 const novo=read('app/saude/medicamentos/novo/page.tsx');
 ok(novo.includes('fabricanteAquisicao')&&novo.includes('attachManufacturerMetadata("", { manufacturer: fabricanteAquisicao })'),'fabricante associado apenas à aquisição inicial');
-ok(read('app/saude/medicamentos/page.tsx').includes('latestManufacturer')&&read('app/saude/medicamentos/page.tsx').includes('ManufacturerBadge'),'badge mostra somente fabricante associado à última aquisição');
+const listM137=read('app/saude/medicamentos/page.tsx');
+const badgeM137=read('components/saude/MedicationProvenanceBadge.tsx');
+ok(listM137.includes('latestManufacturer') &&
+   listM137.includes('readManufacturerMetadata(latestAcquisition?.observacoes).manufacturer') &&
+   listM137.includes('!isPrescriptionOnly(row) && !isFutureAcquisition(row, hojeString)') &&
+   listM137.includes('MedicationProvenanceBadge name={latestManufacturer} source="ultima_aquisicao"') &&
+   badgeM137.includes('source==="ultima_aquisicao"') &&
+   badgeM137.includes('Fabricante informado na última aquisição registrada'),
+   'badge deriva da última aquisição realizada, nunca de receita, compra futura ou etiqueta');
 ok(read('components/hoje/TodayFilterPanel.tsx').includes('Fechar filtros'),'filtros combinados com fechamento explícito');
 const date=read('components/DatePicker.tsx');
 ok(date.includes('shouldCloseOnSelect')&&date.includes('setCalendarOpen(false)'),'calendário compartilhado fecha após escolha');

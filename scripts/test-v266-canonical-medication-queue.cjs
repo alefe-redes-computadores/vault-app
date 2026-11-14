@@ -10,7 +10,7 @@ assert(decision.includes('withdrawal_overdue')&&decision.includes('acquisition_p
 assert(opportunities.includes('medicationCareStageIsPlanning(careDecision.stage)')&&opportunities.includes('? "planning"'),'Home não pinta planejamento futuro como urgência');
 assert(opportunities.includes('Math.min(score, 20)'),'planejamento futuro não domina o ranking operacional');
 assert(list.includes('careDecisionsByMedication')&&list.includes('medicationCareStageNeedsAttention(careDecisionsByMedication'),'lista usa decisão canônica em uma passagem');
-assert(list.includes('medsPlanejados')&&list.includes('Próximas etapas'),'lista separa planejamento de atenção e em dia');
+assert(list.includes('medsPlanejados')&&list.includes('Planejamento e acompanhamento')&&list.includes('não são doses atrasadas'),'lista separa planejamento de atenção sem rotular plano como dose atrasada');
 assert(today.includes('decideMedicationCarePath')&&today.includes('decision.stage === "prescription_needed"'),'Hoje preserva a mesma decisão canônica');
 assert(home.includes('buildMedicationCareOpportunities')&&home.includes('careCommand?.decision'),'Home mantém fila e Brain compartilhados');
 assert(avatar.includes('authorityLabel')&&avatar.includes('associação cautelosa'),'Avatar explica autoridade sem poluir o personagem');

@@ -1,0 +1,38 @@
+// M148 P3: deterministic, no runtime database writes and no native build.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const ts=require('typescript');
+const r=p=>fs.readFileSync(p,'utf8');
+const nav=r('components/BottomNav.tsx');
+assert.match(nav,/"\/saude\/central-m144"/,'Central must retain BottomNav');
+const page=r('app/saude/central-m144/page.tsx');
+assert.match(page,/dynamic\(/,'M144 panel must lazy mount');
+assert.match(page,/HeartPulse/,'Distinct icon for the health center');
+const clinical=r('components/saude/M144ClinicalPanel.tsx');
+for(const area of ['historico','contingencias','ciclos','imunizacoes','relatos'])
+  assert.ok(clinical.includes(`activeArea==='${area}'`),`M144 section missing ${area}`);
+assert.match(clinical,/entries\.slice\(0,historyLimit\)/,'History must be progressive');
+const meds=r('app/saude/medicamentos/page.tsx');
+assert.match(meds,/const showActiveIngredient = activeIngredients\.length > 0;/,'Same-name ingredient must show');
+assert.doesNotMatch(meds,/Receita: \{medicationRegulatoryShortLabel/,'Regulatory duplicate must be absent');
+assert.doesNotMatch(meds,/Buscar medicamento pelo nome ou princípio ativo<\/span>/,'Search must be behind header magnifier');
+assert.match(meds,/listaCronologica\.slice\(0, unifiedVisibleCount\)/,'Unifed list must sort');
+assert.match(meds,/MedicationProvenanceBadge/,'Manufacturer/label provenance must be visibly distinct');
+const filters=r('components/saude/MedicationFilterBar.tsx');
+assert.equal((filters.match(/\["sos", "SOS"\]/g)||[]).length,1,'SOS filter has exactly one entry');
+const source=r('lib/health-intelligence/medication-list-sort-m148.ts');
+const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const p3SandboxModule={exports:{}};
+vm.runInNewContext(js,{module:p3SandboxModule,exports:p3SandboxModule.exports});
+const {compareMedicationTimeM148,medicationFirstClockM148}=p3SandboxModule.exports;
+const row=(nome,hours,tipo)=>({med:{nome,estoque_horarios:hours,tipo_uso:tipo||'continuo'}});
+const test=[row('22h',['22:00']),row('10h',['10:00']),row('8h',['08:00']),row('SOS',[],'sos'),row('Sem horário',[])];
+const sorted=test.slice().sort(compareMedicationTimeM148).map(v=>v.med.nome);
+assert.equal(sorted.slice(0,3).join(','),'8h,10h,22h','08h must precede 10h, then 22h');
+assert.equal(medicationFirstClockM148(test[3].med),1440,'SOS is unscheduled');
+assert.equal(medicationFirstClockM148(row('x',['99:99']).med),1440,'bad clock does not set schedule');
+assert.ok(r('app/saude/minha-saude/page.tsx').includes('Ocorrências, ciclos e vacinas'));
+assert.match(r('app/page.tsx'),/VAULT_M144_HOME_ENTRY/);
+assert.match(r('app/page.tsx'),/Acompanhamento de saúde/);
+console.log('M148 P3: navegação, progressividade, filtros, ordenação e proveniência OK');

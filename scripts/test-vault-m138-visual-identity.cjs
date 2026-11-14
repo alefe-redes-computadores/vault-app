@@ -54,7 +54,13 @@ ok(types.includes('laboratorio_etiqueta?: string | null;')&&types.includes('sepa
 ok(create.includes('ManufacturerFieldM129')&&create.includes('MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor}')&&create.includes('laboratorio_etiqueta: laboratorioEtiqueta.trim() || undefined')&&create.includes('setLaboratorioEtiqueta'),'criacao preenche e salva etiqueta e HEX');
 ok(edit.includes('setLaboratorioEtiqueta(item.laboratorio_etiqueta || "")')&&edit.includes('MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor}')&&edit.includes('laboratorio_etiqueta: laboratorioEtiqueta.trim() || null'),'edicao carrega, limpa e salva etiqueta e HEX');
 ok(edit.includes('markChanged();')&&edit.includes('ManufacturerFieldM129 label="Laboratório na etiqueta (opcional)"'),'edicao marca mudanca real sem duplicar campo');
-ok(list.includes('Lab. {med.laboratorio_etiqueta}')&&detail.includes('Etiqueta visual · {med.laboratorio_etiqueta}')&&preview.includes('Etiqueta · {label}'),'etiqueta aparece na previa, lista e detalhe');
+const provenanceM138=read('components/saude/MedicationProvenanceBadge.tsx');
+ok(list.includes('MedicationProvenanceBadge name={med.laboratorio_etiqueta} source="etiqueta"') &&
+   provenanceM138.includes('Laboratório declarado na etiqueta') &&
+   provenanceM138.includes('Não comprova fabricação da última aquisição') &&
+   detail.includes('Etiqueta visual · {med.laboratorio_etiqueta}') &&
+   preview.includes('Etiqueta · {label}'),
+   'etiqueta declarada visível na lista, detalhe e prévia, sem se confundir com fabricante da aquisição');
 // M137 ja possui a associacao de fabricante a uma aquisicao efetiva no cadastro.
 // A M138 nao pode remover essa associacao nem confundir etiqueta visual com a compra.
 const acquisitionSignature = 'observacoes: fabricanteAquisicao.trim() ? attachManufacturerMetadata("", { manufacturer: fabricanteAquisicao }) : undefined';

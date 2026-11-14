@@ -45,8 +45,15 @@ ok(today.indexOf('<TodayAgendaOverview')<today.indexOf('id="hoje-doses"')&&today
 ok(today.indexOf('<TodayActionCenter')<today.indexOf('id="hoje-doses"')&&today.indexOf('<TodayActionCenter')>0,"Brain de Hoje sobe sem duplicar autoridade");
 ok(today.includes('id="hoje-compromissos"')&&today.includes('buildTodayAgendaOverview'),"reaproveita a agenda e os destinos reais");
 const meds=parse("app/saude/medicamentos/page.tsx");
-ok(meds.includes('className="sr-only" title={`Princípio ativo: ${activeIngredient}`}')&&meds.includes('aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted"'),"princípio ativo mantém leitura acessível única e subtítulo discreto");
-ok(meds.includes('showActiveIngredient')&&meds.includes('                  {activeIngredient}')&&meds.includes('aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted"'),"princípio ativo sem prefixo visível e dado preservado");
+ok(meds.includes('className="sr-only" title={`Princípio ativo: ${activeIngredient}`}') &&
+   meds.includes('aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted"') &&
+   meds.includes('<span className="text-ink-faint">Princípio ativo: </span>{activeIngredient}'),
+   "princípio ativo mantém descrição assistiva e rótulo secundário padronizado");
+ok(meds.includes('const showActiveIngredient = activeIngredients.length > 0;') &&
+   meds.includes('activeIngredients.join(" + ")') &&
+   meds.includes('showActiveIngredient && (') &&
+   meds.includes('<span className="text-ink-faint">Princípio ativo: </span>{activeIngredient}'),
+   "princípio ativo resolvido é exibido mesmo quando o nome coincide, sem inferência quando não existe");
 ok(meds.includes('ChevronDown,')&&meds.includes('Unidade do estoque diferente · revisar')&&meds.includes('Unidade do estoque: {stockReview}'),"alerta de unidade fica visível e texto completo acessível");
 ok(meds.includes('setQuickDoseMedId(med.id!)')&&meds.includes('medsPrioridade.map(renderCard)'),"ação de dose e grupos canônicos preservados");
 const medFilters=parse("components/saude/MedicationFilterBar.tsx");

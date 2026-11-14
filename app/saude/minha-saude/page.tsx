@@ -281,6 +281,12 @@ function HealthDashboard({
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             {/* M118: five real navigation destinations; care relationship panels do not precede the Avatar. */}
             <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Fênix",icon:<FenixMark size="xs"/>,iconClassName:"text-amber-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
+            {/* M148: entrada principal no domínio de acompanhamento; não duplica a listagem de medicamentos. */}
+            <button type="button" onClick={() => goFromHealth("/saude/central-m144")}
+              className="my-3 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.045] px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-400/25 bg-emerald-400/[.08]"><HeartPulse size={19} className="text-emerald-300" aria-hidden="true" /></span><span className="min-w-0 flex-1"><strong className="block text-xs text-ink-primary">Ocorrências, ciclos e vacinas</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">Registrar eventos e acompanhar o histórico informado</span></span>
+              <ChevronRight size={17} className="shrink-0 text-emerald-300" aria-hidden="true" />
+            </button>
             {panel === "profile" && (
               <div id={profileEditorId} ref={profileEditorRef} role="region" aria-label="Configurações do perfil de saúde" tabIndex={-1} className="scroll-mt-24 rounded-[24px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">
                 <HealthProfileEditor personId={personId} profile={profile} onClose={() => setPanel(null)} />
@@ -612,12 +618,6 @@ function HealthDashboard({
               </button>
             </div>
             <DeferredHealthSection id="historico" title="Histórico por dia" description="Navegue pelas datas, filtre medidas e abra cada registro" icon={<CalendarRange size={18}/>} badge={`${daySummary.total} no dia`}>
-            {/* M148: entrada principal no domínio de acompanhamento; não duplica a listagem de medicamentos. */}
-            <button type="button" onClick={() => goFromHealth("/saude/central-m144")}
-              className="mb-3 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.045] px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-              <span className="min-w-0"><strong className="block text-xs text-ink-primary">Ocorrências, ciclos e vacinas</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">Registrar eventos e acompanhar o histórico informado</span></span>
-              <ChevronRight size={17} className="shrink-0 text-emerald-300" aria-hidden="true" />
-            </button>
             <section className="rounded-2xl bg-surface-raised/20 p-1">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-semibold">Registros do dia</h2>

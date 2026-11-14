@@ -46,6 +46,8 @@ export function M144ClinicalPanel(){
  const [pain,setPain]=useState(''),[energy,setEnergy]=useState('');
  const [busy,setBusy]=useState(false),[feedback,setFeedback]=useState('');
  const saving=useRef(false);
+ const [activeArea,setActiveArea]=useState<'historico'|'contingencias'|'ciclos'|'imunizacoes'|'relatos'>('historico');
+ const [historyLimit,setHistoryLimit]=useState(15);
  useEffect(()=>{setAnchor('');setBridge('');setFeedback('');setFrom('');setUntil('');setNote('');setTitle('');setLot('');setNext('');setBenefit('');setCost('');setPain('');setEnergy('');setCourseMed('');setCourseFrom('');setCourseUntil('');setCourseNote('');setEventDate('');setProofNote('');},[uid,pid]);
  const enabled=Boolean(uid&&pid&&!authLoading&&!isLoading);
  async function save(event:EntryM144){
@@ -71,12 +73,32 @@ export function M144ClinicalPanel(){
    <div className="mt-3 flex flex-wrap gap-2"><Link href="/saude/visual-studio" className={buttonBase+' inline-flex items-center text-emerald-200'}>Quatro eixos + Fênix</Link><Link href="/saude/supply-shield" className={buttonBase+' inline-flex items-center text-sky-200'}>Estoque e embalagens SS7</Link><Link href="/saude/medicamentos" className={buttonBase+' inline-flex items-center text-ink-primary'}>Medicamentos</Link><Link href="/saude/plano-seguranca" className={buttonBase+' inline-flex items-center gap-1.5 border-rose-300/30 text-rose-200'}><ShieldAlert size={14}/>Plano SOS</Link></div>
   </section>
   {!enabled?<p role="status" className="rounded-xl border border-surface-border p-3 text-xs text-ink-muted">{authLoading||isLoading?'Lendo dados da pessoa…':'Entre na sua conta e selecione uma pessoa para registrar.'}</p>:null}
+  {/* M148 P3: somente a area selecionada monta formularios, evitando dezenas de controles simultaneos no Android. */}
+  <nav className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Áreas da Central de Saúde">
+   {([
+    ['historico','Histórico',History],
+    ['contingencias','Contingências',ShieldAlert],
+    ['ciclos','Ciclos',CalendarDays],
+    ['imunizacoes','Vacinas e procedimentos',Syringe],
+    ['relatos','Percepções',HeartPulse],
+   ] as const).map(([area,label,Icon])=><button key={area} type="button" aria-pressed={activeArea===area}
+     onClick={()=>{setActiveArea(area);setFeedback('');}}
+     className={`${buttonBase} flex min-h-14 min-w-0 items-center justify-center gap-1.5 px-2 text-center ${activeArea===area?'border-emerald-300/45 bg-emerald-300/[.11] text-emerald-200':'border-surface-border/60 bg-surface/55 text-ink-muted'}`}>
+      <Icon size={16} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{label}</span>
+    </button>)}
+  </nav>
+  {activeArea==='historico' && (
+    <>
   {/* VAULT_M144_ACQUISITION_TRUTH: a origem da aquisição é do evento, não do processo SUS. */}
   <details className="rounded-[24px] border border-surface-border bg-surface/70 p-3" aria-label="Origem real de aquisições registradas">
    <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-ink-primary"><ClipboardList size={16} className="text-sky-300"/>Últimas aquisições registradas · {acquisitions.length}</summary>
    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Apenas registros com data real de aquisição. Um processo SUS não transforma uma compra particular em retirada SUS. Data da receita não prova compra ou retirada.</p>
    {acquisitions.length?<div className="mt-2 space-y-1.5">{acquisitions.map(({med,result})=><div key={med.id} className="rounded-xl border border-surface-border/60 bg-void/40 p-2 text-xs"><strong className="text-ink-primary">{med.nome}</strong><p className="mt-0.5 text-ink-muted">{result?.label} · {result?.date}</p></div>)}</div>:<p className="mt-2 text-xs text-ink-muted">Nenhuma aquisição com data efetiva registrada nesta pessoa.</p>}
   </details>
+    </>
+  )}
+  {activeArea==='contingencias' && (
+    <>
   <section className="rounded-[24px] border border-surface-border bg-surface/80 p-4" aria-labelledby="m144-bridge-title">
    <h2 id="m144-bridge-title" className="flex items-center gap-2 text-sm font-bold text-ink-primary"><Pill size={17} className="text-amber-300"/>Ponte de contingência — relato, não prescrição</h2>
    <p className="mt-2 text-xs leading-relaxed text-ink-muted">Registre uma ocorrência passada ou comunicada ao profissional. Isto não recomenda substituir, iniciar ou retomar medicamentos, nem considera uma interação segura.</p>
@@ -90,6 +112,10 @@ export function M144ClinicalPanel(){
    <button type="button" disabled={!enabled||busy||!anchor||!bridge||anchor===bridge||!isDayM144(from)||!isDayM144(until)||until<from} onClick={()=>void save({tag:'bridge',id:'v1',anchorId:anchor,bridgeId:bridge,start:from,end:until,note})} className={buttonBase+' mt-3 w-full border-amber-300/30 bg-amber-300/10 text-amber-200 disabled:opacity-40'}>Registrar ocorrência no Diário</button>
    <p className="mt-2 text-[11px] leading-relaxed text-amber-200">Uma ponte pode apresentar riscos sérios de interação e sedação. Não existe cálculo automático de intervalo seguro de retomada.</p>
   </section>
+    </>
+  )}
+  {activeArea==='ciclos' && (
+    <>
   {/* VAULT_M144_COURSE_LEDGER: datas declaradas; nunca inventar dose automática. */}
   <section className="rounded-[24px] border border-violet-400/20 bg-surface/80 p-4" aria-labelledby="m144-course-title">
    <h2 id="m144-course-title" className="flex items-center gap-2 text-sm font-bold text-ink-primary"><CalendarDays size={17} className="text-violet-300"/>Ciclos curtos · episódios</h2>
@@ -102,6 +128,10 @@ export function M144ClinicalPanel(){
    <label className="mt-2 block text-xs text-ink-muted">Contexto declarado (opcional)<textarea value={courseNote} onChange={e=>setCourseNote(e.target.value)} maxLength={350} rows={2} className={input+' resize-y py-3'}/></label>
    <button type="button" disabled={!enabled||busy||!courseMed||!episodeProgressM144(courseFrom,courseUntil,today)} onClick={()=>void save({tag:'course',id:'v1',bridgeId:courseMed,start:courseFrom,end:courseUntil,note:courseNote})} className={buttonBase+' mt-3 w-full border-violet-300/30 bg-violet-300/10 text-violet-200 disabled:opacity-40'}>Documentar episódio no Diário</button>
   </section>
+    </>
+  )}
+  {activeArea==='relatos' && (
+    <>
   <section className="rounded-[24px] border border-sky-400/20 bg-surface/80 p-4" aria-labelledby="m144-risk-title">
    <h2 id="m144-risk-title" className="flex items-center gap-2 text-sm font-bold text-ink-primary"><HeartPulse size={17} className="text-sky-300"/>Benefício observado × custo ou risco relatado</h2>
    <p className="mt-2 text-xs text-ink-muted">Anote separadamente o que percebeu e sinais preocupantes, sem atribuir causalidade. Consulte os quatro eixos para registrar dor, energia, humor e apetite em escala consistente.</p>
@@ -111,6 +141,10 @@ export function M144ClinicalPanel(){
    <button type="button" disabled={!enabled||busy||(!benefit.trim()&&!cost.trim()&&pain===''&&energy==='')||Boolean((pain!==''&&(!Number.isInteger(Number(pain))||Number(pain)<0||Number(pain)>10))||(energy!==''&&(!Number.isInteger(Number(energy))||Number(energy)<0||Number(energy)>10)))} onClick={()=>void save({tag:'risk_benefit',id:'v1',benefit:benefit.trim(),cost:cost.trim(),pain:pain===''?undefined:Number(pain),energy:energy===''?undefined:Number(energy)})} className={buttonBase+' mt-3 w-full border-sky-300/30 bg-sky-300/10 text-sky-200 disabled:opacity-40'}>Salvar relato sem conclusão clínica</button>
    <p className="mt-2 flex items-start gap-2 text-[11px] text-ink-muted"><ShieldAlert size={15} className="shrink-0 text-amber-300"/>Risco serotoninérgico, convulsivo, sedativo, renal e gastrointestinal exige revisão profissional conforme os produtos reais. Histórico de tolerância não anula alertas regulatórios.</p>
   </section>
+    </>
+  )}
+  {activeArea==='imunizacoes' && (
+    <>
   <section className="rounded-[24px] border border-violet-400/20 bg-surface/80 p-4" aria-labelledby="m144-periodic-title">
    <h2 id="m144-periodic-title" className="flex items-center gap-2 text-sm font-bold text-ink-primary"><Syringe size={17} className="text-violet-300"/>Imunizações e procedimentos periódicos</h2>
    <p className="mt-2 text-xs text-ink-muted">Registro voluntário fora da lista de comprimidos. A data de reforço é a que você declarar; o VAULT não calcula esquema vacinal.</p>
@@ -124,18 +158,24 @@ export function M144ClinicalPanel(){
    <Link href="/documentos" className="mt-1 inline-flex min-h-10 items-center text-xs font-semibold text-violet-200 underline underline-offset-4">Abrir Documentos para anexar o comprovante</Link>
    <button type="button" disabled={!enabled||busy||!title.trim()||!isDayM144(eventDate)||Boolean(eventKind==='immunization'&&eventDate>today)||Boolean(next&&!isDayM144(next))} onClick={()=>void save({tag:eventKind,id:'v1',title:title.trim(),lot:lot.trim(),next:next||undefined,start:eventDate,note:proofNote.trim()})} className={buttonBase+' mt-3 w-full border-violet-300/30 bg-violet-300/10 text-violet-200 disabled:opacity-40'}>Registrar no Diário</button>
   </section>
+    </>
+  )}
+  {activeArea==='historico' && (
+    <>
   <section className="rounded-[24px] border border-surface-border bg-surface/80 p-4" aria-labelledby="m144-ledger-title">
    <h2 id="m144-ledger-title" className="flex items-center gap-2 text-sm font-bold text-ink-primary"><History size={17} className="text-emerald-300"/>Episódios e registros anteriores</h2>
    <p className="mt-2 text-xs text-ink-muted">Itens encerrados passam à apresentação histórica automaticamente, sem excluir seu registro ou modificar o esquema de medicamentos.</p>
-   {entries.length? <div className="mt-3 space-y-2">{entries.map(({record,event})=>{
+   {entries.length? <div className="mt-3 space-y-2">{entries.slice(0,historyLimit).map(({record,event})=>{
      const anchorName=meds.find(m=>m.id===event.anchorId)?.nome||'Medicação-base não identificada';
      const bridgeName=meds.find(m=>m.id===event.bridgeId)?.nome||'Medicação pontual não identificada';
      const state=event.tag==='bridge'?classifyBridgeM144({id:record.id||'',ownerId:uid,personId:pid,anchorId:event.anchorId||'',bridgeId:event.bridgeId||'',startDay:event.start||'',endDay:event.end||'',reason:'ruptura_estoque_ancora',notes:event.note||''},today):null;
      const cycleStatus=event.tag==='course'?episodeProgressM144(event.start||'',event.end||'',today):null;
      const warning=state==='historica'?returnMonitoringM144(event.end||'',today):null;
      return <article key={record.id} className="rounded-xl border border-surface-border/70 bg-void/40 p-3 text-xs text-ink-secondary"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-ink-primary">{tagLabel[event.tag]}</strong><span>{displayedEventDayM147(event,record.data)} {state?' · '+(state==='historica'?'Histórico':state==='ativa'?'Em período declarado':state==='agendada'?'Planejada':'Revisar datas'):''}{cycleStatus?' · '+(cycleStatus.state==='ativo'?`Dia ${cycleStatus.elapsed} de ${cycleStatus.total}`:cycleStatus.state==='historico'?'Histórico':'Planejado'):''}</span></div>{event.tag==='bridge'?<p className="mt-1">{anchorName} · {bridgeName} · {event.start} a {event.end}</p>:event.tag==='course'?<p className="mt-1">{bridgeName} · {event.start} a {event.end}</p>:event.tag==='risk_benefit'?<p className="mt-1">Benefício: {event.benefit||'sem relato'} · Preocupações: {event.cost||'sem relato'}{typeof event.pain==='number'?` · Dor ${event.pain}/10`:''}{typeof event.energy==='number'?` · Energia ${event.energy}/10`:''}</p>:<p className="mt-1">{event.title} · {event.start||'Data não informada'}{event.lot?` · Lote ${event.lot}`:''}{event.next?` · Próxima data declarada: ${event.next}`:''}</p>}{event.note&&<p className="mt-1 break-words text-ink-muted">{event.note}</p>}{warning&&<p className="mt-1 text-amber-200">{warning.notice}</p>}</article>;
-   })}</div>:<p className="mt-3 text-xs text-ink-muted">Nenhuma ocorrência registrada nesta central para esta pessoa.</p>}
+    })}{entries.length>historyLimit&&<button type="button" onClick={()=>setHistoryLimit(limit=>Math.min(entries.length,limit+15))} className={buttonBase+' mt-3 w-full border-emerald-300/25 text-emerald-200'}>Mostrar mais {Math.min(15,entries.length-historyLimit)} registros</button>}</div>:<p className="mt-3 text-xs text-ink-muted">Nenhuma ocorrência registrada nesta central para esta pessoa.</p>}
   </section>
+    </>
+  )}
   {feedback&&<p role="status" className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-xs text-ink-secondary">{feedback}</p>}
   <div className="flex flex-wrap gap-2 text-[11px] text-ink-muted"><Link href="/saude/registros" className={buttonBase+' inline-flex items-center gap-2 text-ink-primary'}><ClipboardList size={15}/>Abrir Diário original</Link><Link href="/saude/visual-studio" className={buttonBase+' inline-flex items-center gap-2 text-sky-200'}><Activity size={15}/>Evolução de quatro eixos</Link><Link href="/hoje" className={buttonBase+' inline-flex items-center gap-2 text-ink-primary'}><CalendarDays size={15}/>Voltar ao Hoje</Link></div>
  </div>;

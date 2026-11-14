@@ -5,6 +5,7 @@ const contracts = [
   "scripts/test-vault-m92-medication-premium-2.cjs",
   "scripts/test-vault-m93-home-brain-documents.cjs",
   "scripts/test-vault-m94-notifications-update.cjs",
+  "scripts/test-vault-m148-p3.cjs",
   "scripts/test-vault-m126-manufacturer-batch-closure.cjs",
   "scripts/test-vault-m127-closure.cjs",
   "scripts/test-vault-m128-manufacturer-edit.cjs",

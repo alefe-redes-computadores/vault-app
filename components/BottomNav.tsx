@@ -60,6 +60,7 @@ const ALLOWED_NAV_PATHS = [
   "/saude/cids",
   "/saude/rede",
   "/saude/registros",
+  "/saude/central-m144", // M148 P3: Central e area autenticada, barra inferior permanece
 ];
 
 // VAULT_NORMALIZE_PATHNAME_V40

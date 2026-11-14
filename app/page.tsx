@@ -1216,6 +1216,14 @@ export default function HomePage() {
 
           <VaultUpdateHomePromptM117 />
           <HomeEssentialToggleM118 />
+          {/* VAULT_M144_HOME_ENTRY · M148 P3: contextual health access, no detached footer CTA. */}
+          <details className="mt-2 rounded-xl border border-surface-border/40 bg-surface/35 px-3">
+            <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-ink-muted">Acompanhamento de saúde</summary>
+            <button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2F")}
+              className="mb-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-emerald-300/20 bg-emerald-300/[.04] px-3 text-left text-xs font-semibold text-emerald-200">
+              <span>Ocorrências, ciclos e vacinas</span><ChevronRight size={16} aria-hidden="true" />
+            </button>
+          </details>
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
 
           {/* ===================================================
@@ -2304,8 +2312,7 @@ export default function HomePage() {
             );
           }}
         />
-      {/* VAULT_M144_HOME_ENTRY — atalhos complementares, sem novas prioridades */}
-        <div className="mx-4 mb-4 rounded-2xl border border-surface-border/70 bg-surface/60 p-3"><button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2F")} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/20 px-3 text-xs font-semibold text-emerald-200 w-full">Ocorrências, ciclos e vacinas</button></div>
+
       </main>
     </PageTransition>
   );

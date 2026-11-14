@@ -15,9 +15,9 @@ export type MedicationFilterValue =
 const PRIMARY: ReadonlyArray<readonly [MedicationFilterValue, string]> = [
   ["todos", "Todos"],
   ["atencao", "Atenção"],
+  ["sos", "SOS"],
 ];
 const ADDITIONAL: ReadonlyArray<readonly [MedicationFilterValue, string]> = [
-  ["sos", "SOS"],
   ["continuos", "Contínuos"],
   ["temporarios", "Por período"],
   ["controlados", "Controlados"],
@@ -76,7 +76,7 @@ export function MedicationFilterBar({ value, onChange }: {
         {PRIMARY.map(([key, label]) => (
           <button key={key} type="button" aria-pressed={value === key}
             onClick={() => choose(key)}
-            className={`${controlClass(value === key, key === "atencao")} min-w-0 flex-1`}>
+            className={`${controlClass(value === key, key === "atencao")} min-w-0 flex-1 px-1.5`}>
             {label}
           </button>
         ))}

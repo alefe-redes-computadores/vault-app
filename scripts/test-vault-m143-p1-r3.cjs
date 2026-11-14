@@ -20,7 +20,7 @@ assert.ok(viewer.includes('fileType !== "image"'));
 assert.ok(viewer.includes("onTouchMove"));
 assert.ok(meds.includes("setUnifiedList] = useState(true)"));
 assert.ok(meds.includes("setUnifiedVisibleCount] = useState(24)"));
-assert.ok(meds.includes("Buscar medicamento pelo nome ou princípio ativo"));
+assert.ok(meds.includes('aria-label="Pesquisar medicamentos"') && meds.includes('placeholder="Nome, princípio ativo, dose ou médico..."'));
 assert.ok(today.includes("Como você está se sentindo?"));
 assert.equal(today.split('id="hoje-diario"').length,2);
 assert.ok(today.indexOf('id="hoje-diario"')<today.indexOf('id="hoje-mes"'));
