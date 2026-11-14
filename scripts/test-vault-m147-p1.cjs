@@ -31,7 +31,7 @@ for(const id of ['critical','overdue','stock','another','external','med'])ok(!al
 ok(x.mergeExactWithdrawalAliasesM147([],alerts).aliasIds.size===0,'sem retirada visível, nenhum alias');
 const home=read('app/page.tsx'),gate=read('scripts/test-v63-release-gate.mjs');
 for(const p of ['app/page.tsx']){const parsed=ts.createSourceFile(p,home,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);ok(parsed.parseDiagnostics.length===0,'TSX parse Home');}
-for(const key of ['VAULT_M147_P1_AGENDA','homeAgendaCountsM147(','sortHomeWithdrawalsM147(','mergeExactWithdrawalAliasesM147(','homeAgendaBucketM147(','aliasIds.has(alert.id)','id="home-compromissos"','id="home-atencao"','id="home-brain"','HomeAttentionRail alerts={unifiedAlerts}','<HomeDoseQuantityFollowUp','<HomeBrainEvidenceGroup','withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")','VAULT_M144_HOME_ENTRY'])ok(home.includes(key),'integração preservada '+key);
+for(const key of ['VAULT_M147_P1_AGENDA','homeAgendaCountsM147(','sortHomeWithdrawalsM147(','mergeExactWithdrawalAliasesM147(','homeAgendaBucketM147(','selectHomeAttentionP4R3(operationalAlerts, resumoContextual, aliasesRetiradaM147.aliasIds)','id="home-compromissos"','id="home-atencao"','id="home-brain"','HomeAttentionRail alerts={unifiedAlerts}','<HomeDoseQuantityFollowUp','<HomeBrainEvidenceGroup','withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")','VAULT_M144_HOME_ENTRY'])ok(home.includes(key),'integração preservada '+key);
 ok(home.indexOf('id="home-compromissos"')<home.indexOf('id="home-atencao"')&&home.indexOf('id="home-atencao"')<home.indexOf('id="home-brain"'),'M145/M146 ordem preservada');
 ok(home.includes('Math.max(0, retiradasAgendaM147.length - 1)'),'retiradas compactas e contagem correta');
 ok(home.includes('defaultOpen={quantityFollowUpInsight.gravidadeSeguranca === "critica" || quantityFollowUpInsight.gravidadeSeguranca === "importante"}'),'alertas de gravidade importante não recolhidos');
@@ -39,4 +39,25 @@ ok(home.includes('renderAlert={alert => <AlertRow alert={alert} />}'),'alerta re
 ok(home.includes('suppressOperationalOverlap('),'Brain mantém supressão canônica anterior');
 ok(gate.split('"scripts/test-vault-m147-p1.cjs"').length===2,'suite P1 registrada uma única vez');
 ok(gate.includes('"scripts/test-vault-m147-p0.cjs"')&&gate.includes('"scripts/test-vault-m146-premium-ux.cjs"'),'gates P0/M146 preservados');
+// P4 R3: check real behavior rather than the obsolete source expression.
+// This keeps M147 alias/id safety and confirms the new display authority.
+const attentionFile='lib/home/home-attention-authority-p4-r3.ts';
+const attentionCode=read(attentionFile);
+const attentionAst=ts.createSourceFile(attentionFile,attentionCode,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+ok(attentionAst.parseDiagnostics.length===0,'seletor da Home tem sintaxe TypeScript valida');
+const attentionModule=new Module('p4r3home',module);
+attentionModule._compile(ts.transpileModule(attentionCode,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,'p4r3home');
+const selectHomeAttentionP4R3=attentionModule.exports.selectHomeAttentionP4R3;
+ok(typeof selectHomeAttentionP4R3==='function','Home mantem seletor semantico puro');
+const sameEvent={id:'sus-retirada-with1',kind:'sus',level:'atencao',href:'/saude/retiradas/detalhes?id=with1',title:'Retirada de medicamento',subtitle:'Compromisso agendado'};
+const exactAlias=x.mergeExactWithdrawalAliasesM147([{id:'with1'}],[sameEvent]);
+ok(exactAlias.aliasIds.has(sameEvent.id),'indice da retirada identifica mesmo evento por ID');
+const topCard={href:'/hoje',title:'Resumo do dia',description:'Agenda da pessoa'};
+ok(selectHomeAttentionP4R3([sameEvent],topCard,exactAlias.aliasIds).length===0,'retirada nao critica ja exibida na agenda nao duplica');
+ok(selectHomeAttentionP4R3([{...sameEvent,level:'urgente'}],topCard,exactAlias.aliasIds).length===1,'retirada urgente continua no trilho');
+ok(selectHomeAttentionP4R3([{...sameEvent,level:'vencido'}],topCard,exactAlias.aliasIds).length===1,'retirada vencida continua no trilho');
+ok(selectHomeAttentionP4R3([{...sameEvent,href:'/saude/retiradas/detalhes?id=with2'}],topCard,exactAlias.aliasIds).length===1,'retirada diferente nao herda alias alheio');
+ok(selectHomeAttentionP4R3([{...sameEvent,kind:'estoque'}],topCard,exactAlias.aliasIds).length===1,'estoque nao se mistura com retirada');
+ok(!home.includes('safeReturnTarget(alert.href, "") !== safeReturnTarget(resumoContextual.href, "")'),'mesma URL nao oculta questoes distintas');
+
 console.log('M147 P1: '+n+' contratos de tempo, equivalência real, preservação clínica e UI aprovados.');

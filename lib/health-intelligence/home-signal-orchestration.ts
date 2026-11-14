@@ -50,6 +50,8 @@ function carePhenomena(opportunity: MedicationCareOpportunity): Set<HealthSignal
 // Home não repete o MESMO fenômeno da MESMA medicação entre Atenção e Intelligence.
 export function suppressOperationalOverlap(insights:HealthInsight[],opportunities:MedicationCareOpportunity[]):HealthInsight[]{
   return insights.filter(insight=>{
+    // Um mesmo destino operacional não autoriza apagar um sinal de segurança.
+    if (["critica", "importante", "atencao"].includes(insight.gravidadeSeguranca ?? "")) return true;
     const phenomenon=healthSignalPhenomenon(insight);
     return !opportunities.some(opportunity=>insightMatchesMedication(insight,opportunity)&&carePhenomena(opportunity).has(phenomenon));
   });

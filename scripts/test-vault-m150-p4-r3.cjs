@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+"use strict";
+/** M150 P4 R3 — behavioral coverage. Never reads real clinical databases. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const Module=require('node:module');
+const ts=require('typescript');
+const read=p=>fs.readFileSync(p,'utf8');
+const pure=(file)=>{
+  const output=ts.transpileModule(read(file),{fileName:file,reportDiagnostics:true,
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}});
+  assert.equal((output.diagnostics||[]).filter(x=>x.category===ts.DiagnosticCategory.Error).length,0,'sintaxe '+file);
+  const m=new Module(file,module);m._compile(output.outputText,file);return m.exports;
+};
+const {selectHomeAttentionP4R3:select}=pure('lib/home/home-attention-authority-p4-r3.ts');
+const base={id:'one',kind:'estoque',level:'atencao',href:'/saude/medicamentos/detalhes?id=m1',title:'Estoque',subtitle:'Acompanhamento'};
+const hero={href:base.href,title:base.title,description:base.subtitle};
+assert.equal(select([base],hero,new Set()).length,1,'alerta de atenção permanece no mesmo destino da hero');
+assert.equal(select([base,{...base,id:'duplicate'}],hero,new Set()).length,1,'duplicação estritamente idêntica recolhida');
+assert.equal(select([base,{...base,id:'different-phenomenon',kind:'receita'}],hero,new Set()).length,2,'estoque e receita não se misturam');
+assert.equal(select([base,{...base,id:'different-context',subtitle:'Sem receita'}],hero,new Set()).length,2,'contexto diferente permanece');
+assert.equal(select([base,{...base,id:'urgent',level:'urgente'}],hero,new Set()).length,2,'alerta urgente nunca é ocultado');
+assert.equal(select([{...base,level:'vencido'}],hero,new Set()).length,1,'alerta vencido continua mesmo destino');
+assert.equal(select([{...base,level:'ok'}],hero,new Set()).length,0,'mesmo texto e destino de informação neutra evita segundo CTA');
+assert.equal(select([{...base,level:'ok',title:'Outro problema'}],hero,new Set()).length,1,'mesmo destino não esconde outro problema');
+assert.equal(select([{...base,level:'ok',subtitle:'Questão independente'}],hero,new Set()).length,1,'mesmo título não esconde outro contexto');
+const withdrawal={id:'sus-retirada-abc',kind:'sus',level:'atencao',href:'/saude/retiradas/detalhes?id=abc',title:'Retirada',subtitle:'Agenda'};
+assert.equal(select([withdrawal],hero,new Set([withdrawal.id])).length,0,'alias exato de retirada em agenda aparece uma vez');
+assert.equal(select([{...withdrawal,level:'urgente'}],hero,new Set([withdrawal.id])).length,1,'retirada urgente permanece no trilho');
+assert.equal(select([{...withdrawal,href:'/saude/retiradas/detalhes?id=def'}],hero,new Set([withdrawal.id])).length,1,'alias não oculta outra retirada com ID diferente');
+assert.equal(select([{...withdrawal,kind:'documento'}],hero,new Set([withdrawal.id])).length,1,'documentos nunca desaparecem por alias SUS');
+const brain=pure('lib/health-intelligence/home-signal-orchestration.ts');
+const med={medicamentoId:'m1',medicamentoNome:'Medicamento',careStage:'stock_review'};
+const signal={id:'stock-s1',categoria:'estoque',titulo:'Estoque',mensagem:'Saldo',entidadeTipo:'medicamento',entidadeId:'m1'};
+assert.equal(brain.suppressOperationalOverlap([signal],[med]).length,0,'análise rotineira do mesmo fenômeno é agrupada');
+assert.equal(brain.suppressOperationalOverlap([{...signal,gravidadeSeguranca:'critica'}],[med]).length,1,'risco crítico é preservado');
+assert.equal(brain.suppressOperationalOverlap([{...signal,gravidadeSeguranca:'importante'}],[med]).length,1,'risco importante é preservado');
+assert.equal(brain.suppressOperationalOverlap([{...signal,gravidadeSeguranca:'atencao'}],[med]).length,1,'sinal de segurança em atenção é preservado');
+assert.equal(brain.suppressOperationalOverlap([{...signal,id:'receipt',categoria:'receita'}],[med]).length,1,'receita distinta continua visível');
+assert.equal(brain.suppressOperationalOverlap([{...signal,entidadeId:'m2'}],[med]).length,1,'outra pessoa/entidade não é inferida pelo nome');
+const home=read('app/page.tsx'),today=read('app/hoje/page.tsx');
+assert(home.includes('selectHomeAttentionP4R3(operationalAlerts,'),'nova política aplicada à Home');
+assert(!home.includes('safeReturnTarget(alert.href, "") !== safeReturnTarget(resumoContextual.href, "")'),'não esconde questão pela URL');
+assert(home.indexOf('id="home-resumo-da-rotina"')>home.indexOf('id="home-atencao"'),'indicadores abaixo da Atenção');
+assert(home.includes('HomeAgendaBreakdown')&&home.includes('<HomeQuickMetrics'),'contadores e agenda não foram removidos');
+assert(today.includes('VAULT_M144_TODAY_ENTRY')&&today.includes('aria-label="Check-in dos quatro eixos"'),'quatro eixos presentes');
+assert(!today.includes('aria-label="Check-in e plano de segurança"'),'não duplica central e plano de segurança');
+assert(today.includes('aria-label="Acessos rápidos do cuidado"')&&today.includes('id="hoje-diario"'),'atalhos existentes preservados');
+assert(!home.includes('retirada(s) vencida(s)')&&!home.includes('compromisso(s)'),'plural pt-BR na Home');
+assert(!today.includes('registro(s) não puderam')&&!today.includes('compromisso(s)'),'plural pt-BR no Hoje');
+assert(!read('lib/health-intelligence/medication-care-opportunities.ts').includes('dia(s)')&&!read('lib/health-intelligence/medication-care-opportunities.ts').includes('dose(s) registradas'),'plural de estoque sem jargão');
+const gate=read('scripts/test-v63-release-gate.mjs');
+assert.equal((gate.match(/"scripts\/test-vault-m150-p4-r3.cjs"/g)||[]).length,1,'P4 R3 cadastrado exatamente uma vez');
+assert(gate.includes('"scripts/test-vault-m150-p4-r2.cjs"')&&gate.includes('"scripts/test-vault-m150-p4.cjs"')&&gate.includes('"scripts/test-vault-m152b-final.cjs"'),'gates anteriores preservados');
+console.log('VAULT M150 P4 R3 — contratos de autoridade, hierarquia, pluralização e não duplicação OK');

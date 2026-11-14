@@ -52,7 +52,11 @@ ok(home.includes('router.push("/saude/central-m144?return_to=%2F")'),'Home clien
 ok(home.includes(': "Agenda de hoje"'),'no misleading upcoming heading');
 ok(home.indexOf('id="home-compromissos"')<home.indexOf('id="home-atencao"') && home.indexOf('id="home-atencao"')<home.indexOf('id="home-brain"'),'M145 priority order preserved');
 const today=read(paths[6]);
-ok(today.includes('router.push("/saude/central-m144?return_to=%2Fhoje")'),'Hoje client navigation');
+ok(today.includes('navigateWithReturnM120("/saude/central-m144")') &&
+   today.includes('const navigateWithReturnM120 = (href: string) =>') &&
+   today.includes('router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)))') &&
+   today.includes('onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/central-m144");}}') &&
+   !today.includes('<a href="/saude/central-m144"'), 'Hoje client navigation');
 ok(today.includes('id="hoje-diario"'),'M143 diary preserved');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.includes('const contracts = [\n  "scripts/test-vault-m92-medication-premium-2.cjs",'),'M92 first');

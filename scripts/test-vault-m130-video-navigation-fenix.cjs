@@ -29,7 +29,7 @@ ok(detail.includes('safeReturnTarget(searchParams.get("return_to"), "/saude/medi
 ok(detail.includes("setAttachmentPreviewUrl(url)")&&detail.includes('title="Anexo da receita"')&&detail.includes("Abrir externamente"),"anexo abre primeiro no VAULT com fallback explícito");
 ok(detail.includes("withReturnTarget(`${retroReviewHref(med.id!)}&origem=detalhes`,returnTo)"),"revisão recebe retorno explícito");
 ok(retro.includes('safeReturnTarget(search.get("return_to")')&&retro.includes("retroReviewExitAction"),"revisão valida retorno sem perder contrato M67");
-ok(home.includes("operationalAlerts.filter")&&home.includes("HomeAttentionRail alerts={unifiedAlerts}")&&home.includes("quantityAlreadyInBrain"),"Home deduplica destino principal e acompanhamento já explicado");
+ok(home.includes("selectHomeAttentionP4R3(operationalAlerts") && read("lib/home/home-attention-authority-p4-r3.ts").includes("protectedAlert")&&home.includes("HomeAttentionRail alerts={unifiedAlerts}")&&home.includes("quantityAlreadyInBrain"),"Home deduplica destino principal e acompanhamento já explicado");
 for(const token of ["useSharedHealthIntelligence","projectHomeDashboardAlerts","suppressOperationalOverlap","HomeAttentionRail","HomeDoseQuantityFollowUp"])ok(home.includes(token),`autoridade da Home preservada: ${token}`);
 ok(!detail.includes("setAttachmentPreviewUrl(url);\n\n      window.open"),"visualização interna não dispara janela externa automaticamente");
 console.log(`VAULT M130: ${count} contratos de lente, retorno e deduplicação aprovados`);

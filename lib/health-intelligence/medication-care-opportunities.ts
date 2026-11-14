@@ -291,14 +291,14 @@ function buildMessage({
     stockDays <= 7
   ) {
     parts.push(
-      `O estoque estimado de ${medicamento.nome} pode cobrir cerca de ${stockDays} dia(s).`
+      `O estoque estimado de ${medicamento.nome} pode cobrir cerca de ${stockDays} dia${stockDays === 1 ? "" : "s"}.`
     );
   } else if (
     dosesRemaining !== null &&
     dosesRemaining <= 5
   ) {
     parts.push(
-      `Restam aproximadamente ${dosesRemaining} dose(s) registradas para ${medicamento.nome}.`
+      `Resta${dosesRemaining === 1 ? "" : "m"} aproximadamente ${dosesRemaining} dose${dosesRemaining === 1 ? "" : "s"} registrada${dosesRemaining === 1 ? "" : "s"} para ${medicamento.nome}.`
     );
   } else if (
     insightMessage

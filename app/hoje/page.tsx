@@ -1424,8 +1424,8 @@ export default function HojePage() {
         } catch(error) { console.error("Falha ao registrar dose não tomada por falta de estoque",error);falhas++; }
       }
     } finally {batchOperationLock.current=false;setProcessandoTodos(false);}
-    if(registradas)showToast(`${registradas} dose(s) não tomadas registradas com motivo: sem estoque`,"info");
-    if(falhas)showToast(`${falhas} registro(s) não puderam ser salvos`,"error");
+    if(registradas)showToast(`${registradas} dose${registradas === 1 ? "" : "s"} não tomada${registradas === 1 ? "" : "s"} registrada${registradas === 1 ? "" : "s"} com motivo: sem estoque`,"info");
+    if(falhas)showToast(`${falhas} registro${falhas === 1 ? "" : "s"} não ${falhas === 1 ? "pôde" : "puderam"} ser salvo${falhas === 1 ? "" : "s"}`,"error");
   };
 
   const handleDesfazerLote = async () => {
@@ -1797,8 +1797,8 @@ export default function HojePage() {
             </section>
           )}
 
-          {/* VAULT_M144_TODAY_ENTRY — doses > check-in > agenda e contexto */}
-          {isHoje && !retroReviewMode ? <section className="mb-3 rounded-2xl border border-surface-border/70 bg-surface/70 p-3" aria-label="Check-in e plano de segurança"><p className="text-xs font-semibold text-ink-primary">Check-in rápido e segurança</p><p className="mt-1 text-[11px] text-ink-muted">Registre os quatro eixos ou documente uma contingência, sem confirmar doses automaticamente.</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={()=>router.push("/saude/visual-studio")} className="flex min-h-11 items-center justify-center rounded-xl border border-sky-300/25 bg-sky-300/5 px-2 text-center text-xs font-semibold text-sky-200">Check-in 4 eixos</button><button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2Fhoje")} className="flex min-h-11 items-center justify-center rounded-xl border border-amber-300/25 bg-amber-300/5 px-2 text-center text-xs font-semibold text-amber-200">Ocorrências e ciclos</button></div><button type="button" onClick={()=>router.push("/saude/plano-seguranca")} className="mt-2 flex min-h-11 items-center justify-center rounded-xl border border-rose-300/25 bg-rose-300/[.04] px-3 text-xs font-bold text-rose-200">Abrir plano de segurança SOS</button></section>:null}
+          {/* VAULT_M144_TODAY_ENTRY — destinos de ocorrência e segurança já estão na grade, quatro eixos continuam acessíveis */}
+          {isHoje && !retroReviewMode ? <button type="button" aria-label="Check-in dos quatro eixos" onClick={()=>navigateWithReturnM120("/saude/visual-studio")} className="mb-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.04] px-3 text-left text-xs font-semibold text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span className="flex min-w-0 items-center gap-2"><Activity size={15} aria-hidden="true"/>Check-in dos 4 eixos <span className="text-[11px] font-normal text-ink-muted">(opcional)</span></span><ChevronRight size={15} className="shrink-0" aria-hidden="true"/></button>:null}
           <span id="hoje-agenda" className="block scroll-mt-24" aria-hidden="true"/>
 
 
@@ -1876,7 +1876,7 @@ export default function HojePage() {
                     today={hoje} dayLabel={dataSelecionadaLabel} overview={supplyOverview}
                     onOpen={() => navegarCompromisso(item)}/>
                 ))}
-                {compromissosFiltrados.length > 3 && <button type="button" aria-expanded={mostrarTodosCompromissos} onClick={() => setMostrarTodosCompromissos(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodosCompromissos ? "Recolher compromissos" : `Ver mais ${compromissosFiltrados.length - 3} compromisso(s)`}</button>}
+                {compromissosFiltrados.length > 3 && <button type="button" aria-expanded={mostrarTodosCompromissos} onClick={() => setMostrarTodosCompromissos(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodosCompromissos ? "Recolher compromissos" : `Ver mais ${compromissosFiltrados.length - 3} compromisso${compromissosFiltrados.length - 3 === 1 ? "" : "s"}`}</button>}
               </div>
             </div>
           )}
