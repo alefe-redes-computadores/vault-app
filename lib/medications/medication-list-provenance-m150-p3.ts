@@ -36,6 +36,11 @@ export function medicationListProvenanceM150P3(input: ListProvenanceInputM150P3)
 }
 
 /** Presentation-only spelling correction, without changing the stored identity. */
-export function medicationListDisplayNameM150P3(name: string): string {
-  return name.replace(/\bprystiq\b/gi, 'Pristiq');
+export function medicationListDisplayNameM150P3(name: string, verifiedCatalogName?: string | null): string {
+  const basic = name.replace(/\bprystiq\b/gi, 'Pristiq');
+  // Active ingredient does not prove the commercial brand.
+  // Only a verified canonical Pristiq reference can correct PRISTIO visually.
+  return /^pristiq(?:\s|$)/i.test((verifiedCatalogName || '').trim())
+    ? basic.replace(/\bpristio\b/gi, 'Pristiq')
+    : basic;
 }

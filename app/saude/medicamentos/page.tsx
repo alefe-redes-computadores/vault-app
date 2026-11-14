@@ -4,6 +4,7 @@ import { formatQuantidade } from "@/lib/health-intelligence/medication-detail-pr
 import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-presentation";
 
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction } from "@/lib/medication-access-action";
+import { medicationBrainActionWithVerifiedWithdrawalM150P4 } from "@/lib/health-intelligence/medication-withdrawal-brain-authority-m150-p4";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { MedicationProvenanceLineM150P3 } from "@/components/saude/MedicationProvenanceLineM150P3";
@@ -1079,7 +1080,10 @@ export default function MedicamentosListPage() {
       const latestManufacturer = readManufacturerMetadata(latestAcquisition?.observacoes).manufacturer;
       // V299: preservar prioridade Brain, exceto contradicao com aquisicao/retirada comprovada.
       const brainSuggestion = brainCareItem && brainCareItem.lane === "now"
-        ? { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason }
+        ? medicationBrainActionWithVerifiedWithdrawalM150P4(
+            { href: brainCareItem.href, label: brainCareItem.title, description: brainCareItem.reason },
+            scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "")?.id ?? null,
+          )
         : null;
       const brainAction = brainSuggestion
         ? resolveMedicationCardAction(careDecision, brainSuggestion, null)
@@ -1095,7 +1099,9 @@ export default function MedicamentosListPage() {
       // VAULT_V318_CONTEXTUAL_ACTION: visual text only; never reinterpret the care decision.
       const contextualActionLabel = careAction
         ? isRestockDestination(careAction.href, med.id!) ? "Repor estoque"
-          : /retirad/i.test(careAction.href) ? "Abrir retirada"
+          : /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Abrir retirada"
+          : /\/retiradas\/nova(?:\?|$)/i.test(careAction.href) ? (/reposi/i.test(careAction.label) ? "Planejar reposição" : "Planejar retirada")
+          : /retirad/i.test(careAction.href) ? careAction.label
           : /aquisi|compra/i.test(`${careAction.label} ${careAction.href}`) ? "Registrar aquisição"
           : /receita|renova/i.test(`${careAction.label} ${careAction.href}`) ? "Renovar receita"
           : /document/i.test(`${careAction.label} ${careAction.href}`) ? "Preparar documentos"
@@ -1248,8 +1254,8 @@ export default function MedicamentosListPage() {
               <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
-                <h3 title={medicationListDisplayNameM150P3(med.nome)} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
-                  {medicationListDisplayNameM150P3(med.nome)}
+                <h3 title={medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
+                  {medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)}
                 </h3>
                 {med.dosagem && (
                   <span title={med.dosagem} className="min-w-0 max-w-full text-[11px] font-semibold leading-snug text-ink-secondary">

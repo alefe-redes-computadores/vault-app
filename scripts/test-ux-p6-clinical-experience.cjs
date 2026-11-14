@@ -2,6 +2,8 @@
 const assert = require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
 const read=f=>fs.readFileSync(f,'utf8');
 const med=read('app/saude/medicamentos/page.tsx');
+const bar=read('components/saude/MedicationFilterBar.tsx');
+const provenance=read('lib/medications/medication-list-provenance-m150-p3.ts');
 const purchase=read('app/saude/renovacao/nova/page.tsx');
 const treatment=read('app/saude/tratamentos/page.tsx');
 const portfolio=read('components/saude/MedicationPortfolioOverview.tsx');
@@ -11,11 +13,11 @@ const resolver=read('lib/health-intelligence/medication-card-action.ts');
 const checks={
  'Remédios mantêm tamanho e faixa lateral':med.includes('density="compact"')&&med.includes('compactTight')&&med.includes('regulatoryBorderColor')&&med.includes('rail={(regulatoryProfile || receita)'),
  'Ícones e cores originais inalterados':med.includes('<SelectedFormatIcon')&&med.includes('fill={fillValue}')&&med.includes('stroke={strokeValue}'),
- 'Filtro compacto e todas as sete categorias':med.includes('Mais filtros')&&med.includes('Outras categorias de medicamentos')&&['Todos','Atenção','Contínuos','Por período','SOS','Controlados','Encerrados'].every(x=>med.includes('"'+x+'"')),
- 'Filtros secundários na mesma linha quando couber':med.includes('min-w-[110px] flex-1 basis-auto'),
+ 'Filtro compacto e todas as sete categorias':med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>')&&['["todos", "Todos"]','["atencao", "Atenção"]','["sos", "SOS"]','["continuos", "Contínuos"]','["temporarios", "Por período"]','["controlados", "Controlados"]','["encerrados", "Encerrados"]'].every(x=>bar.includes(x))&&bar.includes('aria-pressed={value === key}')&&bar.includes('onClick={() => choose(key)}'),
+ 'Filtros secundários na mesma linha quando couber':bar.includes('grid grid-cols-2 gap-1.5')&&bar.includes('min-h-11 h-full')&&bar.includes('break-words')&&bar.includes('aria-expanded={expanded}')&&bar.includes('event.key === "Escape"'),
  'Ações continuam navegáveis e maiores':med.includes('Ações do medicamento')&&med.includes('router.push(careAction.href)')&&med.includes('min-h-10 max-w-full'),
  'Registro SOS mesmo sem saldo mantém aviso':med.includes('(!isEstoqueZerado || isSOS)')&&med.includes('Saldo registrado zerado'),
- 'SUS e comprado continuam distintos':med.includes('supplyRoute?.mode === "hybrid"')&&med.includes('supplyRoute.labels.join(" + ")'),
+ 'SUS e comprado continuam distintos':med.includes('routeMode={supplyRoute?.mode}')&&med.includes('routeLabels={supplyRoute?.labels}')&&med.includes('acquisitionType={med.tipo_aquisicao}')&&provenance.includes("input.routeMode === 'hybrid'")&&provenance.includes("input.acquisitionType === 'comprado'")&&provenance.includes("input.acquisitionType === 'sus'")&&provenance.includes('nenhuma comprova o fornecedor atual'),
  'Relações de tratamento preservadas':treatment.includes('getVaultTreatmentIcon')&&treatment.includes('<MedicationFormatIcon'),
  'Tratamento expõe filtro ativo':treatment.includes('activeCount={filtroStatus === "todos" ? 0 : 1}'),
  'Aquisição mantém modalidade isolada':purchase.includes('<MedicationEventBoundary mode="acquisition"/>'),
@@ -27,7 +29,7 @@ const checks={
  'Histórico não mistura eventos':journey.includes('Receitas')&&journey.includes('Aquisições')&&journey.includes('Retiradas')&&journey.includes('Planejadas'),
  'Nova prioridade não reescreve motor clínico':resolver.includes('registeredNextStep')&&resolver.includes('return brainAction ?? canonical ?? accessAction;'),
  'V299 mantém prioridade visível do Brain':med.includes('const careAction = brainAction ??')&&med.includes('const brainAction = brainSuggestion')&&med.includes('resolveMedicationCardAction(careDecision, brainSuggestion, null)'),
- 'Prioridade clínica sem tom incorreto':med.includes('careAction === brainSuggestion'),
+ 'Prioridade clínica sem tom incorreto':med.includes('const careActionClass = brainAction && careAction === brainAction && brainCareItem?.lane === "now"'),
 };
 let fails=0;for(let [name,ok] of Object.entries(checks)){console.log((ok?'OK':'FALHOU')+': '+name);if(!ok)fails++;}if(fails)process.exit(1);
 const ts=require('typescript');
