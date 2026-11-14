@@ -122,14 +122,14 @@ export function BrainV7UniversalConsole() {
     <div className="mx-auto max-w-xl space-y-4">
       <header className="flex items-center gap-3">
         <Link href="/saude/minha-saude" aria-label="Voltar para Minha Saúde" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface"><ArrowLeft size={18}/></Link>
-        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-300">VAULT · Brain V7 · Fênix</p><h1 className="font-display text-2xl font-bold">Inteligência de contexto</h1><p className={subtle}>Estabilidade, memória terapêutica e evidências</p></div>
+        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-300">VAULT · Brain · Fênix</p><h1 className="font-display text-2xl font-bold">Inteligência de contexto</h1><p className={subtle}>Estabilidade, memória terapêutica e evidências</p></div>
         <BrainCircuit size={24} className="shrink-0 text-violet-300"/>
       </header>
       <section className="rounded-2xl border border-violet-400/25 bg-violet-400/[.05] p-4">
-        <p className={`${title} text-violet-200`}><Sparkles size={17}/>Brain V7 observacional</p>
+        <p className={`${title} text-violet-200`}><Sparkles size={17}/>VAULT Brain observacional</p>
         <p className={`mt-2 ${subtle}`}>Este painel organiza informações declaradas e registros reais. Não determina dose segura, não interpreta tolerância como proteção e não reduz alertas de interações.</p>
         {/* V8_VISUAL_STUDIO: independent clinical presentation with no changes to Brain calculations. */}
-        <Link href="/saude/visual-studio" className="mt-3 flex min-h-11 items-center justify-between rounded-xl border border-emerald-400/25 bg-emerald-400/[.055] px-3 text-xs font-semibold text-emerald-200">Visual Studio V8 · Fênix, PillStudio e dossiê <span aria-hidden="true">›</span></Link>
+        <Link href="/saude/visual-studio" className="mt-3 flex min-h-11 items-center justify-between rounded-xl border border-emerald-400/25 bg-emerald-400/[.055] px-3 text-xs font-semibold text-emerald-200">Visual Studio · Fênix, PillStudio e dossiê <span aria-hidden="true">›</span></Link>
         <Link href="/saude/pharmalens" className="mt-3 inline-flex min-h-11 items-center text-xs font-bold text-violet-200 underline underline-offset-2">Abrir PharmaLens · experiência por fabricante</Link>
       </section>
       {authLoading ? <p role="status" className={subtle}>Restaurando sessão…</p>
@@ -154,7 +154,7 @@ export function BrainV7UniversalConsole() {
         <section className={section}>
           <h2 className={title}><Activity size={17} className="text-sky-300"/>Matriz de quatro eixos</h2>
           <p className={`mt-2 ${subtle}`}>Cada eixo mostra a última avaliação 0–10 registrada. Não é diagnóstico de depressão, abstinência ou efeito de fabricante.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">{report.axes.map(a=><div key={a.kind} className="rounded-xl border border-surface-border/65 bg-surface-raised/60 p-3"><p className="text-[11px] text-ink-muted">{a.label}</p><p className="mt-1 text-xl font-bold text-ink-primary">{a.value===null?'—':`${a.value}/10`}</p><p className="mt-1 text-[10px] text-ink-muted">{a.observedDays} dia(s) · {dateBR(a.day)}</p></div>)}</div>
+          <div className="mt-3 grid grid-cols-2 gap-2">{report.axes.map(a=><div key={a.kind} className="rounded-xl border border-surface-border/65 bg-surface-raised/60 p-3"><p className="text-[11px] text-ink-muted">{a.label}</p><p className="mt-1 text-xl font-bold text-ink-primary">{a.value===null?'—':`${a.value}/10`}</p><p className="mt-1 text-[10px] text-ink-muted">{a.observedDays} dia{a.observedDays===1?"":"s"} · {dateBR(a.day)}</p></div>)}</div>
         </section>
         <section className={section}>
           <h2 className={title}><Clock3 size={17} className="text-cyan-300"/>ChronoCircadian · rotina e sono</h2>

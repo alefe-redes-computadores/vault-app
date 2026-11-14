@@ -101,7 +101,7 @@ ok(!/supabase\.from\(|db\.medicamentos\.put\(|db\.doseLogs\.put\(/.test(consoleS
 ok(consoleSource.includes('não reduz alertas')&&consoleSource.includes('não comprova estabilidade farmacológica'),'avisos conservadores visíveis');
 const app=read(route);ok(app.includes('BrainV7UniversalConsole'),'rota funcional expõe console');
 const pl=read('components/saude/PharmaLensWorkspaceV7.tsx');
-ok(pl.includes('/saude/brain-v7')&&pl.includes('Brain V7'),'atalho acessível por PharmaLens');
+ok(pl.includes('/saude/brain-v7')&&pl.includes('VAULT Brain · estabilidade, histórico e dossiê'),'atalho acessível por PharmaLens, sem expor versão interna');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.includes('"scripts/test-vault-brain-v7-universal.cjs"'),'suite incluída no gate global, não opcional');
 

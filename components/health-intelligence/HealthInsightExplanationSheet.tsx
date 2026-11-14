@@ -230,16 +230,15 @@ export function HealthInsightExplanationSheet({
             onClick={
               onClose
             }
-            initial={{
-              opacity: 0,
-            }}
+            // A proteção de contraste existe já no primeiro frame da abertura.
+            initial={false}
             animate={{
               opacity: 1,
             }}
             exit={{
               opacity: 0,
             }}
-            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/95 backdrop-blur-[2px]"
           />
 
           <motion.section

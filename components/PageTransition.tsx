@@ -18,14 +18,9 @@ export function PageTransition({
 
   return (
     <motion.div
-      initial={
-        reduceMotion
-          ? false
-          : {
-              opacity: 0,
-              y: 4,
-            }
-      }
+      // Evita quadro vazio/flash no Android: página já aparece no primeiro frame.
+      // Mantém os parâmetros de movimento posteriores e a preferência reduzida.
+      initial={false}
       animate={{
         opacity: 1,
         y: 0,
