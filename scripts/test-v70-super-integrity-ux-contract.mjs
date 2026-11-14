@@ -28,7 +28,7 @@ e(r("app/inteligencia/page.tsx").includes("VAULT_INTELLIGENCE_COMPACT_V70"),"Bra
 e(
   r("app/mais/page.tsx").includes("VAULT_MORE_INFORMATION_ARCHITECTURE_V79") &&
     r("app/mais/page.tsx").includes("Preferências do aplicativo") &&
-    r("app/mais/page.tsx").includes("Cofre pessoal e inteligência") &&
+    r("app/mais/page.tsx").includes("Cofre pessoal") && !r("app/mais/page.tsx").includes("Cofre pessoal e inteligência") &&
     r("app/mais/page.tsx").includes("grid grid-cols-2 gap-2.5"),
   "Mais compacto na arquitetura atual"
 );

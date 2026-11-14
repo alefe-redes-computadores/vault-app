@@ -20,7 +20,7 @@ ok("retiradas explicam programação e histórico", hub.includes("<HomeSupplyAcc
 // M131 R4: Minha Saúde agora é acesso principal, com componente canônico.
 // As demais áreas conservam sua cor semântica no catálogo secundário.
 const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));
-const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-emerald-400"[^>]*onNavigate=\{go\}/.test(hub);
+const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-coral"[^>]*onNavigate=\{go\}/.test(hub);
 ok("atalhos clínicos possuem cores semânticas",
   primaryHealthTone &&
   !hasClinicalTone("/saude/minha-saude", "emerald-400") &&

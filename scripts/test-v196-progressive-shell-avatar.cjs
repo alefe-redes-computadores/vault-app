@@ -35,7 +35,7 @@ assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.incl
 assert(command.includes('grid min-w-0 grid-cols-2 gap-2') &&
   /<button[^>]*onClick=\{\(\) => go\("\/saude\/medicamentos"\)\}[^>]*className="[^"]*min-h-\[84px\][^"]*rounded-\[18px\]/.test(command) &&
   command.includes('<HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude"') &&
-  command.includes('tone="border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" onNavigate={go}'));
+  command.includes('tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go}'));
 
 
 assert(avatar.includes("V196: o mesmo orçamento de meshes"));

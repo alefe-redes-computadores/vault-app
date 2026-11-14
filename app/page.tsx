@@ -1244,6 +1244,7 @@ export default function HomePage() {
               description={resumoContextual.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
               progress={progressoDosesHoje}
+              onOpenToday={() => { trigger("vibrate"); router.push("/hoje"); }}
               ctaLabel={resumoContextual.href === "/?open=pending-doses" ? "Revisar doses" : resumoContextual.href === "/hoje" ? "Abrir rotina" : "Conferir próximo passo"}
               onOpen={() => {
                 trigger("vibrate");
@@ -1548,7 +1549,7 @@ export default function HomePage() {
                   )
                 )}
 
-                {retiradasAgendaM147.length > 1 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${Math.max(0, retiradasAgendaM147.length - 1)} retirada(s)`}</button>}
+                {retiradasAgendaM147.length > 1 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${Math.max(0, retiradasAgendaM147.length - 1)} retirada${Math.max(0, retiradasAgendaM147.length - 1) === 1 ? "" : "s"}`}</button>}
               </div>
             </motion.section>
           )}

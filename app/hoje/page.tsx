@@ -3,6 +3,7 @@
 import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
 import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
+import { formatPtBrQuantity } from "@/lib/ui/quantity-ptbr";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { TodayRemindersPanel } from "@/components/hoje/TodayRemindersPanel";
@@ -1668,6 +1669,14 @@ export default function HojePage() {
           {/* M110: briefing após filtros, sempre antes da fila de doses. */}
           {/* VAULT_V321_DAILY_FOCUS: real Brain command is visible before long dose lists. */}
           {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => navigateWithReturnM120(href)}/> : null}
+          {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
+          {isHoje && !retroReviewMode && (
+            <nav className="grid min-w-0 grid-cols-3 gap-1.5" aria-label="Acessos rápidos do cuidado">
+              <button type="button" onClick={()=>{trigger("vibrate");document.getElementById("hoje-diario")?.scrollIntoView({behavior:"smooth",block:"start"});}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.055] px-1.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Activity size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Check-in</span></button>
+              <button type="button" onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/central-m144");}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-ice/20 bg-ice/[.055] px-1.5 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Calendar size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Ocorrências</span></button>
+              <button type="button" onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/plano-seguranca");}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-400/20 bg-rose-400/[.055] px-1.5 text-[11px] font-semibold text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><AlertTriangle size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Plano pessoal</span></button>
+            </nav>
+          )}
           {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <TodayBatchAction count={dosesElegiveisLote.length}
@@ -1682,7 +1691,7 @@ export default function HojePage() {
           <span id="hoje-doses" className="block scroll-mt-24" aria-hidden="true"/>
           {isHoje && filtroStatus === "todos" && concluidasOcultas > 0 && (
             <p className="px-1 text-xs text-ink-muted">
-              {concluidasOcultas} registro(s) recolhido(s) na visualização padrão. Eles continuam disponíveis em Filtros.
+              {formatPtBrQuantity(concluidasOcultas, "registro recolhido", "registros recolhidos")} na visualização padrão. Eles continuam disponíveis em Filtros.
             </p>
           )}
 

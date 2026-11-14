@@ -3,6 +3,7 @@
 import { Activity, AlertTriangle, Bell, CalendarDays, ChevronDown, ChevronRight, Clock3, FlaskConical, PackageCheck, Pill, Stethoscope } from "lucide-react";
 import type { VisualAgendaOverview, VisualAgendaRow } from "@/lib/today/agenda-overview";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
+import { formatPtBrQuantity } from "@/lib/ui/quantity-ptbr";
 
 type Destination = VisualAgendaRow["destination"];
 export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCount, onJump, onJumpDose, onOpenWithdrawals }: {
@@ -57,8 +58,8 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
         })}
       </ol> : <p className="mt-2 text-xs text-ink-muted">Nenhum evento com horário definido para mostrar nesta prévia.</p>}
       <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-        {overview.hiddenCount > 0 ? `Mais ${overview.hiddenCount} evento(s) com horário nas seções abaixo. ` : ""}
-        {overview.untimedAppointments > 0 ? `${overview.untimedAppointments} compromisso(s) sem horário ficam na seção própria. ` : ""}
+        {overview.hiddenCount > 0 ? `Mais ${formatPtBrQuantity(overview.hiddenCount, "evento", "eventos")} com horário nas seções abaixo. ` : ""}
+        {overview.untimedAppointments > 0 ? `${formatPtBrQuantity(overview.untimedAppointments, "compromisso", "compromissos")} sem horário ficam na seção própria. ` : ""}
         Doses, lembretes e compromissos mantêm suas ações e estados independentes.
       </p>
         </div>

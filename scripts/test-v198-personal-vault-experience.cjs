@@ -46,8 +46,8 @@ assert(diagnostics.includes("disabled={!isOnline||syncBusy||failed>0}"));
 assert(diagnostics.includes("validLocalDose"));
 assert(diagnostics.includes("Nada será apagado e o estoque não será movimentado novamente"));
 
-assert(more.includes("Cofre pessoal e inteligência"));
-assert(more.includes('item.id === "inteligencia" ? "col-span-2'));
+assert(more.includes("Cofre pessoal") && !more.includes("Cofre pessoal e inteligência"));
+assert(more.includes('aria-label="Acessos de saúde"') && more.includes('router.push("/inteligencia")') && more.includes('>VAULT Brain</span>'));
 assert(avatar.includes("V198: a orelha deixa de ser uma esfera achatada"));
 assert(avatar.includes("const outerEar=mesh(taperedBox"));
 assert(avatar.includes("const earRim=mesh(taperedBox"));

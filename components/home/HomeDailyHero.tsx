@@ -13,12 +13,13 @@ type Props = {
   scheduled: number;
   progress: number;
   onOpen: () => void;
+  onOpenToday?: () => void;
   ctaLabel?: string;
 };
 
 /** P14 R3 — Hero da Home isolado. Toda a contagem pertence à Home; leitura apenas. */
 export const HomeDailyHero = memo(function HomeDailyHero({
-  eyebrow, title, description, color, completed, scheduled, progress, onOpen, ctaLabel = "Abrir rotina",
+  eyebrow, title, description, color, completed, scheduled, progress, onOpen, onOpenToday, ctaLabel = "Abrir rotina",
 }: Props) {
   // P15 R5: 0 eventos previstos não produz barra cheia ou taxa de adesão implícita.
   const safeProgress = scheduled > 0 && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
@@ -47,6 +48,11 @@ export const HomeDailyHero = memo(function HomeDailyHero({
         <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-300 transition-[width] duration-300 motion-reduce:transition-none" style={{width:`${safeProgress}%`}} />
       </div>
       <p className="sr-only" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)}</p>
+      {/* P4: explicit scopes rather than implying that Home 0/5 and Hoje 2/8 conflict. */}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-ink-muted">
+        <p className="min-w-0 flex-1 leading-relaxed">Home: horários de contínuos. Hoje: doses programadas da data, inclusive ciclos por período.</p>
+        {onOpenToday && <button type="button" onClick={onOpenToday} className="min-h-11 shrink-0 rounded-lg border border-ice/20 bg-ice/[.04] px-2.5 font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Ver Hoje</button>}
+      </div>
     </div>
   </>;
 });

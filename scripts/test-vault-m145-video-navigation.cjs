@@ -31,9 +31,9 @@ ok(home.includes('<HomeDoseQuantityFollowUp')&&home.includes('<HomeAttentionRail
 ok(more.indexOf('<OperationalReadinessM103') > more.indexOf('Dados & Nuvem'), 'Prontidão agora está em Dados & Nuvem');
 ok((more.match(/<OperationalReadinessM103/g)||[]).length===1,'Prontidão não foi duplicada');
 ok(more.includes('<PersonSelector mode="compact"')&&read(files[4]).includes('"compact"')&&read(files[4]).includes('mode === "compact"'), 'Pessoa ativa compacta sem segundo avatar no botão');
-ok(!more.includes('className="absolute bottom-0 right-0 flex h-8 w-8')&&more.includes('aria-label="Configurações do perfil"'), 'Edição do perfil sem sobrepor fotografia');
+ok(!more.includes('className="absolute bottom-0 right-0 flex h-8 w-8')&&more.includes('aria-label="Configurações da conta"'), 'Edição do perfil sem sobrepor fotografia');
 ok(more.includes('<details open className="group rounded-[18px]') && more.includes('<VaultUpdateCenter />') && more.includes('Biometria') && more.includes('Lembretes'), 'Controles e Update Center visíveis inicialmente');
-ok(more.includes('grid grid-cols-2 gap-2.5') && more.includes('item.id === "inteligencia" ? "col-span-2') && more.includes(': "col-span-2 min-h-[72px] sm:col-span-1"') && more.includes('mt-0.5 line-clamp-2 text-[11px]'), 'Acessos de Mais legíveis em lista no celular');
+ok(more.includes('grid grid-cols-2 gap-2.5') && more.includes('aria-label="Acessos de saúde"') && more.includes('router.push("/inteligencia")') && more.includes('col-span-2 min-h-[72px] sm:col-span-1') && more.includes('mt-0.5 line-clamp-2 text-[11px]'), 'Acessos de Mais legíveis em lista no celular');
 const medication=pure(files[10]);
 const taken=medication.medicationIgnoredStatus({taken:1,ignored:1,pending:0,emptyStock:false});
 ok(taken.label==='1 tomada · 1 ignorada'&&!taken.detail.includes('(s)'), 'Singular real para tomada e ignorada');

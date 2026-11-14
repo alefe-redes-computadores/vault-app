@@ -37,7 +37,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
         <div><h2 className="font-display text-sm font-semibold text-ink-primary">Saúde e rotina</h2><p className="mt-0.5 text-[10px] text-ink-muted">Ações principais primeiro; demais áreas sob demanda</p></div>
         <div className="flex shrink-0 items-center gap-2">
           <button type="button" onClick={() => go("/saude/mapa?return_to=%2F")}
-            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-emerald-300/25 bg-emerald-300/[.065] px-2.5 text-[11px] font-semibold text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
+            className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-violet-300/25 bg-violet-300/[.065] px-2.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"
             aria-label="Explorar todas as áreas de saúde">Ver todas <ChevronRight size={14} aria-hidden="true"/></button>
           <Stethoscope size={16} className="text-ink-muted"/>
         </div>
@@ -46,11 +46,11 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
       {/* M131: dois destinos principais, com cores e componentes canônicos. */}
       <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Acessos principais de saúde e medicamentos">
         <div className="grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1" aria-label="Medicamentos e Minha saúde">
-          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex h-full min-h-[84px] !min-h-[72px] min-[380px]:!min-h-[76px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300" aria-hidden="true"><Pill size={17}/></span>
+          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex h-full min-h-[84px] !min-h-[72px] min-[380px]:!min-h-[76px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-ice/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ice/10 text-ice" aria-hidden="true"><Pill size={17}/></span>
             <span className="flex min-w-0 flex-1 flex-col justify-center"><strong className="block break-words text-sm font-bold leading-snug text-ink-primary">Medicamentos</strong><span className="mt-1 block line-clamp-2 break-words text-xs leading-snug text-ink-muted">Rotina e estoque</span></span>
           </button>
-          <HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude" Icon={HeartPulse} tone="border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-400" onNavigate={go} />
+          <HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude" Icon={HeartPulse} tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go} />
         </div>
         {/* Acessos operacionais continuam disponíveis no Essencial, sem ocupar a primeira dobra. */}
         <details className="group overflow-hidden rounded-xl border border-surface-border/50 bg-surface/60">

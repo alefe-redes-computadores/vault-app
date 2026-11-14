@@ -32,7 +32,7 @@ check(health.includes('onBrainSelect={()=>{')&&health.includes('setSelectedInsig
 const v321=read('scripts/test-v321-global-health-focus.cjs');
 check(v321.includes('>VAULT Brain <ChevronDown')&&v321.includes('FenixMark')&&!v321.includes("health.includes('Vault Intelligence')"),"V321 exige Avatar e marca real, não rótulo obsoleto");
 const more=read('app/mais/page.tsx');
-check(more.includes('label: "VAULT Brain"')&&more.includes('id: "inteligencia"')&&more.includes('onClick: () => {'),"atalho Mais usa VAULT Brain sem alterar rota nem ação");
+check(more.includes('aria-label="Acessos de saúde"')&&more.includes('router.push("/inteligencia")')&&more.includes('>VAULT Brain</span>')&&!more.includes('Cofre pessoal e inteligência'),"atalho Mais usa VAULT Brain sem alterar rota nem ação");
 const gate=read('scripts/test-v63-release-gate.mjs');
 check(gate.includes('"scripts/test-vault-m132-mobile-medication-density.cjs"')&&gate.includes('"scripts/test-vault-m133-home-brain-grouping.cjs"')&&gate.includes('"scripts/test-vault-m134-fenix-branding.cjs"'),"gate mantém M132/M133 e registra M134");
 console.log('M134: contratos de identidade, JSX, WebGL e compatibilidade aprovados.');

@@ -146,7 +146,7 @@ ok(
 );
 
 ok(
-  more.includes('label: "VAULT Brain"'),
+  more.includes('aria-label="Acessos de saúde"') && more.includes('router.push("/inteligencia")') && more.includes('>VAULT Brain</span>'),
   "Mais apresenta VAULT Brain com acesso real"
 );
 

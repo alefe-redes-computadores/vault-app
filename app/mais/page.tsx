@@ -852,17 +852,6 @@ export default function MaisPage() {
 
   const quickAccessItems = [
     {
-      id: "inteligencia",
-      icon: BrainCircuit,
-      label: "VAULT Brain",
-      description: "Inteligência local, longitudinal e explicável",
-      tone: "border-violet-400/20 bg-violet-400/10 text-violet-300",
-      onClick: () => {
-        trigger("vibrate");
-        router.replace("/inteligencia");
-      },
-    },
-    {
       id: "senhas",
       icon: KeyRound,
       label: "Senhas",
@@ -936,7 +925,7 @@ export default function MaisPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] overflow-y-auto bg-void pb-28">
+      <main className="min-h-[100dvh] overflow-y-auto bg-void pb-[calc(5rem+env(safe-area-inset-bottom))]">
         {/* =====================================================
             CABEÇALHO
         ===================================================== */}
@@ -964,7 +953,12 @@ export default function MaisPage() {
                   {avatarUrl ? <img src={avatarUrl} alt={displayName} loading="lazy" className="h-14 w-14 rounded-full border-2 border-ice/20 object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-xl text-ink-muted">{displayName.charAt(0).toUpperCase()}</div>}
                 </div>
                 <div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">Conta Vault</p><h2 className="truncate font-display text-lg font-semibold text-ink-primary">{displayName}</h2><p className="mt-1 truncate text-sm text-ink-muted">{user?.email}</p></div>
-                <button type="button" onClick={handleEditProfile} className="flex h-10 w-10 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações do perfil"><Settings size={17} /></button>
+                <button type="button" onClick={handleEditProfile} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações da conta"><Settings size={17} /></button>
+              </div>
+              {/* P4: uma identidade visual; conta autenticada e pessoa clínica seguem autoridades diferentes. */}
+              <div className="mt-3 flex min-h-14 items-center justify-between gap-3 border-t border-surface-border/40 pt-3" aria-label="Pessoa ativa no Vault">
+                <div className="min-w-0 flex-1"><p className="text-xs font-bold text-ink-primary">Pessoa ativa</p><p className="text-[11px] leading-relaxed text-ink-muted">Os registros de saúde seguem este perfil, não a foto da conta.</p></div>
+                <PersonSelector mode="compact" className="shrink-0" />
               </div>
             </div>
 
@@ -976,18 +970,17 @@ export default function MaisPage() {
                 <span className="min-w-0 flex-1"><strong className="block text-sm font-bold text-ink-primary">Explorar áreas de saúde</strong><span className="block text-[11px] text-ink-muted">Encontre todas as funções por tarefa</span></span>
                 <ChevronRight size={16} className="shrink-0 text-emerald-300"/>
               </button>
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Perfis do Vault</h2>
-              <button type="button" onClick={()=>router.push("/saude/minha-saude")} className="mb-2 flex w-full items-center justify-between rounded-[20px] border border-emerald-400/15 bg-surface p-3 text-left"><span className="text-sm font-semibold text-emerald-400">Minha saúde</span><span className="text-[10px] text-ink-muted">Perfil, aparelhos e registros →</span></button>
-              <div className="flex items-center justify-between gap-3 rounded-[20px] border border-orange-400/15 bg-orange-400/[0.035] p-3">
-                <div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">Pessoa ativa</p><p className="truncate text-xs text-ink-muted">Os registros de saúde seguem este perfil</p></div>
-                <PersonSelector mode="compact" className="shrink-0" />
+              {/* P4: Minha saúde e Brain são destinos de Saúde, fora do Cofre pessoal. */}
+              <div className="grid min-w-0 grid-cols-2 gap-2" aria-label="Acessos de saúde">
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/saude/minha-saude");}} className="flex min-h-14 min-w-0 items-center gap-2 rounded-[17px] border border-coral/20 bg-coral/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Heart size={17} className="shrink-0 text-coral"/><span className="min-w-0 break-words text-xs font-semibold text-ink-primary">Minha saúde</span></button>
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/inteligencia");}} className="flex min-h-14 min-w-0 items-center gap-2 rounded-[17px] border border-violet-400/20 bg-violet-400/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-ice"><BrainCircuit size={17} className="shrink-0 text-violet-300"/><span className="min-w-0 break-words text-xs font-semibold text-ink-primary">VAULT Brain</span></button>
               </div>
             </div>
 
             {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
             <details open className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                <span>Preferências, lembretes e atualizações</span>
+                <span>Preferências e lembretes</span>
                 <ChevronDown size={16} aria-hidden="true" className="text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
               </summary>
               <div className="space-y-3 border-t border-surface-border/35 pb-3 pt-3">
@@ -1005,17 +998,12 @@ export default function MaisPage() {
               </div>
             </details>
 
-            {/* M146: o Update Center permanece visível mesmo ao recolher as preferências. */}
-            <VaultUpdateCenter />
+            {/* P4: atualização básica separada das preferências. Diagnóstico técnico fica abaixo e recolhido. */}
+            <section id="mais-atualizacoes" aria-label="Atualizações do aplicativo" className="space-y-2">
+              <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Atualizações</h2>
+              <VaultUpdateCenter />
+            </section>
 
-            <div>
-              <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Nuvem</h2>
-              <button type="button" onClick={() => pendingQueueCount > 0 ? router.push("/diagnostico") : handleSync()} disabled={!isOnline && pendingQueueCount === 0} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${pendingQueueCount > 0 ? "border-coral/30 bg-coral/[0.06]" : "border-emerald-400/15 bg-emerald-400/[0.035]"}`}>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${pendingQueueCount > 0 ? "bg-coral/10 text-coral" : "bg-emerald-400/10 text-emerald-400"}`}>{isSyncing ? <Loader2 size={17} className="animate-spin" /> : pendingQueueCount > 0 || syncRuntime.phase === "error" ? <AlertTriangle size={17} /> : syncRuntime.phase === "synced" && isOnline ? <CheckCircle2 size={17} /> : <RefreshCw size={17} />}</div>
-                <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">{isSyncing ? "Sincronizando" : pendingQueueCount > 0 || syncRuntime.phase === "error" ? "Sincronização precisa de revisão" : syncRuntime.phase === "synced" && isOnline ? "Sincronização concluída" : "Conferir sincronização"}</p><p className="text-xs leading-snug text-ink-muted">{!isOnline ? "Sem conexão" : pendingQueueCount > 0 ? `${formatPtBrQuantity(pendingQueueCount, "item", "itens")} aguardando · abrir diagnóstico` : `${totalLocalItems} registros locais · toque para sincronizar`}</p></div>
-                <ChevronRight size={16} className="text-ink-faint" />
-              </button>
-            </div>
           </motion.div>
 
           {/* ===================================================
@@ -1038,7 +1026,7 @@ export default function MaisPage() {
           >
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-                Cofre pessoal e inteligência
+                Cofre pessoal
               </h2>
 
               <span className="text-[10px] text-ink-faint">
@@ -1054,14 +1042,14 @@ export default function MaisPage() {
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className={`group flex items-center gap-3 rounded-[18px] border border-surface-border/50 bg-surface px-3 py-2.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] ${item.id === "inteligencia" ? "col-span-2 min-h-[64px] border-violet-400/20 bg-gradient-to-r from-violet-400/[0.08] to-surface" : "col-span-2 min-h-[72px] sm:col-span-1"}`}
+                    className={`group flex items-center gap-3 rounded-[18px] border border-surface-border/50 bg-surface px-3 py-2.5 text-left shadow-sm transition-all hover:bg-surface-raised/80 active:scale-[0.97] col-span-2 min-h-[72px] sm:col-span-1`}
                   >
                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105 ${item.tone}`}>
                       <Icon size={18} />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-ink-primary">{item.label}</p>
-                      <p className={`${item.id === "inteligencia" ? "mt-1 text-[11px]" : "mt-0.5 line-clamp-2 text-[11px]"} leading-snug text-ink-muted`}>{item.description}</p>
+                      <p className={`mt-0.5 line-clamp-2 text-[11px] leading-snug text-ink-muted`}>{item.description}</p>
                     </div>
                   </button>
                 );
@@ -1134,7 +1122,7 @@ export default function MaisPage() {
                         setTheme(option.id);
                       }}
                       aria-pressed={selected}
-                      className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[14px] border px-2 py-2 transition-all active:scale-95 ${
+                      className={`flex h-[72px] w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-[14px] border px-1.5 py-2 transition-all active:scale-95 ${
                         selected
                           ? "border-ice/30 bg-ice/12 text-ice"
                           : "border-transparent text-ink-muted hover:bg-surface-raised"
@@ -1175,6 +1163,15 @@ export default function MaisPage() {
             </h2>
 
             <div className="space-y-2">
+              {/* P4: fila e status de sincronização junto de recuperação, backup e exportação. */}
+            <div>
+              <h3 className="mb-2 text-xs font-semibold text-ink-primary">Sincronização</h3>
+              <button type="button" onClick={() => pendingQueueCount > 0 ? router.push("/diagnostico") : handleSync()} disabled={!isOnline && pendingQueueCount === 0} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${pendingQueueCount > 0 ? "border-coral/30 bg-coral/[0.06]" : "border-emerald-400/15 bg-emerald-400/[0.035]"}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${pendingQueueCount > 0 ? "bg-coral/10 text-coral" : "bg-emerald-400/10 text-emerald-400"}`}>{isSyncing ? <Loader2 size={17} className="animate-spin" /> : pendingQueueCount > 0 || syncRuntime.phase === "error" ? <AlertTriangle size={17} /> : syncRuntime.phase === "synced" && isOnline ? <CheckCircle2 size={17} /> : <RefreshCw size={17} />}</div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">{isSyncing ? "Sincronizando" : pendingQueueCount > 0 || syncRuntime.phase === "error" ? "Sincronização precisa de revisão" : syncRuntime.phase === "synced" && isOnline ? "Sincronização concluída" : "Conferir sincronização"}</p><p className="text-xs leading-snug text-ink-muted">{!isOnline ? "Sem conexão" : pendingQueueCount > 0 ? `${formatPtBrQuantity(pendingQueueCount, "item", "itens")} aguardando · abrir diagnóstico` : `${totalLocalItems} registros locais · toque para sincronizar`}</p></div>
+                <ChevronRight size={16} className="text-ink-faint" />
+              </button>
+            </div>
               {/* M145: Prontidão sob Dados & Nuvem, sem consumir primeira dobra. */}
               <div className="mb-2"><OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/></div>
               {/* VAULT_RECOVERY_CENTER_V68 */}
@@ -1267,7 +1264,7 @@ export default function MaisPage() {
 
                     <p className="truncate text-xs text-ink-muted">
                       {pendingQueueCount > 0
-                        ? `${pendingQueueCount} item(ns) aguardando análise`
+                        ? `${formatPtBrQuantity(pendingQueueCount, "item", "itens")} aguardando análise`
                         : syncLogs.length > 0
                           ? `${syncLogs.length} eventos registrados`
                           : "Fila limpa"}

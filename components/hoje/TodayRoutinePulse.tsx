@@ -43,6 +43,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
         </div>
       </div>
       <span className="sr-only">{isFuturo ? "Planejamento futuro não significa dose tomada." : isPassado ? "Sem confirmação histórica não significa dose ignorada." : "Doses ignoradas e pendentes não contam como tomadas."}</span>
+      {isHoje && <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Este total é da linha do tempo selecionada. A Home resume apenas a rotina de medicamentos contínuos; os totais podem ser diferentes.</p>}
       {temporalGuidance && <details className="mt-3 border-t border-surface-border/35 pt-2 text-xs text-ink-muted">
         <summary className="flex min-h-9 cursor-pointer items-center font-medium text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Entender este resumo</summary>
         <p className="pb-1 leading-relaxed" role="note">{temporalGuidance}</p>
