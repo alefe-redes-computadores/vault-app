@@ -18,7 +18,7 @@ assert.match(meds,/const showActiveIngredient = activeIngredients\.length > 0;/,
 assert.doesNotMatch(meds,/Receita: \{medicationRegulatoryShortLabel/,'Regulatory duplicate must be absent');
 assert.doesNotMatch(meds,/Buscar medicamento pelo nome ou princípio ativo<\/span>/,'Search must be behind header magnifier');
 assert.match(meds,/listaCronologica\.slice\(0, unifiedVisibleCount\)/,'Unifed list must sort');
-assert.match(meds,/MedicationProvenanceBadge/,'Manufacturer/label provenance must be visibly distinct');
+assert.ok(meds.includes('<MedicationProvenanceLineM150P3') && meds.includes('latestManufacturer={latestManufacturer}') && meds.includes('declaredManufacturer={med.laboratorio_etiqueta}') && r('components/saude/MedicationProvenanceLineM150P3.tsx').includes('aria-label={summary.evidence}'),'Manufacturer/label provenance must be visibly distinct');
 const filters=r('components/saude/MedicationFilterBar.tsx');
 assert.equal((filters.match(/\["sos", "SOS"\]/g)||[]).length,1,'SOS filter has exactly one entry');
 const source=r('lib/health-intelligence/medication-list-sort-m148.ts');

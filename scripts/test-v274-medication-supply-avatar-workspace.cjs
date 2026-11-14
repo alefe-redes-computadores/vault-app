@@ -8,7 +8,7 @@ const supply=read("app/saude/fornecimento/page.tsx");
 const health=read("app/saude/minha-saude/page.tsx");
 const workspace=read("components/saude/AvatarCareWorkspace.tsx");
 
-ok(list.includes('supplyRoute?.mode === "hybrid"'),"lista mostra origem somente quando a rota híbrida exige atenção");
+ok(list.includes('routeMode={supplyRoute?.mode}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'hybrid'"),"lista mostra origem somente quando a rota híbrida exige atenção");
 ok(list.includes('careDecision.stage !== "stable" && !careAction'),"lista não repete badge e ação do mesmo cuidado");
 ok(journey.includes("divide-y")&&journey.includes("ChevronRight"),"detalhe usa jornada linear navegável");
 ok(journey.includes("Receita, aquisição e retirada são eventos independentes"),"autoridades operacionais continuam separadas");

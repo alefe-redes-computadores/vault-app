@@ -117,7 +117,7 @@ const badgeM137=read('components/saude/MedicationProvenanceBadge.tsx');
 ok(listM137.includes('latestManufacturer') &&
    listM137.includes('readManufacturerMetadata(latestAcquisition?.observacoes).manufacturer') &&
    listM137.includes('!isPrescriptionOnly(row) && !isFutureAcquisition(row, hojeString)') &&
-   listM137.includes('MedicationProvenanceBadge name={latestManufacturer} source="ultima_aquisicao"') &&
+   listM137.includes('<MedicationProvenanceLineM150P3') && listM137.includes('latestManufacturer={latestManufacturer}') && listM137.includes('declaredManufacturer={med.laboratorio_etiqueta}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes('Fabricante informado na última aquisição registrada') &&
    badgeM137.includes('source==="ultima_aquisicao"') &&
    badgeM137.includes('Fabricante informado na última aquisição registrada'),
    'badge deriva da última aquisição realizada, nunca de receita, compra futura ou etiqueta');

@@ -55,7 +55,7 @@ ok(create.includes('ManufacturerFieldM129')&&create.includes('MedicationCustomCo
 ok(edit.includes('setLaboratorioEtiqueta(item.laboratorio_etiqueta || "")')&&edit.includes('MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor}')&&edit.includes('laboratorio_etiqueta: laboratorioEtiqueta.trim() || null'),'edicao carrega, limpa e salva etiqueta e HEX');
 ok(edit.includes('markChanged();')&&edit.includes('ManufacturerFieldM129 label="Laboratório na etiqueta (opcional)"'),'edicao marca mudanca real sem duplicar campo');
 const provenanceM138=read('components/saude/MedicationProvenanceBadge.tsx');
-ok(list.includes('MedicationProvenanceBadge name={med.laboratorio_etiqueta} source="etiqueta"') &&
+ok(list.includes('<MedicationProvenanceLineM150P3') && list.includes('declaredManufacturer={med.laboratorio_etiqueta}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes('Laboratório declarado na etiqueta do cadastro') &&
    provenanceM138.includes('Laboratório declarado na etiqueta') &&
    provenanceM138.includes('Não comprova fabricação da última aquisição') &&
    detail.includes('Etiqueta visual · {med.laboratorio_etiqueta}') &&

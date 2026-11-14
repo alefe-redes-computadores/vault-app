@@ -35,8 +35,8 @@ assert.match(identity, /flex min-w-0 flex-col gap-0\.5/, "cabeçalho vertical co
 assert.match(identity, /line-clamp-2 break-words font-display/, "nome não truncado");
 assert.doesNotMatch(identity, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "coluna rígida não pode retornar");
 assert.match(identity, /aria-label="Ações do medicamento" className="mt-1\.5 grid min-w-0 grid-cols-2 gap-1\.5 border-t/, "ações independentes em faixa separada e grade premium");
-assert.match(identity, /careAction && \(\s*[\s\S]*?<button[\s\S]*?router\.push\(\s*careAction\.href/, "pendência navega para seu destino");
-assert.match(identity, /canQuickDose &&[\s\S]*?quickDoseLabel[\s\S]*?<button[\s\S]*?setQuickDoseMedId\(/, "registro rápido continua independente");
+assert.ok(medicine.includes('const careActionButtonM150P3 = careAction ? (') && medicine.includes('router.push(careAction.href)') && identity.includes('careActionButtonM150P3') && identity.includes('actionLayoutM150P3.primary === "care"'), "pendência navega para seu destino");
+assert.ok(medicine.includes('const quickActionButtonM150P3 = !isSuspenso && canQuickDose && quickDoseLabel ? (') && medicine.includes('setQuickDoseMedId(med.id!)') && identity.includes('quickActionButtonM150P3') && identity.includes('actionLayoutM150P3.primary === "dose"'), "registro rápido continua independente");
 
 // Uma dose futura é pendência, não tomada: não movimenta estoque ao agendar.
 assert.match(quickDose, /willScheduleAdHoc/);

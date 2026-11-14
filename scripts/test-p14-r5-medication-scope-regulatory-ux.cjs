@@ -40,9 +40,9 @@ ok(meds.includes('scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "")')
 ok(meds.includes("ownedMedicationRenewals(renewalsByMedication.get(id) ?? [], item.med)"),"receitas da listagem isoladas antes de decisão");
 ok(meds.includes("hasConfirmedControlledRegime(regulatoryProfile)"),"filtro Controlados não usa só verified");
 ok(meds.includes('"continuos","temporarios","sos"'),"preferência Por período restaurada corretamente");
-ok(meds.includes('supplyRoute?.mode === "hybrid"')&&meds.includes('supplyRoute?.mode === "private"')&&meds.includes('supplyRoute?.mode === "public"'),"origem SUS/privado/híbrido reconhecida sem conversão");
-ok(meds.includes("<MedicationListRouteLabel route={supplyRoute}"),"label de origem modularizado");
-ok(meds.includes('label={supplyRoute.labels.join(" + ")}')&&read(sources[3]).includes("{label}"),"V271: origem canônica permanece visível sem duplicar cálculo");
+ok(meds.includes('routeMode={supplyRoute?.mode}')&&read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'hybrid'")&&read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'private'")&&read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'public'"),"origem SUS/privado/híbrido reconhecida sem conversão");
+ok(meds.includes("<MedicationProvenanceLineM150P3")&&meds.includes("routeLabels={supplyRoute?.labels}"),"label de origem modularizado");
+ok(meds.includes('routeLabels={supplyRoute?.labels}')&&read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeLabels.join(' + ')"),"V271: origem canônica permanece visível sem duplicar cálculo");
 ok(read(sources[3]).includes("Origem registrada")&&read(sources[3]).includes('route.mode === "none"'),"origem histórica não promete fornecimento");
 ok(meds.includes('density="compact"')&&meds.includes('navigationLabel={`Ver detalhes de ${med.nome}`}'),"cards compactos acessíveis");
 ok(meds.includes('VAULT_V318_OPERATIONAL_STRIP')&&meds.includes('humanizeStockText(textoEstoquePrincipal)'),"rotina e estoque continuam do estado real");

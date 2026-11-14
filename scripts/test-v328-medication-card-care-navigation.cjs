@@ -33,5 +33,5 @@ assert.deepEqual(resolve({href:self,currentMedicationId:"m x",title:"Conferir v�
 assert.deepEqual(resolve({href:self,currentMedicationId:"m x",title:"Registrar receita"}),{kind:"section",sectionId:"medicamento-jornada"});
 assert.deepEqual(resolve({href:self,currentMedicationId:"outro",title:"Revisar continuidade"}),{kind:"route",href:self});
 assert.deepEqual(resolve({href:"/saude/renovacao/novo?medicamento_id=m",currentMedicationId:"m"}),{kind:"route",href:"/saude/renovacao/novo?medicamento_id=m"});
-assert(meds.includes('supplyRoute?.mode === "hybrid"'), "SUS e comprado independentes");
+assert(meds.includes('routeMode={supplyRoute?.mode}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'hybrid'"), "SUS e comprado independentes");
 console.log("VAULT V328/M109: identidade regulatória, densidade e ações de cuidado sem navegação silenciosa OK");

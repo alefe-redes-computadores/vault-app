@@ -13,7 +13,7 @@ assert(authority.includes('indexMedicationSupplyRoutes(data,renewals,personId,us
 assert(readiness.includes('const routeIndex =')&&readiness.includes('routeIndex.get(id)'),'prontidão calcula rotas uma única vez');
 assert(plan.includes('readinessByMedication')&&!plan.includes('medicationSupplyRoute('),'plano reutiliza prontidão sem segunda varredura');
 assert(list.includes('useSharedHealthIntelligence')&&list.includes('brainCareByMedication')&&list.includes('supplyRouteByMedication'),'listagem consome comando compartilhado');
-assert(list.includes('brainAction ??')&&list.includes('supplyRoute.labels.join(" + ")'),'ação e origem canônicas aparecem no card');
+assert(list.includes('brainAction ??')&&list.includes('routeLabels={supplyRoute?.labels}')&&r('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeLabels.join(' + ')"),'ação e origem canônicas aparecem no card');
 assert(list.includes('brainLane === "now" || brainLane === "prepare"'),'filtro Atenção respeita a decisão executiva');
 assert(detail.includes('brainCareAction')&&detail.includes('Origem: {supplyRoute.labels.join(" + ")}'),'detalhes unem próxima etapa e origem');
 assert(avatar.includes('command?.readiness.items')&&avatar.includes('SUS/público')&&avatar.includes('Híbrido'),'Avatar resume rotas sem poluir personagem');

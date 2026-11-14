@@ -31,7 +31,7 @@ assert.match(page,/setSelectedRegulatory\(regulatoryProfile\)/,'informação reg
 assert.match(page,/navigationLabel=\{`Ver detalhes de \$\{med\.nome\}`\}/,'ListCard recebe rótulo acessível para detalhes');
 assert.match(card,/aria-label=\{navigationLabel\}/,'ListCard aplica rótulo acessível ao botão de navegação');
 assert.match(page,/careDecision\.stage !== "stable" && !careAction/,'decisão sem ação ainda tem badge');
-assert.match(page,/supplyRoute\?\.mode === "hybrid"/,'rota de fornecimento preservada');
+assert.ok(page.includes('routeMode={supplyRoute?.mode}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes("input.routeMode === 'hybrid'"),'rota de fornecimento preservada');
 assert.match(page,/humanizeStockText\(textoEstoquePrincipal\)/,'resumo de estoque derivado do estado real');
 assert.match(page,/med\.dosagem/,'dosagem visível');
 console.log('V318 OK: lista compacta, SOS/Tomar, ação contextual, regulação, estoque, tipagem TSX e detalhes preservados');
