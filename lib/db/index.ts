@@ -34,6 +34,8 @@ import type {
   AppSettings,
   Versiculo,
   RegistroSaude,
+  ActiveProbe,
+  ActiveProbeResponse,
 } from '@/lib/types';
 
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -185,6 +187,8 @@ class VaultDB extends Dexie {
 
   health_reminders!: Table<HealthReminderRule, string>;
   health_goals!: Table<HealthGoal, string>;
+  brain_active_probes!: Table<ActiveProbe, string>;
+  brain_active_probe_responses!: Table<ActiveProbeResponse, string>;
 
   constructor() {
     super('vault-db');
@@ -1427,6 +1431,11 @@ class VaultDB extends Dexie {
         'id, user_id, person_id, [user_id+person_id], processo_id, ciclo_id, medicamento_id, [ciclo_id+medicamento_id], synced, updated_at',
       fornecimento_documentos:
         'id, user_id, person_id, [user_id+person_id], processo_id, ciclo_id, document_id, retirada_id, synced, updated_at',
+    });
+
+    this.version(46).stores({
+      brain_active_probes: 'id, &idempotency_key, user_id, person_id, [user_id+person_id], status, due_at, sync_state',
+      brain_active_probe_responses: 'id, &probe_id, user_id, person_id, [user_id+person_id], answered_at, sync_state',
     });
   }
 }

@@ -19,6 +19,7 @@ import { useReturnContext } from "@/hooks/useReturnContext";
 import { CareForecastAgenda } from "@/components/saude/CareForecastAgenda";
 import { BrainCarePlan } from "@/components/health-intelligence/BrainCarePlan";
 import { BrainNextStep } from "@/components/health-intelligence/BrainNextStep";
+import { BrainActiveProbeCard } from "@/components/health-intelligence/BrainActiveProbeCard";
 const DoseEvidenceBrief = dynamic(() => import("@/components/saude/DoseEvidenceBrief").then(module => module.DoseEvidenceBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
 const CareAccessBrief = dynamic(() => import("@/components/saude/CareAccessBrief").then(module => module.CareAccessBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
 const UpcomingDoseAgenda = dynamic(() => import("@/components/saude/UpcomingDoseAgenda").then(module => module.UpcomingDoseAgenda), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
@@ -123,6 +124,8 @@ export default function VaultIntelligencePage() {
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3"><div className="rounded-xl bg-emerald-400/10 p-2.5 text-emerald-300"><ShieldCheck size={19}/></div><div className="min-w-0 flex-1"><h2 className="text-sm font-bold">Leitura local e explicável</h2><p className="mt-0.5 truncate text-xs text-ink-muted">{coverage?.total || 0} itens analisados sem abrir dados sensíveis</p></div><ChevronRight size={15} className="text-ink-muted transition group-open:rotate-90"/></summary>
       <div className="border-t border-surface-border/50 px-4 py-3"><p className="text-xs leading-relaxed text-ink-muted">O motor cruza apenas metadados da pessoa ativa. Não abre senhas, número completo de cartão ou CVV e não promete segurança absoluta.</p><div className="mt-3 flex gap-2 overflow-x-auto pb-1">{counters.map(({ label, value, icon: Icon, tone }) => <div key={label} className="flex min-w-fit items-center gap-2 rounded-full border border-surface-border/50 bg-surface/70 px-3 py-2"><Icon size={13} className={tone}/><strong className="text-xs">{value}</strong><span className="text-[8px] uppercase text-ink-faint">{label}</span></div>)}</div></div>
     </details>
+
+    <div className="mx-auto max-w-2xl"><BrainActiveProbeCard /></div>
 
     {/* VAULT_BRAIN_V4_EXPERIENCE_ENTRY */}
     {expiredInsightNotice && <div role="status" className="mx-auto mt-4 flex max-w-2xl items-start justify-between gap-3 rounded-2xl border border-amber-400/25 bg-amber-400/[.06] p-3 text-xs text-amber-100">

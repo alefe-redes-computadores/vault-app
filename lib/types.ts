@@ -750,7 +750,9 @@ export interface SyncQueueItem {
     | "health_reminders"
     | "health_profiles"
     | "health_devices"
-    | "health_goals";
+    | "health_goals"
+    | "brain_active_probes"
+    | "brain_active_probe_responses";
   operation: "add" | "update" | "delete";
   payload: Record<string, unknown>;
   created_at: string;
@@ -1567,6 +1569,8 @@ export interface HealthIntelligenceDecision {
 
   reviewed_at: string;
 }
+
+export type { ActiveProbe, ActiveProbeResponse } from "@/lib/health-intelligence/active-probing/types";
 
 export interface AppSettings {
   id: string;
