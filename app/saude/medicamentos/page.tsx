@@ -816,6 +816,8 @@ export default function MedicamentosListPage() {
       } =
         item;
       const isTemporary = med.tipo_uso === "temporario";
+      // M147: status administrativo não autoriza CTA primário de uso.
+      const isSuspendedSOSM147 = isSOS && med.status === "descontinuado";
       const stockSnapshot = getClinicalStockSnapshot(med);
       const stockUnknown = stockSnapshot.state === "unknown";
       const stockNegative = stockSnapshot.state === "negative";
@@ -1066,6 +1068,7 @@ export default function MedicamentosListPage() {
 
       const canQuickDose =
         !isSuspenso &&
+        !isSuspendedSOSM147 &&
         (!isEstoqueZerado || isSOS);
 
       const quickDoseLabel =
@@ -1254,6 +1257,7 @@ export default function MedicamentosListPage() {
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
+              {isSuspendedSOSM147 && <p className="mt-1 text-[11px] leading-snug text-amber-200">Cadastro suspenso. O botão secundário registra apenas um fato passado; não orienta uso ou retomada.</p>}
               <MedicationOperationalStrip today={todayStatus}
               stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
@@ -1277,6 +1281,14 @@ export default function MedicamentosListPage() {
                     {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
                   </button>
                 ) : null}
+                {isSuspendedSOSM147 && (
+                  <button type="button"
+                    aria-label={`Registrar uso já ocorrido de ${med.nome}, registrado como suspenso. Não retoma o tratamento.`}
+                    title="Somente documenta uso já ocorrido. Cadastro suspenso; sem autorização de retomada."
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-surface-border/60 bg-surface-raised/50 px-2 text-[11px] font-semibold text-ink-secondary"
+                    onClick={(event) => { event.preventDefault(); event.stopPropagation(); trigger("vibrate"); setQuickDoseMedId(med.id!); }}
+                  ><History size={14}/>Registrar uso já ocorrido</button>
+                )}
                 {careAction && (
                   <button
                     type="button"
@@ -1768,7 +1780,7 @@ export default function MedicamentosListPage() {
           </div>
         )}
       {/* VAULT_M144_LIST_ENTRY — M146 continua dona da prioridade operacional */}
-        <div className="mx-4 mb-5 rounded-2xl border border-emerald-400/15 bg-surface/60 p-3"><a href="/saude/central-m144" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] px-3 text-xs font-semibold text-emerald-200">Contingências, ciclos e imunizações · M144</a></div>
+        <div className="mx-4 mb-5 rounded-2xl border border-emerald-400/15 bg-surface/60 p-3"><button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2Fsaude%2Fmedicamentos")} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] px-3 text-xs font-semibold text-emerald-200 w-full">Ocorrências, ciclos e vacinas</button></div>
       </main>
     </PageTransition>
   );

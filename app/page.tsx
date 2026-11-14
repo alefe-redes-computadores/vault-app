@@ -1292,7 +1292,7 @@ export default function HomePage() {
                     />
 
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      {retiradasAtrasadas.length > 0 ? "Pendentes e próximos" : "Próximos de hoje"}
+                      {retiradasAtrasadas.length > 0 ? "Pendentes e próximos" : "Agenda de hoje"}
                     </h2>
                   </div>
 
@@ -2270,7 +2270,7 @@ export default function HomePage() {
           }}
         />
       {/* VAULT_M144_HOME_ENTRY — atalhos complementares, sem novas prioridades */}
-        <div className="mx-4 mb-4 rounded-2xl border border-surface-border/70 bg-surface/60 p-3"><a href="/saude/central-m144" className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/20 px-3 text-xs font-semibold text-emerald-200">Continuidade clínica, contingências e imunizações</a></div>
+        <div className="mx-4 mb-4 rounded-2xl border border-surface-border/70 bg-surface/60 p-3"><button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2F")} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/20 px-3 text-xs font-semibold text-emerald-200 w-full">Ocorrências, ciclos e vacinas</button></div>
       </main>
     </PageTransition>
   );
