@@ -103,4 +103,3 @@ export function withinFrequencyLimit(probes: readonly ActiveProbe[], userId: str
     Date.parse(probe.created_at) >= since && Date.parse(probe.created_at) <= nowMs && probe.status !== "cancelled").length;
   return count < max;
 }
-

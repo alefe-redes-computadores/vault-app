@@ -42,4 +42,3 @@ export function activeProbeQuestion(
     optionalNoteLabel:"Quer registrar um detalhe? (opcional)",limitation:LIMIT,
   };
 }
-

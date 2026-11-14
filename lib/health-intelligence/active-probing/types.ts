@@ -99,4 +99,3 @@ export interface ActiveProbeQuestion {
   optionalNoteLabel: string;
   limitation: string;
 }
-
