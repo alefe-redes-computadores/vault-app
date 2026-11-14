@@ -21,13 +21,43 @@ ok(
   "QuickDose aceita medicamento SOS mesmo com tratamento anterior suspenso"
 );
 
-ok(
-  quick.includes('doseKind:') &&
-  quick.includes('selectedMed.tipo_uso === "continuo"') &&
-  quick.includes('? "extra"') &&
-  quick.includes(': "sos"'),
-  "tomada avulsa de SOS persiste como dose_kind=sos"
-);
+// M148 P2 FIX1 — o V94.1 anterior pressupunha que apenas "continuo"
+// produzia "extra". Isso diverge da implementação canônica atual, que
+// também suporta "esporadico" e impede classificar temporários como SOS.
+// Extrair e EXECUTAR a expressão real enviada ao repositório de doses.
+const { createRequire } = await import("node:module");
+const ts = createRequire(import.meta.url)("typescript");
+const ast = ts.createSourceFile("QuickDoseModal.tsx", quick, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+ok(ast.parseDiagnostics.length === 0, "QuickDose válido em TypeScript");
+const doseKindExpressions = [];
+function inspect(node) {
+  if (ts.isCallExpression(node) && node.expression.getText(ast) === "doseLogsRepository.registrarTomadaAvulsa") {
+    const argument = node.arguments[0];
+    if (argument && ts.isObjectLiteralExpression(argument)) {
+      for (const prop of argument.properties) {
+        if (ts.isPropertyAssignment(prop) && prop.name.getText(ast) === "doseKind") {
+          doseKindExpressions.push(prop.initializer.getText(ast));
+        }
+      }
+    }
+  }
+  ts.forEachChild(node, inspect);
+}
+inspect(ast);
+ok(doseKindExpressions.length === 1, "DoseKind pertence ao único registro avulso canônico");
+const doseKindFor = new Function("selectedMed", `"use strict";return (${doseKindExpressions[0]});`);
+for (const [tipo_uso, expected] of [
+  ["sos", "sos"], ["esporadico", "sos"],
+  ["continuo", "extra"], ["temporario", "extra"],
+]) {
+  ok(doseKindFor({ tipo_uso }) === expected,
+    `${tipo_uso} registra dose_kind=${expected} na tomada avulsa`);
+}
+const doseRepo = read("lib/repositories/doseLogs.ts");
+ok(doseRepo.includes("async registrarTomadaAvulsa(") &&
+   doseRepo.includes('doseKind = "sos"') &&
+   doseRepo.includes("dose_kind:") && doseRepo.includes("doseKind,"),
+   "Repositório persiste o tipo declarado sem reclassificar o fato");
 
 ok(
   detail.includes('med.status !==') &&

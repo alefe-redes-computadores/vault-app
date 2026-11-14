@@ -19,6 +19,9 @@ import { MedicationJourneySummary } from "@/components/saude/MedicationJourneySu
 import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-cost-summary";
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { MedicationDetailNavigation } from "@/components/saude/MedicationWorkspaceNavigation";
+import { MedicationDetailCareHubM148 } from "@/components/saude/MedicationDetailCareHubM148";
+import { buildMedicationDetailHubM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
+import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
 import { MedicationDecisionEvidenceContext } from "@/components/saude/MedicationDecisionEvidenceContext";
 import { MedicationCareNetworkDetails } from "@/components/saude/MedicationCareNetworkDetails";
@@ -1801,6 +1804,28 @@ function MedicamentoDetalhesContent() {
   const hasFinancialSection = renovacoesPagas.length > 0 || medicationCosts.planned.length > 0 || typeof med.preco === "number";
   const hasRoutineSection = med.status !== "descontinuado" || isSOS;
 
+  // M148 P2: only the most recent CONFIRMED acquisition can describe its
+  // own manufacturer. A future order, prescription or older lab never fills
+  // the unknown manufacturer of a different, newer acquisition.
+  const latestConfirmedAcquisitionM148 = renovacoes
+    .filter(event => event.medicamento_id === med.id && event.user_id === med.user_id &&
+      (!event.person_id || event.person_id === med.person_id) &&
+      !isPrescriptionOnly(event) && !isFutureAcquisition(event, diaFinanceiro))
+    .sort((a,b) => renewalEventDate(b).localeCompare(renewalEventDate(a)))[0] ?? null;
+  const manufacturerOfLatestAcquisitionM148 = latestConfirmedAcquisitionM148
+    ? readManufacturerMetadata(latestConfirmedAcquisitionM148.observacoes).manufacturer ?? null
+    : null;
+  const detailHubM148 = buildMedicationDetailHubM148({
+    snapshot: journeySnapshot,
+    suspended: med.status === "descontinuado",
+    sos: isSOS,
+    temporary: isTemporary,
+    treatmentCount: tratamentos.length,
+    hasKnownStock: saldoRegistrado !== null,
+    labelManufacturer: med.laboratorio_etiqueta,
+    latestAcquisitionManufacturer: manufacturerOfLatestAcquisitionM148,
+  });
+
   // ==========================================================
   // IDENTIDADE
   // ==========================================================
@@ -2704,7 +2729,13 @@ function MedicamentoDetalhesContent() {
 
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
-          <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasStock={Boolean(temEstoque && (med.status !== "descontinuado" || isSOS))} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
+          {/* M148 P2: full legacy section map remains reachable but does not crowd the first fold. */}
+          <details className="group rounded-[16px] border border-surface-border/55 bg-surface/45 px-3">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Explorar todas as áreas do medicamento <ChevronDown size={15} className="text-ink-muted transition-transform group-open:rotate-180"/></summary>
+            <div className="border-t border-surface-border/40 pb-2 pt-2">
+              <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasStock={Boolean(temEstoque && (med.status !== "descontinuado" || isSOS))} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
+            </div>
+          </details>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
@@ -2888,12 +2919,13 @@ function MedicamentoDetalhesContent() {
           {/* VAULT_V320_QUICK_DOSE_TOP: same clinical owner/handler, moved above analytic sections */}
           {(med.status !== "descontinuado" || isSOS) && (
             <div className="rounded-[14px] border border-emerald-400/15 bg-emerald-400/[0.025] p-1.5">
+                {med.status === "descontinuado" && isSOS && <p className="px-2 pb-2 text-xs leading-relaxed text-amber-200">Tratamento anterior suspenso. Este botão registra somente um uso que já aconteceu; não orienta uma nova tomada.</p>}
                 <button
                   type="button"
                   onClick={
                     abrirQuickDose
                   }
-                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-void transition-all active:scale-[0.98]"
+                  className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${med.status === "descontinuado" && isSOS ? "border border-surface-border/70 bg-surface/70 text-ink-secondary" : "bg-emerald-500 text-void"}`}
                 >
                   <Zap
                     size={
@@ -2902,7 +2934,7 @@ function MedicamentoDetalhesContent() {
                     fill="currentColor"
                   />
 
-                  {isSOS ? "Registrar uso SOS" : isTemporary ? "Registrar dose do período" : "Registrar dose"}
+                  {med.status === "descontinuado" && isSOS ? "Registrar uso já ocorrido" : isSOS ? "Registrar uso SOS" : isTemporary ? "Registrar dose do período" : "Registrar dose"}
                 </button>
             </div>
           )}
@@ -2942,6 +2974,21 @@ function MedicamentoDetalhesContent() {
               </button>
             </section>
           )}
+          {/* VAULT_M148_P2_RELATIONAL_HUB: facts are read-only, original authority preserved. */}
+          {/* VAULT_M144_DETAIL_ENTRY: contextual access, not an orphan bottom action. */}
+          <MedicationDetailCareHubM148
+            view={detailHubM148}
+            hasRoutine={hasRoutineSection}
+            hasPharmaLens={Boolean(med.id && med.person_id && activePersonId === med.person_id)}
+            onOpenSection={sectionId => {
+              trigger("vibrate");
+              if (typeof window === "undefined") return;
+              if (window.location.hash === `#${sectionId}`) window.dispatchEvent(new Event("hashchange"));
+              else window.location.hash = sectionId;
+              window.requestAnimationFrame(() => document.getElementById(sectionId)?.scrollIntoView({behavior:"smooth",block:"start"}));
+            }}
+            onOpenOccurrences={() => router.push(`/saude/central-m144?return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?${searchParams.toString()}`)}`)}
+          />
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
@@ -3700,8 +3747,7 @@ function MedicamentoDetalhesContent() {
           </div>
         </BottomSheet>
 
-      {/* VAULT_M144_DETAIL_ENTRY — painel observacional sem regravar histórico */}
-        <div className="mx-4 mt-4 rounded-2xl border border-emerald-300/15 bg-surface/70 p-3"><button type="button" onClick={()=>router.push(`/saude/central-m144?return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?${searchParams.toString()}`)}`)} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-300/[.06] px-3 text-center text-xs font-semibold text-emerald-200 w-full">Ocorrências, ciclos e vacinas</button></div>
+
       </main>
     </PageTransition>
   );
