@@ -114,6 +114,7 @@ import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
 import { HomeBrainEvidenceGroup } from "@/components/home/HomeBrainEvidenceGroup";
 import { groupHomeBrainEvidence } from "@/lib/home/brain-evidence-groups";
+import { homeAgendaCountsM147, homeAgendaBucketM147, sortHomeWithdrawalsM147, mergeExactWithdrawalAliasesM147 } from "@/lib/home/home-agenda-m147";
 import { HomeSectionNav } from "@/components/home/HomeSectionNav";
 import { VaultUpdateHomePromptM117 } from "@/components/updates/VaultUpdateHomePromptM117";
 import { VaultBrainCommand } from "@/components/health-intelligence/VaultBrainCommand";
@@ -539,6 +540,16 @@ export default function HomePage() {
     [retiradasHoje, hoje]
   );
 
+  // VAULT_M147_P1_AGENDA: hora local declarada, ordem e visibilidade sem alterar eventos.
+  const retiradasAgendaM147 = useMemo(() =>
+    sortHomeWithdrawalsM147(retiradasHoje, hoje, horaAtual), [retiradasHoje, hoje, horaAtual]);
+  const resumoAgendaM147 = useMemo(() => homeAgendaCountsM147([
+    ...consultasHoje.map(item=>({data:item.data,horario:item.horario})),
+    ...cirurgiasHoje.map(item=>({data:item.data,horario:item.horario})),
+    ...examesHoje.map(item=>({data:item.data,horario:item.horario})),
+    ...retiradasHoje.map(item=>({data:item.data,horario:item.horario})),
+  ],hoje,horaAtual),[consultasHoje,cirurgiasHoje,examesHoje,retiradasHoje,hoje,horaAtual]);
+
   // R9 R8: contabiliza apenas eventos já filtrados pelos repositórios; nenhuma nova leitura.
   const totalCompromissosHoje = countHomeTodayAppointments({
     consultations: consultasHoje,
@@ -853,9 +864,13 @@ export default function HomePage() {
   // M130: a decisão principal não volta como um segundo cartão com o mesmo
   // destino. A autoridade e a fila continuam intactas; muda apenas a projeção
   // compacta da Home.
+  // Só um alias exato da MESMA retirada pode compartilhar cartão.
+  // Avisos urgentes/vencidos, regulação, estoque e análises do Brain nunca somem.
+  const aliasesRetiradaM147 = useMemo(() => mergeExactWithdrawalAliasesM147(retiradasAgendaM147.slice(0,1), operationalAlerts),
+    [retiradasAgendaM147,operationalAlerts]);
   const unifiedAlerts = useMemo(
-    () => operationalAlerts.filter(alert => safeReturnTarget(alert.href, "") !== safeReturnTarget(resumoContextual.href, "")),
-    [operationalAlerts, resumoContextual.href]
+    () => operationalAlerts.filter(alert => safeReturnTarget(alert.href, "") !== safeReturnTarget(resumoContextual.href, "")).filter(alert => !aliasesRetiradaM147.aliasIds.has(alert.id)),
+    [operationalAlerts, resumoContextual.href, aliasesRetiradaM147]
   );
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
   const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item =>
@@ -1301,6 +1316,14 @@ export default function HomePage() {
                       ? "Compromissos abertos não somem na virada do dia"
                       : "Sua agenda de saúde do dia"}
                   </p>
+                  <p role="note" aria-label="Resumo temporal da agenda" className="mt-1 text-[11px] leading-relaxed text-ink-secondary">
+                    {[
+                      resumoAgendaM147.pendenteAnterior>0?`${resumoAgendaM147.pendenteAnterior} de dias anteriores`:null,
+                      resumoAgendaM147.horarioPassado>0?`${resumoAgendaM147.horarioPassado} horário${resumoAgendaM147.horarioPassado===1?"":"s"} já passado${resumoAgendaM147.horarioPassado===1?"":"s"}`:null,
+                      resumoAgendaM147.aindaHoje>0?`${resumoAgendaM147.aindaHoje} ainda hoje`:null,
+                      resumoAgendaM147.semHorario>0?`${resumoAgendaM147.semHorario} sem horário informado`:null,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
                 </div>
 
                 <button
@@ -1470,7 +1493,7 @@ export default function HomePage() {
                   </button>
                 )}
 
-                {(mostrarTodasRetiradas ? retiradasHoje : retiradasHoje.slice(0, 3)).map(
+                {(mostrarTodasRetiradas ? retiradasAgendaM147 : retiradasAgendaM147.slice(0, 1)).map(
                   (
                     retirada
                   ) => (
@@ -1503,23 +1526,28 @@ export default function HomePage() {
                         <p className="truncate text-xs text-ink-muted">
                           {isOverdueWithdrawal(retirada, hoje)
                             ? `Pendente há ${withdrawalDaysOverdue(retirada.data, hoje)} ${withdrawalDaysOverdue(retirada.data, hoje) === 1 ? "dia" : "dias"} · revise ou reagende`
-                            : retirada.tipo === "sus"
-                              ? "Retirada programada no SUS"
-                              : "Retirada programada"}
+                            : homeAgendaBucketM147(retirada,hoje,horaAtual)==="horario_passado"
+                              ? "Horário de hoje já passou · retirada ainda aberta"
+                              : homeAgendaBucketM147(retirada,hoje,horaAtual)==="ainda_hoje"
+                                ? (retirada.tipo==="sus"?"Ainda hoje · retirada SUS":"Ainda hoje · retirada prevista")
+                                : (retirada.tipo === "sus" ? "Retirada SUS · horário não informado" : "Retirada · horário não informado")}
                         </p>
+                        {(aliasesRetiradaM147.byWithdrawal.get(String(retirada.id||''))||[]).map(alias=><p key={alias.id} role="note" className="mt-0.5 line-clamp-2 text-[11px] text-amber-200">{alias.title} · {alias.subtitle} (mesma retirada)</p>)}
                         <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview} sourceNotesById={sourceNotesById}/>
                       </div>
 
                       <span className="shrink-0 font-mono text-[11px] font-semibold text-ice">
                         {isOverdueWithdrawal(retirada, hoje)
                           ? "Atrasada"
-                          : retirada.horario || "Hoje"}
+                          : homeAgendaBucketM147(retirada,hoje,horaAtual)==="horario_passado"
+                            ? "Passou"
+                            : retirada.horario || "Hoje"}
                       </span>
                     </button>
                   )
                 )}
 
-                {retiradasHoje.length > 3 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${retiradasHoje.length - 3} retirada(s)`}</button>}
+                {retiradasAgendaM147.length > 1 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${Math.max(0, retiradasAgendaM147.length - 1)} retirada(s)`}</button>}
               </div>
             </motion.section>
           )}
@@ -1559,13 +1587,20 @@ export default function HomePage() {
 
           {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
               Não gera nova interpretação nem substitui alertas de segurança. */}
-          {!quantityAlreadyInBrain&&<HomeDoseQuantityFollowUp
-            insight={quantityFollowUpInsight}
-            feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
-            nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
-            onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
-            onNavigate={href => { trigger("vibrate"); router.push(href); }}
-          />}
+          {!quantityAlreadyInBrain && quantityFollowUpInsight && (
+            <ClinicalDisclosure key={`${quantityFollowUpInsight.id}:${quantityFollowUpInsight.gravidadeSeguranca||"rotina"}`} id="home-dose-quantity-followup" title="Acompanhamento de quantidade registrada"
+              description="Uma observação factual acessível sem repetir cartão na primeira dobra."
+              icon={<Activity size={17}/>}
+              defaultOpen={quantityFollowUpInsight.gravidadeSeguranca === "critica" || quantityFollowUpInsight.gravidadeSeguranca === "importante"}>
+              {()=><HomeDoseQuantityFollowUp
+                insight={quantityFollowUpInsight}
+                feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
+                nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
+                onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
+                onNavigate={href => { trigger("vibrate"); router.push(href); }}
+              />}
+            </ClinicalDisclosure>
+          )}
 
           {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
                     {/* ===================================================
