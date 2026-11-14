@@ -62,6 +62,14 @@ const ALLOWED_NAV_PATHS = [
   "/saude/registros",
   "/saude/central-m144", // M148 P3: Central e area autenticada, barra inferior permanece
   "/saude/mapa", // M150: mapa de descoberta mantém a barra global
+  // M150 P2: explorações são destinos principais; apenas formulários escondem a barra.
+  "/saude/minha-saude",
+  "/saude/brain-v7",
+  "/saude/visual-studio",
+  "/saude/pharmalens",
+  "/saude/supply-shield",
+  "/saude/plano-seguranca",
+  "/saude/registros/relatorio",
 ];
 
 // VAULT_NORMALIZE_PATHNAME_V40

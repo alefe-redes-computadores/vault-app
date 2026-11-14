@@ -84,6 +84,7 @@ import {
 } from "@/components/ui/TextArea";
 import { formatPrescriptionAttachmentSize, validatePrescriptionAttachment } from "@/lib/health-documents/prescription-attachment";
 import { safeReturnTarget } from "@/lib/navigation/return-context";
+import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
 import { db } from "@/lib/db";
 import { healthSupplyRepository } from "@/lib/repositories/healthSupply";
 
@@ -140,7 +141,7 @@ function NovaReceitaContent() {
       "return_to"
     );
 
-  const returnTo = safeReturnTarget(rawReturnTo, "/saude/renovacao");
+  const returnTo = safeClinicalReturnM150(safeReturnTarget(rawReturnTo, "/saude/renovacao"), "/saude/renovacao/nova-receita", "/saude/renovacao");
 
   const medicamentosAtivos =
     useMemo(

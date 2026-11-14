@@ -334,7 +334,7 @@ export default function HojePage() {
                   ? `Planejada para ${agenda.day.split("-").reverse().join("/")} · continua pendente até registrar ou reagendar`
                   : "Data planejada para renovação da receita",
               atrasada: agenda.overdue,
-              actionHref: decision.actionHref,
+              actionHref: withReturnTarget(decision.actionHref, buildTimelineUrl(dataSelecionada)),
               }];
               return [];
           });
@@ -1588,6 +1588,7 @@ export default function HojePage() {
   // M17: one interaction context per parent render, shared by every visual dose card.
   // Clinical operations, owner scope, stock authority and idempotent writes stay above.
   const doseCardScope: TodayDoseTimelineCardScope = {
+    returnTo: buildTimelineUrl(dataSelecionada),
     isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing: false, handleIgnorar, handleToggle,
   };
 

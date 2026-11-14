@@ -9,6 +9,7 @@ import {WithdrawalPreparationSummary} from "@/components/saude/WithdrawalPrepara
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
+import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
 
 import {
   Suspense,
@@ -110,7 +111,7 @@ function DetalhesRetiradaContent() {
     params.get(
       "id"
     );
-  const backTarget = safeReturnTarget(params.get("return_to"), "/saude/retiradas");
+  const backTarget = safeClinicalReturnM150(safeReturnTarget(params.get("return_to"), "/saude/retiradas"), "/saude/retiradas/detalhes", "/saude/retiradas");
 
   const {
     retiradas,

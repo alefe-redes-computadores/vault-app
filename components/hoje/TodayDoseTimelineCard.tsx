@@ -10,6 +10,7 @@ import { getMedicationRegulatorySurface } from "@/lib/medication-regulatory-visu
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import type { TodayTimelineItem } from "@/lib/today/build-timeline-items";
 import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
+import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
 
 /** Only the read-only rendering is extracted. Mutation handlers belong to Hoje. */
@@ -18,6 +19,7 @@ export type TodayDoseTimelineCardScope = {
   isPassado: boolean;
   isFuturo: boolean;
   horaAtual: string;
+  returnTo: string;
   regulatoryProfiles: ReturnType<typeof useMedicationRegulatoryProfiles>;
   processandoDoseId: string | null;
   trigger: (kind: "vibrate") => void;
@@ -69,6 +71,7 @@ export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
     isPassado: scope.isPassado,
     isFuturo: scope.isFuturo,
     horaAtual: scope.horaAtual,
+    returnTo: scope.returnTo,
     regulatoryProfiles,
     processandoDoseId: processingId,
     trigger: commands.trigger,
@@ -81,7 +84,7 @@ export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
     handleIgnorar: commands.handleIgnorar,
     handleToggle: commands.handleToggle,
   }), [
-    scope.isHoje, scope.isPassado, scope.isFuturo, scope.horaAtual,
+    scope.isHoje, scope.isPassado, scope.isFuturo, scope.horaAtual, scope.returnTo,
     scope.isHistoricalProcessing, scope.isProcessing,
     regulatoryProfiles, processingId, medicationsById, commands,
   ]);
@@ -90,7 +93,7 @@ export function TodayDoseTimelineCard({item,scope}: TodayDoseCardProps) {
 
 /** The original visual JSX and every button remain untouched below. */
 const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({item,scope}: TodayDoseCardProps) {
-  const {isHoje, isPassado, isFuturo, horaAtual, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing, handleIgnorar, handleToggle} = scope;
+  const {isHoje, isPassado, isFuturo, horaAtual, returnTo, regulatoryProfiles, processandoDoseId, trigger, router, medicamentosById, abrirRevisaoHistorica, isHistoricalProcessing, handleCancelPlannedDose, isProcessing, handleIgnorar, handleToggle} = scope;
                           if (item.isSintoma) {
                             return <TodaySymptomTimelineCard key={`sintoma-${item.sintomaId}`} item={item} onOpen={() => {
                               trigger("vibrate");
@@ -182,10 +185,7 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
 
                                 trigger("vibrate");
 
-                                router.push(
-                                  "/saude/medicamentos/detalhes?id=" +
-                                    item.medicamentoId
-                                );
+                                router.push(withReturnTarget(`/saude/medicamentos/detalhes?id=${encodeURIComponent(item.medicamentoId)}`, returnTo));
                               }}
                               onKeyDown={(event) => {
                                 // A tecla de um botão interno pertence à própria ação,
@@ -199,10 +199,7 @@ const MemoTodayDoseTimelineCardBody = memo(function TodayDoseTimelineCardBody({i
                                 event.preventDefault();
 
                                 if (item.medicamentoId) {
-                                  router.push(
-                                    "/saude/medicamentos/detalhes?id=" +
-                                      item.medicamentoId
-                                  );
+                                  router.push(withReturnTarget(`/saude/medicamentos/detalhes?id=${encodeURIComponent(item.medicamentoId)}`, returnTo));
                                 }
                               }}
                               whileTap={{

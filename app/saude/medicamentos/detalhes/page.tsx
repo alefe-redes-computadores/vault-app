@@ -36,6 +36,7 @@ import { MedicationCatalogNameComparison } from "@/components/saude/MedicationCa
 import { MedicationAcquisitionHistoryCard } from "@/components/saude/MedicationAcquisitionHistoryCard";
 import { retroReviewHref } from "@/lib/today/retro-batch-review";
 import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
+import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
@@ -433,7 +434,7 @@ function MedicamentoDetalhesContent() {
   const handleSafeBack =
     () => {
       trigger("vibrate");
-      const requestedTarget = safeReturnTarget(searchParams.get("return_to"), "/saude/medicamentos");
+      const requestedTarget = safeClinicalReturnM150(safeReturnTarget(searchParams.get("return_to"), "/saude/medicamentos"), "/saude/medicamentos/detalhes", "/saude/medicamentos");
       const returnTarget = requestedTarget.startsWith("/saude/medicamentos/detalhes")
         ? "/saude/medicamentos"
         : requestedTarget;
