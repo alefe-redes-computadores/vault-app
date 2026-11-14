@@ -22,7 +22,7 @@ ok('Prioridade real do Brain preservada antes do fallback SOS',med.includes('con
 ok('Aviso SOS só ganha destaque em exceções operacionais',med.includes('isSOS && !sosHasOperationalException ? null') && med.includes('careDecision.stage === "withdrawal_overdue"'));
 ok('Quick Dose SOS continua acessível',med.includes('setQuickDoseMedId(med.id!)'));
 ok('Faixa regulatória principal preservada',med.includes('regulatorySurface.rail') && med.includes('aria-label={`Ver classificação da receita:'));
-ok('SUS + comprado não afirma origem atual',med.includes('Origens históricas · conferir') && med.includes('supplyRoute?.mode === "private" || supplyRoute?.mode === "public"'));
+ok('SUS + comprado não afirma origem atual',med.includes('routeMode={supplyRoute?.mode}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes('nenhuma comprova o fornecedor atual'));
 ok('Receita não vira aquisição',care.includes('isPrescriptionOnly(event)') && care.includes('isFutureAcquisition(event, today)'));
 ok('Planejamento não assume criticidade clínica',care.includes('!planning && !stable && urgency === "alta"'));
 ok('SOS excluído do denominador de doses',med.includes('if (item.isSOS || item.isSuspenso) continue;'));
@@ -32,7 +32,12 @@ ok('Avatar mantém baixo custo de GPU',avatar.includes('powerPreference: "low-po
 
 // Distinguish the resolved NOW action from its candidate object; no false visual urgency.
 ok('Cor de urgência compara ação resolvida', med.includes('careAction === brainAction && brainCareItem?.lane === "now"'));
-ok('O estado híbrido não herda etiqueta de origem ativa', med.includes('supplyRoute?.mode === "hybrid" ? ('));
+const provenanceM150P3 = read('lib/medications/medication-list-provenance-m150-p3.ts');
+ok('O estado híbrido não herda etiqueta de origem ativa',
+  med.includes('routeMode={supplyRoute?.mode}') &&
+  provenanceM150P3.includes("input.routeMode === 'hybrid'") &&
+  provenanceM150P3.includes('`${recordedOrigin} · cadastro`') &&
+  provenanceM150P3.includes('nenhuma comprova o fornecedor atual.'));
 ok('M86: faixa separada e alvos táteis preservados',/aria-label="Ações do medicamento" className="mt-1\.5 grid min-w-0 grid-cols-2 gap-1\.5 border-t/.test(med) && med.includes('[&>button]:min-h-11'));
 ok('V165: botões continuam independentes da identidade',med.includes('VAULT_V318_COMPACT_IDENTITY') && med.includes('VAULT_MEDICATION_LIST_HIERARCHY_V98') && med.includes('router.push(careAction.href)') && med.includes('setQuickDoseMedId(med.id!)'));
 

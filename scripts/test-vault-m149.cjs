@@ -38,8 +38,8 @@ ok(home.includes('onOpenOccurrences={() =>')&&center.includes('onOpenOccurrences
 ok(center.includes('label="Ocorrências e ciclos"')&&center.includes('description="Vacinas e histórico"')&&center.includes('Icon={Syringe}'),'Home usa grade e ícone Lucide');
 ok(badge.includes('data-provenance={source}')&&badge.includes('aria-label={detail}')&&badge.includes('title={detail}'),'proveniência distinta sem palavras extras visíveis');
 ok(badge.includes('{identity.label}')&&!badge.includes('`Etiqueta · ${identity.label}`')&&!badge.includes('`Últ. aquisição · ${identity.label}`'),'texto visível contém somente laboratório');
-ok(meds.includes('source="ultima_aquisicao"')&&meds.includes('source="etiqueta"'),'etiqueta e aquisição independentes');
-ok(meds.indexOf('source="ultima_aquisicao"')<meds.indexOf('source="etiqueta"'),'prioriza última aquisição ao mostrar rótulos');
+ok(meds.includes('latestManufacturer={latestManufacturer}')&&meds.includes('declaredManufacturer={med.laboratorio_etiqueta}'),'etiqueta e aquisição preservadas como campos de origem distintos');
+ok(meds.includes('<MedicationProvenanceLineM150P3')&&meds.includes('routeMode={supplyRoute?.mode}'),'linha única visível sem apagar a origem do fornecimento');
 ok(meds.includes('setSelectedRegulatoryAuthority(catalogIdentity?.authorityState ?? "unvalidated")'),'modal associa identidade real');
 ok(meds.includes('selectedRegulatoryAuthority === "possible_divergence"')&&meds.includes('Identidade farmacêutica ainda não confirmada pelo catálogo'),'modal não afirma confirmação sem fonte');
 ok(nav.includes('window.location.assign("/")')&&nav.includes('}, 5000);'),'fallback da Home só após tentativas de SPA');

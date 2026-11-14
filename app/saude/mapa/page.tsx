@@ -15,6 +15,7 @@ import { clinicalDirectoryM150, searchClinicalDirectoryM150 } from '@/lib/naviga
 import type { ClinicalMapIconM150 } from '@/lib/navigation/clinical-directory-m150';
 import { safeClinicalReturnM150 } from '@/lib/navigation/clinical-return-m150';
 import { withReturnTarget } from '@/lib/navigation/return-context';
+import { clinicalMapToneM150P3 } from '@/lib/navigation/clinical-map-tones-m150-p3';
 
 const icons: Record<ClinicalMapIconM150, LucideIcon> = {
   clock: Clock3, pill: Pill, heart: HeartPulse, file: FileHeart,
@@ -64,7 +65,7 @@ export default function ClinicalMapM150Page() {
             return <Link key={entry.id} href={href} onClick={()=>trigger('vibrate')}
               aria-label={`${entry.label}. ${entry.description}`}
               className="group flex min-h-[66px] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-raised/40 active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-emerald-300">
-              <span className="grid size-10 shrink-0 place-items-center rounded-[14px] border border-emerald-300/15 bg-emerald-300/[.065] text-emerald-300"><Icon size={19} aria-hidden="true"/></span>
+              <span className={`grid size-10 shrink-0 place-items-center rounded-[14px] border ${clinicalMapToneM150P3(entry.id)}`}><Icon size={19} aria-hidden="true"/></span>
               <span className="min-w-0 flex-1"><strong className="block text-sm font-semibold leading-snug text-ink-primary">{entry.label}</strong><span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{entry.description}</span></span>
               <ChevronRight size={16} className="shrink-0 text-ink-faint" aria-hidden="true"/>
             </Link>;

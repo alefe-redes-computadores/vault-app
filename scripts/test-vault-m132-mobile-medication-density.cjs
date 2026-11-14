@@ -13,7 +13,7 @@ ok(page.includes('medsPrioridade.map(renderCard)')&&page.includes('medsEmDia.map
 ok(page.includes('setQuickDoseMedId(med.id!)')&&page.includes('router.push(careAction.href)')&&page.includes('MedicationRestockAction name={med.nome}'),"dose, reposicao e decisao original intactas");
 ok(page.includes('VAULT_V318_OPERATIONAL_STRIP')&&page.includes('regulatoryProfile?.label')&&page.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS'),"receita regulatoria, dose ignorada e estoque mantidos");
 ok(tile.includes('const surface = areaTone.split')&&tile.includes('${surface || "border-surface-border/60 bg-surface"}')&&tile.includes('onNavigate(path)'),"superficie respeita paleta canonica e navegacao/haptics");
-ok(filter.includes('grid grid-cols-2 min-[390px]:grid-cols-3')&&filter.includes('min-h-11')&&filter.includes('break-words'),"filtros adaptativos, tocaveis e com texto legivel");
+ok(filter.includes('grid grid-cols-2 gap-1.5')&&filter.includes('min-h-11')&&filter.includes('break-words'),"filtros adaptativos, tocaveis e com texto legivel");
 ok(filter.includes('setExpanded(false)')&&filter.includes('Escape')&&filter.includes('pointerdown')&&filter.includes('aria-pressed={value === key}'),"filtros fecham por selecao, Escape e toque externo");
 ok(group.includes('compact?: boolean')&&group.includes('compact=false')&&group.includes('pageSize=3')&&group.includes('revealHash'),"compactacao opcional sem perder deep-link e paginacao");
 ok(strip.includes('aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}. ${stockDetail}`}')&&strip.includes('stockTone === "low"')&&strip.includes('stockTone === "empty"'),"texto clinico completo acessivel, detalhe de alerta visivel");

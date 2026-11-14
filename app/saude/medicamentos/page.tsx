@@ -6,7 +6,9 @@ import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-pre
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction } from "@/lib/medication-access-action";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
-import { MedicationProvenanceBadge } from "@/components/saude/MedicationProvenanceBadge";
+import { MedicationProvenanceLineM150P3 } from "@/components/saude/MedicationProvenanceLineM150P3";
+import { medicationListDisplayNameM150P3 } from "@/lib/medications/medication-list-provenance-m150-p3";
+import { medicationCardActionLayoutM150P3 } from "@/lib/medications/medication-card-action-layout-m150-p3";
 import { createMedicationDayComparatorM149 } from "@/lib/health-intelligence/medication-day-sort-m149";
 import { medicationStockLabelM149 } from "@/lib/health-intelligence/medication-stock-display-m149";
 import { useLocalDay } from "@/hooks/useLocalDay";
@@ -17,7 +19,7 @@ import { decideMedicationCarePath, medicationCarePresentation, medicationCareSta
 import { indexMedicationRenewals } from "@/lib/health-intelligence/medication-workspace";
 import { ownedMedicationRenewals } from "@/lib/health-intelligence/medication-owner-events";
 import { hasConfirmedControlledRegime } from "@/lib/medication-intelligence/controlled-filter";
-import { MedicationListRouteLabel } from "@/components/saude/MedicationListRouteLabel";
+// A origem completa continua em supplyRoute e no detalhamento de evidencias.
 import { MedicationOperationalStrip } from "@/components/saude/MedicationOperationalStrip";
 import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
 import { isRestockDestination, medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
@@ -1103,6 +1105,69 @@ export default function MedicamentosListPage() {
           : careAction.label
         : "";
 
+      // M150 P3: keep original business handlers; only classify presentation.
+      const quickActionButtonM150P3 = !isSuspenso && canQuickDose && quickDoseLabel ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      trigger("vibrate");
+                      setQuickDoseMedId(med.id!);
+                    }}
+                    className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
+                    aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
+                  >
+                    <Zap size={12} fill="currentColor" />
+                    {quickDoseLabel}
+                    {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
+                  </button>
+                ) : null;
+      const historyActionButtonM150P3 = isSuspendedSOSM147 ? (
+                  <button type="button"
+                    aria-label={`Registrar uso já ocorrido de ${med.nome}, registrado como suspenso. Não retoma o tratamento.`}
+                    title="Somente documenta uso já ocorrido. Cadastro suspenso; sem autorização de retomada."
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-surface-border/60 bg-surface-raised/50 px-2 text-[11px] font-semibold text-ink-secondary"
+                    onClick={(event) => { event.preventDefault(); event.stopPropagation(); trigger("vibrate"); setQuickDoseMedId(med.id!); }}
+                  ><History size={14}/>Registrar uso já ocorrido</button>
+                ) : null;
+      const careActionButtonM150P3 = careAction ? (
+                  <button
+                    type="button"
+                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    title={careAction.description}
+                    aria-label={`${careAction.description} para ${med.nome}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      trigger("vibrate");
+                      router.push(careAction.href);
+                    }}
+                  >
+                    <AlertTriangle size={12} className="shrink-0" />
+                    <span className="min-w-0 line-clamp-1 break-words">{contextualActionLabel}</span>
+                    <span className="sr-only">{careAction.label}</span>
+                  </button>
+                ) : null;
+      const stockActionButtonM150P3 = !isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
+                  (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (
+                  <MedicationRestockAction name={med.nome}
+                    label={stockUnknown ? "Informar saldo" : stockNegative ? "Revisar saldo" : "Repor estoque"}
+                    onOpen={() => {
+                      trigger("vibrate");
+                      router.push(stockUnknown || stockNegative
+                        ? medicationStockCountHref(med.id!, "/saude/medicamentos")
+                        : medicationRestockHref(med.id!, "/saude/medicamentos"));
+                    }} />
+                ) : null;
+      const actionLayoutM150P3 = medicationCardActionLayoutM150P3({
+        dose: Boolean(quickActionButtonM150P3),
+        care: Boolean(careActionButtonM150P3),
+        stock: Boolean(stockActionButtonM150P3),
+        suspended: isSuspenso,
+        history: Boolean(historyActionButtonM150P3),
+      });
+
       // VAULT_MEDICATION_LIST_DENSITY_V72
       return (
         <ListCard
@@ -1176,15 +1241,15 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="relative flex min-w-0 flex-col gap-2">
+          <div className="relative flex min-w-0 flex-col gap-1.5">
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
-                <h3 title={med.nome} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
-                  {med.nome}
+                <h3 title={medicationListDisplayNameM150P3(med.nome)} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
+                  {medicationListDisplayNameM150P3(med.nome)}
                 </h3>
                 {med.dosagem && (
                   <span title={med.dosagem} className="min-w-0 max-w-full text-[11px] font-semibold leading-snug text-ink-secondary">
@@ -1210,25 +1275,17 @@ export default function MedicamentosListPage() {
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
-                {latestManufacturer && <MedicationProvenanceBadge name={latestManufacturer} source="ultima_aquisicao"/>}
-                {med.laboratorio_etiqueta && (!latestManufacturer || normalizeMedicationText(med.laboratorio_etiqueta)!==normalizeMedicationText(latestManufacturer)) && <MedicationProvenanceBadge name={med.laboratorio_etiqueta} source="etiqueta"/>}
+                <MedicationProvenanceLineM150P3
+                  latestManufacturer={latestManufacturer}
+                  declaredManufacturer={med.laboratorio_etiqueta}
+                  acquisitionType={med.tipo_aquisicao}
+                  routeMode={supplyRoute?.mode}
+                  routeLabels={supplyRoute?.labels}
+                  doseText={textoDose}
+                />
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">Revisar identidade</span>
                 )}
-                {supplyRoute?.mode === "hybrid" ? (
-                  // R9 R3: o medicamento informa a origem cadastrada; a rota híbrida
-                  // informa coexistência de evidências, nunca fornecimento simultâneo.
-                  med.tipo_aquisicao === "comprado" ? (
-                    <span title="Origem atual declarada no cadastro: comprado. Existem também vínculos SUS e compras no histórico; verifique os processos ativos nos detalhes." className="max-w-full truncate rounded-md border border-emerald-400/20 bg-emerald-400/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300">Comprado · cadastro</span>
-                  ) : med.tipo_aquisicao === "sus" ? (
-                    <span title="Origem cadastrada como SUS. Há compras particulares no histórico; confirme a etapa e o processo atual nos detalhes." className="max-w-full truncate rounded-md border border-violet-300/20 bg-violet-300/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-violet-200">SUS · cadastro</span>
-                  ) : (
-                    <span title="Há vínculos públicos e compras particulares registrados. O histórico não comprova a origem de fornecimento atual." className="max-w-full truncate rounded-md border border-violet-300/15 bg-violet-300/[.07] px-1.5 py-0.5 text-[9px] font-semibold text-violet-200">Origens históricas · conferir</span>
-                  )
-                ) : (supplyRoute?.mode === "private" || supplyRoute?.mode === "public") && (
-                  <MedicationListRouteLabel route={supplyRoute} label={supplyRoute.labels.join(" + ")} />
-                )}
-                {textoDose && <span title={`Dose ${textoDose}`} className="text-[11px] text-ink-muted">Dose {textoDose}</span>}
                 {careDecision.stage !== "stable" && !careAction && (!isSOS || sosHasOperationalException) && (
                   <span title={careDecision.explanation} className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${carePresentation.badgeClass}`}>
                     {careDecision.label}
@@ -1243,60 +1300,22 @@ export default function MedicamentosListPage() {
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
               <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-xs [&>button:only-child]:col-span-2">
-                {!isSuspenso && canQuickDose && quickDoseLabel ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      trigger("vibrate");
-                      setQuickDoseMedId(med.id!);
-                    }}
-                    className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all active:scale-[0.97] ${isSOS ? "border-amber-400/20 bg-amber-400/[0.07] text-amber-400" : "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-400"}`}
-                    aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
-                  >
-                    <Zap size={12} fill="currentColor" />
-                    {quickDoseLabel}
-                    {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
-                  </button>
-                ) : null}
-                {isSuspendedSOSM147 && (
-                  <button type="button"
-                    aria-label={`Registrar uso já ocorrido de ${med.nome}, registrado como suspenso. Não retoma o tratamento.`}
-                    title="Somente documenta uso já ocorrido. Cadastro suspenso; sem autorização de retomada."
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-surface-border/60 bg-surface-raised/50 px-2 text-[11px] font-semibold text-ink-secondary"
-                    onClick={(event) => { event.preventDefault(); event.stopPropagation(); trigger("vibrate"); setQuickDoseMedId(med.id!); }}
-                  ><History size={14}/>Registrar uso já ocorrido</button>
+                {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
+                {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
+                {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
+                {actionLayoutM150P3.secondary.length > 0 && (
+                  <details onClick={(event) => event.stopPropagation()}
+                    className="group col-span-2 rounded-xl border border-surface-border/40 bg-surface-raised/20">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                      Outras ações <ChevronDown size={14} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+                    </summary>
+                    <div role="group" aria-label="Outras ações do medicamento" className="grid gap-1.5 border-t border-surface-border/25 p-2 [&>button]:min-h-11 [&>button]:w-full">
+                      {actionLayoutM150P3.secondary.includes("history") ? historyActionButtonM150P3 : null}
+                      {actionLayoutM150P3.secondary.includes("care") ? careActionButtonM150P3 : null}
+                      {actionLayoutM150P3.secondary.includes("stock") ? stockActionButtonM150P3 : null}
+                    </div>
+                  </details>
                 )}
-                {careAction && (
-                  <button
-                    type="button"
-                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${careActionClass}`}
-                    title={careAction.description}
-                    aria-label={`${careAction.description} para ${med.nome}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      trigger("vibrate");
-                      router.push(careAction.href);
-                    }}
-                  >
-                    <AlertTriangle size={12} className="shrink-0" />
-                    <span className="min-w-0 line-clamp-1 break-words">{contextualActionLabel}</span>
-                    <span className="sr-only">{careAction.label}</span>
-                  </button>
-                )}
-                {!isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
-                  (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (
-                  <MedicationRestockAction name={med.nome}
-                    label={stockUnknown ? "Informar saldo" : stockNegative ? "Revisar saldo" : "Repor estoque"}
-                    onOpen={() => {
-                      trigger("vibrate");
-                      router.push(stockUnknown || stockNegative
-                        ? medicationStockCountHref(med.id!, "/saude/medicamentos")
-                        : medicationRestockHref(med.id!, "/saude/medicamentos"));
-                    }} />
-                ) : null}
               </div>
             </div>
 

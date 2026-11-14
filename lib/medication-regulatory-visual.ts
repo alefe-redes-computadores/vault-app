@@ -9,6 +9,7 @@ export type MedicationRegulatoryTone =
   | "neutral"
   | "red"
   | "black"
+  | "blue"
   | "yellow"
   | "unknown";
 
@@ -66,26 +67,26 @@ function visualForModel(
   switch (code) {
     case "notificacao_b":
       return {
-        tone: "black",
+        tone: "blue",
         label: "Notificação B",
         detail: model || "Receituário de controle especial",
         verified: true,
         sourceLabel: source,
-        accent: "#94a3b8",
+        accent: "#60a5fa",
         badgeClass:
-          "border-slate-300/35 bg-black/70 text-slate-100",
+          "border-sky-400/35 bg-sky-400/10 text-sky-200",
       };
 
     case "notificacao_b2":
       return {
-        tone: "black",
+        tone: "blue",
         label: "Notificação B2",
         detail: model || "Receituário de controle especial",
         verified: true,
         sourceLabel: source,
-        accent: "#94a3b8",
+        accent: "#60a5fa",
         badgeClass:
-          "border-slate-300/35 bg-black/70 text-slate-100",
+          "border-sky-400/35 bg-sky-400/10 text-sky-200",
       };
 
     case "notificacao_a":
@@ -126,14 +127,14 @@ function visualForModel(
 
     case "receita_controle_especial":
       return {
-        tone: "red",
+        tone: "neutral",
         label: "Controle especial",
         detail: model || "Receita de controle especial",
         verified: true,
         sourceLabel: source,
-        accent: "#f87171",
+        accent: "#cbd5e1",
         badgeClass:
-          "border-red-400/35 bg-red-400/10 text-red-300",
+          "border-slate-300/35 bg-slate-300/10 text-slate-100",
       };
 
     case "receita_comum":
@@ -175,24 +176,24 @@ function visualForLegacy(
         "border-yellow-400/30 bg-yellow-400/10 text-yellow-300",
     },
     azul: {
-      tone: "black",
+      tone: "blue",
       label: "Receita azul informada",
       detail:
         "Classificação registrada no cadastro; o catálogo não confirmou este regime nem a tarja da embalagem.",
       verified: false,
-      accent: "#94a3b8",
+      accent: "#60a5fa",
       badgeClass:
-        "border-slate-300/30 bg-black/70 text-slate-100",
+        "border-sky-400/30 bg-sky-400/10 text-sky-200",
     },
     branca: {
-      tone: "red",
+      tone: "neutral",
       label: "Controle informado",
       detail:
         "Classificação registrada no cadastro; o catálogo não confirmou controle especial para esta referência.",
       verified: false,
-      accent: "#f87171",
+      accent: "#cbd5e1",
       badgeClass:
-        "border-red-400/30 bg-red-400/10 text-red-300",
+        "border-slate-300/30 bg-slate-300/10 text-slate-200",
     },
   };
 
@@ -276,13 +277,26 @@ export function getMedicationRegulatorySurface(
 
   // VAULT_REGULATORY_CONFIDENCE_V95_2
   if (profile && !profile.verified) {
-    const accent = profile.accent || fallbackAccent || "#64748b";
+    // Exibe a COR DECLARADA, mas os textos/ícones nunca afirmam verificação.
+    const declared = profile.tone !== "unknown";
+    const accent = declared ? (profile.accent || fallbackAccent || "#64748b") : "#64748b";
     return {
       accent,
-      rail: "#64748b",
+      rail: accent,
       badgeClass: profile.badgeClass,
       iconClass: "border-slate-500/25 bg-slate-500/[0.08] text-slate-300",
       dotClass: "border-slate-400/25",
+      glowClass: "",
+    };
+  }
+
+  if (tone === "blue") {
+    return {
+      accent: profile?.accent || "#60a5fa",
+      rail: "#3b82f6",
+      badgeClass: profile?.badgeClass || "border-sky-400/35 bg-sky-400/10 text-sky-200",
+      iconClass: "border-sky-400/25 bg-sky-400/10 text-sky-200",
+      dotClass: "border-sky-300/30",
       glowClass: "",
     };
   }
