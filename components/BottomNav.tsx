@@ -109,6 +109,7 @@ export function BottomNav() {
   ] = useState(false);
   const composeButtonRef = useRef<HTMLButtonElement>(null);
   const composeMenuRef = useRef<HTMLDivElement>(null);
+  const homeFallbackRef = useRef<number | null>(null);
   // M53: the action sheet is a true keyboard-accessible dialog.
   useEffect(() => {
     if (!isComposeMenuOpen) return;
@@ -135,6 +136,13 @@ export function BottomNav() {
 
   useEffect(() => {
     setIsComposeMenuOpen(false);
+    // Qualquer transição de rota ou desmontagem cancela o fallback anterior.
+    return () => {
+      if (homeFallbackRef.current !== null) {
+        window.clearTimeout(homeFallbackRef.current);
+        homeFallbackRef.current = null;
+      }
+    };
   }, [pathname]);
   const handleNavigate = (
     path: string
@@ -157,13 +165,20 @@ export function BottomNav() {
     // a transição para a raiz. Só nesse caso fazemos um fallback real.
     // Não recarrega quando a navegação funcionou normalmente.
     if (path === "/" && typeof window !== "undefined") {
-      window.setTimeout(() => {
+      const initialRoute = normalizeNavPathname(window.location.pathname);
+      if (homeFallbackRef.current !== null) window.clearTimeout(homeFallbackRef.current);
+      homeFallbackRef.current = window.setTimeout(() => {
+        homeFallbackRef.current = null;
+        // Só recarrega quando o router realmente não saiu da rota inicial.
+        // Nunca tratar uma transição lenta de 450ms como travamento do app.
         if (
-          normalizeNavPathname(window.location.pathname) !== "/"
+          document.visibilityState === "visible" &&
+          initialRoute !== "/" &&
+          normalizeNavPathname(window.location.pathname) === initialRoute
         ) {
           window.location.assign("/");
         }
-      }, 450);
+      }, 5000);
     }
   };
 

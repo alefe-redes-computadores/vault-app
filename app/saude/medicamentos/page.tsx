@@ -7,7 +7,9 @@ import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAc
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { MedicationProvenanceBadge } from "@/components/saude/MedicationProvenanceBadge";
-import { compareMedicationTimeM148 } from "@/lib/health-intelligence/medication-list-sort-m148";
+import { createMedicationDayComparatorM149 } from "@/lib/health-intelligence/medication-day-sort-m149";
+import { medicationStockLabelM149 } from "@/lib/health-intelligence/medication-stock-display-m149";
+import { useLocalDay } from "@/hooks/useLocalDay";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
@@ -52,9 +54,6 @@ import {
   Zap,
 } from "lucide-react";
 
-import {
-  format,
-} from "date-fns";
 
 import {
   useMedicamentos,
@@ -224,15 +223,8 @@ export default function MedicamentosListPage() {
   } =
     useActivePersonId();
 
-  const hojeString =
-    useMemo(
-      () =>
-        format(
-          new Date(),
-          "yyyy-MM-dd"
-        ),
-      []
-    );
+  // M149: virada de dia e retorno do APK sincronizam o dia exibido.
+  const hojeString = useLocalDay();
 
   const {
     doseLogs,
@@ -332,6 +324,8 @@ export default function MedicamentosListPage() {
 
   const [selectedRegulatory, setSelectedRegulatory] =
     useState<MedicationRegulatoryVisual | null>(null);
+  const [selectedRegulatoryAuthority, setSelectedRegulatoryAuthority] =
+    useState<"confirmed" | "compatible" | "possible_divergence" | "unvalidated">("unvalidated");
 
   // ==========================================================
   // PREFERÊNCIA DE FILTRO
@@ -508,7 +502,9 @@ export default function MedicamentosListPage() {
       attentionReasonsM143,
     ]);
 
-  const listaCronologica = useMemo(() => [...listaProcessada].sort(compareMedicationTimeM148), [listaProcessada]);
+  // M149: para uso por período, a hora vem dos slots planejados do dia ativo.
+  const compareDayM149 = useMemo(() => createMedicationDayComparatorM149(doseLogs || []), [doseLogs]);
+  const listaCronologica = useMemo(() => [...listaProcessada].sort(compareDayM149), [listaProcessada, compareDayM149]);
 
   // ==========================================================
   // PROGRESSO DIÁRIO REAL POR DOSES
@@ -666,16 +662,16 @@ export default function MedicamentosListPage() {
               return byPriority;
             }
 
-            return compareMedicationTimeM148(a,b);
+            return compareDayM149(a,b);
           }
         );
 
-        emDia.sort(compareMedicationTimeM148);
+        emDia.sort(compareDayM149);
 
-        planejados.sort(compareMedicationTimeM148);
+        planejados.sort(compareDayM149);
 
-        sos.sort(compareMedicationTimeM148);
-        suspensos.sort(compareMedicationTimeM148);
+        sos.sort(compareDayM149);
+        suspensos.sort(compareDayM149);
 
         return {
           medsPrioridade:
@@ -699,6 +695,7 @@ export default function MedicamentosListPage() {
         attentionReasonsM143,
         careDecisionsByMedication,
         brainCareByMedication,
+        compareDayM149,
       ]
     );
 
@@ -1149,7 +1146,10 @@ export default function MedicamentosListPage() {
                 event.preventDefault();
                 event.stopPropagation();
                 trigger("vibrate");
-                if (regulatoryProfile) setSelectedRegulatory(regulatoryProfile);
+                if (regulatoryProfile) {
+                  setSelectedRegulatory(regulatoryProfile);
+                  setSelectedRegulatoryAuthority(catalogIdentity?.authorityState ?? "unvalidated");
+                }
                 else router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent("/saude/medicamentos")}#medicamento-agora`);
               }}
               className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-1 text-[8px] font-black leading-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
@@ -1191,7 +1191,6 @@ export default function MedicamentosListPage() {
                     {med.dosagem}
                   </span>
                 )}
-                {med.laboratorio_etiqueta && (!latestManufacturer || normalizeMedicationText(med.laboratorio_etiqueta)!==normalizeMedicationText(latestManufacturer)) && <MedicationProvenanceBadge name={med.laboratorio_etiqueta} source="etiqueta"/>}
               </div>
               {!activeIngredients.length && !isSuspenso && (
                 <span className="sr-only">Princípio ativo · confirmar referência nos detalhes</span>
@@ -1212,6 +1211,7 @@ export default function MedicamentosListPage() {
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
                 {latestManufacturer && <MedicationProvenanceBadge name={latestManufacturer} source="ultima_aquisicao"/>}
+                {med.laboratorio_etiqueta && (!latestManufacturer || normalizeMedicationText(med.laboratorio_etiqueta)!==normalizeMedicationText(latestManufacturer)) && <MedicationProvenanceBadge name={med.laboratorio_etiqueta} source="etiqueta"/>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">Revisar identidade</span>
                 )}
@@ -1238,7 +1238,7 @@ export default function MedicamentosListPage() {
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
               <MedicationOperationalStrip today={todayStatus}
-              stockLabel={stockUnknown ? "Não informado" : stockNegative ? "Revisar saldo" : humanizeStockText(textoEstoquePrincipal)}
+              stockLabel={stockUnknown ? "Não informado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
@@ -1745,7 +1745,13 @@ export default function MedicamentosListPage() {
 
               {!selectedRegulatory.verified && (
                 <p className="mt-2.5 text-xs leading-relaxed text-amber-200">
-                  Medicamento identificado no catálogo. O tipo de receita ainda não possui confirmação regulatória na fonte atual.
+                  {selectedRegulatoryAuthority === "confirmed"
+                    ? "Medicamento identificado no catálogo, mas a receita ainda não foi confirmada na fonte regulatória atual."
+                    : selectedRegulatoryAuthority === "compatible"
+                      ? "Referência farmacêutica compatível encontrada; a correspondência e o tipo de receita ainda exigem conferência."
+                      : selectedRegulatoryAuthority === "possible_divergence"
+                        ? "Há possível divergência entre o cadastro e a referência encontrada. Confira a identidade e a receita antes de usá-las como comprovadas."
+                        : "Identidade farmacêutica ainda não confirmada pelo catálogo; o tipo de receita também não está confirmado."}
                 </p>
               )}
 

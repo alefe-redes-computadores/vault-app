@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Pill, ReceiptText, Stethoscope, Store } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Pill, ReceiptText, Stethoscope, Store, Syringe } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
 import { HomeSupplyAccessTiles } from "@/components/home/HomeSupplyAccessTiles";
 import { HomeCareOrganizationTiles } from "@/components/home/HomeCareOrganizationTiles";
 
-type Props = { gastoMes: number; diferencaMes: number; totalRede: number; mode?: "all" | "primary" | "secondary" };
+type Props = { gastoMes: number; diferencaMes: number; totalRede: number; mode?: "all" | "primary" | "secondary"; onOpenOccurrences?: () => void };
 
 const clinical = [
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-violet-400/20 bg-violet-400/[0.06] text-violet-300" },
@@ -19,7 +19,7 @@ const clinical = [
   { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/[0.06] text-coral" },
 ] as const;
 
-export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "all" }: Props) {
+export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "all", onOpenOccurrences }: Props) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
@@ -67,6 +67,10 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
 
       {!essential?<ClinicalDisclosure id="home-outras-areas" title="Outras áreas de saúde" description="Consultas, exames, registros, hidratação e segurança" icon={<Layers3 size={18}/>} iconClassName="text-violet-300">
         {() => <div className="grid min-w-0 grid-cols-2 gap-2.5">
+          {/* M149: mesmo cartão, grid e peso visual dos demais acessos; fonte de verdade é a Central M144. */}
+          <HomeClinicalAreaTile label="Ocorrências e ciclos" description="Vacinas e histórico" path="/saude/central-m144?return_to=%2F" Icon={Syringe}
+            tone="border-violet-400/20 bg-violet-400/[0.06] text-violet-300"
+            onNavigate={path => onOpenOccurrences ? onOpenOccurrences() : go(path)} />
           {clinical.map(({ label, sub, path, icon: Icon, tone }) => <HomeClinicalAreaTile key={path} label={label} description={sub} path={path} Icon={Icon} tone={tone} onNavigate={go} />)}
           <HomeClinicalAreaTile label="Cirurgias" description="Procedimentos" path="/saude/cirurgias" Icon={ReceiptText} tone="border-rose-400/20 bg-rose-400/[0.06] text-rose-300" onNavigate={go} />
         </div>}
