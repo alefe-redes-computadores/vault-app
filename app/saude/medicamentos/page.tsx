@@ -7,6 +7,7 @@ import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAc
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
+import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { decideMedicationCarePath, medicationCarePresentation, medicationCareStageIsPlanning, medicationCareStageNeedsAttention } from "@/lib/health-intelligence/medication-care-decision";
@@ -1157,6 +1158,7 @@ export default function MedicamentosListPage() {
           className="min-h-0"
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="slim"
+          softRail
           rail={(regulatoryProfile || receita) ? (
             <button
               type="button"
@@ -1183,18 +1185,18 @@ export default function MedicamentosListPage() {
           icon={
             <span
               className={`flex h-8 w-8 items-center justify-center rounded-xl border ${regulatorySurface.iconClass} ${regulatorySurface.glowClass}`}
-              title={personalAccent ? "Identidade visual personalizada · classificação da receita na faixa lateral" : regulatoryMeaning}
+              title={personalAccent ? "Identidade visual personalizada e classificação regulatória acessível" : regulatoryMeaning}
               style={medicationPersonalAccentStyle(med)}
             >
-              <SelectedFormatIcon
-                size={18}
-                fill={fillValue}
-                stroke={strokeValue}
-              />
+              {(med.formato || med.cores?.length) ? (
+                <MedicationFormatIcon formato={med.formato} cores={med.cores} size={24} />
+              ) : (
+                <SelectedFormatIcon size={18} fill={fillValue} stroke={strokeValue} />
+              )}
             </span>
           }
         >
-          <div className="relative flex min-w-0 flex-col gap-px">
+          <div className="relative flex min-w-0 flex-col gap-2">
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -1226,8 +1228,16 @@ export default function MedicamentosListPage() {
               )}
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
+                {/* M148 FIX2: legenda horizontal legível, tarja continua a única ação regulatória. */}
+                {(regulatoryProfile || receita) && (
+                  <span title={regulatoryMeaning}
+                    aria-label={`Classificação da receita: ${regulatoryProfile?.label || receita?.sigla || "Receita"}. Toque na faixa lateral para detalhes.`}
+                    className="inline-flex min-h-6 max-w-full items-center rounded-md border border-surface-border/50 bg-surface-raised/40 px-2 py-0.5 text-[11px] font-semibold text-ink-secondary">
+                    <span className="max-w-full truncate">Receita: {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
+                  </span>
+                )}
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
-                {isSOS && med.status === "descontinuado" && <span title="Cadastro suspenso; uso SOS permanece disponível, mas a rotina não foi retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
+                {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
                 {latestManufacturer && <span title="Fabricante informado na última aquisição registrada. Não indica fabricante do estoque físico atual.">
                   <ManufacturerBadge manufacturer={latestManufacturer} className="!min-h-6 !px-1.5 !py-0.5 !text-[9px]" />
@@ -1263,7 +1273,7 @@ export default function MedicamentosListPage() {
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
-              <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-[11px] [&>button:only-child]:col-span-2">
+              <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-xs [&>button:only-child]:col-span-2">
                 {!isSuspenso && canQuickDose && quickDoseLabel ? (
                   <button
                     type="button"
@@ -1575,6 +1585,12 @@ export default function MedicamentosListPage() {
               <ChevronDown size={15} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
             </summary>
             <div className="space-y-2 border-t border-surface-border/30 pt-2">
+              {/* VAULT_M144_LIST_ENTRY: acesso secundário contextual, não um CTA solto no fim. */}
+              <button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2Fsaude%2Fmedicamentos")}
+                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-surface-raised/55 px-3 text-left text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+                <span className="min-w-0">Ocorrências, ciclos e vacinas</span>
+                <ChevronDown size={15} className="shrink-0 -rotate-90 text-emerald-300" aria-hidden="true"/>
+              </button>
           <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama" title="Panorama dos medicamentos" description="Indicadores e contexto do Brain, sem repetir a lista" icon={<Pill size={18}/>} defaultOpen={false}>
             {() => <div className="space-y-2"><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/><a href="/ajuda?topico=medications" className="flex min-h-11 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como organizar rotina, estoque e receitas</a></div>}
           </ClinicalDisclosure>
@@ -1779,8 +1795,6 @@ export default function MedicamentosListPage() {
             </section>
           </div>
         )}
-      {/* VAULT_M144_LIST_ENTRY — M146 continua dona da prioridade operacional */}
-        <div className="mx-4 mb-5 rounded-2xl border border-emerald-400/15 bg-surface/60 p-3"><button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2Fsaude%2Fmedicamentos")} className="flex min-h-11 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/[.08] px-3 text-xs font-semibold text-emerald-200 w-full">Ocorrências, ciclos e vacinas</button></div>
       </main>
     </PageTransition>
   );

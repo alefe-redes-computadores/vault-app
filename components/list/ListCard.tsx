@@ -18,6 +18,8 @@ export interface ListCardProps {
   rail?: ReactNode;
   /** Faixa fina opt-in para listas densas; o padrão preserva outros cards. */
   railSize?: "standard" | "slim";
+  /** M148 FIX2: tarja regulatória continua clicável e legível; menos contraste, opt-in. */
+  softRail?: boolean;
   /** Conteúdo principal do card */
   children: ReactNode;
   /** Ações internas – renderizadas fora do botão principal */
@@ -50,6 +52,7 @@ export function ListCard({
   icon,
   rail,
   railSize = "standard",
+  softRail = false,
   children,
   actions,
   className = "",
@@ -104,6 +107,7 @@ export function ListCard({
           absolute
           bottom-0 left-0 top-0
           ${rail ? (railSize === "slim" ? "w-4" : "w-6") : "w-1.5"}
+          ${softRail ? "opacity-75" : ""}
           ${isDisabled && !rail ? "bg-coral" : ""}
         `}
         style={!isDisabled || rail ? { backgroundColor: color } : undefined}

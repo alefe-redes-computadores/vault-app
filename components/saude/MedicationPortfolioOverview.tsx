@@ -54,7 +54,7 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
         {pending > 0 && ignored > 0 ? " · " : ""}
         {ignored > 0 ? `${ignored} ignorada${ignored===1?"":"s"}, não tomada${ignored===1?"":"s"}` : ""}
       </p>}
-      {decision?.href && <button type="button" onClick={() => onNavigate(decision.href!)} className="mt-3 flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-violet-300/25 bg-gradient-to-r from-violet-300/[.07] to-surface px-3.5 py-3 text-left transition-colors hover:bg-violet-300/[.075] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+      {decision?.href && <button type="button" onClick={() => onNavigate(decision.href!)} className="mt-3 flex min-h-10 w-full items-center gap-3 rounded-2xl border border-violet-300/25 bg-gradient-to-r from-violet-300/[.07] to-surface px-3.5 py-3 text-left transition-colors hover:bg-violet-300/[.075] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
         <BrainCircuit size={15} className="shrink-0 text-violet-300"/>
         <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wide text-violet-200">Próxima decisão comprovada</span><strong className="mt-1 block line-clamp-2 text-xs font-semibold leading-snug text-ink-primary">{decision.title}</strong></span>
         <ChevronRight size={14} className="shrink-0 text-ink-muted"/>
