@@ -34,6 +34,14 @@ const OFFICIAL_METHADONE_LABEL = {
   revisadoEm: "2026-09-13",
 };
 
+/** A06: revisão documental DailyMed, 03/11/2026; não classifica receituário brasileiro. */
+const OFFICIAL_TRAMADOL_LABEL = {
+  titulo: "Bula regulatória de tramadol — interações com depressores e serotoninérgicos",
+  autoridade: "FDA / National Library of Medicine (DailyMed)",
+  url: "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=ccb3e0f9-57db-40bc-84d2-b66a827a5b96",
+  revisadoEm: "2026-11-14",
+};
+
 const OFFICIAL_LISDEXAMFETAMINE_LABEL = {
   titulo: "Bula regulatória de lisdexanfetamina — abuso e síndrome serotoninérgica",
   autoridade: "FDA / National Library of Medicine",
@@ -55,6 +63,8 @@ const OFFICIAL_BUPROPION_LABEL = {
 const PROFILES: DrugProfile[] = [
   { substance: "zolpidem", aliases: ["zolpidem"], classes: ["z_hipnotico", "depressor_snc"] },
   { substance: "metadona", aliases: ["metadona"], classes: ["opioide", "depressor_snc"] },
+  // Nome comercial e substância específica; matching exato ou com fronteira de palavra.
+  { substance: "tramadol", aliases: ["tramadol", "cloridrato de tramadol", "tramal"], classes: ["opioide", "depressor_snc", "serotonergico"] },
   { substance: "clonazepam", aliases: ["clonazepam", "rivotril"], classes: ["benzodiazepinico", "depressor_snc"] },
   { substance: "clorpromazina", aliases: ["clorpromazina", "amplictil"], classes: ["antipsicotico", "depressor_snc"] },
   { substance: "prometazina", aliases: ["prometazina", "fenergan"], classes: ["anti_histaminico_sedativo", "depressor_snc"] },
@@ -349,7 +359,10 @@ function buildOpioidDepressantCombination(context: HealthInsightContext, now: Da
     .filter((medication) => medication.person_id === context.personId && medication.status !== "descontinuado" && medication.id)
     .map((medication) => ({ medication, profile: profileFor(medication), logs: recent(medicationLogs(context, medication.id), now, 24) }))
     .filter((item) => item.profile && item.logs.length > 0);
-  const opioid = active.find((item) => item.profile!.classes.includes("opioide"));
+  // Se um SOS real de Tramal coexistir com metadona, não o deixe invisível
+  // por depender da ordem da lista de medicamentos.
+  const opioid = active.find((item) => item.profile!.substance === "tramadol" && item.logs.some(isUnplanned))
+    || active.find((item) => item.profile!.classes.includes("opioide"));
   if (!opioid) return null;
   const depressants = active.filter((item) => item.medication.id !== opioid.medication.id && item.profile!.classes.includes("depressor_snc"));
   if (!depressants.length) return null;
@@ -377,9 +390,51 @@ function buildOpioidDepressantCombination(context: HealthInsightContext, now: Da
       ...treatmentEvidence(context, ids),
     ],
     fontesInternas: ["Medicamentos", "Registros de doses", "Tratamentos ativos"],
-    fontesExternas: [OFFICIAL_METHADONE_LABEL],
+    fontesExternas: [opioid.profile!.substance === "tramadol" ? OFFICIAL_TRAMADOL_LABEL : OFFICIAL_METHADONE_LABEL],
     acaoSegura: "Não tome dose adicional nem altere o tratamento por conta própria. Se houver respiração lenta ou difícil, desmaio, confusão intensa ou dificuldade para despertar, procure atendimento de urgência imediatamente.",
     limitacaoSeguranca: "A regra só considera medicamentos reconhecidos e tomadas registradas. Não conhece álcool, substâncias ou medicamentos ausentes do Vault e não substitui avaliação profissional.",
+  };
+}
+
+/**
+ * A06: documentação de risco potencial, NUNCA diagnóstico. Ambos os fármacos
+ * precisam ter DoseLog com tomado_em; SOS apenas planejado/ignorado não conta.
+ * A janela de 24h é triagem observacional, não "intervalo seguro".
+ */
+function buildTramadolSerotonergicCombination(context: HealthInsightContext, now: Date): HealthInsight | null {
+  const active = context.medicamentos
+    .filter((medication) => medication.person_id === context.personId && medication.status !== "descontinuado" && medication.id)
+    .map((medication) => ({ medication, profile: profileFor(medication), logs: recent(medicationLogs(context, medication.id), now, 24) }))
+    .filter((item) => item.profile && item.logs.length > 0);
+  const tramadol = active.find((item) => item.profile!.substance === "tramadol");
+  if (!tramadol) return null;
+  const partners = active.filter((item) => item.medication.id !== tramadol.medication.id && item.profile!.classes.includes("serotonergico"));
+  if (!partners.length) return null;
+  const ids = [tramadol.medication.id!, ...partners.map((item) => item.medication.id!)];
+  return {
+    id: `seguranca-tramadol-serotonergicos-${tramadol.medication.id}`,
+    kind: "alert",
+    categoria: "uso_sos",
+    titulo: "Tramadol e medicamentos serotoninérgicos com tomadas registradas",
+    mensagem: `Há tomadas confirmadas de ${tramadol.medication.nome} e ${partners.map((item) => item.medication.nome).join(", ")} nas últimas 24 horas. A bula de tramadol descreve risco potencial de síndrome serotoninérgica com esses medicamentos. O VAULT não afirma que uma reação ocorreu nem define intervalo seguro.`,
+    urgencia: "alta",
+    gravidadeSeguranca: "importante",
+    confianca: "alta",
+    amostra: tramadol.logs.length + partners.reduce((sum, item) => sum + item.logs.length, 0),
+    periodoDias: 1,
+    entidadeTipo: "medicamento",
+    entidadeId: tramadol.medication.id,
+    entidadeIds: ids,
+    link: `/saude/medicamentos/historico?id=${tramadol.medication.id}`,
+    evidencias: [
+      `Tramadol reconhecido: ${tramadol.medication.nome}`,
+      `Parceiros com tomada: ${partners.map((item) => item.medication.nome).join(", ")}`,
+      ...treatmentEvidence(context, ids),
+    ],
+    fontesInternas: ["Cadastro dos medicamentos", "Registros de tomadas confirmadas"],
+    fontesExternas: [OFFICIAL_TRAMADOL_LABEL],
+    acaoSegura: "Não repita nem altere medicamentos por conta própria. Procure atendimento urgente se houver febre, confusão, agitação intensa, tremores, rigidez, convulsão ou piora rápida.",
+    limitacaoSeguranca: "A triagem considera somente fármacos reconhecidos e tomadas salvas na mesma pessoa. Não prova diagnóstico, dose absorvida, prescrição vigente nem ausência de interação após 24 horas.",
   };
 }
 
@@ -432,9 +487,14 @@ export function buildMedicationSafetyInsights(context: HealthInsightContext): He
   const combination = buildZolpidemCombination(scoped, now);
   const opioidCombination = buildOpioidDepressantCombination(scoped, now);
   const serotonergicCombination = buildSerotonergicCombination(scoped, now);
+  const tramadolSerotonergic = buildTramadolSerotonergicCombination(scoped, now);
+  // Mesmo par Venvanse+tramadol com desvio já é coberto pelo alerta original.
+  const separateTramadolSerotonergic = tramadolSerotonergic && !(
+    serotonergicCombination?.entidadeIds?.includes(tramadolSerotonergic.entidadeId || "")
+  ) ? tramadolSerotonergic : null;
   // VAULT_BRAIN_V5_3_LONGITUDINAL_MEDICATION_RISK
   const longitudinalMedicationRisk = buildMedicationLongitudinalRiskInsights(scoped, now);
   // M112 V5.2: independent, owner-scoped, explicit temporal associations; no clinical writes.
   const brainV52Insights = buildBrainV52ContextInsights(scoped);
-  return [...quantityAlerts, ...scheduleAlerts, ...(opioidCombination ? [opioidCombination] : []), ...(!opioidCombination && combination ? [combination] : []), ...(serotonergicCombination ? [serotonergicCombination] : []), ...longitudinalMedicationRisk, ...brainV52Insights, ...patterns];
+  return [...quantityAlerts, ...scheduleAlerts, ...(opioidCombination ? [opioidCombination] : []), ...(!opioidCombination && combination ? [combination] : []), ...(serotonergicCombination ? [serotonergicCombination] : []), ...(separateTramadolSerotonergic ? [separateTramadolSerotonergic] : []), ...longitudinalMedicationRisk, ...brainV52Insights, ...patterns];
 }

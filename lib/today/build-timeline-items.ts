@@ -159,6 +159,11 @@ export function buildTodayTimelineItems(input: BuildTodayTimelineInput): TodayTi
   // Scheduled items begin with undefined logId; keep the old legacy-ID behavior.
   const existingLogIds = new Set(list.map(item => item.logId));
   for (const log of input.doseLogs) {
+    // A30: curso curto amanhã nunca aparece como pendência de hoje.
+    // O horário selecionado é uma projeção, sem alterar nenhum DoseLog.
+    if (log.data && log.data !== input.dataSelecionada) continue;
+    if (input.userId && log.user_id && log.user_id !== input.userId) continue;
+    if (input.personId && log.person_id && log.person_id !== input.personId) continue;
     if (!log.medicamento_id) continue;
     const med = medicationById.get(log.medicamento_id);
     if (!med) continue;

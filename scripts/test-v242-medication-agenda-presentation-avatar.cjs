@@ -7,7 +7,8 @@ const {plannedPrescriptionAgendaState,medicationCarePresentation}=load('lib/heal
 assert.deepEqual(plannedPrescriptionAgendaState('2026-10-22','2026-10-23','2026-10-23'),{visible:true,overdue:true,day:'2026-10-22'});
 assert.deepEqual(plannedPrescriptionAgendaState('2026-10-22','2026-10-24','2026-10-23'),{visible:false,overdue:false,day:'2026-10-22'});
 assert.deepEqual(plannedPrescriptionAgendaState('2026-10-25','2026-10-25','2026-10-23'),{visible:true,overdue:false,day:'2026-10-25'});
-assert.equal(medicationCarePresentation({stage:'withdrawal_overdue'},null).tone,'critical');
+assert.equal(medicationCarePresentation({stage:'withdrawal_overdue'},null).tone,'attention','atraso administrativo nao e emergencia clinica');
+assert.equal(medicationCarePresentation({stage:'withdrawal_overdue'},'alta').tone,'attention','urgencia textual nao cria risco clinico');
 assert.equal(medicationCarePresentation({stage:'acquisition_planned'},null).tone,'planning');
 assert.equal(medicationCarePresentation({stage:'stable'},'nenhuma').tone,'stable');
 const list=read('app/saude/medicamentos/page.tsx');

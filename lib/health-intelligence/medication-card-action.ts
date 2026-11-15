@@ -25,6 +25,19 @@ export function resolveMedicationCardAction(
     // R9 R3: uma revisão documental comprovada não vira pedido automático
     // de nova receita apenas por sugestão genérica do Brain.
     (decision.stage === "stock_review" && decision.actionLabel === "Conferir receita");
+  // A01: sugestão clínica nunca cai no Cofre Pessoal por erro de destino.
+  // Somente intercepta texto inequivocamente clínico que aponta a documentos
+  // PESSOAIS; pesquisa de RG/senhas/documentos pessoais fica intacta.
+  const asksForClinicalAttachment = Boolean(brainAction &&
+    /(?:receita|prescri(?:ção|cao)|anexar.*(?:laudo|exame|documento de sa[uú]de)|vincular.*(?:laudo|documento de sa[uú]de))/i.test(`${brainAction.label} ${brainAction.description}`));
+  const accidentallyPersonal = Boolean(brainAction && /^\/(?:documentos|galeria)(?:\/|\?|#|$)/i.test(brainAction.href));
+  if (asksForClinicalAttachment && accidentallyPersonal) {
+    const prescription = /(?:receita|prescri(?:ção|cao))/i.test(`${brainAction!.label} ${brainAction!.description}`);
+    const canonicalClinical = canonical?.href.startsWith("/saude/renovacao/nova-receita") ? canonical : null;
+    return canonicalClinical || (prescription
+      ? { href: "/saude/renovacao", label: "Conferir receitas clínicas", description: "Escolher medicamento e verificar o vínculo antes de anexar; sem gravar uma nova receita automaticamente." }
+      : { href: "/saude/documentos", label: "Abrir documentos de saúde", description: "Escolher o documento clínico correto; sem criar vínculos automaticamente." });
+  }
   if (brainRequestsPrescription && registeredNextStep && canonical) return canonical;
   return brainAction ?? canonical ?? accessAction;
 }

@@ -2970,7 +2970,7 @@ function MedicamentoDetalhesContent() {
                   </details>
                 </div>
               </div>
-              <button type="button" onClick={() => navigateCareAction(brainCareAction?.href || careDecision.actionHref, brainCareAction?.title || careDecision.label, brainCareAction?.reason || careDecision.explanation)} className={`mt-2 min-h-11 w-full rounded-xl border px-3 text-[11px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass}`}>
+              <button type="button" onClick={() => navigateCareAction(brainCareAction?.href || careDecision.actionHref, brainCareAction?.title || careDecision.label, brainCareAction?.reason || careDecision.explanation)} className={`mt-2 min-h-11 w-full rounded-xl border px-3 text-[11px] font-bold active:scale-[0.98] ${brainCareAction?.lane === "now" ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-400" : carePresentation.actionClass}`}>
                 {brainCareAction ? "Abrir próxima etapa" : careDecision.actionLabel}
               </button>
             </section>
