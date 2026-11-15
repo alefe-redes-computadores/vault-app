@@ -2,8 +2,11 @@ import type { Retirada } from "@/lib/types";
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-export function isOpenWithdrawal(withdrawal: Pick<Retirada, "status">): boolean {
-  return withdrawal.status === "agendada";
+export function isOpenWithdrawal(withdrawal: Pick<Retirada, "status"> & Partial<Pick<Retirada,"renovacao_realizada_id"|"realizada_em">>): boolean {
+  // A33: registro com recebimento explicitamente vinculado OU conclusão já
+  // registrada não pode voltar a ser compromisso aberto por status antigo.
+  // Não altera o registro: divergência continua verificável nos detalhes.
+  return withdrawal.status === "agendada" && !withdrawal.renovacao_realizada_id && !withdrawal.realizada_em;
 }
 
 export function isOverdueWithdrawal(

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Pill, ReceiptText, Stethoscope, Store, Syringe } from "lucide-react";
+import { Activity, Bell, BookHeart, CalendarDays, ChevronRight, Compass, Droplets, FileText, FlaskConical, FolderHeart, HeartPulse, Layers3, Pill, ReceiptText, Store, Syringe } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
@@ -38,8 +38,8 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
         <div className="flex shrink-0 items-center gap-2">
           <button type="button" onClick={() => go("/saude/mapa?return_to=%2F")}
             className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-violet-300/25 bg-violet-300/[.065] px-2.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"
-            aria-label="Explorar todas as áreas de saúde">Ver todas <ChevronRight size={14} aria-hidden="true"/></button>
-          <Stethoscope size={16} className="text-ink-muted"/>
+            aria-label="Explorar todas as áreas de saúde"><Compass size={15} aria-hidden="true"/>Ver todas <ChevronRight size={14} aria-hidden="true"/></button>
+
         </div>
       </div>
 

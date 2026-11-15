@@ -1,11 +1,15 @@
 import type { RenovacaoInsight } from "./health-insights";
 import type { Medicamento, Retirada } from "./types";
 
+/** A33: leitura de status + vínculo explícito, sem concluir nem modificar dados. */
+export function activeScheduledWithdrawalP5P4(row: Pick<Retirada,"status"> & Partial<Pick<Retirada,"renovacao_realizada_id"|"realizada_em">>):boolean {
+  return row.status === "agendada" && !row.renovacao_realizada_id && !row.realizada_em;
+}
 /** Apenas compromissos em aberto; nunca cria outro para resolver o mesmo evento. */
 export function scheduledWithdrawalForMedication(rows: Retirada[], medicationId: string): Retirada | null {
   let earliest: Retirada | null = null;
   for (const row of rows) {
-    if (!row.id || row.medicamento_id !== medicationId || row.status !== "agendada") continue;
+    if (!row.id || row.medicamento_id !== medicationId || !activeScheduledWithdrawalP5P4(row)) continue;
     if (!earliest || row.data < earliest.data || (row.data === earliest.data && (row.horario || "23:59") < (earliest.horario || "23:59"))) earliest = row;
   }
   return earliest;
@@ -15,7 +19,7 @@ export function scheduledWithdrawalForMedication(rows: Retirada[], medicationId:
 export function indexScheduledWithdrawals(rows: Retirada[]): Map<string, Retirada> {
   const result = new Map<string, Retirada>();
   for (const row of rows) {
-    if (!row.id || !row.medicamento_id || row.status !== "agendada") continue;
+    if (!row.id || !row.medicamento_id || !activeScheduledWithdrawalP5P4(row)) continue;
     const current = result.get(row.medicamento_id);
     if (!current || row.data < current.data || (row.data === current.data && (row.horario || "23:59") < (current.horario || "23:59"))) result.set(row.medicamento_id, row);
   }
@@ -24,7 +28,7 @@ export function indexScheduledWithdrawals(rows: Retirada[]): Map<string, Retirad
 
 /** A retirada em aberto permanece visível após a data, sem virar recebimento. */
 export function withdrawalDueState(row: Retirada | null | undefined, today: string): "overdue" | "today" | "future" | null {
-  if (!row || row.status !== "agendada" || !/^\d{4}-\d{2}-\d{2}$/.test(row.data)) return null;
+  if (!row || !activeScheduledWithdrawalP5P4(row) || !/^\d{4}-\d{2}-\d{2}$/.test(row.data)) return null;
   return row.data < today ? "overdue" : row.data === today ? "today" : "future";
 }
 
@@ -43,7 +47,7 @@ export function medicationWithdrawalKey(medication: Pick<Medicamento, "user_id" 
 export function indexScheduledWithdrawalsByOwner(rows: readonly Retirada[]): Map<string, Retirada> {
   const result = new Map<string, Retirada>();
   for (const row of rows) {
-    if (!row.id || row.status !== "agendada" || !/^\d{4}-\d{2}-\d{2}$/.test(row.data)) continue;
+    if (!row.id || !activeScheduledWithdrawalP5P4(row) || !/^\d{4}-\d{2}-\d{2}$/.test(row.data)) continue;
     const key = ownerWithdrawalKey(row);
     if (!key) continue; // Do not guess a person from legacy missing owner data.
     const previous = result.get(key);
@@ -59,7 +63,7 @@ export function scheduledWithdrawalForOwnedMedication(
   if (!key) return null;
   let first: Retirada | null = null;
   for (const row of rows) {
-    if (!row.id || row.status !== "agendada" || !/^\d{4}-\d{2}-\d{2}$/.test(row.data) || ownerWithdrawalKey(row) !== key) continue;
+    if (!row.id || !activeScheduledWithdrawalP5P4(row) || !/^\d{4}-\d{2}-\d{2}$/.test(row.data) || ownerWithdrawalKey(row) !== key) continue;
     if (!first || row.data < first.data || (row.data === first.data && (row.horario || "23:59") < (first.horario || "23:59"))) first = row;
   }
   return first;

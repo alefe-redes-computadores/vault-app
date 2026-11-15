@@ -1078,6 +1078,11 @@ export default function MedicamentosListPage() {
         .filter(row => !isPrescriptionOnly(row) && !isFutureAcquisition(row, hojeString))
         .sort((a, b) => renewalEventDate(b).localeCompare(renewalEventDate(a)))[0];
       const latestManufacturer = readManufacturerMetadata(latestAcquisition?.observacoes).manufacturer;
+      // A33: aquisição SUS posterior à data prevista pede conferência do vínculo,
+      // não inferência de conclusão nem nova entrada fictícia de estoque.
+      const currentWithdrawalP5P4 = scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "");
+      const acquisitionDayP5P4 = latestAcquisition?.tipo_aquisicao === "sus" ? (latestAcquisition.data_aquisicao || "").slice(0,10) : "";
+      const withdrawalNeedsLinkReviewP5P4 = Boolean(currentWithdrawalP5P4 && /^\d{4}-\d{2}-\d{2}$/.test(acquisitionDayP5P4) && acquisitionDayP5P4 >= currentWithdrawalP5P4.data);
       // V299: preservar prioridade Brain, exceto contradicao com aquisicao/retirada comprovada.
       const brainSuggestion = brainCareItem && brainCareItem.lane === "now"
         ? medicationBrainActionWithVerifiedWithdrawalM150P4(
@@ -1099,7 +1104,7 @@ export default function MedicamentosListPage() {
       // VAULT_V318_CONTEXTUAL_ACTION: visual text only; never reinterpret the care decision.
       const contextualActionLabel = careAction
         ? isRestockDestination(careAction.href, med.id!) ? "Repor estoque"
-          : /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Abrir retirada"
+          : /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? (withdrawalNeedsLinkReviewP5P4 ? "Conferir vínculo" : "Abrir retirada")
           : /\/retiradas\/nova(?:\?|$)/i.test(careAction.href) ? (/reposi/i.test(careAction.label) ? "Planejar reposição" : "Planejar retirada")
           : /retirad/i.test(careAction.href) ? careAction.label
           : /aquisi|compra/i.test(`${careAction.label} ${careAction.href}`) ? "Registrar aquisição"
@@ -1141,8 +1146,9 @@ export default function MedicamentosListPage() {
                   <button
                     type="button"
                     className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${careActionClass}`}
-                    title={careAction.description}
+                    title={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Existe aquisição SUS registrada após a data prevista. Confira se corresponde a esta retirada antes de criar outra." : careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
+                    aria-description={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Há aquisição SUS registrada após a data agendada. Confira se corresponde a esta retirada; nenhuma conclusão foi feita automaticamente." : undefined}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1247,7 +1253,8 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className="relative flex min-w-0 flex-col gap-1.5">
+          <div className={`relative flex min-w-0 flex-col gap-1.5 ${compactCards ? "min-h-[172px]" : "min-h-[200px]"}`}>
+
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -1272,7 +1279,7 @@ export default function MedicamentosListPage() {
                   Princípio ativo: {activeIngredient}
                 </p>
                 <p aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted" title={`Princípio ativo: ${activeIngredient}`}>
-                  <span className="text-ink-faint">Princípio ativo: </span>{activeIngredient}
+                  {activeIngredient}
                 </p>
                 </>
               )}

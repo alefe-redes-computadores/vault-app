@@ -49,9 +49,9 @@ export const HomeDailyHero = memo(function HomeDailyHero({
       </div>
       <p className="sr-only" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)}</p>
       {/* P4: explicit scopes rather than implying that Home 0/5 and Hoje 2/8 conflict. */}
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-ink-muted">
-        <p className="min-w-0 flex-1 leading-relaxed">Home: horários de contínuos. Hoje: doses programadas da data, inclusive ciclos por período.</p>
-        {onOpenToday && <button type="button" onClick={onOpenToday} className="min-h-11 shrink-0 rounded-lg border border-ice/20 bg-ice/[.04] px-2.5 font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Ver Hoje</button>}
+      <div className="mt-2 flex flex-col gap-1.5 text-[11px] text-ink-muted">
+        {onOpenToday && <button type="button" onClick={onOpenToday} className="flex min-h-11 w-full items-center justify-between rounded-xl border border-ice/25 bg-ice/[.06] px-3 text-left text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span>Ver doses e horários</span><ArrowUpRight size={15} aria-hidden="true"/></button>}
+        <details className="group rounded-lg px-1"><summary className="min-h-9 cursor-pointer text-[10px] leading-9 text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Entender o contador da rotina</summary><p className="pb-1 leading-relaxed">Home: horários de contínuos. Hoje: doses programadas da data, inclusive ciclos por período.</p></details>
       </div>
     </div>
   </>;

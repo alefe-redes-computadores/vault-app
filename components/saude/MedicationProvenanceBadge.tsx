@@ -1,4 +1,4 @@
-import { Factory, Tag } from "lucide-react";
+import { Factory } from "lucide-react";
 import { manufacturerIdentity } from "@/lib/medications/manufacturer-experience";
 import { recognizedManufacturerM129 } from "@/lib/medications/manufacturer-catalog-m129";
 
@@ -19,7 +19,7 @@ export function MedicationProvenanceBadge({ name, source }: { name?: string | nu
   const detail = latest
     ? `Fabricante informado na última aquisição registrada: ${identity.label}. Não identifica automaticamente o estoque físico atual.`
     : `Laboratório declarado na etiqueta cadastrada: ${identity.label}. Não comprova fabricação da última aquisição.`;
-  const Icon = latest ? Factory : Tag;
+  const Icon = Factory; // A35: mesmo desenho de referência; aria-label mantém a fonte real.
 
   return (
     <span

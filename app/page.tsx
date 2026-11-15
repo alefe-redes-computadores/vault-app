@@ -113,6 +113,7 @@ import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
 import { HomeDoseQuantityFollowUp } from "@/components/home/HomeDoseQuantityFollowUp";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
+import { homeAdministrativeWithdrawalAlertsP5P4 } from "@/lib/home/home-withdrawal-single-surface-p5-p4";
 import { HomeBrainEvidenceGroup } from "@/components/home/HomeBrainEvidenceGroup";
 import { groupHomeBrainEvidence } from "@/lib/home/brain-evidence-groups";
 import { homeAgendaCountsM147, homeAgendaBucketM147, sortHomeWithdrawalsM147, mergeExactWithdrawalAliasesM147 } from "@/lib/home/home-agenda-m147";
@@ -865,13 +866,16 @@ export default function HomePage() {
   // M130: a decisão principal não volta como um segundo cartão com o mesmo
   // destino. A autoridade e a fila continuam intactas; muda apenas a projeção
   // compacta da Home.
-  // Só um alias exato da MESMA retirada pode compartilhar cartão.
-  // Avisos urgentes/vencidos, regulação, estoque e análises do Brain nunca somem.
+  // A38: a Agenda é a única CTA para o MESMO ID de retirada administrativa.
+  // Nenhuma observação independente de receita, estoque ou segurança clínica é ocultada.
   const aliasesRetiradaM147 = useMemo(() => mergeExactWithdrawalAliasesM147(retiradasAgendaM147.slice(0,1), operationalAlerts),
     [retiradasAgendaM147,operationalAlerts]);
   const unifiedAlerts = useMemo(
-    () => selectHomeAttentionP4R3(operationalAlerts, resumoContextual, aliasesRetiradaM147.aliasIds),
-    [operationalAlerts, resumoContextual.href, aliasesRetiradaM147]
+    () => homeAdministrativeWithdrawalAlertsP5P4(
+      selectHomeAttentionP4R3(operationalAlerts, resumoContextual, aliasesRetiradaM147.aliasIds),
+      retiradasAgendaM147
+    ),
+    [operationalAlerts, resumoContextual.href, aliasesRetiradaM147, retiradasAgendaM147]
   );
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
   const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item =>
