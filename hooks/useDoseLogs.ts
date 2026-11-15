@@ -29,6 +29,18 @@ import type {
 // HOOK
 // ============================================================
 
+const stableDoseRows = new Map<string, DoseLog[]>();
+
+function rememberStableDoseRows(key: string, rows: DoseLog[]) {
+  stableDoseRows.delete(key);
+  stableDoseRows.set(key, rows);
+  while (stableDoseRows.size > 8) {
+    const oldest = stableDoseRows.keys().next().value;
+    if (typeof oldest !== "string") break;
+    stableDoseRows.delete(oldest);
+  }
+}
+
 export function useDoseLogs(
   dataEspecifica?: string,
   // Explicit null means an owner-scoped request before auth is ready.
@@ -73,7 +85,11 @@ export function useDoseLogs(
     doseLogsLive.personId === activePersonId &&
     doseLogsLive.date === targetDate &&
     (!ownerScoped || doseLogsLive.ownerId === ownerUserId));
-  const doseLogs = queryMatchesOwner ? doseLogsLive!.rows : [];
+  const stableScopeKey = JSON.stringify([ownerScoped ? ownerUserId : "local", activePersonId, targetDate]);
+  if (queryMatchesOwner) rememberStableDoseRows(stableScopeKey, doseLogsLive!.rows);
+  const doseLogs = queryMatchesOwner
+    ? doseLogsLive!.rows
+    : stableDoseRows.get(stableScopeKey) ?? [];
 
   // ==========================================================
   // MARCAR COMO TOMADA

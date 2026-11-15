@@ -12,6 +12,7 @@ import {
 
 import { useHapticFeedback } from "@/lib/haptics";
 import { useModalGuard } from "@/hooks/useModalGuard";
+import { useAndroidModalViewport } from "@/hooks/useAndroidModalViewport";
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export function BottomSheet({
       null
     );
   useModalGuard({ open: isOpen && portalReady, dialogRef: sheetRef, onClose });
+  const { layerStyle, keyboardOpen } = useAndroidModalViewport(isOpen && portalReady);
 
   if (
     !isOpen ||
@@ -73,7 +75,9 @@ export function BottomSheet({
 
   return createPortal(
     <div
-      className="vault-modal-layer fixed inset-0 z-[100] flex items-end justify-center bg-black/60 px-0 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm animate-in fade-in duration-200 sm:p-4"
+      data-keyboard-open={keyboardOpen ? "true" : "false"}
+      style={layerStyle}
+      className="vault-modal-layer fixed inset-0 z-[100] flex items-end justify-center bg-black/75 px-0 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md animate-in fade-in duration-200 sm:p-4"
       onPointerDown={
         (
           event

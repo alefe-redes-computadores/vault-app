@@ -360,3 +360,10 @@ body:has([role="dialog"][aria-modal="true"]) .vault-bottom-nav {
 @media (prefers-reduced-motion: reduce) {
   .vault-brain-enter { animation: none !important; }
 }
+
+
+/* VAULT_M153_P3_ANDROID_MODAL */
+.vault-modal-layer[data-keyboard-open="true"] { align-items: flex-end; }
+.vault-modal-layer[data-keyboard-open="true"] [role="dialog"] { max-height: 100%; }
+.vault-modal-layer input, .vault-modal-layer textarea { scroll-margin-block: 5rem; }
+@media (prefers-reduced-motion: reduce) { .vault-modal-layer * { scroll-behavior: auto !important; } }

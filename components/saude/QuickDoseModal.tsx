@@ -74,6 +74,7 @@ import type {
 
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { contextualDoseQuantity, isTemporaryCoursePlannedDose } from "@/lib/dose-plan-authority";
+import { useAndroidModalViewport } from "@/hooks/useAndroidModalViewport";
 
 // ============================================================
 // TIPOS
@@ -525,6 +526,7 @@ export function QuickDoseModal({
   const router=useRouter();
   const saveLock=useRef(false);
   const [portalReady, setPortalReady] = useState(false);
+  const { layerStyle, keyboardOpen } = useAndroidModalViewport(isOpen && portalReady);
 
   useEffect(() => {
     setPortalReady(true);
@@ -1538,7 +1540,9 @@ export function QuickDoseModal({
       role="dialog"
       aria-modal="true"
       aria-label="Registrar dose"
-      className="vault-modal-layer fixed inset-0 z-[100] flex items-end justify-center bg-void/80 p-0 backdrop-blur-md sm:items-center sm:p-4"
+      data-keyboard-open={keyboardOpen ? "true" : "false"}
+      style={layerStyle}
+      className="vault-modal-layer fixed inset-0 z-[100] flex items-end justify-center bg-void/90 p-0 backdrop-blur-md sm:items-center sm:p-4"
       onClick={
         handleClose
       }
