@@ -91,9 +91,11 @@ function shouldShowNav(
     return false;
   }
 
-  return ALLOWED_NAV_PATHS.some(
-    (path) =>
-      normalizedPathname === normalizeNavPathname(path)
+  // M153 P5: detalhes de leitura nao sao formularios; o menu e o Voltar
+  // permanecem disponiveis sem alterar rotas nem pessoa ativa.
+  const readOnlyClinicalDetails = /^\/saude\/(?:medicamentos|tratamentos|retiradas|renovacao|fornecimento|exames|consultas|cirurgias|medicos|farmacias|rede|cids|hospitais|locais)\/detalhes$/.test(normalizedPathname);
+  return readOnlyClinicalDetails || ALLOWED_NAV_PATHS.some(
+    (path) => normalizedPathname === normalizeNavPathname(path)
   );
 }
 

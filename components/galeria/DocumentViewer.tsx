@@ -120,17 +120,12 @@ export function DocumentViewer({ item, onClose, onShare }: DocumentViewerProps) 
       {/* Viewer Canvas */}
       <div className="flex-1 overflow-hidden flex items-center justify-center relative touch-none px-2">
         {item.file_type === "pdf" ? (
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="h-24 w-24 rounded-[28px] bg-coral/10 text-coral flex items-center justify-center mb-6 shadow-2xl shadow-coral/5">
-              <FileText size={40} strokeWidth={1.5} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2 max-w-[280px] leading-tight">{item.title}</h3>
-            <p className="text-sm text-white/50 mb-8">Documento PDF seguro</p>
-            <button 
-              onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")}
-              className="flex items-center gap-2 bg-white text-black px-6 py-3.5 rounded-full font-bold shadow-lg active:scale-95 transition-transform"
-            >
-              <ExternalLink size={18} /> Abrir Arquivo Completo
+          <div className="flex h-full min-h-0 w-full flex-col gap-2 py-2">
+            <p className="shrink-0 truncate px-2 text-center text-xs text-white/70">{item.title} · página ajustável, zoom no visualizador</p>
+            <iframe src={item.url} title={`Prévia completa do PDF: ${item.title}`} className="min-h-0 w-full flex-1 rounded-xl border border-white/10 bg-white" loading="lazy" />
+            <button type="button" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")}
+              className="mx-auto flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-white/20 px-4 text-xs font-semibold text-white">
+              <ExternalLink size={15}/> Abrir PDF externamente se necessário
             </button>
           </div>
         ) : (

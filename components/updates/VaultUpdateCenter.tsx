@@ -154,6 +154,9 @@ export function VaultUpdateCenter() {
         </div>
       </div>
 
+      {native ? <VaultNativeUpdateFlow release={release} installedBuild={state.installedBuild} available={hasUpdate} /> : null}
+      <details className="mt-3 rounded-xl border border-surface-border/45 bg-surface/35 px-3 py-2" aria-label="Diagnóstico técnico das atualizações">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold text-ink-secondary">Detalhes técnicos e histórico <ChevronRight size={14}/></summary>
       {release ? <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/25 px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
         <div className="flex items-center gap-2"><PackageCheck size={13} className="shrink-0 text-emerald-300" /> Release certificada · {humanDate(release.publishedAt)}</div>
         <p className="mt-1">Download via GitHub Releases, sem expiração automática de 7 dias. Disponibilidade depende da manutenção da release.</p>
@@ -165,7 +168,6 @@ export function VaultUpdateCenter() {
         </div>
       </div> : null}
 
-      {native ? <VaultNativeUpdateFlow release={release} installedBuild={state.installedBuild} available={hasUpdate} /> : null}
       <VaultUpdateHistory />
 
       {/* M94: os estados do run e da release são independentes; uma Action nova não homologa APK. */}
@@ -189,6 +191,7 @@ export function VaultUpdateCenter() {
       {failureCode ? <div role="alert" className="mt-2 rounded-xl border border-coral/20 bg-coral/[.05] px-3 py-2 text-xs text-coral">Falha de verificação: <span className="font-mono">{failureCode}</span>. Copie o diagnóstico se precisar de suporte.</div> : null}
       {!native ? <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">O PWA recebe atualizações pelo navegador. O APK Android é um produto separado; esta tela não compara sua versão web com um APK.</p> : null}
 
+      </details>
       <div className="mt-3 grid grid-cols-1 gap-2 min-[370px]:grid-cols-2">
         <button type="button" onClick={() => {setFeedback("");void checkVaultUpdates(true);}} disabled={checking}
           className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary transition-colors active:scale-[0.985] disabled:opacity-50 motion-reduce:transform-none"><RefreshCw size={15} className={checking ? "animate-spin motion-reduce:animate-none" : ""}/> Procurar atualizações</button>

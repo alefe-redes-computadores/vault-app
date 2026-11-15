@@ -113,7 +113,7 @@ import { HomeAgendaBreakdown } from "@/components/home/HomeAgendaBreakdown";
 import { HomeDoseQuantityFollowUp } from "@/components/home/HomeDoseQuantityFollowUp";
 import { HomeDailyHero } from "@/components/home/HomeDailyHero";
 import { HomeAttentionRail } from "@/components/home/HomeAttentionRail";
-import { homeAdministrativeWithdrawalAlertsP5P4 } from "@/lib/home/home-withdrawal-single-surface-p5-p4";
+import { homeAdministrativeWithdrawalAlertsP5P4, continuationWithdrawalAlreadyVisibleP5 } from "@/lib/home/home-withdrawal-single-surface-p5-p4";
 import { HomeBrainEvidenceGroup } from "@/components/home/HomeBrainEvidenceGroup";
 import { groupHomeBrainEvidence } from "@/lib/home/brain-evidence-groups";
 import { homeAgendaCountsM147, homeAgendaBucketM147, sortHomeWithdrawalsM147, mergeExactWithdrawalAliasesM147 } from "@/lib/home/home-agenda-m147";
@@ -877,6 +877,7 @@ export default function HomePage() {
     ),
     [operationalAlerts, resumoContextual.href, aliasesRetiradaM147, retiradasAgendaM147]
   );
+  const duplicatePrimaryWithdrawalP5 = Boolean(primaryMedicationCareOpportunity && continuationWithdrawalAlreadyVisibleP5(primaryMedicationCareOpportunity.actionHref, retiradasAgendaM147));
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
   const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item =>
     item.id === quantityFollowUpInsight.id ||
@@ -1257,6 +1258,33 @@ export default function HomePage() {
                 else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));
               }} />
           </motion.section>
+
+          {/* P4 R3: indicadores e atalhos detalhados da agenda PROXIMO DO RESUMO DIARIO. */}
+          <section id="home-resumo-da-rotina" aria-label="Resumo e acompanhamento" className="vault-deferred-lg space-y-2">
+            <h2 className="font-display text-sm font-semibold text-ink-primary">Resumo e acompanhamento</h2>
+            {/* M136: métricas redundantes permanecem acessíveis, sem tomar a primeira dobra. */}
+            <details className="group mx-3 mb-1 overflow-hidden rounded-xl border border-surface-border/40 bg-surface/25" open>
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <span className="flex items-center gap-2"><CalendarDays size={14} aria-hidden="true"/> Indicadores da rotina</span>
+                <span className="text-[10px] font-normal text-ink-muted">Expandir detalhes <ChevronRight size={14} className="inline-block transition-transform group-open:rotate-90"/></span>
+              </summary>
+            <HomeQuickMetrics
+              appointments={totalCompromissosHoje}
+              className="min-[380px]:grid-cols-4 min-w-0"
+              pendingDoses={dosesPendentesAtrasadas.length}
+              medications={medicamentosAtivos.length}
+              completedDoses={dosesTomadasDaRotinaHoje}
+              extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
+              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
+              onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
+            />
+            </details>
+            <HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
+              surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
+              overdueWithdrawals={retiradasAtrasadas.length}
+              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
+              onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} />
+          </section>
 
           {/* M150 P5 P5: acessos essenciais imediatamente apos o resumo da rotina. */}
           {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
@@ -1799,7 +1827,7 @@ export default function HomePage() {
             </motion.section>
           )}
 
-          {primaryMedicationCareOpportunity && (
+          {primaryMedicationCareOpportunity && !duplicatePrimaryWithdrawalP5 && (
             <motion.section
               initial={{
                 opacity:
@@ -1975,7 +2003,7 @@ export default function HomePage() {
                 <div className="mt-2">
                   <div id="home-continuity-other">
                     <MedicationCareOpportunityQueue
-                      items={medicationCareOpportunities.slice(1)}
+                      items={medicationCareOpportunities.slice(1).filter(item => !continuationWithdrawalAlreadyVisibleP5(item.actionHref, retiradasAgendaM147))}
                       onNavigate={(href)=>{trigger("vibrate");router.push(href);}}
                     />
                   </div>
@@ -2190,32 +2218,6 @@ export default function HomePage() {
               ACESSO RÁPIDO
           =================================================== */}
 
-          {/* P4 R3: indicadores e atalhos detalhados da agenda APÓS prioridades e Brain. */}
-          <section id="home-resumo-da-rotina" aria-label="Resumo e acompanhamento" className="vault-deferred-lg space-y-2">
-            <h2 className="font-display text-sm font-semibold text-ink-primary">Resumo e acompanhamento</h2>
-            {/* M136: métricas redundantes permanecem acessíveis, sem tomar a primeira dobra. */}
-            <details className="group mx-3 mb-1 overflow-hidden rounded-xl border border-surface-border/40 bg-surface/25">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                <span className="flex items-center gap-2"><CalendarDays size={14} aria-hidden="true"/> Indicadores da rotina</span>
-                <span className="text-[10px] font-normal text-ink-muted">Expandir detalhes <ChevronRight size={14} className="inline-block transition-transform group-open:rotate-90"/></span>
-              </summary>
-            <HomeQuickMetrics
-              appointments={totalCompromissosHoje}
-              className="min-[380px]:grid-cols-4 min-w-0"
-              pendingDoses={dosesPendentesAtrasadas.length}
-              medications={medicamentosAtivos.length}
-              completedDoses={dosesTomadasDaRotinaHoje}
-              extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
-              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-              onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
-            />
-            </details>
-            <HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
-              surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
-              overdueWithdrawals={retiradasAtrasadas.length}
-              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-              onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} />
-          </section>
           <div id="home-organizacao" className="scroll-mt-24" role="region" aria-label="Acompanhamento de saúde">
             <HomeCommandCenter
               gastoMes={metricasFinanceiras.gastoMesAtual}

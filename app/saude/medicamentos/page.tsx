@@ -41,6 +41,7 @@ import {
 import {
   AlertTriangle,
   Calendar,
+  Clock3,
   CheckCircle2,
   ChevronDown,
   MinusCircle,
@@ -123,6 +124,7 @@ import { MedicationListActiveFilter } from "@/components/saude/MedicationListAct
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
 import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
 import { medicationListAttentionReasonsM143, medicationNextPendingClockM143 } from "@/lib/health-intelligence/medication-list-attention-m143";
+import { createMedicationPendingPriorityP5 } from "@/lib/health-intelligence/medication-pending-priority-p5";
 
 type MedicationListFilter =
   | "todos"
@@ -507,7 +509,8 @@ export default function MedicamentosListPage() {
 
   // M149: para uso por período, a hora vem dos slots planejados do dia ativo.
   const compareDayM149 = useMemo(() => createMedicationDayComparatorM149(doseLogs || []), [doseLogs]);
-  const listaCronologica = useMemo(() => [...listaProcessada].sort(compareDayM149), [listaProcessada, compareDayM149]);
+  const pendingPriorityP5 = useMemo(() => createMedicationPendingPriorityP5(doseLogs || []), [doseLogs]);
+  const listaCronologica = useMemo(() => [...listaProcessada].sort((a,b) => pendingPriorityP5(a,b) || compareDayM149(a,b)), [listaProcessada, compareDayM149, pendingPriorityP5]);
 
   // ==========================================================
   // PROGRESSO DIÁRIO REAL POR DOSES
@@ -565,6 +568,7 @@ export default function MedicamentosListPage() {
 
   const {
     medsPrioridade,
+    medsPendentesHoje,
     medsPlanejados,
     medsEmDia,
     medsSOS,
@@ -572,6 +576,7 @@ export default function MedicamentosListPage() {
   } =
     useMemo(
       () => {
+        const pendentesHoje: ProcessedMed[] = [];
         const prioridade:
           ProcessedMed[] = [];
 
@@ -608,6 +613,13 @@ export default function MedicamentosListPage() {
                 item
               );
 
+              return;
+            }
+
+            // M153 P5: pendência programada vem antes de concluídos e não é paginada.
+            // A classificação depende do dia selecionado e dos registros, nunca da bula.
+            if (item.dosesPendentesHoje > 0) {
+              pendentesHoje.push(item);
               return;
             }
 
@@ -669,6 +681,7 @@ export default function MedicamentosListPage() {
           }
         );
 
+        pendentesHoje.sort((a,b) => pendingPriorityP5(a,b) || compareDayM149(a,b));
         emDia.sort(compareDayM149);
 
         planejados.sort(compareDayM149);
@@ -679,6 +692,7 @@ export default function MedicamentosListPage() {
         return {
           medsPrioridade:
             prioridade,
+          medsPendentesHoje: pendentesHoje,
 
           medsEmDia:
             emDia,
@@ -699,6 +713,7 @@ export default function MedicamentosListPage() {
         careDecisionsByMedication,
         brainCareByMedication,
         compareDayM149,
+        pendingPriorityP5,
       ]
     );
 
@@ -1253,7 +1268,7 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-          <div className={`relative flex min-w-0 flex-col gap-1.5 ${compactCards ? "min-h-[172px]" : "min-h-[200px]"}`}>
+              <div className={`relative flex min-w-0 flex-col ${compactCards ? "gap-1" : "gap-1.5 min-h-[200px]"}`}>
 
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
@@ -1275,16 +1290,19 @@ export default function MedicamentosListPage() {
               )}
               {showActiveIngredient && (
                 <>
+                {/* Compacto: mantém a informação para tecnologia assistiva sem criar mais uma linha visual. */}
                 <p className="sr-only" title={`Princípio ativo: ${activeIngredient}`}>
                   Princípio ativo: {activeIngredient}
                 </p>
-                <p aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted" title={`Princípio ativo: ${activeIngredient}`}>
-                  {activeIngredient}
-                </p>
+                {!compactCards && (
+                  <p aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted" title={`Princípio ativo: ${activeIngredient}`}>
+                    {activeIngredient}
+                  </p>
+                )}
                 </>
               )}
               </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
+              <div className={`flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] ${compactCards ? "max-h-6 overflow-hidden" : ""}`}>
                 {isSOS && <span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">SOS</span>}
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {isTemporary && <span className="rounded-md bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300">POR PERÍODO</span>}
@@ -1307,12 +1325,21 @@ export default function MedicamentosListPage() {
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
+              <div className={compactCards ? "flex min-w-0 items-center gap-1.5" : "block"}>
+                <div className="min-w-0 flex-1">
               <MedicationOperationalStrip today={todayStatus}
               stockLabel={stockUnknown ? "Não informado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
-              <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-xs [&>button:only-child]:col-span-2">
+                </div>
+                {compactCards && <div className="max-w-[43%] shrink-0 [&>button]:min-h-11 [&>button]:max-w-full [&>button]:px-2 [&>button]:text-[11px]">
+                  {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
+                  {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
+                  {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
+                </div>}
+              </div>
+              {!compactCards && <div aria-label="Ações do medicamento" className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:min-w-0 [&>button]:w-full [&>button]:px-1.5 [&>button]:text-xs [&>button:only-child]:col-span-2">
                 {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
                 {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
                 {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
@@ -1329,7 +1356,7 @@ export default function MedicamentosListPage() {
                     </div>
                   </details>
                 )}
-              </div>
+              </div>}
             </div>
 
             {/* VAULT_MEDICATION_LIST_HIERARCHY_V98
@@ -1548,7 +1575,7 @@ export default function MedicamentosListPage() {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-ink-primary">Rotina de hoje</p>
-                <p className="text-[10px] text-ink-muted">Somente doses programadas · SOS fora do total</p>
+                <p className="text-[10px] text-ink-muted">Contínuos e períodos com horários de hoje · SOS/extra fora do total</p>
               </div>
               <strong className="shrink-0 font-display text-2xl font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses confirmadas`}>{statsProgresso.completados}/{statsProgresso.total}</strong>
             </div>
@@ -1560,7 +1587,7 @@ export default function MedicamentosListPage() {
         {/* P15 R9: filtros compactos, com disclosure acessível e sem grid permanente no Android. */}
         <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
         <div className="mx-4 mt-2 flex min-h-10 items-center justify-between gap-2 text-[11px] text-ink-muted" aria-label="Exibição dos medicamentos">
-          <span>{unifiedList ? 'Ordem por horário · sem horário ao final' : 'Grupos de cuidado · atenção primeiro'}</span>
+              <span>{unifiedList ? 'Próximas doses pendentes primeiro' : 'Doses de hoje primeiro · grupos de cuidado'}</span>
           <button type="button" aria-pressed={!unifiedList} onClick={()=>setUnifiedList(v=>!v)}
             className="shrink-0 rounded-lg border border-surface-border/55 bg-surface/45 px-3 py-2 font-semibold text-emerald-200">
             {unifiedList?'Ver grupos':'Lista única'}
@@ -1607,8 +1634,9 @@ export default function MedicamentosListPage() {
               </div>
             ) : (
             <div className="space-y-2 pb-8">
+              <ClinicalCollectionGroup id="medicamentos-pendentes-hoje" title="Próximas doses de hoje" description="Doses ainda não resolvidas · horários reais primeiro" count={medsPendentesHoje.length} icon={Clock3} tone="attention" defaultOpen forceOpen progressive={false} compact={compactCards}>{medsPendentesHoje.map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-atencao" title="Precisa de atenção" description="Doses, estoque ou próxima etapa que exigem ação" count={medsPrioridade.length} icon={AlertTriangle} tone="attention" defaultOpen forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsPrioridade.map(renderCard) : medsPrioridade.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
-              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Rotina atual sem pendência operacional" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
+              <ClinicalCollectionGroup id="medicamentos-em-dia" title="Em dia" description="Sem doses programadas pendentes hoje" count={medsEmDia.length} icon={CheckCircle2} tone="positive" defaultOpen={medsPrioridade.length===0&&medsEmDia.length<=4} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsEmDia.map(renderCard) : medsEmDia.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-planejados" title="Planejamento e acompanhamento" description="Registros futuros ou temas para consulta · não são doses atrasadas" count={medsPlanejados.length} icon={Calendar} forceOpen={Boolean(searchQuery)||medicationFilter!=="todos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsPlanejados.map(renderCard) : medsPlanejados.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-sos" title="SOS / conforme necessidade" description="Uso eventual, separado da rotina programada" count={medsSOS.length} icon={Zap} tone="sos" forceOpen={Boolean(searchQuery)||medicationFilter==="sos"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsSOS.map(renderCard) : medsSOS.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>
               <ClinicalCollectionGroup id="medicamentos-suspensos" title="Suspensos" description="Histórico preservado fora do cuidado atual" count={medsSuspensos.length} icon={EyeOff} forceOpen={Boolean(searchQuery)||medicationFilter==="encerrados"} progressive={medicationFilter === "todos" && !searchQuery} compact={compactCards}>{(limit) => limit === undefined ? medsSuspensos.map(renderCard) : medsSuspensos.slice(0, limit).map(renderCard)}</ClinicalCollectionGroup>

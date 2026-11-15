@@ -268,7 +268,7 @@ export function HealthInsightExplanationSheet({
               damping: 28,
               stiffness: 320,
             }}
-            className="relative z-10 max-h-[88dvh] w-full max-w-xl overflow-y-auto rounded-t-[30px] border border-surface-border bg-surface-raised px-4 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-3 shadow-2xl"
+            className="relative z-10 max-h-[88dvh] w-full max-w-xl overflow-y-auto rounded-t-[30px] border border-surface-border bg-surface-raised px-4 pb-[calc(env(safe-area-inset-bottom)+44px)] pt-3 shadow-2xl"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/10" />
 
@@ -503,7 +503,7 @@ export function HealthInsightExplanationSheet({
 
                     <p className="mt-1.5 text-sm font-semibold text-ink-primary">
                       {insight.periodoDias
-                        ? `${insight.periodoDias} dias`
+                        ? `${insight.periodoDias} ${insight.periodoDias === 1 ? "dia" : "dias"}`
                         : "Histórico disponível"}
                     </p>
                   </div>

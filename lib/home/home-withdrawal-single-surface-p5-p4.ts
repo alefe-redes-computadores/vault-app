@@ -20,3 +20,15 @@ export function homeAdministrativeWithdrawalAlertsP5P4<T extends WithdrawalAlert
     return alert.id!==`sus-retirada-${eventId}`;
   });
 }
+
+/** Retirada já acionável pela Agenda: ocultar somente CTA operacional idêntica. */
+export function continuationWithdrawalAlreadyVisibleP5(
+  href:string|null|undefined, displayed:readonly {id?:string|null}[],
+):boolean {
+  if(!href)return false;
+  let url:URL;
+  try{url=new URL(href,'https://vault.local');}catch{return false;}
+  if(url.origin!=='https://vault.local'||url.pathname!=='/saude/retiradas/detalhes')return false;
+  const id=url.searchParams.get('id');
+  return Boolean(id && displayed.some(row=>row.id===id));
+}

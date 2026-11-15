@@ -41,7 +41,7 @@ assert.equal(brain.suppressOperationalOverlap([{...signal,entidadeId:'m2'}],[med
 const home=read('app/page.tsx'),today=read('app/hoje/page.tsx');
 assert(home.includes('selectHomeAttentionP4R3(operationalAlerts,'),'nova política aplicada à Home');
 assert(!home.includes('safeReturnTarget(alert.href, "") !== safeReturnTarget(resumoContextual.href, "")'),'não esconde questão pela URL');
-assert(home.indexOf('id="home-resumo-da-rotina"')>home.indexOf('id="home-atencao"'),'indicadores abaixo da Atenção');
+assert(home.indexOf('id="home-resumo-da-rotina"')<home.indexOf('id="home-atencao"'),'indicadores junto da rotina, antes da Atenção');
 assert(home.includes('HomeAgendaBreakdown')&&home.includes('<HomeQuickMetrics'),'contadores e agenda não foram removidos');
 assert(today.includes('VAULT_M144_TODAY_ENTRY')&&today.includes('aria-label="Check-in dos quatro eixos"'),'quatro eixos presentes');
 assert(!today.includes('aria-label="Check-in e plano de segurança"'),'não duplica central e plano de segurança');

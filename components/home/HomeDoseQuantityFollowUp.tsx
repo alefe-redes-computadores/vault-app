@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, FileClock, Loader2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, FileClock, Loader2, ShieldCheck } from "lucide-react";
 import type { HealthInsight } from "@/lib/health-insights";
 import type { InsightFeedbackEntryV4 } from "@/lib/health-intelligence/feedback-v4";
 
@@ -34,6 +34,7 @@ export function HomeDoseQuantityFollowUp({
     ? `${nextConsultationDate.slice(8, 10)}/${nextConsultationDate.slice(5, 7)}/${nextConsultationDate.slice(0, 4)}`
     : null;
 
+  const readableMessage = insight.mensagem.replace(/(\d+)\s+comprimido\(s\)/gi, (_match, value: string) => `${value} ${Number(value) === 1 ? "comprimido" : "comprimidos"}`);
   const review = async () => {
     if (busy || checked) return;
     setBusy(true);
@@ -56,14 +57,7 @@ export function HomeDoseQuantityFollowUp({
         <ChevronRight size={15} className="shrink-0 text-ink-faint" aria-hidden="true" />
       </button>
       {(hasToggledDetails ? expanded : !checked) && <div className="mt-3 border-t border-surface-border/45 pt-3">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-300"><AlertTriangle size={17} aria-hidden="true"/></span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Acompanhamento de registro</p>
-          <h2 className="mt-1 text-sm font-bold leading-snug text-ink-primary">{insight.titulo}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-ink-secondary">{insight.mensagem}</p>
-        </div>
-      </div>
+      <p className="text-xs leading-relaxed text-ink-secondary">{readableMessage}</p>
       <div className="mt-3 flex items-start gap-2 rounded-xl border border-surface-border/50 bg-void/35 px-3 py-2.5 text-xs text-ink-secondary">
         <CalendarClock size={15} className="mt-0.5 shrink-0 text-ice" aria-hidden="true"/>
         <span>{consultationLabel ? `Próxima consulta cadastrada: ${consultationLabel}. Vale levar o histórico para conversar com o profissional.` : "Nenhuma consulta futura agendada identificada no VAULT. Você pode revisar as consultas cadastradas."}</span>
@@ -73,6 +67,8 @@ export function HomeDoseQuantityFollowUp({
         <button type="button" onClick={() => onNavigate(insight.link || "/saude/medicamentos")} className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-amber-400/25 bg-amber-400/[.07] px-2 text-[11px] font-semibold text-amber-200"><FileClock size={14} aria-hidden="true"/>Ver histórico<ChevronRight size={13} aria-hidden="true"/></button>
         <button type="button" onClick={() => onNavigate("/saude/consultas")} className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-surface-border/60 px-2 text-[11px] font-semibold text-ink-secondary"><CalendarClock size={14} aria-hidden="true"/>Consultas<ChevronRight size={13} aria-hidden="true"/></button>
       </div>
+      {insight.entidadeTipo === "medicamento" && insight.entidadeId && <button type="button" onClick={() => onNavigate(`/saude/medicamentos/detalhes?id=${encodeURIComponent(insight.entidadeId!)}&return_to=%2F`)} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[.04] px-3 text-xs font-semibold text-violet-200">Conferir bula, apresentação e fontes no medicamento</button>}
+      <button type="button" onClick={() => onNavigate("/saude/plano-seguranca")} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-sky-400/20 bg-sky-400/[.04] px-3 text-xs font-semibold text-sky-200"><ShieldCheck size={15}/>Plano de segurança e apoio</button>
       <button type="button" onClick={() => void review()} disabled={busy || checked} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/[.055] px-3 text-xs font-semibold text-emerald-300 disabled:opacity-75">
         {busy ? <Loader2 size={15} className="animate-spin"/> : checked ? <CheckCircle2 size={15}/> : <ClipboardCheck size={15}/>}
         {checked ? "Você conferiu este registro" : "Conferi as informações do registro"}

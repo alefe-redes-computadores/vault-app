@@ -26,7 +26,7 @@ export const HomeQuickMetrics = memo(function HomeQuickMetrics({
 }: HomeQuickMetricsProps) {
   const metrics = [
     { key: "agenda", label: "Agenda", value: appointments, Icon: CalendarDays, accent: "text-ice", action: () => onNavigate("/hoje") },
-    { key: "pendentes", label: "Pendentes", value: pendingDoses, Icon: Clock3, accent: pendingDoses > 0 ? "text-coral" : "text-emerald-300", action: onOpenPending },
+    { key: "pendentes", label: "Atrasadas", value: pendingDoses, Icon: Clock3, accent: pendingDoses > 0 ? "text-coral" : "text-emerald-300", action: onOpenPending },
     { key: "medicamentos", label: completedDoses === undefined ? "Remédios" : "Concluídas", value: completedDoses ?? medications, Icon: completedDoses === undefined ? Pill : CheckCircle2, accent: "text-emerald-300", action: () => onNavigate(completedDoses === undefined ? "/saude/medicamentos" : "/hoje?focus=doses&status=tomados") },
     { key: "extra", label: "SOS / extra", value: extrasTaken, Icon: CheckCircle2, accent: "text-violet-300", action: () => onNavigate("/hoje?focus=doses") },
   ];
