@@ -73,10 +73,27 @@ export function normalizeClinicalSearchM150(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim();
 }
 
+/** P5 P5: aliases populares apenas para localizacao de rotas existentes.
+ * Nao criam rotas, resultados clinicos, medicamentos nem correspondencia fuzzy arriscada. */
+const clinicalSearchAliasesM150P5P5: Readonly<Record<string, readonly string[]>> = {
+  hoje: ['minhas doses','horario da dose','dose de hoje','rotina de hoje'],
+  medicamentos: ['remedio','remedios','medicacao','medicacoes','comprimido','comprimidos'],
+  tratamentos: ['meus tratamentos','plano de tratamento','acompanhamento'],
+  retiradas: ['pegar remedio','buscar remedio','retirar na farmacia','retirada do sus'],
+  renovacao: ['renovar receita','pedir receita','nova receita','anexar receita'],
+  fornecimento: ['sus','medicamento gratuito','fornecimento publico','processo de fornecimento'],
+  consultas: ['consulta medica','agendar medico','atendimento medico'],
+  exames: ['resultado de exame','pedido de exame'],
+  rede: ['farmacia','farmacias','medico','medicos','hospitais'],
+  brain: ['inteligencia','analise de medicamentos','alertas do brain'],
+  pharmalens: ['fabricante','laboratorio','laboratorios'],
+  documentos: ['receitas anexadas','arquivo clinico','documentos clinicos'],
+};
+
 export function searchClinicalDirectoryM150(query: string): readonly ClinicalMapSectionM150[] {
   const needle = normalizeClinicalSearchM150(query);
   if (!needle) return clinicalDirectoryM150;
   return clinicalDirectoryM150.map(section => ({...section,items:section.items.filter(item =>
-    normalizeClinicalSearchM150([item.label,item.description,section.title].join(' ')).includes(needle)
+    normalizeClinicalSearchM150([item.label,item.description,section.title,...(clinicalSearchAliasesM150P5P5[item.id] || [])].join(' ')).includes(needle)
   )})).filter(section => section.items.length > 0);
 }

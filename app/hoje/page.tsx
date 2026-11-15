@@ -86,7 +86,7 @@ import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
 import { MedicationFormatIcon } from "@/components/saude/MedicationFormatIcon";
 import { hasKnownEmptyMedicationStock } from "@/lib/medication-availability";
-import { isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
+import { isOpenWithdrawal, isOverdueWithdrawal, withdrawalDaysOverdue, withdrawalsForAgendaDate } from "@/lib/withdrawal-agenda";
 import { decideMedicationCarePath, plannedPrescriptionAgendaState } from "@/lib/health-intelligence/medication-care-decision";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
@@ -756,7 +756,7 @@ export default function HojePage() {
 
   // Includes only scheduled withdrawals with dates strictly earlier than today.
   const overdueWithdrawalsForToday = isHoje
-    ? retiradasHoje.filter(item => item.status === "agendada" && item.data < hoje).length
+    ? retiradasHoje.filter(item => isOpenWithdrawal(item) && item.data < hoje).length
     : 0;
 
   const totalEventosMedicamento =
@@ -1603,6 +1603,12 @@ export default function HojePage() {
               <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">Linha do tempo · por categoria</p>
               <h1 className="font-display text-2xl font-semibold capitalize leading-tight text-ink-primary">{dataSelecionadaLabel}</h1>
             </div>
+              {isHoje && !retroReviewMode && (
+                <button type="button" data-vault-p5p5-dose-shortcut="true"
+                  onClick={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                  className="min-h-11 shrink-0 rounded-xl border border-ice/30 bg-ice/[.075] px-3 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+                  aria-label="Ir direto para as doses de hoje">Ver doses</button>
+              )}
             {!isHoje && <span className="shrink-0 rounded-lg border border-ice/20 bg-ice/10 px-2 py-1 text-[10px] font-semibold text-ice">{isPassado ? "Histórico" : "Planejado"}</span>}
           </div>
           <TodayDateNavigation label="Escolher data da linha do tempo" date={dataSelecionada}
@@ -1629,16 +1635,6 @@ export default function HojePage() {
         <section className="space-y-2.5 px-4 pt-2.5">
           {/* M40 — O conteúdo clínico vem antes dos atalhos e painéis complementares. */}
           <span id="hoje-agora" className="block scroll-mt-24" aria-hidden="true" />
-          {isHoje && !retroReviewMode ? <TodayAgendaOverview
-            overview={agendaOverview} overdueWithdrawals={overdueWithdrawalsForToday}
-            remindersCount={remindersDoDia.length}
-            onJump={(section) => {
-              trigger("vibrate");
-              document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            onJumpDose={(time) => { trigger("vibrate"); router.push(`/hoje?focus=doses&status=pendentes&time=${encodeURIComponent(time)}`); }}
-            onOpenWithdrawals={() => { trigger("vibrate"); navigateWithReturnM120("/saude/retiradas"); }}
-          /> : null}
           <div className="flex min-w-0 items-center justify-between gap-2">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-semibold tracking-tight text-ink-primary">{isFuturo ? "Doses previstas" : isPassado ? "Registros do dia" : "Sua rotina"}</h2>
@@ -1666,17 +1662,6 @@ export default function HojePage() {
             />
           ) : null}
 
-          {/* M110: briefing após filtros, sempre antes da fila de doses. */}
-          {/* VAULT_V321_DAILY_FOCUS: real Brain command is visible before long dose lists. */}
-          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => navigateWithReturnM120(href)}/> : null}
-          {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
-          {isHoje && !retroReviewMode && (
-            <nav className="grid min-w-0 grid-cols-3 gap-1.5" aria-label="Acessos rápidos do cuidado">
-              <button type="button" onClick={()=>{trigger("vibrate");document.getElementById("hoje-diario")?.scrollIntoView({behavior:"smooth",block:"start"});}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.055] px-1.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Activity size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Check-in</span></button>
-              <button type="button" onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/central-m144");}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-ice/20 bg-ice/[.055] px-1.5 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Calendar size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Ocorrências</span></button>
-              <button type="button" onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/plano-seguranca");}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-400/20 bg-rose-400/[.055] px-1.5 text-[11px] font-semibold text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><AlertTriangle size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Plano pessoal</span></button>
-            </nav>
-          )}
           {/* P14 R4: lote usa a mesma elegibilidade, autoridade e confirmação do Hoje. */}
           {isHoje && dosesElegiveisLote.length > 1 && (
             <TodayBatchAction count={dosesElegiveisLote.length}
@@ -1755,7 +1740,29 @@ export default function HojePage() {
           )}
 
 
-          {/* VAULT_V321_DAILY_FOCUS: Brain actions moved to first fold in M76; dose authority unchanged. */}
+          {/* M150 P5 P5 — depois das doses, orientacoes e agenda reais permanecem acessiveis. */}
+          {/* M150 P5 P5: comando do Brain permanece visivel, mas depois da fila de doses. */}
+          {/* Conteudo de evidencias separado da autoridade do registro de doses. */}
+          {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => navigateWithReturnM120(href)}/> : null}
+          {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
+          {isHoje && !retroReviewMode && (
+            <nav className="grid min-w-0 grid-cols-3 gap-1.5" aria-label="Acessos rápidos do cuidado">
+              <button type="button" onClick={()=>{trigger("vibrate");document.getElementById("hoje-diario")?.scrollIntoView({behavior:"smooth",block:"start"});}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.055] px-1.5 text-[11px] font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Activity size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Check-in</span></button>
+              <button type="button" onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/central-m144");}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-ice/20 bg-ice/[.055] px-1.5 text-[11px] font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Calendar size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Ocorrências</span></button>
+              <button type="button" onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/plano-seguranca");}} className="flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-rose-400/20 bg-rose-400/[.055] px-1.5 text-[11px] font-semibold text-rose-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><AlertTriangle size={14} className="shrink-0" aria-hidden="true"/><span className="break-words">Plano pessoal</span></button>
+            </nav>
+          )}
+          {isHoje && !retroReviewMode ? <TodayAgendaOverview
+            overview={agendaOverview} overdueWithdrawals={overdueWithdrawalsForToday}
+            remindersCount={remindersDoDia.length}
+            onJump={(section) => {
+              trigger("vibrate");
+              document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            onJumpDose={(time) => { trigger("vibrate"); router.push(`/hoje?focus=doses&status=pendentes&time=${encodeURIComponent(time)}`); }}
+            onOpenWithdrawals={() => { trigger("vibrate"); navigateWithReturnM120("/saude/retiradas"); }}
+          /> : null}
+          {/* VAULT_V321_DAILY_FOCUS: acesso preservado; Brain apos doses na P5 P5. */}
           {/* P14 R4: a ausência de horário é qualidade de cadastro, não dose esquecida. */}
           {isHoje && medicamentosSemHorario.length > 0 && (
             <TodayUnscheduledRoutine medications={medicamentosSemHorario}

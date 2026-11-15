@@ -1249,7 +1249,7 @@ export default function HomePage() {
               description={resumoContextual.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
               progress={progressoDosesHoje}
-              onOpenToday={() => { trigger("vibrate"); router.push("/hoje"); }}
+              onOpenToday={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
               ctaLabel={resumoContextual.href === "/?open=pending-doses" ? "Revisar doses" : resumoContextual.href === "/hoje" ? "Abrir rotina" : "Conferir próximo passo"}
               onOpen={() => {
                 trigger("vibrate");
@@ -1258,6 +1258,11 @@ export default function HomePage() {
               }} />
           </motion.section>
 
+          {/* M150 P5 P5: acessos essenciais imediatamente apos o resumo da rotina. */}
+          {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
+          <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
+            diferencaMes={metricasFinanceiras.diff}
+            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
           {/* M145: Compromissos reais primeiro; análises e cards de evidência vêm depois. */}
           {/* ===================================================
               COMPROMISSOS DE HOJE
@@ -1537,10 +1542,6 @@ export default function HomePage() {
             </motion.section>
           )}
 
-          {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
-          <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
-            diferencaMes={metricasFinanceiras.diff}
-            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
           {/* ===================================================
               ATENÇÃO
           =================================================== */}
