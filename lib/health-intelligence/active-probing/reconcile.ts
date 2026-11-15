@@ -14,7 +14,7 @@ export function reconcileSos(logs:DoseLog[],meds:Medicamento[],nowMs=Date.now())
  return logs.filter(l=>l.id&&l.person_id&&l.dose_kind==="sos"&&l.tomado_em).flatMap(l=>{
   const eventMs=Date.parse(l.tomado_em!); if(!Number.isFinite(eventMs)||nowMs>eventMs+15*DAY)return[];
   const e:ActiveProbeEvent={schema_version:1,event_id:`sos:${l.id}`,event_type:"confirmed_sos_use",user_id:l.user_id,person_id:l.person_id!,medication_id:l.medicamento_id,source_entity_type:"doseLogs",source_entity_id:l.id!,event_date:l.data,confirmed_at:l.tomado_em!,evidence_refs:[{type:"doseLogs",id:l.id!}],source:"persisted_record"};
-  return [build(e,"d1",`confirmed-sos-d1:${names.get(l.medicamento_id)||"Medicamento"}`,eventMs+DAY,7)];
+  return [build(e,"d1",`confirmed-sos-d1:${names.get(l.medicamento_id)||"Medicamento"}`,eventMs+2*60*60*1000,7)];
  });
 }
 export function reconcileEndedCourses(logs:DoseLog[],meds:Medicamento[],nowMs=Date.now()){

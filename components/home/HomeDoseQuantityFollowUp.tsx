@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, FileClock, Loader2, ShieldCheck } from "lucide-react";
 import type { HealthInsight } from "@/lib/health-insights";
 import type { InsightFeedbackEntryV4 } from "@/lib/health-intelligence/feedback-v4";
+import { ClinicalSnapshotP6 } from "@/components/health-intelligence/ClinicalSnapshotP6";
 
 /**
  * M93: read-only follow-up for an existing, confirmed quantity insight.
@@ -57,7 +58,9 @@ export function HomeDoseQuantityFollowUp({
         <ChevronRight size={15} className="shrink-0 text-ink-faint" aria-hidden="true" />
       </button>
       {(hasToggledDetails ? expanded : !checked) && <div className="mt-3 border-t border-surface-border/45 pt-3">
-      <p className="text-xs leading-relaxed text-ink-secondary">{readableMessage}</p>
+      <ClinicalSnapshotP6 domain="quantidade" summary={readableMessage}
+        priority={insight.gravidadeSeguranca === "critica" ? "Atenção prioritária" : "Revisar registro"}
+        hasRegulatorySources={Boolean(insight.fontesExternas?.length)} doseEvidence={{comparable:false}}/>
       <div className="mt-3 flex items-start gap-2 rounded-xl border border-surface-border/50 bg-void/35 px-3 py-2.5 text-xs text-ink-secondary">
         <CalendarClock size={15} className="mt-0.5 shrink-0 text-ice" aria-hidden="true"/>
         <span>{consultationLabel ? `Próxima consulta cadastrada: ${consultationLabel}. Vale levar o histórico para conversar com o profissional.` : "Nenhuma consulta futura agendada identificada no VAULT. Você pode revisar as consultas cadastradas."}</span>

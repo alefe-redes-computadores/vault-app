@@ -5,6 +5,7 @@ import { healthPriorityPresentation } from "@/lib/health-intelligence/priority";
 import type { HealthInsight } from "@/lib/health-insights";
 import { useDialogGuard } from "@/hooks/useDialogGuard";
 import { summarizeRegulatorySources } from "@/lib/health-intelligence/regulatory-evidence";
+import { ClinicalSnapshotP6 } from "@/components/health-intelligence/ClinicalSnapshotP6";
 
 type Props = {
   insight: HealthInsight | null;
@@ -39,7 +40,16 @@ export function HealthInsightSheet({ insight, onClose, onNavigate, onOpenCentral
             <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-semibold ${tone(insight)}`}>{priority.label}</span><span className="font-mono text-[10px] uppercase text-ink-muted">{insight.kind === "pattern" ? "Padrão longitudinal" : "Sinal de saúde"}</span></div><h2 id="health-insight-title" className="mt-2 break-words text-lg font-bold leading-snug">{insight.titulo}</h2></div>
             <button type="button" onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-xl text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300" aria-label="Fechar"><X size={19} /></button>
           </div>
-          <p className="mt-4 border-l-2 border-violet-300/30 pl-3 text-sm leading-relaxed text-ink-muted">{insight.mensagem}</p>
+          <ClinicalSnapshotP6
+            domain={insight.id.startsWith("quantidade-confirmada-")?"quantidade":urgent?"seguranca":"observacao"}
+            summary={insight.mensagem} priority={priority.label}
+            hasRegulatorySources={regulatory.sources.length>0}
+            onOpenSafety={urgent?()=>onNavigate("/saude/plano-seguranca"):undefined}
+            doseEvidence={insight.id.startsWith("quantidade-confirmada-")?{comparable:false}:undefined}/>
+          <details className="mt-2 rounded-xl border border-surface-border/55 bg-void/20 px-3">
+            <summary className="min-h-11 cursor-pointer content-center text-[11px] font-semibold text-ink-secondary">Ler explicação integral e contexto</summary>
+            <p className="pb-3 text-xs leading-relaxed text-ink-muted">{insight.mensagem}</p>
+          </details>
           {urgent&&insight.acaoSegura?<div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.055] p-3"><div className="flex items-center gap-2 text-amber-200"><ShieldCheck size={15}/><p className="text-[10px] font-bold uppercase tracking-wide">Orientação segura</p></div><p className="mt-2 text-xs leading-relaxed text-ink-primary">{insight.acaoSegura}</p></div>:null}
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-y border-surface-border/70 py-3 text-[10px] text-ink-muted"><span>Confiança <strong className="capitalize text-ink-primary">{insight.confianca}</strong></span><span>Amostra <strong className="text-ink-primary">{insight.amostra}</strong></span><span>Período <strong className="text-ink-primary">{insight.periodoDias ? `${insight.periodoDias} ${insight.periodoDias === 1 ? "dia" : "dias"}` : "Atual"}</strong></span></div>
           {insight.comparacao && <div className="mt-3 rounded-2xl border border-surface-border p-3 text-xs text-ink-muted"><p>{insight.comparacao.janelaAnterior}: <strong>{insight.comparacao.valorAnterior}</strong></p><p className="mt-1">{insight.comparacao.janelaAtual}: <strong>{insight.comparacao.valorAtual}</strong></p><p className="mt-2 text-[10px]">{insight.comparacao.tendencia === "aumento" ? "Aumento nos registros" : insight.comparacao.tendencia === "queda" ? "Queda nos registros" : "Sem variação"}</p></div>}

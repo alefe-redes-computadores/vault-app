@@ -11,8 +11,11 @@ export function HomeEssentialToggleM118() {
   const [essential, setEssential] = useState(false);
   useEffect(() => {
     const sync = () => {
-      try { setEssential(window.localStorage.getItem(KEY) === "1"); }
-      catch { setEssential(false); }
+      let active = false;
+      try { active = window.localStorage.getItem(KEY) === "1"; }
+      catch { /* preferencia visual opcional */ }
+      setEssential(active);
+      document.documentElement.dataset.vaultHomeEssentialP6 = active ? "1" : "0";
     };
     sync();
     window.addEventListener(EVENT, sync);
@@ -24,6 +27,7 @@ export function HomeEssentialToggleM118() {
     try { window.localStorage.setItem(KEY, next ? "1" : "0"); }
     catch { /* UI preference only; never blocks health tasks. */ }
     setEssential(next);
+    document.documentElement.dataset.vaultHomeEssentialP6 = next ? "1" : "0";
     window.dispatchEvent(new Event(EVENT));
   };
 

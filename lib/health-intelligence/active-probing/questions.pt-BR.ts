@@ -27,7 +27,7 @@ export function activeProbeQuestion(
     };
   }
   if (type === "confirmed_sos_use") return {
-    key:"confirmed-sos-d1",version:1,prompt:`Sobre o uso pontual de ${medication}: como foi para o motivo registrado?`,
+    key:"confirmed-sos-d1",version:2,prompt:`Algum tempo depois do uso pontual de ${medication}, como você se sentiu?`,
     options:[{key:"helped",label:"Ajudou bem"},{key:"partial",label:"Ajudou parcialmente"},{key:"no_help",label:"Não ajudou"},{key:"discomfort",label:"Notei desconforto"},{key:"skip",label:"Prefiro não responder"}],
     optionalNoteLabel:"Quer registrar um detalhe? (opcional)",limitation:LIMIT,
   };

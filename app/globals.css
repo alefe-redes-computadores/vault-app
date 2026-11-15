@@ -367,3 +367,6 @@ body:has([role="dialog"][aria-modal="true"]) .vault-bottom-nav {
 .vault-modal-layer[data-keyboard-open="true"] [role="dialog"] { max-height: 100%; }
 .vault-modal-layer input, .vault-modal-layer textarea { scroll-margin-block: 5rem; }
 @media (prefers-reduced-motion: reduce) { .vault-modal-layer * { scroll-behavior: auto !important; } }
+
+/* P6: Modo Essencial controla gavetas secundarias sem mudar autoridade clinica. */
+html[data-vault-home-essential-p6="1"] [data-vault-home-optional-p6] { display: none !important; }

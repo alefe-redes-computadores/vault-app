@@ -25,12 +25,26 @@ assert.match(scene, /prefers-reduced-motion/);
 assert.match(scene, /cameraTransition=null/);
 assert.doesNotMatch(scene, /setAnimationLoop/);
 
-// Viewport responsivo preserva leitura compacta e amplia a inspeção dedicada.
+// V169 + P6: protege o comportamento responsivo, nao um pixel antigo.
+// A altura continua clamp(min, percentual de viewport, max). O modo de
+// inspecao deve dispor de area maior, com limite superior para nao dominar
+// a tela, e a camera deve ser ajustada para canvas estreitos em outra camada.
+const viewport=scene.match(/style=\{\{height:compact\?"clamp\((\d+)px, (\d+)dvh, (\d+)px\)":"clamp\((\d+)px, (\d+)dvh, (\d+)px\)"\}\}/);
+assert.ok(viewport, "V169: canvas usa clamp por viewport no modo compacto e na inspeção");
+const [compactMin, compactDvh, compactMax, expandedMin, expandedDvh, expandedMax]=viewport.slice(1).map(Number);
 assert.ok(
-  /compact\?"clamp\(210px, 29dvh, 250px\)":"clamp\(300px, 48dvh, 440px\)"/.test(scene) ||
-  /compact\?"clamp\(210px, 29dvh, 250px\)":"clamp\(330px, 52dvh, 470px\)"/.test(scene),
-  "viewport compacto preservado e inspeção V169/V178 responsiva"
+  compactMin>=190 && compactMin<=250 && compactDvh>=25 && compactDvh<=35 &&
+  compactMax>=240 && compactMax<=260 && compactMin<=compactMax,
+  "V169: prévia compacta preserva legibilidade sem ocupar a tela"
 );
+assert.ok(
+  expandedMin>=260 && expandedMin<=350 && expandedDvh>=44 && expandedDvh<=56 &&
+  expandedMax>=440 && expandedMax<=500 && expandedMin<=expandedMax &&
+  expandedMin>compactMin && expandedMax>compactMax,
+  "V169: inspeção dedicada continua maior, responsiva e com limites de altura"
+);
+assert.match(scene,/avatarCameraFrameForViewport\(framingRef\.current/, "V169: câmera considera proporção real do canvas");
+assert.match(scene,/avatarAdaptiveRatio\(/, "V169: proporção GPU adaptativa mantida");
 assert.match(scene, /linear-gradient\(180deg/);
 
 console.log("V169 avatar anatomy + camera contract: OK");

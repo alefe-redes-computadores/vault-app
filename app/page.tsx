@@ -1279,11 +1279,11 @@ export default function HomePage() {
               onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
             />
             </details>
-            <HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
+            <div data-vault-home-optional-p6="agenda"><HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
               surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
               overdueWithdrawals={retiradasAtrasadas.length}
               onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-              onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} />
+              onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} /></div>
           </section>
 
           {/* M150 P5 P5: acessos essenciais imediatamente apos o resumo da rotina. */}
@@ -1654,11 +1654,14 @@ export default function HomePage() {
                     </button>
                   </div>
 
-                  <p className="mt-0.5 text-xs text-ink-muted">
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-ink-secondary" aria-label="Leitura humana do VAULT Brain">
+                    {longitudinalHighlights[0]?.titulo || (brainV5Pulse.journeys.some(item=>item.requires_attention) ? "Há etapas registradas para revisar no cuidado" : "Observações do seu histórico disponíveis para revisão")}
+                  </p>
+                  <span className="sr-only">
                     {healthIntelligence.maturity.totalRecords} registros analisados
                     {brainV5Pulse.journeys.some(item => item.requires_attention) ? ` · ${brainV5Pulse.journeys.filter(item => item.requires_attention).length} decisões em atenção` : brainV5Pulse.brief.total > 0 ? ` · ${brainV5Pulse.brief.total} decisões acompanhadas` : ""}
                     {brainV5Pulse.counters.new > 0 ? ` · ${brainV5Pulse.counters.new} novo${brainV5Pulse.counters.new === 1 ? "" : "s"}` : ""}
-                  </p>
+                  </span>
                 </div>
 
                 <button
@@ -2000,7 +2003,7 @@ export default function HomePage() {
                 </p>
               </div>
               {medicationCareOpportunities.length > 1 ? (
-                <div className="mt-2">
+                <div className="mt-2" data-vault-home-optional-p6="continuity">
                   <div id="home-continuity-other">
                     <MedicationCareOpportunityQueue
                       items={medicationCareOpportunities.slice(1).filter(item => !continuationWithdrawalAlreadyVisibleP5(item.actionHref, retiradasAgendaM147))}
@@ -2218,7 +2221,7 @@ export default function HomePage() {
               ACESSO RÁPIDO
           =================================================== */}
 
-          <div id="home-organizacao" className="scroll-mt-24" role="region" aria-label="Acompanhamento de saúde">
+          <div id="home-organizacao" data-vault-home-optional-p6="organization" className="scroll-mt-24" role="region" aria-label="Acompanhamento de saúde">
             <HomeCommandCenter
               gastoMes={metricasFinanceiras.gastoMesAtual}
               diferencaMes={metricasFinanceiras.diff}

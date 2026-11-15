@@ -903,6 +903,10 @@ export default function ConsultasPage() {
             </button>
           </ListFilters>
         </ListPageHeader>
+        {activePersonId && <section className="mx-4 mt-3 rounded-[22px] border border-violet-300/20 bg-gradient-to-br from-violet-400/[.08] via-surface to-surface p-3.5" aria-label="Preparação de consulta">
+          <div className="flex items-start gap-2.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-400/10 text-violet-300"><Stethoscope size={18}/></span><div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Preparar resumo da consulta</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Medicamentos, doses confirmadas, SOS e observações dos últimos 30 dias. Você decide o que compartilhar.</p></div></div>
+          <button type="button" onClick={()=>{trigger("vibrate");router.push(preserveReturn("/saude/registros/relatorio"));}} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-violet-300/25 bg-violet-300/[.075] px-3 text-xs font-bold text-violet-200">Preparar resumo · 30 dias</button>
+        </section>}
 
         <section className="space-y-3.5 px-5 pt-4">
           {activePersonId && (

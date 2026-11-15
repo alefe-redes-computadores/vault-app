@@ -14,6 +14,7 @@ import { buildPharmaLensObservationsV7 } from '@/lib/health-intelligence/pharmal
 import { makePharmaLensConsultationBriefV7 } from '@/lib/health-intelligence/pharmalens-brief-v7';
 import { PharmaLensOverviewV7 } from '@/components/saude/PharmaLensOverviewV7';
 import { PharmaLensObservationPanelV7 } from '@/components/saude/PharmaLensObservationPanelV7';
+import { PharmaLensGuidedReviewP6 } from '@/components/saude/PharmaLensGuidedReviewP6';
 
 function daysAgo(day: string, n: number) {
   const t = new Date(`${day}T12:00:00Z`);
@@ -95,6 +96,7 @@ export function PharmaLensWorkspaceV7() {
         </section>
         {selected && report && observations && <>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-surface-border bg-surface/70 p-3"><span className="text-xs font-semibold text-ink-primary">Janela de evidências</span><div className="flex gap-2" role="group" aria-label="Período">{([7,30] as const).map(n=><button key={n} type="button" aria-pressed={rangeDays===n} onClick={()=>setRangeDays(n)} className={`min-h-11 rounded-xl border px-3 text-xs font-bold ${rangeDays===n?'border-violet-300/50 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{n} dias</button>)}</div></div>
+          <PharmaLensGuidedReviewP6 key={`${scopeKey}:${selected.id}`} medication={selected}/>
           <PharmaLensOverviewV7 report={report}/>
           <PharmaLensObservationPanelV7 report={report} observations={observations} medicationId={selected.id!}/>
           <section className="rounded-[24px] border border-sky-400/15 bg-surface/70 p-4">

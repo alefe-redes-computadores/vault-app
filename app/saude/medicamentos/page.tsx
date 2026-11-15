@@ -1585,14 +1585,27 @@ export default function MedicamentosListPage() {
           </div>
 
         {/* P15 R9: filtros compactos, com disclosure acessível e sem grid permanente no Android. */}
-        <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
-        <div className="mx-4 mt-2 flex min-h-10 items-center justify-between gap-2 text-[11px] text-ink-muted" aria-label="Exibição dos medicamentos">
-              <span>{unifiedList ? 'Próximas doses pendentes primeiro' : 'Doses de hoje primeiro · grupos de cuidado'}</span>
-          <button type="button" aria-pressed={!unifiedList} onClick={()=>setUnifiedList(v=>!v)}
-            className="shrink-0 rounded-lg border border-surface-border/55 bg-surface/45 px-3 py-2 font-semibold text-emerald-200">
-            {unifiedList?'Ver grupos':'Lista única'}
-          </button>
-        </div>
+        {/* P6: uma unica superficie de organizacao, sem barra permanente de filtros. */}
+        <section className="mx-4 mt-2 space-y-2 rounded-[20px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[.045] via-surface to-surface p-3 shadow-sm" aria-label="Organizar medicamentos">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] font-bold text-ink-primary">Sua lista, do seu jeito</span>
+            <div className="inline-flex rounded-xl border border-surface-border/60 bg-surface-raised/40 p-0.5" role="group" aria-label="Exibição dos medicamentos">
+              <button type="button" aria-label="Lista única" aria-pressed={unifiedList} onClick={()=>setUnifiedList(true)} className={`min-h-11 rounded-lg px-3 text-[11px] font-semibold ${unifiedList?'bg-emerald-300/10 text-emerald-200':'text-ink-muted'}`}>Lista</button>
+              <button type="button" aria-label="Ver grupos" aria-pressed={!unifiedList} onClick={()=>setUnifiedList(false)} className={`min-h-11 rounded-lg px-3 text-[11px] font-semibold ${!unifiedList?'bg-emerald-300/10 text-emerald-200':'text-ink-muted'}`}>Grupos</button>
+            </div>
+          </div>
+          <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface/45 px-3 py-2" aria-label="Densidade dos cartões de medicamentos" data-vault-density-control="canonical-single">
+            <span className="min-w-0 text-[11px] font-semibold text-ink-secondary">Aparência dos cartões</span>
+            <div className="inline-flex shrink-0 rounded-xl border border-surface-border/60 p-0.5" role="group" aria-label="Escolher densidade dos cartões" data-vault-density-options="one-group">
+              <button type="button" aria-pressed={compactCards} onClick={() => chooseCardDensity(true)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Compactos</button>
+              <button type="button" aria-pressed={!compactCards} onClick={() => chooseCardDensity(false)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${!compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Conforto</button>
+            </div>
+          </div>
+          <details className="group rounded-xl border border-surface-border/50 bg-void/20 px-2.5" data-vault-filters-collapsed-p6>
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span>Filtrar medicamentos{medicationFilter!=="todos"?" · filtro ativo":""}</span><span className="text-emerald-200 transition group-open:rotate-180" aria-hidden="true">▾</span></summary>
+            <div className="pb-2"><MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/></div>
+          </details>
+        </section>
 
 
         {/* CONTEÚDO */}
@@ -1660,13 +1673,6 @@ export default function MedicamentosListPage() {
             {() => <div className="space-y-2"><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/><a href="/ajuda?topico=medications" className="flex min-h-11 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como organizar rotina, estoque e receitas</a></div>}
           </ClinicalDisclosure>
           {/* M132: controle visual opt-in; resultados e acoes continuam os mesmos. */}
-          <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface/45 px-3 py-2" aria-label="Densidade dos cartões de medicamentos" data-vault-density-control="canonical-single">
-            <span className="min-w-0 text-[11px] font-semibold text-ink-secondary">Aparência dos cartões</span>
-            <div className="inline-flex shrink-0 rounded-xl border border-surface-border/60 p-0.5" role="group" aria-label="Escolher densidade dos cartões" data-vault-density-options="one-group">
-              <button type="button" aria-pressed={compactCards} onClick={() => chooseCardDensity(true)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Compactos</button>
-              <button type="button" aria-pressed={!compactCards} onClick={() => chooseCardDensity(false)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${!compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Conforto</button>
-            </div>
-          </div>
           {/* P9: grupos são um atalho secundário, não outra barra de filtros. */}
           {!unifiedList && listaProcessada.length>0 && medicationFilter === "todos" ? <details className="group mb-2 rounded-xl border border-surface-border/40 bg-surface/50 px-2.5">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">

@@ -16,7 +16,8 @@ export function avatarCameraFrameForViewport(frame: AvatarFraming, width: number
   if(!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0) return base;
   if(frame==='shoes' && width<420) return {...base,distance:Math.max(base.distance,2.05)};
   if(frame==='face' && width<360) return {...base,distance:Math.max(base.distance,2.1)};
-  if(frame==='body' && (compact || width<360)) return {...base,distance:Math.max(base.distance,6.4)};
+  const verticalRatio=width/height;
+  if(frame==='body' && (compact || width<360 || verticalRatio<0.72)) return {...base,distance:Math.max(base.distance,verticalRatio<0.58?7.0:6.4)};
   return base;
 }
 /** Material colors update in place. Only structural accessory choices rebuild geometry. */
