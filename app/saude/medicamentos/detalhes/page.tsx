@@ -20,6 +20,7 @@ import { summarizeMedicationCosts } from "@/lib/health-intelligence/medication-c
 import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurchaseRhythmBrief";
 import { MedicationDetailNavigation } from "@/components/saude/MedicationWorkspaceNavigation";
 import { MedicationDetailCareHubM148 } from "@/components/saude/MedicationDetailCareHubM148";
+import { MedicationKnowledgePanelM153P4 } from "@/components/saude/MedicationKnowledgePanelM153P4";
 import { buildMedicationDetailHubM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
 import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
@@ -2990,6 +2991,7 @@ function MedicamentoDetalhesContent() {
             }}
             onOpenOccurrences={() => router.push(`/saude/central-m144?return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?${searchParams.toString()}`)}`)}
           />
+          <MedicationKnowledgePanelM153P4 medication={med}/>
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
