@@ -17,3 +17,7 @@ const TONES: Record<string,string> = {
   documentos: ORANGE, plano: ORANGE,
 };
 export function clinicalMapToneM150P3(id: string): string { return TONES[id] ?? BLUE; }
+/** P5 P3: grupos expressam domínios, não gravidade clínica. */
+export function clinicalMapSectionToneM150P5P3(id: string): string {
+  return ({rotina:'text-sky-300',saude:'text-rose-300',evidencias:'text-violet-300',documentos:'text-amber-300'} as Record<string,string>)[id] || 'text-ink-primary';
+}

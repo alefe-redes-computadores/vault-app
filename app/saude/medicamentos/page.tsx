@@ -1625,9 +1625,9 @@ export default function MedicamentosListPage() {
             {() => <div className="space-y-2"><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications} decision={healthIntelligence.careCommand?.decision} doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}} listActiveCount={statsProgresso.ativos} onNavigate={(href)=>router.push(href)}/><a href="/ajuda?topico=medications" className="flex min-h-11 items-center justify-center rounded-xl border border-surface-border/50 bg-surface-raised/40 px-3 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como organizar rotina, estoque e receitas</a></div>}
           </ClinicalDisclosure>
           {/* M132: controle visual opt-in; resultados e acoes continuam os mesmos. */}
-          <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface/45 px-3 py-2" aria-label="Densidade dos cartões de medicamentos">
-            <span className="min-w-0 text-[11px] font-semibold text-ink-secondary">Cartões</span>
-            <div className="inline-flex shrink-0 rounded-xl border border-surface-border/60 p-0.5" role="group" aria-label="Escolher densidade dos cartões">
+          <div className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-surface/45 px-3 py-2" aria-label="Densidade dos cartões de medicamentos" data-vault-density-control="canonical-single">
+            <span className="min-w-0 text-[11px] font-semibold text-ink-secondary">Aparência dos cartões</span>
+            <div className="inline-flex shrink-0 rounded-xl border border-surface-border/60 p-0.5" role="group" aria-label="Escolher densidade dos cartões" data-vault-density-options="one-group">
               <button type="button" aria-pressed={compactCards} onClick={() => chooseCardDensity(true)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Compactos</button>
               <button type="button" aria-pressed={!compactCards} onClick={() => chooseCardDensity(false)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${!compactCards ? "bg-emerald-300/10 text-emerald-200" : "text-ink-muted"}`}>Conforto</button>
             </div>

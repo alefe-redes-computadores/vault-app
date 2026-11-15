@@ -7,7 +7,7 @@ export function FenixSceneV8({snapshot}: {snapshot:StudioSnapshotV8}){
   const coverage=snapshot.axes.reduce((a,x)=>a+x.documentedDays,0);
   return <section className="overflow-hidden rounded-[26px] border border-emerald-400/20 bg-[radial-gradient(circle_at_50%_22%,rgba(52,211,153,.12),transparent_58%),linear-gradient(160deg,#101d29,#0a111b)] p-4" aria-label="Fênix Studio · registros observados">
     <header className="flex items-center gap-3"><FenixMark size="sm"/><div><h2 className="text-sm font-bold text-ink-primary">Fênix Studio · lente de registros</h2><p className="text-[11px] text-ink-muted">Ambiente visual, não um diagnóstico</p></div></header>
-    <div className="relative mx-auto my-3 grid h-52 max-w-xs place-items-center">
+    <div className="relative mx-auto my-3 grid h-44 max-w-xs place-items-center sm:h-52">
       <span className="pointer-events-none absolute inset-7 rounded-full border border-emerald-400/15 bg-emerald-400/[.025]"/>
       <span className="pointer-events-none absolute inset-1 rounded-full border border-dashed border-emerald-300/10"/>
       <svg viewBox="0 0 210 210" className="relative h-full w-full max-w-[220px]" aria-hidden="true">
@@ -19,8 +19,8 @@ export function FenixSceneV8({snapshot}: {snapshot:StudioSnapshotV8}){
         {deviceNames.some(d=>d.kind==='ring')?<circle cx="175" cy="155" r="8" fill="none" stroke="#fef3c7" strokeWidth="3"/>:null}
       </svg>
     </div>
-    <div className="grid grid-cols-2 gap-2 text-[11px]"><div className="rounded-xl border border-emerald-400/15 bg-emerald-300/[.04] p-3"><Activity size={15} className="mb-1 text-emerald-300"/><strong className="block text-ink-primary">{coverage} registros</strong><span className="text-ink-muted">dos quatro eixos no período (podem coincidir no dia)</span></div><div className="rounded-xl border border-emerald-400/15 bg-emerald-300/[.04] p-3"><Sparkles size={15} className="mb-1 text-emerald-300"/><strong className="block text-ink-primary">{snapshot.observedDays} dias</strong><span className="text-ink-muted">com algum registro de saúde</span></div></div>
-    <div className="mt-3 space-y-1.5">{deviceNames.length?deviceNames.map((d,i)=><p key={`${d.kind}-${i}`} className="flex items-center gap-2 text-xs text-emerald-100"><span>{d.kind==='watch'?<Watch size={15}/>:<CircleDot size={15}/>}</span><span>{d.name} · cadastrado e ativo</span></p>):<p className="text-xs text-ink-muted">Nenhum relógio ou anel ativo cadastrado. A Fênix não inventa acessórios.</p>}</div>
+    <div className="grid grid-cols-2 gap-2 text-[11px]"><div className="rounded-xl border border-emerald-400/15 bg-emerald-300/[.04] p-3"><Activity size={15} className="mb-1 text-emerald-300"/><strong className="block text-ink-primary">{coverage} dias-eixo</strong><span className="text-ink-muted">soma dos dias documentados nos quatro eixos (o mesmo dia pode aparecer mais de uma vez)</span></div><div className="rounded-xl border border-emerald-400/15 bg-emerald-300/[.04] p-3"><Sparkles size={15} className="mb-1 text-emerald-300"/><strong className="block text-ink-primary">{snapshot.observedDays} dias</strong><span className="text-ink-muted">com algum registro de saúde</span></div></div>
+    <div className="mt-3 space-y-1.5">{deviceNames.length?deviceNames.map((d,i)=><p key={`${d.kind}-${i}`} className="flex items-center gap-2 text-xs text-emerald-100"><span>{d.kind==='watch'?<Watch size={15}/>:<CircleDot size={15}/>}</span><span>{d.name} · cadastrado e ativo (leitura não comprovada)</span></p>):<p className="text-xs text-ink-muted">Nenhum relógio ou anel ativo cadastrado. A Fênix não inventa acessórios.</p>}</div>
     <p className="mt-3 text-[11px] leading-relaxed text-ink-muted">Este cenário é uma interpretação visual da cobertura dos registros. A aparência 3D original da Fênix não foi alterada, e a ausência de dados não implica piora clínica.</p>
   </section>;
 }

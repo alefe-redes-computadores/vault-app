@@ -10,7 +10,7 @@ import {avatarBodyVisualSignature,avatarBraceSlots,type AvatarBodyContext,type A
 import { SURGERY_MARKER_COLORS, type AvatarSurgeryMarker } from "@/lib/health-profile/avatar-surgery-markers";
 import { watchModelByName } from "@/lib/health-profile/device-catalog";
 import { avatarAttentionColor, shortestAvatarAngle } from "@/lib/health-profile/avatar-context";
-import {avatarCameraFrame,avatarStyleGeometryKey,type AvatarFraming} from "@/lib/health-profile/avatar-framing";
+import {avatarCameraFrame,avatarCameraFrameForViewport,avatarStyleGeometryKey,type AvatarFraming} from "@/lib/health-profile/avatar-framing";
 import type { AvatarStyle } from "@/lib/health-profile/avatar-style";
 import { AVATAR_IRIS_3D_M102P2 } from "@/lib/health-profile/avatar-face-detail-m102p2";
 
@@ -68,7 +68,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     const scene = new THREE.Scene(), model = new THREE.Group();
     scene.add(model);
     const camera = new THREE.PerspectiveCamera(35, 1, .1, 30);
-    const cameraFrame=avatarCameraFrame(framingRef.current);
+    const cameraFrame=avatarCameraFrameForViewport(framingRef.current,element.clientWidth,element.clientHeight,compactRef.current);
     camera.position.set(0, cameraFrame.height, cameraFrame.distance); camera.lookAt(0, cameraFrame.height, 0);
     scene.add(new THREE.HemisphereLight(0xdbeafe, 0x101820, 2.05));
     const key = new THREE.DirectionalLight(0xffffff, 3.12); key.position.set(-3,5,4); scene.add(key);
@@ -655,16 +655,15 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       // Do not animate a face/shoes camera transition underneath compact UI.
       transition=null;cameraTransition=null;model.rotation.y=0;camera.zoom=1;
       camera.updateProjectionMatrix();const standard=avatarCameraFrame('body');
-      camera.position.set(0,standard.height,standard.distance);
+      const safe=avatarCameraFrameForViewport('body',element.clientWidth,element.clientHeight,compactRef.current);
+      camera.position.set(0,standard.height,safe.distance);
       camera.lookAt(0,standard.height,0);draw();
     },viewport:small=>{
       const ratio=avatarAdaptiveRatio(displayRatio,element.clientWidth,element.clientHeight,false,small,constrainedDevice);
       if(renderer.getPixelRatio()!==ratio){renderer.setPixelRatio(ratio);renderer.setSize(element.clientWidth,element.clientHeight||340);}
       draw();
-    },style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.lips.color.set(value.lips==='berry'?'#71324d':value.lips==='rose'?'#a85e6d':'#6b3e35');materials.lips.opacity=value.lips==='natural'?.4:.72;materials.cap.color.set(value.hatColor);materials.capShade.color.set(value.hatColor).multiplyScalar(.58);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrame(value);
-      // M145: keep toes and ankles inside narrow Android portrait inspections.
-      // Default V162 framing remains untouched, so body and face are unchanged.
-      if(value==='shoes' && element.clientWidth > 0 && element.clientWidth < 420) next.distance=Math.max(next.distance,2.05);
+    },style:value=>{materials.top.color.set(value.topColor);materials.shirtDetail.color.set(value.topColor).multiplyScalar(.55);materials.bottom.color.set(value.bottomColor);materials.hair.color.set(value.hairColor);materials.facialHair.color.set(value.hairColor);materials.lips.color.set(value.lips==='berry'?'#71324d':value.lips==='rose'?'#a85e6d':'#6b3e35');materials.lips.opacity=value.lips==='natural'?.4:.72;materials.cap.color.set(value.hatColor);materials.capShade.color.set(value.hatColor).multiplyScalar(.58);materials.glasses.color.set(value.glassesColor);materials.sneakers.color.set(value.sneakersColor);draw();},framing:value=>{const next=avatarCameraFrameForViewport(value,element.clientWidth,element.clientHeight,compactRef.current);
+      // M145 + P5 P3: preserve camera authority; margins for shoes, face and full body on narrow Android.
       camera.zoom=1;camera.updateProjectionMatrix();if(reducedMotion){camera.position.set(0,next.height,next.distance);camera.lookAt(0,next.height,0);cameraTransition=null;}else cameraTransition={fromY:camera.position.y,fromDistance:camera.position.z,toY:next.height,toDistance:next.distance,start:performance.now()};draw();},markers:value=>{setMarkers(value);draw();},weight:value=>{weightMarker.visible=value;draw();},expression:value=>{setExpression(value);draw();},attention:rank=>{setAttention(rank);draw();},rotate:angle=>{
       const target=shortestAvatarAngle(model.rotation.y,angle);
       if(reducedMotion){model.rotation.y=target;transition=null;}else transition={from:model.rotation.y,to:target,start:performance.now()};draw();

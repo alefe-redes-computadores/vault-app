@@ -51,7 +51,14 @@ ok(read(files[7]).includes('bg-void shadow-')&&read(files[8]).includes('bg-void 
 const health=read(files[3]);
 ok(health.indexOf('id="meu-avatar"') < health.indexOf('<CareTrustPanelM119') && health.indexOf('<CareTrustPanelM119') < health.indexOf('id="avatar-care-workspace"'), 'Avatar principal vem antes dos vínculos auxiliares');
 ok(read(files[5]).includes('Revisar vínculos individuais')&&read(files[5]).includes('audit.findings.map('), 'Vínculos agrupados sem perder origens individuais');
-ok(read(files[9]).includes('M145: keep toes and ankles')&&read(files[9]).includes('element.clientWidth < 420'), 'Enquadramento de tênis mais amplo apenas no compacto');
+// M150 P5 P3: assert the camera BEHAVIOR at Android widths, rather than a deleted inline conditional.
+const avatarFrameM145=pure('lib/health-profile/avatar-framing.ts');
+const sceneM145=read(files[9]);
+ok(sceneM145.includes('M145 + P5 P3: preserve camera authority')&&
+   sceneM145.includes('avatarCameraFrameForViewport(value,element.clientWidth,element.clientHeight,compactRef.current)')&&
+   avatarFrameM145.avatarCameraFrameForViewport('shoes',360,460,false).distance>=2.05&&
+   avatarFrameM145.avatarCameraFrameForViewport('shoes',460,460,false).distance===avatarFrameM145.avatarCameraFrame('shoes').distance,
+   'Enquadramento de tênis protege pés na tela estreita e preserva a câmera larga');
 ok(!read(files[9]).includes('requestAnimationFrame(() => requestAnimationFrame'), 'Nenhum loop de renderização paralelo adicionado');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.includes('const contracts = [\n  "scripts/test-vault-m92-medication-premium-2.cjs",'),'M92 continua primeiro');

@@ -51,7 +51,7 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
     id: 'evidencias', title: 'Inteligência e evidências',
     description: 'Análises não substituem registros de origem',
     items: [
-      {id:'brain',label:'Brain V7',description:'Análise e explicação dos sinais',href:'/saude/brain-v7',icon:'brain'},
+      {id:'brain',label:'VAULT Brain',description:'Análise e explicação dos sinais',href:'/saude/brain-v7',icon:'brain'},
       {id:'studio',label:'Visual Studio e quatro eixos',description:'Evolução, visualização e PillStudio',href:'/saude/visual-studio',icon:'eye'},
       {id:'pharmalens',label:'PharmaLens',description:'Fabricantes e evidências observadas',href:'/saude/pharmalens',icon:'factory'},
       {id:'ocorrencias',label:'Ocorrências, ciclos e vacinas',description:'Histórico e observações registradas',href:'/saude/central-m144',icon:'syringe'},

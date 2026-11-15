@@ -7,7 +7,7 @@ const files=['app/page.tsx','app/inteligencia/page.tsx','app/saude/minha-saude/p
 for(const file of files){const source=read(file),parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,file.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(parsed.parseDiagnostics.length===0,'TS/TSX syntax '+file);}
 const [home,brain,health,supply,homeNav,routes,map,entry,pure,avatar,policy]=files.map(read);
 ok(home.includes('<HomeSectionNav')&&['home-agora','home-atencao','home-brain','home-organizacao'].every(id=>home.includes(`id="${id}"`)),'Home hierarchy points to rendered sections');
-ok(homeNav.includes('scrollIntoView')&&homeNav.includes('aria-label="Áreas da página inicial"'),'Home navigation is mobile and keyboard visible');
+ok(homeNav.includes('scrollIntoView')&&homeNav.includes('aria-label="Atalhos internos de secoes da Home"')&&homeNav.includes('hidden shrink-0 sm:block'),'Desktop retains internal section navigation; Android mobile uses the canonical directory');
 ok(['insight-decisoes','insight-evidencias','insight-saude','insight-cofre'].every(id=>brain.includes(id))&&brain.includes('<ClinicalSectionNav'),'Vault Insight exposes decisions, evidence, health and vault hierarchy');
 ok(health.includes('<CareRelationshipRoutes onNavigate={goFromHealth} compact/>')&&brain.includes('<CareRelationshipRoutes compact'),'cross-care routes preserve return context');
 ok(routes.includes('/saude/medicamentos')&&routes.includes('/saude/tratamentos')&&routes.includes('/saude/fornecimento')&&routes.includes('/inteligencia'),'care routes remain reciprocal and explicit');
