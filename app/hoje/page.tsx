@@ -59,6 +59,7 @@ import {
   ChevronLeft,
   Bell,
   PackageX,
+  SmilePlus,
 } from "lucide-react";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useMedicationRegulatoryProfiles } from "@/hooks/useMedicationRegulatoryProfiles";
@@ -163,8 +164,21 @@ export default function HojePage() {
     status: filtroStatus, period: filtroPeriodo,
     appointment: filtroCompromisso, showResolved: mostrarConcluidas,
   });
-  const navigateWithReturnM120 = (href: string) =>
+  const navigateWithReturnM120 = (href: string) => {
+    try { sessionStorage.setItem("vault:today:r4-return",JSON.stringify({user:user?.id,person:activePersonId,date:dataSelecionada,query:buildTimelineUrl(dataSelecionada),y:Math.max(0,window.scrollY)})); } catch { /* privado/local, falha nao impede navegar */ }
     router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)));
+  };
+  // R4: retorno com contexto igual; filtros/dia/perfil diferentes nunca reaproveitam scroll.
+  useEffect(()=>{
+    let saved: {user?:string;person?:string;date?:string;query?:string;y?:number}|null=null;
+    try {const raw=sessionStorage.getItem("vault:today:r4-return");if(raw)saved=JSON.parse(raw);sessionStorage.removeItem("vault:today:r4-return");} catch {return;}
+    if(!saved||saved.user!==user?.id||saved.person!==activePersonId||saved.date!==dataSelecionada||saved.query!==buildTimelineUrl(dataSelecionada)||!Number.isFinite(saved.y))return;
+    const frame=requestAnimationFrame(()=>window.scrollTo({top:Math.max(0,saved!.y||0),behavior:"auto"}));
+    const late=window.setTimeout(()=>window.scrollTo({top:Math.max(0,saved!.y||0),behavior:"auto"}),180);
+    return()=>{cancelAnimationFrame(frame);clearTimeout(late);};
+  // Retorno apenas na montagem; o marcador e consumido uma vez.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const originM120 = todayOriginM120(searchParams);
 
   const navegarData =
@@ -1609,15 +1623,9 @@ export default function HojePage() {
         <header className="border-b border-surface-border/40 bg-void px-4 pb-3 pt-3 shadow-[0_10px_26px_-24px_rgba(47,227,201,0.4)]">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">Linha do tempo · por categoria</p>
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-ice/80">LINHA DO TEMPO</p>
               <h1 className="font-display text-2xl font-semibold capitalize leading-tight text-ink-primary">{dataSelecionadaLabel}</h1>
             </div>
-              {isHoje && !retroReviewMode && (
-                <button type="button" data-vault-p5p5-dose-shortcut="true"
-                  onClick={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-                  className="min-h-11 shrink-0 rounded-xl border border-ice/30 bg-ice/[.075] px-3 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
-                  aria-label="Ir direto para as doses de hoje">Ver doses</button>
-              )}
             {!isHoje && <span className="shrink-0 rounded-lg border border-ice/20 bg-ice/10 px-2 py-1 text-[10px] font-semibold text-ice">{isPassado ? "Histórico" : "Planejado"}</span>}
           </div>
           <TodayDateNavigation label="Escolher data da linha do tempo" date={dataSelecionada}
@@ -1752,7 +1760,11 @@ export default function HojePage() {
           {/* M150 P5 P5 — depois das doses, orientacoes e agenda reais permanecem acessiveis. */}
           {/* M150 P5 P5: comando do Brain permanece visivel, mas depois da fila de doses. */}
           {/* Conteudo de evidencias separado da autoridade do registro de doses. */}
+
+          {/* R4: Brain na area de prioridades, fora dos grupos cronologicos de doses. */}
+          <section aria-label="Prioridades do dia" className="space-y-2">
           {isHoje && !retroReviewMode ? <TodayActionCenter pendingDoses={totalPendentes} showDoseShortcut={false} command={healthIntelligence.careCommand} brainFallback={!brainPulse.isLoading && brainPulse.brief.primary ? { insightId: brainPulse.brief.primary.insight_id, headline: brainPulse.brief.headline, title: brainPulse.brief.primary.snapshot.titulo, supporting: brainPulse.brief.supporting } : null} onOpenDoses={() => { trigger("vibrate"); document.getElementById("hoje-doses")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} onNavigate={(href) => navigateWithReturnM120(href)}/> : null}
+          </section>
           {/* P4: três atalhos de um toque, sem segunda autoridade de doses ou dados. */}
           {isHoje && !retroReviewMode && (
             <nav className="grid min-w-0 grid-cols-3 gap-1.5" aria-label="Acessos rápidos do cuidado">
@@ -1806,8 +1818,8 @@ export default function HojePage() {
                 <Calendar size={15} className="shrink-0 text-violet-300"/>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-3 text-xs font-semibold text-violet-200">Registrar humor</button>
-                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="min-h-11 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary">Registrar sintoma</button>
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=humor&return_to=%2Fhoje');}} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-violet-400/20 bg-violet-400/[.07] px-2 text-xs font-semibold text-violet-200"><SmilePlus size={15} aria-hidden="true"/>Registrar humor</button>
+                <button type="button" onClick={()=>{trigger('vibrate');router.push('/saude/registros/novo?preset=sintoma&return_to=%2Fhoje');}} className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-sky-300/25 bg-sky-300/[.06] px-2 text-xs font-semibold text-sky-200"><Activity size={15} aria-hidden="true"/>Registrar sintoma</button>
               </div>
               <button type="button" onClick={()=>router.push('/saude/registros/relatorio?return_to=%2Fhoje')} className="mt-2 min-h-10 w-full rounded-xl text-xs font-semibold text-violet-300">Ver resumo longitudinal</button>
             </section>

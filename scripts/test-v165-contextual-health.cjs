@@ -34,9 +34,9 @@ const identity = medicine.slice(identityStart, identityEnd);
 assert.match(identity, /flex min-w-0 flex-col gap-0\.5/, "cabeçalho vertical compacto M131 preserva largura do nome");
 assert.match(identity, /line-clamp-2 break-words font-display/, "nome não truncado");
 assert.doesNotMatch(identity, /grid-cols-\[minmax\(0,1fr\)_auto\]/, "coluna rígida não pode retornar");
-assert.match(identity, /aria-label="Ações do medicamento" className="mt-1\.5 flex min-w-0 flex-wrap items-center justify-end/, "ações independentes em linha compacta");
+assert.match(identity, /aria-label="Ações do medicamento" data-vault-r4-main-action className="relative flex min-h-11 w-\[78px\]/, "ações independentes em coluna fixa e acessível");
 assert.match(identity, /\[&>button\]:min-h-11/, "ações preservam alvo mínimo de toque");
-assert.match(identity, /actionLayoutM150P3.secondary.length > 0/, "ações secundárias continuam acessíveis");
+assert.match(identity, /actionLayoutM150P3\.secondary\.length\s*>\s*0/, "ações secundárias continuam acessíveis na gaveta");
 assert.ok(medicine.includes('const careActionButtonM150P3 = careAction && !exactClosedWithdrawalP7 ? (') && medicine.includes('row.user_id === med.user_id && row.person_id === med.person_id') && medicine.includes('!activeScheduledWithdrawalP5P4(row)') && medicine.includes('router.push(careAction.href)') && identity.includes('careActionButtonM150P3') && identity.includes('actionLayoutM150P3.primary === "care"'), "pendência navega para seu destino");
 assert.ok(medicine.includes('const quickActionButtonM150P3 = !isSuspenso && canQuickDose && quickDoseLabel ? (') && medicine.includes('setQuickDoseMedId(med.id!)') && identity.includes('quickActionButtonM150P3') && identity.includes('actionLayoutM150P3.primary === "dose"'), "registro rápido continua independente");
 

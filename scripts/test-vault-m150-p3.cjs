@@ -49,7 +49,7 @@ const special=regulatory.getMedicationRegulatorySurface({tone:'neutral',label:'R
 assert.equal(special.rail,'#cbd5e1');
 const med=read('app/saude/medicamentos/page.tsx');
 assert(med.includes('<MedicationProvenanceLineM150P3')&&!med.includes('source="ultima_aquisicao"'),'origens em linha unica');
-assert(med.includes('medicationCardActionLayoutM150P3(')&&med.includes('actionLayoutM150P3.secondary.includes('),'acoes excedentes acessiveis, nao apagadas');
+assert(med.includes('medicationCardActionLayoutM150P3(')&&med.includes('actionLayoutM150P3.secondary.length>0')&&med.includes('<MedicationActionsSheetR4')&&med.includes('setSecondaryActionSheetR4({title:med.nome,controls})'),'acoes excedentes presentes na gaveta sem alterar o motor');
 assert(med.includes('stockUnknown ? "Não informado" : medicationStockLabelM149('),'saldo desconhecido preservado');
 assert(med.includes('isSuspendedSOSM147')&&med.includes('Registrar uso já ocorrido'),'registro suspenso so historico');
 assert.equal((med.match(/aria-label="Escolher densidade dos cartões"/g)||[]).length,1,'controle de densidade unico');

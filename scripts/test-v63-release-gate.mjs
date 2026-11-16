@@ -483,6 +483,7 @@ const contracts = [
   "scripts/test-vault-m153-p7-relacional-r2.cjs",
   "scripts/test-vault-m153-p6-r5-regression.cjs",
   "scripts/test-vault-m153-p7-r3-ux.cjs",
+  "scripts/test-vault-m153-p7-r4-ux.cjs",
 ];
 
 for (const contract of contracts) {

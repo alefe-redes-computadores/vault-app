@@ -46,7 +46,7 @@ ok(batch.includes('flex flex-wrap')&&batch.includes('w-full shrink-0')&&batch.in
 ok(batch.includes('disabled={disabled}')&&batch.includes('aria-busy={processing}'),'batch operation/processing authority unchanged');
 ok(reminders.includes('disabled={!isSafeLocalActionHref(reminder.target_route)}'),'malformed reminder destinations become unavailable');
 ok(reminders.includes('onNavigate(reminder.target_route)')&&reminders.includes('registro manual'),'valid reminder destinations preserve original navigation and manual status');
-ok(date.includes('type="date"')&&date.includes('aria-current={isHoje ? "date" : undefined}'),'native date input and selected day accessibility retained');
+ok(!date.includes('type="date"')&&date.includes('aria-current={isHoje?"date":undefined}')&&date.includes('aria-haspopup="dialog"'),'calendar custom com dia acessivel e foco real');
 
 const compiled=(file,jsx=ts.JsxEmit.None)=>ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx}}).outputText;
 const load=(file,mocks={},jsx=ts.JsxEmit.ReactJSX)=>{

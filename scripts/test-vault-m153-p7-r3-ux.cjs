@@ -29,7 +29,7 @@ ok(med.includes('onContext={openMedicationContextP7R3}')&&med.includes('openMedi
 ok(sheet.includes('role="dialog"')&&sheet.includes('onClose')&&sheet.includes('document.addEventListener("keydown"'),'sheet acessivel e somente leitura');
 ok(med.indexOf('id="medicamentos-panorama"')>med.indexOf('{/* DOSE RÁPIDA */}')-4000,'panorama recolhido depois da listagem');
 ok(help.includes('returnTo')&&help.includes('router.push(returnTo)')&&read('components/BottomNav.tsx').includes('"/ajuda"'),'Ajuda preserva retorno e barra');
-ok(med.includes('min-h-[108px]')&&med.includes('min-h-[134px]')&&med.includes('grid-cols-1')&&med.includes('{actionLayoutM150P3.primary && <div'),'CTA lateral condicional e sem buraco');
+ok(med.includes('min-h-[108px]')&&med.includes('min-h-[134px]')&&med.includes('grid-cols-[minmax(0,1fr)_78px]')&&med.includes('data-vault-r4-main-action')&&med.includes('!actionLayoutM150P3.primary && <ChevronRight'),'CTA lateral fixa de R4 sem perder minima nem detalhe');
 ok(med.includes('tone="amber"')&&med.includes('border-sky-400/35')&&med.includes('border-amber-400/35'),'acoes semanticamente diferentes');
 ok(!read('components/saude/MedicationRestockAction.tsx').includes('createMedication('),'nada de estoque ficticio na UI');
 ok(med.includes('cardTreatments.map(t=>t.nome)') && !med.includes('cardTreatments.map(t=>`${t.nome} (${t.status})`'), 'chips de tratamento usam apenas campos reais do contrato P7');

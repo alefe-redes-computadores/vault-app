@@ -33,6 +33,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
@@ -49,6 +50,7 @@ import {
   Clock3,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   MinusCircle,
   Circle,
   Droplet,
@@ -130,6 +132,7 @@ import { MedicationListGroupNavigation } from "@/components/saude/MedicationWork
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
 import { MedicationFilterBar } from "@/components/saude/MedicationFilterBar";
+import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components/saude/MedicationActionsSheetR4";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
@@ -351,6 +354,7 @@ export default function MedicamentosListPage() {
       null
     );
 
+  const [secondaryActionSheetR4, setSecondaryActionSheetR4] = useState<MedicationActionsR4 | null>(null);
   const [medicationContextP7R3, setMedicationContextP7R3] = useState<MedicationContextP7R3 | null>(null);
   const [selectedRegulatory, setSelectedRegulatory] =
     useState<MedicationRegulatoryVisual | null>(null);
@@ -1171,6 +1175,20 @@ export default function MedicamentosListPage() {
           : careAction.label
         : "";
 
+      // R4: rótulo de UMA palavra é apenas apresentação. O contexto completo,
+      // descricao e evento canônico seguem presentes na acessibilidade e handlers.
+      const compactCareActionLabelR4 =
+        /\/retiradas\/nova(?:\?|$)/i.test(careAction?.href || "") ? "Planejar"
+        : /\/retiradas\/detalhes(?:\?|$)/i.test(careAction?.href || "") ? (withdrawalNeedsLinkReviewP5P4 ? "Conferir" : "Retirar")
+        : /^Repor estoque$/i.test(contextualActionLabel) ? "Repor"
+        : /^Planejar /i.test(contextualActionLabel) ? "Planejar"
+        : /^Registrar /i.test(contextualActionLabel) ? "Registrar"
+        : /^Renovar /i.test(contextualActionLabel) ? "Renovar"
+        : /^Preparar /i.test(contextualActionLabel) ? "Preparar"
+        : /^Conferir /i.test(contextualActionLabel) ? "Conferir"
+        : /^Revisar /i.test(contextualActionLabel) ? "Revisar"
+        : contextualActionLabel.split(/\s+/)[0] || "Abrir";
+
       // P7: a closed, exact-ID, same-owner withdrawal cannot keep a green actionable CTA.
       // A conflicting acquisition alone is NOT proof of closure: it remains "Conferir vínculo".
       const linkedWithdrawalIdP7 = /\/retiradas\/detalhes\?id=([^&#]+)/.exec(careAction?.href || "")?.[1];
@@ -1194,7 +1212,7 @@ export default function MedicamentosListPage() {
                     aria-label={`${quickDoseLabel} ${med.nome}${isSOS && isEstoqueZerado ? ". Saldo registrado zerado: confirme a situação no formulário" : ""}`}
                   >
                     <Zap size={12} fill="currentColor" />
-                    {quickDoseLabel}
+                    {isSOS ? "SOS" : "Tomar"}
                     {isSOS && isEstoqueZerado ? <span className="sr-only">Estoque zerado no cadastro</span> : null}
                   </button>
                 ) : null;
@@ -1222,14 +1240,14 @@ export default function MedicamentosListPage() {
                     }}
                   >
                     <AlertTriangle size={12} className="shrink-0" />
-                    <span className="min-w-0 line-clamp-1 break-words">{withdrawalLinkP71B.state === "review" ? "Conferir vínculo" : contextualActionLabel}</span>
+                    <span className="min-w-0 line-clamp-1 break-words">{withdrawalLinkP71B.state === "review" ? "Conferir" : compactCareActionLabelR4}</span>
                     <span className="sr-only">{careAction.label}</span>
                   </button>
                 ) : null;
       const stockActionButtonM150P3 = !isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
                   (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (
                   <MedicationRestockAction name={med.nome} tone="amber"
-                    label={stockUnknown ? "Informar saldo" : stockNegative ? "Revisar saldo" : "Repor estoque"}
+                    label={stockUnknown ? "Informar" : stockNegative ? "Revisar" : "Repor"}
                     onOpen={() => {
                       trigger("vibrate");
                       router.push(stockUnknown || stockNegative
@@ -1275,6 +1293,7 @@ export default function MedicamentosListPage() {
           compactTight={compactCards}
           interactiveContent
           className={compactCards ? "min-h-[108px]" : "min-h-[134px]"}
+          showChevron={false}
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="label"
           rail={(regulatoryProfile || receita) ? (
@@ -1386,7 +1405,7 @@ export default function MedicamentosListPage() {
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
-              <div className={`grid min-w-0 items-center gap-2 ${actionLayoutM150P3.primary ? "grid-cols-[minmax(0,1fr)_minmax(92px,34%)]" : "grid-cols-1"}`}>
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_78px] items-center gap-2">
                 <div className="min-w-0 flex-1">
               <MedicationOperationalStrip today={todayStatus}
               stockLabel={stockUnknown ? "Não informado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
@@ -1394,27 +1413,21 @@ export default function MedicamentosListPage() {
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
                 </div>
-                {actionLayoutM150P3.primary && <div aria-label="Ação principal do medicamento" className="flex min-h-11 min-w-0 items-center justify-end [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:px-1.5 [&>button]:text-[11px]">
+                <div aria-label="Ações do medicamento" data-vault-r4-main-action className="relative flex min-h-11 w-[78px] min-w-0 items-center justify-center [&>button]:min-h-11 [&>button]:max-w-full [&>button]:whitespace-nowrap [&>button]:px-1 [&>button]:text-[10px]">
                   {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
-                </div>}
+                  {!actionLayoutM150P3.primary && <ChevronRight size={16} className="text-ink-faint" aria-hidden="true"/>}
+                  {actionLayoutM150P3.secondary.length>0 && <button type="button" aria-label={`Ver mais ${actionLayoutM150P3.secondary.length} ações de ${med.nome}`} onClick={event=>{event.stopPropagation();const controls:ReactNode[]=[];
+                    if(quickActionButtonM150P3)controls.push(quickActionButtonM150P3);
+                    if(careActionButtonM150P3)controls.push(careActionButtonM150P3);
+                    if(stockActionButtonM150P3)controls.push(stockActionButtonM150P3);
+                    if(historyActionButtonM150P3)controls.push(historyActionButtonM150P3);
+                    setSecondaryActionSheetR4({title:med.nome,controls});
+                  }} className="absolute -right-1 -top-3 grid min-h-7 min-w-7 place-items-center rounded-lg border border-amber-300/35 bg-amber-300/[.10] px-1 text-[10px] font-bold text-amber-200">+{actionLayoutM150P3.secondary.length}</button>}
+                </div>
               </div>
-              {!compactCards && <div aria-label="Ações do medicamento" className="mt-1.5 flex min-w-0 flex-wrap items-center justify-end gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:max-w-full [&>button]:px-3 [&>button]:text-xs">
-                {actionLayoutM150P3.secondary.length > 0 && (
-                  <details onClick={(event) => event.stopPropagation()}
-                    className="group w-full rounded-xl border border-surface-border/40 bg-surface-raised/20">
-                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-[11px] font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                      Outras ações <ChevronDown size={14} className="transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
-                    </summary>
-                    <div role="group" aria-label="Outras ações do medicamento" className="grid gap-1.5 border-t border-surface-border/25 p-2 [&>button]:min-h-11 [&>button]:w-full">
-                      {actionLayoutM150P3.secondary.includes("history") ? historyActionButtonM150P3 : null}
-                      {actionLayoutM150P3.secondary.includes("care") ? careActionButtonM150P3 : null}
-                      {actionLayoutM150P3.secondary.includes("stock") ? stockActionButtonM150P3 : null}
-                    </div>
-                  </details>
-                )}
-              </div>}
+              {/* R4: acoes secundarias somente na gaveta; o card nao cresce. */}
             </div>
 
             {/* VAULT_MEDICATION_LIST_HIERARCHY_V98
@@ -1737,6 +1750,8 @@ export default function MedicamentosListPage() {
         </section>
 
                 <MedicationContextSheetP7R3 value={medicationContextP7R3} onClose={()=>setMedicationContextP7R3(null)}/>
+
+        <MedicationActionsSheetR4 value={secondaryActionSheetR4} onClose={()=>setSecondaryActionSheetR4(null)}/>
 
         {/* DOSE RÁPIDA */}
 

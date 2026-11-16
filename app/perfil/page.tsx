@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LogOut,
+  ArrowLeft,
   HardDrive,
   Camera,
   Fingerprint,
@@ -106,7 +107,7 @@ export default function ProfilePage() {
   return (
     <PageTransition>
       <main className="min-h-screen bg-void pb-28">
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl"><button type="button" onClick={()=>router.replace("/mais")} aria-label="Voltar para Mais" className="mb-2 flex min-h-11 items-center gap-2 rounded-xl border border-surface-border/50 bg-surface/60 px-3 text-xs font-semibold text-ink-secondary"><ArrowLeft size={17} aria-hidden="true"/>Voltar para Mais</button>
           <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-ice/90">
             Vault
           </p>

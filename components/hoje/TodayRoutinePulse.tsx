@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { AlertTriangle, CalendarDays, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, XCircle, Info } from "lucide-react";
 import { todayTemporalGuidance } from "@/lib/today/today-temporal-guidance";
 
 type Props = {
@@ -28,7 +28,7 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
   const safePercentage = Number.isFinite(percentage) ? Math.max(0, Math.min(100, percentage)) : 0;
   const temporalGuidance = todayTemporalGuidance({ isFuturo, isPassado, recorded, unconfirmed });
   return (
-    <div className="mt-2 rounded-[20px] border border-surface-border/65 bg-gradient-to-br from-ice/[0.08] via-surface-raised/65 to-surface/50 px-4 py-3.5 shadow-sm" data-temporal-authority={isFuturo ? "projected" : isPassado ? "historical" : "today"} aria-live="polite" aria-atomic="true" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
+    <div className="mt-2 rounded-[20px] border border-surface-border/65 bg-gradient-to-br from-ice/[0.08] via-surface-raised/65 to-surface/50 px-3.5 py-2.5 shadow-sm" data-temporal-authority={isFuturo ? "projected" : isPassado ? "historical" : "today"} aria-live="polite" aria-atomic="true" aria-label={isFuturo ? "Resumo de doses previstas" : "Resumo da rotina registrada"}>
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-semibold">
           <span className={isFuturo ? "inline-flex items-center gap-1 text-violet-300" : isPassado ? "inline-flex items-center gap-1 text-ink-muted" : pending > 0 ? "inline-flex items-center gap-1 text-amber-300" : "inline-flex items-center gap-1 text-emerald-300"}>
@@ -43,7 +43,10 @@ export const TodayRoutinePulse = memo(function TodayRoutinePulse({
         </div>
       </div>
       <span className="sr-only">{isFuturo ? "Planejamento futuro não significa dose tomada." : isPassado ? "Sem confirmação histórica não significa dose ignorada." : "Doses ignoradas e pendentes não contam como tomadas."}</span>
-      {isHoje && <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Este total é da linha do tempo selecionada. A Home resume apenas a rotina de medicamentos contínuos; os totais podem ser diferentes.</p>}
+      {isHoje && <details className="relative mt-1 w-fit text-[11px] text-ink-muted">
+        <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 rounded-lg px-1 text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice" aria-label="Entender por que os totais de Hoje e da Home podem diferir"><Info size={14} aria-hidden="true"/>Entender o progresso</summary>
+        <p className="max-w-xs rounded-xl border border-surface-border/50 bg-surface-raised px-3 py-2 leading-relaxed text-ink-secondary">Este total é da linha do tempo selecionada. A Home resume apenas a rotina de medicamentos contínuos; os totais podem ser diferentes.</p>
+      </details>}
       {temporalGuidance && <details className="mt-3 border-t border-surface-border/35 pt-2 text-xs text-ink-muted">
         <summary className="flex min-h-9 cursor-pointer items-center font-medium text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Entender este resumo</summary>
         <p className="pb-1 leading-relaxed" role="note">{temporalGuidance}</p>

@@ -15,6 +15,8 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
   onOpenWithdrawals: () => void;
 }) {
   const kindIcon = { dose: Pill, reminder: Bell, appointment: CalendarDays } as const;
+  // R4: compromissos completos estao abaixo, cada ID somente na sua propria lista.
+  const previewRows=overview.rows.filter(item=>item.kind!=="appointment");
   return <section aria-label="Atenção do dia e agenda em ordem de horário" className="rounded-[20px] border border-ice/15 bg-gradient-to-b from-ice/[.055] to-surface/75 p-3">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0"><h2 className="font-display text-base font-bold text-ink-primary">Atenção do dia</h2>
@@ -34,12 +36,12 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
       {/* M106: alertas urgentes e próximo evento permanecem visíveis. */}
       <details className="group mt-2 rounded-xl border border-surface-border/35 bg-surface/25 px-2.5">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-          <span>Ver horários do dia{overview.rows.length > 0 ? ` · ${overview.rows.length} na prévia` : ""}</span>
+          <span>Ver horários do dia{previewRows.length > 0 ? ` · ${previewRows.length} na prévia` : ""}</span>
           <ChevronDown size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none"/>
         </summary>
         <div className="border-t border-surface-border/30 pb-2 pt-1">
-      {overview.rows.length > 0 ? <ol className="mt-2 space-y-1" aria-label="Horários combinados em ordem cronológica">
-        {overview.rows.map((item, index) => {
+      {previewRows.length > 0 ? <ol className="mt-2 space-y-1" aria-label="Horários combinados em ordem cronológica">
+        {previewRows.map((item, index) => {
           const Icon = item.kind === "appointment"
             ? item.title === "Retirada" ? PackageCheck
               : item.title === "Consulta" ? Stethoscope

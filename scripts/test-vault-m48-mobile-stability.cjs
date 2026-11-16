@@ -29,8 +29,8 @@ ok(filter.includes('useDismissibleDetails()')&&filter.includes('className="fixed
 ok(filter.includes('statusOptions')&&filter.includes('onShowResolved(event.target.checked)')&&filter.includes('onReset()')&&filter.includes('isToday &&'),'Today filters retain historical/clinical distinctions and reset');
 ok(guide.includes('useDismissibleDetails()')&&guide.includes('absolute right-0')&&!guide.includes('absolute -right-28'),'Today guidance stays inside mobile width');
 ok(guide.includes('Doses futuras são previsões')&&guide.includes('Falta de confirmação no histórico não significa uma dose ignorada'),'temporal uncertainty visible, not inferred missed');
-ok(date.includes('description}</span>')&&!date.includes('description.slice(0, 5)')&&date.includes('onSelectDate(event.target.value)'),'native picker keeps date selection and readable description');
-ok(date.includes('type="date" aria-label={label}')&&date.includes('className="absolute inset-0 h-full w-full cursor-pointer opacity-0"'),'date native input remains invisible only as existing intentional control');
+ok(date.includes('description}</span>')&&!date.includes('description.slice(0, 5)')&&date.includes('onSelectDate(value)'),'calendar customizado preserva selecao e descricao legivel');
+ok(!date.includes('type="date"')&&date.includes('role="dialog"')&&date.includes('aria-haspopup="dialog"'),'date sheet acessivel sem input nativo');
 ok(med.includes('document.addEventListener("pointerdown", dismissOutside)')&&med.includes('triggerRef.current?.focus()')&&med.includes('min-h-11'),'medication filters close outside/Escape and meet touch size');
 ok(med.includes('aria-pressed={value === key}')&&med.includes('onChange(next)')&&!/\bfetch\(|localStorage|supabase|indexedDB/.test(med),'medication filters retain parent authority without I/O');
 ok(nav.includes('if(!ids.includes(activeId))setActiveId(ids[0])')&&nav.includes('min-h-11 gap-1 rounded-lg')&&nav.includes('min-h-11 w-full'),'section navigation handles entity changes and touch targets');

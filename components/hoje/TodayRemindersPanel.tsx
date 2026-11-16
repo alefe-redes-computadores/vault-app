@@ -28,9 +28,7 @@ export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
             <p className="text-xs text-ink-muted">Agenda pessoal · não mede adesão</p>
           </div>
         </div>
-        <span className="rounded-full border border-surface-border/65 bg-surface px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums text-ink-primary" aria-label={`${reminders.length} lembrete(s) programado(s)`}>
-          {reminders.length}
-        </span>
+        <a href="/saude/lembretes" onClick={event=>{event.preventDefault();onNavigate("/saude/lembretes");}} aria-label="Abrir e editar lembretes" className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-emerald-300/20 bg-emerald-300/[.045] px-2.5 text-[11px] font-semibold text-emerald-200"><span aria-label={`${reminders.length} lembrete(s) programado(s)`} className="font-mono tabular-nums">{reminders.length}</span><ChevronRight size={14} aria-hidden="true"/></a>
       </header>
       <ol id="today-reminders-list" className="space-y-1.5" aria-label="Lembretes em ordem de horário">
         {reminders.slice(0, reveal.visible).map((reminder) => {
