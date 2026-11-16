@@ -29,7 +29,13 @@ check('grupo visível sem paginação',()=>assert(meds.includes('medsPendentesHo
 check('compacto sem altura mínima rígida de 172px',()=>assert(!meds.includes('min-h-[172px]')&&meds.includes('compactCards && <div className="max-w-[43%]')));
 check('CTA secundária acessível no modo conforto',()=>assert(meds.includes('{!compactCards && <div aria-label="Ações do medicamento"')&&meds.includes('actionLayoutM150P3.secondary.includes("care")')));
 check('BottomNav retorna em detalhes, mas não em novo/editar',()=>{let n=read('components/BottomNav.tsx');assert(n.includes('readOnlyClinicalDetails'));assert(n.includes('normalizedPathname.includes("/editar")'));assert(n.includes('medicamentos|tratamentos|retiradas'));});
-check('Home panorama próximo do hero e acima dos compromissos',()=>{let h=read('app/page.tsx');assert(h.indexOf('id="home-resumo-da-rotina"')>h.indexOf('<HomeDailyHero'));assert(h.indexOf('id="home-resumo-da-rotina"')<h.indexOf('id="home-compromissos"'));});
+check('P7: resumo e indicadores unificados antes da Agenda',()=>{
+ const h=read('app/page.tsx'), hero=read('components/home/HomeDailyHero.tsx');
+ const heroAt=h.indexOf('<HomeDailyHero'), indicatorsAt=h.indexOf('indicators={<HomeQuickMetrics'), agendaAt=h.indexOf('id="home-compromissos"');
+ assert(heroAt>=0&&indicatorsAt>heroAt&&agendaAt>indicatorsAt,'Home: hero + indicadores antes da Agenda');
+ assert(hero.includes('Resumo unificado da rotina'),'P7: uma unica superficie para rotina e indicadores');
+ assert(!h.includes('id="home-resumo-da-rotina"'),'P7: nenhum segundo painel de resumo');
+});
 check('Acompanhamento sem duplicação e com apoio',()=>{let s=read('components/home/HomeDoseQuantityFollowUp.tsx');assert.equal(s.split('{insight.titulo}').length-1,1);assert(s.includes('/saude/plano-seguranca'));});
 check('diagnóstico de atualizações recolhido, instalador visível',()=>{let s=read('components/updates/VaultUpdateCenter.tsx');assert(s.includes('<details className="mt-3 rounded-xl border border-surface-border/45'));assert(s.indexOf('VaultNativeUpdateFlow release={release}')<s.indexOf('Detalhes técnicos e histórico'));});
 check('PDF visível e fallback externo',()=>{let s=read('components/galeria/DocumentViewer.tsx');assert(s.includes('<iframe src={item.url}')&&s.includes('Abrir PDF externamente se necessário'));});

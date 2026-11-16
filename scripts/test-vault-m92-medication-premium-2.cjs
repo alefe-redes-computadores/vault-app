@@ -37,7 +37,16 @@ ok('Busca e categorias de filtros permanecem',med.includes('<MedicationFilterBar
 ok('SOS recolhido no panorama e progressivo',med.includes('tone="sos" forceOpen=') && !med.includes('tone="sos" defaultOpen=') && med.includes('medsSOS.slice(0, limit).map(renderCard)'));
 ok('Grupos por prioridade e dose rápida preservados',med.includes('medsPrioridade.map(renderCard)') && med.includes('setQuickDoseMedId(med.id!)'));
 ok('Classificação regulatória interativa preservada',med.includes('regulatoryProfile?.label') && med.includes('setSelectedRegulatory(regulatoryProfile)'));
-ok('Botão único preenche sua linha sem criar ações fictícias',med.includes('[&>button:only-child]:col-span-2') && med.includes('aria-label="Ações do medicamento"'));
+ok('Ações reais acessíveis em linha compacta sem altura artificial',
+  med.includes('aria-label="Ações do medicamento"') &&
+  med.includes('mt-1.5 flex min-w-0 flex-wrap items-center justify-end') &&
+  med.includes('[&>button]:min-h-11') &&
+  med.includes('[&>button]:max-w-full') &&
+  med.includes('actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3') &&
+  med.includes('actionLayoutM150P3.primary === "care" ? careActionButtonM150P3') &&
+  med.includes('actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3') &&
+  med.includes('actionLayoutM150P3.secondary.length > 0')
+);
 ok('Retirada, dose SOS e reposição ainda independentes',med.includes('router.push(careAction.href)') && med.includes('MedicationRestockAction name={med.nome}') && med.includes('quickDoseLabel'));
 ok('Estados preservados em linha operacional compacta',strip.includes('doseOutcome==="ignored"') && strip.includes('stockTone==="empty"') && strip.includes('flex min-w-0 flex-wrap') && strip.includes('Package size={12}'));
 ok('Aviso de estoque é inspecionável sem romper altura',med.includes('Unidade do estoque diferente · revisar') && med.includes('min-h-9 cursor-pointer') && med.includes('className="min-w-0 flex-1 truncate"'));

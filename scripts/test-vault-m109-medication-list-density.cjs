@@ -29,7 +29,7 @@ const fingerprint = read(paths[5]);
 const regulatory = read(paths[6]);
 
 assert(page.includes('className="min-h-0"'), "cards não devem manter altura mínima artificial");
-assert(page.includes('railSize="slim"') && page.includes('<StickyNote size={13}'), "classificação regulatória usa faixa vertical fina");
+assert(page.includes('railSize="slim"') && page.includes('<Info size={12}') && page.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)') && page.includes('aria-label={`Ver classificação da receita:'), "faixa regulatória opt-in permanece informativa e acessível");
 assert(page.includes('Ver classificação da receita:') && page.includes('medicationRegulatoryShortLabel'), "autoridade regulatória permanece acessível e abreviada");
 assert(card.includes('railSize?: "standard" | "slim"') && card.includes('railSize === "slim" ? "w-4"'), "faixa fina é opt-in e não altera outros cards");
 assert(regulatory.includes('return "Notif. A"') && regulatory.includes('return "Notif. B"') && regulatory.includes('return "Especial"'), "abreviações regulatórias são determinísticas");

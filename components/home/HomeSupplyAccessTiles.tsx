@@ -1,24 +1,23 @@
 "use client";
 import { ChevronRight, FolderHeart, Store } from "lucide-react";
-
-/** Pure secondary links; route authority, Haptics and client-side navigation stay in Home. */
+/** Secondary destinations only; navigation authority and haptics remain in Home. */
 export function HomeSupplyAccessTiles({ onNavigate, withdrawalPath, supplyPath }: {
   onNavigate: (path: string) => void;
   withdrawalPath: string;
   supplyPath: string;
 }) {
-  return <div className="space-y-2" aria-label="Acessos a retiradas e fornecimento">
+  return <div className="grid min-w-0 grid-cols-1 gap-1.5 min-[420px]:grid-cols-2" aria-label="Acessos a retiradas e fornecimento">
     <button type="button" onClick={() => onNavigate(withdrawalPath)}
-      className="flex min-h-[58px] w-full items-center gap-2.5 rounded-xl border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-400/10 text-amber-300" aria-hidden="true"><Store size={17}/></span>
-      <span className="min-w-0 flex-1"><strong className="block break-words text-xs font-semibold text-ink-primary">Retiradas de medicamentos</strong><span className="block break-words text-[11px] leading-snug text-ink-muted">Programações, locais e histórico de retirada</span></span>
-      <ChevronRight size={15} className="shrink-0 text-amber-300" aria-hidden="true"/>
+      className="flex min-h-[64px] min-w-0 items-center gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.035] px-2.5 py-2 text-left transition-colors motion-reduce:transition-none active:bg-amber-300/[.085] focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><Store size={14}/></span>
+      <span className="min-w-0 flex-1"><strong className="block text-[11px] font-bold text-ink-primary">Retiradas de medicamentos</strong><span className="block text-[10px] leading-snug text-ink-muted">Datas e histórico</span></span>
+      <ChevronRight size={13} className="shrink-0 text-amber-200"/>
     </button>
     <button type="button" onClick={() => onNavigate(supplyPath)}
-      className="flex min-h-[58px] w-full items-center gap-2.5 rounded-xl border border-surface-border/50 bg-surface/70 px-3 py-2 text-left transition-colors active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-ice">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-300/10 text-violet-300" aria-hidden="true"><FolderHeart size={17}/></span>
-      <span className="min-w-0 flex-1"><strong className="block break-words text-xs font-semibold text-ink-primary">Fornecimento SUS e documentos</strong><span className="block break-words text-[11px] leading-snug text-ink-muted">Processos, autorizações e renovação</span></span>
-      <ChevronRight size={15} className="shrink-0 text-ink-muted" aria-hidden="true"/>
+      className="flex min-h-[64px] min-w-0 items-center gap-2 rounded-xl border border-violet-300/15 bg-violet-300/[.035] px-2.5 py-2 text-left transition-colors motion-reduce:transition-none active:bg-violet-300/[.085] focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-300/10 text-violet-200"><FolderHeart size={14}/></span>
+      <span className="min-w-0 flex-1"><strong className="block text-[11px] font-bold text-ink-primary">Fornecimento SUS e documentos</strong><span className="block text-[10px] leading-snug text-ink-muted">Processos e receitas</span></span>
+      <ChevronRight size={13} className="shrink-0 text-violet-200"/>
     </button>
   </div>;
 }

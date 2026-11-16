@@ -104,6 +104,7 @@ import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
 import { HomeEssentialToggleM118 } from "@/components/home/HomeEssentialToggleM118";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
+import { nextHomeRoutineDoseP71 } from "@/lib/home/next-routine-dose-p71";
 import { countHomeTodayAppointments } from "@/lib/home/appointment-metrics";
 import { selectHomeDayEvents } from "@/lib/home/appointment-day-selection";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
@@ -555,6 +556,10 @@ export default function HomePage() {
   // P7 FIX9: o mesmo ID fica em UMA superficie administrativa na Agenda.
   // A origem useRetiradas ja e restrita a user.id + activePersonId.
   const renderRetiradaAgendaP7 = (retirada: (typeof retiradasAgendaM147)[number]) => {
+    const medicamentoLigado = medicamentosById.get(retirada.medicamento_id);
+    const medicamentoNome = (retirada.medicamento_nome || medicamentoLigado?.nome || "").trim();
+    const medicamentoFormato = String(medicamentoLigado?.formato || "").toLowerCase();
+    const usaGotas = /gotas|solu[cç][aã]o|l[ií]quido|spray|col[ií]rio/.test(medicamentoFormato);
     const bucket = homeAgendaBucketM147(retirada, hoje, horaAtual);
     const dias = withdrawalDaysOverdue(retirada.data, hoje);
     const status = bucket === "pendente_anterior"
@@ -563,14 +568,17 @@ export default function HomePage() {
       : bucket === "ainda_hoje" ? "Prevista para hoje"
       : "Sem horário confirmado";
     return <button type="button" key={retirada.id}
-      aria-label={`Conferir retirada ${retirada.data}. ${status}`}
+      aria-label={`Conferir retirada de ${medicamentoNome || "medicamento não identificado"}. ${status}`}
       onClick={() => { trigger("vibrate"); router.push(withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")); }}
-      className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/45 bg-surface/55 px-3 py-2.5 text-left active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-semibold text-ink-primary">Retirada de medicamento</span>
-        <span className="block text-[11px] text-ink-muted">{status} · {formatVaultClinicalDateBR(retirada.data)}{retirada.horario ? ` · ${retirada.horario}` : ""}</span>
+      className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-emerald-300/10 bg-surface/60 px-2.5 py-2 text-left shadow-sm transition-colors active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[.065] text-emerald-200" aria-hidden="true">
+        {usaGotas ? <Droplets size={15}/> : <Pill size={15}/>}
       </span>
-      <ChevronRight size={15} className="shrink-0 text-ice" aria-hidden="true"/>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-bold text-ink-primary">{medicamentoNome || "Medicamento não identificado"}</span>
+        <span className="block truncate text-[11px] text-ink-muted">{status} · {formatVaultClinicalDateBR(retirada.data)}{retirada.horario ? ` · ${retirada.horario}` : ""}</span>
+      </span>
+      <ChevronRight size={14} className="shrink-0 text-emerald-300" aria-hidden="true"/>
     </button>;
   };
 
@@ -625,6 +633,15 @@ export default function HomePage() {
   const totalDosesPlanejadasHoje = doseProgress.planned;
   const dosesTomadasDaRotinaHoje = doseProgress.taken;
   const progressoDosesHoje = doseProgress.percentage;
+  const proximaDoseContinuosP71 = useMemo(() =>
+    nextHomeRoutineDoseP71(medicamentosAtivos, doseLogs || [], horaAtual),
+    [medicamentosAtivos, doseLogs, horaAtual]
+  );
+  const contextoRotinaP71 = proximaDoseContinuosP71
+    ? `${proximaDoseContinuosP71.overdue ? "Revisar horário" : "Próxima"}: ${proximaDoseContinuosP71.name} · ${proximaDoseContinuosP71.time}`
+    : totalDosesPlanejadasHoje > 0 && dosesTomadasDaRotinaHoje === totalDosesPlanejadasHoje
+      ? "Registros de doses contínuas concluídos hoje" : "Confira os horários e registros em Hoje";
+
 
   // ==========================================================
   // MOTOR CANÔNICO DE ALERTAS
@@ -950,8 +967,9 @@ export default function HomePage() {
     item => item.level === "urgente" || item.level === "vencido"
   );
   useEffect(() => {
-    setMostrarTodosAlertas(hasImmediateAttentionP7);
-  }, [activePersonId, hasImmediateAttentionP7]);
+    // A primeira prioridade continua visível no trilho; as demais sob demanda.
+    setMostrarTodosAlertas(false);
+  }, [activePersonId]);
 
   const [
     insightExplicado,
@@ -1298,7 +1316,7 @@ export default function HomePage() {
             <HomeDailyHero eyebrow="Rotina de hoje" title={resumoContextual.title}
               description={resumoContextual.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
-              progress={progressoDosesHoje}
+              progress={progressoDosesHoje} contextLabel={contextoRotinaP71}
               onOpen={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
               onOpenToday={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
               indicators={<HomeQuickMetrics
@@ -1572,7 +1590,7 @@ export default function HomePage() {
               className="vault-deferred space-y-3"
             >
               {/* P15 R8: renderização read-only; a autoridade e a ordem vêm de unifiedAlerts. */}
-              <HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}
+              <HomeAttentionRail alerts={unifiedAlerts} description={hasImmediateAttentionP7 ? "Há registros prioritários para conferir" : "O que merece prioridade agora"} expanded={mostrarTodosAlertas}
                 onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}
                 renderAlert={alert => <AlertRow alert={{...alert, href: withReturnTarget(alert.href, "/")}} />} />
             </motion.section>
@@ -1581,13 +1599,24 @@ export default function HomePage() {
           {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
               Não gera nova interpretação nem substitui alertas de segurança. */}
           {!quantityAlreadyInBrain && quantityFollowUpInsight && (
-            <HomeDoseQuantityFollowUp
-                insight={quantityFollowUpInsight}
-                feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
-                nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
-                onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
-                onNavigate={href => { trigger("vibrate"); router.push(href); }}
-              />
+            <details className="group overflow-hidden rounded-[18px] border border-amber-300/20 bg-gradient-to-br from-amber-400/[.045] to-surface" aria-label="Acompanhamento contextual do Brain">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><AlertCircle size={15}/></span>
+                <span className="min-w-0 flex-1"><strong className="block text-xs font-bold text-ink-primary">Brain · acompanhamento do registro</strong><span className="block truncate text-[11px] text-amber-200">{quantityFollowUpInsight.titulo}</span></span>
+                <span className="shrink-0 rounded-lg bg-amber-300/10 px-2 py-1 text-[10px] font-semibold text-amber-200">{quantityFollowUpInsight.gravidadeSeguranca === "critica" ? "Prioritário" : "Conferir"}</span>
+                <ChevronRight size={14} className="shrink-0 text-ink-muted transition-transform group-open:rotate-90"/>
+              </summary>
+              <div className="border-t border-amber-300/10 p-2">
+                <HomeDoseQuantityFollowUp
+                  insight={quantityFollowUpInsight}
+                  feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
+                  nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
+                  onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
+                  onNavigate={href => { trigger("vibrate"); router.push(href); }}
+                />
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/inteligencia/alertas");}} className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-violet-300/20 bg-violet-300/[.055] px-3 text-xs font-semibold text-violet-200"><Activity size={14}/>Explorar observações no VAULT Brain</button>
+              </div>
+            </details>
           )}
 
           {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}

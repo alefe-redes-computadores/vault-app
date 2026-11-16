@@ -44,7 +44,7 @@ ok(home.includes('const go = (path: string) => { trigger("vibrate"); router.push
 ok(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen')&&home.includes('id="home-organizacao"'),'divulgações da Home mantidas');
 ok(tiles.includes('onNavigate(withdrawalPath)')&&tiles.includes('onNavigate(supplyPath)')&&!/db\.|supabase|fetch\(/.test(tiles),'atalhos são puros e reais');
 ok(tiles.includes('motion-reduce:transition-none')&&tiles.includes('focus-visible:outline'),'acessibilidade e movimento reduzido');
-ok(tiles.includes('Programações, locais e histórico de retirada')&&read('scripts/test-home-today-v9-contract.mjs').includes('supplyTiles.includes("onNavigate(withdrawalPath)")'),'descrição V9 preservada no componente modular e rota testada');
+ok(tiles.includes('Datas e histórico')&&tiles.includes('Processos e receitas')&&read('scripts/test-home-today-v9-contract.mjs').includes('supplyTiles.includes("onNavigate(withdrawalPath)")'),'descrições curtas e rotas originais preservadas');
 ok(today.includes('todayTemporalGuidance({ isFuturo, isPassado, recorded, unconfirmed })')&&today.includes('data-temporal-authority'),'Hoje respeita origem temporal');
 ok(today.includes('!isFuturo && recorded > 0')&&today.includes('safePercentage'),'progresso só usa registros reais');
 ok(avatar.includes('Brain · {brief.posture}')&&avatar.includes('avatarCarePosture(portfolio.counts)'),'Fênix recebe postura e contagem canônicas');

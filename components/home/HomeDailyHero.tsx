@@ -7,13 +7,13 @@ type Props = {
   eyebrow: string; title: string; description: string; color: string;
   completed: number; scheduled: number; progress: number;
   onOpen: () => void; onOpenToday?: () => void; ctaLabel?: string;
-  indicators?: ReactNode;
+  indicators?: ReactNode; contextLabel?: string;
 };
 /** P7: routine summary and its four indicators share one calm visual surface.
  * All values are supplied by the existing Home authorities; no new computations.
  */
 export const HomeDailyHero = memo(function HomeDailyHero({
-  completed, scheduled, progress, onOpen, onOpenToday, ctaLabel, indicators,
+  completed, scheduled, progress, onOpen, onOpenToday, ctaLabel, indicators, contextLabel,
 }: Props) {
   const safeProgress = scheduled > 0 && Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
   const safeCompleted = scheduled > 0 && Number.isFinite(scheduled) && Number.isFinite(completed) ? Math.max(0, Math.min(Math.floor(scheduled), Math.floor(completed))) : 0;
@@ -31,6 +31,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
             aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas`:"Sem horários programados"}>
             <span className="block h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-[width] motion-reduce:transition-none" style={{width:`${safeProgress}%`}}/>
           </span>
+          {contextLabel && <span className="mt-2 block truncate text-[11px] font-medium text-emerald-200" title={contextLabel}>{contextLabel}</span>}
           <span className="sr-only" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)} Home: horários de contínuos. Hoje: doses programadas da data podem seguir recorte diferente.</span>
         </span>
         <ArrowUpRight size={18} className="shrink-0 text-emerald-300" aria-hidden="true"/>

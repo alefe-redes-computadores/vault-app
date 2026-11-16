@@ -16,7 +16,7 @@ ok("retiradas ficam no contexto de medicamentos", hub.indexOf("/saude/retiradas"
 ok("retiradas explicam programação e histórico", hub.includes("<HomeSupplyAccessTiles") &&
   hub.includes('withdrawalPath="/saude/retiradas"') &&
   supplyTiles.includes("onNavigate(withdrawalPath)") &&
-  supplyTiles.includes("Programações, locais e histórico de retirada"));
+  supplyTiles.includes("Datas e histórico") && supplyTiles.includes("Processos e receitas"));
 // M131 R4: Minha Saúde agora é acesso principal, com componente canônico.
 // As demais áreas conservam sua cor semântica no catálogo secundário.
 const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));

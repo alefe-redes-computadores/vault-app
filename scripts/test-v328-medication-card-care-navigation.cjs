@@ -13,7 +13,7 @@ for (const [path, source, kind] of [["ListCard.tsx",card,ts.ScriptKind.TSX],["me
   assert.equal(parsed.parseDiagnostics.length,0,`${path}: JSX/TS válido`);
 }
 assert(meds.includes('railSize="slim"') && meds.includes('aria-label={`Ver classificação da receita:'), "classificação permanece interativa em faixa fina");
-assert(meds.includes('<StickyNote size={13}'),"classificação vertical compacta preservada");
+assert(meds.includes('<Info size={12}') && meds.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'),"classificação legível e informativa preservada");
 assert.equal((meds.match(/setSelectedRegulatory\(regulatoryProfile\)/g)||[]).length,1,"uma ação regulatória, não duas");
 assert(meds.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'),"incerteza e abreviação regulatórias preservadas");
 assert(meds.includes('"Conferir SUS"') && meds.includes('"Revisar continuidade"'),"CTAs curtos, sem perda de título completo");

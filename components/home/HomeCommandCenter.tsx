@@ -53,12 +53,13 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
           <HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude" Icon={HeartPulse} tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go} />
         </div>
         {/* Acessos operacionais continuam disponíveis no Essencial, sem ocupar a primeira dobra. */}
-        <details className="group overflow-hidden rounded-xl border border-surface-border/50 bg-surface/60">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-1 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-            <span>Retiradas e fornecimento</span>
-            <ChevronRight size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform group-open:rotate-90 motion-reduce:transition-none"/>
+        <details className="group overflow-hidden rounded-[18px] border border-amber-300/15 bg-gradient-to-r from-amber-300/[.035] via-surface to-surface shadow-sm">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 px-3 py-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-amber-300/20 bg-amber-300/[.06] text-amber-200"><Store size={14}/></span>
+            <span className="min-w-0 flex-1"><strong className="block text-xs font-bold text-ink-primary">Retiradas e fornecimento</strong><span className="block text-[10px] font-normal text-ink-muted">Agenda SUS, processos e documentos</span></span>
+            <ChevronRight size={14} aria-hidden="true" className="shrink-0 text-amber-200 transition-transform group-open:rotate-90 motion-reduce:transition-none"/>
           </summary>
-          <div className="border-t border-surface-border/35 p-2">
+          <div className="border-t border-amber-300/10 p-2">
             <HomeSupplyAccessTiles onNavigate={go} withdrawalPath="/saude/retiradas" supplyPath="/saude/fornecimento" />
           </div>
         </details>
