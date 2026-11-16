@@ -20,6 +20,7 @@ import { CareForecastAgenda } from "@/components/saude/CareForecastAgenda";
 import { BrainCarePlan } from "@/components/health-intelligence/BrainCarePlan";
 import { BrainNextStep } from "@/components/health-intelligence/BrainNextStep";
 import { BrainActiveProbeCard } from "@/components/health-intelligence/BrainActiveProbeCard";
+import { BrainEvidenceWindowCI360 } from "@/components/health-intelligence/BrainEvidenceWindowCI360";
 const DoseEvidenceBrief = dynamic(() => import("@/components/saude/DoseEvidenceBrief").then(module => module.DoseEvidenceBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
 const CareAccessBrief = dynamic(() => import("@/components/saude/CareAccessBrief").then(module => module.CareAccessBrief), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
 const UpcomingDoseAgenda = dynamic(() => import("@/components/saude/UpcomingDoseAgenda").then(module => module.UpcomingDoseAgenda), { loading: () => <p role="status" className="p-3 text-xs text-ink-muted">Carregando análise…</p> });
@@ -165,6 +166,7 @@ export default function VaultIntelligencePage() {
         </summary>
         {evidenceOpened ? <div className="space-y-3 border-t border-surface-border/50 py-3">
     <p className="text-xs leading-relaxed text-ink-muted">Confira a origem, o período e a amostra de cada sinal. Uma associação é uma hipótese para investigar e não comprova causa.</p>
+    {!health.isLoading ? <BrainEvidenceWindowCI360 context={health.context} onNavigate={href=>router.push(preserveReturn(href))}/> : null}
     {health.isLoading ? <p role="status" className="text-xs text-ink-muted">Carregando evidências de saúde…</p> : null}
     {!health.isLoading && health.careCommand ? <section className="mx-auto mt-4 max-w-2xl"><CareAccessBrief portfolio={health.careCommand.documents} onNavigate={(href)=>router.push(preserveReturn(href))}/></section> : null}
 
