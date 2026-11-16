@@ -1,7 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ChevronRight, FileText, FlaskConical, FolderLock, Landmark, Pill, Stethoscope, Syringe } from "lucide-react";
+import { AlertCircle, ChevronRight, FileText, FlaskConical, FolderLock, Landmark, Package, Stethoscope, Syringe } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import type { AlertaVisaoGeral } from "@/lib/health-insights";
 import type { AlertLevel } from "@/lib/health-utils";
@@ -59,7 +59,7 @@ export function getAlertIcon(
 
     case "estoque":
       return (
-        <Pill size={17} />
+        <Package size={17} />
       );
 
     case "sus":
@@ -194,11 +194,7 @@ export function AlertRow({
         );
       }}
       aria-label={`${getAlertKindLabel(alert.kind)}. ${alert.title}. ${alert.subtitle}. ${getAlertBadgeLabel(alert)}. Abrir detalhes`}
-      className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-[22px] border bg-surface p-3.5 text-left shadow-sm transition-[background-color,transform,border-color] active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ice motion-reduce:transform-none motion-reduce:transition-none"
-      style={{
-        borderColor:
-          `${alert.color}30`,
-      }}
+      className="flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-[22px] border border-surface-border/65 bg-surface p-3.5 text-left shadow-sm transition-[background-color,transform,border-color] active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ice motion-reduce:transform-none motion-reduce:transition-none"
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div

@@ -359,7 +359,7 @@ export default function HojePage() {
       ]
     );
 
-  const {filtroStatus,setFiltroStatus,filtroPeriodo,setFiltroPeriodo}=useTodayPersistedFilters();
+  const {filtroStatus,setFiltroStatus,filtroPeriodo,setFiltroPeriodo,hydrated:filtersHydrated}=useTodayPersistedFilters();
   // M44: link da busca aplica o filtro, sem mexer em registros clínicos.
   const commandDoseStatus = searchParams.get("status");
   useEffect(() => {
@@ -380,6 +380,15 @@ export default function HojePage() {
   const periodFromLinkM120 = searchParams.get("periodo");
   const appointmentFromLinkM120 = searchParams.get("compromisso");
   const resolvedFromLinkM120 = searchParams.get("concluidas");
+  // M153 visual: a entrada comum em Hoje sempre começa limpa. Persistência só
+  // restaura filtros quando a própria URL declara um contexto de visualização.
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const hasExplicitFilter = Boolean(commandDoseStatus || periodFromLinkM120 || appointmentFromLinkM120 || resolvedFromLinkM120);
+    if (hasExplicitFilter) return;
+    setFiltroStatus("todos");
+    setFiltroPeriodo("todos");
+  }, [filtersHydrated, commandDoseStatus, periodFromLinkM120, appointmentFromLinkM120, resolvedFromLinkM120, setFiltroStatus, setFiltroPeriodo]);
   useEffect(() => {
     if (periodFromLinkM120 === "manha" || periodFromLinkM120 === "tarde" || periodFromLinkM120 === "noite") {
       setFiltroPeriodo(periodFromLinkM120);

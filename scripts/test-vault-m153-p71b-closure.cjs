@@ -19,7 +19,7 @@ assert.equal(decide('/saude/retiradas/nova?medicamento_id=m',med,[w]).state,'non
 assert.equal(decide(href,{...med,person_id:null},[w]).state,'review','sem pessoa nunca supõe titular');
 assert.equal(decide('/saude/retiradas/detalhes?id=%ZZ',med,[w]).state,'review','id malformado não navega');
 const meds=read(files[1]);
-for(const s of ['withdrawalLinkP71B.state === "completed"','withdrawalLinkP71B.state === "review"','router.push("/saude/retiradas")','else router.push(careAction.href)','setSelectedRegulatory(regulatoryProfile)','medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)','Fonte confirmada','Conferir','aria-label="Ações do medicamento"'])assert(meds.includes(s),s);
+for(const s of ['withdrawalLinkP71B.state === "completed"','withdrawalLinkP71B.state === "review"','router.push("/saude/retiradas")','else router.push(careAction.href)','setSelectedRegulatory(regulatoryProfile)','medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)','Abrir classificação:','selectedRegulatory.sourceLabel','selectedRegulatory.verified','aria-label="Ações do medicamento"'])assert(meds.includes(s),s);
 assert.equal(meds.split('setSelectedRegulatory(regulatoryProfile)').length-1,1,'um único handler regulatório');
 assert(!meds.includes('min-h-[200px]'),'cartões sem altura rígida');
 const home=read(files[0]);

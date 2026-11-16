@@ -15,12 +15,12 @@ const ok = (value, message) => {
 };
 
 ok(
-  page.includes('railSize="slim"'),
+  page.includes('railSize="label"'),
   "etiqueta regulatória vertical fina"
 );
 
 ok(
-  page.includes('"vertical-rl"'),
+  page.includes('[writing-mode:vertical-rl]'),
   "texto regulatório vertical"
 );
 

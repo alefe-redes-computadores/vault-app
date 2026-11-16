@@ -50,12 +50,17 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
     ? { ...option, label: isToday ? "Pendentes" : isPast ? "Sem confirmação" : "Previstas" }
     : option), [isToday, isPast]);
 
-  const options = <T extends string,>(values: Array<{value: T; label: string}>, selected: T, select: (value: T) => void) => (
+  const closePanel = () => {
+    if (!detailsRef.current) return;
+    detailsRef.current.open = false;
+    detailsRef.current.querySelector<HTMLElement>("summary")?.focus();
+  };
+  const options = <T extends string,>(values: Array<{value: T; label: string}>, selected: T, select: (value: T) => void, closeOnSelect = false) => (
     <div className="flex flex-wrap gap-2">
       {values.map(option => {
         const active = option.value === selected;
         return <button key={option.value} type="button" aria-pressed={active}
-          onClick={() => select(option.value)}
+          onClick={() => { select(option.value); if (closeOnSelect) closePanel(); }}
           className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${active ? "border-ice/45 bg-ice/10 text-ice" : "border-surface-border/50 bg-surface-raised/50 text-ink-secondary"}`}>
           {active && <Check size={12} aria-hidden="true" />}{option.label}
         </button>;
@@ -75,14 +80,14 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
         <strong className="text-sm font-semibold text-ink-primary">Personalizar visualização</strong>
         <button type="button" onClick={() => { onReset(); }} className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><RotateCcw size={13} /> Limpar</button>
       </div>
-      <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Situação das doses</legend>{options(statusOptions, status, onStatus)}</fieldset>
+      <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Situação das doses</legend>{options(statusOptions, status, onStatus, true)}</fieldset>
       <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Período</legend>{options(PERIOD, period, onPeriod)}</fieldset>
-      <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Compromissos</legend>{options(APPOINTMENTS, appointment, onAppointment)}</fieldset>
+      <fieldset className="space-y-2"><legend className="mb-1.5 text-[11px] font-semibold text-ink-secondary">Compromissos</legend>{options(APPOINTMENTS, appointment, onAppointment, true)}</fieldset>
       {isToday && <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-surface-border/45 bg-surface-raised/40 p-2.5 text-[11px] font-semibold text-ink-secondary">
         <input type="checkbox" checked={showResolved} disabled={status !== "todos"} onChange={event => onShowResolved(event.target.checked)} className="size-4 accent-emerald-400" />
         Mostrar registros concluídos na visualização padrão
       </label>}
-      <button type="button" aria-label="Fechar filtros" onClick={() => { if (detailsRef.current) { detailsRef.current.open = false; detailsRef.current.querySelector<HTMLElement>("summary")?.focus(); } }}
+      <button type="button" aria-label="Fechar filtros" onClick={closePanel}
         className="min-h-11 w-full rounded-xl bg-ice/15 text-sm font-bold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Fechar filtros</button>
       <p className="text-xs leading-relaxed text-ink-muted">As escolhas são aplicadas imediatamente. Estes filtros não modificam registros ou planejamento.</p>
     </div>

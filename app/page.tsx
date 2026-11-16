@@ -560,6 +560,16 @@ export default function HomePage() {
     const medicamentoNome = (retirada.medicamento_nome || medicamentoLigado?.nome || "").trim();
     const medicamentoFormato = String(medicamentoLigado?.formato || "").toLowerCase();
     const usaGotas = /gotas|solu[cç][aã]o|l[ií]quido|spray|col[ií]rio/.test(medicamentoFormato);
+    const acquisitionKind = String(medicamentoLigado?.tipo_aquisicao || "").toLowerCase();
+    const isSusWithdrawal = acquisitionKind === "sus";
+    const isPurchasedWithdrawal = acquisitionKind === "comprado";
+    const linkedTreatments = tratamentos.filter((treatment: any) =>
+      Array.isArray(medicamentoLigado?.tratamento_ids) && medicamentoLigado.tratamento_ids.includes(treatment.id)
+    );
+    const treatmentAccent = linkedTreatments.length === 1 ? linkedTreatments[0]?.cor || "#8B5CF6" : null;
+    const treatmentLabel = linkedTreatments.length === 1
+      ? linkedTreatments[0]?.nome
+      : linkedTreatments.length > 1 ? `${linkedTreatments.length} tratamentos` : null;
     const bucket = homeAgendaBucketM147(retirada, hoje, horaAtual);
     const dias = withdrawalDaysOverdue(retirada.data, hoje);
     const status = bucket === "pendente_anterior"
@@ -570,15 +580,19 @@ export default function HomePage() {
     return <button type="button" key={retirada.id}
       aria-label={`Conferir retirada de ${medicamentoNome || "medicamento não identificado"}. ${status}`}
       onClick={() => { trigger("vibrate"); router.push(withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")); }}
-      className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-emerald-300/10 bg-surface/60 px-2.5 py-2 text-left shadow-sm transition-colors active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[.065] text-emerald-200" aria-hidden="true">
-        {usaGotas ? <Droplets size={15}/> : <Pill size={15}/>}
+      data-vault-withdrawal-relational-card
+      className="flex min-h-[78px] w-full items-center justify-between gap-3 rounded-[18px] border border-emerald-300/15 bg-gradient-to-r from-emerald-300/[.045] to-surface/65 px-3 py-2.5 text-left shadow-sm transition-colors active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
+      style={treatmentAccent ? { borderLeftWidth: 3, borderLeftColor: treatmentAccent } : undefined}>
+      <span className={`grid size-10 shrink-0 place-items-center rounded-xl border ${isSusWithdrawal ? "border-amber-300/15 bg-amber-300/[.07] text-amber-300" : isPurchasedWithdrawal ? "border-cyan-300/15 bg-cyan-300/[.07] text-cyan-300" : "border-emerald-300/15 bg-emerald-300/[.065] text-emerald-200"}`} aria-hidden="true">
+        {isSusWithdrawal ? <Landmark size={17}/> : isPurchasedWithdrawal ? <Store size={17}/> : usaGotas ? <Droplets size={17}/> : <Pill size={17}/>}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-bold text-ink-primary">{medicamentoNome || "Medicamento não identificado"}</span>
-        <span className="block truncate text-[11px] text-ink-muted">{status} · {formatVaultClinicalDateBR(retirada.data)}{retirada.horario ? ` · ${retirada.horario}` : ""}</span>
+        <span className="block truncate text-sm font-bold text-ink-primary">{medicamentoNome || "Medicamento não identificado"}</span>
+        <span className="mt-0.5 block truncate text-[11px] text-ink-muted">{isSusWithdrawal ? "Retirada programada no SUS" : isPurchasedWithdrawal ? "Retirada em farmácia / compra" : "Retirada programada"}</span>
+        {treatmentLabel && <span data-vault-withdrawal-treatment className="mt-1 inline-flex max-w-full truncate rounded-md border px-1.5 py-0.5 text-[9px] font-semibold" style={treatmentAccent ? { borderColor: `${treatmentAccent}35`, backgroundColor: `${treatmentAccent}12`, color: treatmentAccent } : undefined}>{treatmentLabel}</span>}
+        <span className={`mt-1 block truncate text-[10px] font-semibold ${bucket === "pendente_anterior" || bucket === "horario_passado" ? "text-coral" : "text-emerald-300"}`}>{status} · {formatVaultClinicalDateBR(retirada.data)}</span>
       </span>
-      <ChevronRight size={14} className="shrink-0 text-emerald-300" aria-hidden="true"/>
+      <span className="flex shrink-0 flex-col items-end gap-1"><span className="font-mono text-xs font-bold text-emerald-300">{retirada.horario || "Revisar"}</span><ChevronRight size={14} className="text-emerald-300" aria-hidden="true"/></span>
     </button>;
   };
 
@@ -918,6 +932,10 @@ export default function HomePage() {
   );
   const duplicatePrimaryWithdrawalP5 = Boolean(primaryMedicationCareOpportunity && continuationWithdrawalAlreadyVisibleP5(primaryMedicationCareOpportunity.actionHref, retiradasAgendaM147));
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
+  const quantityFollowUpFeedback = quantityFollowUpInsight
+    ? healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight.id)
+    : undefined;
+  const quantityFollowUpChecked = quantityFollowUpFeedback?.feedback === "already_knew";
   // Mesmo ID de evidência = uma única superfície; medicamentos com títulos parecidos
   // podem representar fatos distintos e não devem ser silenciados por semelhança textual.
   const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item =>
@@ -1543,15 +1561,11 @@ export default function HomePage() {
                 {retiradasAgendaM147.length > 0 && (
                   <div className="space-y-1.5" aria-label="Retiradas pendentes na agenda">
                     <p className="px-1 text-[11px] font-semibold text-ink-secondary">Retiradas pendentes · {retiradasAgendaM147.length}</p>
-                    {retiradasAgendaM147.slice(0, 1).map(renderRetiradaAgendaP7)}
-                    {retiradasAgendaM147.length > 1 && (
-                      <details className="group rounded-xl border border-surface-border/40 bg-surface/35 px-2">
-                        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs text-ink-secondary">
-                          <span>Mais {Math.max(0, retiradasAgendaM147.length - 1)} retirada{retiradasAgendaM147.length === 2 ? "" : "s"}</span>
-                          <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden="true"/>
-                        </summary>
-                        <div className="space-y-1.5 pb-2">{retiradasAgendaM147.slice(1).map(renderRetiradaAgendaP7)}</div>
-                      </details>
+                    {retiradasAgendaM147.slice(0, 3).map(renderRetiradaAgendaP7)}
+                    {retiradasAgendaM147.length > 3 && (
+                      <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/retiradas?return_to=%2F"); }} className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-surface-border/50 bg-surface-raised/35 px-3 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                        Ver mais {retiradasAgendaM147.length - 3} na Agenda <ChevronRight size={14} aria-hidden="true"/>
+                      </button>
                     )}
                   </div>
                 )}
@@ -1686,7 +1700,7 @@ export default function HomePage() {
 
           {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
               Não gera nova interpretação nem substitui alertas de segurança. */}
-          {!quantityAlreadyInBrain && quantityFollowUpInsight && (
+          {!quantityAlreadyInBrain && quantityFollowUpInsight && !quantityFollowUpChecked && (
             <details className="group overflow-hidden rounded-[18px] border border-amber-300/20 bg-gradient-to-br from-amber-400/[.045] to-surface" aria-label="Acompanhamento contextual do Brain">
               <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><AlertCircle size={15}/></span>
@@ -1697,7 +1711,7 @@ export default function HomePage() {
               <div className="border-t border-amber-300/10 p-2">
                 <HomeDoseQuantityFollowUp
                   insight={quantityFollowUpInsight}
-                  feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
+                  feedback={quantityFollowUpFeedback}
                   nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
                   onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
                   onNavigate={href => { trigger("vibrate"); router.push(href); }}

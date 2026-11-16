@@ -33,7 +33,7 @@ const home=read('app/page.tsx'),gate=read('scripts/test-v63-release-gate.mjs');
 for(const p of ['app/page.tsx']){const parsed=ts.createSourceFile(p,home,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);ok(parsed.parseDiagnostics.length===0,'TSX parse Home');}
 for(const key of ['VAULT_M147_P1_AGENDA','homeAgendaCountsM147(','sortHomeWithdrawalsM147(','mergeExactWithdrawalAliasesM147(','homeAgendaBucketM147(','selectHomeAttentionP4R3(operationalAlerts, resumoContextual, aliasesRetiradaM147.aliasIds)','id="home-compromissos"','id="home-atencao"','id="home-brain"','HomeAttentionRail alerts={unifiedAlerts}','<HomeDoseQuantityFollowUp','<HomeBrainEvidenceGroup','withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")','VAULT_M144_HOME_ENTRY'])ok(home.includes(key),'integração preservada '+key);
 ok(home.indexOf('id="home-compromissos"')<home.indexOf('id="home-atencao"')&&home.indexOf('id="home-atencao"')<home.indexOf('id="home-brain"'),'M145/M146 ordem preservada');
-ok(home.includes('Math.max(0, retiradasAgendaM147.length - 1)'),'retiradas compactas e contagem correta');
+ok(home.includes('retiradasAgendaM147.slice(0, 3).map(renderRetiradaAgendaP7)')&&home.includes('retiradasAgendaM147.length > 3')&&home.includes('Retiradas pendentes · {retiradasAgendaM147.length}')&&home.includes('Ver mais {retiradasAgendaM147.length - 3} na Agenda')&&home.includes('router.push("/saude/retiradas?return_to=%2F")'),'3 retiradas visiveis, contagem real e acesso as demais');
 const quantityP7=read('components/home/HomeDoseQuantityFollowUp.tsx');
 ok(home.includes('!quantityAlreadyInBrain && quantityFollowUpInsight') &&
    home.includes('<HomeDoseQuantityFollowUp') &&

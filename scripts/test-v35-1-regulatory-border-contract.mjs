@@ -39,7 +39,7 @@ ok(
 );
 
 ok(
-  page.includes('railSize="slim"') &&
+  page.includes('railSize="label"') && page.includes('[writing-mode:vertical-rl]') &&
     page.includes("setSelectedRegulatory(regulatoryProfile)"),
   "identidade visual regulatória preservada"
 );

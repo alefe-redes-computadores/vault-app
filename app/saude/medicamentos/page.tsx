@@ -1239,8 +1239,7 @@ export default function MedicamentosListPage() {
           interactiveContent
           className="min-h-0"
           navigationLabel={`Ver detalhes de ${med.nome}`}
-          railSize="slim"
-          softRail
+          railSize="label"
           rail={(regulatoryProfile || receita) ? (
             <button
               type="button"
@@ -1257,10 +1256,12 @@ export default function MedicamentosListPage() {
                 }
                 else router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent("/saude/medicamentos")}#medicamento-agora`);
               }}
-              className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
+              className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
             >
-              <Info size={12} aria-hidden="true" className="text-void"/>
-              <span className="sr-only">{medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
+              <span aria-hidden="true" className="max-h-[calc(100%-1rem)] whitespace-nowrap font-mono text-[8px] font-black uppercase tracking-[.12em] text-void [writing-mode:vertical-rl] rotate-180">
+                {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}
+              </span>
+              <span className="sr-only">Abrir classificação: {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
             </button>
           ) : null}
           icon={
@@ -1293,11 +1294,6 @@ export default function MedicamentosListPage() {
                     {med.dosagem}
                   </span>
                 )}
-                {(regulatoryProfile || receita) && <span className={`inline-flex max-w-full shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold ${regulatoryProfile?.verified ? regulatorySurface.badgeClass : "border-slate-400/25 bg-slate-400/[0.06] text-slate-200"}`} title={regulatoryMeaning} aria-label={`Classificação informada: ${medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}`}>
-                  <Info size={12} className="shrink-0" aria-hidden="true"/>
-                  <span className="truncate">{medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
-                  <span className="text-[9px] font-medium opacity-80">{regulatoryProfile?.verified ? "Fonte confirmada" : "Conferir"}</span>
-                </span>}
                 <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-violet-400/20 bg-violet-400/10 text-violet-300" : "border-emerald-300/20 bg-emerald-300/[.055] text-emerald-200"}`} aria-label="Regime de uso cadastrado">
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
                 </span>
@@ -1321,8 +1317,8 @@ export default function MedicamentosListPage() {
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px]">
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
-                {compactCards && (latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) && <span className="min-w-0 max-w-full truncate text-[10px] text-ink-muted" title={`${latestManufacturer || med.laboratorio_etiqueta || ""}${med.tipo_aquisicao ? ` · ${med.tipo_aquisicao}` : ""}`}>
-                  {[latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : null].filter(Boolean).join(" · ")}
+                {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) && <span data-vault-compact-medication-meta className="min-w-0 max-w-full truncate text-[10px] text-ink-muted" title={[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao].filter(Boolean).join(" · ")}>
+                  {[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : null].filter(Boolean).join(" · ")}
                 </span>}
                 {!compactCards && <MedicationProvenanceLineM150P3
                   latestManufacturer={latestManufacturer}
@@ -1332,7 +1328,6 @@ export default function MedicamentosListPage() {
                   routeLabels={supplyRoute?.labels}
                   doseText={textoDose}
                 />}
-                {!compactCards && regulatoryProfile?.label && <span title={regulatoryMeaning} className="max-w-full rounded-md border border-surface-border/55 px-1.5 py-0.5 text-[10px] text-ink-secondary">{regulatoryProfile.label}</span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">Revisar identidade</span>
                 )}

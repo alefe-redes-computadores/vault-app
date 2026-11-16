@@ -17,7 +17,7 @@ export interface ListCardProps {
   /** Conteúdo opcional dentro da barra lateral */
   rail?: ReactNode;
   /** Faixa fina opt-in para listas densas; o padrão preserva outros cards. */
-  railSize?: "standard" | "slim";
+  railSize?: "standard" | "slim" | "label";
   /** M148 FIX2: tarja regulatória continua clicável e legível; menos contraste, opt-in. */
   softRail?: boolean;
   /** Conteúdo principal do card */
@@ -106,7 +106,7 @@ export function ListCard({
         className={`
           absolute
           bottom-0 left-0 top-0
-          ${rail ? (railSize === "slim" ? "w-4" : "w-6") : "w-1.5"}
+          ${rail ? (railSize === "slim" ? "w-4" : railSize === "label" ? "w-9" : "w-6") : "w-1.5"}
           ${softRail ? "opacity-75" : ""}
           ${isDisabled && !rail ? "bg-coral" : ""}
         `}
@@ -121,6 +121,8 @@ export function ListCard({
             ? isCompact
               ? railSize === "slim"
                 ? (isTight ? "p-2.5 pl-6" : "p-3 pl-6")
+                : railSize === "label"
+                ? (isTight ? "p-2.5 pl-11" : "p-3 pl-11")
                 : (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
               : "p-4 pl-10"
             : isCompact

@@ -1,6 +1,6 @@
 "use client";
 import { memo, type ReactNode } from "react";
-import { ArrowUpRight, CalendarDays } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Clock3 } from "lucide-react";
 import { homeRoutineSummaryNote } from "@/lib/home/routine-summary-note";
 
 type Props = {
@@ -31,7 +31,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
             aria-valuetext={scheduled>0?`${safeCompleted} doses resolvidas de ${scheduled} previstas`:"Sem horários programados"}>
             <span className="block h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-[width] motion-reduce:transition-none" style={{width:`${safeProgress}%`}}/>
           </span>
-          {contextLabel && <span className="mt-2 block truncate text-[11px] font-medium text-emerald-200" title={contextLabel}>{contextLabel}</span>}
+          {contextLabel && <span className="mt-2 flex min-w-0 items-start gap-1.5 rounded-xl border border-emerald-300/10 bg-emerald-300/[.045] px-2.5 py-2 text-[11px] font-medium leading-snug text-emerald-100" title={contextLabel}><Clock3 size={13} className="mt-px shrink-0 text-emerald-300"/><span className="min-w-0 line-clamp-2">{contextLabel}</span></span>}
           <span className="sr-only" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)} Home: horários de contínuos. Hoje e Medicamentos podem incluir outros tipos de doses programadas. Estes totais têm critérios distintos.</span>
         </span>
         <ArrowUpRight size={18} className="shrink-0 text-emerald-300" aria-hidden="true"/>

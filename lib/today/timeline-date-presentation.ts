@@ -66,6 +66,9 @@ export function describeTodayDate(hoje: string, requestedDate: string | null) {
 
                 month:
                   "long",
+
+                year:
+                  "numeric",
               }
             ).format(
               new Date(

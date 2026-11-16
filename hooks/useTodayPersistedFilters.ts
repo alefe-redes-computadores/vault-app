@@ -12,6 +12,7 @@ export type TodayFilterState = {
   setFiltroStatus:Dispatch<SetStateAction<FiltroStatus>>;
   filtroPeriodo:FiltroPeriodo;
   setFiltroPeriodo:Dispatch<SetStateAction<FiltroPeriodo>>;
+  hydrated:boolean;
 };
 /** Hydration barrier: never overwrite saved filters with defaults before the read. */
 export function useTodayPersistedFilters():TodayFilterState {
@@ -34,5 +35,5 @@ export function useTodayPersistedFilters():TodayFilterState {
       window.localStorage.setItem(PERIOD_KEY,filtroPeriodo);
     } catch { /* keep interactive filters available without persistence */ }
   },[hydrated,filtroStatus,filtroPeriodo]);
-  return {filtroStatus,setFiltroStatus,filtroPeriodo,setFiltroPeriodo};
+  return {filtroStatus,setFiltroStatus,filtroPeriodo,setFiltroPeriodo,hydrated};
 }

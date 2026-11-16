@@ -493,7 +493,7 @@ export function PendingDosesModal({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-void/80 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-[max(.5rem,env(safe-area-inset-top))] backdrop-blur-md sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-void/80 px-2 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(.5rem,env(safe-area-inset-top))] backdrop-blur-md sm:items-center sm:p-4"
       onPointerDown={
         (
           event
@@ -548,7 +548,7 @@ export function PendingDosesModal({
           ) =>
             event.stopPropagation()
         }
-        className="max-h-[calc(100dvh-max(.5rem,env(safe-area-inset-top))-max(.5rem,env(safe-area-inset-bottom)))] w-full max-w-[460px] space-y-3 overflow-y-auto overscroll-contain rounded-t-[24px] border border-surface-border bg-surface p-3 shadow-2xl sm:rounded-[26px] sm:p-4"
+        className="max-h-[calc(100dvh-max(.5rem,env(safe-area-inset-top))-max(1rem,env(safe-area-inset-bottom)))] w-full max-w-[460px] scroll-pb-8 space-y-3 overflow-y-auto overscroll-contain rounded-t-[24px] border border-surface-border bg-surface p-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[26px] sm:p-4"
       >
         <div className="sticky -top-3 z-20 -mx-3 -mt-3 flex items-start justify-between gap-4 border-b border-surface-border/60 bg-surface/95 px-3 pb-3 pt-3 backdrop-blur-xl sm:-top-4 sm:-mx-4 sm:-mt-4 sm:px-4 sm:pt-4">
           <div className="min-w-0">
@@ -617,7 +617,7 @@ export function PendingDosesModal({
             <strong className="text-ink-primary">{group.dayLabel} · {group.time} · {group.medications} medicamentos</strong>
             <span className="min-w-0 text-ink-muted">{group.medicationNames.join(" · ")}</span>
           </div>)}
-          <p className="text-[9px] leading-relaxed text-ink-faint">Cada medicamento é revisado individualmente. Nenhuma tomada é registrada ao abrir este painel.</p>
+          <p className="text-[10px] leading-relaxed text-ink-muted">Cada medicamento é revisado individualmente. Nenhuma tomada é registrada ao abrir este painel.</p>
         </div>}
 
         {resolvedInSession > 0 && <p role="status" aria-live="polite" className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.055] px-3 py-2 text-[10px] text-emerald-200"><CheckCircle2 size={13} className="mr-1.5 inline"/>{resolvedInSession} {resolvedInSession===1?"dose revisada":"doses revisadas"} nesta sessão. A lista acompanha os registros salvos.</p>}
@@ -1032,16 +1032,17 @@ export function PendingDosesModal({
                 <div className="mt-3 space-y-2">
                   <button
                     type="button"
+                    data-vault-dose-primary-action="scheduled"
                     disabled={existeProcessamento}
                     onClick={() => void handleResolveAll({ kind: "scheduled" })}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
+                    className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-300 p-3.5 text-left shadow-[0_10px_28px_rgba(52,211,153,.14)] active:scale-[0.99] disabled:opacity-50"
                   >
-                    <CheckCircle2 size={18} className="shrink-0 text-emerald-400" />
+                    <CheckCircle2 size={18} className="shrink-0 text-void" />
                     <span>
-                      <span className="block text-sm font-semibold text-ink-primary">
+                      <span className="block text-sm font-bold text-void">
                         Confirmar horários programados
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-ink-muted">
+                      <span className="mt-0.5 block text-[10px] text-void/75">
                         Cada dose mantém o horário previsto no histórico.
                       </span>
                     </span>
@@ -1049,9 +1050,10 @@ export function PendingDosesModal({
 
                   <button
                     type="button"
+                    data-vault-dose-secondary-action="now"
                     disabled={existeProcessamento}
                     onClick={() => void handleResolveAll({ kind: "now" })}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-ice/25 bg-ice/10 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
+                    className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-surface-border bg-surface-raised/45 p-3.5 text-left active:scale-[0.99] disabled:opacity-50"
                   >
                     <Timer size={18} className="shrink-0 text-ice" />
                     <span>
@@ -1071,7 +1073,7 @@ export function PendingDosesModal({
                       trigger("vibrate");
                       setBulkResolutionOpen(false);
                     }}
-                    className="w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-xs font-semibold text-ink-muted disabled:opacity-50"
+                    className="min-h-11 w-full rounded-xl border border-surface-border bg-transparent px-3 py-2.5 text-xs font-semibold text-ink-secondary disabled:opacity-50"
                   >
                     Revisar individualmente
                   </button>

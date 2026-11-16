@@ -27,7 +27,7 @@ ok(more.includes("personCount > 1"), "troca de pessoa só aparece com múltiplos
 ok(more.includes('mode="action"'), "seletor não repete identidade no cartão da conta");
 ok(selector.includes('mode === "action" ? "Trocar pessoa"'), "ação de troca possui semântica explícita");
 
-ok(list.includes('railSize="slim"'), "classificação regulatória usa faixa vertical fina");
+ok(list.includes('railSize="label"') && list.includes('[writing-mode:vertical-rl]'), "classificação regulatória usa faixa vertical fina");
 ok(list.includes("setSelectedRegulatory"), "etiqueta regulatória aciona explicação");
 ok(list.includes("selectedRegulatory.sourceLabel"), "explicação informa a origem regulatória");
 ok(list.includes("selectedRegulatory.verified"), "explicação diferencia dado confirmado e cadastro");

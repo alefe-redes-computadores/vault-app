@@ -56,7 +56,9 @@ check(Boolean(cardColorAttribute && ts.isJsxAttribute(cardColorAttribute) &&
  cardColorAttribute.initializer && ts.isJsxExpression(cardColorAttribute.initializer) &&
  cardColorAttribute.initializer.expression && ts.isIdentifier(cardColorAttribute.initializer.expression) &&
  cardColorAttribute.initializer.expression.text === 'regulatoryBorderColor' &&
- cardRailAttribute && list.includes('railSize="slim"') &&
+ cardRailAttribute && list.includes('railSize="label"') &&
+ list.includes('[writing-mode:vertical-rl]') &&
+ list.includes('setSelectedRegulatory(regulatoryProfile)') &&
  /const\s+regulatoryBorderColor\s*=\s*regulatorySurface\.rail\s*;/.test(list) &&
  list.includes('aria-label={`Ver classificação da receita:')),
  'classificação na borda e etiqueta regulatória preservada via AST');

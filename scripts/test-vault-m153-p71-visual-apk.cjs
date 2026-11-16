@@ -7,7 +7,7 @@ for(const p of ['app/page.tsx','app/saude/medicamentos/page.tsx','components/hom
   assert.equal(ast.parseDiagnostics.length,0,p+': syntax');
 }
 const home=read('app/page.tsx'),med=read('app/saude/medicamentos/page.tsx'),hero=read('components/home/HomeDailyHero.tsx'),supply=read('components/home/HomeSupplyAccessTiles.tsx'),command=read('components/home/HomeCommandCenter.tsx');
-assert(home.includes('retirada.medicamento_nome || medicamentoLigado?.nome')&&home.includes('retiradasAgendaM147.slice(1).map(renderRetiradaAgendaP7)'));
+assert(home.includes('retirada.medicamento_nome || medicamentoLigado?.nome')&&home.includes('retiradasAgendaM147.slice(0, 3).map(renderRetiradaAgendaP7)')&&home.includes('retiradasAgendaM147.length > 3')&&home.includes('Ver mais {retiradasAgendaM147.length - 3} na Agenda')&&home.includes('router.push("/saude/retiradas?return_to=%2F")'));
 assert(home.includes('setMostrarTodosAlertas(false)')&&home.includes('HomeAttentionRail alerts={unifiedAlerts}'));
 assert(home.includes('Acompanhamento contextual do Brain')&&home.includes('Explorar observações no VAULT Brain')&&home.includes('!quantityAlreadyInBrain'));
 assert(hero.includes('contextLabel &&')&&home.includes('proximaDoseContinuosP71'));

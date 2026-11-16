@@ -28,8 +28,8 @@ const alertsToDedup=[{id:'sus-retirada-w1',kind:'sus',level:'atencao',href:'/sau
 {id:'critico-separado',kind:'estoque',level:'urgente',href:'/saude/retiradas/detalhes?id=w1'},
 {id:'sus-retirada-w9',kind:'sus',level:'vencido',href:'/saude/retiradas/detalhes?id=w9'}];
 assert.deepEqual(homeAdministrativeWithdrawalAlertsP5P4(alertsToDedup,visible).map(x=>x.id),['critico-separado','sus-retirada-w9']);
-assert(home.includes('retiradasAgendaM147.slice(0, 1).map(renderRetiradaAgendaP7)'));
-assert(home.includes('retiradasAgendaM147.slice(1).map(renderRetiradaAgendaP7)'));
+assert(home.includes('retiradasAgendaM147.slice(0, 3).map(renderRetiradaAgendaP7)'));
+assert(home.includes('retiradasAgendaM147.length > 3')&&home.includes('Ver mais {retiradasAgendaM147.length - 3} na Agenda')&&home.includes('router.push("/saude/retiradas?return_to=%2F")'));
 assert(home.includes('homeAdministrativeWithdrawalAlertsP5P4('));
 assert(read('hooks/useRetiradas.ts').includes('retiradasRepository.getAll(user.id, activePersonId)'));
 console.log('M153 P7 BUILD 2117: contratos visuais + retirada unica + isolamento OK');

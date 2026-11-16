@@ -86,7 +86,7 @@ ok(
 
 ok(
   meds.includes(
-    'railSize="slim"'
+    'railSize="label"'
   ),
   "etiqueta regulatória acompanha a borda"
 );
