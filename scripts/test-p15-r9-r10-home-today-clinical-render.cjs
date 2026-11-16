@@ -21,7 +21,7 @@ ok(clarity('record',2,true).label==='Etapa do registro','Fonte do registro indep
 ok(/não confirmação de fornecimento/.test(clarity('brain',3,true).explanation),'Origem não comprova retirada');
 ok(/precisa de confirmação/.test(clarity('brain',3,false).explanation),'Sem rota não inventa origem');
 const home=read(files[0]),today=read(files[1]),hero=read(files[2]),evidence=read(files[3]),fenix=read(files[4]),avatar=read(files[5]),gate=read(files[6]),agenda=read(files[7]),groups=read(files[8]);
-ok(home.includes('<HomeAgendaBreakdown consultations={consultasHoje.length}')&&home.includes('withdrawals={retiradasHoje.length}'),'Home reusa agenda existente');
+ok(home.includes('indicators={<HomeQuickMetrics')&&home.includes('openWithdrawalsDueBy(retiradas, hoje)')&&home.includes('countHomeTodayAppointments({'),'Home reusa agenda existente');
 ok(home.includes('appointments={totalCompromissosHoje}')&&home.includes('countHomeTodayAppointments({'),'Contagem canônica R8 preservada');
 ok(agenda.includes('if (valid.length === 0) return null')&&agenda.includes('Agenda de hoje'),'Agenda recolhida somente com dados');
 ok(['/saude/consultas','/saude/exames','/saude/cirurgias','/saude/retiradas'].every(x=>agenda.includes(x)),'Quatro destinos originais da agenda');

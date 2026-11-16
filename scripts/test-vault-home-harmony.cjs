@@ -92,6 +92,29 @@ try {
 } finally { global.document=oldDocument;global.window=oldWindow; }
 const home=fs.readFileSync('app/page.tsx','utf8');
 check(home.indexOf('<HomeSectionNav') < home.indexOf('<section className="mx-auto max-w-3xl'), 'Areas lives in the header before the body');
-check(home.includes('"Revisar doses"')&&home.includes('setModalPendenciasAberto(true)'), 'Pending action still opens canonical modal');
+// P7: provar o toque real no indicador Atrasadas, sem ressuscitar CTA antigo.
+const { HomeQuickMetrics } = load('components/home/HomeQuickMetrics.tsx');
+let pendingOpens = 0;
+const metricsTree = expand(HomeQuickMetrics({
+  appointments: 3,
+  className: "grid-cols-4",
+  pendingDoses: 2,
+  medications: 5,
+  completedDoses: 4,
+  extrasTaken: 1,
+  onNavigate: href => routes.push(href),
+  onOpenPending: () => pendingOpens++,
+}));
+const pendingButton = nodes(metricsTree).find(n =>
+  n.type === 'button' &&
+  String(n.props['aria-label'] || '').startsWith('Atrasadas:')
+);
+check(Boolean(pendingButton), 'Pending indicator remains accessible');
+pendingButton.props.onClick();
+check(
+  pendingOpens === 1 &&
+  /onOpenPending\s*=\s*\{\s*\(\)\s*=>\s*\{[^}]*setModalPendenciasAberto\(true\)/.test(home),
+  'Pending indicator opens the existing canonical modal exactly once'
+);
 check(!home.includes('scale-[0.8]')&&!home.includes('zoom:'), 'No artificial global scaling introduced');
 console.log(`HOME HARMONY: ${checks} behavior, routes, accessibility and clinical presentation checks passed.`);

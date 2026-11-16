@@ -66,16 +66,19 @@ export function HomeDoseQuantityFollowUp({
         <span>{consultationLabel ? `Próxima consulta cadastrada: ${consultationLabel}. Vale levar o histórico para conversar com o profissional.` : "Nenhuma consulta futura agendada identificada no VAULT. Você pode revisar as consultas cadastradas."}</span>
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">O aviso compara registros com seu padrão cadastrado. Não determina dose segura ou intoxicação. Se houve ingestão e existe preocupação ou sintomas, procure orientação médica imediatamente.</p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => onNavigate(insight.link || "/saude/medicamentos")} className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-amber-400/25 bg-amber-400/[.07] px-2 text-[11px] font-semibold text-amber-200"><FileClock size={14} aria-hidden="true"/>Ver histórico<ChevronRight size={13} aria-hidden="true"/></button>
-        <button type="button" onClick={() => onNavigate("/saude/consultas")} className="inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-surface-border/60 px-2 text-[11px] font-semibold text-ink-secondary"><CalendarClock size={14} aria-hidden="true"/>Consultas<ChevronRight size={13} aria-hidden="true"/></button>
+      <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Ações principais do acompanhamento">
+        <button type="button" onClick={() => onNavigate(insight.entidadeTipo === "medicamento" && insight.entidadeId
+          ? `/saude/medicamentos/detalhes?id=${encodeURIComponent(insight.entidadeId)}&return_to=%2F`
+          : insight.link || "/saude/medicamentos")}
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-amber-400/25 bg-amber-400/[.07] px-2 text-[11px] font-semibold text-amber-200"><FileClock size={14}/>Histórico e fontes</button>
+        <button type="button" onClick={() => void review()} disabled={busy || checked}
+          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-emerald-300/20 bg-emerald-300/[.055] px-2 text-[11px] font-semibold text-emerald-300 disabled:opacity-75">
+          {busy ? <Loader2 size={15} className="animate-spin"/> : checked ? <CheckCircle2 size={15}/> : <ClipboardCheck size={15}/>}
+          {checked ? "Conferido" : "Confirmar leitura"}
+        </button>
       </div>
-      {insight.entidadeTipo === "medicamento" && insight.entidadeId && <button type="button" onClick={() => onNavigate(`/saude/medicamentos/detalhes?id=${encodeURIComponent(insight.entidadeId!)}&return_to=%2F`)} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[.04] px-3 text-xs font-semibold text-violet-200">Conferir bula, apresentação e fontes no medicamento</button>}
-      <button type="button" onClick={() => onNavigate("/saude/plano-seguranca")} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-sky-400/20 bg-sky-400/[.04] px-3 text-xs font-semibold text-sky-200"><ShieldCheck size={15}/>Plano de segurança e apoio</button>
-      <button type="button" onClick={() => void review()} disabled={busy || checked} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/[.055] px-3 text-xs font-semibold text-emerald-300 disabled:opacity-75">
-        {busy ? <Loader2 size={15} className="animate-spin"/> : checked ? <CheckCircle2 size={15}/> : <ClipboardCheck size={15}/>}
-        {checked ? "Você conferiu este registro" : "Conferi as informações do registro"}
-      </button>
+      <button type="button" onClick={() => onNavigate("/saude/plano-seguranca")}
+        className="mt-1.5 inline-flex min-h-10 items-center gap-1 text-[11px] text-sky-200 underline-offset-2 hover:underline"><ShieldCheck size={13}/>Plano de segurança e apoio</button>
       {checked && <p role="note" className="mt-1.5 text-[10px] text-ink-muted">Conferência pessoal registrada; não equivale a avaliação profissional.</p>}
       {error && <p role="alert" className="mt-1.5 text-xs text-coral">{error}</p>}
       </div>}

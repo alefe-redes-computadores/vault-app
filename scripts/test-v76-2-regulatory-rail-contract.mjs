@@ -14,7 +14,7 @@ ok(card.includes('railSize === "slim" ? "w-4" : "w-6"'), "faixa fina é opt-in")
 ok(card.includes('"p-3 pl-8"'), "conteúdo compacto respeita a largura da faixa");
 ok(list.includes('railSize="slim"'), "medicamento usa faixa vertical fina");
 ok(list.includes("rail={"), "classificação é entregue ao trilho lateral");
-ok(list.includes('writingMode: "vertical-rl"'), "texto regulatório vertical permanece compacto");
+ok(list.includes('<StickyNote size={13}'), "texto regulatório vertical permanece compacto");
 ok(list.includes("setSelectedRegulatory(regulatoryProfile)"), "toque na etiqueta abre a explicação regulatória");
 ok(!list.includes("absolute -left-2.5"), "etiqueta sobreposta antiga foi removida");
 ok(!list.includes('gap-1 pl-2.5'), "conteúdo não mantém recuo compensatório antigo");

@@ -29,7 +29,7 @@ ok(med.indexOf('VAULT_M144_LIST_ENTRY')<med.indexOf('/* DOSE RÁPIDA */'),'centr
 ok(health.includes('goFromHealth("/saude/central-m144")'),'Minha Saúde oferece entrada para ocorrências, ciclos e vacinas');
 ok(card.includes('softRail?: boolean')&&card.includes('softRail = false')&&med.includes('softRail'),'tarja lateral atenuada apenas opt-in');
 ok(med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('regulatoryProfile?.label'),'classificação regulatória interativa preservada');
-ok(med.includes('rail={(regulatoryProfile || receita)')&&med.includes('writingMode: "vertical-rl"'),'M136/V76: faixa regulatória original visível e clicável');
+ok(med.includes('rail={(regulatoryProfile || receita)')&&med.includes('<StickyNote size={13}'),'M136/V76: faixa regulatória original visível e clicável');
 ok((med.match(/setSelectedRegulatory\(regulatoryProfile\)/g)||[]).length===1,'V328: apenas um handler de classificação regulatória');
 ok(card.includes('softRail ? "opacity-75"'),'M148 FIX1: borda visual menos intensa sem perder a largura e o texto');
 ok(med.includes('!isSuspenso && canQuickDose && quickDoseLabel')&&med.includes('isSuspendedSOSM147'),'proteções de dose e SOS suspenso intactas');

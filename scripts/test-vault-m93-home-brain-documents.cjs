@@ -25,7 +25,15 @@ const review = parse("components/home/HomeDoseQuantityFollowUp.tsx");
 ok(review.includes('insight.id.startsWith("quantidade-confirmada-")') && review.includes('!insight'), "sem novo alerta quando o Brain não tem registro confirmado");
 ok(review.includes('Conferência pessoal registrada') && review.includes('não equivale a avaliação profissional'), "sem diagnóstico ou falsa segurança");
 ok(!/\b(fetch\(|\.insert\(|\.delete\(|db\.|supabase)\b/.test(review), "componente de seguimento não grava dados clínicos");
-ok(review.includes('"/saude/consultas"') && review.includes('insight.link'), "acesso ao histórico e à consulta existente");
+ok(
+  review.includes('insight.link') &&
+  review.includes('consultationLabel') &&
+  review.includes('nextConsultationDate') &&
+  review.includes('Histórico e fontes') &&
+  review.includes('Confirmar leitura') &&
+  review.includes('"/saude/plano-seguranca"'),
+  "histórico e consulta contextual preservados no acompanhamento compacto"
+);
 const personal = parse("app/documentos/page.tsx");
 ok(personal.includes('VAULT_DOCUMENT_TOOLBAR_V80') && personal.includes('openNewDocument') && !personal.includes('className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ice/20 bg-ice/10 px-4'), "ação duplicada do Cofre removida, criação contextual mantida");
 const exportButton = parse("components/ExportCardButton.tsx");

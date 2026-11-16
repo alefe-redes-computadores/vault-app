@@ -34,8 +34,14 @@ for(const p of ['app/page.tsx']){const parsed=ts.createSourceFile(p,home,ts.Scri
 for(const key of ['VAULT_M147_P1_AGENDA','homeAgendaCountsM147(','sortHomeWithdrawalsM147(','mergeExactWithdrawalAliasesM147(','homeAgendaBucketM147(','selectHomeAttentionP4R3(operationalAlerts, resumoContextual, aliasesRetiradaM147.aliasIds)','id="home-compromissos"','id="home-atencao"','id="home-brain"','HomeAttentionRail alerts={unifiedAlerts}','<HomeDoseQuantityFollowUp','<HomeBrainEvidenceGroup','withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")','VAULT_M144_HOME_ENTRY'])ok(home.includes(key),'integração preservada '+key);
 ok(home.indexOf('id="home-compromissos"')<home.indexOf('id="home-atencao"')&&home.indexOf('id="home-atencao"')<home.indexOf('id="home-brain"'),'M145/M146 ordem preservada');
 ok(home.includes('Math.max(0, retiradasAgendaM147.length - 1)'),'retiradas compactas e contagem correta');
-ok(home.includes('defaultOpen={quantityFollowUpInsight.gravidadeSeguranca === "critica" || quantityFollowUpInsight.gravidadeSeguranca === "importante"}'),'alertas de gravidade importante não recolhidos');
-ok(home.includes('renderAlert={alert => <AlertRow alert={alert} />}'),'alerta real renderiza pela autoridade anterior');
+const quantityP7=read('components/home/HomeDoseQuantityFollowUp.tsx');
+ok(home.includes('!quantityAlreadyInBrain && quantityFollowUpInsight') &&
+   home.includes('<HomeDoseQuantityFollowUp') &&
+   quantityP7.includes('hasToggledDetails ? expanded : !checked') &&
+   quantityP7.includes('insight.gravidadeSeguranca === "critica"') &&
+   quantityP7.includes('Plano de segurança e apoio'),
+   'Acompanhamento P7 acessivel, aberto antes da conferência e sem duplicar Brain');
+ok(home.includes('renderAlert={alert => <AlertRow alert={{...alert, href: withReturnTarget(alert.href, "/")}} />}'),'alerta real renderiza pela autoridade anterior');
 ok(home.includes('suppressOperationalOverlap('),'Brain mantém supressão canônica anterior');
 ok(gate.split('"scripts/test-vault-m147-p1.cjs"').length===2,'suite P1 registrada uma única vez');
 ok(gate.includes('"scripts/test-vault-m147-p0.cjs"')&&gate.includes('"scripts/test-vault-m146-premium-ux.cjs"'),'gates P0/M146 preservados');

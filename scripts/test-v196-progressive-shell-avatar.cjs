@@ -17,7 +17,7 @@ assert(globals.includes("contain-intrinsic-size: auto 520px"));
 
 assert(home.includes("min-[380px]:grid-cols-4"));
 assert(home.includes("const medicamentosById"));
-assert(home.includes("medicamentosById.get(retirada.medicamento_id)"));
+assert(home.includes("medicationsForOwner(medicamentosTodas, activePersonId, user?.id)") && home.includes("openWithdrawalsDueBy(retiradas, hoje)"));
 assert(home.includes('className="vault-deferred-lg space-y-3"'));
 
 assert(today.includes("new Map<string, any>"));

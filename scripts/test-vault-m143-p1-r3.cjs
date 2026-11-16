@@ -25,7 +25,7 @@ assert.ok(today.includes("Como você está se sentindo?"));
 assert.equal(today.split('id="hoje-diario"').length,2);
 assert.ok(today.indexOf('id="hoje-diario"')<today.indexOf('id="hoje-mes"'));
 assert.ok(home.includes('<div id="home-continuity-other">'));
-assert.ok(home.includes('withdrawalDaysOverdue(retirada.data, hoje) === 1'));
+assert.ok(home.includes('homeAgendaBucketM147(retirada, hoje, horaAtual)') && home.includes('withdrawalDaysOverdue(retirada.data, hoje)') && home.includes('withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")'));
 assert.ok(agenda.includes("PackageCheck"));
 assert.ok(queue.includes("items[0].medicamentoNome"));
 assert.ok(gate.includes('"scripts/test-vault-m142-documents.cjs"'));

@@ -3160,14 +3160,6 @@ export function gerarAlertasVisaoGeral(
           medicamento
         );
 
-      if (
-        !insight.deveRenovar ||
-        insight.motivo ===
-          "nenhum"
-      ) {
-        return;
-      }
-
       const retiradaAgendada =
         medicamento.id
           ? retiradas
@@ -3176,7 +3168,10 @@ export function gerarAlertasVisaoGeral(
                   retirada.medicamento_id ===
                     medicamento.id &&
                   retirada.status ===
-                    "agendada"
+                    "agendada" &&
+                  !retirada.realizada_em && !retirada.renovacao_realizada_id &&
+                  retirada.user_id === medicamento.user_id &&
+                  retirada.person_id === medicamento.person_id
               )
               .map(
                 (retirada) => ({
@@ -3195,9 +3190,7 @@ export function gerarAlertasVisaoGeral(
                   dias: number;
                 } =>
                   item.dias !==
-                    null &&
-                  item.dias >=
-                    0
+                    null
               )
               .sort(
                 (a, b) => {
@@ -3225,6 +3218,9 @@ export function gerarAlertasVisaoGeral(
             null
           : null;
 
+      // Only a real, open withdrawal supersedes the old SUS-return field.
+      if (!retiradaAgendada && (!insight.deveRenovar || insight.motivo === "nenhum")) return;
+
       /*
        * Quando o medicamento possui uma Retirada real
        * agendada, ela substitui data_retorno_sus como fonte
@@ -3232,8 +3228,6 @@ export function gerarAlertasVisaoGeral(
        * "hoje" enquanto a agenda real diz "amanhã".
        */
       if (
-        insight.motivo ===
-          "sus" &&
         retiradaAgendada
       ) {
         if (
@@ -3257,8 +3251,9 @@ export function gerarAlertasVisaoGeral(
             `Retirada de ${medicamento.nome}`,
 
           mensagem:
-            diasRetirada ===
-              0
+            diasRetirada < 0
+              ? `A retirada de "${medicamento.nome}" está pendente há ${Math.abs(diasRetirada)} ${Math.abs(diasRetirada) === 1 ? "dia" : "dias"}, conforme o compromisso registrado.`
+              : diasRetirada === 0
               ? `A retirada de "${medicamento.nome}" está agendada para hoje.`
               : diasRetirada ===
                   1

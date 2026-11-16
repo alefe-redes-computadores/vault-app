@@ -1024,17 +1024,12 @@ export default function MaisPage() {
               delay: 0.04,
             }}
           >
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-                Cofre pessoal
-              </h2>
-
-              <span className="text-[10px] text-ink-faint">
-                {vaultOverview.total} itens desta pessoa
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
+            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/30 px-3" aria-label="Ferramentas do cofre pessoal">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                <span>Cofre pessoal <span className="font-normal text-ink-muted">· {vaultOverview.total} itens desta pessoa</span></span>
+                <ChevronDown size={15} className="transition-transform group-open:rotate-180" aria-hidden="true"/>
+              </summary>
+            <div className="grid grid-cols-2 gap-2.5 border-t border-surface-border/35 py-3">
               {quickAccessItems.map((item) => {
                 const Icon = item.icon;
 
@@ -1055,6 +1050,7 @@ export default function MaisPage() {
                 );
               })}
             </div>
+            </details>
           </motion.div>
 
           {/* ===================================================

@@ -13,7 +13,7 @@ for(const [key,p] of Object.entries(paths)){
  const ast=ts.createSourceFile(p,s[key],ts.ScriptTarget.Latest,true,p.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  ok(ast.parseDiagnostics.length===0,`Sintaxe TS/TSX ${p}`);
 }
-ok(s.home.includes('<HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}') && s.home.includes('renderAlert={alert => <AlertRow alert={alert} />}'), 'Home mantém priorização e componente original de cada alerta');
+ok(s.home.includes('<HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}') && s.home.includes('renderAlert={alert => <AlertRow alert={{...alert, href: withReturnTarget(alert.href, "/")}} />}'), 'Home mantém priorização e componente original de cada alerta');
 ok(s.home.includes('onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}'), 'Alternância e haptics originais preservados');
 ok(s.rail.includes('alerts.slice(0, 1)')&&s.rail.includes('key={alert.id}')&&s.rail.includes('aria-expanded={expanded}'), 'Home exibe prioridade inteira e expansão acessível');
 ok(s.detail.includes('<MedicationCatalogNameComparison currentName={med.nome}') && s.detail.includes('referenceName={catalogNameSuggestion.reference.canonicalName}'), 'Identidade de cadastro comparada somente à referência existente');

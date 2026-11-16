@@ -552,6 +552,28 @@ export default function HomePage() {
     ...retiradasHoje.map(item=>({data:item.data,horario:item.horario})),
   ],hoje,horaAtual),[consultasHoje,cirurgiasHoje,examesHoje,retiradasHoje,hoje,horaAtual]);
 
+  // P7 FIX9: o mesmo ID fica em UMA superficie administrativa na Agenda.
+  // A origem useRetiradas ja e restrita a user.id + activePersonId.
+  const renderRetiradaAgendaP7 = (retirada: (typeof retiradasAgendaM147)[number]) => {
+    const bucket = homeAgendaBucketM147(retirada, hoje, horaAtual);
+    const dias = withdrawalDaysOverdue(retirada.data, hoje);
+    const status = bucket === "pendente_anterior"
+      ? `Pendente há ${dias} dia${dias === 1 ? "" : "s"}`
+      : bucket === "horario_passado" ? "Horário previsto já passou"
+      : bucket === "ainda_hoje" ? "Prevista para hoje"
+      : "Sem horário confirmado";
+    return <button type="button" key={retirada.id}
+      aria-label={`Conferir retirada ${retirada.data}. ${status}`}
+      onClick={() => { trigger("vibrate"); router.push(withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")); }}
+      className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/45 bg-surface/55 px-3 py-2.5 text-left active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-semibold text-ink-primary">Retirada de medicamento</span>
+        <span className="block text-[11px] text-ink-muted">{status} · {formatVaultClinicalDateBR(retirada.data)}{retirada.horario ? ` · ${retirada.horario}` : ""}</span>
+      </span>
+      <ChevronRight size={15} className="shrink-0 text-ice" aria-hidden="true"/>
+    </button>;
+  };
+
   // R9 R8: contabiliza apenas eventos já filtrados pelos repositórios; nenhuma nova leitura.
   const totalCompromissosHoje = countHomeTodayAppointments({
     consultations: consultasHoje,
@@ -868,14 +890,14 @@ export default function HomePage() {
   // compacta da Home.
   // A38: a Agenda é a única CTA para o MESMO ID de retirada administrativa.
   // Nenhuma observação independente de receita, estoque ou segurança clínica é ocultada.
-  const aliasesRetiradaM147 = useMemo(() => mergeExactWithdrawalAliasesM147(retiradasAgendaM147.slice(0,1), operationalAlerts),
+  const aliasesRetiradaM147 = useMemo(() => mergeExactWithdrawalAliasesM147(retiradasAgendaM147, operationalAlerts),
     [retiradasAgendaM147,operationalAlerts]);
   const unifiedAlerts = useMemo(
     () => homeAdministrativeWithdrawalAlertsP5P4(
       selectHomeAttentionP4R3(operationalAlerts, resumoContextual, aliasesRetiradaM147.aliasIds),
       retiradasAgendaM147
     ),
-    [operationalAlerts, resumoContextual.href, aliasesRetiradaM147, retiradasAgendaM147]
+    [operationalAlerts, resumoContextual, aliasesRetiradaM147, retiradasAgendaM147]
   );
   const duplicatePrimaryWithdrawalP5 = Boolean(primaryMedicationCareOpportunity && continuationWithdrawalAlreadyVisibleP5(primaryMedicationCareOpportunity.actionHref, retiradasAgendaM147));
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
@@ -916,7 +938,6 @@ export default function HomePage() {
     return () => window.removeEventListener("vault:open-pending-doses", open);
   }, []);
 
-  const [mostrarTodasRetiradas, setMostrarTodasRetiradas] = useState(false);
   const [mostrarTodosCompromissos, setMostrarTodosCompromissos] = useState(false);
 
   const [
@@ -924,6 +945,13 @@ export default function HomePage() {
     setMostrarTodosAlertas,
   ] =
     useState(false);
+
+  const hasImmediateAttentionP7 = unifiedAlerts.some(
+    item => item.level === "urgente" || item.level === "vencido"
+  );
+  useEffect(() => {
+    setMostrarTodosAlertas(hasImmediateAttentionP7);
+  }, [activePersonId, hasImmediateAttentionP7]);
 
   const [
     insightExplicado,
@@ -1225,6 +1253,27 @@ export default function HomePage() {
           {/* VAULT_M144_HOME_ENTRY · M149: item integrado na grade de áreas da Home, não um botão solto. */}
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
 
+
+          {/* P7: ação contextual real, distinta do progresso de doses. */}
+          {resumoContextual.href !== "/hoje" && resumoContextual.href !== "/" &&
+            !resumoContextual.href.startsWith("/saude/retiradas/detalhes") &&
+            !unifiedAlerts.some(a => a.href === resumoContextual.href) && (
+            <button type="button" aria-label={`Ação contextual: ${resumoContextual.title}`}
+              onClick={() => {
+                trigger("vibrate");
+                if (resumoContextual.href === "/?open=pending-doses") setModalPendenciasAberto(true);
+                else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));
+              }}
+              className="flex min-h-12 w-full items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-300">Ação agora</span>
+                <span className="block text-xs font-semibold text-ink-primary">{resumoContextual.title}</span>
+                <span className="line-clamp-2 text-[11px] text-ink-muted">{resumoContextual.description}</span>
+              </span>
+              <ChevronRight size={15} className="mt-1 shrink-0 text-amber-300" aria-hidden="true"/>
+            </button>
+          )}
+
           {/* ===================================================
               HOJE
           =================================================== */}
@@ -1246,45 +1295,24 @@ export default function HomePage() {
             className="relative overflow-hidden rounded-[22px] border border-surface-border bg-gradient-to-br from-surface-raised/50 via-surface to-surface shadow-sm"
           >
             {/* P14 R3: hero puramente visual isolado; contadores continuam na Home. */}
-            <HomeDailyHero eyebrow={resumoContextual.eyebrow} title={resumoContextual.title}
+            <HomeDailyHero eyebrow="Rotina de hoje" title={resumoContextual.title}
               description={resumoContextual.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
               progress={progressoDosesHoje}
+              onOpen={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
               onOpenToday={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
-              ctaLabel={resumoContextual.href === "/?open=pending-doses" ? "Revisar doses" : resumoContextual.href === "/hoje" ? "Abrir rotina" : "Conferir próximo passo"}
-              onOpen={() => {
-                trigger("vibrate");
-                if (resumoContextual.href === "/?open=pending-doses") setModalPendenciasAberto(true);
-                else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));
-              }} />
+              indicators={<HomeQuickMetrics
+                appointments={totalCompromissosHoje} className="min-[380px]:grid-cols-4 min-w-0"
+                pendingDoses={dosesPendentesAtrasadas.length} medications={medicamentosAtivos.length}
+                completedDoses={dosesTomadasDaRotinaHoje}
+                extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
+                onNavigate={href=>{trigger("vibrate");router.push(href);}}
+                onOpenPending={()=>{trigger("vibrate");setModalPendenciasAberto(true);}}
+              />}
+            />
           </motion.section>
 
-          {/* P4 R3: indicadores e atalhos detalhados da agenda PROXIMO DO RESUMO DIARIO. */}
-          <section id="home-resumo-da-rotina" aria-label="Resumo e acompanhamento" className="vault-deferred-lg space-y-2">
-            <h2 className="font-display text-sm font-semibold text-ink-primary">Resumo e acompanhamento</h2>
-            {/* M136: métricas redundantes permanecem acessíveis, sem tomar a primeira dobra. */}
-            <details className="group mx-3 mb-1 overflow-hidden rounded-xl border border-surface-border/40 bg-surface/25" open>
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-                <span className="flex items-center gap-2"><CalendarDays size={14} aria-hidden="true"/> Indicadores da rotina</span>
-                <span className="text-[10px] font-normal text-ink-muted">Expandir detalhes <ChevronRight size={14} className="inline-block transition-transform group-open:rotate-90"/></span>
-              </summary>
-            <HomeQuickMetrics
-              appointments={totalCompromissosHoje}
-              className="min-[380px]:grid-cols-4 min-w-0"
-              pendingDoses={dosesPendentesAtrasadas.length}
-              medications={medicamentosAtivos.length}
-              completedDoses={dosesTomadasDaRotinaHoje}
-              extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}
-              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-              onOpenPending={() => { trigger("vibrate"); setModalPendenciasAberto(true); }}
-            />
-            </details>
-            <div data-vault-home-optional-p6="agenda"><HomeAgendaBreakdown consultations={consultasHoje.length} exams={examesHoje.length}
-              surgeries={cirurgiasHoje.length} withdrawals={retiradasHoje.length}
-              overdueWithdrawals={retiradasAtrasadas.length}
-              onNavigate={(href) => { trigger("vibrate"); router.push(href); }}
-              onOpenAgenda={() => { trigger("vibrate"); const target = document.getElementById("home-compromissos"); if (target) target.scrollIntoView({behavior: "smooth", block: "start"}); else router.push("/hoje"); }} /></div>
-          </section>
+
 
           {/* M150 P5 P5: acessos essenciais imediatamente apos o resumo da rotina. */}
           {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
@@ -1296,7 +1324,7 @@ export default function HomePage() {
               COMPROMISSOS DE HOJE
           =================================================== */}
 
-          {totalCompromissosHoje >
+          {consultasHoje.length + cirurgiasHoje.length + examesHoje.length + retiradasAgendaM147.length >
             0 && (
             <motion.section
               id="home-compromissos"
@@ -1325,22 +1353,12 @@ export default function HomePage() {
                     />
 
                     <h2 className="font-display text-sm font-semibold text-ink-primary">
-                      {retiradasAtrasadas.length > 0 ? "Pendentes e próximos" : "Agenda de hoje"}
+                      {"Agenda de hoje"}
                     </h2>
                   </div>
 
                   <p className="mt-0.5 text-xs text-ink-muted">
-                    {retiradasAtrasadas.length > 0
-                      ? "Compromissos abertos não somem na virada do dia"
-                      : "Sua agenda de saúde do dia"}
-                  </p>
-                  <p role="note" aria-label="Resumo temporal da agenda" className="mt-1 text-[11px] leading-relaxed text-ink-secondary">
-                    {[
-                      resumoAgendaM147.pendenteAnterior>0?`${resumoAgendaM147.pendenteAnterior} de dias anteriores`:null,
-                      resumoAgendaM147.horarioPassado>0?`${resumoAgendaM147.horarioPassado} horário${resumoAgendaM147.horarioPassado===1?"":"s"} já passado${resumoAgendaM147.horarioPassado===1?"":"s"}`:null,
-                      resumoAgendaM147.aindaHoje>0?`${resumoAgendaM147.aindaHoje} ainda hoje`:null,
-                      resumoAgendaM147.semHorario>0?`${resumoAgendaM147.semHorario} sem horário informado`:null,
-                    ].filter(Boolean).join(' · ')}
+                    "Sua agenda de saúde do dia"
                   </p>
                 </div>
 
@@ -1505,67 +1523,28 @@ export default function HomePage() {
                   )
                 )}
 
+                {retiradasAgendaM147.length > 0 && (
+                  <div className="space-y-1.5" aria-label="Retiradas pendentes na agenda">
+                    <p className="px-1 text-[11px] font-semibold text-ink-secondary">Retiradas pendentes · {retiradasAgendaM147.length}</p>
+                    {retiradasAgendaM147.slice(0, 1).map(renderRetiradaAgendaP7)}
+                    {retiradasAgendaM147.length > 1 && (
+                      <details className="group rounded-xl border border-surface-border/40 bg-surface/35 px-2">
+                        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs text-ink-secondary">
+                          <span>Mais {Math.max(0, retiradasAgendaM147.length - 1)} retirada{retiradasAgendaM147.length === 2 ? "" : "s"}</span>
+                          <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden="true"/>
+                        </summary>
+                        <div className="space-y-1.5 pb-2">{retiradasAgendaM147.slice(1).map(renderRetiradaAgendaP7)}</div>
+                      </details>
+                    )}
+                  </div>
+                )}
+
                 {consultasHoje.length + cirurgiasHoje.length + examesHoje.length > 3 && (
                   <button type="button" aria-expanded={mostrarTodosCompromissos} onClick={() => setMostrarTodosCompromissos(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                     {mostrarTodosCompromissos ? "Recolher compromissos" : `Ver mais ${consultasHoje.length + cirurgiasHoje.length + examesHoje.length - 3} compromisso${consultasHoje.length + cirurgiasHoje.length + examesHoje.length - 3 === 1 ? "" : "s"}`}
                   </button>
                 )}
 
-                {(mostrarTodasRetiradas ? retiradasAgendaM147 : retiradasAgendaM147.slice(0, 1)).map(
-                  (
-                    retirada
-                  ) => (
-                    <button
-                      type="button"
-                      key={
-                        retirada.id
-                      }
-                      onClick={() => {
-                        trigger(
-                          "vibrate"
-                        );
-
-                        router.push(
-                          withReturnTarget(`/saude/retiradas/detalhes?id=${retirada.id}`, "/")
-                        );
-                      }}
-                      className="flex w-full items-center gap-3 rounded-[20px] border border-ice/25 bg-ice/[0.04] p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ice/10 text-ice">
-                        <MedicationFormatIcon formato={medicamentosById.get(retirada.medicamento_id)?.formato} cores={medicamentosById.get(retirada.medicamento_id)?.cores} size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-ink-primary">
-                          {retirada.medicamento_nome ||
-                            "Retirada de medicamento"}
-                        </p>
-
-                        <p className="truncate text-xs text-ink-muted">
-                          {isOverdueWithdrawal(retirada, hoje)
-                            ? `Pendente há ${withdrawalDaysOverdue(retirada.data, hoje)} ${withdrawalDaysOverdue(retirada.data, hoje) === 1 ? "dia" : "dias"} · revise ou reagende`
-                            : homeAgendaBucketM147(retirada,hoje,horaAtual)==="horario_passado"
-                              ? "Horário de hoje já passou · retirada ainda aberta"
-                              : homeAgendaBucketM147(retirada,hoje,horaAtual)==="ainda_hoje"
-                                ? (retirada.tipo==="sus"?"Ainda hoje · retirada SUS":"Ainda hoje · retirada prevista")
-                                : (retirada.tipo === "sus" ? "Retirada SUS · horário não informado" : "Retirada · horário não informado")}
-                        </p>
-                        {(aliasesRetiradaM147.byWithdrawal.get(String(retirada.id||''))||[]).map(alias=><p key={alias.id} role="note" className="mt-0.5 line-clamp-2 text-[11px] text-amber-200">{alias.title} · {alias.subtitle} (mesma retirada)</p>)}
-                        <WithdrawalPreparationView withdrawalId={retirada.id!} compact overview={supplyOverview} sourceNotesById={sourceNotesById}/>
-                      </div>
-
-                      <span className="shrink-0 font-mono text-[11px] font-semibold text-ice">
-                        {isOverdueWithdrawal(retirada, hoje)
-                          ? "Atrasada"
-                          : homeAgendaBucketM147(retirada,hoje,horaAtual)==="horario_passado"
-                            ? "Passou"
-                            : retirada.horario || "Hoje"}
-                      </span>
-                    </button>
-                  )
-                )}
-
-                {retiradasAgendaM147.length > 1 && <button type="button" aria-expanded={mostrarTodasRetiradas} onClick={() => setMostrarTodasRetiradas(value => !value)} className="min-h-11 w-full rounded-xl border border-surface-border/60 bg-surface-raised/40 px-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">{mostrarTodasRetiradas ? "Recolher retiradas" : `Ver mais ${Math.max(0, retiradasAgendaM147.length - 1)} retirada${Math.max(0, retiradasAgendaM147.length - 1) === 1 ? "" : "s"}`}</button>}
               </div>
             </motion.section>
           )}
@@ -1595,25 +1574,20 @@ export default function HomePage() {
               {/* P15 R8: renderização read-only; a autoridade e a ordem vêm de unifiedAlerts. */}
               <HomeAttentionRail alerts={unifiedAlerts} description="O que merece prioridade agora" expanded={mostrarTodosAlertas}
                 onToggle={() => { trigger("vibrate"); setMostrarTodosAlertas(previous => !previous); }}
-                renderAlert={alert => <AlertRow alert={alert} />} />
+                renderAlert={alert => <AlertRow alert={{...alert, href: withReturnTarget(alert.href, "/")}} />} />
             </motion.section>
           )}
 
           {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
               Não gera nova interpretação nem substitui alertas de segurança. */}
           {!quantityAlreadyInBrain && quantityFollowUpInsight && (
-            <ClinicalDisclosure key={`${quantityFollowUpInsight.id}:${quantityFollowUpInsight.gravidadeSeguranca||"rotina"}`} id="home-dose-quantity-followup" title="Acompanhamento de quantidade registrada"
-              description="Uma observação factual acessível sem repetir cartão na primeira dobra."
-              icon={<Activity size={17}/>}
-              defaultOpen={quantityFollowUpInsight.gravidadeSeguranca === "critica" || quantityFollowUpInsight.gravidadeSeguranca === "importante"}>
-              {()=><HomeDoseQuantityFollowUp
+            <HomeDoseQuantityFollowUp
                 insight={quantityFollowUpInsight}
                 feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
                 nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
                 onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
                 onNavigate={href => { trigger("vibrate"); router.push(href); }}
-              />}
-            </ClinicalDisclosure>
+              />
           )}
 
           {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}

@@ -20,6 +20,6 @@ assert(repo.includes('settledBySlot')&&repo.includes('person_id: safePersonId')&
 assert(fields.includes('Quantidade a cada dose')&&fields.includes('Plano calculado')&&fields.includes('estoque muda apenas ao confirmar'));
 for(const page of [create,edit]){assert(page.includes('setTipoUso("temporario")'));assert(page.includes('tipoUso === "temporario" ? readTemporaryCourseDraft'));}
 assert(today.includes('buildTodayTimelineItems')&&todayProjection.includes('log.dose_kind === "planned"'));
-assert(list.includes('POR PERÍODO'));
+assert(list.includes('isTemporary ? "Por período"') && list.includes('dosesEsperadasHoje'));
 assert(detail.includes('Uso Temporário / Por período')&&detail.includes('isTemporary'));
 console.log('V323: tratamento por período explícito, cálculo de doses/unidades, agenda única, estoque na confirmação, escopo e compatibilidade OK');

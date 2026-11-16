@@ -20,7 +20,7 @@ check(toggle.toggleTodayStatus('tomados','ignorados')==='ignorados','status expl
 check(toggle.toggleTodayPeriod('todos','noite')==='noite'&&toggle.toggleTodayPeriod('noite','noite')==='todos','período alterna sem recálculo clínico');
 const home=read(files[0]),today=read(files[1]),hero=read(files[2]),portfolio=read(files[3]),avatar=read(files[4]),mesh=read(files[5]),gate=read(files[6]);
 check(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)'),'Home usa autoridade compartilhada');
-check(home.includes('const medicamentosById')&&home.includes('medicamentosById.get(retirada.medicamento_id)'),'Home mantém índice legado e conexões');
+check(home.includes('const medicamentosById')&&home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('openWithdrawalsDueBy(retiradas, hoje)'),'Home mantém índice legado e conexões');
 check(today.includes('medicationsForOwner(rawMedicamentos, activePersonId, user?.id)'),'Hoje usa mesma autoridade compartilhada');
 check(today.includes('new Map<string, any>')&&today.includes('visibleTimelineItems(dosesFiltradas'),'Hoje preserva índices e fila canônica');
 for(const status of ['pendentes','tomados','ignorados'])check(today.includes('onStatus={(value) => { trigger("vibrate"); setFiltroStatus(value);')&&read('components/hoje/TodayFilterPanel.tsx').includes(`{ value: "${status}"`),`status ${status} continua acessível`);

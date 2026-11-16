@@ -18,7 +18,7 @@ ok(visibility(doses,{isToday:true,status:'pendentes',showResolved:false})===0,'f
 ok(doses.length===5,'lista de doses original não mutada');
 const home=read(files[0]),today=read(files[1]),details=read(files[2]),fenix=read(files[3]),avatar=read(files[4]);
 ok(home.includes('countHomeTodayAppointments({') && home.includes('appointments={totalCompromissosHoje}') ,'Home reutiliza contagem sem alterar autoridade dos cards');
-ok(home.includes('medicamentosById.get(retirada.medicamento_id)')&&home.includes('HomeDailyHero'),'Home mantém V196 e hero');
+ok(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('openWithdrawalsDueBy(retiradas, hoje)')&&home.includes('HomeDailyHero'),'Home mantém V196 e hero');
 ok(today.includes('countHiddenTodayResolved(dosesFiltradas,') && today.includes('visibleTimelineItems(dosesFiltradas'),'Hoje reusa timeline e métrica com mesma coleção');
 ok(today.includes('const concluidasOcultas')&&today.includes('filtroStatus !== "todos"')&&today.includes('DoseScheduleGroups'),'filtros e lista de doses antigos preservados');
 ok(details.includes('<MedicationDecisionEvidenceContext')&&details.includes('V332_CARE_EVIDENCE_DISCLOSURE'),'Detalhes mostram autoridade junto da evidência histórica');
