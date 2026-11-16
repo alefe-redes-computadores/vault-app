@@ -25,7 +25,7 @@ for(const file of sources){
 }
 const hook=read(sources[0]);
 const filter=read(sources[1]),guide=read(sources[2]),date=read(sources[3]),med=read(sources[4]),nav=read(sources[5]),rail=read(sources[6]),hero=read(sources[7]),batch=read(sources[8]),reminder=read(sources[9]);
-ok(filter.includes('useDismissibleDetails()')&&filter.includes('max-h-[min(66dvh,460px)]')&&filter.includes('overflow-y-auto overscroll-contain')&&filter.includes('aria-pressed={active}'),'Today filter scroll-bounded, dismissible, selection intact');
+ok(filter.includes('useDismissibleDetails()')&&filter.includes('className="fixed inset-x-3')&&filter.includes('max-h-[min(72dvh,520px)]')&&filter.includes('overflow-y-auto overscroll-contain')&&filter.includes('safe-area-inset-bottom')&&filter.includes('min-[600px]:absolute')&&filter.includes('aria-pressed={active}')&&filter.includes('closeOnSelect')&&filter.includes('closePanel()'),'Today filter scroll-bounded, dismissible, selection intact');
 ok(filter.includes('statusOptions')&&filter.includes('onShowResolved(event.target.checked)')&&filter.includes('onReset()')&&filter.includes('isToday &&'),'Today filters retain historical/clinical distinctions and reset');
 ok(guide.includes('useDismissibleDetails()')&&guide.includes('absolute right-0')&&!guide.includes('absolute -right-28'),'Today guidance stays inside mobile width');
 ok(guide.includes('Doses futuras são previsões')&&guide.includes('Falta de confirmação no histórico não significa uma dose ignorada'),'temporal uncertainty visible, not inferred missed');

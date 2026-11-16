@@ -42,6 +42,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 
 import {
   AlertTriangle,
+  Factory,
+  Landmark,
+  ShoppingBag,
   Calendar,
   Clock3,
   CheckCircle2,
@@ -127,6 +130,7 @@ import { MedicationListGroupNavigation } from "@/components/saude/MedicationWork
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
 import { MedicationFilterBar } from "@/components/saude/MedicationFilterBar";
+import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
 import { medicationListPresentation } from "@/lib/health-intelligence/medication-list-presentation";
 import { resolveMedicationCardAction } from "@/lib/health-intelligence/medication-card-action";
@@ -347,6 +351,7 @@ export default function MedicamentosListPage() {
       null
     );
 
+  const [medicationContextP7R3, setMedicationContextP7R3] = useState<MedicationContextP7R3 | null>(null);
   const [selectedRegulatory, setSelectedRegulatory] =
     useState<MedicationRegulatoryVisual | null>(null);
   const [selectedRegulatoryAuthority, setSelectedRegulatoryAuthority] =
@@ -837,6 +842,18 @@ export default function MedicamentosListPage() {
       const cardTreatments = med.id ? (treatmentsByMedication.get(med.id) || []) : [];
       const singleTreatment = cardTreatments.length === 1 ? cardTreatments[0] : null;
       const treatmentColor = singleTreatment ? safeTreatmentColorP7(singleTreatment.cor) : null;
+      const openMedicationContextP7R3 = (kind: "regime" | "manufacturer" | "origin" | "dose" | "treatment") => {
+        const origin = med.tipo_aquisicao === "sus" ? "SUS (declarado no cadastro)" : med.tipo_aquisicao === "comprado" ? "Comprado (declarado no cadastro)" : med.tipo_aquisicao === "gratuito" ? "Gratuito (declarado no cadastro)" : "Origem não informada";
+        const schedules = Array.isArray(med.estoque_horarios) ? med.estoque_horarios.filter(hour=>/^([01]\d|2[0-3]):[0-5]\d$/.test(hour)) : [];
+        const entries: Record<typeof kind, MedicationContextP7R3> = {
+          regime: {title:"Regime e tratamento", description:`${med.nome} · cadastro da pessoa ativa`, details:[`Regime: ${isSOS ? "SOS / eventual" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Não informado"}`,cardTreatments.length ? `Tratamentos vinculados: ${cardTreatments.map(t=>t.nome).join(" · ")}` : "Tratamento vinculado: não informado", "O regime cadastrado não comprova dose tomada nem data de término."]},
+          manufacturer:{title:"Fabricante e referência",description:`${med.nome} · referências disponíveis`,details:[`Etiqueta declarada: ${med.laboratorio_etiqueta || "Não informada"}`,`Último fabricante registrado em aquisição: ${latestManufacturer || "Não informado"}`,"Etiqueta e fabricante de uma aquisição são fontes distintas. Lote só é comprovado com registro/documento." ]},
+          origin:{title:"Obtenção e fornecimento",description:`${med.nome} · rota registrada`,details:[origin,`Última aquisição vinculada: ${latestAcquisition?.data_aquisicao || "Não informada"}`,"Origem cadastrada ou retirada planejada não confirma recebimento nem altera saldo." ]},
+          dose:{title:"Posologia e horários",description:`${med.nome} · programação cadastrada`,details:[`Dose cadastrada: ${textoDose || "Não informada"}`,schedules.length?`Horários cadastrados: ${schedules.join(" · ")}`:"Horários: não informados", "Horário previsto não equivale a tomada confirmada." ]},
+          treatment:{title:"Tratamentos vinculados",description:`${med.nome} · vínculos explícitos`,details:cardTreatments.length ? cardTreatments.map(t=>t.nome) : ["Nenhum tratamento explicitamente vinculado"]},
+        };
+        setMedicationContextP7R3(entries[kind]);
+      };
       const isTemporary = med.tipo_uso === "temporario";
       // M147: status administrativo não autoriza CTA primário de uso.
       const isSuspendedSOSM147 = isSOS && med.status === "descontinuado";
@@ -1192,7 +1209,7 @@ export default function MedicamentosListPage() {
       const careActionButtonM150P3 = careAction && !exactClosedWithdrawalP7 ? (
                   <button
                     type="button"
-                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${careActionClass}`}
+                    className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${/\/retiradas\/(?:detalhes|nova)/.test(careAction.href) ? "border-sky-400/35 bg-sky-400/[.10] text-sky-300" : isRestockDestination(careAction.href, med.id!) ? "border-amber-400/35 bg-amber-400/[.10] text-amber-300" : careActionClass}`}
                     title={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Existe aquisição SUS registrada após a data prevista. Confira se corresponde a esta retirada antes de criar outra." : careAction.description}
                     aria-label={`${careAction.description} para ${med.nome}`}
                     aria-description={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Há aquisição SUS registrada após a data agendada. Confira se corresponde a esta retirada; nenhuma conclusão foi feita automaticamente." : undefined}
@@ -1211,7 +1228,7 @@ export default function MedicamentosListPage() {
                 ) : null;
       const stockActionButtonM150P3 = !isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
                   (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (
-                  <MedicationRestockAction name={med.nome}
+                  <MedicationRestockAction name={med.nome} tone="amber"
                     label={stockUnknown ? "Informar saldo" : stockNegative ? "Revisar saldo" : "Repor estoque"}
                     onOpen={() => {
                       trigger("vibrate");
@@ -1257,7 +1274,7 @@ export default function MedicamentosListPage() {
           density="compact"
           compactTight={compactCards}
           interactiveContent
-          className="min-h-0"
+          className={compactCards ? "min-h-[108px]" : "min-h-[134px]"}
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="label"
           rail={(regulatoryProfile || receita) ? (
@@ -1278,9 +1295,9 @@ export default function MedicamentosListPage() {
               }}
               className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
             >
-              <span aria-hidden="true" className="max-h-[calc(100%-1rem)] whitespace-nowrap font-mono text-[8px] font-black uppercase tracking-[.12em] text-void [writing-mode:vertical-rl] rotate-180">
+              <span aria-hidden="true" className="flex max-h-[calc(100%-1rem)] flex-col items-center justify-center gap-1.5"><Info size={13} className="shrink-0 text-void"/><span className="whitespace-nowrap font-sans text-[10px] font-semibold uppercase tracking-[.14em] text-void [writing-mode:vertical-rl] rotate-180">
                 {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}
-              </span>
+              </span></span>
               <span className="sr-only">Abrir classificação: {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
             </button>
           ) : null}
@@ -1314,9 +1331,9 @@ export default function MedicamentosListPage() {
                     {med.dosagem}
                   </span>
                 )}
-                <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-violet-400/20 bg-violet-400/10 text-violet-300" : "border-emerald-300/20 bg-emerald-300/[.055] text-emerald-200"}`} aria-label="Regime de uso cadastrado">
+                <button type="button" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("regime");}} className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-violet-400/20 bg-violet-400/10 text-violet-300" : "border-emerald-300/20 bg-emerald-300/[.055] text-emerald-200"}`} aria-label="Regime de uso cadastrado"><Info size={11} aria-hidden="true"/>
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
-                </span>
+                </button>
               </div>
               {!activeIngredients.length && !isSuspenso && (
                 <span className="sr-only">Princípio ativo · confirmar referência nos detalhes</span>
@@ -1337,18 +1354,20 @@ export default function MedicamentosListPage() {
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px]">
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
-                {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) && <span data-vault-compact-medication-meta className="min-w-0 max-w-full truncate text-[10px] text-ink-muted" title={[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao].filter(Boolean).join(" · ")}>
-                  {[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : null].filter(Boolean).join(" · ")}
+                {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) && <span data-vault-compact-medication-meta className="flex min-w-0 max-w-full flex-wrap items-center gap-1 text-[10px] text-ink-muted" title={[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao].filter(Boolean).join(" · ")}>
+                  {activeIngredient && <span className="max-w-[11rem] truncate" title={activeIngredient}>{activeIngredient}</span>}
+                  {(latestManufacturer || med.laboratorio_etiqueta) && <button type="button" aria-label="Ver contexto do fabricante" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("manufacturer");}} className="inline-flex min-h-7 max-w-full items-center gap-1 rounded-lg border border-ice/20 bg-ice/[.045] px-1.5 text-ice"><Factory size={11} aria-hidden="true"/><span className="max-w-[8rem] truncate">{latestManufacturer || med.laboratorio_etiqueta}</span></button>}
+                  {med.tipo_aquisicao && <button type="button" aria-label="Ver contexto da origem" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("origin");}} className="inline-flex min-h-7 items-center gap-1 rounded-lg border border-amber-300/20 bg-amber-300/[.045] px-1.5 text-amber-200">{med.tipo_aquisicao === "sus" ? <Landmark size={11} aria-hidden="true"/> : <ShoppingBag size={11} aria-hidden="true"/>}{med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : "Gratuito"}</button>}
                 </span>}
                 {cardTreatments.length > 0 && (
-                  <span data-vault-medication-treatment-chip
+                  <button type="button" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("treatment");}} data-vault-medication-treatment-chip
                     title={cardTreatments.map(item => item.nome).join(" · ")}
                     className="max-w-full truncate rounded-md border border-surface-border/60 px-1.5 py-0.5 text-[9px] font-semibold text-ink-secondary"
                     style={treatmentColor ? {borderColor: `${treatmentColor}55`, backgroundColor: `${treatmentColor}16`, color: treatmentColor} : undefined}>
                     {singleTreatment ? singleTreatment.nome : `${cardTreatments.length} tratamentos`}
-                  </span>
+                  </button>
                 )}
-                {!compactCards && <MedicationProvenanceLineM150P3
+                {!compactCards && <MedicationProvenanceLineM150P3 onContext={openMedicationContextP7R3}
                   latestManufacturer={latestManufacturer}
                   declaredManufacturer={med.laboratorio_etiqueta}
                   acquisitionType={med.tipo_aquisicao}
@@ -1367,7 +1386,7 @@ export default function MedicamentosListPage() {
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
-              <div className={compactCards ? "flex min-w-0 items-center gap-1.5" : "block"}>
+              <div className={`grid min-w-0 items-center gap-2 ${actionLayoutM150P3.primary ? "grid-cols-[minmax(0,1fr)_minmax(92px,34%)]" : "grid-cols-1"}`}>
                 <div className="min-w-0 flex-1">
               <MedicationOperationalStrip today={todayStatus}
               stockLabel={stockUnknown ? "Não informado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
@@ -1375,16 +1394,13 @@ export default function MedicamentosListPage() {
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
               doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored":rotinaConcluida||sosTomadoHoje?"completed":"unconfirmed"}/>
                 </div>
-                {compactCards && <div className="max-w-[43%] shrink-0 [&>button]:min-h-11 [&>button]:max-w-full [&>button]:px-2 [&>button]:text-[11px]">
+                {actionLayoutM150P3.primary && <div aria-label="Ação principal do medicamento" className="flex min-h-11 min-w-0 items-center justify-end [&>button]:min-h-11 [&>button]:w-full [&>button]:max-w-full [&>button]:whitespace-normal [&>button]:px-1.5 [&>button]:text-[11px]">
                   {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
                 </div>}
               </div>
               {!compactCards && <div aria-label="Ações do medicamento" className="mt-1.5 flex min-w-0 flex-wrap items-center justify-end gap-1.5 border-t border-surface-border/25 pt-1.5 empty:hidden [&>button]:min-h-11 [&>button]:max-w-full [&>button]:px-3 [&>button]:text-xs">
-                {actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3 : null}
-                {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
-                {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
                 {actionLayoutM150P3.secondary.length > 0 && (
                   <details onClick={(event) => event.stopPropagation()}
                     className="group w-full rounded-xl border border-surface-border/40 bg-surface-raised/20">
@@ -1615,7 +1631,7 @@ export default function MedicamentosListPage() {
         <section className="mx-4 mt-2 rounded-[20px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[.055] via-surface to-surface p-2.5 shadow-sm" aria-label="Organizar medicamentos">
           <div className="flex min-w-0 items-center justify-between gap-2 px-1">
             <span className="text-xs font-bold text-ink-primary">Medicamentos <span className="font-normal text-ink-muted">· rotina programada</span></span>
-            <span className="font-mono text-sm font-bold tabular-nums text-emerald-300" aria-label={`${statsProgresso.completados} de ${statsProgresso.total} doses programadas confirmadas hoje`}>{statsProgresso.completados}/{statsProgresso.total}</span>
+            <button type="button" aria-label="Explicar o progresso da rotina de medicamentos" onClick={()=>setMedicationContextP7R3({title:"Progresso das doses",description:"Registros programados da pessoa ativa no dia selecionado.",details:[`${statsProgresso.completados} horários confirmados de ${statsProgresso.total} programados.`,`Ignorados registrados: ${statsProgresso.ignoradas}.`,`Esse contador pode ser diferente da Home e de Hoje porque os recortes são diferentes. Ausência de confirmação não prova dose não tomada.`]})} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 font-mono text-sm font-bold tabular-nums text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{statsProgresso.completados}/{statsProgresso.total}<Info size={14} aria-hidden="true"/></button>
           </div>
           <div role="progressbar" aria-label="Doses programadas confirmadas hoje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={statsProgresso.total>0?Math.min(100,Math.round(statsProgresso.completados/statsProgresso.total*100)):0} className="mx-1 mt-1.5 h-1 overflow-hidden rounded-full bg-surface-raised">
             <div className="h-full bg-emerald-400" style={{width:`${statsProgresso.total>0?Math.min(100,Math.round(statsProgresso.completados/statsProgresso.total*100)):0}%`}}/>
@@ -1631,34 +1647,11 @@ export default function MedicamentosListPage() {
             </div>
             <details className="group relative min-w-11 rounded-xl border border-surface-border/55 bg-surface-raised/30" data-vault-filters-collapsed-p7 data-vault-filters-collapsed-p6>
               <summary aria-label="Abrir filtros de medicamentos" title="Filtrar medicamentos" className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-1 rounded-xl px-2 text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><SlidersHorizontal size={18}/>{medicationFilter!=="todos"&&<span aria-label="Filtro ativo" className="size-1.5 rounded-full bg-amber-300"/>}</summary>
-              <div className="mt-1 max-h-[min(68dvh,520px)] w-full min-w-[240px] space-y-2 overflow-y-auto overscroll-contain border-t border-surface-border/35 p-2 text-xs text-ink-secondary" aria-label="Filtros e opções da lista">
+              <div className="mt-1 max-h-[min(60dvh,460px)] w-[min(88vw,340px)] space-y-2 overflow-y-auto overscroll-contain rounded-xl border border-surface-border/50 bg-surface p-2 text-xs text-ink-secondary min-[380px]:absolute min-[380px]:right-0 min-[380px]:top-[calc(100%+6px)] min-[380px]:z-40" aria-label="Filtros e opções da lista">
                 <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
 
               </div>
             </details>
-          </div>
-          {/* M153 P7.1-B: ferramentas acessíveis sem ficarem aninhadas no filtro. */}
-          <div className="mt-1.5" aria-label="Ferramentas complementares da lista">
-                <details className="group rounded-xl border border-surface-border/40 bg-surface/35 px-2" aria-label="Mais opções da lista">
-                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-secondary">Mais opções e ajuda <ChevronDown size={14} className="transition-transform group-open:rotate-180"/></summary>
-                  <div className="space-y-1.5 border-t border-surface-border/35 pb-2 pt-2">
-                {/* VAULT_M144_LIST_ENTRY · central acessivel no controle compacto P7. */}
-                <button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2Fsaude%2Fmedicamentos")} className="min-h-11 w-full rounded-xl border border-surface-border/45 px-3 text-left">Ocorrências, ciclos e vacinas</button>
-
-                <a href="/ajuda?topico=medications" className="flex min-h-11 items-center rounded-xl px-2 text-[11px] text-ice">Ajuda sobre medicamentos</a>
-                {!unifiedList && <details className="rounded-xl border border-surface-border/40 px-2">
-                  <summary className="flex min-h-11 cursor-pointer items-center text-[11px] text-ink-secondary">Ir para um grupo · navegação, não filtro</summary>
-                  <MedicationListGroupNavigation attention={medsPrioridade.length} stable={medsEmDia.length} planned={medsPlanejados.length} sos={medsSOS.length} suspended={medsSuspensos.length}/>
-                </details>}
-                <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama"
-                  title="Panorama dos medicamentos" description="Explica divergências entre lista, doses e Brain" icon={<Pill size={18}/>} defaultOpen={false}>
-                  {()=><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications}
-                    decision={healthIntelligence.careCommand?.decision}
-                    doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}}
-                    listActiveCount={statsProgresso.ativos} onNavigate={href=>router.push(href)}/>}
-                </ClinicalDisclosure>
-                  </div>
-                </details>
           </div>
         </section>
 
@@ -1714,6 +1707,37 @@ export default function MedicamentosListPage() {
 
         </section>
 
+        {/* P7 R3: ferramentas transversais e inteligencia depois da lista. */}
+        <section className="mx-4 mb-5 space-y-2" aria-label="Ferramentas de apoio da lista">
+          {/* M153 P7.1-B: ferramentas acessíveis sem ficarem aninhadas no filtro. */}
+          <div className="mt-1.5" aria-label="Ferramentas complementares da lista">
+                <details className="group rounded-xl border border-surface-border/40 bg-surface/35 px-2" aria-label="Mais opções da lista">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-secondary">Mais opções e ajuda <ChevronDown size={14} className="transition-transform group-open:rotate-180"/></summary>
+                  <div className="space-y-1.5 border-t border-surface-border/35 pb-2 pt-2">
+                {/* VAULT_M144_LIST_ENTRY · central acessivel no controle compacto P7. */}
+                <button type="button" onClick={()=>router.push("/saude/central-m144?return_to=%2Fsaude%2Fmedicamentos")} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/45 bg-surface-raised/30 px-3 text-left"><span><span className="block text-xs font-semibold">Ocorrências, ciclos e vacinas</span><span className="block text-[10px] text-ink-muted">Histórico complementar de saúde</span></span><ChevronDown size={14} className="-rotate-90"/></button>
+
+                <button type="button" onClick={()=>router.push("/ajuda?topico=medications&return_to=%2Fsaude%2Fmedicamentos")} className="flex min-h-11 w-full items-center justify-between rounded-xl px-2 text-[11px] text-ice">Ajuda sobre medicamentos <Info size={14}/></button>
+                {!unifiedList && <details className="rounded-xl border border-surface-border/40 px-2">
+                  <summary className="flex min-h-11 cursor-pointer items-center text-[11px] text-ink-secondary">Ir para um grupo · navegação, não filtro</summary>
+                  <MedicationListGroupNavigation attention={medsPrioridade.length} stable={medsEmDia.length} planned={medsPlanejados.length} sos={medsSOS.length} suspended={medsSuspensos.length}/>
+                </details>}
+
+                  </div>
+                </details>
+          </div>
+
+                          <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama"
+                  title="Panorama dos medicamentos" description="Explica divergências entre lista, doses e Brain" icon={<Pill size={18}/>} defaultOpen={false}>
+                  {()=><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications}
+                    decision={healthIntelligence.careCommand?.decision}
+                    doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}}
+                    listActiveCount={statsProgresso.ativos} onNavigate={href=>router.push(href)}/>}
+                </ClinicalDisclosure>
+        </section>
+
+                <MedicationContextSheetP7R3 value={medicationContextP7R3} onClose={()=>setMedicationContextP7R3(null)}/>
+
         {/* DOSE RÁPIDA */}
 
         <QuickDoseModal
@@ -1751,7 +1775,7 @@ export default function MedicamentosListPage() {
         {/* VAULT_REGULATORY_COMPACT_DIALOG_V76_1 */}
         {selectedRegulatory && (
           <div
-            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/75 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md min-[480px]:items-center min-[480px]:px-5"
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/75 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] vault-r3-dialog-top-inset backdrop-blur-md min-[480px]:items-center min-[480px]:px-5"
             role="presentation"
             onMouseDown={(event) => {
               if (
@@ -1768,7 +1792,7 @@ export default function MedicamentosListPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="vault-regulatory-dialog-title"
-              className="max-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-max(2rem,env(safe-area-inset-bottom)))] w-full max-w-[380px] overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border/60 bg-surface-raised p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
+              className="vault-r3-regulatory-height w-full max-w-[380px] overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border/60 bg-surface-raised p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
               style={{
                 boxShadow:
                   `0 20px 60px rgba(0,0,0,.45), inset 3px 0 0 ${selectedRegulatory.accent}`,

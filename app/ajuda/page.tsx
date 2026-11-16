@@ -10,11 +10,15 @@ const HelpTopicGuide = dynamic(() => import("@/components/help/HelpTopicGuide").
 
 export default function HelpPage() {
   const router = useRouter();
+  const [returnTo, setReturnTo] = useState("/mais");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<HelpTopic | null>(null);
   const topics = useMemo(() => searchHelpTopics(query), [query]);
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("topico")?.trim();
+    const params=new URLSearchParams(window.location.search);
+    const requested=params.get("return_to");
+    if(requested && requested.startsWith("/") && !requested.startsWith("//") && !requested.includes("\\") && !/[\r\n]/.test(requested))setReturnTo(requested);
+    const id = params.get("topico")?.trim();
     if (!id || id.length > 64) return;
     const topic = helpTopics.find(entry => entry.id === id);
     if (topic) setSelected(topic);
@@ -22,7 +26,7 @@ export default function HelpPage() {
   return (
     <main className="mx-auto min-h-screen max-w-2xl space-y-4 px-4 pb-32 pt-5 header-safe-top text-ink-primary">
       <header className="flex items-center gap-3">
-        <button type="button" onClick={() => router.push("/mais")} aria-label="Voltar para Mais" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><ArrowLeft size={20} /></button>
+        <button type="button" onClick={() => router.push(returnTo)} aria-label="Voltar à origem da ajuda" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><ArrowLeft size={20} /></button>
         <div><h1 className="text-xl font-semibold">Ajuda e guias</h1><p className="mt-1 text-xs text-ink-muted">Descubra como organizar seu cuidado no Vault.</p></div>
       </header>
       <label className="flex min-h-12 items-center gap-2 rounded-2xl border border-surface-border bg-surface px-3 focus-within:border-emerald-400/50">

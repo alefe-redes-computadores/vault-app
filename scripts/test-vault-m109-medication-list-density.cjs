@@ -28,7 +28,7 @@ const hook = read(paths[4]);
 const fingerprint = read(paths[5]);
 const regulatory = read(paths[6]);
 
-assert(page.includes('className="min-h-0"'), "cards não devem manter altura mínima artificial");
+assert(page.includes('className={compactCards ? "min-h-[108px]" : "min-h-[134px]"}') && page.includes('actionLayoutM150P3.primary'), "cards não devem manter altura mínima artificial");
 assert(page.includes('railSize="label"') && page.includes('[writing-mode:vertical-rl]') && page.includes('Abrir classificação:') && page.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)') && page.includes('aria-label={`Ver classificação da receita:'), "faixa regulatória opt-in permanece informativa e acessível");
 assert(page.includes('Ver classificação da receita:') && page.includes('medicationRegulatoryShortLabel'), "autoridade regulatória permanece acessível e abreviada");
 assert(card.includes('railSize?: "standard" | "slim" | "label"') && card.includes('railSize === "slim" ? "w-4"'), "faixa fina é opt-in e não altera outros cards");

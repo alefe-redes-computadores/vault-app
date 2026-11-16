@@ -31,22 +31,28 @@ ok("tarja regulatória é lateral, textual e clicável", () => {
   assert.doesNotMatch(medications, />Fonte confirmada</);
 });
 ok("compacto preserva princípio ativo, laboratório e origem", () => {
-  assert.match(medications, /compactCards && \(activeIngredient \|\| latestManufacturer/);
-  assert.match(medications, /\[activeIngredient, latestManufacturer \|\| med\.laboratorio_etiqueta/);
+  assert.match(medications, /data-vault-compact-medication-meta/);
+  assert.match(medications, /activeIngredient && <span/);
+  assert.match(medications, /latestManufacturer \|\| med\.laboratorio_etiqueta/);
+  assert.match(medications, /openMedicationContextP7R3\("manufacturer"\)/);
+  assert.match(medications, /openMedicationContextP7R3\("origin"\)/);
 });
 ok("saldo vazio não cria equivalência visual redundante", () => {
   assert.match(operational, /redundantEmptyDetail/);
   assert.match(operational, /!redundantEmptyDetail/);
 });
 ok("rotina recupera contexto visual sem recalcular autoridade", () => {
-  assert.match(hero, /Clock3/);
-  assert.match(hero, /contextLabel/);
-  assert.match(hero, /line-clamp-2/);
+  assert.match(hero, /\{title\}/);
+  assert.match(hero, /\{description\}/);
+  assert.match(hero, /role="progressbar"/);
+  assert.doesNotMatch(hero, /contextLabel &&/);
+  assert.match(home, /routineContextP7R3/);
 });
 ok("agenda mostra três retiradas ricas e ícones relacionais", () => {
   assert.match(home, /retiradasAgendaM147\.slice\(0, 3\)/);
-  assert.match(home, /isSusWithdrawal \? <Landmark/);
-  assert.match(home, /isPurchasedWithdrawal \? <Store/);
+  assert.match(home, /medicamentoLigado \? <MedicationFormatIcon formato=\{medicamentoLigado\.formato\}/);
+  assert.match(home, /isSusWithdrawal \? "Retirada programada no SUS"/);
+  assert.match(home, /isPurchasedWithdrawal \? "Retirada em farmácia \/ compra"/);
   assert.match(home, /Ver mais \{retiradasAgendaM147\.length - 3\} na Agenda/);
 });
 ok("atenção usa superfície neutra e entidade sem banho monocromático", () => {

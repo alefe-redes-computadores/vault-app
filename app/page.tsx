@@ -105,6 +105,8 @@ import { HomeEssentialToggleM118 } from "@/components/home/HomeEssentialToggleM1
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { nextHomeRoutineDoseP71 } from "@/lib/home/next-routine-dose-p71";
+import { routineNarrativeP7R3 } from "@/lib/home/routine-narrative-p7r3";
+import { HomeActionNowCardP7R3 } from "@/components/home/HomeActionNowCardP7R3";
 import { countHomeTodayAppointments } from "@/lib/home/appointment-metrics";
 import { selectHomeDayEvents } from "@/lib/home/appointment-day-selection";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
@@ -583,8 +585,8 @@ export default function HomePage() {
       data-vault-withdrawal-relational-card
       className="flex min-h-[78px] w-full items-center justify-between gap-3 rounded-[18px] border border-emerald-300/15 bg-gradient-to-r from-emerald-300/[.045] to-surface/65 px-3 py-2.5 text-left shadow-sm transition-colors active:bg-surface-raised/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"
       style={treatmentAccent ? { borderLeftWidth: 3, borderLeftColor: treatmentAccent } : undefined}>
-      <span className={`grid size-10 shrink-0 place-items-center rounded-xl border ${isSusWithdrawal ? "border-amber-300/15 bg-amber-300/[.07] text-amber-300" : isPurchasedWithdrawal ? "border-cyan-300/15 bg-cyan-300/[.07] text-cyan-300" : "border-emerald-300/15 bg-emerald-300/[.065] text-emerald-200"}`} aria-hidden="true">
-        {isSusWithdrawal ? <Landmark size={17}/> : isPurchasedWithdrawal ? <Store size={17}/> : usaGotas ? <Droplets size={17}/> : <Pill size={17}/>}
+      <span className={`grid size-10 shrink-0 place-items-center rounded-xl border ${medicamentoLigado ? "border-surface-border/40 bg-surface-raised/45" : "border-emerald-300/15 bg-emerald-300/[.065] text-emerald-200"}`} aria-hidden="true">
+        {medicamentoLigado ? <MedicationFormatIcon formato={medicamentoLigado.formato} cores={medicamentoLigado.cores} size={27}/> : <Pill size={17}/>}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold text-ink-primary">{medicamentoNome || "Medicamento não identificado"}</span>
@@ -690,14 +692,22 @@ export default function HomePage() {
     [documents, activePersonId]
   );
 
-  const operationalAlerts = useMemo<DashboardAlert[]>(
-    () => projectHomeDashboardAlerts(healthInsights, documentInsights, {
-      getLevel: mapUrgenciaToAlertLevel,
-      getIcon: getAlertIcon,
-      getColor: alertLevelColor,
-    }),
-    [healthInsights, documentInsights]
-  );
+  const operationalAlerts = useMemo<DashboardAlert[]>(() => {
+    const base = projectHomeDashboardAlerts(healthInsights, documentInsights, {
+      getLevel: mapUrgenciaToAlertLevel, getIcon: getAlertIcon, getColor: alertLevelColor,
+    });
+    return base.map(alert=>{
+      if(alert.kind==="consulta")return {...alert,icon:<Stethoscope size={18} className="text-sky-300"/>};
+      if(!["estoque","receita","sus"].includes(alert.kind))return alert;
+      const evidence=healthInsights.find(item=>item.id===alert.id);
+      if(!evidence?.entidadeId)return alert;
+      const event=retiradas.find(row=>row.id===evidence.entidadeId && row.user_id===user?.id && row.person_id===activePersonId);
+      const medId=event?.medicamento_id || (evidence.link.startsWith("/saude/medicamentos/detalhes?")?evidence.entidadeId:null);
+      const med=medId ? medicamentosById.get(medId) : null;
+      if(!med || med.user_id!==user?.id || med.person_id!==activePersonId)return alert;
+      return {...alert,icon:<MedicationFormatIcon formato={med.formato} cores={med.cores} size={26}/>};
+    });
+  },[healthInsights,documentInsights,retiradas,medicamentosById,user?.id,activePersonId]);
 
   /*
    * Alertas imediatos continuam no bloco Atenção.
@@ -916,6 +926,11 @@ export default function HomePage() {
       ]
     );
 
+  const routineContextP7R3 = routineNarrativeP7R3({
+    scheduled:totalDosesPlanejadasHoje, completed:dosesTomadasDaRotinaHoje,
+    overdue:dosesPendentesAtrasadas.filter(item=>item.diaLabel==="Hoje" && medicamentosById.get(item.medicamentoId)?.tipo_uso==="continuo").length,
+    localHour:Number(horaAtual.slice(0,2)),
+  });
   // M130: a decisão principal não volta como um segundo cartão com o mesmo
   // destino. A autoridade e a fila continuam intactas; muda apenas a projeção
   // compacta da Home.
@@ -1313,6 +1328,13 @@ export default function HomePage() {
               HOJE
           =================================================== */}
 
+          {/* P7 R3: decision/action and routine readout are different responsibilities. */}
+          { (dosesPendentesAtrasadas.length>0 || ["Ação agora","Atenção ao tratamento","Próxima etapa"].includes(resumoContextual.eyebrow)) && (
+            <HomeActionNowCardP7R3 title={resumoContextual.title} description={resumoContextual.description}
+              eyebrow={resumoContextual.eyebrow} urgent={dosesPendentesAtrasadas.length>0 || primaryCareCommand?.lane==="now" || primaryMedicationCareOpportunity?.level==="urgent"}
+              actionLabel={resumoContextual.href.includes("pending-doses") ? "Revisar doses" : /nova-receita|receita|renova/i.test(resumoContextual.href) ? "Preparar receita" : /retiradas/i.test(resumoContextual.href) ? "Abrir retirada" : /aquis|compra/i.test(resumoContextual.href) ? "Registrar aquisição" : "Abrir detalhes da ação"}
+              onAction={()=>{trigger("vibrate");if(resumoContextual.href==="/?open=pending-doses")setModalPendenciasAberto(true);else router.push(resumoContextual.href);}}/>
+          )}
           <motion.section
             id="home-agora"
             initial={{
@@ -1330,10 +1352,10 @@ export default function HomePage() {
             className="relative overflow-hidden rounded-[22px] border border-surface-border bg-gradient-to-br from-surface-raised/50 via-surface to-surface shadow-sm"
           >
             {/* P14 R3: hero puramente visual isolado; contadores continuam na Home. */}
-            <HomeDailyHero eyebrow="Rotina de hoje" title={resumoContextual.title}
-              description={resumoContextual.description} color={resumoContextual.color}
+            <HomeDailyHero eyebrow="Rotina de hoje" title={routineContextP7R3.title}
+              description={routineContextP7R3.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
-              progress={progressoDosesHoje} contextLabel={contextoRotinaP71}
+              progress={progressoDosesHoje}
               onOpen={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
               onOpenToday={() => { trigger("vibrate"); router.push("/hoje?focus=doses"); }}
               indicators={<HomeQuickMetrics

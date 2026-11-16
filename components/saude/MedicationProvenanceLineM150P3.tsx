@@ -2,10 +2,11 @@
 import { medicationListProvenanceM150P3, type ListProvenanceInputM150P3 } from "@/lib/medications/medication-list-provenance-m150-p3";
 import { medicationProvenanceChipsP5P4 } from "@/lib/medications/medication-provenance-chips-p5-p4";
 import { MedicationProvenanceBadge } from "@/components/saude/MedicationProvenanceBadge";
+import { Info } from "lucide-react";
 
 /** One manufacturer chip plus separate acquisition and scheduled-dose chips.
  * Origin is a cadastro/historical clue, never proof of present physical supply. */
-export function MedicationProvenanceLineM150P3(props: ListProvenanceInputM150P3) {
+export function MedicationProvenanceLineM150P3(props: ListProvenanceInputM150P3 & {onContext?:(kind:"manufacturer"|"origin"|"dose")=>void}) {
   const summary = medicationListProvenanceM150P3(props);
   if (!summary.text) return null;
   const latest = (props.latestManufacturer || "").trim();
@@ -19,8 +20,8 @@ export function MedicationProvenanceLineM150P3(props: ListProvenanceInputM150P3)
       : 'border-surface-border/70 bg-surface-raised/50 text-ink-secondary';
   return <span data-medication-provenance="compact" title={summary.evidence}
     aria-label={summary.evidence} className="flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] font-medium leading-snug text-ink-secondary">
-    {manufacturer ? <MedicationProvenanceBadge name={manufacturer} source={latest ? "ultima_aquisicao" : "etiqueta"} /> : null}
-    {chips.origin ? <span data-acquisition-origin={chips.origin.tone} className={`inline-flex min-h-6 max-w-full items-center rounded-full border px-2.5 py-0.5 font-semibold ${originTone}`} title={summary.evidence}>{chips.origin.label}</span> : null}
-    {chips.dose ? <span data-dose-kind="scheduled" className="inline-flex min-h-6 max-w-full items-center rounded-full border border-orange-400/25 bg-orange-400/[.07] px-2.5 py-0.5 font-semibold text-orange-300" title="Dose cadastrada; não comprova tomada">{chips.dose.label}</span> : null}
+    {manufacturer ? <button type="button" onClick={e=>{e.stopPropagation();props.onContext?.("manufacturer");}} className="inline-flex min-h-8 items-center gap-1 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice" aria-label={`Ver contexto do fabricante ${manufacturer}`}><MedicationProvenanceBadge name={manufacturer} source={latest ? "ultima_aquisicao" : "etiqueta"} /><Info size={11}/></button> : null}
+    {chips.origin ? <button type="button" onClick={e=>{e.stopPropagation();props.onContext?.("origin");}} data-acquisition-origin={chips.origin.tone} className={`inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border px-2.5 py-0.5 font-semibold ${originTone}`} title={summary.evidence}>{chips.origin.label}<Info size={11}/></button> : null}
+    {chips.dose ? <button type="button" onClick={e=>{e.stopPropagation();props.onContext?.("dose");}} data-dose-kind="scheduled" className="inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border border-orange-400/25 bg-orange-400/[.07] px-2.5 py-0.5 font-semibold text-orange-300" title="Dose cadastrada; não comprova tomada">{chips.dose.label}<Info size={11}/></button> : null}
   </span>;
 }

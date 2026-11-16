@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, SlidersHorizontal, Pill, Zap, AlertTriangle, CalendarDays, ShieldCheck, CircleOff, LayoutGrid } from "lucide-react";
 
 export type MedicationFilterValue =
   | "todos"
@@ -33,6 +33,8 @@ export function MedicationFilterBar({ value, onChange }: {
   value: MedicationFilterValue;
   onChange: (next: MedicationFilterValue) => void;
 }) {
+  const FLAT_OPTIONS = [...PRIMARY, ...ADDITIONAL] as const;
+  const FLAT_ICONS = {todos:LayoutGrid,atencao:AlertTriangle,sos:Zap,continuos:Pill,temporarios:CalendarDays,controlados:ShieldCheck,encerrados:CircleOff};
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -71,7 +73,12 @@ export function MedicationFilterBar({ value, onChange }: {
         : "border-surface-border/50 bg-surface-raised/35 text-ink-muted"
     }`;
   return (
-    <section className="border-b border-surface-border/25 bg-surface/20 px-4 py-2" aria-label="Filtros de medicamentos">
+    <section className="px-1 py-1" aria-label="Filtros de medicamentos">
+      <div data-vault-r3-flat-filters className="grid grid-cols-2 gap-1.5 min-[390px]:grid-cols-3">
+        {FLAT_OPTIONS.map(([key,label])=>{const Icon=FLAT_ICONS[key];return <button key={key} type="button" aria-pressed={value===key} onClick={()=>choose(key)}
+          className={`${controlClass(value===key,key==="atencao")} min-w-0 justify-start gap-1.5 px-2 text-left`}><Icon size={14} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{label}</span></button>;})}
+      </div>
+      <div className="hidden" aria-hidden="true">
       <div className="flex min-w-0 items-center gap-1.5">
         {PRIMARY.map(([key, label]) => (
           <button key={key} type="button" aria-pressed={value === key}
@@ -104,6 +111,7 @@ export function MedicationFilterBar({ value, onChange }: {
         </div>
       )}
       {extra && !expanded && <p className="sr-only" role="status">Filtro selecionado: {extra[1]}</p>}
+      </div>
     </section>
   );
 }

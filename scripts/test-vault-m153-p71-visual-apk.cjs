@@ -10,7 +10,7 @@ const home=read('app/page.tsx'),med=read('app/saude/medicamentos/page.tsx'),hero
 assert(home.includes('retirada.medicamento_nome || medicamentoLigado?.nome')&&home.includes('retiradasAgendaM147.slice(0, 3).map(renderRetiradaAgendaP7)')&&home.includes('retiradasAgendaM147.length > 3')&&home.includes('Ver mais {retiradasAgendaM147.length - 3} na Agenda')&&home.includes('router.push("/saude/retiradas?return_to=%2F")'));
 assert(home.includes('setMostrarTodosAlertas(false)')&&home.includes('HomeAttentionRail alerts={unifiedAlerts}'));
 assert(home.includes('Acompanhamento contextual do Brain')&&home.includes('Explorar observações no VAULT Brain')&&home.includes('!quantityAlreadyInBrain'));
-assert(hero.includes('contextLabel &&')&&home.includes('proximaDoseContinuosP71'));
+assert(hero.includes('{title}')&&hero.includes('{description}')&&!hero.includes('contextLabel &&')&&home.includes('routineContextP7R3'));
 assert(command.includes('Retiradas e fornecimento')&&command.includes('<HomeSupplyAccessTiles')&&supply.includes('withdrawalPath')&&supply.includes('supplyPath'));
 assert(!med.includes('min-h-[200px]')&&med.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'));
 assert(med.includes('VAULT_M144_LIST_ENTRY')&&med.includes('Mais opções e ajuda')&&med.includes('MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>'));

@@ -370,3 +370,7 @@ body:has([role="dialog"][aria-modal="true"]) .vault-bottom-nav {
 
 /* P6: Modo Essencial controla gavetas secundarias sem mudar autoridade clinica. */
 html[data-vault-home-essential-p6="1"] [data-vault-home-optional-p6] { display: none !important; }
+
+/* P7 R3: modal owns the inset; pages do not assume the global top inset. */
+.vault-r3-dialog-top-inset { padding-top: max(1rem, env(safe-area-inset-top, 0px)); }
+.vault-r3-regulatory-height { max-height: calc(100dvh - max(2rem, env(safe-area-inset-top, 0px)) - max(2rem, env(safe-area-inset-bottom, 0px))); }

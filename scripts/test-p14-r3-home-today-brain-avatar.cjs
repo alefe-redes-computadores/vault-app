@@ -19,7 +19,7 @@ for (const path of files) {
 }
 const home=read(files[0]),today=read(files[1]),hero=read(files[2]),pulse=read(files[3]),metrics=read(files[4]),todayAction=read(files[5]),readiness=read(files[6]),avatar=read(files[7]),briefSrc=read(files[8]);
 check(home.includes('import { HomeDailyHero }')&&home.includes('<HomeDailyHero eyebrow="Rotina de hoje"'),'Home usa componente extraído em vez de render duplicado');
-for (const field of ['title={resumoContextual.title}','description={resumoContextual.description}','completed={dosesTomadasDaRotinaHoje}','scheduled={totalDosesPlanejadasHoje}','progress={progressoDosesHoje}']) check(home.includes(field),'Home preserva origem canônica '+field);
+for (const field of ['title={routineContextP7R3.title}','description={routineContextP7R3.description}','completed={dosesTomadasDaRotinaHoje}','scheduled={totalDosesPlanejadasHoje}','progress={progressoDosesHoje}']) check(home.includes(field),'Home preserva origem canônica '+field);
 check(hero.includes('role="progressbar"')&&hero.includes('safeProgress')&&hero.includes('onOpen')&&hero.includes('Rotina programada'),'hero só apresenta progresso e navega');
 check(home.includes('<HomeQuickMetrics')&&home.includes('pendingDoses={dosesPendentesAtrasadas.length}')&&home.includes('extrasTaken={Math.max(0, dosesTomadasHoje - dosesTomadasDaRotinaHoje)}'),'métricas e SOS permanecem intactos');
 check(metrics.includes('onOpenPending')&&metrics.includes('min-h-[58px]'),'atalho dose continua acessível');
