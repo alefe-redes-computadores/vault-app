@@ -4,6 +4,7 @@ import { formatQuantidade } from "@/lib/health-intelligence/medication-detail-pr
 import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-presentation";
 
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction, activeScheduledWithdrawalP5P4 } from "@/lib/medication-access-action";
+import { classifyWithdrawalLinkP71B } from "@/lib/medications/withdrawal-link-p71b";
 import { medicationBrainActionWithVerifiedWithdrawalM150P4 } from "@/lib/health-intelligence/medication-withdrawal-brain-authority-m150-p4";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
@@ -1136,10 +1137,11 @@ export default function MedicamentosListPage() {
       // P7: a closed, exact-ID, same-owner withdrawal cannot keep a green actionable CTA.
       // A conflicting acquisition alone is NOT proof of closure: it remains "Conferir vínculo".
       const linkedWithdrawalIdP7 = /\/retiradas\/detalhes\?id=([^&#]+)/.exec(careAction?.href || "")?.[1];
+      const withdrawalLinkP71B = classifyWithdrawalLinkP71B(careAction?.href, med, retiradas);
       const exactClosedWithdrawalP7 = Boolean(linkedWithdrawalIdP7 && retiradas.some(row =>
-        row.id === decodeURIComponent(linkedWithdrawalIdP7) &&
+        row.id === withdrawalLinkP71B.eventId &&
         row.user_id === med.user_id && row.person_id === med.person_id &&
-        !activeScheduledWithdrawalP5P4(row)
+        !activeScheduledWithdrawalP5P4(row) && withdrawalLinkP71B.state === "completed"
       ));
       // M150 P3: keep original business handlers; only classify presentation.
       const quickActionButtonM150P3 = !isSuspenso && canQuickDose && quickDoseLabel ? (
@@ -1178,11 +1180,12 @@ export default function MedicamentosListPage() {
                       event.preventDefault();
                       event.stopPropagation();
                       trigger("vibrate");
-                      router.push(careAction.href);
+                      if (withdrawalLinkP71B.state === "review") router.push("/saude/retiradas");
+                      else router.push(careAction.href);
                     }}
                   >
                     <AlertTriangle size={12} className="shrink-0" />
-                    <span className="min-w-0 line-clamp-1 break-words">{contextualActionLabel}</span>
+                    <span className="min-w-0 line-clamp-1 break-words">{withdrawalLinkP71B.state === "review" ? "Conferir vínculo" : contextualActionLabel}</span>
                     <span className="sr-only">{careAction.label}</span>
                   </button>
                 ) : null;
@@ -1290,7 +1293,11 @@ export default function MedicamentosListPage() {
                     {med.dosagem}
                   </span>
                 )}
-                {(regulatoryProfile || receita) && <span className="shrink-0 rounded-md border border-surface-border/50 bg-surface-raised/30 px-1.5 py-0.5 text-[10px] font-bold text-ink-secondary" title={regulatoryMeaning} aria-label={`Classificação informada: ${medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}`}>{medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>}
+                {(regulatoryProfile || receita) && <span className={`inline-flex max-w-full shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold ${regulatoryProfile?.verified ? regulatorySurface.badgeClass : "border-slate-400/25 bg-slate-400/[0.06] text-slate-200"}`} title={regulatoryMeaning} aria-label={`Classificação informada: ${medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}`}>
+                  <Info size={12} className="shrink-0" aria-hidden="true"/>
+                  <span className="truncate">{medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
+                  <span className="text-[9px] font-medium opacity-80">{regulatoryProfile?.verified ? "Fonte confirmada" : "Conferir"}</span>
+                </span>}
                 <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-violet-400/20 bg-violet-400/10 text-violet-300" : "border-emerald-300/20 bg-emerald-300/[.055] text-emerald-200"}`} aria-label="Regime de uso cadastrado">
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
                 </span>
@@ -1601,8 +1608,14 @@ export default function MedicamentosListPage() {
             </div>
             <details className="group relative min-w-11 rounded-xl border border-surface-border/55 bg-surface-raised/30" data-vault-filters-collapsed-p7 data-vault-filters-collapsed-p6>
               <summary aria-label="Abrir filtros de medicamentos" title="Filtrar medicamentos" className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-1 rounded-xl px-2 text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><SlidersHorizontal size={18}/>{medicationFilter!=="todos"&&<span aria-label="Filtro ativo" className="size-1.5 rounded-full bg-amber-300"/>}</summary>
-              <div className="mt-1 w-full min-w-[240px] space-y-2 border-t border-surface-border/35 p-2 text-xs text-ink-secondary">
+              <div className="mt-1 max-h-[min(68dvh,520px)] w-full min-w-[240px] space-y-2 overflow-y-auto overscroll-contain border-t border-surface-border/35 p-2 text-xs text-ink-secondary" aria-label="Filtros e opções da lista">
                 <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
+
+              </div>
+            </details>
+          </div>
+          {/* M153 P7.1-B: ferramentas acessíveis sem ficarem aninhadas no filtro. */}
+          <div className="mt-1.5" aria-label="Ferramentas complementares da lista">
                 <details className="group rounded-xl border border-surface-border/40 bg-surface/35 px-2" aria-label="Mais opções da lista">
                   <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-ink-secondary">Mais opções e ajuda <ChevronDown size={14} className="transition-transform group-open:rotate-180"/></summary>
                   <div className="space-y-1.5 border-t border-surface-border/35 pb-2 pt-2">
@@ -1623,8 +1636,6 @@ export default function MedicamentosListPage() {
                 </ClinicalDisclosure>
                   </div>
                 </details>
-              </div>
-            </details>
           </div>
         </section>
 

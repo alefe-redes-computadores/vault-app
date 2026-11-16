@@ -32,7 +32,7 @@ export const HomeDailyHero = memo(function HomeDailyHero({
             <span className="block h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-[width] motion-reduce:transition-none" style={{width:`${safeProgress}%`}}/>
           </span>
           {contextLabel && <span className="mt-2 block truncate text-[11px] font-medium text-emerald-200" title={contextLabel}>{contextLabel}</span>}
-          <span className="sr-only" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)} Home: horários de contínuos. Hoje: doses programadas da data podem seguir recorte diferente.</span>
+          <span className="sr-only" role="note">{homeRoutineSummaryNote(scheduled, safeCompleted)} Home: horários de contínuos. Hoje e Medicamentos podem incluir outros tipos de doses programadas. Estes totais têm critérios distintos.</span>
         </span>
         <ArrowUpRight size={18} className="shrink-0 text-emerald-300" aria-hidden="true"/>
       </button>

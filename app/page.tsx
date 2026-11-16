@@ -918,11 +918,10 @@ export default function HomePage() {
   );
   const duplicatePrimaryWithdrawalP5 = Boolean(primaryMedicationCareOpportunity && continuationWithdrawalAlreadyVisibleP5(primaryMedicationCareOpportunity.actionHref, retiradasAgendaM147));
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
+  // Mesmo ID de evidência = uma única superfície; medicamentos com títulos parecidos
+  // podem representar fatos distintos e não devem ser silenciados por semelhança textual.
   const quantityAlreadyInBrain = Boolean(quantityFollowUpInsight && longitudinalHighlights.some(item =>
-    item.id === quantityFollowUpInsight.id ||
-    (item.entidadeTipo === "medicamento" && Boolean(item.entidadeId) && item.entidadeId === quantityFollowUpInsight.entidadeId &&
-      /quantidade confirmada fora do padrão/i.test(item.titulo) &&
-      /quantidade confirmada fora do padrão/i.test(quantityFollowUpInsight.titulo))
+    item.id === quantityFollowUpInsight.id
   ));
 
   // ==========================================================
@@ -1596,35 +1595,13 @@ export default function HomePage() {
             </motion.section>
           )}
 
-          {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
-              Não gera nova interpretação nem substitui alertas de segurança. */}
-          {!quantityAlreadyInBrain && quantityFollowUpInsight && (
-            <details className="group overflow-hidden rounded-[18px] border border-amber-300/20 bg-gradient-to-br from-amber-400/[.045] to-surface" aria-label="Acompanhamento contextual do Brain">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><AlertCircle size={15}/></span>
-                <span className="min-w-0 flex-1"><strong className="block text-xs font-bold text-ink-primary">Brain · acompanhamento do registro</strong><span className="block truncate text-[11px] text-amber-200">{quantityFollowUpInsight.titulo}</span></span>
-                <span className="shrink-0 rounded-lg bg-amber-300/10 px-2 py-1 text-[10px] font-semibold text-amber-200">{quantityFollowUpInsight.gravidadeSeguranca === "critica" ? "Prioritário" : "Conferir"}</span>
-                <ChevronRight size={14} className="shrink-0 text-ink-muted transition-transform group-open:rotate-90"/>
-              </summary>
-              <div className="border-t border-amber-300/10 p-2">
-                <HomeDoseQuantityFollowUp
-                  insight={quantityFollowUpInsight}
-                  feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
-                  nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
-                  onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
-                  onNavigate={href => { trigger("vibrate"); router.push(href); }}
-                />
-                <button type="button" onClick={()=>{trigger("vibrate");router.push("/inteligencia/alertas");}} className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-violet-300/20 bg-violet-300/[.055] px-3 text-xs font-semibold text-violet-200"><Activity size={14}/>Explorar observações no VAULT Brain</button>
-              </div>
-            </details>
-          )}
-
           {/* VAULT_BRAIN_V5_4_R2_HOME_INTELLIGENCE_RAIL */}
                     {/* ===================================================
               INTELIGÊNCIA DE SAÚDE — PULSO + RAIL PRIORIZADO
           =================================================== */}
 
           {(longitudinalHighlights.length > 0 ||
+            Boolean(!quantityAlreadyInBrain && quantityFollowUpInsight) ||
             (!brainV5Pulse.isLoading &&
               (brainV5Pulse.counters.active > 0 || brainV5Pulse.counters.new > 0))) && (
             <motion.section
@@ -1706,6 +1683,29 @@ export default function HomePage() {
                   {" cobertura"}
                 </button>
               </div>
+
+          {/* M93: o mesmo insight de quantidade realmente confirmada, com consulta da pessoa ativa.
+              Não gera nova interpretação nem substitui alertas de segurança. */}
+          {!quantityAlreadyInBrain && quantityFollowUpInsight && (
+            <details className="group overflow-hidden rounded-[18px] border border-amber-300/20 bg-gradient-to-br from-amber-400/[.045] to-surface" aria-label="Acompanhamento contextual do Brain">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><AlertCircle size={15}/></span>
+                <span className="min-w-0 flex-1"><strong className="block text-xs font-bold text-ink-primary">Brain · acompanhamento do registro</strong><span className="block truncate text-[11px] text-amber-200">{quantityFollowUpInsight.titulo}</span></span>
+                <span className="shrink-0 rounded-lg bg-amber-300/10 px-2 py-1 text-[10px] font-semibold text-amber-200">{quantityFollowUpInsight.gravidadeSeguranca === "critica" ? "Prioritário" : "Conferir"}</span>
+                <ChevronRight size={14} className="shrink-0 text-ink-muted transition-transform group-open:rotate-90"/>
+              </summary>
+              <div className="border-t border-amber-300/10 p-2">
+                <HomeDoseQuantityFollowUp
+                  insight={quantityFollowUpInsight}
+                  feedback={healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight?.id)}
+                  nextConsultationDate={consultas.filter(item => item.status === "agendada" && item.data && item.data >= hoje).map(item => item.data!).sort()[0] ?? null}
+                  onMarkChecked={async insight => { await healthIntelligence.sendExperienceFeedback(insight, "already_knew"); }}
+                  onNavigate={href => { trigger("vibrate"); router.push(href); }}
+                />
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/inteligencia/alertas");}} className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-violet-300/20 bg-violet-300/[.055] px-3 text-xs font-semibold text-violet-200"><Activity size={14}/>Explorar observações no VAULT Brain</button>
+              </div>
+            </details>
+          )}
 
               {/* VAULT_V321_HOME_EVIDENCE: urgent evidence defaults open; routine analysis stays optional. */}
               {/* M10_HOME_FOCUS: Brain abre em prioridade se não houver trilho operacional; não duplica a atenção. */}
