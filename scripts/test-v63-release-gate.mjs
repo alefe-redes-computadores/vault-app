@@ -480,6 +480,7 @@ const contracts = [
   "scripts/test-vault-ci360-p4-pharmalens.cjs",
   "scripts/test-vault-m153-p6-visual-recovery.cjs",
   "scripts/test-vault-m153-p6-visual-continuity.cjs",
+  "scripts/test-vault-m153-p7-relacional-r2.cjs",
   "scripts/test-vault-m153-p6-r5-regression.cjs",
 ];
 

@@ -57,8 +57,8 @@ ok(
 );
 
 ok(
-  page.includes("max-w-[330px]"),
-  "diálogo limitado a 330px"
+  page.includes("max-w-[380px]") && page.includes("overscroll-contain") && page.includes("safe-area-inset-bottom"),
+  "diálogo regulatório responsivo, rolável e com Safe Area"
 );
 
 ok(

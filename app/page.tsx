@@ -2135,7 +2135,7 @@ export default function HomePage() {
               </button>
             ) : (
               <div
-                className="grid grid-cols-2 gap-2.5"
+                className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2"
               >
                 {tratamentos
                   .slice(

@@ -75,7 +75,7 @@ export function TodayFilterPanel({ status, period, appointment, showResolved, is
       <span>Filtros</span>
       {activeCount > 0 && <span className="grid size-5 place-items-center rounded-full bg-ice/20 font-mono text-[10px] tabular-nums">{activeCount}</span>}
     </summary>
-    <div className="absolute right-0 top-[calc(100%+8px)] z-40 max-h-[min(66dvh,460px)] w-[min(88vw,360px)] space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-surface-border bg-surface p-3.5 pb-[max(14px,env(safe-area-inset-bottom))] shadow-2xl">
+    <div className="fixed inset-x-3 top-[max(5rem,env(safe-area-inset-top))] z-40 mx-auto max-h-[min(72dvh,520px)] w-auto max-w-[360px] space-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-surface-border bg-surface p-3.5 pb-[max(14px,env(safe-area-inset-bottom))] shadow-2xl min-[600px]:absolute min-[600px]:inset-x-auto min-[600px]:right-0 min-[600px]:top-[calc(100%+8px)] min-[600px]:w-[360px]">
       <div className="flex items-center justify-between gap-2">
         <strong className="text-sm font-semibold text-ink-primary">Personalizar visualização</strong>
         <button type="button" onClick={() => { onReset(); }} className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs font-semibold text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><RotateCcw size={13} /> Limpar</button>

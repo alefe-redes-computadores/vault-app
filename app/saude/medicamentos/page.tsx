@@ -38,6 +38,7 @@ import {
 import {
   useRouter,
 } from "next/navigation";
+import { useLiveQuery } from "dexie-react-hooks";
 
 import {
   AlertTriangle,
@@ -65,6 +66,9 @@ import {
 import {
   useMedicamentos,
 } from "@/hooks/useMedicamentos";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/db";
+import { indexMedicationTreatmentsP7, safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 
 import {
   useDoseLogs,
@@ -206,6 +210,7 @@ function getMedicamentoIconComponent(
 
 export default function MedicamentosListPage() {
   const healthIntelligence = useSharedHealthIntelligence();
+  const { user: treatmentOwner } = useAuth();
   const { retiradas, isLoading: withdrawalsLoading } = useRetiradas();
   const { renovacoes = [], isLoading: renewalsLoading } = useRenovacoes();
   // P14 R5: conta + pessoa + medicamento — nunca por ID isolado.
@@ -230,6 +235,18 @@ export default function MedicamentosListPage() {
     activePersonId,
   } =
     useActivePersonId();
+
+  // M153 P7 R2: consulta reativa de tratamentos explicitamente vinculados ao titular.
+  const linkedTreatmentsP7 = useLiveQuery(async () => {
+    if (!treatmentOwner?.id || !activePersonId) return [];
+    return db.tratamentos.where("[user_id+person_id]").equals([treatmentOwner.id, activePersonId]).toArray();
+  }, [treatmentOwner?.id, activePersonId], []);
+  const treatmentsByMedication = useMemo(() => indexMedicationTreatmentsP7({
+    userId: treatmentOwner?.id,
+    personId: activePersonId,
+    medications: medicamentosTodas || [],
+    treatments: linkedTreatmentsP7 || [],
+  }), [treatmentOwner?.id, activePersonId, medicamentosTodas, linkedTreatmentsP7]);
 
   // M149: virada de dia e retorno do APK sincronizam o dia exibido.
   const hojeString = useLocalDay();
@@ -817,6 +834,9 @@ export default function MedicamentosListPage() {
         isEstoqueCritico,
       } =
         item;
+      const cardTreatments = med.id ? (treatmentsByMedication.get(med.id) || []) : [];
+      const singleTreatment = cardTreatments.length === 1 ? cardTreatments[0] : null;
+      const treatmentColor = singleTreatment ? safeTreatmentColorP7(singleTreatment.cor) : null;
       const isTemporary = med.tipo_uso === "temporario";
       // M147: status administrativo não autoriza CTA primário de uso.
       const isSuspendedSOSM147 = isSOS && med.status === "descontinuado";
@@ -1320,6 +1340,14 @@ export default function MedicamentosListPage() {
                 {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) && <span data-vault-compact-medication-meta className="min-w-0 max-w-full truncate text-[10px] text-ink-muted" title={[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao].filter(Boolean).join(" · ")}>
                   {[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao === "sus" ? "SUS" : med.tipo_aquisicao === "comprado" ? "Comprado" : null].filter(Boolean).join(" · ")}
                 </span>}
+                {cardTreatments.length > 0 && (
+                  <span data-vault-medication-treatment-chip
+                    title={cardTreatments.map(item => item.nome).join(" · ")}
+                    className="max-w-full truncate rounded-md border border-surface-border/60 px-1.5 py-0.5 text-[9px] font-semibold text-ink-secondary"
+                    style={treatmentColor ? {borderColor: `${treatmentColor}55`, backgroundColor: `${treatmentColor}16`, color: treatmentColor} : undefined}>
+                    {singleTreatment ? singleTreatment.nome : `${cardTreatments.length} tratamentos`}
+                  </span>
+                )}
                 {!compactCards && <MedicationProvenanceLineM150P3
                   latestManufacturer={latestManufacturer}
                   declaredManufacturer={med.laboratorio_etiqueta}
@@ -1723,7 +1751,7 @@ export default function MedicamentosListPage() {
         {/* VAULT_REGULATORY_COMPACT_DIALOG_V76_1 */}
         {selectedRegulatory && (
           <div
-            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 px-5 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-black/75 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md min-[480px]:items-center min-[480px]:px-5"
             role="presentation"
             onMouseDown={(event) => {
               if (
@@ -1740,7 +1768,7 @@ export default function MedicamentosListPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="vault-regulatory-dialog-title"
-              className="w-full max-w-[330px] rounded-[22px] border border-surface-border/60 bg-surface-raised p-4 shadow-2xl"
+              className="max-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-max(2rem,env(safe-area-inset-bottom)))] w-full max-w-[380px] overflow-y-auto overscroll-contain rounded-[24px] border border-surface-border/60 bg-surface-raised p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
               style={{
                 boxShadow:
                   `0 20px 60px rgba(0,0,0,.45), inset 3px 0 0 ${selectedRegulatory.accent}`,
