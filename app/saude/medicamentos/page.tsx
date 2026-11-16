@@ -5,6 +5,7 @@ import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-pre
 
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction, activeScheduledWithdrawalP5P4 } from "@/lib/medication-access-action";
 import { classifyWithdrawalLinkP71B } from "@/lib/medications/withdrawal-link-p71b";
+import {withdrawalEvidenceForMedicationP6, withdrawalNavigationEvidenceP6} from "@/lib/health-intelligence/withdrawal-evidence-p6";
 import { medicationBrainActionWithVerifiedWithdrawalM150P4 } from "@/lib/health-intelligence/medication-withdrawal-brain-authority-m150-p4";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
@@ -454,6 +455,9 @@ export default function MedicamentosListPage() {
     }
     return decisions;
   }, [listaBase, renewalsByMedication, scheduledWithdrawals, hojeString]);
+  const withdrawalEvidenceByMedicationP6 = useMemo(() => new Map(
+    listaBase.filter(item=>Boolean(item.med.id)).map(item=>[item.med.id!,withdrawalEvidenceForMedicationP6(item.med,retiradas)] as const)
+  ),[listaBase,retiradas]);
   const brainCareByMedication = useMemo(() => new Map(
     (healthIntelligence.careCommand?.plan.items ?? []).filter(item => item.medicationId).map(item => [item.medicationId!, item])
   ), [healthIntelligence.careCommand]);
@@ -655,9 +659,12 @@ export default function MedicamentosListPage() {
             // M146: a mesma regra executiva alimenta tanto o filtro como o agrupamento.
             const medId = item.med.id || "";
             const brainLane = brainCareByMedication.get(medId)?.lane;
+            const evidenceP6=withdrawalEvidenceByMedicationP6.get(medId);
+            const brainHrefP6=brainCareByMedication.get(medId)?.href;
+            const staleClosedBrainP6=Boolean(evidenceP6&&brainHrefP6&&evidenceP6.active.length===0&&withdrawalNavigationEvidenceP6(brainHrefP6,evidenceP6).kind==="completed");
             const decisionNeedsAttention = medicationCareStageNeedsAttention(careDecisionsByMedication.get(medId)?.stage ?? "stable");
             const reasons = attentionReasonsM143.get(medId) ?? [];
-            const executiveReason = (brainLane === "now" || brainLane === "prepare") &&
+            const executiveReason = !staleClosedBrainP6 && (brainLane === "now" || brainLane === "prepare") &&
               reasons.includes("Prioridade atual do Brain");
             const precisaAcao = decisionNeedsAttention || executiveReason ||
               reasons.some(reason => reason !== "Prioridade atual do Brain");
@@ -670,7 +677,7 @@ export default function MedicamentosListPage() {
               return;
             }
 
-            if (brainCareByMedication.get(item.med.id || "")?.lane === "discuss" || medicationCareStageIsPlanning(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable")) {
+            if ((brainCareByMedication.get(item.med.id || "")?.lane === "discuss" && !staleClosedBrainP6) || medicationCareStageIsPlanning(careDecisionsByMedication.get(item.med.id || "")?.stage ?? "stable")) {
               planejados.push(item);
               return;
             }
@@ -741,6 +748,7 @@ export default function MedicamentosListPage() {
         attentionReasonsM143,
         careDecisionsByMedication,
         brainCareByMedication,
+        withdrawalEvidenceByMedicationP6,
         compareDayM149,
         pendingPriorityP5,
       ]
@@ -1193,6 +1201,8 @@ export default function MedicamentosListPage() {
       // A conflicting acquisition alone is NOT proof of closure: it remains "Conferir vínculo".
       const linkedWithdrawalIdP7 = /\/retiradas\/detalhes\?id=([^&#]+)/.exec(careAction?.href || "")?.[1];
       const withdrawalLinkP71B = classifyWithdrawalLinkP71B(careAction?.href, med, retiradas);
+      const snapshotP6=withdrawalEvidenceByMedicationP6.get(med.id!) ?? withdrawalEvidenceForMedicationP6(med,retiradas);
+      const navigationP6=withdrawalNavigationEvidenceP6(careAction?.href,snapshotP6);
       const exactClosedWithdrawalP7 = Boolean(linkedWithdrawalIdP7 && retiradas.some(row =>
         row.id === withdrawalLinkP71B.eventId &&
         row.user_id === med.user_id && row.person_id === med.person_id &&
@@ -1225,7 +1235,7 @@ export default function MedicamentosListPage() {
                   ><History size={14}/>Registrar uso já ocorrido</button>
                 ) : null;
       const careActionButtonM150P3 = careAction && !exactClosedWithdrawalP7 ? (
-                  <button
+                  navigationP6.kind === "completed" ? null : (<button
                     type="button"
                     className={`inline-flex min-h-10 max-w-full items-center justify-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all active:scale-[0.97] ${/\/retiradas\/(?:detalhes|nova)/.test(careAction.href) ? "border-sky-400/35 bg-sky-400/[.10] text-sky-300" : isRestockDestination(careAction.href, med.id!) ? "border-amber-400/35 bg-amber-400/[.10] text-amber-300" : careActionClass}`}
                     title={withdrawalNeedsLinkReviewP5P4 && /\/retiradas\/detalhes(?:\?|$)/i.test(careAction.href) ? "Existe aquisição SUS registrada após a data prevista. Confira se corresponde a esta retirada antes de criar outra." : careAction.description}
@@ -1235,14 +1245,14 @@ export default function MedicamentosListPage() {
                       event.preventDefault();
                       event.stopPropagation();
                       trigger("vibrate");
-                      if (withdrawalLinkP71B.state === "review") router.push("/saude/retiradas");
+                      if (withdrawalLinkP71B.state === "review" || navigationP6.kind === "review") router.push("/saude/retiradas");
                       else router.push(careAction.href);
                     }}
                   >
                     <AlertTriangle size={12} className="shrink-0" />
                     <span className="min-w-0 line-clamp-1 break-words">{withdrawalLinkP71B.state === "review" ? "Conferir" : compactCareActionLabelR4}</span>
                     <span className="sr-only">{careAction.label}</span>
-                  </button>
+                  </button>)
                 ) : null;
       const stockActionButtonM150P3 = !isSuspenso && med.id && ((stockUnknown || stockNegative) && careAction?.href !== medicationStockCountHref(med.id, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`) ||
                   (stockEmpty && !stockNegative && !isRestockDestination(careAction?.href, med.id))) ? (

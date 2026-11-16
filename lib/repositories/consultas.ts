@@ -33,6 +33,22 @@ type UpdateConsultaInput = Partial<
   >
 >;
 
+/** CI360 P6 — conferencia ANTES da escrita offline e da outbox. */
+async function scopedMedicationIdsP6(selected:readonly string[]|undefined,userId:string,personId:string):Promise<string[]|undefined> {
+  if(selected===undefined)return undefined;
+  if(!Array.isArray(selected)||selected.length>64||new Set(selected).size!==selected.length)
+    throw new Error("Vínculos de medicamentos inválidos ou duplicados.");
+  const checked:string[]=[];
+  for(const id of selected){
+    if(typeof id!=="string"||!id.trim())throw new Error("ID de medicamento inválido.");
+    const med=await db.medicamentos.get(id);
+    if(!med||med.user_id!==userId||med.person_id!==personId)
+      throw new Error("Medicamento não pertence à conta e pessoa ativa.");
+    checked.push(id);
+  }
+  return checked;
+}
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -150,9 +166,11 @@ export const consultasRepository = {
       data.id ||
       crypto.randomUUID();
 
+    const allowedMedicationIdsP6 = await scopedMedicationIdsP6(data.medicamento_ids,user.id,personId);
     const consultaCompleta:
       Consulta = {
       ...data,
+      ...(allowedMedicationIdsP6 !== undefined ? {medicamento_ids: allowedMedicationIdsP6}:{}),
 
       id:
         consultaId,
@@ -221,6 +239,10 @@ export const consultasRepository = {
       );
     }
 
+    const authResultP6=await getLocalFirstAuthUser();
+    const ownerP6=authResultP6.data.user;
+    if(!ownerP6||current.user_id!==ownerP6.id)throw new Error("Conta da consulta não corresponde à sessão ativa.");
+    const allowedMedicationIdsP6=await scopedMedicationIdsP6(data.medicamento_ids,ownerP6.id,safePersonId);
     const now =
       new Date().toISOString();
 
@@ -232,6 +254,7 @@ export const consultasRepository = {
           | "synced"
         > = {
       ...data,
+      ...(allowedMedicationIdsP6 !== undefined ? {medicamento_ids: allowedMedicationIdsP6}:{}),
 
       updated_at:
         now,

@@ -2595,6 +2595,12 @@ export function useSyncQueue() {
                     consulta.observacoes ||
                     null,
 
+                  // CI360 P6: migracao explicita em public.consultas, nunca em tratamento_ids.
+                  medicamento_ids: consulta.medicamento_ids ?? [],
+                  percepcao_paciente: consulta.percepcao_paciente ?? null,
+                  orientacao_profissional: consulta.orientacao_profissional ?? null,
+                  proximos_passos: consulta.proximos_passos ?? null,
+
                   created_at:
                     consulta.created_at,
 

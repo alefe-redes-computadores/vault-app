@@ -1162,6 +1162,14 @@ export interface Consulta {
   status: "agendada" | "realizada" | "cancelada";
   tratamento_ids?: string[];
   cid_ids?: string[];
+  /** CI360 P6 — seleção DIRETA, independente de tratamentos; requer migração Supabase. */
+  medicamento_ids?: string[];
+  /** Fonte: percepção pessoal declarada, não diagnóstico. */
+  percepcao_paciente?: string;
+  /** Orientação relatada pelo usuário, não prescrição alterada. */
+  orientacao_profissional?: string;
+  /** Plano de acompanhamento declarado, sem criação automática de tarefas. */
+  proximos_passos?: string;
   created_at?: string;
   updated_at?: string;
   synced?: boolean;

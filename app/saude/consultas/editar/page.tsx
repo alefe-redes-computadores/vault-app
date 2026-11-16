@@ -1,5 +1,9 @@
 // app/saude/consultas/editar/page.tsx
 "use client";
+import {useMedicamentos} from "@/hooks/useMedicamentos";
+import {ConsultationMedicationSelectorP6} from "@/components/saude/ConsultationMedicationSelectorP6";
+import {ConsultationVoicesEditorP6} from "@/components/saude/ConsultationVoicesEditorP6";
+import {safeConsultationMedicationIdsP6} from "@/lib/consultations/consultation-medication-evidence-p6";
 
 import {
   Suspense,
@@ -451,6 +455,7 @@ function EditarConsultaContent() {
     activePersonId,
   } =
     useActivePersonId();
+  const {medicamentosIncluindoDescontinuados: medicationsP6,isLoading:medicationsLoadingP6}=useMedicamentos();
 
   const {
     getConsulta,
@@ -681,6 +686,10 @@ function EditarConsultaContent() {
     useState(
       ""
     );
+  const [medicamentoIdsP6,setMedicamentoIdsP6]=useState<string[]>([]);
+  const [personalP6,setPersonalP6]=useState("");
+  const [professionalP6,setProfessionalP6]=useState("");
+  const [followUpP6,setFollowUpP6]=useState("");
 
   const [
     errors,
@@ -930,6 +939,10 @@ function EditarConsultaContent() {
               data.observacoes ||
                 ""
             );
+            setMedicamentoIdsP6(Array.isArray(data.medicamento_ids)?data.medicamento_ids:[]);
+            setPersonalP6(data.percepcao_paciente||"");
+            setProfessionalP6(data.orientacao_profissional||"");
+            setFollowUpP6(data.proximos_passos||"");
 
             /*
              * IDs legados, órfãos ou de outra pessoa nunca
@@ -1398,6 +1411,10 @@ function EditarConsultaContent() {
       trigger(
         "vibrate"
       );
+      if (medicationsLoadingP6) {
+        showToast("Aguarde carregar medicamentos da pessoa antes de salvar vínculos.","error");
+        return;
+      }
 
       if (
         !validate()
@@ -1569,6 +1586,12 @@ function EditarConsultaContent() {
                 observacoes:
                   observacoes.trim() ||
                   undefined,
+
+                // CI360 P6: nunca misturar medicamento com tratamento.
+                medicamento_ids:safeConsultationMedicationIdsP6(medicamentoIdsP6,consulta,medicationsP6),
+                percepcao_paciente:personalP6.trim()||undefined,
+                orientacao_profissional:professionalP6.trim()||undefined,
+                proximos_passos:followUpP6.trim()||undefined,
 
                 tratamento_ids:
                   safeTratamentoIds.length >
@@ -2552,6 +2575,9 @@ function EditarConsultaContent() {
               placeholder="Instruções do médico..."
             />
           </motion.div>
+          <ConsultationMedicationSelectorP6 owner={{user_id:consulta?.user_id||"",person_id:activePersonId||""}} medications={medicationsP6} selected={medicamentoIdsP6} onChange={setMedicamentoIdsP6}/>
+          <ConsultationVoicesEditorP6 personal={personalP6} professional={professionalP6} followUp={followUpP6} onPersonal={setPersonalP6} onProfessional={setProfessionalP6} onFollowUp={setFollowUpP6}/>
+          {medicationsLoadingP6&&<p role="status" className="text-xs text-amber-300">Carregando medicamentos da pessoa; aguarde antes de salvar vínculos.</p>}
         </section>
 
         {/* ====================================================

@@ -1,5 +1,6 @@
 // app/saude/consultas/detalhes/page.tsx
 "use client";
+import {ConsultationRelationsViewP6} from "@/components/saude/ConsultationRelationsViewP6";
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
 
@@ -1217,6 +1218,8 @@ function DetalhesConsultaContent() {
                 </p>
               </div>
             )}
+
+            {consulta && <ConsultationRelationsViewP6 consultation={consulta} medications={scopedMedicamentos}/>}
 
             {consulta.observacoes && (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
