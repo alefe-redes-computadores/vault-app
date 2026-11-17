@@ -1,0 +1,28 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict'),Module=require('node:module');
+const ts=require('typescript');let count=0;
+function ok(name,action){action();console.log('✓ CI360 P6 P2 R2 '+(++count)+': '+name);}
+const targets=['lib/consultations/clinical-link-review-p6p2r2.ts','components/saude/ConsultationLinkReviewP6P2R2.tsx','components/saude/ConsultationDocumentsP6P2R2.tsx'];
+for(const file of targets)ok('parser '+file,()=>{const source=ts.createSourceFile(file,fs.readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true,file.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);assert.equal(source.parseDiagnostics.length,0,source.parseDiagnostics.map(x=>x.messageText).join('; '))});
+const path=targets[0],code=ts.transpileModule(fs.readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,m=new Module(path,module);m._compile(code,path);
+const {historicalLinkCandidatesP6R2,applyLinkReviewDecisionP6R2}=m.exports;
+const o={user_id:'owner',person_id:'person'},c={id:'consult',...o,tratamento_ids:['tr-1'],medicamento_ids:[],revisao_vinculos_rejeitados:[]};
+const med={id:'med-1',nome:'Medicamento A',...o,tratamento_ids:['tr-1']},other={...med,id:'med-2',person_id:'other'},sameName={...med,id:'med-3',tratamento_ids:[]};
+ok('candidato comprovado por tratamento explícito',()=>assert.deepEqual(historicalLinkCandidatesP6R2(c,[med,other,sameName]).map(x=>x.id),['med-1']));
+ok('data/nome sem relação não vinculam',()=>assert.deepEqual(historicalLinkCandidatesP6R2({...c,tratamento_ids:[]},[med]),[]));
+ok('pessoa externa bloqueada',()=>assert.deepEqual(historicalLinkCandidatesP6R2(c,[other]),[]));
+ok('aceitar gera associação explícita',()=>assert.deepEqual(applyLinkReviewDecisionP6R2({consultation:c,medication:med,action:'accept'}).medicamento_ids,['med-1']));
+const rejected=applyLinkReviewDecisionP6R2({consultation:c,medication:med,action:'reject'});
+ok('rejeitar não cria link',()=>{assert.equal(rejected.medicamento_ids.length,0);assert.deepEqual(rejected.revisao_vinculos_rejeitados,['med-1'])});
+ok('rejeição suprime repetição',()=>assert.deepEqual(historicalLinkCandidatesP6R2({...c,...rejected},[med]),[]));
+ok('rejeitar duas vezes é idempotente',()=>assert.deepEqual(applyLinkReviewDecisionP6R2({consultation:{...c,...rejected},medication:med,action:'reject'}),rejected));
+ok('reavaliar e aceitar remove rejeição anterior',()=>{const x=applyLinkReviewDecisionP6R2({consultation:{...c,...rejected},medication:med,action:'accept'});assert.deepEqual(x.medicamento_ids,['med-1']);assert.deepEqual(x.revisao_vinculos_rejeitados,[])});
+ok('não rejeitar vínculo já aceito',()=>assert.throws(()=>applyLinkReviewDecisionP6R2({consultation:{...c,medicamento_ids:['med-1']},medication:med,action:'reject'})));
+ok('não alterar registro de pessoa/conta diferente',()=>{for(const bad of [other,{...med,user_id:'intruder'}])assert.throws(()=>applyLinkReviewDecisionP6R2({consultation:c,medication:bad,action:'accept'}))});
+ok('repo valida dono de links aceitos e rejeitados',()=>{const repo=fs.readFileSync('lib/repositories/consultas.ts','utf8');assert(repo.includes('scopedMedicationIdsP6(data.revisao_vinculos_rejeitados'));assert(repo.includes('effectiveRejectedP6R2'))});
+ok('fila sincroniza rejeições na consulta existente',()=>assert(fs.readFileSync('hooks/useSyncQueue.ts','utf8').includes('revisao_vinculos_rejeitados: consulta.revisao_vinculos_rejeitados ?? []')));
+ok('sem segundo repositório, alteração de estoque ou prescrição',()=>{const x=fs.readFileSync(targets[1],'utf8');assert(x.includes('consultasRepository.update('));assert(!/db\.(medicamentos|doseLogs|renovacoes)\.(add|update|put)/.test(x))});
+ok('documentos só por ID vínculo explícito e escopo completo',()=>{const s=fs.readFileSync(targets[2],'utf8');assert(s.includes('d.id===consultation.document_id'));assert(s.includes("d.entidade_tipo==='consulta'"));assert(s.includes('d.user_id===user?.id&&d.person_id===activePersonId'))});
+ok('consulta apresenta revisão e documentos',()=>{const s=fs.readFileSync('components/saude/ConsultationRelationsViewP6.tsx','utf8');assert(s.includes('<ConsultationLinkReviewP6P2R2'));assert(s.includes('<ConsultationDocumentsP6P2R2'))});
+ok('SQL auditável sem movimentação clínica',()=>{const s=fs.readFileSync('sql/CI360-P6-P2-R2-LINK-REVIEW.sql','utf8');assert(s.includes('SECURITY INVOKER'));assert(s.includes('vault_ci360_p6_p2r2_rejected_links'));assert(!/UPDATE public\.(medicamentos|dose_logs|retiradas)/i.test(s))});
+console.log('CI360 P6 P2 R2 DIRECIONADOS OK:',count);

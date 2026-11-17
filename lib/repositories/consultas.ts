@@ -167,10 +167,14 @@ export const consultasRepository = {
       crypto.randomUUID();
 
     const allowedMedicationIdsP6 = await scopedMedicationIdsP6(data.medicamento_ids,user.id,personId);
+    const rejectedLinksP6R2 = await scopedMedicationIdsP6(data.revisao_vinculos_rejeitados,user.id,personId);
+    if(rejectedLinksP6R2?.some(id=>(allowedMedicationIdsP6??[]).includes(id)))
+      throw new Error("Um medicamento não pode estar vinculado e rejeitado na mesma consulta.");
     const consultaCompleta:
       Consulta = {
       ...data,
       ...(allowedMedicationIdsP6 !== undefined ? {medicamento_ids: allowedMedicationIdsP6}:{}),
+      ...(rejectedLinksP6R2 !== undefined ? {revisao_vinculos_rejeitados: rejectedLinksP6R2}:{}),
 
       id:
         consultaId,
@@ -243,6 +247,11 @@ export const consultasRepository = {
     const ownerP6=authResultP6.data.user;
     if(!ownerP6||current.user_id!==ownerP6.id)throw new Error("Conta da consulta não corresponde à sessão ativa.");
     const allowedMedicationIdsP6=await scopedMedicationIdsP6(data.medicamento_ids,ownerP6.id,safePersonId);
+    const rejectedLinksP6R2=await scopedMedicationIdsP6(data.revisao_vinculos_rejeitados,ownerP6.id,safePersonId);
+    const effectiveAcceptedP6R2=allowedMedicationIdsP6??current.medicamento_ids??[];
+    const effectiveRejectedP6R2=rejectedLinksP6R2??current.revisao_vinculos_rejeitados??[];
+    if(effectiveRejectedP6R2.some(id=>effectiveAcceptedP6R2.includes(id)))
+      throw new Error("Vínculo rejeitado incompatível com medicamento já aceito nesta consulta.");
     const now =
       new Date().toISOString();
 
@@ -255,6 +264,7 @@ export const consultasRepository = {
         > = {
       ...data,
       ...(allowedMedicationIdsP6 !== undefined ? {medicamento_ids: allowedMedicationIdsP6}:{}),
+      ...(rejectedLinksP6R2 !== undefined ? {revisao_vinculos_rejeitados: rejectedLinksP6R2}:{}),
 
       updated_at:
         now,

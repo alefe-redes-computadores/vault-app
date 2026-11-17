@@ -1164,6 +1164,8 @@ export interface Consulta {
   cid_ids?: string[];
   /** CI360 P6 — seleção DIRETA, independente de tratamentos; requer migração Supabase. */
   medicamento_ids?: string[];
+  /** CI360 P6 P2 R2 — candidatos rejeitados explicitamente, sincronizados na consulta. */
+  revisao_vinculos_rejeitados?: string[];
   /** Fonte: percepção pessoal declarada, não diagnóstico. */
   percepcao_paciente?: string;
   /** Orientação relatada pelo usuário, não prescrição alterada. */
