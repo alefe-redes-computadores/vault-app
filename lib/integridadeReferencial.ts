@@ -98,6 +98,10 @@ export async function validarIntegridadeReferencial(): Promise<void> {
       med.local_id = undefined;
       changed = true;
     }
+    if (med.document_id && !documentIds.has(med.document_id)) {
+      med.document_id = undefined;
+      changed = true;
+    }
 
     if (changed) {
       await db.medicamentos.put(med);

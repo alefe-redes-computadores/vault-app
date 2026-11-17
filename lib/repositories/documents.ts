@@ -1449,6 +1449,7 @@ export const documentsRepository = {
       "rw",
       [
         db.documents,
+        db.medicamentos,
         db.syncQueue,
       ],
       async () => {
@@ -1464,6 +1465,34 @@ export const documentsRepository = {
         ) {
           throw new Error(
             "Documento não encontrado para a pessoa ativa."
+          );
+        }
+
+        const linkedMedications =
+          await db.medicamentos
+            .where("person_id")
+            .equals(safePersonId)
+            .filter(
+              (medication) =>
+                medication.user_id === userId &&
+                medication.document_id === safeId
+            )
+            .toArray();
+
+        for (const medication of linkedMedications) {
+          const repairedMedication = {
+            ...medication,
+            updated_at: new Date().toISOString(),
+            synced: false,
+          };
+
+          delete repairedMedication.document_id;
+          await db.medicamentos.put(repairedMedication);
+          await enfileirarOperacao(
+            "medicamentos",
+            "update",
+            repairedMedication,
+            { dispatchSync: false }
           );
         }
 

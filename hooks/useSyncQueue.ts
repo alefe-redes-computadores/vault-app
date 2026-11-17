@@ -62,6 +62,12 @@ import {
   syncEntityKey,
   type SyncEntityKey,
 } from "@/lib/sync/dependency-order";
+import {
+  enfileirarOperacao,
+} from "@/lib/sync/enfileirarOperacao";
+import {
+  resolveMedicationDocumentDependency,
+} from "@/lib/sync/medication-document-dependency";
 
 // ============================================================
 // CONSTANTES
@@ -93,6 +99,13 @@ interface SyncLog {
   time: string;
   message: string;
   type: SyncLogType;
+}
+
+class SyncDependencyDeferredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SyncDependencyDeferredError";
+  }
 }
 
 export interface SyncProcessResult {
@@ -1783,7 +1796,7 @@ export function useSyncQueue() {
       const client =
         requireSupabase();
 
-      const med =
+      let med =
         item.payload as unknown as Medicamento;
 
       switch (
@@ -1803,6 +1816,100 @@ export function useSyncQueue() {
             "Medicamento",
             med.id
           );
+
+          /*
+           * O estoque de uma dose pode reenfileirar um medicamento muito
+           * tempo depois de seu documento ter sido criado ou excluído. A
+           * ordem global da fila não basta quando o pai já não está nela.
+           * Relemos o registro canônico e confirmamos a FK antes do upsert.
+           */
+          const currentMedication = med.id
+            ? await db.medicamentos.get(med.id)
+            : undefined;
+
+          if (
+            currentMedication &&
+            currentMedication.user_id === med.user_id &&
+            currentMedication.person_id === personId
+          ) {
+            med = currentMedication;
+          }
+
+          if (med.document_id) {
+            const localDocument =
+              await db.documents.get(med.document_id);
+
+            const {
+              data: remoteDocument,
+              error: remoteDocumentError,
+            } = await client
+              .from("documents")
+              .select("id")
+              .eq("id", med.document_id)
+              .eq("user_id", med.user_id)
+              .eq("person_id", personId)
+              .maybeSingle();
+
+            if (remoteDocumentError) {
+              throw new Error(
+                `Falha ao validar o documento do medicamento: ${remoteDocumentError.message}`
+              );
+            }
+
+            const dependency = resolveMedicationDocumentDependency({
+              documentId: med.document_id,
+              medicationUserId: med.user_id,
+              medicationPersonId: personId,
+              localDocument: localDocument
+                ? {
+                    id: localDocument.id,
+                    user_id: localDocument.user_id,
+                    person_id: localDocument.person_id,
+                  }
+                : null,
+              remoteExists: Boolean(remoteDocument),
+            });
+
+            if (dependency === "enqueue_parent" && localDocument) {
+              await enfileirarOperacao(
+                "documents",
+                "add",
+                localDocument,
+                { dispatchSync: false }
+              );
+
+              throw new SyncDependencyDeferredError(
+                "Medicamento aguardando o documento vinculado ser enviado primeiro."
+              );
+            }
+
+            if (dependency === "unlink_orphan" && med.id) {
+              const repairedMedication: Medicamento = {
+                ...med,
+                updated_at: new Date().toISOString(),
+                synced: false,
+              };
+
+              delete repairedMedication.document_id;
+
+              await db.medicamentos.put(repairedMedication);
+              await enfileirarOperacao(
+                "medicamentos",
+                "update",
+                repairedMedication,
+                { dispatchSync: false }
+              );
+
+              med = repairedMedication;
+
+              if (typeof window !== "undefined") {
+                setTimeout(
+                  () => window.dispatchEvent(new Event("sync:process")),
+                  300
+                );
+              }
+            }
+          }
 
           const {
             data:
@@ -5452,6 +5559,11 @@ export function useSyncQueue() {
                   a,
                   b
                 ) => {
+                  const aDelete = a.operation === "delete";
+                  const bDelete = b.operation === "delete";
+
+                  if (aDelete !== bDelete) return aDelete ? 1 : -1;
+
                   const aIndex =
                     priorityOrder.indexOf(
                       a.table
@@ -5462,7 +5574,7 @@ export function useSyncQueue() {
                       b.table
                     );
 
-                  return (
+                  const dependencyOrder = (
                     (
                       aIndex ===
                       -1
@@ -5476,6 +5588,8 @@ export function useSyncQueue() {
                         : bIndex
                     )
                   );
+
+                  return aDelete ? -dependencyOrder : dependencyOrder;
                 }
               );
 
@@ -5582,6 +5696,20 @@ export function useSyncQueue() {
                   error:
                     unknown
                 ) {
+                  if (error instanceof SyncDependencyDeferredError) {
+                    result.processed--;
+                    addLog(error.message, "info");
+
+                    if (typeof window !== "undefined") {
+                      setTimeout(
+                        () => window.dispatchEvent(new Event("sync:process")),
+                        300
+                      );
+                    }
+
+                    continue;
+                  }
+
                   result.failed++;
 
                   const atual =
