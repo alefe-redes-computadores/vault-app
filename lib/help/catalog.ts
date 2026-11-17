@@ -22,6 +22,10 @@ export const helpTopics: readonly HelpTopic[] = [
   { id: "medications", title: "Medicamentos", summary: "Organize identidade, rotina, estoque e documentos.", routes: ["/saude/medicamentos"], destination: "/saude/medicamentos", steps: [
     { title: "Cadastre a rotina prescrita", text: "Informe nome, dosagem e formato. Diferencie uso contínuo, por período e SOS conforme sua prescrição e confira os horários antes de salvar." },
     { title: "Acompanhe o saldo", text: "Repor estoque registra o medicamento recebido. Informar saldo registra uma contagem. Estoque desconhecido precisa de conferência; uma receita anexada não adiciona unidades." },
+    { title: "Compacto ou Conforto", text: "Compacto facilita a leitura rápida; Conforto amplia a identidade e a procedência. Os dois oferecem as mesmas ações e a Gaveta 360." },
+    { title: "Toque no nome ou no menu •••", text: "A seta junto à dosagem e o menu abrem a Gaveta 360: ficha (com tratamentos), rotina, estoque, receita e ações. A tarja mostra a classificação regulatória conforme fonte ou cadastro." },
+    { title: "Microavisos com contexto", text: "Quando houver alerta real de estoque ou divergência confirmada de receita, a faixa inferior abre diretamente a aba Estoque ou Receita, conforme o caso. Um aviso não confirma nem executa movimentações." },
+    { title: "Conhecimento do catálogo", text: "A classificação pode vir de referência regulatória; o valor declarado continua identificado. Divergências são propostas para revisão, sem troca automática ou bloqueio silencioso." },
     { title: "Abra os detalhes", text: "Nos detalhes você encontra rotina, histórico de doses, receitas, fornecimento e edição. Confira os vínculos antes de alterar um registro." },
   ] },
   { id: "medication-detail", title: "Detalhes e histórico do medicamento", summary: "Confira a rotina e os registros que sustentam o saldo.", routes: ["/saude/medicamentos/detalhes", "/saude/medicamentos/historico", "/saude/medicamentos/saldo"], destination: "/saude/medicamentos", steps: [

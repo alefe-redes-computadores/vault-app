@@ -50,7 +50,21 @@ ok('Ações reais em coluna fixa e gaveta sem altura adicional',
 );
 ok('Retirada, dose SOS e reposição ainda independentes',med.includes('router.push(careAction.href)') && med.includes('MedicationRestockAction name={med.nome}') && med.includes('quickDoseLabel'));
 ok('Estados preservados em linha operacional compacta',strip.includes('doseOutcome==="ignored"') && strip.includes('stockTone==="empty"') && strip.includes('flex min-w-0 flex-wrap') && strip.includes('Package size={12}'));
-ok('Aviso de estoque é inspecionável sem romper altura',med.includes('Unidade do estoque diferente · revisar') && med.includes('min-h-9 cursor-pointer') && med.includes('className="min-w-0 flex-1 truncate"'));
+// R3C FIX1: o acordeão antigo foi substituído por microaviso para a aba Estoque.
+// A garantia é agora comportamental: visibilidade condicional, semântica,
+// destino da aba e preservação da evidência original; não uma classe CSS legada.
+const med360Sheet = read('components/saude/MedicationSheet360R3.tsx');
+ok('Aviso de estoque é inspecionável pelo microaviso contextual R3',
+  med.includes('data-vault-med360-microbanner') &&
+  med.includes('stockReview || prescriptionReview360') &&
+  med.includes('openMedicationSheet360(stockReview ? "estoque" : prescriptionReview360 ? "receita" : "estoque")') &&
+  med.includes('aria-label={`Conferir ${stockReview ? "unidade de estoque"') &&
+  med.includes('Unidade do estoque diferente · conferir') &&
+  med360Sheet.includes('tab==="estoque"') &&
+  med360Sheet.includes('value.stockReview') &&
+  med360Sheet.includes('Unidade a conferir:') &&
+  !med.includes('stockReview && <details')
+);
 ok('Cabeçalho do editor aceita as duas cores do oblongo',editor.includes('formato === "oblongo"') && editor.includes('formato === "oblongo_sulcado"'));
 ok('Salvar visível em qualquer aba de edição',/\{editIntent !==\s*"menu" && \(/.test(editor) && !/"menu" &&\s*hasChanges && \(/.test(editor));
 ok('Salvar não dispara sem alterações e impede concorrência',/isSaving \|\| !hasChanges/.test(editor) && editor.includes('isSubmitLocked.current'));

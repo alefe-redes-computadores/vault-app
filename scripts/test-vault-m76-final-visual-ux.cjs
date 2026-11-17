@@ -54,7 +54,17 @@ ok(meds.includes('const showActiveIngredient = activeIngredients.length > 0;') &
    meds.includes('showActiveIngredient && (') &&
    !meds.includes('<span className="text-ink-faint">Princípio ativo: </span>{activeIngredient}'),
    "princípio ativo resolvido é exibido mesmo quando o nome coincide, sem inferência quando não existe");
-ok(meds.includes('ChevronDown,')&&meds.includes('Unidade do estoque diferente · revisar')&&meds.includes('Unidade do estoque: {stockReview}'),"alerta de unidade fica visível e texto completo acessível");
+// R3C: valida microaviso e aba Estoque sem restaurar acordeão.
+const sheet360 = parse('components/saude/MedicationSheet360R3.tsx');
+ok(meds.includes('data-vault-med360-microbanner') &&
+   meds.includes('stockReview || prescriptionReview360') &&
+   meds.includes('Unidade do estoque diferente · conferir') &&
+   meds.includes('openMedicationSheet360(stockReview ? "estoque" : prescriptionReview360 ? "receita" : "estoque")') &&
+   sheet360.includes('tab==="estoque"') &&
+   sheet360.includes('value.stockReview') &&
+   sheet360.includes('Unidade a conferir:') &&
+   !meds.includes('stockReview && <details'),
+   "estoque: microaviso clicável preserva a evidência");
 ok(meds.includes('setQuickDoseMedId(med.id!)')&&meds.includes('medsPrioridade.map(renderCard)'),"ação de dose e grupos canônicos preservados");
 const medFilters=parse("components/saude/MedicationFilterBar.tsx");
 const todayFilters=parse("components/hoje/TodayFilterPanel.tsx");

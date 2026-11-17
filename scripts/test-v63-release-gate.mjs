@@ -1,5 +1,7 @@
 // scripts/test-v63-release-gate.mjs
 import { spawnSync, execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+const vaultM2TestPreload = resolve("scripts/vault-m2-test-alias-preload.cjs");
 
 const contracts = [
   "scripts/test-vault-m92-medication-premium-2.cjs",
@@ -495,7 +497,7 @@ const contracts = [
 
 for (const contract of contracts) {
   console.log(`\n=== ${contract} ===`);
-  const result = spawnSync(process.execPath, [contract], { stdio: "inherit" });
+  const result = spawnSync(process.execPath, ["--require", vaultM2TestPreload, contract], { stdio: "inherit" });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
