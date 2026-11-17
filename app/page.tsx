@@ -1307,7 +1307,8 @@ export default function HomePage() {
           {/* P7: ação contextual real, distinta do progresso de doses. */}
           {resumoContextual.href !== "/hoje" && resumoContextual.href !== "/" &&
             !resumoContextual.href.startsWith("/saude/retiradas/detalhes") &&
-            !unifiedAlerts.some(a => a.href === resumoContextual.href) && (
+            !unifiedAlerts.some(a => a.href === resumoContextual.href) &&
+            !(dosesPendentesAtrasadas.length>0 || ["Ação agora","Atenção ao tratamento","Próxima etapa"].includes(resumoContextual.eyebrow)) && (
             <button type="button" aria-label={`Ação contextual: ${resumoContextual.title}`}
               onClick={() => {
                 trigger("vibrate");

@@ -37,7 +37,7 @@ check(today.includes('onPeriod={(value) => { trigger("vibrate"); setFiltroPeriod
 check(home.includes('home-acessos-medicamentos')&&home.includes('"/saude/retiradas"')&&home.includes('"/saude/fornecimento"'), 'Home recolhe atalhos sem apagar rotas');
 check(home.includes('"/saude/medicamentos"')&&home.includes('<ClinicalDisclosure id="home-outras-areas"'), 'Medicamentos continuam em destaque, outras áreas acessíveis');
 check(metrics.includes('min-h-[58px]') && metrics.includes('onOpenPending') && metrics.includes('SOS / extra'), '4 métricas compactas com ação de doses');
-check(med.includes('medicamentos-panorama') && med.includes('defaultOpen={false}') && med.includes('key={medsPrioridade.length > 0 ? "atencao" : "rotina"}') && med.includes('<ClinicalCollectionGroup id="medicamentos-atencao"') && med.includes('tone="attention" defaultOpen forceOpen'), 'panorama secundário recolhido; urgências continuam abertas e responsivas');
+check(med.includes('<details id="medicamentos-panorama"') && med.includes('Entender indicadores, doses e estados') && med.includes('<ClinicalCollectionGroup id="medicamentos-atencao"') && med.includes('tone="attention" defaultOpen forceOpen'), 'panorama secundário recolhido; urgências continuam abertas e responsivas');
 check(med.includes('medsPrioridade.map(renderCard)') && med.includes('medsEmDia.map(renderCard)') && med.includes('medsSOS.map(renderCard)'), 'listagem mantém prioridade, rotina e SOS');
 const medFilterBar = read('components/saude/MedicationFilterBar.tsx');
 check(med.includes('isSearchOpen') && med.includes('selectMedicationFilter("todos")')

@@ -28,7 +28,7 @@ pass(attr('railSize').initializer?.text==='label','rail regulatorio e textual');
 pass(meds.includes('[writing-mode:vertical-rl]')&&meds.includes('Abrir classificação:')&&meds.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)'),'etiqueta vertical legivel e acessivel');
 pass((meds.match(/setSelectedRegulatory\(regulatoryProfile\)/g)||[]).length===1,'um unico clique de explicacao regulatoria');
 pass(meds.includes('selectedRegulatory.sourceLabel')&&meds.includes('selectedRegulatory.verified')&&meds.includes('regulatorySurface.rail'),'origem, verificacao e cor da regra preservadas');
-pass(card.includes('railSize?: "standard" | "slim" | "label"')&&card.includes('railSize === "label" ? "w-9"')&&card.includes('pl-11'),'largura e padding da tarja nao cortam o card');
+pass(card.includes('railSize?: "standard" | "slim" | "label"')&&card.includes('railSize === "label" ? "w-8"')&&card.includes('pl-10'),'largura e padding da tarja nao cortam o card');
 pass(meds.includes('data-vault-compact-medication-meta')&&meds.includes('activeIngredient')&&meds.includes('latestManufacturer'),'compacto conserva principio ativo e fabricante');
 pass(filters.includes('if (closeOnSelect) closePanel()')&&filters.includes('options(statusOptions, status, onStatus, true)')&&filters.includes('options(APPOINTMENTS, appointment, onAppointment, true)'),'filtros simples aplicam e recolhem com clique');
 pass(modal.includes('data-vault-dose-primary-action="scheduled"')&&modal.includes('data-vault-dose-secondary-action="now"')&&modal.includes('safe-area-inset-bottom'),'modal conserva dois caminhos, acesso e safe area');

@@ -3,10 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { ArrowLeft, ArrowUpRight, BookOpen, ChevronRight, Search, Activity, Stethoscope, FolderLock, BrainCircuit } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, ChevronRight, Search, Activity, Stethoscope, FolderLock, BrainCircuit, Pill, CalendarDays, Cloud, FlaskConical, PackageCheck, HeartPulse } from "lucide-react";
 import { helpTopics, searchHelpTopics, type HelpTopic } from "@/lib/help/catalog";
 
 const HelpTopicGuide = dynamic(() => import("@/components/help/HelpTopicGuide").then(module => module.HelpTopicGuide));
+
+function helpIconR1(topic: HelpTopic) {
+  const key = `${topic.id} ${topic.title}`.toLowerCase();
+  if (/medic|dose|rem[eé]dio/.test(key)) return <Pill size={17} aria-hidden="true" />;
+  if (/consulta|profissional|m[eé]dico|cirurgia/.test(key)) return <Stethoscope size={17} aria-hidden="true" />;
+  if (/exame|laudo/.test(key)) return <FlaskConical size={17} aria-hidden="true" />;
+  if (/retirada|fornecimento|estoque/.test(key)) return <PackageCheck size={17} aria-hidden="true" />;
+  if (/documento|cofre|receita|anexo|seguran[cç]a/.test(key)) return <FolderLock size={17} aria-hidden="true" />;
+  if (/brain|f[eê]nix|intelig[eê]ncia/.test(key)) return <BrainCircuit size={17} aria-hidden="true" />;
+  if (/hoje|agenda|lembrete/.test(key)) return <CalendarDays size={17} aria-hidden="true" />;
+  if (/sincroni|nuvem|recupera/.test(key)) return <Cloud size={17} aria-hidden="true" />;
+  if (/sa[uú]de|sintoma/.test(key)) return <HeartPulse size={17} aria-hidden="true" />;
+  return <BookOpen size={17} aria-hidden="true" />;
+}
 
 export default function HelpPage() {
   const router = useRouter();
@@ -50,13 +64,13 @@ export default function HelpPage() {
         {topicGroupsR4.map(group => <section key={group.name} className="space-y-2" aria-label={group.name}>
           <h2 className="flex items-center gap-2 text-xs font-bold text-ink-secondary"><group.Icon size={15} className={group.tone.split(" ")[0]} aria-hidden="true"/>{group.name}<span className="font-mono text-[10px] text-ink-muted">{group.items.length}</span></h2>
         {group.items.map(topic => (
-          <article id={`guia-${topic.id}`} key={topic.id} className={`rounded-2xl border bg-surface p-3 ${group.tone.split(" ").slice(2).join(" ")}`}>
+          <article id={`guia-${topic.id}`} key={topic.id} className={`rounded-xl border bg-surface px-3 py-2.5 ${group.tone.split(" ").slice(2).join(" ")}`}>
             <button type="button" onClick={() => setSelected(topic)} className="flex min-h-12 w-full items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${group.tone}`}><BookOpen size={17} aria-hidden="true" /></span>
+              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${group.tone}`}>{helpIconR1(topic)}</span>
               <span className="min-w-0 flex-1"><strong className="block text-sm">{topic.title}</strong><span className="mt-1 block text-xs leading-relaxed text-ink-muted">{topic.summary}</span></span>
               <ChevronRight size={16} className="mt-2 shrink-0 text-ink-muted" aria-hidden="true" />
             </button>
-            <button type="button" onClick={() => router.push(topic.destination)} className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{topic.id === "commands" ? "Ir à Home e usar a lupa" : "Abrir área"}<ArrowUpRight size={15} aria-hidden="true" /></button>
+            <button type="button" onClick={() => router.push(topic.destination)} className="mt-0 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{topic.id === "commands" ? "Ir à Home e usar a lupa" : "Abrir área"}<ArrowUpRight size={15} aria-hidden="true" /></button>
           </article>
         ))}
         </section>)}

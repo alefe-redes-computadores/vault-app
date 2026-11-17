@@ -34,7 +34,7 @@ ok(more.indexOf('<OperationalReadinessM103') > more.indexOf('Dados & Nuvem'), 'P
 ok((more.match(/<OperationalReadinessM103/g)||[]).length===1,'Prontidão não foi duplicada');
 ok(more.includes('<PersonSelector mode="compact"')&&read(files[4]).includes('"compact"')&&read(files[4]).includes('mode === "compact"'), 'Pessoa ativa compacta sem segundo avatar no botão');
 ok(!more.includes('className="absolute bottom-0 right-0 flex h-8 w-8')&&more.includes('aria-label="Configurações da conta"'), 'Edição do perfil sem sobrepor fotografia');
-ok(more.includes('<details open className="group rounded-[18px]') && more.includes('<VaultUpdateCenter />') && more.includes('Biometria') && more.includes('Lembretes'), 'Controles e Update Center visíveis inicialmente');
+ok(more.includes('<details className="group rounded-[18px]') && more.includes('<VaultUpdateCenter />') && more.includes('Biometria') && more.includes('Lembretes'), 'Controles e Update Center visíveis inicialmente');
 ok(more.includes('grid grid-cols-2 gap-2.5') && more.includes('aria-label="Acessos de saúde"') && more.includes('router.push("/inteligencia")') &&
    more.includes('col-span-2 min-[390px]:col-span-1') && more.includes('min-h-[56px]') &&
    more.includes('motion-reduce:transition-none') && more.includes('focus-visible:outline') &&

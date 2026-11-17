@@ -17,10 +17,10 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
   const kindIcon = { dose: Pill, reminder: Bell, appointment: CalendarDays } as const;
   // R4: compromissos completos estao abaixo, cada ID somente na sua propria lista.
   const previewRows=overview.rows.filter(item=>item.kind!=="appointment");
-  return <section aria-label="Atenção do dia e agenda em ordem de horário" className="rounded-[20px] border border-ice/15 bg-gradient-to-b from-ice/[.055] to-surface/75 p-3">
+  return <section aria-label="Atenção do dia e agenda em ordem de horário" className="rounded-[18px] border border-ice/15 bg-gradient-to-b from-ice/[.045] to-surface/75 p-2.5">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0"><h2 className="font-display text-base font-bold text-ink-primary">Atenção do dia</h2>
-        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">Pendências e próximos horários, sem misturar confirmações.</p></div>
+        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">Alertas e acesso à agenda completa, sem registrar eventos.</p></div>
       <Clock3 size={18} className="mt-0.5 shrink-0 text-ice" aria-hidden="true"/>
     </div>
     {(overview.dueDoseCount > 0 || overdueWithdrawals > 0) ? <div className="mt-3 grid gap-2 min-[350px]:grid-cols-2">

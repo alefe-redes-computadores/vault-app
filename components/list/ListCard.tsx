@@ -106,7 +106,7 @@ export function ListCard({
         className={`
           absolute
           bottom-0 left-0 top-0
-          ${rail ? (railSize === "slim" ? "w-4" : railSize === "label" ? "w-9" : "w-6") : "w-1.5"}
+          ${rail ? (railSize === "slim" ? "w-4" : railSize === "label" ? "w-8" : "w-6") : "w-1.5"}
           ${softRail ? "opacity-75" : ""}
           ${isDisabled && !rail ? "bg-coral" : ""}
         `}
@@ -122,7 +122,7 @@ export function ListCard({
               ? railSize === "slim"
                 ? (isTight ? "p-2.5 pl-6" : "p-3 pl-6")
                 : railSize === "label"
-                ? (isTight ? "p-2.5 pl-11" : "p-3 pl-11")
+                ? (isTight ? "p-2.5 pl-10" : "p-3 pl-10")
                 : (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
               : "p-4 pl-10"
             : isCompact

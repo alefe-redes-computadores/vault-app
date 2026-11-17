@@ -73,7 +73,7 @@ ok(avatar.includes('Ver contexto registrado · não é diagnóstico'),'Fênix ex
 ok(avatar.includes('<span aria-hidden="true">Ver</span></button>:null}') && !avatar.includes('<span aria-hidden="true">Ver</span></button>:null>'),'botão da Fênix mantém JSX ternário bem formado');
 // Medications: no new reads; summaries retained, more useful hierarchy in first fold.
 ok(meds.includes('Organização da lista de medicamentos') && meds.includes('Prioridades primeiro · rotina e SOS separados'),'lista comunica ordem e categorias');
-ok(meds.includes('defaultOpen={false}') && meds.includes('medicamentos-panorama'),'panorama secundário recolhido inicialmente');
+ok(meds.includes('<details id="medicamentos-panorama"') && meds.includes('Entender indicadores, doses e estados'),'panorama secundário recolhido inicialmente');
 ok(meds.includes('medsPrioridade.map(renderCard)') && meds.includes('medsSOS.map(renderCard)'),'grupos canônicos não alterados');
 ok(meds.includes('setQuickDoseMedId(med.id!)') && meds.includes('regulatoryProfile?.label'),'dose rápida e receita regulatória intactas');
 ok(meds.includes('VAULT_V318_COMPACT_IDENTITY') && meds.includes('VAULT_MEDICATION_LIST_HIERARCHY_V98'),'hierarquia clínica anterior preservada');

@@ -133,6 +133,7 @@ import { MedicationListGroupNavigation } from "@/components/saude/MedicationWork
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { MedicationPortfolioOverview } from "@/components/saude/MedicationPortfolioOverview";
 import { MedicationFilterBar } from "@/components/saude/MedicationFilterBar";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components/saude/MedicationActionsSheetR4";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
@@ -328,6 +329,7 @@ export default function MedicamentosListPage() {
   const [unifiedList, setUnifiedList] = useState(true);
   // M132: preferencia exclusivamente visual, sem mudar dados, filtros ou dose.
   const [compactCards, setCompactCards] = useState(true);
+  const [visualFilterSheetOpenR1, setVisualFilterSheetOpenR1] = useState(false);
   useEffect(() => {
     try { setCompactCards(window.localStorage.getItem("@vault:meds_density_v1") !== "comfortable"); }
     catch { /* preferencia opcional; privacidade/armazenamento bloqueado nao quebra a lista */ }
@@ -1302,7 +1304,7 @@ export default function MedicamentosListPage() {
           density="compact"
           compactTight={compactCards}
           interactiveContent
-          className={compactCards ? "min-h-[108px]" : "min-h-[134px]"}
+          className={compactCards ? "min-h-[108px]" : "min-h-[124px]"}
           showChevron={false}
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="label"
@@ -1651,7 +1653,7 @@ export default function MedicamentosListPage() {
         </ListPageHeader>
 
         {/* P7: one compact control surface, with stored density from @vault:meds_density_v1. */}
-        <section className="mx-4 mt-2 rounded-[20px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[.055] via-surface to-surface p-2.5 shadow-sm" aria-label="Organizar medicamentos">
+        <section className="mx-4 mt-2 rounded-[18px] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[.045] via-surface to-surface p-2 shadow-sm" aria-label="Organizar medicamentos">
           <div className="flex min-w-0 items-center justify-between gap-2 px-1">
             <span className="text-xs font-bold text-ink-primary">Medicamentos <span className="font-normal text-ink-muted">· rotina programada</span></span>
             <button type="button" aria-label="Explicar o progresso da rotina de medicamentos" onClick={()=>setMedicationContextP7R3({title:"Progresso das doses",description:"Registros programados da pessoa ativa no dia selecionado.",details:[`${statsProgresso.completados} horários confirmados de ${statsProgresso.total} programados.`,`Ignorados registrados: ${statsProgresso.ignoradas}.`,`Esse contador pode ser diferente da Home e de Hoje porque os recortes são diferentes. Ausência de confirmação não prova dose não tomada.`]})} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 font-mono text-sm font-bold tabular-nums text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{statsProgresso.completados}/{statsProgresso.total}<Info size={14} aria-hidden="true"/></button>
@@ -1668,15 +1670,20 @@ export default function MedicamentosListPage() {
               <button type="button" aria-pressed={compactCards} onClick={()=>chooseCardDensity(true)} className={`inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold ${compactCards?"bg-emerald-300/10 text-emerald-200":"text-ink-muted"}`}><Pill size={13}/>Compactos</button>
               <button type="button" aria-pressed={!compactCards} onClick={()=>chooseCardDensity(false)} className={`min-h-11 rounded-lg px-2 text-[11px] font-semibold ${!compactCards?"bg-emerald-300/10 text-emerald-200":"text-ink-muted"}`}>Conforto</button>
             </div>
-            <details className="group relative min-w-11 rounded-xl border border-surface-border/55 bg-surface-raised/30" data-vault-filters-collapsed-p7 data-vault-filters-collapsed-p6>
-              <summary aria-label="Abrir filtros de medicamentos" title="Filtrar medicamentos" className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-1 rounded-xl px-2 text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><SlidersHorizontal size={18}/>{medicationFilter!=="todos"&&<span aria-label="Filtro ativo" className="size-1.5 rounded-full bg-amber-300"/>}</summary>
-              <div className="mt-1 max-h-[min(60dvh,460px)] w-[min(88vw,340px)] space-y-2 overflow-y-auto overscroll-contain rounded-xl border border-surface-border/50 bg-surface p-2 text-xs text-ink-secondary min-[380px]:absolute min-[380px]:right-0 min-[380px]:top-[calc(100%+6px)] min-[380px]:z-40" aria-label="Filtros e opções da lista">
-                <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
-
-              </div>
-            </details>
+            <button type="button" aria-label="Abrir filtros de medicamentos" aria-expanded={visualFilterSheetOpenR1} onClick={()=>{trigger("vibrate");setVisualFilterSheetOpenR1(true);}} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-surface-border/55 bg-surface-raised/30 px-2 text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><SlidersHorizontal size={18}/>{medicationFilter!=="todos"&&<span aria-label="Filtro ativo" className="size-1.5 rounded-full bg-amber-300"/>}</button>
           </div>
         </section>
+
+        <BottomSheet isOpen={visualFilterSheetOpenR1} onClose={()=>setVisualFilterSheetOpenR1(false)} title="Filtros dos medicamentos" height="auto">
+          <div className="space-y-3" data-vault-filter-sheet="r1">
+            <p className="text-xs text-ink-muted">Filtre sem ocultar registros. O filtro ativo também aparece acima da lista.</p>
+            <MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>
+            <div className="flex flex-wrap gap-2 border-t border-surface-border/50 pt-3">
+              <button type="button" onClick={()=>{trigger("vibrate");setSearchQuery("");selectMedicationFilter("todos");setVisualFilterSheetOpenR1(false);}} className="min-h-11 rounded-xl border border-surface-border/70 bg-surface-raised/45 px-3 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Limpar filtros</button>
+              <button type="button" onClick={()=>setVisualFilterSheetOpenR1(false)} className="min-h-11 flex-1 rounded-xl border border-emerald-300/25 bg-emerald-300/[.085] px-3 text-xs font-bold text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Ver medicamentos</button>
+            </div>
+          </div>
+        </BottomSheet>
 
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">
@@ -1750,13 +1757,15 @@ export default function MedicamentosListPage() {
                 </details>
           </div>
 
-                          <ClinicalDisclosure key={medsPrioridade.length > 0 ? "atencao" : "rotina"} id="medicamentos-panorama"
-                  title="Panorama dos medicamentos" description="Explica divergências entre lista, doses e Brain" icon={<Pill size={18}/>} defaultOpen={false}>
-                  {()=><MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications}
-                    decision={healthIntelligence.careCommand?.decision}
-                    doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}}
-                    listActiveCount={statsProgresso.ativos} onNavigate={href=>router.push(href)}/>}
-                </ClinicalDisclosure>
+                <details id="medicamentos-panorama" className="group mx-2 rounded-xl border border-surface-border/35 bg-surface/30 px-3" aria-label="Panorama detalhado dos medicamentos">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Entender indicadores, doses e estados <ChevronDown size={15} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
+                  <div className="border-t border-surface-border/35 pb-3 pt-2">
+                    <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications}
+                      decision={healthIntelligence.careCommand?.decision}
+                      doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}}
+                      listActiveCount={statsProgresso.ativos} onNavigate={href=>router.push(href)}/>
+                  </div>
+                </details>
         </section>
 
                 <MedicationContextSheetP7R3 value={medicationContextP7R3} onClose={()=>setMedicationContextP7R3(null)}/>

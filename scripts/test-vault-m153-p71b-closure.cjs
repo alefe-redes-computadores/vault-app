@@ -29,10 +29,11 @@ assert(home.includes('!quantityAlreadyInBrain')&&home.includes('quantityFollowUp
 const more=read(files[2]);assert(more.includes('{vaultOverview.total} itens desta pessoa'),'contagem do Cofre permanece vinculada à pessoa');assert(more.includes('<VaultUpdateCenter')&&more.includes('Ferramentas do Cofre')&&more.includes('quickAccessItems.map')&&more.includes('min-[390px]:col-span-1'),'cofre preserva todos os destinos');
 assert(read(files[3]).includes('Estes totais têm critérios distintos') && read(files[3]).includes('Home: horários de contínuos.'),'contadores explicitados e contrato legado preservado');
 assert(meds.includes('MedicationFilterBar value={medicationFilter}')&&meds.includes('MedicationListGroupNavigation')&&meds.includes('MedicationPortfolioOverview')&&meds.includes('VAULT_M144_LIST_ENTRY'),'filtros, grupos e panorama preservados');
-const startFilter=meds.indexOf('data-vault-filters-collapsed-p7');
-const endFilter=meds.indexOf('</details>\n          </div>',startFilter);
+const startFilter=meds.indexOf('aria-expanded={visualFilterSheetOpenR1}');
+const sheetStart=meds.indexOf('<BottomSheet isOpen={visualFilterSheetOpenR1}');
+const sheetEnd=meds.indexOf('</BottomSheet>',sheetStart);
 const extra=meds.indexOf('aria-label="Mais opções da lista"');
-assert(startFilter>=0&&endFilter>startFilter&&extra>endFilter,'ferramentas fora da gaveta de filtros');
+assert(startFilter>=0&&sheetStart>startFilter&&sheetEnd>sheetStart&&extra>sheetEnd&&meds.includes('Limpar filtros'),'filtro acessivel e ferramentas externas ao BottomSheet');
 const m145=read('scripts/test-vault-m145-video-navigation.cjs');
 assert(m145.includes('item.id === quantityFollowUpInsight.id') && m145.includes("!home.includes('item.entidadeId === quantityFollowUpInsight.entidadeId')"), 'M145 protege deduplicação por ID exato');
 assert(m145.includes('motion-reduce:transition-none') && m145.includes('min-h-[56px]'), 'M145 protege Cofre compacto com acessibilidade');

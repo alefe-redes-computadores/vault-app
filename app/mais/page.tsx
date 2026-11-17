@@ -965,9 +965,9 @@ export default function MaisPage() {
                 <button type="button" onClick={()=>{trigger("vibrate");router.push("/perfil?return_to=%2Fmais");}} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações da conta"><Settings size={17} /></button>
               </div>
               {/* P4: uma identidade visual; conta autenticada e pessoa clínica seguem autoridades diferentes. */}
-              <div className="mt-2 flex min-h-11 items-center justify-between gap-2 border-t border-surface-border/40 pt-2" aria-label="Pessoa ativa no Vault">
+              <div className="mt-2 flex min-h-11 flex-wrap items-center justify-between gap-2 border-t border-surface-border/40 pt-2 max-[359px]:justify-start" aria-label="Pessoa ativa no Vault">
                 <span className="shrink-0 text-[11px] font-semibold text-ink-secondary">Pessoa ativa<span className="sr-only">. Os registros de saúde seguem este perfil, não a foto da conta.</span></span>
-                <PersonSelector mode="compact" className="shrink-0" />
+                <PersonSelector mode="compact" className="min-w-0 max-w-full shrink" />
                 {activePersonId && <button type="button" onClick={handleEditProfile} className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/60 text-ink-muted" aria-label="Editar pessoa ativa"><Pencil size={15}/></button>}
               </div>
             </div>
@@ -988,7 +988,7 @@ export default function MaisPage() {
             </div>
 
             {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
-            <details open className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
+            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span>Preferências e lembretes</span>
                 <ChevronDown size={16} aria-hidden="true" className="text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
@@ -1171,9 +1171,9 @@ export default function MaisPage() {
               Dados & Nuvem
             </h2>
 
-            <div className="grid grid-cols-2 gap-2 [&_button]:min-w-0 [&_button]:text-left">
+            <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&_button]:min-w-0 [&_button]:text-left">
               {/* P4: fila e status de sincronização junto de recuperação, backup e exportação. */}
-            <div className="min-w-0">
+            <div className="col-span-full min-w-0">
               <h3 className="mb-1 text-xs font-semibold text-ink-primary">Sincronização</h3>
               <button type="button" onClick={() => pendingQueueCount > 0 ? router.push("/diagnostico") : handleSync()} disabled={!isOnline && pendingQueueCount === 0} className={`flex w-full items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${pendingQueueCount > 0 ? "border-coral/30 bg-coral/[0.06]" : "border-emerald-400/15 bg-emerald-400/[0.035]"}`}>
                 <div className={`flex h-10 w-10 items-center justify-center rounded-full ${pendingQueueCount > 0 ? "bg-coral/10 text-coral" : "bg-emerald-400/10 text-emerald-400"}`}>{isSyncing ? <Loader2 size={17} className="animate-spin" /> : pendingQueueCount > 0 || syncRuntime.phase === "error" ? <AlertTriangle size={17} /> : syncRuntime.phase === "synced" && isOnline ? <CheckCircle2 size={17} /> : <RefreshCw size={17} />}</div>
@@ -1183,6 +1183,9 @@ export default function MaisPage() {
             </div>
               {/* M145: Prontidão sob Dados & Nuvem, sem consumir primeira dobra. */}
               <div className="col-span-2 min-w-0"><OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/></div>
+              <details className="group col-span-full rounded-[18px] border border-surface-border/45 bg-surface/35 px-3" aria-label="Ferramentas avançadas de dados">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span>Ferramentas avançadas · backup, exportação e limpeza</span><ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/></summary>
+                <div className="grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3 min-[380px]:grid-cols-2">
               {/* VAULT_RECOVERY_CENTER_V68 */}
               <button
                 type="button"
@@ -1233,6 +1236,8 @@ export default function MaisPage() {
                   className="shrink-0 text-ink-faint"
                 />
               </button>
+                </div>
+              </details>
             </div>
           </motion.div>
 

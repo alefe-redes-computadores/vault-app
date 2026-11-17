@@ -10,7 +10,7 @@ const list = read("app/saude/medicamentos/page.tsx");
 const card = read("components/list/ListCard.tsx");
 
 ok(card.includes("rail?: ReactNode"), "ListCard aceita conteúdo na faixa lateral");
-ok(card.includes('railSize === "slim" ? "w-4" : railSize === "label" ? "w-9" : "w-6"'), "faixa fina é opt-in");
+ok(card.includes('railSize === "slim" ? "w-4" : railSize === "label" ? "w-8" : "w-6"'), "faixa fina é opt-in");
 ok(card.includes('"p-3 pl-8"'), "conteúdo compacto respeita a largura da faixa");
 ok(list.includes('railSize="label"'), "medicamento usa faixa vertical fina");
 ok(list.includes("rail={"), "classificação é entregue ao trilho lateral");

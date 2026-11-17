@@ -30,7 +30,7 @@ const icon=src['components/saude/MedicationFormatIcon.tsx'];
 ok('Rotina mostra progresso com as contagens canônicas', med.includes('statsProgresso.completados}/{statsProgresso.total}') && med.includes('aria-label="Doses programadas confirmadas hoje"'));
 ok('SOS permanece fora do denominador',med.includes('if (item.isSOS || item.isSuspenso) continue;'));
 ok('Sem divisão por zero no progresso', /statsProgresso\.total\s*>\s*0\s*\?\s*Math\.min\(100/.test(med));
-ok('Indicadores avançados ficam após a listagem', !med.includes('Organização e indicadores') && med.includes('data-vault-filters-collapsed-p7'));
+ok('Indicadores avançados ficam após a listagem', !med.includes('Organização e indicadores') && (med.includes('BottomSheet isOpen={visualFilterSheetOpenR1}') && med.includes('aria-expanded={visualFilterSheetOpenR1}') && med.includes('Limpar filtros')));
 ok('Preserva panorama canônico sob demanda',med.includes('MedicationOperationalStrip') && med.includes('ClinicalCollectionGroup'));
 ok('Três filtros rápidos, SOS visível uma única vez', /const PRIMARY:[\s\S]*?\["sos", "SOS"\][\s\S]*?const ADDITIONAL/.test(filter) && !/const ADDITIONAL:[\s\S]*?\["sos", "SOS"\]/.test(filter));
 ok('Busca e categorias de filtros permanecem',med.includes('<MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/>') && filter.includes('setExpanded(false)'));

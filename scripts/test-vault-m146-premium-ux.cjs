@@ -45,7 +45,7 @@ const update=more.indexOf('<VaultUpdateCenter />');
 const cloud=more.indexOf('Sincronização</h3>');
 ok(pref>=0&&prefClose>pref&&update>prefClose&&cloud>update,'Update Center permanece visível mesmo após fechar preferências');
 ok((more.match(/<VaultUpdateCenter\s*\/>/g)||[]).length===1,'Update Center montado uma única vez');
-ok(more.includes('<details open className="group rounded-[18px]')&&more.includes('<PersonSelector mode="compact"'),'M145: perfil compacto e preferências preservados');
+ok(more.includes('<details className="group rounded-[18px]')&&more.includes('<PersonSelector mode="compact"'),'M145: perfil compacto e preferências preservados');
 ok(more.includes('aria-label="Acessos de saúde"')&&more.includes('router.push("/inteligencia")')&&more.includes('grid grid-cols-2 gap-2.5'), 'V198: Inteligência mantém largura total na grade');
 ok(more.includes('formatPtBrQuantity(pendingQueueCount')&&more.includes('text-xs leading-snug text-ink-muted'), 'Status da sincronização legível e plural correto');
 const health=read('app/saude/minha-saude/page.tsx');
