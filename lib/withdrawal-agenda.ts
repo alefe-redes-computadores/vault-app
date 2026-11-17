@@ -1,3 +1,4 @@
+import { conflictingWithdrawalM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import type { Retirada } from "@/lib/types";
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,6 +49,6 @@ export function withdrawalsForAgendaDate(
 
 export function openWithdrawalsDueBy(rows: Retirada[], today: string): Retirada[] {
   return rows
-    .filter((row) => isOpenWithdrawal(row) && ISO_DAY.test(row.data) && row.data <= today)
+    .filter((row) => isOpenWithdrawal(row) && !conflictingWithdrawalM2(row,rows) && ISO_DAY.test(row.data) && row.data <= today)
     .sort(compareWithdrawals);
 }

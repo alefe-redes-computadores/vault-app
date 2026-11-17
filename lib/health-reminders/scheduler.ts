@@ -8,6 +8,7 @@ import {
 } from "@/lib/notifications";
 import { nextHealthReminderOccurrence, reminderRunsOnWeekday } from "./domain";
 import { quietAtM115,readQuietHoursM115 } from "@/lib/health-reminders/quiet-hours-m115";
+import { reminderDayEligibleM2 } from "@/lib/careflow-m2/reminder-window";
 import type { HealthReminderRule } from "./types";
 import {
   reconcileVaultNotificationSet,
@@ -40,7 +41,7 @@ function dateKey(date: Date) {
 }
 
 function occurrences(rule: HealthReminderRule) {
-  if (!nextHealthReminderOccurrence(rule)) return [];
+  if (!nextHealthReminderOccurrence(rule,new Date(),DAYS_AHEAD)) return [];
   const [hour, minute] = rule.time.split(":").map(Number);
   const now = new Date();
   const result: Date[] = [];
@@ -48,7 +49,7 @@ function occurrences(rule: HealthReminderRule) {
     const date = new Date(now);
     date.setDate(now.getDate() + offset);
     date.setHours(hour, minute, 0, 0);
-    if (date > now && reminderRunsOnWeekday(rule.frequency, rule.weekdays, date.getDay())) {
+    if (date > now && reminderDayEligibleM2(rule,dateKey(date)) && reminderRunsOnWeekday(rule.frequency, rule.weekdays, date.getDay())) {
       result.push(date);
     }
   }

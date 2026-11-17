@@ -5,6 +5,7 @@ import { OblongPillIcon, ScoredOblongPillIcon } from "@/lib/medications/form-pre
 
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction, activeScheduledWithdrawalP5P4 } from "@/lib/medication-access-action";
 import { classifyWithdrawalLinkP71B } from "@/lib/medications/withdrawal-link-p71b";
+import { withdrawalConflictForMedicationM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import {withdrawalEvidenceForMedicationP6, withdrawalNavigationEvidenceP6} from "@/lib/health-intelligence/withdrawal-evidence-p6";
 import { medicationBrainActionWithVerifiedWithdrawalM150P4 } from "@/lib/health-intelligence/medication-withdrawal-brain-authority-m150-p4";
 import { useRetiradas } from "@/hooks/useRetiradas";
@@ -1159,14 +1160,25 @@ export default function MedicamentosListPage() {
             scheduledWithdrawals.get(medicationWithdrawalKey(med) ?? "")?.id ?? null,
           )
         : null;
+      // M2: reconciliar APENAS ações de retirada contraditórias, preservando
+      // a precedência e identidade do Brain (contratos V299 / P15 / R2).
+      const conflictM2 = withdrawalConflictForMedicationM2(med, retiradas);
+      const reviewWithdrawalActionM2 = <T extends { href: string } | null | undefined>(candidate: T): T => {
+        if (!candidate || !conflictM2 || !/\/retiradas\//.test(candidate.href)) return candidate;
+        return { ...candidate,
+          href: `/saude/retiradas?review=${encodeURIComponent(conflictM2.pendingId)}`,
+          label: 'Conferir vínculo',
+          description: 'Conflito entre retirada agendada e concluída no mesmo ciclo e dia. Conferir histórico.'
+        } as T;
+      };
       const brainAction = brainSuggestion
-        ? resolveMedicationCardAction(careDecision, brainSuggestion, null)
+        ? reviewWithdrawalActionM2(resolveMedicationCardAction(careDecision, brainSuggestion, null))
         : null;
       const sosHasOperationalException = isEstoqueZerado || isEstoqueCritico || careDecision.stage === "withdrawal_overdue";
       // V299: Brain NOW remains first; only the non-Brain fallback is quiet for stocked SOS.
       const careAction = brainAction ?? (isSOS && !sosHasOperationalException ? null : (careDecision.stage !== "stable"
-        ? { href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation }
-        : accessAction));
+        ? reviewWithdrawalActionM2({ href: careDecision.actionHref, label: careDecision.actionLabel, description: careDecision.explanation })
+        : reviewWithdrawalActionM2(accessAction)));
       const carePresentation = medicationCarePresentation(careDecision, insight?.urgencia);
       const careActionClass = brainAction && careAction === brainAction && brainCareItem?.lane === "now" ? "border-coral/25 bg-coral/[0.08] text-coral" : carePresentation.actionClass;
 

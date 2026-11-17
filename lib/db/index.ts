@@ -38,6 +38,8 @@ import type {
   ActiveProbeResponse,
 } from '@/lib/types';
 
+import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
+import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
 import type { HealthGoal } from '@/lib/health-goals/types';
 
@@ -185,6 +187,8 @@ class VaultDB extends Dexie {
   health_connect_imports!: Table<ConnectImport,string>;
   registros_saude!: Table<RegistroSaude, string>;
 
+  careflow_events_m2!: Table<CareFlowEventM2,string>;
+  careflow_reports_m2!: Table<VaultLocalPdfM2,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   health_goals!: Table<HealthGoal, string>;
   brain_active_probes!: Table<ActiveProbe, string>;
@@ -1436,6 +1440,11 @@ class VaultDB extends Dexie {
     this.version(46).stores({
       brain_active_probes: 'id, &idempotency_key, user_id, person_id, [user_id+person_id], status, due_at, sync_state',
       brain_active_probe_responses: 'id, &probe_id, user_id, person_id, [user_id+person_id], answered_at, sync_state',
+    });
+    // CI360 M2 — schema aditivo, nenhum dado legado removido.
+    this.version(47).stores({
+      careflow_events_m2: 'id, user_id, person_id, [user_id+person_id], kind, parent_id, related_id, [person_id+kind], synced, created_at',
+      careflow_reports_m2: 'id, user_id, person_id, [user_id+person_id], year, created_at',
     });
   }
 }

@@ -4016,6 +4016,35 @@ export function useSyncQueue() {
   // LEMBRETES E METAS DE SAÚDE
   // ============================================================
 
+  // CI360 M2: new clinical facts only. Never UPDATE/DELETE a CareFlow event.
+  const syncCareFlowM2 = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    if (item.operation !== 'add') throw new Error('Evento CareFlow imutável: operação não permitida.');
+    const p = item.payload;
+    const id = requirePayloadId(item);
+    const userId = requireUserId(typeof p.user_id === 'string' ? p.user_id : undefined,'CareFlow',id);
+    const personId = requirePersonId(typeof p.person_id === 'string' ? p.person_id : undefined,'CareFlow',id);
+    const row = {id,user_id:userId,person_id:personId,kind:p.kind,parent_id:p.parent_id||null,related_id:p.related_id||null,payload:p.payload,created_at:p.created_at,updated_at:p.updated_at};
+    const {error} = await client.from('careflow_events_m2').insert(row);
+    if(!error)return;
+    if((error as {code?:string}).code==='23505'){
+      const existing=await client.from('careflow_events_m2')
+        .select('id,user_id,person_id,kind,parent_id,related_id,payload,created_at,updated_at')
+        .eq('id',id).eq('user_id',userId).eq('person_id',personId).maybeSingle();
+      const old=existing.data as Record<string,unknown>|null;
+      const stable=(value:unknown):unknown=>Array.isArray(value)?value.map(stable):
+        value&&typeof value==='object'?Object.fromEntries(Object.entries(value as Record<string,unknown>)
+          .sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,stable(v)])):value;
+      const equal=(a:unknown,b:unknown)=>JSON.stringify(stable(a))===JSON.stringify(stable(b));
+      const sameTime=(a:unknown,b:unknown)=>typeof a==='string'&&typeof b==='string'&&
+        Number.isFinite(Date.parse(a))&&Date.parse(a)===Date.parse(b);
+      if(!existing.error&&old&&old.kind===row.kind&&old.parent_id===row.parent_id&&old.related_id===row.related_id&&
+        equal(old.payload,row.payload)&&sameTime(old.created_at,row.created_at)&&sameTime(old.updated_at,row.updated_at))return;
+      throw new Error('Conflito de identidade/evento CareFlow: bloqueado para revisão; nada sobrescrito.');
+    }
+    throw new Error(`CareFlow insert error: ${error.message}`);
+  };
+
   const syncHealthReminder = async (item: SyncQueueItem) => {
     const client = requireSupabase();
     const rule = item.payload as Record<string, unknown>;
@@ -4037,6 +4066,7 @@ export function useSyncQueue() {
       id, user_id: rule.user_id, person_id: personId, title: rule.title, body: rule.body || null,
       target_type: rule.target_type, target_route: rule.target_route, time, frequency,
       weekdays, status: rule.status === "paused" ? "paused" : "active",
+      careflow_m2: rule.careflow_m2 || null,
       created_at: rule.created_at, updated_at: rule.updated_at,
     }, { onConflict: "id" });
     if (error) throw new Error(`Health reminders upsert error: ${error.message}`);
@@ -5059,6 +5089,10 @@ export function useSyncQueue() {
           );
           break;
 
+        case "careflow_events_m2":
+          await markRecordSyncedIfCurrent(db.careflow_events_m2, payload.id, expectedUpdatedAt);
+          break;
+
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5325,6 +5359,10 @@ export function useSyncQueue() {
           await syncRegistroSaude(
             item
           );
+          return;
+
+        case "careflow_events_m2":
+          await syncCareFlowM2(item);
           return;
 
         case "health_reminders":

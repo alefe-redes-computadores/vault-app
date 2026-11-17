@@ -38,7 +38,15 @@ ok('O estado híbrido não herda etiqueta de origem ativa',
   provenanceM150P3.includes("input.routeMode === 'hybrid'") &&
   provenanceM150P3.includes('`${recordedOrigin} · cadastro`') &&
   provenanceM150P3.includes('nenhuma comprova o fornecedor atual.'));
-ok('M86: faixa separada e alvos táteis preservados',/aria-label="Ações do medicamento" className="mt-1\.5 grid min-w-0 grid-cols-2 gap-1\.5 border-t/.test(med) && med.includes('[&>button]:min-h-11'));
+// FIX5: R2 substituiu a grade antiga por uma coluna principal fixa com
+// gaveta secundaria. Verificar a estrutura real, ambos os alvos táteis e ARIA.
+ok('M86/R2: faixa compacta, ação independente e alvos táteis preservados',
+  med.includes('grid-cols-[minmax(0,1fr)_78px]') &&
+  med.includes('aria-label="Ações do medicamento" data-vault-r4-main-action className="relative flex min-h-11') &&
+  med.includes('[&>button]:min-h-11') &&
+  med.includes('secondaryActionSheetR4') &&
+  read('components/saude/MedicationActionsSheetR4.tsx').includes('role="dialog" aria-modal="true"') &&
+  read('components/saude/MedicationActionsSheetR4.tsx').includes('[&_button]:min-h-12'));
 ok('V165: botões continuam independentes da identidade',med.includes('VAULT_V318_COMPACT_IDENTITY') && med.includes('VAULT_MEDICATION_LIST_HIERARCHY_V98') && med.includes('router.push(careAction.href)') && med.includes('setQuickDoseMedId(med.id!)'));
 
 console.log(`P15 R9 R2 R6: ${checks} contratos aprovados`);

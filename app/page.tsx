@@ -6,6 +6,8 @@ import { selectHomeAttentionP4R3 } from "@/lib/home/home-attention-authority-p4-
 import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-context";
 import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coherence";
+import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 import {brainV5PriorityReason} from "@/lib/health-intelligence/brain-v5";
@@ -757,7 +759,7 @@ export default function HomePage() {
     medicationCareOpportunities[0] ??
     null;
 
-  const primaryCareCommand =
+  const rawPrimaryCareCommandM2 =
     healthIntelligence.careCommand?.decision?.lane === "now" ||
     healthIntelligence.careCommand?.decision?.lane === "prepare"
       ? healthIntelligence.careCommand.decision
@@ -780,6 +782,10 @@ export default function HomePage() {
 
   // M133: somente projeção visual; todos os insights originais permanecem na lista.
   const homeBrainGroups = useMemo(() => groupHomeBrainEvidence(longitudinalHighlights), [longitudinalHighlights]);
+
+  const safePrimaryCareCommandM2=useMemo(()=>contextualWithdrawalHrefM2(rawPrimaryCareCommandM2,medicamentosAtivos,retiradas),[rawPrimaryCareCommandM2,medicamentosAtivos,retiradas]);
+  // Mantém a única autoridade usada pela Home, porém já reconciliada.
+  const primaryCareCommand = safePrimaryCareCommandM2;
 
   const resumoContextual =
     useMemo(
@@ -1299,6 +1305,7 @@ export default function HomePage() {
         <section className="mx-auto max-w-3xl space-y-5 px-4 pt-4 sm:px-5">
 
           <VaultUpdateHomePromptM117 />
+          <CareFlowSummaryM2 />
           <HomeEssentialToggleM118 />
           {/* VAULT_M144_HOME_ENTRY · M149: item integrado na grade de áreas da Home, não um botão solto. */}
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
@@ -1333,7 +1340,7 @@ export default function HomePage() {
           { (dosesPendentesAtrasadas.length>0 || ["Ação agora","Atenção ao tratamento","Próxima etapa"].includes(resumoContextual.eyebrow)) && (
             <HomeActionNowCardP7R3 title={resumoContextual.title} description={resumoContextual.description}
               eyebrow={resumoContextual.eyebrow} urgent={dosesPendentesAtrasadas.length>0 || primaryCareCommand?.lane==="now" || primaryMedicationCareOpportunity?.level==="urgent"}
-              actionLabel={resumoContextual.href.includes("pending-doses") ? "Revisar doses" : /nova-receita|receita|renova/i.test(resumoContextual.href) ? "Preparar receita" : /retiradas/i.test(resumoContextual.href) ? "Abrir retirada" : /aquis|compra/i.test(resumoContextual.href) ? "Registrar aquisição" : "Abrir detalhes da ação"}
+              actionLabel={resumoContextual.href.includes("pending-doses") ? "Revisar doses" : /nova-receita|receita|renova/i.test(resumoContextual.href) ? "Preparar receita" : /retiradas/i.test(resumoContextual.href) ? (resumoContextual.href.includes("review=") ? "Conferir vínculo" : "Abrir retirada") : /aquis|compra/i.test(resumoContextual.href) ? "Registrar aquisição" : "Abrir detalhes da ação"}
               onAction={()=>{trigger("vibrate");if(resumoContextual.href==="/?open=pending-doses")setModalPendenciasAberto(true);else router.push(resumoContextual.href);}}/>
           )}
           <motion.section

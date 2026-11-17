@@ -1078,6 +1078,23 @@ async function performPullAllData(userId: string): Promise<void> {
             ),
       }),
 
+      // CI360 M2 — append-only clinical events from cloud to Dexie (fully paginated).
+      () => processTable({
+        remoteTable: 'careflow_events_m2', queueTable: 'careflow_events_m2',localTable: db.careflow_events_m2,
+        query: async () => {
+          const all: RemoteRow[] = [];
+          const batchSize=400;
+          for(let offset=0;offset<100000;offset+=batchSize){
+            const response=await supabase.from('careflow_events_m2').select('*').eq('user_id',userId)
+              .order('id',{ascending:true}).range(offset,offset+batchSize-1);
+            if(response.error)return {data:null,error:response.error};
+            const batch=(response.data||[]) as RemoteRow[];all.push(...batch);
+            if(batch.length<batchSize)return {data:all,error:null};
+          }
+          return {data:null,error:{message:'Excedido limite seguro de histórico CareFlow.'}};
+        },
+      }),
+
       () => processTable({
       remoteTable:
         "consultas",

@@ -24,6 +24,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+import { WithdrawalConflictReviewM2 } from "@/components/saude/WithdrawalConflictReviewM2";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useFarmacias } from "@/hooks/useFarmacias";
@@ -355,6 +356,7 @@ export default function RetiradasPage() {
         </ListPageHeader>
 
         <section className="space-y-4 px-5 pt-4">
+          <WithdrawalConflictReviewM2 />
           {(counts.atrasadas > 0 || counts.hoje > 0) ? <div className="grid grid-cols-2 gap-2">
             <button type="button" disabled={!counts.hoje} onClick={() => { trigger("vibrate"); setStatus("hoje"); }} className="min-h-12 rounded-2xl border border-amber-400/20 bg-amber-400/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-amber-200">Hoje · {counts.hoje}</strong><span className="text-xs text-ink-muted">Abrir agenda atual</span></button>
             <button type="button" disabled={!counts.atrasadas} onClick={() => { trigger("vibrate"); setStatus("atrasada"); }} className="min-h-12 rounded-2xl border border-coral/20 bg-coral/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-coral">Atrasadas · {counts.atrasadas}</strong><span className="text-xs text-ink-muted">Revisar pendências</span></button>

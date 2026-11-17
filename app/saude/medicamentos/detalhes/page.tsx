@@ -11,6 +11,8 @@ import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCours
 import { MedicationRegimeM1 } from "@/components/saude/MedicationRegimeM1";
 import { isTemporaryCoursePlannedDose, contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
+import { withdrawalConflictForMedicationM2 } from "@/lib/careflow-m2/withdrawal-coherence";
+import { WithdrawalConflictReviewM2 } from "@/components/saude/WithdrawalConflictReviewM2";
 import { medicationAccessAction, scheduledWithdrawalForOwnedMedication } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, isFutureAcquisition, renewalEventDate } from "@/lib/health-supply/renewal-event";
 import { useRetiradas } from "@/hooks/useRetiradas";
@@ -1253,7 +1255,7 @@ function MedicamentoDetalhesContent() {
   const carePresentation = medicationCarePresentation(careDecision, alertaInteligente.urgencia);
   const brainCareItem = healthIntelligence.careCommand?.plan.items.find(item => item.medicationId === med.id) ?? null;
   const supplyRoute = healthIntelligence.careCommand?.readiness.items.find(item => item.medicationId === med.id)?.route ?? null;
-  const brainCareAction = brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? brainCareItem : null;
+  const brainCareAction = !withdrawalConflictForMedicationM2(med,retiradas) && brainCareItem && (brainCareItem.lane === "now" || brainCareItem.lane === "prepare") ? brainCareItem : null;
   // VAULT_V328_CARE_NAVIGATION: a self-referencing Brain action reveals a useful
   // detail section instead of router.push() silently re-opening this same URL.
   const navigateCareAction = (href: string, title: string, reason: string) => {
@@ -2996,6 +2998,7 @@ function MedicamentoDetalhesContent() {
           <MedicationKnowledgePanelM153P4 medication={med}/>
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
+          <WithdrawalConflictReviewM2 medicationId={med.id} />
           {activePersonId && <MedicationRegimeM1 med={med} personId={activePersonId} />}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
           {/* ==================================================

@@ -1,4 +1,5 @@
 import type { RenovacaoInsight } from "./health-insights";
+import { availableWithdrawalsM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import type { Medicamento, Retirada } from "./types";
 
 /** A33: leitura de status + vínculo explícito, sem concluir nem modificar dados. */
@@ -8,7 +9,7 @@ export function activeScheduledWithdrawalP5P4(row: Pick<Retirada,"status"> & Par
 /** Apenas compromissos em aberto; nunca cria outro para resolver o mesmo evento. */
 export function scheduledWithdrawalForMedication(rows: Retirada[], medicationId: string): Retirada | null {
   let earliest: Retirada | null = null;
-  for (const row of rows) {
+  for (const row of availableWithdrawalsM2(rows)) {
     if (!row.id || row.medicamento_id !== medicationId || !activeScheduledWithdrawalP5P4(row)) continue;
     if (!earliest || row.data < earliest.data || (row.data === earliest.data && (row.horario || "23:59") < (earliest.horario || "23:59"))) earliest = row;
   }
@@ -18,7 +19,7 @@ export function scheduledWithdrawalForMedication(rows: Retirada[], medicationId:
 /** Index active commitments once for lists and dashboards. Overdue stays active. */
 export function indexScheduledWithdrawals(rows: Retirada[]): Map<string, Retirada> {
   const result = new Map<string, Retirada>();
-  for (const row of rows) {
+  for (const row of availableWithdrawalsM2(rows)) {
     if (!row.id || !row.medicamento_id || !activeScheduledWithdrawalP5P4(row)) continue;
     const current = result.get(row.medicamento_id);
     if (!current || row.data < current.data || (row.data === current.data && (row.horario || "23:59") < (current.horario || "23:59"))) result.set(row.medicamento_id, row);
@@ -46,7 +47,7 @@ export function medicationWithdrawalKey(medication: Pick<Medicamento, "user_id" 
 
 export function indexScheduledWithdrawalsByOwner(rows: readonly Retirada[]): Map<string, Retirada> {
   const result = new Map<string, Retirada>();
-  for (const row of rows) {
+  for (const row of availableWithdrawalsM2(rows)) {
     if (!row.id || !activeScheduledWithdrawalP5P4(row) || !/^\d{4}-\d{2}-\d{2}$/.test(row.data)) continue;
     const key = ownerWithdrawalKey(row);
     if (!key) continue; // Do not guess a person from legacy missing owner data.
@@ -62,7 +63,7 @@ export function scheduledWithdrawalForOwnedMedication(
   const key = medicationWithdrawalKey(medication);
   if (!key) return null;
   let first: Retirada | null = null;
-  for (const row of rows) {
+  for (const row of availableWithdrawalsM2(rows)) {
     if (!row.id || !activeScheduledWithdrawalP5P4(row) || !/^\d{4}-\d{2}-\d{2}$/.test(row.data) || ownerWithdrawalKey(row) !== key) continue;
     if (!first || row.data < first.data || (row.data === first.data && (row.horario || "23:59") < (first.horario || "23:59"))) first = row;
   }

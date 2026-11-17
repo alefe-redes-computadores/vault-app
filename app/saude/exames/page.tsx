@@ -519,6 +519,8 @@ export default function ExamesPage() {
         </ListPageHeader>
 
         <section className="space-y-3.5 px-5 pt-4">
+          <button type="button" onClick={()=>router.push('/saude/careflow/exames')}
+            className="min-h-12 w-full rounded-2xl border border-emerald-300/30 bg-emerald-300/[.06] px-3 text-left text-xs font-bold text-emerald-300">Pedido com vários exames · CareFlow 360</button>
           {activePersonId && (
             <ClinicalListSummary
               icon={ChartNoAxesCombined}

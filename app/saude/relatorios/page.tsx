@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BrainCircuit, Check, ClipboardCopy, FileJson2, FileSpreadsheet, FileText, LockKeyhole, ShieldCheck, Stethoscope, Users } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
@@ -45,6 +45,22 @@ export default function Reports360Page(){
   },[ready,user?.id,activePersonId,health.context,brain.records,person?.name,start,end,sections,mode]);
   const choose=(section:Report360Section)=>{setMessage("");setSections(value=>value.includes(section)?value.filter(x=>x!==section):[...value,section]);};
   const preset=(days:7|30|90)=>{setEnd(today);setStart(backDays(today,days));setMessage("");};
+  const reportScopeM2=useRef({userId:user?.id||'',personId:activePersonId||''});
+  reportScopeM2.current={userId:user?.id||'',personId:activePersonId||''};
+  const archiveReportM2=async()=>{
+    if(!result.report||busy||!user?.id||!activePersonId)return;
+    const intended={userId:user.id,personId:activePersonId};
+    setBusy(true);setMessage('');
+    try{
+      const {pdfLibraryM2,makeClinicalPdfM2}=await import('@/lib/careflow-m2/pdf-library');
+      const blob=await makeClinicalPdfM2(result.report);
+      if(reportScopeM2.current.userId!==intended.userId||reportScopeM2.current.personId!==intended.personId)
+        throw new Error('Pessoa/conta alterada durante a preparação. Arquivo não foi gravado.');
+      await pdfLibraryM2.add(intended.personId,{title:`Relatório clínico 360 · ${start} a ${end}`,start,end,origin:'clinical_report',blob});
+      setMessage('PDF guardado somente neste aparelho. Acesse a Biblioteca de Relatórios para localizar por ano ou exportar uma cópia.');
+    }catch(e){setMessage(e instanceof Error?e.message:'Não foi possível arquivar o relatório.');}
+    finally{setBusy(false);}
+  };
   const exportFile=async(kind:"pdf"|"csv"|"json")=>{
     if(!result.report||busy)return;setBusy(true);setMessage("");
     try{
@@ -83,6 +99,10 @@ export default function Reports360Page(){
       {health.error&&<p role="alert" className="text-xs text-amber-300">{health.error}</p>}
       {!ready?<div role="status" className="rounded-xl border border-surface-border p-4 text-xs text-ink-muted">{health.isLoading||brain.isLoading?"Carregando dados da pessoa…":"Aguardando identificação e dados da pessoa ativa."}</div>:result.error?<p role="alert" className="rounded-xl border border-amber-300/30 p-3 text-xs text-amber-300">{result.error}</p>:result.report&&<section className="rounded-[22px] border border-emerald-300/20 bg-emerald-300/[.035] p-4"><div className="flex items-center gap-2 text-xs font-bold"><FileText size={16} className="text-emerald-300"/>Prévia do arquivo</div><p className="mt-2 text-sm">{result.report.rows.length} itens · {result.report.summary.daysWithRecords} dias documentados</p><p className="mt-1 text-[11px] text-ink-muted">{result.report.summary.confirmed} tomadas confirmadas · {result.report.summary.explicitlyIgnored} ignoradas explicitamente · {result.report.summary.brainSnapshots} alertas preservados</p><div className="mt-3 space-y-2">{result.report.rows.slice(0,3).map((entry,i)=><div key={`${entry.sourceId}:${i}`} className="rounded-xl border border-surface-border bg-surface p-2"><strong className="block text-xs">{entry.title}</strong><p className="mt-1 line-clamp-2 text-[10px] text-ink-muted">{entry.date} · {entry.source} · {entry.detail}</p></div>)}</div><p className="mt-2 text-[10px] leading-relaxed text-ink-faint">A prévia mostra até três itens. O PDF apresenta as seções selecionadas e as limitações, incluindo as evidências quando o Brain foi escolhido.</p></section>}
       <div className="grid grid-cols-3 gap-2"><button type="button" onClick={()=>void exportFile("pdf")} disabled={!result.report||busy} className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl bg-emerald-300 text-xs font-bold text-void disabled:opacity-40"><FileText size={18}/>PDF</button><button type="button" onClick={()=>void exportFile("csv")} disabled={!result.report||busy} className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-surface-border bg-surface text-xs font-semibold disabled:opacity-40"><FileSpreadsheet size={18}/>CSV</button><button type="button" onClick={()=>void exportFile("json")} disabled={!result.report||busy} className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-surface-border bg-surface text-xs font-semibold disabled:opacity-40"><FileJson2 size={18}/>JSON</button></div>
+      <div className="grid grid-cols-2 gap-2"><button type="button" disabled={!result.report||busy} onClick={()=>void archiveReportM2()}
+        className="min-h-12 rounded-xl border border-violet-300/30 bg-violet-300/[.06] px-2 text-xs font-bold text-violet-200 disabled:opacity-40">Arquivar PDF neste aparelho</button>
+        <button type="button" onClick={()=>router.push('/saude/careflow/relatorios')}
+        className="min-h-12 rounded-xl border border-surface-border px-2 text-xs font-semibold text-ink-secondary">Biblioteca por ano / período</button></div>
       {message&&<p role="status" className="rounded-xl border border-surface-border bg-surface p-3 text-xs text-ink-muted">{message}</p>}
       <div className="flex items-start gap-2 rounded-2xl border border-amber-300/15 p-3 text-[11px] leading-relaxed text-ink-muted"><LockKeyhole size={16} className="mt-0.5 shrink-0 text-amber-300"/>Nenhum dado é transmitido pelo VAULT para gerar o relatório. Confira o conteúdo e quem receberá o arquivo. Sensores não são medidas clínicas infalíveis.</div>
     </div>

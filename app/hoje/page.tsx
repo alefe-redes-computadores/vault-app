@@ -82,6 +82,7 @@ import { useActivePersonId } from "@/hooks/useActivePersonId";
 import { useAuth } from "@/hooks/useAuth";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { LazyQuickDoseModal as QuickDoseModal } from "@/components/saude/LazyQuickDoseModal";
+import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import { useHealthReminders } from "@/hooks/useHealthReminders";
 import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
@@ -1645,6 +1646,7 @@ export default function HojePage() {
           />
           <span className="sr-only">Doses futuras não estão atrasadas antes do horário. Registros contraditórios exigem revisão separada.</span>
         </header>
+        <div className="mx-auto max-w-3xl px-4 pt-3"><CareFlowSummaryM2 /></div>
 
         {/* =========================================================
             CONTEÚDO

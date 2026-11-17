@@ -12,6 +12,8 @@ export interface HealthReminderRule {
   time: string;
   frequency: HealthReminderFrequency;
   weekdays: number[];
+  /** M2: optional finite plan dates; no infinite daily notifications. */
+  careflow_m2?: {plan_id:string;start:string;end:string}|null;
   status: HealthReminderStatus;
   created_at: string;
   updated_at: string;

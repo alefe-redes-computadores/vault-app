@@ -747,6 +747,7 @@ export interface SyncQueueItem {
     | "settings"
     | "versiculos"
     | "registros_saude"
+    | "careflow_events_m2"
     | "health_reminders"
     | "health_profiles"
     | "health_devices"
