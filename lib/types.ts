@@ -768,6 +768,8 @@ export interface SyncQueueItem {
 // ============================================================
 
 export interface Medicamento {
+  /** CI360 M1: histórico de via e avaliação, sem substituir doses reais. */
+  contexto_clinico_m1?: import("@/lib/clinical/episode-m1").MedicationClinicalContextM1 | null;
   id?: string;
   user_id: string;
   person_id?: string;
@@ -1145,6 +1147,8 @@ export interface Cirurgia {
 }
 
 export interface Consulta {
+  /** CI360 M1: desfecho estruturado e fonte declarada, separado da prescrição. */
+  desfecho_clinico_m1?: import("@/lib/clinical/episode-m1").ConsultationOutcomeM1 | null;
   id?: string;
   user_id: string;
   person_id?: string;

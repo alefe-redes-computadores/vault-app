@@ -1,4 +1,5 @@
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
+import { normalizeMedicationClinicalContextM1 } from "@/lib/clinical/episode-m1";
 import { getMedicationAlertPrefs } from "@/lib/health-intelligence/medication-alert-policy";
 // lib/repositories/medicamentos.ts
 
@@ -514,6 +515,14 @@ export const medicamentosRepository = {
       throw new Error(
         "Medicamento não encontrado para a pessoa ativa."
       );
+    }
+
+    // CI360 M1: writes of clinical regimen/history MUST match both account and person.
+    if (data.contexto_clinico_m1 !== undefined) {
+      const auth = await getLocalFirstAuthUser();
+      if (!auth.data.user || auth.data.user.id !== current.user_id)
+        throw new Error("Conta autenticada não corresponde ao medicamento.");
+      normalizeMedicationClinicalContextM1(data.contexto_clinico_m1);
     }
 
     const tratamentoIds =

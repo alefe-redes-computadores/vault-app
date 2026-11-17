@@ -35,6 +35,7 @@ const imports={
  'framer-motion':{motion:new Proxy({},{get:(_,name)=>name})},
  '@/lib/health-intelligence/temporary-course-insights':{temporaryCourseSummaries:()=>courses},
  '@/components/saude/MedicationDoseHourChips':{MedicationDoseHourChips:()=>null},
+ '@/components/saude/CourseReviewM1':{CourseReviewM1:()=>null},
  '@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:()=>null},
  '@/components/ui/AvatarMedicamento':{AvatarMedicamento:()=>null},
  '@/components/saude/visual-studio/PillStudioV8':{PillStudioV8:()=>null}, // V8P2_INTEGRATED_M59_MOCK

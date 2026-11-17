@@ -2090,6 +2090,7 @@ export function useSyncQueue() {
                   historico_dosagens:
                     med.historico_dosagens ||
                     [],
+                  contexto_clinico_m1: med.contexto_clinico_m1 ?? null,
 
                   cid_ids:
                     med.cid_ids ||
@@ -2708,6 +2709,7 @@ export function useSyncQueue() {
                   percepcao_paciente: consulta.percepcao_paciente ?? null,
                   orientacao_profissional: consulta.orientacao_profissional ?? null,
                   proximos_passos: consulta.proximos_passos ?? null,
+                  desfecho_clinico_m1: consulta.desfecho_clinico_m1 ?? null,
 
                   created_at:
                     consulta.created_at,

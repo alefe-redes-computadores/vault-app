@@ -8,6 +8,7 @@ import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseS
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { PharmaLensMedicationEntryV7 } from "@/components/saude/PharmaLensMedicationEntryV7";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
+import { MedicationRegimeM1 } from "@/components/saude/MedicationRegimeM1";
 import { isTemporaryCoursePlannedDose, contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
 import { medicationAccessAction, scheduledWithdrawalForOwnedMedication } from "@/lib/medication-access-action";
@@ -2995,6 +2996,7 @@ function MedicamentoDetalhesContent() {
           <MedicationKnowledgePanelM153P4 medication={med}/>
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
+          {activePersonId && <MedicationRegimeM1 med={med} personId={activePersonId} />}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
           {/* ==================================================
               INTELIGÊNCIA E ATENÇÃO — V72

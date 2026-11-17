@@ -525,6 +525,7 @@ export function QuickDoseModal({
 }: QuickDoseModalProps) {
   const router=useRouter();
   const saveLock=useRef(false);
+  const extraReasonInputRef=useRef<HTMLInputElement>(null);
   const [portalReady, setPortalReady] = useState(false);
   const { layerStyle, keyboardOpen } = useAndroidModalViewport(isOpen && portalReady);
 
@@ -673,6 +674,7 @@ export function QuickDoseModal({
 
   const [doseReason, setDoseReason] =
     useState("");
+  const [extraReasonErrorM1,setExtraReasonErrorM1]=useState(false);
 
   // ==========================================================
   // MEDICAMENTO SELECIONADO
@@ -896,6 +898,7 @@ export function QuickDoseModal({
 
       setRegisterAsExtra(false);
       setDoseReason("");
+      setExtraReasonErrorM1(false);
       setDoseDate(today);
       setDoseHora(getCurrentTime());
 
@@ -1243,7 +1246,10 @@ export function QuickDoseModal({
 
       if (selectedMed.tipo_uso === "temporario" && doseMode === "ad-hoc" &&
           (!registerAsExtra || !doseReason.trim())) {
-        showToast("Horário fora do período: selecione uma dose programada ou marque explicitamente como extra e informe o motivo.", "error");
+        setExtraReasonErrorM1(true);
+        trigger("error");
+        showToast("Dose fora do período: marque como extra e informe uma justificativa antes de salvar.", "error");
+        window.requestAnimationFrame(()=>extraReasonInputRef.current?.focus());
         return;
       }
 
@@ -2696,15 +2702,19 @@ export function QuickDoseModal({
           {selectedMed && doseMode === "ad-hoc" && (
             <label className="block">
               <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
-                Motivo ou contexto (opcional)
+                {selectedMed.tipo_uso === "temporario" ? "Justificativa obrigatória para dose extra" : "Motivo ou contexto (opcional)"}
               </span>
               <input
+                ref={extraReasonInputRef}
+                aria-invalid={extraReasonErrorM1}
+                aria-describedby={extraReasonErrorM1?"m1-extra-reason-error":undefined}
                 value={doseReason}
-                onChange={(event) => setDoseReason(event.target.value)}
+                onChange={(event) => {setDoseReason(event.target.value);setExtraReasonErrorM1(false);}}
                 maxLength={160}
                 placeholder={selectedMed.tipo_uso === "continuo" ? "Ex.: orientação excepcional" : "Ex.: sintoma observado"}
-                className="mt-2 h-[52px] w-full rounded-2xl border border-surface-border/50 bg-surface-raised px-4 text-sm text-ink-primary outline-none focus:border-ice/50"
+                className={`mt-2 h-[52px] w-full rounded-2xl border bg-surface-raised px-4 text-sm text-ink-primary outline-none focus:border-ice/50 ${extraReasonErrorM1?"border-rose-400 ring-2 ring-rose-400/25":"border-surface-border/50"}`}
               />
+              {extraReasonErrorM1 && <span id="m1-extra-reason-error" role="alert" className="mt-2 block text-xs font-semibold text-rose-300">Informe o motivo e confirme a dose extra. A tomada não foi salva.</span>}
             </label>
           )}
 
