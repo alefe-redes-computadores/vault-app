@@ -20,7 +20,7 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
   return <section aria-label="Atenção do dia e agenda em ordem de horário" className="rounded-[18px] border border-ice/15 bg-gradient-to-b from-ice/[.045] to-surface/75 p-2.5">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0"><h2 className="font-display text-base font-bold text-ink-primary">Atenção do dia</h2>
-        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">Alertas e acesso à agenda completa, sem registrar eventos.</p></div>
+        <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">Alertas primeiro; demais horários nos detalhes.</p></div>
       <Clock3 size={18} className="mt-0.5 shrink-0 text-ice" aria-hidden="true"/>
     </div>
     {(overview.dueDoseCount > 0 || overdueWithdrawals > 0) ? <div className="mt-3 grid gap-2 min-[350px]:grid-cols-2">
@@ -34,9 +34,9 @@ export function TodayAgendaOverview({ overview, overdueWithdrawals, remindersCou
     <div className="mt-3 border-t border-surface-border/40 pt-2.5">
       <div className="flex items-center justify-between gap-2"><h3 className="text-xs font-bold text-ink-primary">Agenda por horário</h3>{overview.nextUpcoming ? <button type="button" onClick={()=>overview.nextUpcoming?.kind === "dose" && onJumpDose ? onJumpDose(overview.nextUpcoming!.time) : onJump(overview.nextUpcoming!.destination)} className="min-h-11 shrink-0 rounded-lg border border-ice/20 bg-ice/[.055] px-2 text-xs font-semibold tabular-nums text-ice" aria-label={`Ir para o próximo horário às ${overview.nextUpcoming.time}`}>Próximo · {overview.nextUpcoming.time}</button> : <span className="text-xs text-ink-muted">Prévia · todos os tipos</span>}</div>
       {/* M106: alertas urgentes e próximo evento permanecem visíveis. */}
-      <details className="group mt-2 rounded-xl border border-surface-border/35 bg-surface/25 px-2.5">
+      <details className="group mt-2 rounded-xl border border-surface-border/35 bg-surface/20 px-2.5" data-vault-ui360-r2-agenda>
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
-          <span>Ver horários do dia{previewRows.length > 0 ? ` · ${previewRows.length} na prévia` : ""}</span>
+          <span>Ver prévia por horário{previewRows.length > 0 ? ` · ${previewRows.length}` : ""}</span>
           <ChevronDown size={15} aria-hidden="true" className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none"/>
         </summary>
         <div className="border-t border-surface-border/30 pb-2 pt-1">

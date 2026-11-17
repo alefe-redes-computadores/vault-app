@@ -19,20 +19,20 @@ export function HomeAttentionRail<T extends IdentifiedAlert>({alerts, descriptio
   const hidden = Math.max(0, alerts.length - 1);
   return (
     <>
-      <div className="flex min-w-0 items-start justify-between gap-3 rounded-2xl border border-surface-border/65 bg-surface/70 px-3 py-2.5">
+      <div className="flex min-w-0 items-center justify-between gap-2 rounded-[17px] border border-surface-border/50 bg-surface/55 px-3 py-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Bell size={15} className="text-coral" aria-hidden="true" />
             <h2 className="font-display text-[15px] font-bold tracking-tight text-ink-primary">Atenção</h2>
           </div>
-          <p className="mt-0.5 break-words text-xs leading-relaxed text-ink-muted">{description}</p>
+          <p className="mt-0.5 line-clamp-2 break-words text-[11px] leading-relaxed text-ink-muted">{description}</p>
         </div>
         <span className="min-w-7 shrink-0 rounded-full bg-coral/10 px-2 py-1 text-center font-mono text-[12px] font-bold tabular-nums text-coral"
           aria-label={`${alerts.length} alertas registrados`}>
           {alerts.length}
         </span>
       </div>
-      <div id="home-attention-alerts" className="space-y-2" aria-label="Alertas ordenados por prioridade">
+      <div id="home-attention-alerts" className="space-y-1.5" aria-label="Alertas ordenados por prioridade" data-vault-ui360-r2-attention>
         {visible.map(alert => (
           <div key={alert.id} className="w-full min-w-0 overflow-hidden rounded-[18px]">
             {renderAlert(alert)}

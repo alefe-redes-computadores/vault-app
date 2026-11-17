@@ -64,13 +64,13 @@ export default function HelpPage() {
         {topicGroupsR4.map(group => <section key={group.name} className="space-y-2" aria-label={group.name}>
           <h2 className="flex items-center gap-2 text-xs font-bold text-ink-secondary"><group.Icon size={15} className={group.tone.split(" ")[0]} aria-hidden="true"/>{group.name}<span className="font-mono text-[10px] text-ink-muted">{group.items.length}</span></h2>
         {group.items.map(topic => (
-          <article id={`guia-${topic.id}`} key={topic.id} className={`rounded-xl border bg-surface px-3 py-2.5 ${group.tone.split(" ").slice(2).join(" ")}`}>
+          <article id={`guia-${topic.id}`} key={topic.id} className={`rounded-xl border bg-surface px-3 py-2 ${group.tone.split(" ").slice(2).join(" ")}`}>
             <button type="button" onClick={() => setSelected(topic)} className="flex min-h-12 w-full items-start gap-3 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
               <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${group.tone}`}>{helpIconR1(topic)}</span>
-              <span className="min-w-0 flex-1"><strong className="block text-sm">{topic.title}</strong><span className="mt-1 block text-xs leading-relaxed text-ink-muted">{topic.summary}</span></span>
+              <span className="min-w-0 flex-1"><strong className="block text-sm">{topic.title}</strong><span className="mt-0.5 block line-clamp-2 text-[11px] leading-relaxed text-ink-muted" title={topic.summary}>{topic.summary}</span></span>
               <ChevronRight size={16} className="mt-2 shrink-0 text-ink-muted" aria-hidden="true" />
             </button>
-            <button type="button" onClick={() => router.push(topic.destination)} className="mt-0 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{topic.id === "commands" ? "Ir à Home e usar a lupa" : "Abrir área"}<ArrowUpRight size={15} aria-hidden="true" /></button>
+            <button type="button" onClick={() => router.push(topic.destination)} className="mt-0 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-[11px] font-semibold text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">{topic.id === "commands" ? "Ir à Home e usar a lupa" : "Abrir área"}<ArrowUpRight size={15} aria-hidden="true" /></button>
           </article>
         ))}
         </section>)}

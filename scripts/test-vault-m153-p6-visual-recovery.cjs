@@ -56,7 +56,9 @@ ok("agenda mostra três retiradas ricas e ícones relacionais", () => {
   assert.match(home, /Ver mais \{retiradasAgendaM147\.length - 3\} na Agenda/);
 });
 ok("atenção usa superfície neutra e entidade sem banho monocromático", () => {
-  assert.match(attention, /border-surface-border\/65 bg-surface\/70/);
+  assert.match(attention, /border-surface-border\/50 bg-surface\/55/);
+  assert.match(attention, /alerts\.slice\(0, 1\)/);
+  assert.match(attention, /aria-expanded=\{expanded\}/);
   assert.match(alert, /case "estoque"[\s\S]*<Package size=\{17\}/);
   assert.match(alert, /border-surface-border\/65 bg-surface/);
   assert.doesNotMatch(alert, /borderColor:/);

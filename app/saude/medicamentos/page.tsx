@@ -1352,7 +1352,7 @@ export default function MedicamentosListPage() {
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
             <div className="flex min-w-0 flex-col gap-0.5">
               <div className="flex min-w-0 flex-col gap-0.5">
-              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 {personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:personalAccent}} />}
                 <h3 title={medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)} className="min-w-0 max-w-full line-clamp-2 break-words font-display text-[15px] font-bold uppercase tracking-[.015em] leading-[1.22rem] text-ink-primary">
                   {medicationListDisplayNameM150P3(med.nome, catalogIdentity?.authorityState === "confirmed" ? catalogIdentity.canonicalName : null)}
@@ -1362,7 +1362,7 @@ export default function MedicamentosListPage() {
                     {med.dosagem}
                   </span>
                 )}
-                <button type="button" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("regime");}} className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-violet-400/20 bg-violet-400/10 text-violet-300" : "border-emerald-300/20 bg-emerald-300/[.055] text-emerald-200"}`} aria-label="Regime de uso cadastrado"><Info size={11} aria-hidden="true"/>
+                <button type="button" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("regime");}} className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-violet-400/20 bg-violet-400/10 text-violet-300" : "border-emerald-300/20 bg-emerald-300/[.055] text-emerald-200"}`} aria-label="Regime de uso cadastrado">
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
                 </button>
               </div>
@@ -1383,7 +1383,7 @@ export default function MedicamentosListPage() {
                 </>
               )}
               </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px]">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) && <span data-vault-compact-medication-meta className="flex min-w-0 max-w-full flex-wrap items-center gap-1 text-[10px] text-ink-muted" title={[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao].filter(Boolean).join(" · ")}>
                   {activeIngredient && <span className="max-w-[11rem] truncate" title={activeIngredient}>{activeIngredient}</span>}
@@ -1398,14 +1398,24 @@ export default function MedicamentosListPage() {
                     {singleTreatment ? singleTreatment.nome : `${cardTreatments.length} tratamentos`}
                   </button>
                 )}
-                {!compactCards && <MedicationProvenanceLineM150P3 onContext={openMedicationContextP7R3}
-                  latestManufacturer={latestManufacturer}
-                  declaredManufacturer={med.laboratorio_etiqueta}
-                  acquisitionType={med.tipo_aquisicao}
-                  routeMode={supplyRoute?.mode}
-                  routeLabels={supplyRoute?.labels}
-                  doseText={textoDose}
-                />}
+                {!compactCards && <details data-vault-ui360-r2-med-evidence className="pointer-events-auto relative z-20 group min-w-0 max-w-full basis-full rounded-lg border border-surface-border/35 bg-surface-raised/20 px-2">
+                  <summary aria-label={`Ver origem, fabricante e dose de ${med.nome}`} className="pointer-events-auto relative z-20 flex min-h-9 cursor-pointer list-none items-center gap-1.5 text-[11px] text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                    <Factory size={13} className="shrink-0 text-ice" aria-hidden="true"/>
+                    <span className="min-w-0 flex-1 truncate font-medium" title={latestManufacturer || med.laboratorio_etiqueta || "Informações de aquisição e dose"}>{latestManufacturer || med.laboratorio_etiqueta || "Origem e dose"}</span>
+                    <span className="shrink-0 text-[10px] text-ink-muted">Detalhes</span>
+                    <ChevronDown size={14} className="shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true"/>
+                  </summary>
+                  <div className="border-t border-surface-border/30 py-2">
+                    <MedicationProvenanceLineM150P3 onContext={openMedicationContextP7R3}
+                      latestManufacturer={latestManufacturer}
+                      declaredManufacturer={med.laboratorio_etiqueta}
+                      acquisitionType={med.tipo_aquisicao}
+                      routeMode={supplyRoute?.mode}
+                      routeLabels={supplyRoute?.labels}
+                      doseText={textoDose}
+                    />
+                  </div>
+                </details>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <span title={catalogIdentity.authorityDetail} className="rounded-md bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">Revisar identidade</span>
                 )}
@@ -1763,7 +1773,7 @@ export default function MedicamentosListPage() {
                     <MedicationPortfolioOverview portfolio={healthIntelligence.careCommand?.medications}
                       decision={healthIntelligence.careCommand?.decision}
                       doses={{total:statsProgresso.total,completed:statsProgresso.completados,ignored:statsProgresso.ignoradas}}
-                      listActiveCount={statsProgresso.ativos} onNavigate={href=>router.push(href)}/>
+                      listActiveCount={statsProgresso.ativos} condensedInList onNavigate={href=>router.push(href)}/>
                   </div>
                 </details>
         </section>

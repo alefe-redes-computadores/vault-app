@@ -24,7 +24,7 @@ for(const file of files){
  ok(p.parseDiagnostics.length===0,`TS/TSX: ${file}: ${p.parseDiagnostics.map(e=>e.messageText).join('; ')}`);
 }
 const [rail,visit,nav,routine,stock,treat,treatmentDetail,avatar,comparison,r8,r82,r83,v94,three]=files.map(read);
-ok(rail.includes('alerts.slice(0, 1)')&&!rail.includes('snap-x snap-mandatory')&&rail.includes('className="space-y-2"'), 'Home sem carrossel lateral cortado');
+ok(rail.includes('alerts.slice(0, 1)')&&!rail.includes('snap-x snap-mandatory')&&rail.includes('className="space-y-1.5"')&&rail.includes('data-vault-ui360-r2-attention'), 'Home sem carrossel lateral cortado');
 ok(rail.includes('visible.map(alert')&&rail.includes('key={alert.id}')&&rail.includes('onClick={onToggle}')&&rail.includes('aria-expanded={expanded}'), 'Home preserva ordem e abertura explícita dos alertas');
 ok(visit.includes('hasVisitEvidence=stats.some(item=>item.value>0)')&&visit.includes('Sem eventos vinculados para resumir'), 'Tratamento sem 4 contadores zero em preparação');
 ok(visit.includes('dossier.synopsis')&&visit.includes('copySummary()')&&visit.includes('dossier.pendingLocal'), 'Preparação preserva texto e cópia com fallback');

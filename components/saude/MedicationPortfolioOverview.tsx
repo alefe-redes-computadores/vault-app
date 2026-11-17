@@ -11,13 +11,14 @@ import { useDismissibleDetails } from "@/hooks/useDismissibleDetails";
  * P9 — compacto por padrão, evidências detalhadas por opção do usuário.
  * Contagens do Brain e do calendário clínico permanecem autoridades distintas.
  */
-export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavigate, listActiveCount }: {
+export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavigate, listActiveCount, condensedInList = false }: {
   portfolio: MedicationPortfolio | null | undefined;
   decision?: BrainCarePlan["decision"];
   doses: { total: number; completed: number; ignored: number };
   onNavigate: (href: string) => void;
   /** Contagem canônica da listagem (inclui SOS); diferenças ficam explícitas. */
   listActiveCount?: number;
+  condensedInList?: boolean;
 }) {
   const detailsRef = useDismissibleDetails();
   if (!portfolio) return null;
@@ -39,17 +40,17 @@ export function MedicationPortfolioOverview({ portfolio, decision, doses, onNavi
             <span className={portfolio.needsAction>0?"text-amber-300":"text-emerald-300"}>{portfolio.needsAction} em atenção</span>
           </p>
         </div>
-        <div className="shrink-0 text-right" aria-label={total>0?`${completed} de ${total} doses confirmadas hoje`:"Sem doses programadas no resumo de hoje"}>
+        {!condensedInList && <div className="shrink-0 text-right" aria-label={total>0?`${completed} de ${total} doses confirmadas hoje`:"Sem doses programadas no resumo de hoje"}>
           <span className="block text-xl font-bold tracking-tight tabular-nums text-ink-primary">{total>0?`${completed}/${total}`:"—"}</span>
           <span className="block text-xs text-ink-muted">tomadas hoje</span>
-        </div>
+        </div>}
       </div>
       {typeof listActiveCount === "number" && Number.isFinite(listActiveCount) && listActiveCount !== portfolio.active && (
         <MedicationScopeReconciliation listActiveCount={listActiveCount} brainActiveCount={portfolio.active} />
       )}
       {coherence.hasUnknownType && <p role="note" className="mt-1.5 text-[10px] leading-relaxed text-violet-200">{coherence.explanation}</p>}
-      {total > 0 && <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}
-      {(ignored > 0 || pending > 0) && <p className="mt-1.5 text-[10px] leading-snug text-ink-muted">
+      {!condensedInList && total > 0 && <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-raised ring-1 ring-inset ring-surface-border/30" aria-label={`${percent}% das doses confirmadas hoje`}><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width:`${Math.min(100, percent || 0)}%` }}/></div>}
+      {!condensedInList && (ignored > 0 || pending > 0) && <p className="mt-1.5 text-[10px] leading-snug text-ink-muted">
         {pending > 0 ? `${pending} a revisar` : ""}
         {pending > 0 && ignored > 0 ? " · " : ""}
         {ignored > 0 ? `${ignored} ignorada${ignored===1?"":"s"}, não tomada${ignored===1?"":"s"}` : ""}

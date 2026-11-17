@@ -85,6 +85,7 @@ import { summarizePersonalVault } from "@/lib/personal-vault-overview";
 import { NativeDoseAgendaInspection } from "@/components/saude/NativeDoseAgendaInspection";
 import { OperationalReadinessM103 } from "@/components/OperationalReadinessM103";
 import { formatPtBrQuantity } from "@/lib/ui/quantity-ptbr";
+import { useVisualDisclosureMemoryR2 } from "@/hooks/useVisualDisclosureMemoryR2";
 
 // ============================================================
 // CONFIRMAÇÃO RIGOROSA
@@ -182,6 +183,7 @@ export default function MaisPage() {
   const { user, logout } = useAuth();
   const syncRuntime = useVaultSyncRuntime();
   const { activePersonId } = useActivePersonId();
+  useVisualDisclosureMemoryR2("mais", user?.id, activePersonId);
 
   const activePerson = useLiveQuery(
     async () => {
@@ -988,7 +990,7 @@ export default function MaisPage() {
             </div>
 
             {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
-            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3">
+            <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3" data-vault-remember-r2="preferences">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span>Preferências e lembretes</span>
                 <ChevronDown size={16} aria-hidden="true" className="text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
@@ -1011,7 +1013,7 @@ export default function MaisPage() {
             {/* P4: atualização básica separada das preferências. Diagnóstico técnico fica abaixo e recolhido. */}
             <section id="mais-atualizacoes" aria-label="Atualizações do aplicativo" className="space-y-2">
               <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Atualizações</h2>
-              <details id="vault-updates-r4" className="group rounded-[20px] border border-surface-border/55 bg-surface/70" aria-label="VAULT Update Center recolhido">
+              <details id="vault-updates-r4" className="group rounded-[20px] border border-surface-border/55 bg-surface/70" data-vault-remember-r2="updates" aria-label="VAULT Update Center recolhido">
                 <VaultUpdateDisclosureR4 />
                 <div className="border-t border-surface-border/45 p-2"><VaultUpdateCenter /></div>
               </details>
@@ -1182,10 +1184,11 @@ export default function MaisPage() {
               </button>
             </div>
               {/* M145: Prontidão sob Dados & Nuvem, sem consumir primeira dobra. */}
-              <div className="col-span-2 min-w-0"><OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/></div>
-              <details className="group col-span-full rounded-[18px] border border-surface-border/45 bg-surface/35 px-3" aria-label="Ferramentas avançadas de dados">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span>Ferramentas avançadas · backup, exportação e limpeza</span><ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/></summary>
+
+              <details className="group col-span-full rounded-[18px] border border-surface-border/45 bg-surface/35 px-3" aria-label="Ferramentas avançadas de dados" data-vault-remember-r2="advanced">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span className="min-w-0"><strong className="block text-xs text-ink-primary">Ferramentas avançadas</strong><span className="mt-0.5 block text-[10px] font-normal text-ink-muted">Prontidão, backup, recuperação, exportação e limpeza</span></span><ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/></summary>
                 <div className="grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3 min-[380px]:grid-cols-2">
+              <div className="col-span-full min-w-0"><OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/></div>
               {/* VAULT_RECOVERY_CENTER_V68 */}
               <button
                 type="button"

@@ -17,7 +17,7 @@ export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
   const reveal = useProgressiveReveal(reminders.map(item => item.id).join("\u001f"), reminders.length, 3, 4);
   if (reminders.length === 0) return null;
   return (
-    <section className="vault-deferred space-y-3.5" aria-label="Lembretes de saúde do dia">
+    <section className="vault-deferred space-y-2.5" data-vault-ui360-r2-reminders aria-label="Lembretes de saúde do dia">
       <header className="flex items-center justify-between gap-2 rounded-2xl border border-surface-border/45 bg-surface-raised/35 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-400/20 bg-emerald-400/[.07] text-emerald-300" aria-hidden="true">
@@ -37,7 +37,7 @@ export function TodayRemindersPanel({ reminders, onNavigate }: Props) {
             <button type="button" disabled={!isSafeLocalActionHref(reminder.target_route)}
               onClick={() => { if (safeRoute) onNavigate(reminder.target_route); }}
               aria-label={`${reminder.title}, às ${reminder.time}. ${safeRoute ? "Abrir ação do lembrete" : "Destino indisponível"}`}
-              className="flex min-h-[60px] w-full items-center gap-3 rounded-2xl border border-surface-border/60 bg-surface/85 px-3 py-2.5 text-left transition-[background-color,border-color] hover:border-emerald-300/25 hover:bg-surface-raised/50 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+              className="flex min-h-[56px] w-full items-center gap-2.5 rounded-[17px] border border-surface-border/60 bg-surface/85 px-3 py-2 text-left transition-[background-color,border-color] hover:border-emerald-300/25 hover:bg-surface-raised/50 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
               <span className="flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] px-2.5 py-2 text-[11px] font-bold tabular-nums text-emerald-200"><Clock3 size={13} aria-hidden="true"/>{reminder.time}</span>
               <span className="min-w-0 flex-1">
                 <strong className="block break-words text-[13px] font-semibold leading-snug text-ink-primary line-clamp-2" title={reminder.title}>{reminder.title}</strong>
