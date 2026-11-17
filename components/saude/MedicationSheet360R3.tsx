@@ -68,10 +68,12 @@ function toBrazilianDate(input:string|null){
 /** Apenas projeção de dados e handlers do cadastro. Nunca cria tomada, receita, estoque ou retirada. */
 export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medication360Value|null;onClose:()=>void;onNavigate:(href:string)=>void}){
   const [tab,setTab]=useState<Medication360Tab>("ficha");
+  const [keptConflictKeys,setKeptConflictKeys]=useState<string[]>([]);
   const closeRef=useRef<HTMLButtonElement>(null);
   useEffect(()=>{
     if(!value)return;
     setTab(value.initialTab);
+    setKeptConflictKeys([]);
     const original=document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame=requestAnimationFrame(()=>closeRef.current?.focus());
     const escape=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();onClose();}};
@@ -102,13 +104,12 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
         {tab==="ficha" && <>
           <h3 className="text-sm font-semibold text-ink-primary">Ficha técnica e procedência</h3>
           <div className="grid grid-cols-2 gap-2">
-            <Field icon={<Factory size={14}/>} label="Fabricante da aquisição" value={value.manufacturer || "Não informado"}/>
-            <Field icon={<Factory size={14}/>} label="Fabricante no catálogo" value={value.catalogManufacturer || "Não identificado"}/>
-            <Field icon={<Pill size={14}/>} label="Forma cadastrada" value={value.form || "Não informada"}/>
+            <Field icon={<Factory size={14}/>} label="Fabricante" value={value.manufacturer || value.declaredManufacturer || "Não informado"}/>
             <Field icon={<Pill size={14}/>} label="Via de uso" value={value.route}/>
-            <Field icon={<ShoppingBag size={14}/>} label="Origem cadastrada" value={value.origin || "Não informada"}/>
-            <Field icon={<FileCheck2 size={14}/>} label="Identidade no catálogo" value={value.regulatory.authority}/>
+            <Field icon={<Pill size={14}/>} label="Apresentação" value={value.form || "Não informada"}/>
+            <Field icon={<ShoppingBag size={14}/>} label="Origem" value={value.origin || "Não informada"}/>
           </div>
+          <p className="rounded-lg border border-surface-border/40 bg-surface/30 px-3 py-2 text-[11px] text-ink-muted">Fabricante no catálogo: {value.catalogManufacturer || "Não identificado"} · Identidade: {value.regulatory.authority}. Fontes não são intercambiáveis.</p>
           <div className="rounded-xl border border-surface-border/45 bg-surface/45 p-3">
             <p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><FileCheck2 size={15} className="text-sky-300"/>Apresentações no catálogo</p>
             <p className="mt-1.5 break-words text-[11px] leading-relaxed text-ink-secondary">{value.officialPresentations || "Sem apresentação oficial resolvida para esta referência"}</p>
@@ -156,12 +157,17 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
           </div>
           <p className="rounded-xl border border-surface-border/50 bg-surface/40 p-3 text-[11px] text-ink-secondary">{value.regulatory.detail} · {value.regulatory.verified?"Classificação regulatória confirmada na referência do catálogo.":"Classificação não confirmada pelo catálogo; pode refletir o cadastro declarado."}</p>
           <p className="text-xs text-ink-muted">Renovação registrada: {toBrazilianDate(value.renewalDate)}</p>
-          {value.conflicts.map((c,i)=><div key={i} className="rounded-xl border border-amber-400/30 bg-amber-400/[.065] p-3">
+          {value.conflicts.filter(c=>!keptConflictKeys.includes(`${c.declared}:${c.reference}`)).map((c,i)=><div key={i} className="rounded-xl border border-amber-400/30 bg-amber-400/[.065] p-3">
             <p className="flex items-center gap-1 text-xs font-bold text-amber-200"><FilePenLine size={15}/>Sugestão de revisão</p>
             <p className="mt-1 text-[11px] text-ink-secondary">Seu cadastro: {c.declared} · Referência: {c.reference}</p>
             {c.limitation && <p className="mt-1 text-[11px] text-ink-muted">{c.limitation}</p>}
-            <button type="button" onClick={()=>navigate(value.editHref)} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-amber-400/35 px-3 text-xs font-semibold text-amber-200">Conferir e corrigir no cadastro <ArrowUpRight size={14}/></button>
-            <p className="mt-2 text-[10px] text-ink-muted">Você também pode manter o valor informado. Nenhum campo é corrigido ao abrir ou fechar a gaveta.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" onClick={()=>setKeptConflictKeys(keys=>[...keys,`${c.declared}:${c.reference}`])}
+                className="min-h-11 rounded-xl border border-surface-border/65 bg-surface/45 px-2 py-2 text-[11px] font-semibold text-ink-secondary">Manter meu cadastro</button>
+              <button type="button" onClick={()=>navigate(value.editHref)}
+                className="flex min-h-11 items-center justify-center gap-1 rounded-xl border border-amber-400/35 bg-amber-400/[.07] px-2 py-2 text-[11px] font-semibold text-amber-200">Aplicar no editor <ArrowUpRight size={13}/></button>
+            </div>
+            <p className="mt-2 text-[10px] text-ink-muted">Manter dispensa este aviso apenas nesta abertura. Aplicar abre a edição para revisar e salvar explicitamente; não altera nenhum campo ao tocar.</p>
           </div>)}
           <p className="text-[11px] text-ink-muted">A fonte pode indicar o receituário esperado, mas não confirma documento pessoal anexado, validade atual ou retirada concluída. Se o cadastro diferir, mantenha seu valor ou revise no editor — nenhuma alteração é automática.</p>
         </>}

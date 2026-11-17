@@ -108,9 +108,9 @@ function render(data) {queries=[];return useTodayOwnerData(data)};
  check(pulse.includes('todayTemporalGuidance')&&pulse.includes('role="note"'),'explicação clínica preservada');
  const home=file('components/home/HomeDailyHero.tsx');
  check(home.includes('scheduled > 0')&&home.includes('homeRoutineSummaryNote(scheduled, safeCompleted)'),'denominador de doses e ausência de horários preservados');
- check(home.includes('min-h-[104px]') && home.includes('active:bg-surface-raised/40') &&
+ check(home.includes('min-h-[75px]') && home.includes('active:bg-surface-raised/40') &&
  home.includes('scheduled > 0 && Number.isFinite(progress)'),
- 'M24/M25: alvo tátil de 104px, feedback ao toque e denominador real preservados');
+ 'UI360 R4: toque >=44px, feedback e denominador real preservados sem altura redundante');
  const network=file('components/saude/MedicationCareNetworkDetails.tsx');
  check(network.includes('size-12') && network.includes('onNavigate(') &&
  network.includes('onMap(') && network.includes('onCall('),

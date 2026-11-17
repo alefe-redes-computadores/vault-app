@@ -108,7 +108,7 @@ import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
 import { nextHomeRoutineDoseP71 } from "@/lib/home/next-routine-dose-p71";
 import { routineNarrativeP7R3 } from "@/lib/home/routine-narrative-p7r3";
-import { HomeActionNowCardP7R3 } from "@/components/home/HomeActionNowCardP7R3";
+import { HomeActionNowCardP7R3, type HomeContextKind360 } from "@/components/home/HomeActionNowCardP7R3";
 import { countHomeTodayAppointments } from "@/lib/home/appointment-metrics";
 import { selectHomeDayEvents } from "@/lib/home/appointment-day-selection";
 import { buildHomePendingDoseProjection } from "@/lib/home/pending-dose-projection";
@@ -932,6 +932,21 @@ export default function HomePage() {
       ]
     );
 
+  // UI360 R4: kind is visual presentation of a canonical decision / real destination.
+  // Do not derive from medicine names, infer a medical condition or write records.
+  const homeContextKind360: HomeContextKind360 = dosesPendentesAtrasadas.length > 0 ? "dose"
+    : /\/saude\/careflow(?:\/|[?#]|$)/.test(resumoContextual.href) ? "careflow"
+    : /\/(?:exames)(?:\/|[?#]|$)/.test(resumoContextual.href) ? "exame"
+    : /\/consultas(?:\/|[?#]|$)/.test(resumoContextual.href) ? "consulta"
+    : /\/(?:nova-receita|renovacao)(?:\/|[?#]|$)/.test(resumoContextual.href) ? "receita"
+    : /\/retiradas(?:\/|[?#]|$)/.test(resumoContextual.href) ? "retirada"
+    : /\/(?:estoque|contagem)(?:\/|[?#]|$)/.test(resumoContextual.href) ? "estoque"
+    : totalCompromissosHoje > 0 && resumoContextual.href === "/hoje"
+      ? consultasHoje.length > 0 && examesHoje.length === 0 && cirurgiasHoje.length === 0 ? "consulta"
+        : examesHoje.length > 0 && consultasHoje.length === 0 && cirurgiasHoje.length === 0 ? "exame"
+        : "agenda"
+    : resumoContextual.href === "/hoje" ? "rotina" : "outro";
+
   const routineContextP7R3 = routineNarrativeP7R3({
     scheduled:totalDosesPlanejadasHoje, completed:dosesTomadasDaRotinaHoje,
     overdue:dosesPendentesAtrasadas.filter(item=>item.diaLabel==="Hoje" && medicamentosById.get(item.medicamentoId)?.tipo_uso==="continuo").length,
@@ -1305,44 +1320,12 @@ export default function HomePage() {
         <section className="mx-auto max-w-3xl space-y-5 px-4 pt-4 sm:px-5">
 
           <VaultUpdateHomePromptM117 />
-          <CareFlowSummaryM2 />
           <HomeEssentialToggleM118 />
           {/* VAULT_M144_HOME_ENTRY · M149: item integrado na grade de áreas da Home, não um botão solto. */}
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
 
 
-          {/* P7: ação contextual real, distinta do progresso de doses. */}
-          {resumoContextual.href !== "/hoje" && resumoContextual.href !== "/" &&
-            !resumoContextual.href.startsWith("/saude/retiradas/detalhes") &&
-            !unifiedAlerts.some(a => a.href === resumoContextual.href) &&
-            !(dosesPendentesAtrasadas.length>0 || ["Ação agora","Atenção ao tratamento","Próxima etapa"].includes(resumoContextual.eyebrow)) && (
-            <button type="button" aria-label={`Ação contextual: ${resumoContextual.title}`}
-              onClick={() => {
-                trigger("vibrate");
-                if (resumoContextual.href === "/?open=pending-doses") setModalPendenciasAberto(true);
-                else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));
-              }}
-              className="flex min-h-12 w-full items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
-              <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-300">Ação agora</span>
-                <span className="block text-xs font-semibold text-ink-primary">{resumoContextual.title}</span>
-                <span className="line-clamp-2 text-[11px] text-ink-muted">{resumoContextual.description}</span>
-              </span>
-              <ChevronRight size={15} className="mt-1 shrink-0 text-amber-300" aria-hidden="true"/>
-            </button>
-          )}
-
-          {/* ===================================================
-              HOJE
-          =================================================== */}
-
-          {/* P7 R3: decision/action and routine readout are different responsibilities. */}
-          { (dosesPendentesAtrasadas.length>0 || ["Ação agora","Atenção ao tratamento","Próxima etapa"].includes(resumoContextual.eyebrow)) && (
-            <HomeActionNowCardP7R3 title={resumoContextual.title} description={resumoContextual.description}
-              eyebrow={resumoContextual.eyebrow} urgent={dosesPendentesAtrasadas.length>0 || primaryCareCommand?.lane==="now" || primaryMedicationCareOpportunity?.level==="urgent"}
-              actionLabel={resumoContextual.href.includes("pending-doses") ? "Revisar doses" : /nova-receita|receita|renova/i.test(resumoContextual.href) ? "Preparar receita" : /retiradas/i.test(resumoContextual.href) ? (resumoContextual.href.includes("review=") ? "Conferir vínculo" : "Abrir retirada") : /aquis|compra/i.test(resumoContextual.href) ? "Registrar aquisição" : "Abrir detalhes da ação"}
-              onAction={()=>{trigger("vibrate");if(resumoContextual.href==="/?open=pending-doses")setModalPendenciasAberto(true);else router.push(resumoContextual.href);}}/>
-          )}
+          {/* UI360 R4: evento, rotina e quatro contadores dividem uma superfície. */}
           <motion.section
             id="home-agora"
             initial={{
@@ -1359,7 +1342,11 @@ export default function HomePage() {
             }}
             className="relative overflow-hidden rounded-[22px] border border-surface-border bg-gradient-to-br from-surface-raised/50 via-surface to-surface shadow-sm"
           >
-            {/* P14 R3: hero puramente visual isolado; contadores continuam na Home. */}
+            <HomeActionNowCardP7R3 title={resumoContextual.title} description={resumoContextual.description}
+              eyebrow={resumoContextual.eyebrow} kind={homeContextKind360}
+              urgent={dosesPendentesAtrasadas.length > 0 || primaryCareCommand?.lane === "now" || primaryMedicationCareOpportunity?.level === "urgent"}
+              onAction={()=>{trigger("vibrate");if(resumoContextual.href==="/?open=pending-doses")setModalPendenciasAberto(true);else router.push(safeReturnTarget(resumoContextual.href, "/hoje"));}}/>
+            {/* R4: rotina sem parágrafo, sem botão avulso, com indicadores abertos. */}
             <HomeDailyHero eyebrow="Rotina de hoje" title={routineContextP7R3.title}
               description={routineContextP7R3.description} color={resumoContextual.color}
               completed={dosesTomadasDaRotinaHoje} scheduled={totalDosesPlanejadasHoje}
@@ -1384,6 +1371,7 @@ export default function HomePage() {
           <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
             diferencaMes={metricasFinanceiras.diff}
             totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
+          <CareFlowSummaryM2 />
           {/* M145: Compromissos reais primeiro; análises e cards de evidência vêm depois. */}
           {/* ===================================================
               COMPROMISSOS DE HOJE

@@ -8,7 +8,7 @@ for(const file of files){const parsed=ts.createSourceFile(file,r(file),ts.Script
 const med=r(files[0]),help=r(files[1]),sheet=r(files[2]);
 ok(med.includes('data-vault-med360-header')&&med.includes('data-vault-med360-entry="name"')&&med.includes('aria-haspopup="dialog"')&&med.includes('<ChevronRight size={14}')&&med.includes('openMedicationSheet360("ficha")'),'nome, dosagem e affordance para gaveta');
 ok(med.includes('data-vault-med360-entry="menu"')&&med.includes('openMedicationSheet360("acoes")')&&med.includes('<Ellipsis size={19}'),'menu contextual abre acoes da mesma gaveta');
-ok(med.includes('data-vault-ui360-r2-med-evidence')&&med.includes('data-vault-med360-evidence')&&!med.includes('<details data-vault-ui360-r2-med-evidence'),'conforto sem acordeao de proveniencia');
+ok(!med.includes('data-vault-ui360-r2-med-evidence')&&med.includes('data-vault-med360-entry="name"')&&sheet.includes('value.catalogManufacturer'),'conforto sem acordeao de proveniencia');
 ok(med.includes('<MedicationProvenanceLineM150P3')&&med.includes('latestManufacturer={latestManufacturer}')&&med.includes('declaredManufacturer={med.laboratorio_etiqueta}')&&med.includes('routeLabels={supplyRoute?.labels}'),'procedencia historica preservada dentro do menu');
 ok(med.includes('data-vault-med360-microbanner')&&med.includes('stockReview || prescriptionReview360 || (!stockUnknown && (isEstoqueCritico || isEstoqueZerado))')&&med.includes('prescriptionReview360 ? "receita" : "estoque"'),'microbanner real abre estoque');
 ok(med.includes('resolveMedicationKnowledgeM153P4(med)')&&med.includes('knowledge.conflicts.map')&&sheet.includes('Sugestão de revisão'),'reaproveita autoridade e sugere correcao nao automatica');
@@ -28,16 +28,16 @@ ok(sheet.includes('document.activeElement')&&sheet.includes('original?.focus()')
 ok(sheet.includes('Abrir detalhes completos')&&med.includes('detailHref'),'pagina completa nunca desaparece');
 ok(sheet.includes('medicamento')&&sheet.includes('não registra')&&sheet.includes('não confirma'),'contexto nao cria eventos');
 ok(help.includes('Compacto ou Conforto')&&help.includes('Toque no nome ou no menu •••')&&help.includes('Microavisos com contexto')&&help.includes('Conhecimento do catálogo'),'Ajuda atualizada com a jornada');
-ok(med.includes('className="sr-only"')&&med.includes('getVaultTreatmentIcon(singleTreatment?.nome')&&med.includes('cardTreatments.slice(0,2)')&&med.includes('cardTreatments.length > 2')&&med.includes('data-vault-med360-treatment-tags'), 'Compacto curto e ícones canonicos de tratamentos');
+ok(med.includes('className="sr-only"')&&med.includes('getVaultTreatmentIcon(t.nome)')&&med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&med.includes('data-vault-med360-treatment-tags'), 'Compacto curto e ícones canonicos de tratamentos');
 ok(med.includes('compactCards ? "min-h-[108px]" : "min-h-[124px]"')&&med.includes('data-vault-compact-medication-meta'),'ambas densidades e metadados legados');
 ok(med.includes('MedicationOperationalStrip today={todayStatus}')&&med.includes('MedicationContextSheetP7R3 value={medicationContextP7R3}')&&med.includes('MedicationActionsSheetR4 value={secondaryActionSheetR4}'),'componentes antigos mantidos para compatibilidade de retorno');
 ok(sheet.includes('grid-cols-5')&&sheet.includes('role="tablist"')&&!sheet.includes('tab==="tratamentos"'),'cinco abas: ficha inclui tratamentos vinculados');
 ok(med.indexOf('const prescriptionReview360')>med.indexOf('const catalogIdentity ='),'derivacao regulatoria nao acessa variavel antes da inicializacao');
 ok(med.includes('regulatoryProfile?.verified === true')&&med.includes('catalogIdentity?.authorityState === "confirmed"'),'microbanner de receita exige referencia confirmada');
 ok(med.includes('openMedicationSheet360(stockReview ? "estoque" : prescriptionReview360 ? "receita" : "estoque")'),'microbanner abre aba correta e prioriza estoque divergente');
-ok(sheet.includes('Conferir e corrigir no cadastro')&&sheet.includes('Nenhum campo é corrigido'),'revisao opcional sem gravacao silenciosa');
+ok(sheet.includes('Manter meu cadastro')&&sheet.includes('Aplicar no editor')&&sheet.includes('não altera nenhum campo'),'revisao opcional sem gravacao silenciosa');
 ok(med.includes('const today = hojeString')&&med.includes('!r.hasMalformedExceptions')&&med.includes('safe.length !== 1'),'classe regulatoria apenas com regra segura e vigente');
-ok(med.includes('catalogManufacturer: catalogIdentity?.manufacturer')&&sheet.includes('Fabricante no catálogo')&&sheet.includes('Fabricante da aquisição'),'fabricantes com fontes separadas');
+ok(med.includes('catalogManufacturer: catalogIdentity?.manufacturer')&&sheet.includes('Fabricante no catálogo')&&sheet.includes('label="Fabricante"')&&sheet.includes('value.manufacturer'),'fabricantes com fontes separadas');
 ok(sheet.includes('Via de uso')&&sheet.includes('Via de uso')&&med.includes('via não registrada separadamente'),'via não inventada quando cadastro não comprova');
 ok(med.includes('<Repeat2 size={12}')&&med.includes('data-vault-med360-treatment-tags'),'regime e tratamento com Lucide nos dois modos');
 const gate=r('scripts/test-v63-release-gate.mjs');ok(gate.includes('test-vault-m153-p7-r4-ux.cjs')&&gate.includes('test-vault-ci360-p6-consolidated.cjs'),'V63 global permanece intacto');

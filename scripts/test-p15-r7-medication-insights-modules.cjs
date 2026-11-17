@@ -30,7 +30,7 @@ ok(detail.includes('<MedicationStockOverview')&&detail.includes('<MedicationSusp
 ok(detail.includes('`/saude/medicamentos/historico?id=${id}`')&&detail.includes('getElementById("historico-aquisicoes")'), 'V70: histórico e média continuam navegáveis');
 ok(detail.includes('<ClinicalDisclosure id="medicamento-rede"')&&detail.includes('<ClinicalDisclosure id="medicamento-financeiro"'), 'V197: seções progressivas conservadas');
 ok((detail.match(/vault-deferred/g)||[]).length>=5, 'V197: cinco grupos progressivos permanecem');
-ok(home.includes('scheduled > 0 && Number.isFinite(progress)')&&home.includes('motion-reduce:transition-none active:bg-surface-raised/40'), 'Home preserva 0/0 e animação reduzida na ação');
+ok(home.includes('scheduled > 0 && Number.isFinite(progress)')&&home.includes('motion-reduce:transition-none')&&home.includes('active:bg-surface-raised/40')&&home.includes('aria-valuenow={safeProgress}'), 'Home preserva 0/0 e animação reduzida na ação');
 ok(today.includes('aria-atomic="true"')&&today.includes('aria-valuetext={`${completed} concluídas, ${ignored} ignoradas, ${unconfirmed} sem confirmação`}'), 'Hoje mantém leitura inclusiva dos três estados, sem recontagem');
 ok(avatar.includes('roughness: .89, transparent:true, opacity:appearance.lips')&&avatar.includes('renderer.forceContextLoss()')&&avatar.includes('expressionEyeScaleY'), 'Avatar suaviza material existente sem alterar malhas ou teardown');
 ok(!avatar.includes('requestAnimationFrame(animate)')&&avatar.includes("event.key==='Home'||event.key==='0'"), 'Avatar mantém orçamento GPU e controle de teclado');

@@ -15,7 +15,7 @@ const files=[
 ];
 for(const p of files){const src=r(p);const ast=ts.createSourceFile(p,src,ts.ScriptTarget.Latest,true,p.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);ok(ast.parseDiagnostics.length===0,'parse '+p);}
 const home=r(files[0]),attention=r(files[1]),today=r(files[2]),appointment=r(files[3]),reminders=r(files[4]),med=r(files[5]),panorama=r(files[6]),more=r(files[7]),help=r(files[8]),memory=r(files[9]);
-ok(home.includes('data-vault-ui360-r2-action') && home.includes('onClick={onAction}') && home.includes('Por que aparece?'),'Home preserva unica acao e justificativa');
+ok(home.includes('data-vault-ui360-r2-action') && home.includes('onClick={onAction}') && home.includes('data-vault-ui360-r4-context-kind') && !home.includes('Por que aparece?') && !home.includes('<details'),'Home usa evento inteiro navegavel sem acordeao');
 ok(!home.includes('Conferir próximo passo') && !home.includes('Indicadores de rotina') && !home.includes('Ver agenda'),'Home nao reinstala botoes antigos');
 ok(attention.includes('renderAlert(alert)')&&attention.includes('alerts.slice(0, 1)')&&attention.includes('onToggle'),'Atenção preserva alertas reais e revelacao');
 ok(today.includes('previewRows=overview.rows.filter(item=>item.kind!=="appointment")') && today.includes('onOpenWithdrawals') && today.includes('onJumpDose(item.time)'),'Hoje nao duplica compromissos na previa e preserva destinos');
@@ -23,7 +23,7 @@ ok(today.includes('MedicationFormatIcon formato={item.formato} cores={item.cores
 ok(appointment.includes('onClick={onOpen}')&&appointment.includes('WithdrawalPreparationView')&&appointment.includes('presentTodayAppointment(item,today,dayLabel)'),'Compromisso usa dono/autoridade do caller');
 ok(!appointment.includes('>Ver</span>')&&appointment.includes('ChevronRight'),'Compromisso sem badge Ver redundante');
 ok(reminders.includes('reveal.showMore')&&reminders.includes('isSafeLocalActionHref')&&reminders.includes('onNavigate(reminder.target_route)'),'Lembretes reais e paginacao preservados');
-ok(med.includes('data-vault-ui360-r2-med-evidence')&&med.includes('pointer-events-auto relative z-20')&&med.includes('<MedicationProvenanceLineM150P3')&&med.includes('latestManufacturer={latestManufacturer}')&&med.includes('declaredManufacturer={med.laboratorio_etiqueta}'),'Conforto fabricante visivel e proveniencia completa sob demanda');
+ok(!med.includes('data-vault-ui360-r2-med-evidence')&&med.includes('data-vault-med360-entry="name"')&&med.includes('<MedicationProvenanceLineM150P3')&&med.includes('latestManufacturer={latestManufacturer}')&&med.includes('declaredManufacturer={med.laboratorio_etiqueta}'),'Conforto fabricante visivel e proveniencia completa sob demanda');
 ok(med.includes('data-vault-compact-medication-meta')&&med.includes('activeIngredient')&&med.includes('cardTreatments.length > 0'),'Compacto e tratamentos preservados');
 ok(med.includes('data-vault-filter-sheet="r1"')&&med.includes('Limpar filtros')&&med.includes('MedicationFilterBar value={medicationFilter}'),'Todos filtros continuam na sheet');
 ok(med.includes('setQuickDoseMedId(med.id!)') && med.includes('router.push(careAction.href)') && med.includes('MedicationRestockAction'),'Tomar/SOS, retirada e estoque permanecem distintos');

@@ -30,12 +30,16 @@ ok("tarja regulatória é lateral, textual e clicável", () => {
   assert.match(medications, /setSelectedRegulatory/);
   assert.doesNotMatch(medications, />Fonte confirmada</);
 });
-ok("compacto preserva princípio ativo, laboratório e origem", () => {
-  assert.match(medications, /data-vault-compact-medication-meta/);
-  assert.match(medications, /activeIngredient && <span/);
+ok("compacto preserva os metadados sem botões invisíveis e desloca procedência para Ficha", () => {
+  const sheet360=read("components/saude/MedicationSheet360R3.tsx");
+  assert.match(medications, /data-vault-compact-medication-meta className="sr-only"/);
   assert.match(medications, /latestManufacturer \|\| med\.laboratorio_etiqueta/);
-  assert.match(medications, /openMedicationContextP7R3\("manufacturer"\)/);
-  assert.match(medications, /openMedicationContextP7R3\("origin"\)/);
+  assert.match(medications, /openMedicationSheet360\("ficha"\)/);
+  assert.match(medications, /openMedicationContextP7R3\("regime"\)/);
+  assert.match(medications, /catalogManufacturer: catalogIdentity\?\.manufacturer/);
+  assert.match(sheet360, /value\.catalogManufacturer/);
+  assert.match(sheet360, /value\.provenance/);
+  assert.doesNotMatch(medications, /data-vault-ui360-r2-med-evidence/);
 });
 ok("saldo vazio não cria equivalência visual redundante", () => {
   assert.match(operational, /redundantEmptyDetail/);

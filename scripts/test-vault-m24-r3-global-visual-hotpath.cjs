@@ -24,9 +24,9 @@ for(const path of [...visual,'lib/today/timeline-summary.ts']){
   ok(sf.parseDiagnostics.length===0,'parser '+path);
 }
 const hero=read(visual[0]), attention=read(visual[1]), area=read(visual[2]);
-ok(hero.includes('min-h-[104px]')&&hero.includes('safeProgress')&&hero.includes('scheduled > 0')&&hero.includes('aria-valuetext'),'Home hero readability without fictional completion');
+ok(hero.includes('min-h-[75px]')&&hero.includes('safeProgress')&&hero.includes('scheduled > 0')&&hero.includes('aria-valuetext'),'Home hero readability without fictional completion');
 ok(hero.includes('scheduled > 0 && Number.isFinite(progress)') &&
-   hero.includes('motion-reduce:transition-none active:bg-surface-raised/40'),
+   hero.includes('motion-reduce:transition-none') && hero.includes('active:bg-surface-raised/40') && hero.includes('min-h-[75px]'),
    'P15 R7: Home keeps valid 0/0 semantics, reduced motion and original active contrast while design improves');
 ok(attention.includes('alerts.length === 0')&&attention.includes('aria-expanded={expanded}')&&attention.includes('renderAlert(alert)'),'Home attention keeps filtering and accessible control');
 ok(area.includes('min-h-[84px]')&&area.includes('onNavigate(path)')&&area.includes('${tone}'),'Home clinical navigation and clinical color stay intact');

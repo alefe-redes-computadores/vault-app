@@ -21,7 +21,7 @@ const m={exports:{}};new Function('module','exports',compiled)(m,m.exports);
 const get=m.exports.getDiasRestantesEstilo;
 for(const [v,label] of [[undefined,'Indefinido'],[null,'Indefinido'],[-2,'Urgente'],[3,'Urgente'],[4,'Em breve'],[7,'Em breve'],[8,'Atenção'],[14,'Atenção'],[15,'Tranquilo']])ok(get(v).label===label,`limite de prazo ${String(v)}: ${label}`);
 ok(get(3).pulse&&!get(4).pulse,"Urgência não vira confirmação de retirada");
-ok(home.includes('scheduled > 0')&&home.includes('Sem horários')&&home.includes('aria-valuetext={scheduled>0?'),"Home distingue nenhuma previsão de conclusão");
+ok(home.includes('scheduled > 0')&&home.includes('Sem horários')&&home.includes('aria-valuetext={scheduled > 0 ?')&&home.includes('aria-valuenow={safeProgress}')&&home.includes('Sem horários programados'),"Home distingue nenhuma previsão de conclusão");
 ok(pulse.includes('isPassado && recorded===0 ? "—"')&&pulse.includes('aria-live="polite"'),"Hoje não simula ausência como falha de adesão");
 // P15 R1 R3: verify actual material and renderer behavior, never the revision number in a comment.
 ok(/sneakers:\s*new THREE\.MeshStandardMaterial\(\{\s*color:\s*appearance\.sneakersColor,\s*roughness:\s*\.77\s*\}\)/.test(avatar)

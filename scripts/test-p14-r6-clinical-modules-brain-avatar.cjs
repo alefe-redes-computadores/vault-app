@@ -20,7 +20,7 @@ ok(price.includes('purchases <= 0')&&price.includes('Média')===false&&price.inc
 ok(detail.includes('id="medicamento-financeiro"')&&detail.includes('id="historico-aquisicoes"')&&detail.includes('id="medicamento-fornecimento"'),"seções e âncoras de fornecimento/financeiro intactas");
 ok(groups.includes('window.addEventListener("hashchange", revealHash)')&&groups.includes('if (hash === id) setOpen(true)'),"deep link abre coleção recolhida");
 ok(groups.includes('onToggle={event=>{if(!forceOpen)setOpen(event.currentTarget.open);}}'),"controle manual e forceOpen conservados");
-ok(home.includes('aria-valuetext={scheduled>0?')&&today.includes('isPassado && recorded===0 ? "—"'),"acessibilidade de 0/0 e passado sem registros não simulam falha de adesão");
+ok(home.includes('aria-valuetext={scheduled > 0 ?')&&home.includes('aria-valuenow={safeProgress}')&&home.includes('Sem horários programados')&&today.includes('isPassado && recorded===0 ? "—"'),"acessibilidade de 0/0 e passado sem registros não simulam falha de adesão");
 ok(avatar.includes('P14 R6: o relevo da orelha')&&avatar.includes('materials.skinShade,sign*.207')&&avatar.includes('expressionEyeScaleY')&&avatar.includes('expressionLidScaleY'),"Avatar refina malha existente e preserva correção contra traves");
 ok(!avatar.includes('requestAnimationFrame(function')&&!avatar.includes('requestAnimationFrame(animate)')&&avatar.includes('renderer.forceContextLoss()'),"Avatar preserva budget GPU e cleanup");
 ok(gate.includes('scripts/test-p14-r6-clinical-modules-brain-avatar.cjs'),"R6 no gate completo");

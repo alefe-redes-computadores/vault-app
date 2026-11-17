@@ -27,13 +27,13 @@ assert(home.indexOf('<HomeDoseQuantityFollowUp')>home.indexOf('id="home-brain"')
 assert(home.includes('item.id === quantityFollowUpInsight.id'),'identidade exata do evento');
 assert(home.includes('!quantityAlreadyInBrain')&&home.includes('quantityFollowUpInsight')&&home.includes('HomeAttentionRail alerts={unifiedAlerts}'),'não esconder atenção independente');
 const more=read(files[2]);assert(more.includes('{vaultOverview.total} itens desta pessoa'),'contagem do Cofre permanece vinculada à pessoa');assert(more.includes('<VaultUpdateCenter')&&more.includes('Ferramentas do Cofre')&&more.includes('quickAccessItems.map')&&more.includes('min-[390px]:col-span-1'),'cofre preserva todos os destinos');
-assert(read(files[3]).includes('Estes totais têm critérios distintos') && read(files[3]).includes('Home: horários de contínuos.'),'contadores explicitados e contrato legado preservado');
+assert(read(files[3]).includes('Home: horários de contínuos.') && read(files[3]).includes('SOS fora da meta.') && read(files[3]).includes('homeRoutineSummaryNote(scheduled, safeCompleted)'),'contadores continuam distintos, SOS fora do denominador e explicação acessível');
 assert(meds.includes('MedicationFilterBar value={medicationFilter}')&&meds.includes('MedicationListGroupNavigation')&&meds.includes('MedicationPortfolioOverview')&&meds.includes('VAULT_M144_LIST_ENTRY'),'filtros, grupos e panorama preservados');
 const startFilter=meds.indexOf('aria-expanded={visualFilterSheetOpenR1}');
 const sheetStart=meds.indexOf('<BottomSheet isOpen={visualFilterSheetOpenR1}');
 const sheetEnd=meds.indexOf('</BottomSheet>',sheetStart);
 const extra=meds.indexOf('aria-label="Mais opções da lista"');
-assert(startFilter>=0&&sheetStart>startFilter&&sheetEnd>sheetStart&&extra>sheetEnd&&meds.includes('Limpar filtros'),'filtro acessivel e ferramentas externas ao BottomSheet');
+assert(startFilter>=0&&sheetStart>startFilter&&sheetEnd>sheetStart&&extra>sheetStart&&extra<sheetEnd&&meds.includes('Limpar filtros'),'filtro acessível e ferramentas preservadas dentro do painel superior');
 const m145=read('scripts/test-vault-m145-video-navigation.cjs');
 assert(m145.includes('item.id === quantityFollowUpInsight.id') && m145.includes("!home.includes('item.entidadeId === quantityFollowUpInsight.entidadeId')"), 'M145 protege deduplicação por ID exato');
 assert(m145.includes('motion-reduce:transition-none') && m145.includes('min-h-[56px]'), 'M145 protege Cofre compacto com acessibilidade');

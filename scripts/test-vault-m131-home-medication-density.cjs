@@ -14,7 +14,7 @@ ok(home.includes('id="home-outras-areas" title=')&&!home.includes('id="home-outr
 ok(home.includes('withdrawalPath="/saude/retiradas"')&&home.includes('supplyPath="/saude/fornecimento"')&&home.includes('<details className="group'),"retiradas e fornecimento continuam alcançáveis no modo Essencial");
 ok(home.includes('go("/saude/plano-seguranca")')&&home.includes('id="home-organizacao"'),"segurança e organização disponíveis");
 ok(home.includes('tone="border-coral/20 bg-coral/[0.06] text-coral"')&&read('components/home/HomeClinicalAreaTile.tsx').includes('onNavigate(path)'),"componente de Minha saúde reutiliza identidade sem duplicar CSS");
-ok(hero.includes('const quietRoutine = scheduled <= 0 || safeCompleted >= scheduled')&&hero.includes('min-h-[86px]')&&hero.includes('min-h-[104px]'),"hero compacto somente quando rotina resolvida ou sem programação");
+ok(hero.includes('data-vault-ui360-r4-routine')&&hero.includes('min-h-[75px]')&&!hero.includes('Sua rotina está em andamento')&&hero.includes('safeCompleted'),"hero visualmente compacto em todos os estados com contagem segura");
 ok(hero.includes('homeRoutineSummaryNote(scheduled, safeCompleted)')&&hero.includes('role="progressbar"')&&hero.includes('onClick={onOpen}'),"progresso e CTA de Hoje preservados");
 ok(!med.includes('<p className="min-w-0 truncate text-[10px] leading-snug text-ink-faint" title="Referência farmacêutica')&&med.includes('<span className="sr-only">Princípio ativo · confirmar referência nos detalhes</span>'),"dado farmacêutico não confirmado deixa de ocupar uma linha");
 const strip=med.indexOf('<MedicationOperationalStrip today={todayStatus}'),action=med.indexOf('aria-label="Ações do medicamento"');

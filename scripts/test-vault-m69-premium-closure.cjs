@@ -25,7 +25,7 @@ for(const path of files){
  ok(file.parseDiagnostics.length===0,`${path} TSX parse: ${file.parseDiagnostics.map(x=>x.messageText).join(' | ')}`);
 }
 const hero=read(files[0]),metrics=read(files[1]),attention=read(files[2]);
-ok(hero.includes('min-h-[104px]')&&hero.includes('homeRoutineSummaryNote')&&hero.includes('scheduled > 0 && Number.isFinite(progress)'), 'Hero preserves unplanned-dose denominator and legacy touch contract');
+ok(hero.includes('min-h-[75px]')&&hero.includes('homeRoutineSummaryNote')&&hero.includes('scheduled > 0 && Number.isFinite(progress)'), 'Hero compact retains safe denominator and tactile action');
 ok(hero.includes('aria-valuetext')&&hero.includes('focus-visible:outline-2 focus-visible:outline-ice')&&hero.includes('onClick={onOpen}'), 'Hero progress and primary action accessible');
 ok(metrics.includes('pendingDoses')&&metrics.includes('SOS / extra')&&metrics.includes('min-h-[58px]')&&metrics.includes('font-mono text-xl'), 'Home retains authority and emphasizes counts');
 ok(attention.includes('alerts.slice(0, 1)')&&attention.includes('visible.map(alert')&&attention.includes('onToggle'), 'Home critical alerts remain prioritized and expandable');
@@ -37,7 +37,7 @@ ok(today.includes('dosesElegiveisLote.length > 1')&&today.includes('handleTomarT
 const groups=read(files[5]),nav=read(files[6]),relations=read(files[7]),supply=read(files[8]);
 ok(groups.includes('forceOpen||open')&&groups.includes('if(count===0)return null')&&groups.includes('vault:reveal-clinical-section'), 'Medication groups remain lazy, deep-link aware');
 ok(groups.includes('className={`mt-0.5 block line-clamp-2 break-words leading-relaxed text-ink-muted ${compact ? "text-[11px]" : "text-xs"}`}') && groups.includes('aria-label={`${title}. ${count} itens. ${description}`}'), 'M50 legacy readable group description and improved 12px text retained');
-ok(hero.includes('min-h-[104px]')&&hero.includes('min-h-[86px]')&&hero.includes('const quietRoutine'), 'M24/M64 original mobile min-height retained while larger screens gain room');
+ok(hero.includes('data-vault-ui360-r4-routine')&&hero.includes('min-h-[75px]')&&!hero.includes('Sua rotina está em andamento'), 'R4 removes redundant tall routine hero with safe touch target');
 ok(nav.includes('M11_FIVE_TABS_ONE_ROW')&&nav.includes('grid-cols-5')&&nav.includes('hashchange')&&nav.includes('IntersectionObserver'), 'Clinical anchors maintain old navigation and accessibility');
 ok(relations.includes('grid grid-cols-2 gap-2')&&relations.includes('onNavigate(href)')&&relations.includes('Cuidado conectado'), 'Care relationships use readable mobile grid without altered destinations');
 ok(supply.includes('lanes.slice(0,2)')&&supply.includes('lanes.slice(2)')&&supply.includes('Somente exigência explícita'), 'SUS primary pending processes and missing docs first; history available');

@@ -24,15 +24,15 @@ ok(action.includes('onClick={onAction}')&&!action.includes('Conferir próximo pa
 ok(med.includes('data-vault-r3-flat-filters') || read('components/saude/MedicationFilterBar.tsx').includes('data-vault-r3-flat-filters'),'filtro plano');
 ok(!med.includes('className="max-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))') && !med.includes('safe-area-inset-top'),'V31: pagina sem area superior propria');
 ok(read('app/globals.css').includes('.vault-r3-dialog-top-inset')&&read('app/globals.css').includes('safe-area-inset-top'),'safe area modal preservada no CSS');
-ok(med.includes('railSize="label"')&&med.includes('<Info size={13}')&&med.includes('[writing-mode:vertical-rl]'),'tarja espessa e acessivel');
+ok(med.includes('railSize="label"')&&med.includes('Abrir classificação:')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('[writing-mode:vertical-rl]'),'tarja textual acessível sem ícone redundante');
 ok(med.includes('onContext={openMedicationContextP7R3}')&&med.includes('openMedicationContextP7R3("treatment")')&&med.includes('openMedicationContextP7R3("regime")'),'badges com contexto vivo');
 ok(sheet.includes('role="dialog"')&&sheet.includes('onClose')&&sheet.includes('document.addEventListener("keydown"'),'sheet acessivel e somente leitura');
-ok(med.indexOf('id="medicamentos-panorama"')>med.indexOf('{/* DOSE RÁPIDA */}')-4000,'panorama recolhido depois da listagem');
+ok(med.indexOf('id="medicamentos-panorama"')>med.indexOf('<BottomSheet isOpen={visualFilterSheetOpenR1}') && med.indexOf('id="medicamentos-panorama"')<med.indexOf('</BottomSheet>'),'panorama realocado para filtros, acessível sem rodapé');
 ok(help.includes('returnTo')&&help.includes('router.push(returnTo)')&&read('components/BottomNav.tsx').includes('"/ajuda"'),'Ajuda preserva retorno e barra');
 ok(med.includes('min-h-[108px]')&&med.includes('min-h-[124px]')&&med.includes('grid-cols-[minmax(0,1fr)_78px]')&&med.includes('data-vault-r4-main-action')&&med.includes('!actionLayoutM150P3.primary && <ChevronRight'),'CTA lateral fixa de R4 sem perder minima nem detalhe');
 ok(med.includes('tone="amber"')&&med.includes('border-sky-400/35')&&med.includes('border-amber-400/35'),'acoes semanticamente diferentes');
 ok(!read('components/saude/MedicationRestockAction.tsx').includes('createMedication('),'nada de estoque ficticio na UI');
-ok(med.includes('cardTreatments.map(t=>t.nome)') && !med.includes('cardTreatments.map(t=>`${t.nome} (${t.status})`'), 'chips de tratamento usam apenas campos reais do contrato P7');
+ok(med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)') && med.includes('getVaultTreatmentIcon(t.nome)') && !med.includes('cardTreatments.map(t=>`${t.nome} (${t.status})`'), 'etiquetas individuais usam vínculos reais sem status inferido');
 const recovery=read('scripts/test-vault-m153-p6-visual-recovery.cjs');
 ok(recovery.includes('openMedicationContextP7R3')&&recovery.includes('routineContextP7R3')&&recovery.includes('medicamentoLigado'), 'regressao P6 preserva semantica da nova UI');
 const mod=new Module(paths[9],module);
