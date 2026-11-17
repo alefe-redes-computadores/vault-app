@@ -12,15 +12,19 @@ function build(event:ActiveProbeEvent, checkpoint:string, question:string, due:n
 export function reconcileSos(logs:DoseLog[],meds:Medicamento[],nowMs=Date.now()){
  const names=new Map(meds.filter(m=>m.id).map(m=>[m.id!,m.nome]));
  return logs.filter(l=>l.id&&l.person_id&&l.dose_kind==="sos"&&l.tomado_em).flatMap(l=>{
-  const eventMs=Date.parse(l.tomado_em!); if(!Number.isFinite(eventMs)||nowMs>eventMs+15*DAY)return[];
+  const eventMs=Date.parse(l.tomado_em!); if(!Number.isFinite(eventMs)||eventMs>nowMs||nowMs>eventMs+15*DAY)return[];
   const e:ActiveProbeEvent={schema_version:1,event_id:`sos:${l.id}`,event_type:"confirmed_sos_use",user_id:l.user_id,person_id:l.person_id!,medication_id:l.medicamento_id,source_entity_type:"doseLogs",source_entity_id:l.id!,event_date:l.data,confirmed_at:l.tomado_em!,evidence_refs:[{type:"doseLogs",id:l.id!}],source:"persisted_record"};
-  return [build(e,"d1",`confirmed-sos-d1:${names.get(l.medicamento_id)||"Medicamento"}`,eventMs+2*60*60*1000,7)];
+  return [build(e,"d1",`confirmed-sos-d1:${names.get(l.medicamento_id)||"Medicamento"}`,eventMs+2*60*60*1000,7),
+    build(e,"d3",`confirmed-sos-d3:${names.get(l.medicamento_id)||"Medicamento"}`,eventMs+3*DAY,7),
+    build(e,"d10",`confirmed-sos-d10:${names.get(l.medicamento_id)||"Medicamento"}`,eventMs+10*DAY,7)];
  });
 }
 export function reconcileEndedCourses(logs:DoseLog[],meds:Medicamento[],nowMs=Date.now()){
  const names=new Map(meds.filter(m=>m.id).map(m=>[m.id!,m.nome])), groups=new Map<string,DoseLog[]>();
  for(const l of logs)if(l.person_id&&l.dose_kind==="planned"&&l.motivo?.startsWith(TEMPORARY_COURSE_PREFIX)){const key=`${l.person_id}:${l.medicamento_id}:${l.motivo}`;groups.set(key,[...(groups.get(key)||[]),l]);}
- return [...groups.values()].flatMap(rows=>{const settled=rows.filter(r=>r.tomado_em||r.ignorado_em);if(!settled.length||settled.length!==rows.length)return[];const end=Math.max(...rows.map(r=>dateTime(r.data,r.horario)));if(!Number.isFinite(end)||end>nowMs||nowMs>end+15*DAY)return[];const first=rows[0];const e:ActiveProbeEvent={schema_version:1,event_id:`course:${first.medicamento_id}:${first.motivo}`,event_type:"temporary_course_ended",user_id:first.user_id,person_id:first.person_id!,medication_id:first.medicamento_id,source_entity_type:"doseLogs",source_entity_id:first.id||first.medicamento_id,event_date:new Date(end).toISOString().slice(0,10),confirmed_at:new Date(end).toISOString(),evidence_refs:settled.slice(0,20).filter(r=>r.id).map(r=>({type:"doseLogs",id:r.id!})),source:"derived_eligible_window"};return[build(e,"d1",`temporary-course-ended-d1:${names.get(first.medicamento_id)||"Medicamento"}`,end+DAY,7)];});
+ return [...groups.values()].flatMap(rows=>{const settled=rows.filter(r=>r.tomado_em||r.ignorado_em);if(!settled.length||settled.length!==rows.length)return[];const end=Math.max(...rows.map(r=>dateTime(r.data,r.horario)));if(!Number.isFinite(end)||end>nowMs||nowMs>end+15*DAY)return[];const first=rows[0];const e:ActiveProbeEvent={schema_version:1,event_id:`course:${first.medicamento_id}:${first.motivo}`,event_type:"temporary_course_ended",user_id:first.user_id,person_id:first.person_id!,medication_id:first.medicamento_id,source_entity_type:"doseLogs",source_entity_id:first.id||first.medicamento_id,event_date:new Date(end).toISOString().slice(0,10),confirmed_at:new Date(end).toISOString(),evidence_refs:settled.slice(0,20).filter(r=>r.id).map(r=>({type:"doseLogs",id:r.id!})),source:"derived_eligible_window"};return[build(e,"d1",`temporary-course-ended-d1:${names.get(first.medicamento_id)||"Medicamento"}`,end+DAY,7),
+  build(e,"d3",`temporary-course-ended-d3:${names.get(first.medicamento_id)||"Medicamento"}`,end+3*DAY,7),
+  build(e,"d10",`temporary-course-ended-d10:${names.get(first.medicamento_id)||"Medicamento"}`,end+10*DAY,7)];});
 }
 export function reconcileAxis(records:RegistroSaude[],nowMs=Date.now()){
  const axes=["dor","energia","humor","apetite"],out:ActiveProbe[]=[];

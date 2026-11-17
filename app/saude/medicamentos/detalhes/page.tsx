@@ -40,6 +40,7 @@ import { safeReturnTarget, withReturnTarget } from "@/lib/navigation/return-cont
 import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
 import { MedicationPaidCostCards } from "@/components/saude/MedicationPaidCostCards";
 import { MedicationDoseEvolutionTimeline } from "@/components/saude/MedicationDoseEvolutionTimeline";
+import { MedicationConsultationTimelineP6P2 } from "@/components/saude/MedicationConsultationTimelineP6P2";
 import { MedicationDoseHistoryLink } from "@/components/saude/MedicationDoseHistoryLink";
 import { MedicationBestPriceLink } from "@/components/saude/MedicationBestPriceLink";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
@@ -3367,6 +3368,7 @@ function MedicamentoDetalhesContent() {
           {/* ==================================================
               EVOLUÇÃO — P15 R1 R2: visualização extraída, formato e dados canônicos preservados
               ================================================== */}
+          <MedicationConsultationTimelineP6P2 medication={med} />
           {med.historico_dosagens && med.historico_dosagens.length > 0 && (
             <MedicationDoseEvolutionTimeline currentDose={med.dosagem}
               className="vault-deferred" history={med.historico_dosagens}

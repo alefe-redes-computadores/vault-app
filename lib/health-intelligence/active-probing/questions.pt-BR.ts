@@ -4,7 +4,7 @@ const LIMIT = "Esta pergunta organiza uma percepção registrada por você. Não
 
 export function activeProbeQuestion(
   type: ActiveProbeEventType,
-  context: { medicationName?: string; manufacturer?: string; axisLabel?: string; checkpoint?: "d3" | "d10" },
+  context: { medicationName?: string; manufacturer?: string; axisLabel?: string; checkpoint?: "d1" | "d3" | "d10" },
 ): ActiveProbeQuestion {
   const medication = context.medicationName?.trim() || "este medicamento";
   if (type === "manufacturer_lot_started") {
@@ -27,12 +27,12 @@ export function activeProbeQuestion(
     };
   }
   if (type === "confirmed_sos_use") return {
-    key:"confirmed-sos-d1",version:2,prompt:`Algum tempo depois do uso pontual de ${medication}, como você se sentiu?`,
+    key:"confirmed-sos-d1",version:2,prompt: context.checkpoint === "d10" ? `Alguns dias após o uso pontual registrado de ${medication}, você quer acrescentar algo ao acompanhamento?` : context.checkpoint === "d3" ? `Desde o uso pontual registrado de ${medication}, sua percepção mudou?` : `Algum tempo depois do uso pontual de ${medication}, como você se sentiu?`,
     options:[{key:"helped",label:"Ajudou bem"},{key:"partial",label:"Ajudou parcialmente"},{key:"no_help",label:"Não ajudou"},{key:"discomfort",label:"Notei desconforto"},{key:"skip",label:"Prefiro não responder"}],
     optionalNoteLabel:"Quer registrar um detalhe? (opcional)",limitation:LIMIT,
   };
   if (type === "temporary_course_ended") return {
-    key:"temporary-course-ended-d1",version:1,prompt:`O período registrado de ${medication} terminou. Como ficou o objetivo que você acompanhava?`,
+    key:"temporary-course-ended-d1",version:1,prompt: context.checkpoint === "d10" ? `Passados alguns dias do término registrado de ${medication}, como está sua percepção?` : context.checkpoint === "d3" ? `Após o período registrado de ${medication}, mudou algo no que você vinha observando?` : `O período registrado de ${medication} terminou. Como ficou o objetivo que você acompanhava?`,
     options:[{key:"resolved",label:"Resolvido"},{key:"partial",label:"Melhorou parcialmente"},{key:"persists",label:"Persiste"},{key:"unknown",label:"Não consegui avaliar"}],
     optionalNoteLabel:"Quer registrar um detalhe? (opcional)",limitation:LIMIT,
   };
