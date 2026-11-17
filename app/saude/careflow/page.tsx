@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRetiradas } from '@/hooks/useRetiradas';
 import { withdrawalConflictsM2 } from '@/lib/careflow-m2/withdrawal-coherence';
 const areas=[
+  {href:'/saude/careflow/dossie',title:'Dossiê de acompanhamento',description:'Linha do tempo da pessoa, seções selecionáveis e PDF local voluntário',icon:FileArchive,tone:'text-violet-300'},
   {href:'/saude/careflow/exames',title:'Pedidos e resultados',description:'Vários exames por pedido, marcação conferida, resultados individuais',icon:FlaskConical,tone:'text-emerald-300'},
   {href:'/saude/careflow/pressao',title:'Pressão e planos',description:'Horários finitos, medições reais e histórico de acompanhamento',icon:HeartPulse,tone:'text-sky-300'},
   {href:'/saude/careflow/sintomas',title:'Sintomas e evolução',description:'Relatos reais, intensidade e vínculos com consultas',icon:MessageSquareHeart,tone:'text-violet-300'},

@@ -10,10 +10,12 @@ export function MedicationIdentityColorPicker({
   colors,
   onToggleColor,
   density = "regular",
+  maxColors = 2,
 }: {
   colors: readonly string[];
   onToggleColor: (color: string) => void;
   density?: "regular" | "compact";
+  maxColors?: 1 | 2;
 }) {
   const customColors = colors.filter(color => !MEDICATION_IDENTITY_COLORS.some(preset => preset === color));
 
@@ -56,7 +58,7 @@ export function MedicationIdentityColorPicker({
         ))}
       </div>
     )}
-    <p className="text-xs text-ink-muted" role="status">{colors.length} de 2 cores selecionadas{colors.length ? ` · ${colors.join(" e ")}` : ""}</p>
+    <p className="text-xs text-ink-muted" role="status">{colors.length} de {maxColors} cores selecionadas{colors.length ? ` · ${colors.join(" e ")}` : ""}</p>
     </div>
   );
 }

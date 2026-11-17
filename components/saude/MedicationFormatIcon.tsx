@@ -85,6 +85,12 @@ export function MedicationFormatIcon({
           {scored && <><path d="M50 24V72" stroke="#0f172a" strokeOpacity="0.58" strokeWidth="4" strokeLinecap="round"/><path d="M52 25V71" stroke="#ffffff" strokeOpacity="0.33" strokeWidth="1" /></>}
         </g>
       )}
+      {p.kind === "sublingual" && (
+        <g transform="rotate(-15 50 48)">
+          <ellipse cx="50" cy="48" rx="32" ry="29" fill={`url(#${front})`} stroke="#fff" strokeOpacity="0.4" />
+          <text x="50" y="55" textAnchor="middle" fontSize="23" fontWeight="bold" fill="#0f172a" opacity="0.7">SL</text>
+        </g>
+      )}
       {p.kind === "gota" && (
         <g>
           <path d="M50 10C39 27 22 49 22 62a28 28 0 0 0 56 0C78 49 61 27 50 10Z" fill={`url(#${front})`} stroke="#ffffff" strokeOpacity="0.3" strokeWidth="1.5" />

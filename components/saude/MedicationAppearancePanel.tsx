@@ -31,12 +31,12 @@ export function MedicationAppearancePanel({
   );
 }
 
-export function MedicationAppearanceColors({ children }: { children: ReactNode }) {
+export function MedicationAppearanceColors({ children, maxColors = 2 }: { children: ReactNode; maxColors?: 1 | 2 }) {
   return (
     <fieldset className="min-w-0 rounded-2xl border border-surface-border/60 bg-void/30 px-3 pb-3">
       <legend className="px-1 text-xs font-semibold text-ink-primary">Cores</legend>
       <p className="mb-3 text-xs leading-relaxed text-ink-muted">
-        Selecione até duas cores. Toque novamente para remover ou use o círculo multicolorido para escolher outro tom.
+        {maxColors === 2 ? "Cápsulas podem ter até duas cores. Toque novamente para remover uma cor ou use o círculo multicolorido." : "Escolha uma cor para esta apresentação. Registros antigos com duas cores são preservados até você alterá-los."}
       </p>
       {children}
     </fieldset>

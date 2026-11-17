@@ -1,4 +1,5 @@
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
+import { getEventOffsetsM3 } from "@/lib/m3/notification-overrides";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { formatReminderOffset, getVaultNotificationBrainSettings } from "@/lib/notification-brain";
 
@@ -196,7 +197,7 @@ export async function reconcileHealthEventNotifications(
         : event.kind === "compra" ? settings.plannedPurchaseTime : "";
       const at = parseEventDate(event.date, event.time, fallbackTime);
       if (!at || at <= now) return [];
-      return settings.eventOffsets[event.kind]
+      return getEventOffsetsM3({userId:event.userId,personId:event.personId,kind:event.kind,fallback:settings.eventOffsets[event.kind]})
         .map((offsetMinutes) => ({ event, offsetMinutes,
           notifyAt: new Date(at.getTime() - offsetMinutes * 60 * 1000) }))
         .filter((item) => item.notifyAt > now);

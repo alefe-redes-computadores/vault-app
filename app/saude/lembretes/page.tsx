@@ -9,6 +9,7 @@ import {MoodContinuityM115} from "@/components/saude/MoodContinuityM115";
 import { expandReminderInterval } from "@/lib/health-reminders/interval-plan";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
+import { NotificationCommitmentPreferencesM3 } from "@/components/notifications/NotificationCommitmentPreferencesM3";
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 import { VaultNotificationHub } from "@/components/notifications/VaultNotificationHub";
 import { VaultDoseAlertPanelM99 } from "@/components/notifications/VaultDoseAlertPanelM99";
@@ -306,6 +307,7 @@ export default function HealthRemindersPage() {
 
       <QuietHoursSettingsM115/>
       <NotificationLabM123 reminders={reminders} userId={reminderOwner?.id||""} personId={reminderPerson||""} permission={permission}/>
+      <NotificationCommitmentPreferencesM3 userId={reminderOwner?.id||""} personId={reminderPerson||""}/>
       <MoodContinuityM115 onConfigure={()=>{setEditing(null);setTargetType("health_record:humor");setTitle("Check-in opcional");setTime("20:00");setFrequency("daily");setWeekdays([]);setIntervalHours(0);setFormOpen(true);}}/>
       {formOpen && <section className="mx-auto mt-4 max-w-xl rounded-[24px] border border-amber-400/20 bg-surface p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
         <div className="mb-3 flex items-center justify-between">

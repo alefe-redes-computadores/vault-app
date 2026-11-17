@@ -39,6 +39,11 @@ export function PillStudioV8({medication,large=false}:Props){
         <path d="M56 91C82 81 108 88 119 87" stroke="#fff" strokeOpacity=".28" strokeWidth="4" strokeLinecap="round" fill="none"/>
         {scored?<path d="M120 86V144" stroke="#172033" strokeOpacity=".48" strokeWidth="4" strokeLinecap="round"/>:null}
       </g>:null}
+      {p.kind==='sublingual'?<g transform="rotate(-12 120 115)">
+        <ellipse cx="120" cy="111" rx="59" ry="53" fill={`url(#${a})`} stroke="#fff" strokeOpacity=".30" strokeWidth="2"/>
+        <ellipse cx="106" cy="96" rx="37" ry="33" fill={`url(#${light})`} opacity=".35"/>
+        <text x="120" y="122" textAnchor="middle" fontSize="27" fontWeight="bold" fill="#0f172a" opacity=".62">SL</text>
+      </g>:null}
       {p.kind==='gota'?<g><path d="M120 41C102 71 69 116 69 141a51 51 0 0 0 102 0c0-25-33-70-51-100Z" fill={`url(#${a})`} stroke="#fff" strokeOpacity=".22" strokeWidth="1.5"/><path d="M101 101C91 118 85 132 86 146" fill="none" stroke="#fff" strokeOpacity=".45" strokeWidth="8" strokeLinecap="round"/></g>:null}
       {p.kind==='adesivo'?<g transform="rotate(-15 120 115)"><rect x="57" y="53" width="128" height="128" rx="21" fill={`url(#${a})`} stroke="#fff" strokeOpacity=".33" strokeWidth="2"/><rect x="72" y="68" width="98" height="98" rx="15" fill={`url(#${b})`} stroke="#fff" strokeOpacity=".25" strokeDasharray="4 5"/></g>:null}
       {p.kind==='injecao'?<g transform="rotate(-42 120 120)"><rect x="96" y="61" width="48" height="119" rx="10" fill={`url(#${a})`} stroke="#fff" strokeOpacity=".3" strokeWidth="2"/><path d="M111 60V27M129 60V27M108 27H132M120 180V212" stroke="#e2e8f0" strokeWidth="4" strokeLinecap="round"/><path d="M108 90H131M108 112H131M108 134H131" stroke="#fff" strokeOpacity=".4" strokeWidth="2"/></g>:null}

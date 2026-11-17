@@ -20,6 +20,7 @@ export const MedicationCatalogIdentitySummary = memo(function MedicationCatalogI
     </div>
     <p className="mt-1.5 break-words text-sm font-semibold text-ink-primary">{canonicalName}</p>
     {ingredient ? <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-muted"><span className="text-ink-faint">Princípio ativo · </span>{ingredient}</p> : null}
+    <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Referência consultada não substitui a receita individual. Classificação declarada e confirmação regulatória oficial são informações diferentes; a falta de evidência não prova ausência de controle.</p>
     {divergent && <p className="mt-2 rounded-lg border border-amber-400/20 bg-amber-400/[0.045] px-2 py-1.5 text-[11px] leading-relaxed text-amber-300">Confira a referência selecionada antes de salvar. Este aviso não avalia a prescrição nem altera o medicamento.</p>}
   </div>;
 });

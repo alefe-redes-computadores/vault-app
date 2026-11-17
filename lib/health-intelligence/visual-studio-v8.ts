@@ -22,7 +22,7 @@ export function isAxisValueV8(value:unknown): value is number {return typeof val
 export function safeColorV8(value:unknown,fallback='#94a3b8'):string {return typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:fallback;}
 export function normalizedPillV8(med:Pick<Medicamento,'formato'|'forma_farmaceutica'|'cores'|'cor_principal'|'cor_secundaria'>){
   const raw=(med.formato||med.forma_farmaceutica||'comprimido').trim().toLowerCase();
-  const kind=(['comprimido','partido','oblongo','oblongo_sulcado','capsula','gota','adesivo','injecao'].includes(raw)?raw:'comprimido') as 'comprimido'|'partido'|'oblongo'|'oblongo_sulcado'|'capsula'|'gota'|'adesivo'|'injecao';
+  const kind=(['comprimido','partido','oblongo','oblongo_sulcado','capsula','gota','adesivo','injecao','sublingual'].includes(raw)?raw:'comprimido') as 'comprimido'|'partido'|'oblongo'|'oblongo_sulcado'|'capsula'|'gota'|'adesivo'|'injecao'|'sublingual';
   const first=safeColorV8(med.cores?.[0]||med.cor_principal,'#e5e7eb');
   const second=safeColorV8(med.cores?.[1]||med.cor_secundaria,first);
   return {kind,first,second,twoColors:Boolean((med.cores?.[1]||med.cor_secundaria)&&second!==first),isIllustration:true};

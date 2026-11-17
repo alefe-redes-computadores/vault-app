@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./vault-calendar.css";
@@ -55,6 +55,15 @@ export function CustomDatePicker({
   minDate, maxDate, disabled,
 }: CustomDatePickerProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // M3 P1: Escape fecha o calendário compartilhado sem mexer na data.
+  useEffect(() => {
+    if (!calendarOpen) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setCalendarOpen(false); }
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [calendarOpen]);
   const parsedDate = value ? parse(value, "yyyy-MM-dd", new Date()) : null;
   const selectedDate = parsedDate && isValid(parsedDate) ? parsedDate : null;
 
@@ -65,6 +74,7 @@ export function CustomDatePicker({
       setCalendarOpen(false);
     } else {
       onChange("");
+      setCalendarOpen(false);
     }
   };
 

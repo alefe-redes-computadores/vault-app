@@ -25,7 +25,7 @@ for(const [label,src,formatHandler,colorHandler] of [['Novo',create,'handleForma
  check(src.includes('<MedicationAdditionalFormatsSheet')&&src.includes(`onSelect={${formatHandler}}`)&&src.includes('onClose={() => setIsFormatoModalOpen(false)}'),`${label}: formato mantém o handler original`);
  check(src.includes('<MedicationCatalogFormatNotice')&&src.includes('canonicalName={catalogReference.canonicalName}')&&src.includes('formatCanBeChecked={formatCanBeChecked}'),`${label}: evidência oficial encaminhada sem adulteração`);
  check(!src.includes('FORMATOS_ADICIONAIS.map')&&!src.includes('Formato não encontrado nas apresentações consultadas'),`${label}: JSX grande duplicado saiu da página`);
- check(src.includes('toggleMedicationIdentityColor(previous, hex)')&&src.includes('<MedicationFormatPicker')&&src.includes('<MedicationIdentityColorPicker'),`${label}: M7 e regra de duas cores intactas`);
+ check(src.includes('toggleMedicationIdentityColor(previous, hex, formato)')&&src.includes('maxColors={formato === "capsula" ? 2 : 1}')&&src.includes('<MedicationFormatPicker')&&src.includes('<MedicationIdentityColorPicker'),`${label}: reducer M7 sem mutacao e limite M3 por formato`);
  check(src.includes('getMedicationCatalogAuthority(')&&src.includes('validateMedication(')&&src.includes('dosageAcknowledgementRef'),`${label}: validade, catálogo e confirmação manual continuam no formulário`);
 }
 check(modal.includes('role="dialog"')&&modal.includes('aria-modal="true"')&&modal.includes('aria-pressed={selected}')&&modal.includes('event.key !== "Escape"'),'modal acessível: diálogo, seleção, Escape');

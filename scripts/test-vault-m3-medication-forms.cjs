@@ -37,13 +37,13 @@ const dismissal = read(paths[5]);
 for (const [label, page, normalizer] of [['Novo', novo, 'normalizeCatalogComparisonText'], ['Editar', editar, 'normalizeCatalogText']]) {
   ok(page.includes(`projectMedicationCatalogChoices(catalogReference, ${normalizer})`), `${label}: política de normalização prévia mantida`);
   ok(page.includes('useMedicationCatalogDismiss(isCatalogOpen, catalogPopoverRef, setIsCatalogOpen)'), `${label}: popover delega fechamento`);
-  ok(page.includes('toggleMedicationIdentityColor(previous, hex)'), `${label}: cores delegadas sem mutar estado`);
+  ok(page.includes('toggleMedicationIdentityColor(previous, hex, formato)') && page.includes('maxColors={formato === "capsula" ? 2 : 1}'), `${label}: cores delegadas sem mutar estado`);
   ok(!page.includes('const catalogPresentationSuggestions =\n'), `${label}: catálogo não recalculado dentro da página`);
   ok(page.includes('getMedicationCatalogAuthority(') && page.includes('validateMedication('), `${label}: autoridade e validação clínica originais`);
   ok(page.includes('catalogPresentationIssue') && page.includes('catalogRegulatoryIssues'), `${label}: divergências do catálogo continuam apresentadas`);
   ok(page.includes('useMedicationFormDossier') && page.includes('dosageAcknowledgementRef'), `${label}: guarda de pessoa e confirmação de dosagem intactas`);
 }
-ok(editar.includes('markChanged();') && editar.includes('setCores(previous => toggleMedicationIdentityColor(previous, hex))'), 'Editar: marca alteração após a escolha de cor');
+ok(editar.includes('markChanged();') && editar.includes('setCores(previous => toggleMedicationIdentityColor(previous, hex, formato))'), 'Editar: marca alteração após a escolha de cor');
 ok(projection.includes('const catalogForms =') && projection.includes('const catalogPresentationSuggestions ='), 'Projeção centraliza formas e sugestões completas');
 ok(projection.includes('new Map<') && projection.includes('.slice(') && projection.includes('.sort('), 'Projeção preserva deduplicação e limite de dez sugestões');
 ok(!/\b(db\.|supabase|fetch\(|safeAdd|safeUpdate|updateMedicamento\(|addMedicamento\()/i.test(projection + palette + dismissal), 'Módulos novos não escrevem na base nem fazem consultas');
@@ -110,6 +110,10 @@ for (const normalizer of [catalogue.normalizeCatalogComparisonText, catalogue.no
 }
 ok(project(null, catalogue.normalizeCatalogComparisonText).catalogPresentationSuggestions.length === 0, 'Sem referência hidratada não inventa sugestões');
 ok(project(null, catalogue.normalizeCatalogText).catalogForms.length === 0, 'Sem referência hidratada não inventa forma farmacêutica');
+// M3 P1: o teste legado preserva o reducer sem formato e valida a regra nova.
+ok(JSON.stringify(reducer.toggleMedicationIdentityColor(['#AAA', '#BBB'], '#CCC', 'comprimido')) === JSON.stringify(['#CCC']), 'Comprimido usa uma cor somente quando editado');
+ok(JSON.stringify(reducer.toggleMedicationIdentityColor(['#AAA'], '#BBB', 'capsula')) === JSON.stringify(['#AAA','#BBB']), 'Capsula permite duas cores na mesma autoridade');
+ok(JSON.stringify(reducer.toggleMedicationIdentityColor(['#AAA', '#BBB'], '#CCC', 'gota')) === JSON.stringify(['#CCC']), 'Gotas usam uma cor ao editar sem regravar historico');
 const third = reducer.toggleMedicationIdentityColor(['#AAA', '#BBB'], '#CCC');
 ok(JSON.stringify(third) === JSON.stringify(['#BBB', '#CCC']), 'Terceira cor substitui a mais antiga');
 ok(JSON.stringify(reducer.toggleMedicationIdentityColor(['#AAA', '#BBB'], '#AAA')) === JSON.stringify(['#BBB']), 'Selecionar cor existente remove a cor');

@@ -13,6 +13,7 @@ const root = path.resolve(__dirname, '..');
 const allowed = new Map([
   ['@/lib/careflow-m2/reminder-window', 'lib/careflow-m2/reminder-window.ts'],
   ['@/lib/careflow-m2/withdrawal-coherence', 'lib/careflow-m2/withdrawal-coherence.ts'],
+  ['@/lib/m3/notification-overrides', 'lib/m3/notification-overrides.ts'],
 ]);
 const original = Module.prototype.require;
 const cache = new Map();

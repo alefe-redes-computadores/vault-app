@@ -1956,7 +1956,7 @@ function EditarMedicamentoContent() {
 
   const toggleCor = (hex: string) => {
     trigger("vibrate");
-    setCores(previous => toggleMedicationIdentityColor(previous, hex));
+    setCores(previous => toggleMedicationIdentityColor(previous, hex, formato));
     markChanged();
   };
 
@@ -4984,8 +4984,8 @@ function EditarMedicamentoContent() {
                     mode="edit"
                   />}
 
-                  <MedicationAppearanceColors>
-                    <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="compact" />
+                  <MedicationAppearanceColors maxColors={formato === "capsula" ? 2 : 1}>
+                    <MedicationIdentityColorPicker colors={cores} maxColors={formato === "capsula" ? 2 : 1} onToggleColor={toggleCor} density="compact" />
                     <MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor} />
                   </MedicationAppearanceColors>
                 </MedicationAppearancePanel>

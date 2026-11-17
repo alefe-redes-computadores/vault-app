@@ -1100,7 +1100,7 @@ export default function NovoMedicamentoPage() {
 
   const toggleCor = (hex: string) => {
     trigger("vibrate");
-    setCores(previous => toggleMedicationIdentityColor(previous, hex));
+    setCores(previous => toggleMedicationIdentityColor(previous, hex, formato));
   };
 
   const handleFormatoChange =
@@ -3697,8 +3697,8 @@ export default function NovoMedicamentoPage() {
                     mode="create"
                   />}
 
-                  <MedicationAppearanceColors>
-                    <MedicationIdentityColorPicker colors={cores} onToggleColor={toggleCor} density="regular" />
+                  <MedicationAppearanceColors maxColors={formato === "capsula" ? 2 : 1}>
+                    <MedicationIdentityColorPicker colors={cores} maxColors={formato === "capsula" ? 2 : 1} onToggleColor={toggleCor} density="regular" />
                     <MedicationCustomColorEditorM138 colors={cores} onChoose={toggleCor} />
                   </MedicationAppearanceColors>
                 </MedicationAppearancePanel>

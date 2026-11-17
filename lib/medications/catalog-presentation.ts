@@ -1,8 +1,8 @@
 export const normalizeCatalogComparisonText = (value: string) => String(value ?? "")
-  .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, "").trim();
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/\bsub[\s.-]*ling(?:ual)?\b/g, "sublingual").replace(/[^a-z0-9]+/g, "").trim();
 
 export const normalizeCatalogPresentationText = (value: string) => String(value ?? "")
-  .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/\bsub[\s.-]*ling(?:ual)?\b/g, "sublingual").replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 
 export const normalizeCatalogText = normalizeCatalogPresentationText;
 
@@ -17,6 +17,7 @@ export function extractCatalogPresentationDosage(value: string): string | null {
 }
 
 const formatRules: Array<[string, RegExp]> = [
+  ["sublingual", /\bsub(?:\s+)?ling(?:ual)?\b/],
   ["injecao", /\bsol inj\b|\bsolucao injetavel\b|\binjetavel\b|\bamp\b|\bampola\b|\bseringa\b|\binj(?:ecao|etavel)?\b/],
   ["comprimido", /\bcom ct\b|\bcomp ct\b|\bcom rev\b|\bcomp rev\b|\bcomprimido\b|\bcomprim\b|\bcomp\b/],
   ["capsula", /\bcap dura\b|\bcap mole\b|\bcaps dura\b|\bcaps mole\b|\bcapsula\b|\bcaps\b|\bcap\b/],
