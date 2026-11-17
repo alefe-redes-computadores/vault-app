@@ -556,9 +556,11 @@ async function performScheduledDoseReconciliation(input: ScheduledDoseInput): Pr
   const now=input.now ?? new Date();
   const stockReviewTime = getVaultNotificationBrainSettings().stockReviewTime;
   const notifications: Array<Record<string,unknown>>=[];
+  // CI360 P6 P2 R3: temporarios vivem exclusivamente nos DoseLogs finitos
+  // (dose_kind=planned); horarios legados NAO autorizam recorrencia perpetua.
   const meds=input.medicamentos.filter((med) =>
     Boolean(med.id) && med.person_id===personId && med.status!=="descontinuado" &&
-    med.tipo_uso!=="sos" && med.tipo_uso!=="esporadico"
+    med.tipo_uso!=="sos" && med.tipo_uso!=="esporadico" && med.tipo_uso!=="temporario"
   );
 
   // VAULT_GROUPED_DOSE_REMINDERS_PRE_APK

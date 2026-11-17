@@ -28,7 +28,8 @@ export function getOverdueDoseNotificationId(personId:string,medicamentoId:strin
 // isResolved preserves the V52 contract. The canonical resolver subsumes the
 // former Boolean(log.tomado_em||log.ignorado_em) check and also isolates conflicts.
 function isResolved(index:ReturnType<typeof buildDoseSlotIndex>,medicamentoId:string,data:string,horario:string){return doseSlotIsResolved(resolveDoseSlot(index,medicamentoId,data,horario));}
-function eligible(med:Medicamento,personId:string){return Boolean(med.id)&&med.person_id===personId&&med.status!=="descontinuado"&&med.tipo_uso!=="sos"&&med.tipo_uso!=="esporadico"&&Array.isArray(med.estoque_horarios)&&med.estoque_horarios.length>0;}
+// CI360 P6 P2 R3: sem reforco de rotina perpetuo para curso com prazo; os DoseLogs planejados permanecem elegiveis.
+function eligible(med:Medicamento,personId:string){return Boolean(med.id)&&med.person_id===personId&&med.status!=="descontinuado"&&med.tipo_uso!=="sos"&&med.tipo_uso!=="esporadico"&&med.tipo_uso!=="temporario"&&Array.isArray(med.estoque_horarios)&&med.estoque_horarios.length>0;}
 async function cancelIds(ids:number[]){if(!ids.length)return;await LocalNotifications.cancel({notifications:Array.from(new Set(ids)).map(id=>({id}))});}
 
 export async function cancelOverdueDoseNotification(input:{personId:string;medicamentoId:string;data:string;horario:string}){
