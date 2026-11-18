@@ -38,7 +38,18 @@ assert.deepEqual(actions({dose:false,care:true,stock:true,suspended:false,histor
 assert.deepEqual(actions({dose:false,care:false,stock:true,suspended:false,history:false}),{primary:'stock',secondary:[]});
 assert.deepEqual(actions({dose:true,care:true,stock:true,suspended:true,history:true}),{primary:null,secondary:['history','care','stock']});
 const {clinicalMapToneM150P3:tone}=load('lib/navigation/clinical-map-tones-m150-p3.ts');
-assert.equal(new Set(['medicamentos','tratamentos','exames','lembretes','brain','documentos'].map(tone)).size,6,'seis cores de dominio');
+const expectedSemanticTones = {
+ medicamentos:'emerald-',retiradas:'emerald-',fornecimento:'emerald-',
+ consultas:'sky-',rede:'sky-',exames:'cyan-',
+ tratamentos:'violet-',cirurgias:'violet-',documentos:'violet-',brain:'violet-',
+ lembretes:'amber-',registros:'rose-'
+};
+for(const [id,shade] of Object.entries(expectedSemanticTones))
+ assert(tone(id).includes(shade),`cor semantica de ${id} deve conter ${shade}`);
+assert.equal(tone('medicamentos'),tone('retiradas'),'medicamento/retirada compartilham identidade esmeralda');
+assert.equal(tone('retiradas'),tone('fornecimento'),'fornecimento compartilha identidade esmeralda');
+assert.notEqual(tone('medicamentos'),tone('lembretes'),'identidade de medicamento nao vira gravidade de atencao');
+assert.notEqual(tone('consultas'),tone('exames'),'consulta e exame mantem contextos distintos');
 for(const id of ['medicamentos','ocorrencias','documentos','retiradas','studio'])assert(tone(id).includes('border-')&&tone(id).includes('bg-'));
 const regulatory=load('lib/medication-regulatory-visual.ts',{'@/lib/medication-catalog/regulatory':{isMedicationRegulatoryRuleActive:()=>true}});
 const blue=regulatory.getMedicationRegulatorySurface({tone:'blue',label:'Notificação B',detail:'Catálogo',verified:true,accent:'#60a5fa',badgeClass:'blue'});

@@ -126,11 +126,11 @@ check(network.includes('text-sky-300" label="Médico Prescritor"'),'médico iden
  // de destaque, mantendo intactas as outras cinco cores de rota V9.
  const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-coral"[^>]*onNavigate=\{go\}/.test(hub);
  check(primaryHealthTone &&
-   hasClinicalTone('/saude/consultas','violet-300') &&
-   hasClinicalTone('/saude/exames','emerald-400') &&
+   hasClinicalTone('/saude/consultas','sky-300') &&
+   hasClinicalTone('/saude/exames','cyan-300') &&
    hasClinicalTone('/saude/lembretes','amber-400') &&
    hasClinicalTone('/saude/registros','coral') &&
-   hub.includes('networkTone="text-emerald-300/80"') &&
+   hub.includes('networkTone="text-sky-300/80"') &&
    !hub.includes('networkTone="text-cyan-400/70"'),
    'V9: cores clínicas por rota mantidas, sem ciano excessivo na rede');
  check(hub.includes('grid min-w-0 grid-cols-2 gap-2.5'),

@@ -396,70 +396,55 @@ export function getComposeOptions(
   return [];
 }
 
-export function getOptionColorClass(
-  id: string
-) {
-  if (["dose-unica"].includes(id)) {
-    return "bg-emerald-400/10 text-emerald-400 border-emerald-400/20";
-  }
-
-  if (["sintoma", "novo-registro"].includes(id)) {
-    return "bg-amber-400/10 text-amber-400 border-amber-400/20";
-  }
-
-  if (["renovacao"].includes(id)) {
-    return "bg-coral/10 text-coral border-coral/20";
-  }
-
-  if (
-    ["medicamento", "farmacia", "nova-farmacia", "novo-medicamento", "nova-retirada"].includes(
-      id
-    )
-  ) {
-    return "bg-amber-400/10 text-amber-400 border-amber-400/20";
-  }
-
-  if (
-    [
-      "exame",
-      "local",
-      "cid",
-      "novo-documento-saude",
-    ].includes(id)
-  ) {
-    return "bg-emerald-400/10 text-emerald-400 border-emerald-400/20";
-  }
-
-  if (
-    ["tratamento", "cirurgia", "novo-tratamento", "nova-cirurgia"].includes(
-      id
-    )
-  ) {
-    return "bg-violet-400/10 text-violet-400 border-violet-400/20";
-  }
-
-  if (["medico", "novo-medico", "consulta", "nova-consulta"].includes(id)) {
-    return "bg-violet-400/10 text-violet-300 border-violet-400/20";
-  }
-  if (["cartao", "conta"].includes(id)) {
-    return id === "cartao" ? "bg-rose-400/10 text-rose-300 border-rose-400/20" : "bg-emerald-400/10 text-emerald-300 border-emerald-400/20";
-  }
+/** P2: icon/surface semantics never conflate entity identity with warning status. */
+export function getOptionColorClass(id: string): string {
+  if (["medicamento","novo-medicamento","farmacia","nova-farmacia","hospital","novo-hospital","local","novo-local","nova-retirada","novo-fornecimento","dose-unica"].includes(id))
+    return "bg-emerald-400/10 text-emerald-300 border-emerald-400/25";
+  if (["medico","novo-medico","consulta","nova-consulta"].includes(id))
+    return "bg-sky-400/10 text-sky-300 border-sky-400/25";
+  if (["exame","novo-exame"].includes(id))
+    return "bg-cyan-400/10 text-cyan-300 border-cyan-400/25";
+  if (["tratamento","novo-tratamento","cirurgia","nova-cirurgia"].includes(id))
+    return "bg-violet-400/10 text-violet-300 border-violet-400/25";
+  if (["renovacao","nova-renovacao","novo-documento","novo-documento-saude"].includes(id))
+    return "bg-violet-400/10 text-violet-300 border-violet-400/25";
+  if (["sintoma","novo-registro"].includes(id))
+    return "bg-rose-400/10 text-rose-300 border-rose-400/25";
+  if (id === "cartao") return "bg-rose-400/10 text-rose-300 border-rose-400/25";
+  if (id === "conta") return "bg-emerald-400/10 text-emerald-300 border-emerald-400/25";
   return "bg-surface-raised/55 text-ink-secondary border-surface-border/50";
 }
 
-/** IA 2.0 P1 — one premium affordance, semantic accent per entity. Presentation only. */
+/** IA 2.0 P2: shared creation accent for FAB and contextual header CTA.
+ * Amber is deliberately NOT the normal action color for medicines. */
 export function getIa20CreateAccent(id: string): string {
-  if (["medico", "novo-medico", "consulta", "nova-consulta"].includes(id))
+  if (["medico","novo-medico","consulta","nova-consulta"].includes(id))
     return "border-sky-200/50 bg-sky-300 text-slate-950 shadow-sky-950/25";
-  if (["farmacia", "nova-farmacia", "novo-fornecimento", "nova-retirada", "local", "novo-local"].includes(id))
+  if (["medicamento","novo-medicamento","farmacia","nova-farmacia","hospital","novo-hospital","local","novo-local","nova-retirada","novo-fornecimento","dose-unica"].includes(id))
     return "border-emerald-200/50 bg-emerald-300 text-slate-950 shadow-emerald-950/25";
-  if (["medicamento", "novo-medicamento", "nova-renovacao", "renovacao"].includes(id))
-    return "border-amber-200/50 bg-amber-300 text-slate-950 shadow-amber-950/25";
-  if (["tratamento", "novo-tratamento", "cirurgia", "nova-cirurgia"].includes(id))
+  if (["tratamento","novo-tratamento","cirurgia","nova-cirurgia"].includes(id))
     return "border-violet-200/50 bg-violet-300 text-slate-950 shadow-violet-950/25";
-  if (["exame", "novo-exame", "novo-documento", "novo-documento-saude"].includes(id))
+  if (["exame","novo-exame"].includes(id))
     return "border-cyan-200/50 bg-cyan-300 text-slate-950 shadow-cyan-950/25";
-  if (["novo-registro", "sintoma", "dose-unica"].includes(id))
+  if (["renovacao","nova-renovacao","novo-documento","novo-documento-saude"].includes(id))
+    return "border-violet-200/50 bg-violet-300 text-slate-950 shadow-violet-950/25";
+  if (["novo-registro","sintoma"].includes(id))
     return "border-rose-200/50 bg-rose-300 text-slate-950 shadow-rose-950/25";
+  if (["nova-senha","novo-cofre"].includes(id))
+    return "border-slate-200/50 bg-slate-300 text-slate-950 shadow-slate-950/25";
+  if (id==="cartao") return "border-rose-200/50 bg-rose-300 text-slate-950 shadow-rose-950/25";
   return "border-emerald-200/50 bg-emerald-300 text-slate-950 shadow-emerald-950/25";
+}
+
+/** Shared colors for Saúde quick access and the same Compose visual language. */
+export function getIa20ShortcutTone(href: string): {surface:string;icon:string} {
+  if (href==="/saude/medicamentos" || href==="/saude/retiradas" || href==="/saude/fornecimento")
+    return {surface:"border-emerald-300/25 bg-emerald-300/[.07] focus-visible:outline-emerald-300",icon:"text-emerald-300"};
+  if (href==="/saude/consultas" || href==="/saude/rede")
+    return {surface:"border-sky-300/25 bg-sky-300/[.07] focus-visible:outline-sky-300",icon:"text-sky-300"};
+  if (href==="/saude/exames" || href==="/saude/careflow/pressao")
+    return {surface:"border-cyan-300/25 bg-cyan-300/[.07] focus-visible:outline-cyan-300",icon:"text-cyan-300"};
+  if (href==="/saude/careflow/sintomas")
+    return {surface:"border-rose-300/25 bg-rose-300/[.07] focus-visible:outline-rose-300",icon:"text-rose-300"};
+  return {surface:"border-surface-border/70 bg-surface/75 focus-visible:outline-white",icon:"text-ink-secondary"};
 }

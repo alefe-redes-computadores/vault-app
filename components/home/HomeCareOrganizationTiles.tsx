@@ -23,7 +23,7 @@ export function HomeCareOrganizationTiles({ gastoMes, diferencaMes, totalRede, d
   const base = "flex min-h-[56px] w-full items-center gap-3 px-3 py-2.5 text-left transition-[background-color,transform] hover:bg-surface-raised/70 active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice";
   return <div className="overflow-hidden rounded-2xl border border-surface-border/60 bg-surface" aria-label="Acessos de organização do cuidado">
     <button type="button" onClick={() => onNavigate(documentPath)} className={`${base} border-b border-surface-border/50`}>
-      <FileText size={18} className="shrink-0 text-amber-300" aria-hidden="true"/>
+      <FileText size={18} className="shrink-0 text-violet-300" aria-hidden="true"/>
       <span className="min-w-0 flex-1"><strong className="block break-words text-[13px] text-ink-primary">Documentos de saúde</strong><span className="block break-words text-[11px] leading-snug text-ink-muted">Receitas, exames, laudos e acervo clínico</span></span>
       <ChevronRight size={16} className="shrink-0 text-ink-faint" aria-hidden="true"/>
     </button>
@@ -34,7 +34,7 @@ export function HomeCareOrganizationTiles({ gastoMes, diferencaMes, totalRede, d
     </button>
     <button type="button" onClick={() => onNavigate(networkPath)} className={base}>
       <Network size={18} className={`shrink-0 ${networkTone}`} aria-hidden="true"/>
-      <span className="min-w-0 flex-1"><strong className="block break-words text-[13px] text-ink-primary">Sua rede</strong><span className="block break-words text-[11px] leading-snug text-ink-muted">{networkCount} profissionais e locais cadastrados</span></span>
+      <span className="min-w-0 flex-1"><strong className="block break-words text-[13px] text-ink-primary">Profissionais e locais</strong><span className="block break-words text-[11px] leading-snug text-ink-muted">{networkCount} profissionais e locais cadastrados</span></span>
       <ChevronRight size={16} className="shrink-0 text-ink-faint" aria-hidden="true"/>
     </button>
   </div>;

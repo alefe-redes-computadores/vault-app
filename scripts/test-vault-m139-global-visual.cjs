@@ -68,8 +68,8 @@ ok(supply.includes('min-h-11 min-w-0 items-center break-words')&&supply.includes
 ok(!supply.includes('text-[9px]')&&!supply.includes('text-[10px]'),'mapa do fornecimento sem rótulos microscópicos');
 ok(supply.includes('value.process.origin')&&supply.includes('value.cycles.total')&&supply.includes('value.withdrawals.length'),'mapa preserva fatos independentes sem recomputação');
 const center=read(files[8]),tile=read(files[9]);
-ok(center.includes('grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1')&&center.includes('rounded-[18px] border border-ice/20'),'Home preserva M136 com adaptação da primeira dobra em 320px');
-ok(center.includes('rounded-[18px] border border-ice/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm'),'Home R3 mantém o raio e a borda originais com toque adicional sem quebrar contratos P15');
+ok(center.includes('grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1')&&center.includes('rounded-[18px] border border-emerald-300/25'),'Home preserva M136 com adaptação da primeira dobra em 320px');
+ok(center.includes('rounded-[18px] border border-emerald-300/25 bg-emerald-300/[.06] px-2.5 py-2.5 text-left touch-manipulation shadow-sm'),'Home R3 mantém o raio e a borda originais com toque adicional sem quebrar contratos P15');
 ok(center.includes('go("/saude/medicamentos")')&&center.includes('path="/saude/minha-saude"'),'atalhos primários continuam apontando para suas páginas reais');
 ok(qg1.clinicalTileMinHeightQG1(tile,84)&&tile.includes('${tone}')&&tile.includes('touch-manipulation')&&tile.includes('onNavigate(path)'),'cartões preservam altura, tema, toques e destinos');
 ok(center.includes('grid min-w-0 grid-cols-2 gap-2')&&center.includes('grid-cols-2 gap-2 items-stretch'), 'contratos legados P15 R9 R6, V196, M131 e M136 da Home continuam validos');

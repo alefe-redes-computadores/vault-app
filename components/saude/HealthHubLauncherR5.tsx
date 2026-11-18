@@ -1,4 +1,5 @@
 "use client";
+import { getIa20ShortcutTone } from "@/lib/navigation/bottom-nav-compose";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -131,7 +132,7 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
     {!query && <section aria-label="Acessos essenciais" className="space-y-3">
       <div className="flex items-center gap-2"><HeartPulse size={16} className="text-emerald-300"/><h3 className="text-[13px] font-semibold">Acessos rápidos</h3></div>
       <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
-        {IA20_ESSENTIAL_LINKS.map(({label,href,icon:Icon})=><button key={href} type="button" onClick={()=>navigateToOther(href)} className="flex min-h-14 min-w-0 items-center gap-2 rounded-2xl border border-surface-border/70 bg-surface/75 p-3 text-left text-xs font-semibold text-ink-primary transition-colors active:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><Icon size={18} className="shrink-0 text-emerald-300" aria-hidden="true"/><span className="min-w-0 break-words">{label}</span></button>)}
+        {IA20_ESSENTIAL_LINKS.map(({label,href,icon:Icon})=><button key={href} type="button" onClick={()=>navigateToOther(href)} className={`flex min-h-14 min-w-0 items-center gap-2 rounded-2xl border p-3 text-left text-xs font-semibold text-ink-primary transition-colors active:bg-surface-raised focus-visible:outline focus-visible:outline-2 ${getIa20ShortcutTone(href).surface}`}><Icon size={18} className={`shrink-0 ${getIa20ShortcutTone(href).icon}`} aria-hidden="true"/><span className="min-w-0 break-words">{label}</span></button>)}
       </div>
     </section>}
     {query?<section aria-label="Resultados da busca" className="space-y-2 rounded-[22px] border border-surface-border/60 bg-surface/50 p-3"><div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Resultados · {searchHits.length}</h3><span className="text-[10px] text-ink-muted">Saúde e Rede</span></div>

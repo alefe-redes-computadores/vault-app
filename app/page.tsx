@@ -1555,7 +1555,7 @@ export default function HomePage() {
                       }}
                       className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-400">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-400/10 text-cyan-300">
                         <FlaskConical
                           size={
                             17

@@ -45,7 +45,7 @@ ok(options('/saude/medicamentos').length===1 && options('/saude/medicamentos')[0
 ok(options('/saude/fornecimento').length===1 && options('/saude/fornecimento')[0].path==='/saude/fornecimento?action=novo','FAB Fornecimento abre criação contextual sem ação duplicada');
 ok(options('/saude/rede','tab=medicos').some(x=>x.path==='/saude/medicos/novo'),'FAB da Rede permanece contextual');
 ok(options('/inteligencia').length===0 && options('/mais').length===0,'Central e Mais não exibem FAB de cadastro indevido');
-ok(getOptionColorClass('cartao').includes('rose-') && getOptionColorClass('consulta').includes('violet-'),'cores semânticas além de azul');
+ok(getOptionColorClass('cartao').includes('rose-') && getOptionColorClass('consulta').includes('sky-'),'cores semânticas além de azul');
 ok(!getOptionColorClass('novo-cofre').includes('text-ice'),'fallback visual neutro');
 ok(legacy.includes('const compose =') && legacy.includes('compose.includes('),'V44 valida catálogo real e não implementação removida');
 const v272=read('scripts/test-v272-avatar-supply-dose-resilience.cjs');
@@ -60,7 +60,7 @@ const medLinkIdx=home.indexOf('go("/saude/medicamentos")');
 ok(disclosureIdx>0 && medLinkIdx>disclosureIdx,'atalho duplicado da Home está dentro da seção recolhida');
 ok(home.includes('<HomeSupplyAccessTiles') && home.includes('withdrawalPath="/saude/retiradas"'),'retiradas e fornecimento preservados');
 ok(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen') && home.includes('Saúde e rotina'),'hierarquia geral e expansão padrão preservadas');
-ok(organization.includes('Documentos de saúde') && organization.includes('text-amber-300') && home.includes('networkTone="text-emerald-300/80"'),'área inferior abandona repetição de azul');
+ok(organization.includes('Documentos de saúde') && organization.includes('text-violet-300') && home.includes('networkTone="text-sky-300/80"'),'área inferior abandona repetição de azul');
 // Fenix: first interaction MUST be local, navigation exists only as explicit sheet action.
 const brainStart=health.indexOf('onBrainSelect={()=>{');
 const brainEnd=health.indexOf('}} onDeviceSelect=',brainStart);
