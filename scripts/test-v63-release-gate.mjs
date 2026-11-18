@@ -501,6 +501,7 @@ const contracts = [
   "scripts/test-vault-ci360-p6-p4a-episode.cjs",
   "scripts/test-vault-ci360-p6-p3-d3.cjs",
   "scripts/test-vault-ci360-p6-p4-macro1.cjs",
+  "scripts/test-vault-ci360-p6-p5-macro2.cjs",
   "scripts/test-vault-ux360-public-identity-r2.cjs",
   "scripts/test-vault-quality-gate-qg1.cjs",
   "scripts/test-vault-ci360-p6-p4b-pharmalens.cjs",

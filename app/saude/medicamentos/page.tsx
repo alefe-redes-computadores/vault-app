@@ -12,6 +12,7 @@ import { useRetiradas } from "@/hooks/useRetiradas";
 import { useRenovacoes } from "@/hooks/useRenovacoes";
 import { MedicationProvenanceLineM150P3 } from "@/components/saude/MedicationProvenanceLineM150P3";
 import { medicationListDisplayNameM150P3 } from "@/lib/medications/medication-list-provenance-m150-p3";
+import { reconcileMedicationP6,medicationListEvidenceLabelP6 } from "@/lib/health-intelligence/pharmalens-reconciliation-p6";
 import { medicationCardActionLayoutM150P3 } from "@/lib/medications/medication-card-action-layout-m150-p3";
 import { createMedicationDayComparatorM149 } from "@/lib/health-intelligence/medication-day-sort-m149";
 import { medicationStockLabelM149 } from "@/lib/health-intelligence/medication-stock-display-m149";
@@ -247,6 +248,11 @@ export default function MedicamentosListPage() {
     activePersonId,
   } =
     useActivePersonId();
+  // MACRO2: somente documentos da pessoa ativa; não procurar receita pelo nome.
+  const prescriptionDocumentsP6=useLiveQuery(async()=>{
+    if(!treatmentOwner?.id||!activePersonId)return [];
+    return db.documents.where('[user_id+person_id]').equals([treatmentOwner.id,activePersonId]).filter(d=>d.type==='receita').toArray();
+  },[treatmentOwner?.id,activePersonId]);
 
   // M153 P7 R2: consulta reativa de tratamentos explicitamente vinculados ao titular.
   const linkedTreatmentsP7 = useLiveQuery(async () => {
@@ -959,6 +965,9 @@ export default function MedicamentosListPage() {
 
       const catalogIdentity =
         catalogIdentities[med.id];
+      const reconciliationP6=reconcileMedicationP6({medication:med,documents:prescriptionDocumentsP6||[],
+        renewals:renewalsByMedication.get(med.id||'')||[],userId:treatmentOwner?.id||'',personId:activePersonId||'',regulatory:regulatoryProfile});
+      const prescriptionIdentityP6=medicationListEvidenceLabelP6(reconciliationP6,regulatoryProfile);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
       const activeIngredients =
@@ -1410,9 +1419,9 @@ export default function MedicamentosListPage() {
               className="relative z-20 flex h-full w-full cursor-pointer items-center justify-center overflow-hidden py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ice"
             >
               <span aria-hidden="true" className="flex max-h-[calc(100%-1rem)] flex-col items-center justify-center gap-1.5"><span className="whitespace-nowrap font-sans text-[10px] font-semibold uppercase tracking-[.14em] text-void [writing-mode:vertical-rl] rotate-180">
-                {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}
+                {prescriptionIdentityP6 ?? medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}
               </span></span>
-              <span className="sr-only">Abrir classificação: {medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}</span>
+              <span className="sr-only">Abrir classificação: {prescriptionIdentityP6 ?? medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)}. {reconciliationP6.hasDocumentEvidence?"Receita existente vinculada, sem confirmar classificação regulatória.":""}</span>
             </button>
           ) : null}
           icon={

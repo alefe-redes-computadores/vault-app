@@ -15,6 +15,11 @@ import { makePharmaLensConsultationBriefV7 } from '@/lib/health-intelligence/pha
 import { PharmaLensOverviewV7 } from '@/components/saude/PharmaLensOverviewV7';
 import { PharmaLensObservationPanelV7 } from '@/components/saude/PharmaLensObservationPanelV7';
 import { PharmaLensGuidedReviewP6 } from '@/components/saude/PharmaLensGuidedReviewP6';
+import { useMedicationCatalogProfiles } from '@/hooks/useMedicationRegulatoryProfiles';
+import { reconcileMedicationP6,medicationReconciliationBriefP6,auditMedicationEvidenceP6 } from '@/lib/health-intelligence/pharmalens-reconciliation-p6';
+import { findDocumentedTherapyOverlapsP6 } from '@/lib/health-intelligence/pharmalens-therapy-overlap-p6';
+import { findPostStartSymptomsP6 } from '@/lib/health-intelligence/pharmalens-temporal-symptoms-p6';
+import { PharmaLensEvidenceCardP6 } from '@/components/saude/PharmaLensEvidenceCardP6';
 import { PharmaLensDocumentStudioCI360 } from '@/components/saude/PharmaLensDocumentStudioCI360';
 import { PharmaLensLotEvidenceCI360 } from '@/components/saude/PharmaLensLotEvidenceCI360';
 
@@ -42,21 +47,29 @@ export function PharmaLensWorkspaceV7() {
     const person = activePersonId;
     try {
       const min = daysAgo(today, 29);
-      const [medications, acquisitions, doseLogs, healthRecords] = await Promise.all([
+      const [medications, acquisitions, doseLogs, healthRecords, documents] = await Promise.all([
         db.medicamentos.where('[user_id+person_id]').equals([uid,person]).toArray(),
         db.renovacoes.where('[user_id+person_id]').equals([uid,person]).toArray(),
         db.doseLogs.where('[user_id+person_id+data]').between([uid,person,min],[uid,person,today],true,true).toArray(),
         db.registros_saude.where('[user_id+person_id+data]').between([uid,person,min],[uid,person,today],true,true).toArray(),
+        db.documents.where('[user_id+person_id]').equals([uid,person]).toArray(),
       ]);
-      return { scopeKey: `${uid}:${person}`, medications, acquisitions, doseLogs, healthRecords, error: '' };
+      return { scopeKey: `${uid}:${person}`, medications, acquisitions, doseLogs, healthRecords, documents, error: '' };
     } catch (error) {
-      return { scopeKey: `${uid}:${person}`, medications: [], acquisitions: [], doseLogs: [], healthRecords: [], error: error instanceof Error ? error.message : 'Falha ao consultar histórico local.' };
+      return { scopeKey: `${uid}:${person}`, medications: [], acquisitions: [], doseLogs: [], healthRecords: [], documents: [], error: error instanceof Error ? error.message : 'Falha ao consultar histórico local.' };
     }
   }, [user?.id, activePersonId, today]);
   const snapshot = data?.scopeKey === scopeKey ? data : null;
   const medicines = useMemo(() => (snapshot?.medications || []).filter(m => m.id && m.user_id === user?.id && m.person_id === activePersonId).sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR')), [snapshot, user?.id, activePersonId]);
   const selectedId = [chosen,wantedId].find(id => medicines.some(m=>m.id===id)) || medicines[0]?.id || '';
   const selected = medicines.find(m => m.id === selectedId) || null;
+  const { regulatoryProfiles:catalogRegulatoryP6 } = useMedicationCatalogProfiles(medicines);
+  const evidenceP6 = useMemo(() => selected&&user?.id&&activePersonId ? reconcileMedicationP6({
+    medication:selected, documents:snapshot?.documents||[], renewals:snapshot?.acquisitions||[],
+    userId:user.id,personId:activePersonId,regulatory:catalogRegulatoryP6[selected.id!],
+  }) : null,[selected,user?.id,activePersonId,snapshot,catalogRegulatoryP6]);
+  const auditP6=useMemo(()=>user?.id&&activePersonId?auditMedicationEvidenceP6({medications:medicines,documents:snapshot?.documents||[],renewals:snapshot?.acquisitions||[],userId:user.id,personId:activePersonId,profiles:catalogRegulatoryP6}):null,[medicines,snapshot,user?.id,activePersonId,catalogRegulatoryP6]);
+  const overlapsP6 = useMemo(() => user?.id&&activePersonId ? findDocumentedTherapyOverlapsP6(medicines,user.id,activePersonId).filter(x=>x.firstId===selectedId||x.secondId===selectedId):[],[medicines,user?.id,activePersonId,selectedId]);
   const report = useMemo(() => selected && user?.id && activePersonId ? buildPharmaLensReportV7({
     userId:user.id, personId:activePersonId, medicationId:selected.id!, acquisitions:snapshot?.acquisitions || [], todayISO:today,
   }) : null, [selected, user?.id, activePersonId, snapshot, today]);
@@ -64,7 +77,8 @@ export function PharmaLensWorkspaceV7() {
     report, userId:user.id, personId:activePersonId, medicationId:selected.id!, medications:medicines,
     doseLogs:snapshot?.doseLogs || [], healthRecords:snapshot?.healthRecords || [], rangeDays, todayISO:today,
   }) : null, [report, selected, user?.id, activePersonId, medicines, snapshot, rangeDays, today]);
-  const brief = useMemo(() => report && observations && selected ? makePharmaLensConsultationBriefV7({ medicationName: selected.nome, report, observations, generatedOn: today }) : '', [report, observations, selected, today]);
+  const temporalP6=useMemo(()=>report&&user?.id&&activePersonId?findPostStartSymptomsP6({report,records:snapshot?.healthRecords||[],userId:user.id,personId:activePersonId,today}):[],[report,user?.id,activePersonId,snapshot,today]);
+  const brief = useMemo(() => report && observations && selected ? [makePharmaLensConsultationBriefV7({ medicationName: selected.nome, report, observations, generatedOn: today }), evidenceP6?medicationReconciliationBriefP6(evidenceP6):''].filter(Boolean).join('\n\n') : '', [report, observations, selected, today, evidenceP6]);
   const found = medicines.filter(m => `${m.nome} ${m.dosagem}`.toLocaleLowerCase('pt-BR').includes(filter.toLocaleLowerCase('pt-BR'))).slice(0,30);
   async function copyBrief() {
     setCopied('');
@@ -99,6 +113,7 @@ export function PharmaLensWorkspaceV7() {
         {selected && report && observations && <>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-surface-border bg-surface/70 p-3"><span className="text-xs font-semibold text-ink-primary">Janela de evidências</span><div className="flex gap-2" role="group" aria-label="Período">{([7,30] as const).map(n=><button key={n} type="button" aria-pressed={rangeDays===n} onClick={()=>setRangeDays(n)} className={`min-h-11 rounded-xl border px-3 text-xs font-bold ${rangeDays===n?'border-violet-300/50 bg-violet-400/10 text-violet-200':'border-surface-border text-ink-muted'}`}>{n} dias</button>)}</div></div>
           <PharmaLensGuidedReviewP6 key={`${scopeKey}:${selected.id}`} medication={selected}/>
+          {evidenceP6?<PharmaLensEvidenceCardP6 summary={evidenceP6} audit={auditP6} overlaps={overlapsP6} temporalSymptoms={temporalP6}/>:null}
           {/* CI360 P4 — estúdio documental privado opcional, preserva conferência antiga. */}
           <details className="group rounded-[22px] border border-violet-300/20 bg-violet-300/[.035] p-3">
             <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 text-xs font-bold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span>Conferência documental avançada · OCR local quando disponível</span><span aria-hidden="true">▾</span></summary>
