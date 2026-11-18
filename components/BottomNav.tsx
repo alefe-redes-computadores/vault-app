@@ -1,12 +1,14 @@
 // components/BottomNav.tsx
 "use client";
-import { getComposeOptions, getOptionColorClass, type ComposeOption } from "@/lib/navigation/bottom-nav-compose";
+import { getComposeOptions, getOptionColorClass, getIa20CreateAccent, type ComposeOption } from "@/lib/navigation/bottom-nav-compose";
+import { withReturnTarget } from "@/lib/navigation/return-context";
+import { ia20ActiveRoot, ia20IsCareflowOverview } from "@/lib/navigation/ia20-root-navigation";
 // VAULT_INTELLIGENCE_NAV_CONTEXT_V65
 // VAULT_BOTTOM_NAV_POLISH_V70
 // VAULT_CONTEXTUAL_FAB_PATH_NORMALIZATION_V44: a rota é normalizada antes do catálogo M6.
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Home, LayoutGrid, Plus, Clock, FolderOpen } from "lucide-react";
+import { Home, LayoutGrid, Plus, Clock, FolderOpen, HeartPulse } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +23,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "home", icon: Home, label: "Início", path: "/" },
   { id: "hoje", icon: Clock, label: "Hoje", path: "/hoje" },
+  { id: "saude", icon: HeartPulse, label: "Saúde", path: "/saude/minha-saude" },
   {
     id: "documentos",
     icon: FolderOpen,
@@ -96,7 +99,8 @@ function shouldShowNav(
   // M153 P5: detalhes de leitura nao sao formularios; o menu e o Voltar
   // permanecem disponiveis sem alterar rotas nem pessoa ativa.
   const readOnlyClinicalDetails = /^\/saude\/(?:medicamentos|tratamentos|retiradas|renovacao|fornecimento|exames|consultas|cirurgias|medicos|farmacias|rede|cids|hospitais|locais)\/detalhes$/.test(normalizedPathname);
-  return readOnlyClinicalDetails || ALLOWED_NAV_PATHS.some(
+  const readOnlyDocumentDetails = /^\/(?:documentos|saude\/documentos)\/detalhes$/.test(normalizedPathname);
+  return readOnlyClinicalDetails || readOnlyDocumentDetails || ia20IsCareflowOverview(normalizedPathname) || ALLOWED_NAV_PATHS.some(
     (path) => normalizedPathname === normalizeNavPathname(path)
   );
 }
@@ -195,14 +199,9 @@ export function BottomNav() {
     }
   };
 
-  const isActive = (
-    path: string
-  ) => {
-    return (
-      normalizeNavPathname(pathname) ===
-      normalizeNavPathname(path)
-    );
-  };
+  const isActive = (path: string) =>
+    ia20ActiveRoot(pathname) !== null &&
+    ia20ActiveRoot(pathname) === ia20ActiveRoot(path);
 
   const composeOptions =
     getComposeOptions(
@@ -212,6 +211,13 @@ export function BottomNav() {
 
   const showCompose =
     composeOptions.length > 0;
+
+  // IA 2.0: one existing destination shows its own icon/label; multiple actions open
+  // the same accessible Compose sheet. Clinical forms still own data creation.
+  const ComposeIcon = composeOptions.length === 1 ? composeOptions[0].icon : Plus;
+  const createTitle = composeOptions.length === 1 ? composeOptions[0].label : "Adicionar";
+  const createAccent = getIa20CreateAccent(composeOptions.length === 1 ? composeOptions[0].id : "multi");
+  const composeReturnTo = `${normalizeNavPathname(pathname)}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   // V31.2: a rota decide se a navegação existe.
   // A biometria apenas oculta visualmente a barra enquanto o lock estiver ativo.
@@ -231,7 +237,7 @@ export function BottomNav() {
         trigger("success");
 
         router.push(
-          composeOptions[0].path
+          withReturnTarget(composeOptions[0].path, composeReturnTo)
         );
 
         return;
@@ -255,25 +261,13 @@ export function BottomNav() {
       );
 
       router.push(
-        option.path
+        withReturnTarget(option.path, composeReturnTo)
       );
     };
 
-  const gridClass =
-    showCompose
-      ? "grid-cols-5"
-      : "grid-cols-4";
-
-  const colMap:
-    Record<string, string> =
-    showCompose
-      ? {
-          home: "col-start-1",
-          hoje: "col-start-2",
-          documentos: "col-start-4",
-          mais: "col-start-5",
-        }
-      : {};
+  // IA 2.0: cinco raízes permanecem visíveis mesmo quando Compose está ativo.
+  // O botão + é flutuante, acima da barra, e não oculta a aba Saúde.
+  const gridClass = "grid-cols-5";
 
   return (
     <>
@@ -397,6 +391,7 @@ export function BottomNav() {
           )}
       </AnimatePresence>
       <nav
+        aria-label="Navegação principal"
         className="vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity visible opacity-100"
       >
         <div className="border-t border-surface-border/40 bg-surface/95 px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-xl">
@@ -426,17 +421,14 @@ export function BottomNav() {
                         item.path
                       )
                     }
+                    aria-current={active ? "page" : undefined}
+                    aria-label={item.label}
                     className={`
-                      relative isolate flex min-h-11 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-2 py-1 transition-all duration-200 active:scale-95
+                      relative isolate flex min-h-11 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-0.5 min-[360px]:px-2 py-1 transition-all duration-200 active:scale-95
                       ${
                         active
                           ? "text-ink-primary"
                           : "text-ink-muted/65 hover:text-ink-primary"
-                      }
-                      ${
-                        colMap[
-                          item.id
-                        ] || ""
                       }
                     `}
                   >
@@ -464,7 +456,7 @@ export function BottomNav() {
                       />
 
                       <span
-                        className={`text-[10px] font-medium ${
+                        className={`text-[9px] min-[360px]:text-[10px] font-medium ${
                           active
                             ? "text-ink-primary"
                             : "text-ink-muted/65"
@@ -494,7 +486,7 @@ export function BottomNav() {
                     : composeOptions[0]
                         .label
                 }
-                className="absolute left-1/2 top-0 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-[34%] items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400 text-void shadow-[0_10px_20px_rgba(52,211,153,0.22)] transition-all duration-300 active:scale-90"
+                className={`absolute -top-12 right-2 z-10 flex min-h-12 max-w-[min(55vw,190px)] items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-xs font-bold shadow-[0_10px_26px_rgba(0,0,0,0.3)] transition-all duration-200 active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${createAccent}`}
               >
                 <motion.div
                   animate={{
@@ -509,15 +501,9 @@ export function BottomNav() {
                     damping: 20,
                   }}
                 >
-                  <Plus
-                    size={
-                      28
-                    }
-                    strokeWidth={
-                      2.5
-                    }
-                  />
+                  <ComposeIcon size={20} strokeWidth={2.4} aria-hidden="true"/>
                 </motion.div>
+                <span className="min-w-0 truncate">{createTitle}</span>
               </button>
             )}
           </div>

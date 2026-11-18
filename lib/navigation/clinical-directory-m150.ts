@@ -34,7 +34,7 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
     ],
   },
   {
-    id: 'saude', title: 'Minha saúde e registros',
+    id: 'saude', title: 'Consultas e registros',
     description: 'Perfil clínico, fatos observados e compromissos',
     items: [
       {id:'minha-saude',label:'Minha Saúde e Fênix',description:'Avatar e informações do perfil',href:'/saude/minha-saude',icon:'heart'},
@@ -44,7 +44,7 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
       {id:'cirurgias',label:'Procedimentos',description:'Cirurgias e histórico',href:'/saude/cirurgias',icon:'calendar'},
       {id:'hidratacao',label:'Hidratação',description:'Registros de consumo',href:'/saude/hidratacao',icon:'droplet'},
       {id:'lembretes',label:'Lembretes',description:'Avisos e configurações',href:'/saude/lembretes',icon:'bell'},
-      {id:'rede',label:'Rede clínica',description:'Médicos, farmácias e locais',href:'/saude/rede',icon:'users'},
+      {id:'rede',label:'Profissionais e locais',description:'Médicos, farmácias e unidades',href:'/saude/rede',icon:'users'},
     ],
   },
   {
@@ -53,17 +53,17 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
     items: [
       {id:'brain',label:'VAULT Brain',description:'Análise e explicação dos sinais',href:'/saude/brain-v7',icon:'brain'},
       {id:'studio',label:'Visual Studio e quatro eixos',description:'Evolução, visualização e PillStudio',href:'/saude/visual-studio',icon:'eye'},
-      {id:'pharmalens',label:'PharmaLens',description:'Fabricantes e evidências observadas',href:'/saude/pharmalens',icon:'factory'},
+      {id:'pharmalens',label:'Conferência e bula',description:'PharmaLens e documentos',href:'/saude/pharmalens',icon:'factory'},
       {id:'ocorrencias',label:'Ocorrências, ciclos e vacinas',description:'Histórico e observações registradas',href:'/saude/central-m144',icon:'syringe'},
       {id:'escudo',label:'Estoque e embalagens',description:'Unidades, informações e conferência',href:'/saude/supply-shield',icon:'layers'},
       {id:'resumo',label:'Resumo longitudinal',description:'Registros ao longo do tempo',href:'/saude/registros/relatorio',icon:'activity'},
     ],
   },
   {
-    id: 'careflow', title: 'CareFlow 360 e acompanhamento',
+    id: 'careflow', title: 'Acompanhamento e histórico',
     description: 'Episódios, sintomas, pressão, Brain e relatórios',
     items: [
-      {id:'careflow',label:'CareFlow 360',description:'Centro de acompanhamento',href:'/saude/careflow',icon:'activity'},
+      {id:'careflow',label:'Acompanhamento clínico',description:'Consultas e histórico',href:'/saude/careflow',icon:'activity'},
       {id:'episodios',label:'Episódio de atendimento',description:'Consulta e desdobramentos reais',href:'/saude/careflow/episodios',icon:'calendar'},
       {id:'modo-medico',label:'Modo Médico 360',description:'Resumo para consulta e PDF',href:'/saude/careflow/modo-medico',icon:'stethoscope'},
       {id:'linha-do-tempo',label:'Brain longitudinal',description:'História clínica rastreável',href:'/saude/careflow/linha-do-tempo',icon:'brain'},

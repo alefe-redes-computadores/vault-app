@@ -8,7 +8,7 @@ export default function SaudeRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/");
+    router.replace("/saude/minha-saude");
   }, [router]);
 
   return null;

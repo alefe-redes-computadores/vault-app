@@ -43,7 +43,7 @@ ok(
 );
 
 ok(
-  network.includes("Minha Rede de Saúde") &&
+  network.includes("Profissionais e locais") &&
     network.includes("Quem cuida de você") &&
     network.includes("Linha de cuidado") &&
     network.includes("Documentos de saúde"),

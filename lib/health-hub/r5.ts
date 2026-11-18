@@ -12,14 +12,14 @@ export interface HubModuleR5 {
   group: HealthGroupR5; icon: HealthIconR5; keywords: readonly string[];
 }
 export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
-  {id:"careflow",title:"CareFlow 360",description:"Jornada clínica e protocolos",href:"/saude/careflow",group:"intelligence",icon:"activity",keywords:["cuidado","acompanhamento","protocolo"]},
+  {id:"careflow",title:"Acompanhamento clínico",description:"Consultas e evolução",href:"/saude/careflow",group:"intelligence",icon:"activity",keywords:["cuidado","acompanhamento","protocolo"]},
   {id:"exames",title:"Exames 360",description:"Pedidos, itens e resultados",href:"/saude/careflow/exames",group:"intelligence",icon:"flask",keywords:["pedido","laboratorio","resultados"]},
   {id:"dossie",title:"Dossiê Clínico",description:"Linha do tempo e PDF local",href:"/saude/careflow/dossie",group:"intelligence",icon:"folder",keywords:["relatorio","medico","pdf","linha do tempo"]},
   {id:"pressao",title:"Pressão arterial",description:"Planos e aferições reais",href:"/saude/careflow/pressao",group:"body",icon:"heart",keywords:["monitoramento","pressao","afericao"]},
   {id:"sintomas",title:"Sintomas e reações",description:"Relatos e evolução",href:"/saude/careflow/sintomas",group:"body",icon:"thermometer",keywords:["dor","reacoes","diario","sintoma"]},
   {id:"sono",title:"Sono e medidas",description:"Indicadores do corpo",href:"/saude/minha-saude#indicadores",group:"body",icon:"moon",keywords:["sono","medidas","peso","altura","biometria"]},
   {id:"hidratacao",title:"Hidratação",description:"Água e metas registradas",href:"/saude/hidratacao",group:"body",icon:"droplets",keywords:["agua","consumo"]},
-  {id:"pharmalens",title:"PharmaLens OCR",description:"Leitura assistida e conferência",href:"/saude/pharmalens",group:"capture",icon:"scan",keywords:["receita","ocr","imagem","pedido"]},
+  {id:"pharmalens",title:"Conferência e bula",description:"PharmaLens e documentos",href:"/saude/pharmalens",group:"capture",icon:"scan",keywords:["receita","ocr","imagem","pedido"]},
   {id:"biblioteca",title:"Biblioteca de PDFs",description:"Relatórios CareFlow locais",href:"/saude/careflow/relatorios",group:"capture",icon:"files",keywords:["documento","pdf","laudo","arquivo"]},
   {id:"relatorio",title:"Relatório Clínico 360",description:"Resumo clínico completo",href:"/saude/relatorios",group:"capture",icon:"book",keywords:["relatorio medico","pdf","a4"]},
   {id:"tratamentos",title:"Tratamentos",description:"Condições e vínculos",href:"/saude/tratamentos",group:"foundation",icon:"shield",keywords:["condicao","tratamento","cuidado"]},

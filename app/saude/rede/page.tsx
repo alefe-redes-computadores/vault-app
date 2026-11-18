@@ -1056,7 +1056,7 @@ export default function RedeSaudePage() {
                 </p>
 
                 <h1 className="truncate font-display text-xl font-semibold text-ink-primary">
-                  Minha Rede de Saúde
+                  Profissionais e locais
                 </h1>
               </div>
             </div>
@@ -1064,7 +1064,7 @@ export default function RedeSaudePage() {
 
           {/* VAULT_HEALTH_NETWORK_DISCOVERY_V79: preservado pelo hub visível, sem carrossel */}
           {/* VAULT_HEALTH_HUB_V81 */}
-          <p className="mt-2 pl-14 text-[10px] leading-relaxed text-ink-muted">Rede, acompanhamento e histórico clínico em um só lugar.</p>
+          <p className="mt-2 pl-14 text-[10px] leading-relaxed text-ink-muted">Médicos, farmácias e unidades de atendimento.</p>
         </header>
         <div className="px-5 pt-3"><HealthHubSwitchR5 active="rede" onNavigate={openFromNetwork}/></div>
 

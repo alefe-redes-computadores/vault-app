@@ -319,6 +319,9 @@ export function getComposeOptions(
   const normalizedPathname = pathname;
 
   if (normalizedPathname === "/") return SAUDE_COMPOSE_OPTIONS;
+  if (["/saude", "/saude/minha-saude", "/saude/mapa", "/saude/careflow"].includes(normalizedPathname)) return SAUDE_COMPOSE_OPTIONS;
+  // Episode overview creates a canonical consultation, never a second episode.
+  if (normalizedPathname === "/saude/careflow/episodios") return CONSULTAS_LIST_COMPOSE_OPTIONS;
   if (normalizedPathname === "/documentos") return DOCUMENTOS_COMPOSE_OPTIONS;
   if (normalizedPathname === "/saude/documentos") {
     return SAUDE_DOCUMENTOS_COMPOSE_OPTIONS;
@@ -381,6 +384,8 @@ export function getComposeOptions(
 
     if (tab === "medicos") return MEDICOS_LIST_COMPOSE_OPTIONS;
     if (tab === "farmacias") return FARMACIAS_LIST_COMPOSE_OPTIONS;
+    if (tab === "locais") return LOCAIS_LIST_COMPOSE_OPTIONS;
+    if (tab === "consultas") return CONSULTAS_LIST_COMPOSE_OPTIONS;
     if (tab === "hospitais") return HOSPITAIS_LIST_COMPOSE_OPTIONS;
     if (tab === "tratamentos") return TRATAMENTOS_LIST_COMPOSE_OPTIONS;
     if (tab === "cids") return CIDS_LIST_COMPOSE_OPTIONS;
@@ -440,4 +445,21 @@ export function getOptionColorClass(
     return id === "cartao" ? "bg-rose-400/10 text-rose-300 border-rose-400/20" : "bg-emerald-400/10 text-emerald-300 border-emerald-400/20";
   }
   return "bg-surface-raised/55 text-ink-secondary border-surface-border/50";
+}
+
+/** IA 2.0 P1 — one premium affordance, semantic accent per entity. Presentation only. */
+export function getIa20CreateAccent(id: string): string {
+  if (["medico", "novo-medico", "consulta", "nova-consulta"].includes(id))
+    return "border-sky-200/50 bg-sky-300 text-slate-950 shadow-sky-950/25";
+  if (["farmacia", "nova-farmacia", "novo-fornecimento", "nova-retirada", "local", "novo-local"].includes(id))
+    return "border-emerald-200/50 bg-emerald-300 text-slate-950 shadow-emerald-950/25";
+  if (["medicamento", "novo-medicamento", "nova-renovacao", "renovacao"].includes(id))
+    return "border-amber-200/50 bg-amber-300 text-slate-950 shadow-amber-950/25";
+  if (["tratamento", "novo-tratamento", "cirurgia", "nova-cirurgia"].includes(id))
+    return "border-violet-200/50 bg-violet-300 text-slate-950 shadow-violet-950/25";
+  if (["exame", "novo-exame", "novo-documento", "novo-documento-saude"].includes(id))
+    return "border-cyan-200/50 bg-cyan-300 text-slate-950 shadow-cyan-950/25";
+  if (["novo-registro", "sintoma", "dose-unica"].includes(id))
+    return "border-rose-200/50 bg-rose-300 text-slate-950 shadow-rose-950/25";
+  return "border-emerald-200/50 bg-emerald-300 text-slate-950 shadow-emerald-950/25";
 }

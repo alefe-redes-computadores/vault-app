@@ -17,7 +17,7 @@ import { useHapticFeedback } from "@/lib/haptics";
 import { HealthHubSwitchR5 } from "@/components/saude/HealthHubSwitchR5";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import {
-  buildHealthFocusR5, EMPTY_PREFERENCES_R5, HEALTH_GROUPS_R5, HEALTH_MODULES_R5,
+  buildHealthFocusR5, EMPTY_PREFERENCES_R5, HEALTH_MODULES_R5,
   matchHubModuleR5, moveHubFavoriteR5, NETWORK_SEARCH_R5, parseHubPreferencesR5,
   recordHubRecentR5, toggleHubFavoriteR5,
   type HealthGroupR5, type HealthIconR5, type HubModuleR5, type HubPreferenceR5,
@@ -38,6 +38,15 @@ const TONES:Record<HealthGroupR5,{icon:string;surface:string;heading:string;line
 };
 const BY_ID=new Map(HEALTH_MODULES_R5.map(module=>[module.id,module]));
 const MAX_STORE=8192;
+/** Fixed, compact patient-facing tasks; no duplicate catalog or new clinical source. */
+const IA20_ESSENTIAL_LINKS: ReadonlyArray<{label:string;href:string;icon:LucideIcon}> = [
+  {label:"Medicamentos",href:"/saude/medicamentos",icon:Pill},
+  {label:"Consultas",href:"/saude/consultas",icon:CalendarCheck},
+  {label:"Sintomas",href:"/saude/careflow/sintomas",icon:Thermometer},
+  {label:"Exames",href:"/saude/exames",icon:FlaskConical},
+  {label:"Pressão",href:"/saude/careflow/pressao",icon:HeartPulse},
+  {label:"Profissionais",href:"/saude/rede",icon:Users},
+];
 
 
 function HubModuleTileR5({module,pinned,onOpen,onPin,compact=false,reason}:{module:HubModuleR5;pinned:boolean;onOpen:(m:HubModuleR5)=>void;onPin:(id:string)=>void;compact?:boolean;reason?:string}){
@@ -111,14 +120,20 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
   return <section data-vault-ui360-r5-launcher className="space-y-4" aria-label="Hub inteligente de Minha Saúde">
     <HealthHubSwitchR5 active="saude" onNavigate={navigateToOther}/>
     <div className="overflow-hidden rounded-[24px] border border-sky-300/20 bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,.12),transparent_55%),linear-gradient(140deg,rgba(12,21,34,.98),rgba(9,16,25,.94))] p-4 shadow-[0_16px_44px_rgba(0,0,0,.17)]">
-      <div className="flex items-center gap-2 text-sky-200"><BrainCircuit size={17}/><span className="text-[10px] font-bold uppercase tracking-[.16em]">VAULT · Saúde 360</span></div>
-      <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-ink-primary">Seu cuidado, sem labirintos.</h2>
-      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Fixe o que você mais usa, acompanhe contextos reais e explore suas ferramentas clínicas.</p>
+      <div className="flex items-center gap-2 text-sky-200"><BrainCircuit size={17}/><span className="text-[10px] font-bold uppercase tracking-[.16em]">Painel de saúde</span></div>
+      <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-ink-primary">Sua saúde, em um só lugar.</h2>
+      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Encontre registros, consultas e medicamentos.</p>
       <div className="relative mt-3"><Search size={17} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"/>
         <input type="search" value={search} onChange={e=>setSearch(e.target.value.slice(0,80))} aria-label="Buscar módulos de saúde e rede" placeholder="Buscar exame, pressão, receita, médico…" className="min-h-12 w-full rounded-[15px] border border-surface-border/70 bg-void/65 pl-10 pr-10 text-sm text-ink-primary outline-none placeholder:text-ink-muted focus:border-sky-300/50"/>
         {search?<button type="button" onClick={()=>setSearch("")} aria-label="Limpar busca" className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center text-ink-muted"><X size={17}/></button>:null}
       </div>
     </div>
+    {!query && <section aria-label="Acessos essenciais" className="space-y-3">
+      <div className="flex items-center gap-2"><HeartPulse size={16} className="text-emerald-300"/><h3 className="text-[13px] font-semibold">Acessos rápidos</h3></div>
+      <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
+        {IA20_ESSENTIAL_LINKS.map(({label,href,icon:Icon})=><button key={href} type="button" onClick={()=>navigateToOther(href)} className="flex min-h-14 min-w-0 items-center gap-2 rounded-2xl border border-surface-border/70 bg-surface/75 p-3 text-left text-xs font-semibold text-ink-primary transition-colors active:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><Icon size={18} className="shrink-0 text-emerald-300" aria-hidden="true"/><span className="min-w-0 break-words">{label}</span></button>)}
+      </div>
+    </section>}
     {query?<section aria-label="Resultados da busca" className="space-y-2 rounded-[22px] border border-surface-border/60 bg-surface/50 p-3"><div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Resultados · {searchHits.length}</h3><span className="text-[10px] text-ink-muted">Saúde e Rede</span></div>
       {searchHits.length?<div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{searchHits.map(item=>{
         const module=BY_ID.get(item.id);if(module)return <HubModuleTileR5 key={module.id} module={module} pinned={pinned.has(module.id)} onOpen={open} onPin={togglePin} compact/>;
@@ -133,8 +148,8 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
       {focus.length>0?<section aria-label="Em foco agora" className="space-y-2"><div className="flex items-center gap-2"><BellRing size={16} className="text-amber-300"/><h3 className="text-[13px] font-semibold">Em foco agora</h3></div><p className="text-[10px] text-ink-muted">Fatos da sua rotina e acessos recentes neste Hub — sem criar tarefas.</p>
         <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">{focus.map(f=>{const module=BY_ID.get(f.id);return module?<div key={f.id} className="w-[min(75vw,240px)] shrink-0 snap-start"><HubModuleTileR5 module={module} pinned={false} onOpen={open} onPin={togglePin} reason={f.reason}/></div>:null;})}</div>
       </section>:null}
-      <section aria-label="Explorar módulos de saúde" className="space-y-3"><div className="flex items-center gap-2"><LayoutGrid size={16} className="text-emerald-300"/><h3 className="text-[13px] font-semibold">Explorar Minha Saúde</h3></div>
-        {HEALTH_GROUPS_R5.map(group=>{const tone=TONES[group.id],items=HEALTH_MODULES_R5.filter(m=>m.group===group.id);return <div key={group.id} className="space-y-2"><div className={`flex items-center gap-2 border-l-2 pl-2 ${tone.line}`}><div className="min-w-0"><h4 className={`text-[12px] font-semibold ${tone.heading}`}>{group.title}</h4><p className="text-[10px] text-ink-muted">{group.subtitle}</p></div></div><div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{items.map(m=><HubModuleTileR5 key={m.id} module={m} pinned={pinned.has(m.id)} onOpen={open} onPin={togglePin}/>)}</div></div>;})}
+      <section aria-label="Explorar todas as áreas" className="space-y-2">
+        <button type="button" onClick={()=>navigateToOther("/saude/mapa")} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] px-3 text-left text-xs font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex items-center gap-2"><LayoutGrid size={17} aria-hidden="true"/>Ver todas as áreas de saúde</span><ChevronRight size={17} aria-hidden="true"/></button>
       </section>
     </>}
   </section>;

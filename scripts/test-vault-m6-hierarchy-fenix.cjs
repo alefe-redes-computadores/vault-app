@@ -28,7 +28,7 @@ ok(nav.includes('from "@/lib/navigation/bottom-nav-compose"') && !nav.includes('
 ok(compose.includes('export function getComposeOptions(') && compose.includes('export function getOptionColorClass('),'catálogo de rotas e cores público e sem estado');
 ok(nav.includes('normalizeNavPathname(pathname),') && compose.includes('const normalizedPathname = pathname;'),'normalização ocorre só na borda, sem mudar parâmetros');
 ok(nav.includes('router.replace(path);') && nav.includes('router.push(') && nav.includes('VAULT_NORMALIZE_PATHNAME_V40'), 'abas replace; cadastros push; normalização V40');
-ok(nav.includes('pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]') && nav.includes('bg-emerald-400 text-void'),'safe area e FAB premium preservados');
+ok(nav.includes('pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]') && nav.includes('getIa20CreateAccent') && nav.includes('showCompose && (') && compose.includes('export function getIa20CreateAccent(id: string)'), 'safe area, criacao disponivel e cores semanticas preservadas');
 ok(compose.includes('path: "/saude/retiradas/nova"') && compose.includes('path: "/saude/medicamentos/novo"'),'criação continua apontando para os mesmos formulários');
 ok(!/(?:\bfetch\(|\.add\(|\.put\(|db\.|supabase|safeAdd\()/.test(compose),'catálogo puro não acessa dados clínicos');
 // Execute actual extracted TS module in isolation (lucide icons are presentational only).
