@@ -4045,6 +4045,27 @@ export function useSyncQueue() {
     throw new Error(`CareFlow insert error: ${error.message}`);
   };
 
+  // CI360 M3 P2: fila offline separada de eventos clínicos. Sem escrita em consulta/dose/estoque.
+  const syncNotificationPolicyP2 = async (item: SyncQueueItem) => {
+    const client = requireSupabase(), p = item.payload as Record<string,unknown>;
+    const id=requirePayloadId(item);
+    const uid=requireUserId(typeof p.user_id==='string'?p.user_id:undefined,'Política de aviso',id);
+    const pid=requirePersonId(typeof p.person_id==='string'?p.person_id:undefined,'Política de aviso',id);
+    if(item.operation==='delete') {
+      const {error}=await client.from('notification_policies_p2').delete().eq('id',id).eq('user_id',uid).eq('person_id',pid);
+      if(error)throw Error('Política P2 delete: '+error.message);return;
+    }
+    if(!['consulta','cirurgia','exame','retirada','compra','retorno','checkin'].includes(String(p.event_kind))||
+      typeof p.event_id!=='string'||!p.event_id.trim()||p.event_id.length>180||typeof p.enabled!=='boolean'||
+      !(p.offsets===null||(Array.isArray(p.offsets)&&p.offsets.length<=4&&p.offsets.every(x=>[10080,2880,1440,180,60,30,15,0].includes(x)))))
+      throw Error('Política P2 inválida; a fila será preservada para revisão.');
+    const row={id,user_id:uid,person_id:pid,event_kind:p.event_kind,event_id:p.event_id,
+      enabled:p.enabled,offsets:p.offsets,custom_at:p.custom_at??null,consent_at:p.consent_at??null,
+      checkin_answers:p.checkin_answers??{},created_at:p.created_at,updated_at:p.updated_at};
+    const {error}=await client.from('notification_policies_p2').upsert(row,{onConflict:'id'});
+    if(error)throw Error('Política P2 upsert: '+error.message);
+  };
+
   const syncHealthReminder = async (item: SyncQueueItem) => {
     const client = requireSupabase();
     const rule = item.payload as Record<string, unknown>;
@@ -5093,6 +5114,9 @@ export function useSyncQueue() {
           await markRecordSyncedIfCurrent(db.careflow_events_m2, payload.id, expectedUpdatedAt);
           break;
 
+        case "notification_policies_p2":
+          await markRecordSyncedIfCurrent(db.notification_policies_p2,payload.id,expectedUpdatedAt);
+          break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5365,6 +5389,9 @@ export function useSyncQueue() {
           await syncCareFlowM2(item);
           return;
 
+        case "notification_policies_p2":
+          await syncNotificationPolicyP2(item);
+          return;
         case "health_reminders":
           await syncHealthReminder(item);
           return;
@@ -5589,6 +5616,7 @@ export function useSyncQueue() {
                   "registros_saude",
                   "health_goals",
                   "health_reminders",
+                  "notification_policies_p2",
 
                   "credentials",
                   "cards",

@@ -1,5 +1,6 @@
 import { isVaultNotificationCategoryEnabled } from "@/lib/notification-preferences";
 import { getEventOffsetsM3 } from "@/lib/m3/notification-overrides";
+import {planInstantsP2,scopePolicyForEventP2,readEventQuietP2,type EventPolicyRecordP2,type EventKindP2} from "@/lib/m3/policy-record-p2";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { formatReminderOffset, getVaultNotificationBrainSettings } from "@/lib/notification-brain";
 
@@ -23,7 +24,7 @@ export type GroupableHealthEvent = {
   id: string;
   userId: string;
   personId: string;
-  kind: "consulta" | "exame" | "retirada" | "compra";
+  kind: EventKindP2;
   date: string;
   title: string;
 };
@@ -92,12 +93,14 @@ export type HealthEventNotificationInput = {
   id: string;
   userId: string;
   personId: string;
-  kind: "consulta" | "exame" | "retirada" | "compra";
+  kind: EventKindP2;
   title: string;
   date: string;
   time?: string | null;
   status: string;
   targetRoute: string;
+  /** Check-in uses appointment ID for policy identity; alert ID includes D+day. */
+  sourceId?: string;
 };
 
 function hash(value: string): number {
@@ -149,22 +152,29 @@ function labelFor(kind: HealthEventNotificationInput["kind"]): string {
   if (kind === "consulta") return "Consulta";
   if (kind === "exame") return "Exame";
   if (kind === "compra") return "Compra planejada";
+  if (kind === "cirurgia") return "Cirurgia";
+  if (kind === "retorno") return "Retorno";
+  if (kind === "checkin") return "Convite privado do Vault";
   return "Retirada";
 }
 
 function bodyFor(event: HealthEventNotificationInput, offsetMinutes: number): string {
   const label = labelFor(event.kind);
-  if ((event.kind === "retirada" || event.kind === "compra") && !event.time) {
+  if (event.kind === "checkin") return "Você ativou um check-in voluntário. Abra o Vault para decidir se deseja registrar algo.";
+  if (!event.time && (event.kind === "consulta" || event.kind === "exame" || event.kind === "cirurgia"))
+    return `${label} cadastrada para ${event.date.split("-").reverse().join("/")}, sem horário confirmado. Confira os detalhes.`;
+  if ((event.kind === "retirada" || event.kind === "compra" || event.kind === "retorno") && !event.time) {
     if (offsetMinutes >= 0 && offsetMinutes < 1440) return `${label} prevista para hoje. ${event.title}`;
     if (offsetMinutes === 1440) return `${label} prevista para amanhã. ${event.title}`;
     return `${label} prevista em ${formatReminderOffset(offsetMinutes).replace(" antes", "")}. ${event.title}`;
   }
+  if (offsetMinutes === -1) return `Aviso personalizado de ${label.toLowerCase()}. ${event.title}`;
   if (offsetMinutes === 0) return `${label} agora às ${event.time}. ${event.title}`;
   return `${label} em ${formatReminderOffset(offsetMinutes).replace(" antes", "")}. ${event.title}`;
 }
 
 export async function reconcileHealthEventNotifications(
-  events: HealthEventNotificationInput[]
+  events: HealthEventNotificationInput[], policies: EventPolicyRecordP2[] = []
 ): Promise<number> {
   if (!isVaultNative()) return 0;
 
@@ -187,20 +197,24 @@ export async function reconcileHealthEventNotifications(
   const candidates = events
     .filter(isSchedulable)
     .filter((event) => {
-      if (event.kind === "consulta") return isVaultNotificationCategoryEnabled("consultas");
+      if (event.kind === "consulta" || event.kind === "cirurgia" || event.kind === "retorno") return isVaultNotificationCategoryEnabled("consultas");
+      if (event.kind === "checkin") return isVaultNotificationCategoryEnabled("lembretes_saude");
       if (event.kind === "exame") return isVaultNotificationCategoryEnabled("exames");
       if (event.kind === "compra") return isVaultNotificationCategoryEnabled("renovacoes");
       return isVaultNotificationCategoryEnabled("retiradas");
     })
     .flatMap((event) => {
       const fallbackTime = event.kind === "retirada" ? settings.dateOnlyEventTime
-        : event.kind === "compra" ? settings.plannedPurchaseTime : "";
+        : event.kind === "compra" ? settings.plannedPurchaseTime
+        : ["retorno","cirurgia","consulta","exame"].includes(event.kind) ? settings.dateOnlyEventTime : "";
       const at = parseEventDate(event.date, event.time, fallbackTime);
       if (!at || at <= now) return [];
-      return getEventOffsetsM3({userId:event.userId,personId:event.personId,kind:event.kind,fallback:settings.eventOffsets[event.kind]})
-        .map((offsetMinutes) => ({ event, offsetMinutes,
-          notifyAt: new Date(at.getTime() - offsetMinutes * 60 * 1000) }))
-        .filter((item) => item.notifyAt > now);
+      const fallbackKind = event.kind === "cirurgia" || event.kind === "retorno" || event.kind === "checkin" ? "consulta" : event.kind;
+      const baseOffsets = event.kind === "checkin" ? [0] : getEventOffsetsM3({userId:event.userId,personId:event.personId,kind:fallbackKind,fallback:settings.eventOffsets[fallbackKind]});
+      const selectedPolicy = scopePolicyForEventP2(policies,event.userId,event.personId,event.kind,event.sourceId||event.id);
+      const quiet = readEventQuietP2(event.userId,event.personId);
+      return planInstantsP2({eventAt:at,now,fallbackOffsets:baseOffsets,policy:selectedPolicy,quiet,kind:event.kind})
+        .map((item) => ({event,offsetMinutes:item.offsetMinutes,notifyAt:item.at}));
     });
   // M63: one reminder for multiple withdrawals at an exact same reminder instant.
   // Consultation, exam and purchase reminders are deliberately unchanged.
@@ -215,7 +229,7 @@ export async function reconcileHealthEventNotifications(
       return {
         id: grouped
           ? hash(`health-event:v63:retiradas:${event.userId}:${event.personId}:${event.date}:${offsetMinutes}:${notifyAt.getTime()}`)
-          : hash(`health-event:v52:${event.kind}:${event.id}:${offsetMinutes}`),
+          : hash(`health-event:v52:${event.userId}:${event.personId}:${event.kind}:${event.id}:${offsetMinutes}`),
         title: grouped
           ? `${eventIds.length} retiradas · ${event.date.split("-").reverse().join("/")}`
           : event.time ? `${labelFor(event.kind)} · ${event.time}` : labelFor(event.kind),

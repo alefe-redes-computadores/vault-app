@@ -22,6 +22,7 @@ const TABLES: Record<string, { local: string; queue: string }> = {
   tratamentos: { local: "tratamentos", queue: "tratamentos" },
   registros_saude: { local: "registros_saude", queue: "registros_saude" },
   health_reminders: { local: "health_reminders", queue: "health_reminders" },
+  notification_policies_p2: {local:"notification_policies_p2",queue:"notification_policies_p2"},
   health_goals: { local: "health_goals", queue: "health_goals" },
   dose_logs: { local: "doseLogs", queue: "doseLogs" },
   medicos: { local: "medicos", queue: "medicos" },

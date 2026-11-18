@@ -47,7 +47,7 @@ const scheduler=fs.readFileSync('lib/health-reminders/event-scheduler.ts','utf8'
 check(!/from\s+["']\.\/event-grouping["']/.test(scheduler), 'V286: agendador sem import relativo do agrupador');
 const translatedScheduler=ts.transpileModule(scheduler,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
 check(!translatedScheduler.includes('require("./event-grouping")'), 'V286: CommonJS emit sem require do agrupador');
-check(scheduler.includes('VAULT_EVENT_MULTI_REMINDER_V52')&&scheduler.includes('settings.eventOffsets[event.kind]'),'múltiplos offsets legados preservados');
+check(scheduler.includes('VAULT_EVENT_MULTI_REMINDER_V52')&&scheduler.includes('settings.eventOffsets[fallbackKind]')&&scheduler.includes('scopePolicyForEventP2'),'múltiplos offsets legados preservados');
 check(scheduler.includes('groupWithdrawalReminders(candidates)')&&scheduler.includes('withdrawalReminderText(eventIds.length, offsetMinutes)'),'agenda agrupada usa motor testado');
 check(scheduler.includes('offsetMinutes === 1440')&&scheduler.includes('formatReminderOffset(offsetMinutes)'), 'texto correto para mais de um dia');
 check(scheduler.includes('offsetMinutes >= 0 && offsetMinutes < 1440'), 'V204: lembrete sem horário com antecedência menor que um dia diz hoje');

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { ArrowLeft, Activity, BookOpenCheck, FileArchive, FlaskConical, HeartPulse, MessageSquareHeart, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Activity, BookOpenCheck, FileArchive, FlaskConical, HeartPulse, MessageSquareHeart, ShieldCheck, Brain } from 'lucide-react';
 import { PageTransition } from '@/components/PageTransition';
 import { useCareFlowM2 } from '@/hooks/useCareFlowM2';
 import { useRegistrosSaude } from '@/hooks/useRegistrosSaude';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRetiradas } from '@/hooks/useRetiradas';
 import { withdrawalConflictsM2 } from '@/lib/careflow-m2/withdrawal-coherence';
 const areas=[
+  {href:'/saude/careflow/linha-do-tempo',title:'Brain longitudinal',description:'Fatos rastreáveis, janelas de 7/30/90 dias e fontes originais',icon:Brain,tone:'text-emerald-300'},
   {href:'/saude/careflow/dossie',title:'Dossiê de acompanhamento',description:'Linha do tempo da pessoa, seções selecionáveis e PDF local voluntário',icon:FileArchive,tone:'text-violet-300'},
   {href:'/saude/careflow/exames',title:'Pedidos e resultados',description:'Vários exames por pedido, marcação conferida, resultados individuais',icon:FlaskConical,tone:'text-emerald-300'},
   {href:'/saude/careflow/pressao',title:'Pressão e planos',description:'Horários finitos, medições reais e histórico de acompanhamento',icon:HeartPulse,tone:'text-sky-300'},

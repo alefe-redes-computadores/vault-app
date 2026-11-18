@@ -749,6 +749,7 @@ export interface SyncQueueItem {
     | "registros_saude"
     | "careflow_events_m2"
     | "health_reminders"
+    | "notification_policies_p2"
     | "health_profiles"
     | "health_devices"
     | "health_goals"

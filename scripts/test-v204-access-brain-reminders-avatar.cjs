@@ -31,7 +31,7 @@ assert(alerts.includes('Acesso e medicamentos'));
 
 const scheduler=read('lib/health-reminders/event-scheduler.ts');
 assert(scheduler.includes('settings.dateOnlyEventTime'),'date-only withdrawal uses the configurable operational time');
-assert(scheduler.includes('(event.kind === "retirada" || event.kind === "compra") && !event.time'));
+assert(scheduler.includes('(event.kind === "retirada" || event.kind === "compra" || event.kind === "retorno") && !event.time'));
 assert(scheduler.includes('Retirada')&&scheduler.includes('prevista para hoje'));
 assert(scheduler.includes('notifyAt.getTime()'),'rescheduling must change notification fingerprint');
 

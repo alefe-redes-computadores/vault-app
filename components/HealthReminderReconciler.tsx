@@ -17,6 +17,8 @@ import {
   type HealthEventNotificationInput,
 } from "@/lib/health-reminders/event-scheduler";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import {checkinInvitationsP2,dailyCheckinBudgetP2} from "@/lib/m3/checkins-p2";
+import type {EventPolicyRecordP2} from "@/lib/m3/policy-record-p2";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
 
 export const HEALTH_REMINDERS_RECONCILE_EVENT =
@@ -45,15 +47,18 @@ export function HealthReminderReconciler() {
         return {
           reminders: [],
           events: [] as HealthEventNotificationInput[],
+          policies: [] as EventPolicyRecordP2[],
         };
       }
 
-      const [reminders, consultas, exames, retiradas, renovacoes] = await Promise.all([
+      const [reminders, consultas, exames, retiradas, renovacoes, cirurgias, policies] = await Promise.all([
         db.health_reminders.where("user_id").equals(user.id).toArray(),
         db.consultas.where("user_id").equals(user.id).toArray(),
         db.exames.where("user_id").equals(user.id).toArray(),
         db.retiradas.where("user_id").equals(user.id).toArray(),
         db.renovacoes.where("user_id").equals(user.id).toArray(),
+        db.cirurgias.where("user_id").equals(user.id).toArray(),
+        db.notification_policies_p2.where("user_id").equals(user.id).toArray(),
       ]);
 
       /*
@@ -88,6 +93,12 @@ export function HealthReminderReconciler() {
         });
       }
 
+      for (const item of cirurgias) {
+        const id=item.id?.trim(),personId=item.person_id?.trim(),eventUserId=item.user_id?.trim();
+        if(!id||!personId||!eventUserId)continue;
+        events.push({id,userId:eventUserId,personId,kind:"cirurgia",title:item.procedimento||"Cirurgia cadastrada",
+          date:item.data,time:item.horario,status:item.status,targetRoute:`/saude/cirurgias/detalhes?id=${encodeURIComponent(id)}`});
+      }
       for (const item of exames) {
         const id = item.id?.trim();
         const personId = item.person_id?.trim();
@@ -105,6 +116,8 @@ export function HealthReminderReconciler() {
           status: "agendada",
           targetRoute: `/saude/exames/detalhes?id=${encodeURIComponent(id)}`,
         });
+        if(item.data_retorno)events.push({id,userId:eventUserId,personId,kind:"retorno",title:`Retorno de exame · ${item.nome}`,
+          date:item.data_retorno,status:"agendada",targetRoute:`/saude/exames/detalhes?id=${encodeURIComponent(id)}`});
       }
 
       for (const item of retiradas) {
@@ -124,7 +137,7 @@ export function HealthReminderReconciler() {
             "Retirada de medicamento",
           date: item.data,
           time: item.horario,
-          status: item.status,
+          status: item.realizada_em || item.renovacao_realizada_id ? "realizada" : item.status,
           targetRoute: `/saude/retiradas/detalhes?id=${encodeURIComponent(id)}`,
         });
       }
@@ -136,7 +149,29 @@ export function HealthReminderReconciler() {
         events.push({id,userId:eventUserId,personId,kind:"compra",title:item.medicamento_nome?.trim()||"Medicamento planejado",date:renewalEventDate(item).slice(0,10),status:"agendada",targetRoute:`/saude/renovacao/detalhes?id=${encodeURIComponent(id)}`});
       }
 
-      return { reminders, events };
+      // Convites opcionais: jamais importar notificações retroativas nem inferir consulta concluída.
+      const rawCheckins = [] as ReturnType<typeof checkinInvitationsP2>;
+      for(const consultation of consultas){
+        if(!consultation.id||!consultation.person_id||consultation.status!=="realizada")continue;
+        const policy=policies.find(p=>p.user_id===user.id&&p.person_id===consultation.person_id&&p.event_kind==="checkin"&&p.event_id===consultation.id)??null;
+        for(const invitation of checkinInvitationsP2({appointmentId:consultation.id,consultDate:consultation.data,status:consultation.status,policy,now:new Date()}))
+          rawCheckins.push(invitation);
+      }
+      // Cada pessoa tem seu próprio limite diário; jamais silenciar um familiar por causa de outro.
+      const ownerCheckinGroups = new Map<string, typeof rawCheckins>();
+      for(const row of rawCheckins){
+        const consult=consultas.find(c=>c.id===row.appointmentId);
+        if(!consult?.person_id)continue;
+        const group=ownerCheckinGroups.get(consult.person_id)??[];group.push(row);ownerCheckinGroups.set(consult.person_id,group);
+      }
+      for(const personRows of ownerCheckinGroups.values())for(const row of dailyCheckinBudgetP2(personRows)){
+        const consultation=consultas.find(c=>c.id===row.appointmentId);
+        if(!consultation?.person_id)continue;
+        events.push({id:row.id,sourceId:row.appointmentId,userId:user.id,personId:consultation.person_id,
+          kind:"checkin",title:"Acompanhamento voluntário do Vault",date:row.date,time:row.time,status:"agendada",
+          targetRoute:`/saude/lembretes?checkin=${encodeURIComponent(row.appointmentId)}&dia=${row.day}`});
+      }
+      return { reminders, events, policies:policies.filter(p=>p.user_id===user.id) };
     },
     [user?.id]
   );
@@ -146,7 +181,7 @@ export function HealthReminderReconciler() {
 
     void Promise.all([
       reconcileHealthReminderNotifications(notificationContext.reminders),
-      reconcileHealthEventNotifications(notificationContext.events),
+      reconcileHealthEventNotifications(notificationContext.events,notificationContext.policies),
     ]).catch((error) =>
       console.error("[Health notifications] Falha ao reconciliar:", error)
     );

@@ -6,6 +6,9 @@ const EVENT_ROUTES: Record<string, string> = {
   exame: "/saude/exames/detalhes",
   retirada: "/saude/retiradas/detalhes",
   compra: "/saude/renovacao/detalhes",
+  cirurgia: "/saude/cirurgias/detalhes",
+  retorno: "/saude/exames/detalhes",
+  checkin: "/saude/lembretes",
 };
 
 export type HealthEventActionData = {
@@ -29,6 +32,11 @@ export function resolveHealthEventDestination(data: HealthEventActionData): stri
   }
   const id = (data.eventId || (ids.length === 1 ? ids[0] : "")).trim();
   if (!id || id.length > 160) return null;
+  if(kind==="checkin"){
+    const match=/^(.+):D(1|3|10)$/.exec(id);
+    if(!match||!match[1]||match[1].length>130)return null;
+    return `/saude/lembretes?checkin=${encodeURIComponent(match[1])}&dia=${match[2]}`;
+  }
   return `${path}?id=${encodeURIComponent(id)}`;
 }
 

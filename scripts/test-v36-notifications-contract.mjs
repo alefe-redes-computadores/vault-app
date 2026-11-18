@@ -21,9 +21,10 @@ ok(
 
 ok(
   events.includes("vaultHealthEvent") &&
-    events.includes('kind: "consulta" | "exame" | "retirada"') &&
+    events.includes('kind: EventKindP2;') &&
+    read('lib/m3/policy-record-p2.ts').includes("export type EventKindP2 = 'consulta'|'cirurgia'|'exame'|'retirada'|'compra'|'retorno'|'checkin';") &&
     events.includes('settings.dateOnlyEventTime') &&
-    events.includes('(event.kind === "retirada" || event.kind === "compra") && !event.time') &&
+    events.includes('(event.kind === "retirada" || event.kind === "compra" || event.kind === "retorno") && !event.time') &&
     events.includes("MAX_EVENT_PENDING"),
   "scheduler de eventos clínicos incompleto"
 );

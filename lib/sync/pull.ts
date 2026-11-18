@@ -444,6 +444,12 @@ async function performPullAllData(userId: string): Promise<void> {
       () => processTable({ remoteTable: "health_goals", queueTable: "health_goals", localTable: db.health_goals, query: async () => await supabase.from("health_goals").select("*").eq("user_id", userId)  }),
 
     // ==========================================================
+    // CI360 M3 P2: estado sincronizado individual de compromissos; não cria alarmes na nuvem.
+    // Uma falha remota NÃO pode apagar a política local nem anular a fila pendente.
+    // O processTable já protege registros locais não sincronizados ou mais novos.
+      () => processTable({remoteTable:"notification_policies_p2",queueTable:"notification_policies_p2",localTable:db.notification_policies_p2,
+        query:async()=>await supabase.from("notification_policies_p2").select("*").eq("user_id",userId)}),
+
     // HEALTH REMINDERS (person-scoped, sincronizados)
     // ==========================================================
 

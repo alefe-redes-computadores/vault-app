@@ -7,7 +7,7 @@ const overdue=read("lib/overdue-dose-notifications.ts");
 const page=read("app/saude/lembretes/page.tsx");
 ok(brain.includes("VAULT_NOTIFICATION_BRAIN_V52"),"cérebro V52 presente");
 ok(brain.includes("consulta: [1440, 60]")&&brain.includes("doseOverdueOffsets: [30, 60, 120]"),"defaults seguros preservados e ampliados");
-ok(events.includes("VAULT_EVENT_MULTI_REMINDER_V52")&&events.includes("eventOffsets[event.kind]"),"compromissos aceitam múltiplos lembretes");
+ok(events.includes("VAULT_EVENT_MULTI_REMINDER_V52")&&events.includes("settings.eventOffsets[fallbackKind]") && events.includes("getEventOffsetsM3(") && events.includes("scopePolicyForEventP2(") && events.includes("planInstantsP2("),"compromissos aceitam múltiplos lembretes");
 ok(events.includes("offsetMinutes"),"identidade do lembrete inclui antecedência");
 ok(overdue.includes("VAULT_SMART_OVERDUE_ESCALATION_V52"),"escalonamento de dose V52 presente");
 ok(overdue.includes("isResolved")&&overdue.includes("tomado_em||log.ignorado_em"),"dose resolvida silencia escalonamento");

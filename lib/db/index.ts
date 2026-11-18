@@ -39,6 +39,7 @@ import type {
 } from '@/lib/types';
 
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
+import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
 import type { HealthGoal } from '@/lib/health-goals/types';
@@ -190,6 +191,7 @@ class VaultDB extends Dexie {
   careflow_events_m2!: Table<CareFlowEventM2,string>;
   careflow_reports_m2!: Table<VaultLocalPdfM2,string>;
   health_reminders!: Table<HealthReminderRule, string>;
+  notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
   brain_active_probes!: Table<ActiveProbe, string>;
   brain_active_probe_responses!: Table<ActiveProbeResponse, string>;
@@ -1445,6 +1447,10 @@ class VaultDB extends Dexie {
     this.version(47).stores({
       careflow_events_m2: 'id, user_id, person_id, [user_id+person_id], kind, parent_id, related_id, [person_id+kind], synced, created_at',
       careflow_reports_m2: 'id, user_id, person_id, [user_id+person_id], year, created_at',
+    });
+    // CI360 M3 P2: tabela aditiva, sem migração destrutiva de dados.
+    this.version(48).stores({
+      notification_policies_p2: 'id, user_id, person_id, [user_id+person_id], [user_id+person_id+event_kind+event_id], event_kind, updated_at, synced',
     });
   }
 }

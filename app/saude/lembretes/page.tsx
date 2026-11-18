@@ -10,6 +10,7 @@ import { expandReminderInterval } from "@/lib/health-reminders/interval-plan";
 import { isVaultNative } from "@/lib/native-runtime";
 import { NotificationPreferencesPanel } from "@/components/NotificationPreferencesPanel";
 import { NotificationCommitmentPreferencesM3 } from "@/components/notifications/NotificationCommitmentPreferencesM3";
+import { EventPoliciesP2 } from "@/components/notifications/EventPoliciesP2";
 import { NotificationBrainPanel } from "@/components/NotificationBrainPanel";
 import { VaultNotificationHub } from "@/components/notifications/VaultNotificationHub";
 import { VaultDoseAlertPanelM99 } from "@/components/notifications/VaultDoseAlertPanelM99";
@@ -306,6 +307,7 @@ export default function HealthRemindersPage() {
       </section>
 
       <QuietHoursSettingsM115/>
+      <EventPoliciesP2/>
       <NotificationLabM123 reminders={reminders} userId={reminderOwner?.id||""} personId={reminderPerson||""} permission={permission}/>
       <NotificationCommitmentPreferencesM3 userId={reminderOwner?.id||""} personId={reminderPerson||""}/>
       <MoodContinuityM115 onConfigure={()=>{setEditing(null);setTargetType("health_record:humor");setTitle("Check-in opcional");setTime("20:00");setFrequency("daily");setWeekdays([]);setIntervalHours(0);setFormOpen(true);}}/>
