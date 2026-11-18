@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { ArrowLeft, Activity, BookOpenCheck, FileArchive, FlaskConical, HeartPulse, MessageSquareHeart, ShieldCheck, Brain, Stethoscope } from 'lucide-react';
+import { ArrowLeft, Activity, BookOpenCheck, FileArchive, FlaskConical, HeartPulse, MessageSquareHeart, ShieldCheck, Brain, Stethoscope, GitBranch } from 'lucide-react';
 import { PageTransition } from '@/components/PageTransition';
 import { useCareFlowM2 } from '@/hooks/useCareFlowM2';
 import { useRegistrosSaude } from '@/hooks/useRegistrosSaude';
@@ -9,6 +9,7 @@ import { useRetiradas } from '@/hooks/useRetiradas';
 import { withdrawalConflictsM2 } from '@/lib/careflow-m2/withdrawal-coherence';
 const areas=[
   {href:'/saude/careflow/modo-medico',title:'Modo Médico 360',description:'Dossiê relacional por pessoa, resumo para consulta e PDF A4 privado',icon:Stethoscope,tone:'text-emerald-200'},
+  {href:'/saude/careflow/episodios',title:'Episódio de atendimento',description:'Uma consulta, seus desdobramentos reais e PDF contextual',icon:GitBranch,tone:'text-sky-300'},
   {href:'/saude/careflow/linha-do-tempo',title:'Brain longitudinal',description:'Fatos rastreáveis, janelas de 7/30/90 dias e fontes originais',icon:Brain,tone:'text-emerald-300'},
   {href:'/saude/careflow/dossie',title:'Dossiê de acompanhamento',description:'Linha do tempo da pessoa, seções selecionáveis e PDF local voluntário',icon:FileArchive,tone:'text-violet-300'},
   {href:'/saude/careflow/exames',title:'Pedidos e resultados',description:'Vários exames por pedido, marcação conferida, resultados individuais',icon:FlaskConical,tone:'text-emerald-300'},
