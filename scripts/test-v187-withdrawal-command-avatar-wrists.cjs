@@ -3,10 +3,19 @@ const fs = require("node:fs");
 
 const withdrawals = fs.readFileSync("app/saude/retiradas/page.tsx", "utf8");
 const avatar = fs.readFileSync("components/saude/HealthAvatar3D.tsx", "utf8");
+const operational = fs.readFileSync("lib/withdrawal-operational-p6p3b.ts", "utf8");
 
 assert(withdrawals.includes("ClinicalListSummary"), "withdrawal command needs compact operational summary");
-assert(withdrawals.includes('status === "hoje"'), "today must be an exact operational filter");
-assert(withdrawals.includes('status === "atrasada"'), "overdue review must remain explicit");
+assert(
+  withdrawals.includes("withdrawalMatchesFilterP6P3B(") &&
+  operational.includes("if (filter === 'hoje') return state === 'agendada' && row.data === today;"),
+  "today must be an exact operational filter in the authoritative P3B engine"
+);
+assert(
+  withdrawals.includes("withdrawalMatchesFilterP6P3B(") &&
+  operational.includes("if (filter === 'atrasada') return state === 'agendada' && row.data < today;"),
+  "overdue review must remain explicit and exclude completed or conflicted withdrawals"
+);
 assert(withdrawals.includes("grouped.some((month) => previous.has(month.key))"), "first available month must open when current month is absent");
 assert(withdrawals.includes("withReturnTarget"), "withdrawal flows need contextual return");
 assert(withdrawals.includes('aria-pressed={status === key}'), "filters must expose selected state");

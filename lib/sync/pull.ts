@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
 import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
+import {documentPullResultP6P3B} from "@/lib/sync/document-pull-guard-p6p3b";
 import { planMedicationTreatmentReconciliationM105 } from "@/lib/sync/medication-treatment-reconciliation-m105";
 
 import type { Table } from "dexie";
@@ -959,6 +960,7 @@ async function performPullAllData(userId: string): Promise<void> {
 
     let sharedDocuments:
       RemoteRow[] = [];
+    let sharedDocumentsError: {message?:string} | null = null;
 
     if (
       visibleVaultIds.length >
@@ -979,6 +981,7 @@ async function performPullAllData(userId: string): Promise<void> {
           );
 
       if (error) {
+        sharedDocumentsError=error;
         console.error(
           "❌ [Pull] Erro ao buscar documentos compartilhados:",
           error
@@ -991,17 +994,16 @@ async function performPullAllData(userId: string): Promise<void> {
       }
     }
 
-    const visibleDocuments =
-      uniqueById([
-        ...(
-          (
-            ownDocuments ??
-            []
-          ) as RemoteRow[]
-        ),
-
-        ...sharedDocuments,
-      ]);
+    // Falha parcial, erro RLS/rede ou resposta ausente nao podem virar error:null.
+    // Nao apaga registros, nao infere ausencia e nao registra sucesso de tabela incompleta.
+    const documentDecisionP6P3B = documentPullResultP6P3B<RemoteRow>({
+      own: ownDocuments as RemoteRow[] | null,
+      shared: sharedDocuments,
+      ownError: ownDocumentsError,
+      sharedError: sharedDocumentsError,
+      sharedRequired: visibleVaultIds.length > 0,
+    });
+    const visibleDocuments = uniqueById(documentDecisionP6P3B.data ?? []);
 
     await processTable({
       remoteTable:
@@ -1015,11 +1017,8 @@ async function performPullAllData(userId: string): Promise<void> {
 
       query:
         async () => ({
-          data:
-            visibleDocuments,
-
-          error:
-            null,
+          data: documentDecisionP6P3B.error ? null : visibleDocuments,
+          error: documentDecisionP6P3B.error,
         }),
     });
 

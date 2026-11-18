@@ -41,8 +41,9 @@ import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { useLocalDay } from "@/hooks/useLocalDay";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import type { Retirada, RetiradaStatus } from "@/lib/types";
+import {withdrawalReadMapP6P3B, withdrawalMatchesFilterP6P3B, withdrawalSummaryP6P3B, withdrawalReadStateP6P3B, type WithdrawalReadStateP6P3B} from "@/lib/withdrawal-operational-p6p3b";
 
-type StatusFilter = "todos" | "hoje" | "atrasada" | RetiradaStatus;
+type StatusFilter = "todos" | "hoje" | "atrasada" | "revisar" | RetiradaStatus;
 
 type MedicationGroup = {
   key: string;
@@ -94,7 +95,9 @@ function formatMonth(monthKey: string) {
   }
 }
 
-function statusMeta(status: RetiradaStatus) {
+function statusMeta(status: RetiradaStatus | WithdrawalReadStateP6P3B) {
+  if (status === "revisar") return {label:"Conferir vínculo",className:"border-amber-300/30 bg-amber-300/[.08] text-amber-200"};
+  if (status === "realizada_vinculada") return {label:"Concluída (vínculo)",className:"border-emerald-400/25 bg-emerald-400/10 text-emerald-300"};
   if (status === "realizada") {
     return {
       label: "Realizada",
@@ -172,36 +175,14 @@ export default function RetiradasPage() {
     [farmacias]
   );
 
+  // Projecao unica por mudanca do array: sem revarrer todos os ciclos por card.
+  const operationalMapP6P3B = useMemo(() => withdrawalReadMapP6P3B(retiradas), [retiradas]);
   const filtered = useMemo(() => {
     const query = normalize(search);
 
     return retiradas.filter((retirada) => {
       if (notificationDate && retirada.data !== notificationDate) return false;
-      if (
-        status === "hoje" &&
-        !(retirada.status === "agendada" && retirada.data === hoje)
-      ) {
-        return false;
-      }
-
-      if (
-        status === "atrasada" &&
-        !(
-          retirada.status === "agendada" &&
-          retirada.data < hoje
-        )
-      ) {
-        return false;
-      }
-
-      if (
-        status !== "todos" &&
-        status !== "atrasada" &&
-        status !== "hoje" &&
-        retirada.status !== status
-      ) {
-        return false;
-      }
+      if (!withdrawalMatchesFilterP6P3B(retirada,retiradas,hoje,status,operationalMapP6P3B)) return false;
 
       if (!query) return true;
 
@@ -227,6 +208,7 @@ export default function RetiradasPage() {
     });
   }, [
     retiradas,
+    operationalMapP6P3B,
     status,
     search,
     notificationDate,
@@ -297,17 +279,7 @@ export default function RetiradasPage() {
       });
   }, [filtered, medicationMap]);
 
-  const counts = useMemo(() => {
-    const result = { total: retiradas.length, hoje: 0, agendadas: 0, atrasadas: 0, realizadas: 0 };
-    for (const retirada of retiradas) {
-      if (retirada.status === "realizada") result.realizadas += 1;
-      if (retirada.status !== "agendada") continue;
-      result.agendadas += 1;
-      if (retirada.data === hoje) result.hoje += 1;
-      else if (retirada.data < hoje) result.atrasadas += 1;
-    }
-    return result;
-  }, [retiradas, hoje]);
+  const counts = useMemo(() => withdrawalSummaryP6P3B(retiradas,hoje,operationalMapP6P3B), [retiradas,hoje,operationalMapP6P3B]);
 
   useEffect(() => {
     if (!notificationDate) return;
@@ -348,15 +320,16 @@ export default function RetiradasPage() {
           </div>}
           <ListSearch value={search} onChange={setSearch} placeholder="Buscar medicamento, farmácia ou observação..." className="order-1" />
           <ListFilters className="order-2" title="Filtrar retiradas" activeCount={status === "todos" ? 0 : 1} onClear={() => setStatus("todos")}>
-            {[["todos", "Todas"], ["hoje", "Hoje"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (
+            {[["todos", "Todas"], ["hoje", "Hoje"], ["agendada", "Agendadas"], ["atrasada", "Atrasadas"], ["revisar", "Conferir vínculos"], ["realizada", "Realizadas"], ["nao_realizada", "Não realizadas"], ["cancelada", "Canceladas"]].map(([key, label]) => (
               <button key={key} type="button" aria-pressed={status === key} onClick={() => { trigger("vibrate"); setStatus(key as StatusFilter); }} className={`inline-flex min-h-11 shrink-0 items-center rounded-xl border px-3 text-xs font-semibold ${status === key ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300" : "border-surface-border/50 bg-surface-raised text-ink-muted"}`}>{label}</button>
             ))}
           </ListFilters>
-          {counts.total > 0 ? <div className="order-3 w-full"><ClinicalListSummary icon={PackageCheck} eyebrow="Situação operacional" title={counts.atrasadas ? `${counts.atrasadas} retirada${counts.atrasadas === 1 ? "" : "s"} precisa${counts.atrasadas === 1 ? "" : "m"} de revisão` : counts.hoje ? `${counts.hoje} retirada${counts.hoje === 1 ? "" : "s"} para hoje` : "Agenda organizada"} detail={`${counts.agendadas} agendadas no histórico`} metrics={[{label:"Hoje",value:counts.hoje,tone:counts.hoje?"attention":"neutral"},{label:"Atrasadas",value:counts.atrasadas,tone:counts.atrasadas?"critical":"neutral"},{label:"Realizadas",value:counts.realizadas,tone:"positive"}]}/></div> : null}
+          {counts.total > 0 ? <div className="order-3 w-full"><ClinicalListSummary icon={PackageCheck} eyebrow="Situação operacional" title={counts.atrasadas ? `${counts.atrasadas} retirada${counts.atrasadas === 1 ? "" : "s"} precisa${counts.atrasadas === 1 ? "" : "m"} de revisão` : counts.hoje ? `${counts.hoje} retirada${counts.hoje === 1 ? "" : "s"} para hoje` : "Agenda organizada"} detail={`${counts.agendadas} agendadas abertas · ${counts.revisar} vínculo(s) para conferência`} metrics={[{label:"Hoje",value:counts.hoje,tone:counts.hoje?"attention":"neutral"},{label:"Atrasadas",value:counts.atrasadas,tone:counts.atrasadas?"critical":"neutral"},{label:"Realizadas",value:counts.realizadas,tone:"positive"}]}/></div> : null}
         </ListPageHeader>
 
         <section className="space-y-4 px-5 pt-4">
           <WithdrawalConflictReviewM2 />
+          {counts.revisar>0 ? <button type="button" onClick={()=>{trigger("vibrate");setStatus("revisar");}} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-amber-300/25 bg-amber-300/[.055] px-3.5 py-2 text-left text-xs font-semibold text-amber-200"><span>Conferir {counts.revisar} vínculo(s) de retirada — sem alterar o histórico</span><ChevronRight size={16} className="shrink-0"/></button> : null}
           {(counts.atrasadas > 0 || counts.hoje > 0) ? <div className="grid grid-cols-2 gap-2">
             <button type="button" disabled={!counts.hoje} onClick={() => { trigger("vibrate"); setStatus("hoje"); }} className="min-h-12 rounded-2xl border border-amber-400/20 bg-amber-400/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-amber-200">Hoje · {counts.hoje}</strong><span className="text-xs text-ink-muted">Abrir agenda atual</span></button>
             <button type="button" disabled={!counts.atrasadas} onClick={() => { trigger("vibrate"); setStatus("atrasada"); }} className="min-h-12 rounded-2xl border border-coral/20 bg-coral/[.06] px-3 text-left disabled:opacity-35"><strong className="block text-xs text-coral">Atrasadas · {counts.atrasadas}</strong><span className="text-xs text-ink-muted">Revisar pendências</span></button>
@@ -366,7 +339,7 @@ export default function RetiradasPage() {
               <span>Reorganizar retiradas <span className="ml-1 font-normal text-ink-muted">· ferramenta opcional</span></span>
               <ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
-            <div className="border-t border-surface-border/40 pt-2"><WithdrawalBatchPlanner key={activePersonId} rows={filtered.filter(row => row.person_id === activePersonId)} onSave={rescheduleRetiradas}/></div>
+            <div className="border-t border-surface-border/40 pt-2"><WithdrawalBatchPlanner key={activePersonId} rows={filtered.filter(row => row.person_id === activePersonId && operationalMapP6P3B.get(row) === "agendada")} onSave={rescheduleRetiradas}/></div>
           </details> : null}
           <button type="button" onClick={() => { trigger("vibrate"); navigateWithReturn("/saude/fornecimento"); }} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/[.05] px-3.5 py-2.5 text-left"><span><span className="block text-xs font-bold text-emerald-300">Fornecimento SUS e documentos</span><span className="mt-0.5 block text-xs text-ink-muted">Autorizações, anexos e preparo das próximas retiradas</span></span><ChevronRight size={16} className="text-emerald-300"/></button>
           {grouped.length === 0 ? (
@@ -529,7 +502,8 @@ export default function RetiradasPage() {
                                     className="overflow-hidden border-t border-surface-border/20 bg-void/15 px-4"
                                   >
                                     {medication.retiradas.map((retirada, index) => {
-                                      const meta = statusMeta(retirada.status);
+                                      const stateP6P3B=operationalMapP6P3B.get(retirada) ?? withdrawalReadStateP6P3B(retirada,retiradas);
+                                       const meta = statusMeta(stateP6P3B);
                                       const pharmacy = retirada.farmacia_id
                                         ? pharmacyMap.get(retirada.farmacia_id)
                                         : undefined;
@@ -537,7 +511,7 @@ export default function RetiradasPage() {
                                         (retirada.reagendamentos || []).length > 0;
 
                                       const isOverdue =
-                                        retirada.status === "agendada" &&
+                                        stateP6P3B === "agendada" &&
                                         retirada.data < hoje;
 
                                       return (
@@ -558,12 +532,12 @@ export default function RetiradasPage() {
                                         >
                                           <div className="flex min-w-0 flex-1 items-start gap-3">
                                             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-emerald-400/15 bg-emerald-400/5 text-emerald-300">
-                                              {retirada.status === "realizada" ? (
+                                              {stateP6P3B === "realizada" || stateP6P3B === "realizada_vinculada" ? (
                                                 <CheckCircle2
                                                   size={14}
                                                   className="text-emerald-400"
                                                 />
-                                              ) : retirada.status ===
+                                              ) : stateP6P3B ===
                                                 "nao_realizada" ? (
                                                 <XCircle
                                                   size={14}
@@ -581,7 +555,7 @@ export default function RetiradasPage() {
                                                   Retirada
                                                 </p>
                                                 {retirada.data === hoje &&
-                                                  retirada.status ===
+                                                  stateP6P3B ===
                                                     "agendada" && (
                                                   <span className="rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-300">
                                                     Hoje
