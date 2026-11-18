@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const qg1=require('./vault-qg1-touch-contract.cjs');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
@@ -51,7 +52,7 @@ ok(treatment.includes('loadTreatmentDetailRelations')&&treatment.includes('possi
 const tile=parsed('components/home/HomeClinicalAreaTile.tsx');
 const command=parsed('components/home/HomeCommandCenter.tsx');
 const care=parsed('components/home/HomeCareOrganizationTiles.tsx');
-ok(tile.includes('min-h-[84px]')&&tile.includes('onNavigate(path)')&&tile.includes('${tone}'),'Area clicavel e cor especifica por modulo');
+ok(qg1.clinicalTileMinHeightQG1(tile,84)&&tile.includes('onNavigate(path)')&&tile.includes('${tone}'),'Area clicavel e cor especifica por modulo');
 ok(command.includes('id="home-outras-areas" title=') && !command.includes('id="home-outras-areas" defaultOpen')&&command.includes('id="home-organizacao"')&&command.includes('networkTone="text-emerald-300/80"'),'Home preserva revelação da central e rede');
 ok(care.includes('min-h-[56px]')&&care.includes('Compras de medicamentos')&&care.includes('Documentos de saúde'),'Acessos secundários mais compactos');
 const gate=read('scripts/test-v63-release-gate.mjs');

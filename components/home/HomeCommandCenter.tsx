@@ -46,7 +46,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
       {/* M131: dois destinos principais, com cores e componentes canônicos. */}
       <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Acessos principais de saúde e medicamentos">
         <div className="grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1" aria-label="Medicamentos e Minha saúde">
-          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex h-full min-h-[84px] !min-h-[72px] min-[380px]:!min-h-[76px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-ice/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+          <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex h-full min-h-[100px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-ice/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ice/10 text-ice" aria-hidden="true"><Pill size={17}/></span>
             <span className="flex min-w-0 flex-1 flex-col justify-center"><strong className="block break-words text-sm font-bold leading-snug text-ink-primary">Medicamentos</strong><span className="mt-1 block line-clamp-2 break-words text-xs leading-snug text-ink-muted">Rotina e estoque</span></span>
           </button>

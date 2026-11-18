@@ -31,7 +31,7 @@ assert(page.includes('SmilePlus')&&page.includes('Registrar sintoma'),'check-in 
 assert(page.includes('vault:today:r4-return')&&page.includes('saved.person!==activePersonId'),'same owner/date scroll only');
 assert(more.includes('<VaultUpdateDisclosureR4')&&more.includes('<VaultUpdateCenter />')&&more.includes('id="vault-updates-r4"')&&update.includes('return <summary'),'update diagnostics preserved, direct official center under collapsed accordion');
 assert(update.includes('state.installedVersion||APP_VERSION'),'no made-up APK version');
-assert(more.includes('grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&_button]:min-w-0'),'data grid');
+assert(more.includes('grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&_button]:min-w-0')&&more.includes('grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3'),'data grid');
 assert(more.includes('return_to=%2Fmais')&&profile.includes('Voltar para Mais')&&person.includes('fromMoreR4 ? "/mais" : "/pessoas"'),'canonical return Mais');
 assert(help.includes('topicGroupsR4')&&help.includes('searchHelpTopics(query)'),'help semantic groups and search');
 assert(med.includes('grid-cols-[minmax(0,1fr)_78px]')&&med.includes('showChevron={false}'),'fixed 78px action slot');

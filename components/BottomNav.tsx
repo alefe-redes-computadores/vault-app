@@ -63,6 +63,7 @@ const ALLOWED_NAV_PATHS = [
   "/saude/central-m144", // M148 P3: Central e area autenticada, barra inferior permanece
   "/ajuda", // R3: ajuda contextual mantem BottomNav e retorno a origem
   "/saude/mapa", // M150: mapa de descoberta mantém a barra global
+  "/saude/careflow", // D3: hub intermediário, não formulário
   // M150 P2: explorações são destinos principais; apenas formulários escondem a barra.
   "/saude/minha-saude",
   "/saude/brain-v7",

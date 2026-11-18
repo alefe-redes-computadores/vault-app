@@ -28,6 +28,25 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"studio",title:"Fênix Studio",description:"Aparência e identidade visual",href:"/saude/visual-studio",group:"foundation",icon:"sparkles",keywords:["avatar","studio","corpo"]},
   {id:"fontes",title:"Fontes de saúde",description:"Relógio, anel e aparelhos",href:"/saude/minha-saude#fontes",group:"foundation",icon:"chart",keywords:["samsung","health connect","relogio","anel","sincronizacao"]},
   {id:"seguranca",title:"Plano de segurança",description:"Apoio e contatos escolhidos",href:"/saude/plano-seguranca",group:"foundation",icon:"lock",keywords:["apoio","contatos","seguranca"]},
+  // D3: entries of the real clinical directory are also pinnable in Explorar.
+  {id:"consultas",title:"Consultas",description:"Agenda e retornos",href:"/saude/consultas",group:"intelligence",icon:"calendar",keywords:["medico","atendimento","consulta"]},
+  {id:"exames-clinicos",title:"Exames registrados",description:"Área clínica de exames",href:"/saude/exames",group:"intelligence",icon:"flask",keywords:["exame","pedido","resultado"]},
+  {id:"cirurgias",title:"Procedimentos",description:"Cirurgias e histórico",href:"/saude/cirurgias",group:"intelligence",icon:"stethoscope",keywords:["cirurgia","operacao","procedimento"]},
+  {id:"registros",title:"Diário de saúde",description:"Registros e relatos",href:"/saude/registros",group:"body",icon:"book",keywords:["sintomas","humor","diario"]},
+  {id:"retiradas",title:"Retiradas",description:"Compromissos e fornecimento",href:"/saude/retiradas",group:"foundation",icon:"package",keywords:["sus","retirada","medicamento"]},
+  {id:"renovacao",title:"Receitas e aquisições",description:"Renovação documental",href:"/saude/renovacao",group:"foundation",icon:"files",keywords:["receitas","renovacao","aquisicao"]},
+  {id:"fornecimento",title:"Fornecimento e SUS",description:"Processos públicos e documentos",href:"/saude/fornecimento",group:"foundation",icon:"shield",keywords:["sus","processo","documentos"]},
+  {id:"rede",title:"Rede clínica",description:"Médicos, farmácias e locais",href:"/saude/rede",group:"foundation",icon:"users",keywords:["medico","farmacia","hospital"]},
+  {id:"lembretes",title:"Lembretes",description:"Central de notificações",href:"/saude/lembretes",group:"foundation",icon:"calendar",keywords:["alarme","aviso","horario"]},
+  {id:"ocorrencias",title:"Ocorrências e ciclos",description:"Histórico clínico",href:"/saude/central-m144",group:"body",icon:"book",keywords:["vacinas","ciclos","eventos"]},
+  {id:"escudo",title:"Estoque e embalagens",description:"Unidades e conferência",href:"/saude/supply-shield",group:"foundation",icon:"package",keywords:["estoque","unidade","embalagem"]},
+  {id:"resumo",title:"Resumo longitudinal",description:"Relatórios de registros",href:"/saude/registros/relatorio",group:"intelligence",icon:"chart",keywords:["historico","resumo","relatorio"]},
+  {id:"documentos",title:"Documentos de saúde",description:"Acervo clínico",href:"/saude/documentos",group:"capture",icon:"files",keywords:["receita","documento","pdf"]},
+  {id:"minha-saude",title:"Minha saúde",description:"Painel pessoal",href:"/saude/minha-saude",group:"foundation",icon:"heart",keywords:["perfil","cuidado","saude"]},
+  {id:"brain",title:"VAULT Brain",description:"Observações e evidências",href:"/saude/brain-v7",group:"intelligence",icon:"activity",keywords:["brain","inteligencia","observacao"]},
+  {id:"modo-medico",title:"Modo Médico 360",description:"Resumo para consulta",href:"/saude/careflow/modo-medico",group:"intelligence",icon:"stethoscope",keywords:["medico","pdf","dossie"]},
+  {id:"episodios",title:"Episódio de atendimento",description:"Fatos de uma consulta",href:"/saude/careflow/episodios",group:"intelligence",icon:"calendar",keywords:["episodio","consulta","retorno"]},
+  {id:"linha-do-tempo",title:"Brain longitudinal",description:"Registros rastreáveis",href:"/saude/careflow/linha-do-tempo",group:"intelligence",icon:"chart",keywords:["historico","brain","linha do tempo"]},
 ] as const;
 
 export const NETWORK_SEARCH_R5: readonly Pick<HubModuleR5,"id"|"title"|"description"|"href"|"icon"|"keywords">[] = [

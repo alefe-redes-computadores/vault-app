@@ -967,9 +967,10 @@ export default function MaisPage() {
                 <button type="button" onClick={()=>{trigger("vibrate");router.push("/perfil?return_to=%2Fmais");}} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface-raised text-ink-muted active:scale-95" aria-label="Configurações da conta"><Settings size={17} /></button>
               </div>
               {/* P4: uma identidade visual; conta autenticada e pessoa clínica seguem autoridades diferentes. */}
-              <div className="mt-2 flex min-h-11 flex-wrap items-center justify-between gap-2 border-t border-surface-border/40 pt-2 max-[359px]:justify-start" aria-label="Pessoa ativa no Vault">
-                <span className="shrink-0 text-[11px] font-semibold text-ink-secondary">Pessoa ativa<span className="sr-only">. Os registros de saúde seguem este perfil, não a foto da conta.</span></span>
-                <PersonSelector mode="compact" className="min-w-0 max-w-full shrink" />
+              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 border-t border-surface-border/40 pt-3" aria-label="Pessoa ativa no Vault">
+                <div className="min-w-0"><span className="mb-1 block text-[11px] font-semibold text-ink-secondary">Pessoa ativa<span className="sr-only">. Os registros de saúde seguem este perfil, não a foto da conta.</span></span>
+                  <PersonSelector mode="compact" className="w-full max-w-full min-w-0" />
+                </div>
                 {activePersonId && <button type="button" onClick={handleEditProfile} className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/60 text-ink-muted" aria-label="Editar pessoa ativa"><Pencil size={15}/></button>}
               </div>
             </div>
@@ -990,6 +991,7 @@ export default function MaisPage() {
             </div>
 
             {/* M106: preferências secundárias recolhíveis; conta, pessoa e sincronização ficam visíveis. */}
+            <h2 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências</h2>
             <details className="group rounded-[18px] border border-surface-border/45 bg-surface/40 px-3" data-vault-remember-r2="preferences">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-left text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span>Preferências e lembretes</span>
@@ -1039,6 +1041,7 @@ export default function MaisPage() {
               delay: 0.04,
             }}
           >
+            <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Cofre pessoal</h2>
             <details className="group rounded-[18px] border border-surface-border/45 bg-surface/30 px-3" aria-label="Ferramentas do cofre pessoal">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
                 <span className="flex min-w-0 flex-col gap-0.5"><strong className="font-semibold text-ink-primary">Ferramentas do Cofre</strong><span className="text-[10px] font-normal text-ink-muted">{vaultOverview.total} itens desta pessoa · abrir acessos</span></span>
@@ -1187,7 +1190,7 @@ export default function MaisPage() {
 
               <details className="group col-span-full rounded-[18px] border border-surface-border/45 bg-surface/35 px-3" aria-label="Ferramentas avançadas de dados" data-vault-remember-r2="advanced">
                 <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span className="min-w-0"><strong className="block text-xs text-ink-primary">Ferramentas avançadas</strong><span className="mt-0.5 block text-[10px] font-normal text-ink-muted">Prontidão, backup, recuperação, exportação e limpeza</span></span><ChevronDown size={16} className="shrink-0 text-ink-muted transition-transform group-open:rotate-180"/></summary>
-                <div className="grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3 min-[380px]:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3">
               <div className="col-span-full min-w-0"><OperationalReadinessM103 authenticated={Boolean(user?.id)} hasPerson={Boolean(activePersonId && activePerson?.user_id === user?.id)} online={isOnline} pending={pendingQueueCount} native={isNativeApp} onNavigate={href=>router.push(href)}/></div>
               {/* VAULT_RECOVERY_CENTER_V68 */}
               <button
@@ -1203,7 +1206,7 @@ export default function MaisPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-ink-primary">Segurança e recuperação</p>
-                  <p className="truncate text-xs text-ink-muted">Sync, fila, backup e diagnóstico em um só lugar</p>
+                  <p className="text-xs leading-snug text-ink-muted">Sync, fila, backup e diagnóstico em um só lugar</p>
                 </div>
                 <ChevronRight size={16} className="shrink-0 text-ink-faint" />
               </button>
@@ -1229,7 +1232,7 @@ export default function MaisPage() {
                     Limpar dados locais
                   </p>
 
-                  <p className="truncate text-xs text-ink-muted">
+                  <p className="text-xs leading-snug text-ink-muted">
                     Remove os dados deste dispositivo
                   </p>
                 </div>

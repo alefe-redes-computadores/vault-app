@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const qg1=require('./vault-qg1-touch-contract.cjs');
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const read=p=>fs.readFileSync(p,'utf8');
 let n=0;
@@ -9,14 +10,14 @@ for(const path of files){const code=read(path);const parsed=ts.createSourceFile(
 const [page,home,tile,supply,command]=files.map(read);
 ok(page.includes('flex min-h-[70px] w-full min-w-0 items-center')&&page.includes('withReturnTarget(`/saude/tratamentos/detalhes?id=${tratamento.id}`, "/")'),'cartões de tratamento mais compactos com rota canônica preservada');
 ok(home.includes('grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1'),'Home mantém grade M139 em 320px');
-ok(home.includes('flex h-full min-h-[84px] !min-h-[72px] min-[380px]:!min-h-[76px]') && tile.includes('flex h-full min-h-[84px] !min-h-[72px] min-[380px]:!min-h-[76px]'),'Home limita altura dos dois cartões sem eliminar alvo de toque legado');
+ok(qg1.homePrimaryMinHeightQG1(home,84) && qg1.clinicalTileMinHeightQG1(tile,84),'Home limita altura dos dois cartões sem eliminar alvo de toque legado');
 ok(home.includes('items-center gap-2 rounded-[18px]')&&tile.includes('items-center gap-2.5 rounded-[18px]'),'conteúdo dos dois cartões fica centralizado verticalmente');
 ok(home.includes('flex min-w-0 flex-1 flex-col justify-center')&&!tile.includes('self-stretch gap-0.5'),'cartões sem esticamento interno desnecessário');
 ok(home.includes('rounded-[18px] border border-ice/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm'),'M139 R3: sequência premium original preservada');
 ok(home.includes('go("/saude/medicamentos")')&&home.includes('label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude"'),'rotas originais navegáveis');
 ok(home.includes('<HomeSupplyAccessTiles')&&home.includes('id="home-acessos-medicamentos"'),'atalhos de retirada e fornecimento mantidos');
 ok(tile.includes('onNavigate(path)')&&tile.includes('const surface = areaTone.split')&&tile.includes('${surface || "border-surface-border/60 bg-surface"}'),'cartão clínico mantém cores originais e haptics pela Home');
-ok(home.includes('h-full min-h-[84px]')&&tile.includes('h-full min-h-[84px]'),'M136: mínimo de toque legado preservado');
+ok(qg1.homePrimaryMinHeightQG1(home,84)&&qg1.clinicalTileMinHeightQG1(tile,84),'M136: mínimo de toque legado preservado');
 ok(supply.includes('density="compact" items={[')&&supply.includes('label="Áreas do fornecimento"'),'navegação principal tem uma linha em largura de celular');
 ok(supply.includes('Acesso 360 · abrir panorama completo')&&supply.indexOf('id="processos"')<supply.indexOf('id="documentos-pendentes"'),'processos primeiro, panorama e documentos completos sob demanda');
 ok(supply.includes('id="processo-atual" disabled={busy} className="box-border w-full min-w-0 max-w-full scroll-mt-36 space-y-3 [overflow-wrap:anywhere]"'),'processo selecionado sem placeholder de 900px e com largura restrita');
@@ -50,5 +51,5 @@ ok(supply.includes('w-full min-w-0 max-w-full scroll-mt-36 space-y-3 [overflow-w
 ok(supply.includes('overflow-x-auto overscroll-x-contain')&&supply.includes('min-w-[76px] flex-1 shrink-0'),'abas do ciclo rolam localmente sem deslocar pagina');
 ok(command.includes('box-border w-full min-w-0 max-w-full')&&command.includes('min-[380px]:grid-cols-2'),'indicadores operacionais respeitam largura minima para duas colunas');
 ok(access.includes('box-border w-full min-w-0 max-w-full')&&access.includes('mt-3 grid min-w-0 grid-cols-1 gap-2 min-[390px]:grid-cols-2'),'bloco Acesso 360 usa mesma largura que os demais');
-ok(m58.includes('min-h-[84px]')&&m58.includes('items-center')&&!m58.includes('min-[380px]:min-h-[92px]'),'regressao M58 atualizada para altura compacta sem validar classe desatualizada');
+ok(m58.includes('qg1.classMinHeightAtLeastQG1')&&m58.includes('items-center')&&!m58.includes('min-[380px]:min-h-[92px]'),'regressao M58 atualizada para altura compacta sem validar classe desatualizada');
 console.log(`VAULT M141: ${n} contratos de acabamento visual e integridade aprovados.`);

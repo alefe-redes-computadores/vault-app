@@ -32,8 +32,14 @@ check('Home: acessos essenciais depois do resumo e antes da agenda',()=>{
 const m=new Module('lib/navigation/clinical-directory-m150.ts',module);
 m._compile(ts.transpileModule(search,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,'lib/navigation/clinical-directory-m150.ts');
 const d=m.exports;
-check('Explorar: todos os 22 destinos reais preservados',()=>{
- const es=d.clinicalDirectoryM150.flatMap(x=>x.items); assert.equal(es.length,22);assert.equal(new Set(es.map(x=>x.href)).size,22);
+check('Explorar: 22 destinos anteriores preservados e CareFlow expandido',()=>{
+ const es=d.clinicalDirectoryM150.flatMap(x=>x.items);
+ assert(es.length>=31,'A expansão não pode remover destinos existentes');
+ assert.equal(new Set(es.map(x=>x.href)).size,es.length,'Rotas sem duplicação');
+ for(const href of ['/saude/careflow','/saude/careflow/episodios','/saude/careflow/modo-medico',
+   '/saude/careflow/linha-do-tempo','/saude/careflow/dossie','/saude/careflow/exames',
+   '/saude/careflow/pressao','/saude/careflow/sintomas','/saude/careflow/relatorios'])
+   assert(es.some(x=>x.href===href),'Destino CareFlow real ausente: '+href);
 });
 for(const [term,id] of [['remedio','medicamentos'],['farmacia','rede'],['dose de hoje','hoje'],['laboratorio','pharmalens'],['agendar medico','consultas'],['anexar receita','renovacao'],['sus','fornecimento']]){
  check('Busca '+term,()=>assert(d.searchClinicalDirectoryM150(term).flatMap(x=>x.items).some(x=>x.id===id),term));

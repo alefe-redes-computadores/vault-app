@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const qg1=require('./vault-qg1-touch-contract.cjs');
 const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript'),Module=require('node:module');
 const read=p=>fs.readFileSync(p,'utf8');let count=0;
 function ok(v,m){assert.ok(v,'M25 '+m);count++;console.log('✓ M25 '+m)}
@@ -13,7 +14,7 @@ const hero=by('components/home/HomeDailyHero.tsx'),rail=by('components/home/Home
 ok(hero.includes('min-h-[75px]')&&hero.includes('scheduled > 0 && Number.isFinite(progress)')&&hero.includes('active:bg-surface-raised/40'),'Home readability, valid 0/0, P15 R7 touch contract');
 ok(hero.includes('aria-valuetext')&&hero.includes('safeCompleted')&&hero.includes('homeRoutineSummaryNote'),'Home denominator is still canonical');
 ok(rail.includes('alerts.slice(0, 1)')&&rail.includes('className="space-y-1.5"')&&rail.includes('data-vault-ui360-r2-attention')&&rail.includes('onToggle'),'Home alert priority and M11 layout unchanged');
-ok(tile.includes('min-h-[84px]')&&tile.includes('onNavigate(path)')&&tile.includes('${tone}'),'Home area tile: usable touch area, canonical route and tone');
+ok(qg1.clinicalTileMinHeightQG1(tile,84)&&tile.includes('onNavigate(path)')&&tile.includes('${tone}'),'Home area tile: usable touch area, canonical route and tone');
 const plan=by('components/health-intelligence/BrainCarePlan.tsx'),sheet=by('components/vault-intelligence/BrainV5DetailSheet.tsx');
 ok(plan.includes('min-[390px]:grid-cols-4')&&plan.includes('plan.counts[lane]')&&plan.includes('writeCarePlanMemory(plan)'),'Brain layout adapted to narrow screens without changing memory');
 ok(sheet.includes('p-3.5')&&sheet.includes('brainV5PriorityReason(alert)')&&sheet.includes('useDialogGuard(true, onClose)'),'Brain detail readability without priority mutation');

@@ -84,14 +84,14 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
     const read=()=>{try{const raw=localStorage.getItem(scope);setPrefs(raw&&raw.length<=MAX_STORE?parseHubPreferencesR5(JSON.parse(raw)):EMPTY_PREFERENCES_R5);}catch{setPrefs(EMPTY_PREFERENCES_R5);}};
     read();setLoadedScope(scope);
     const onStorage=(event:StorageEvent)=>{if(event.key===scope)read();};
-    window.addEventListener("storage",onStorage);return()=>window.removeEventListener("storage",onStorage);
+    window.addEventListener("storage",onStorage);window.addEventListener("vault:health-hub:r5-updated",read);return()=>{window.removeEventListener("storage",onStorage);window.removeEventListener("vault:health-hub:r5-updated",read);};
   },[scope]);
   const ready=Boolean(scope&&loadedScope===scope);
   const current=ready?prefs:EMPTY_PREFERENCES_R5;
   const save=useCallback((next:HubPreferenceR5)=>{
     if(!ready)return;
     const safe=parseHubPreferencesR5(next);setPrefs(safe);
-    try{localStorage.setItem(scope,JSON.stringify(safe));}catch{/* optional, session remains usable */}
+    try{localStorage.setItem(scope,JSON.stringify(safe));window.dispatchEvent(new Event("vault:health-hub:r5-updated"));}catch{/* optional, session remains usable */}
   },[scope,ready]);
   const pinned=useMemo(()=>new Set(current.favorites),[current.favorites]);
   const markRecent=(id:string)=>{if(!ready)return;save({...current,recent:recordHubRecentR5(current.recent,id)});};

@@ -937,6 +937,8 @@ export default function HomePage() {
   // Do not derive from medicine names, infer a medical condition or write records.
   const homeContextKind360: HomeContextKind360 = dosesPendentesAtrasadas.length > 0 ? "dose"
     : /\/saude\/careflow(?:\/|[?#]|$)/.test(resumoContextual.href) ? "careflow"
+    : /(?:documento\s+SUS|processo p[úu]blico)/i.test(`${resumoContextual.title} ${resumoContextual.description}`) ? "documento"
+    : /\/saude\/(?:fornecimento|documentos)(?:\/|[?#]|$)/.test(resumoContextual.href) ? "documento"
     : /\/(?:exames)(?:\/|[?#]|$)/.test(resumoContextual.href) ? "exame"
     : /\/consultas(?:\/|[?#]|$)/.test(resumoContextual.href) ? "consulta"
     : /\/(?:nova-receita|renovacao)(?:\/|[?#]|$)/.test(resumoContextual.href) ? "receita"

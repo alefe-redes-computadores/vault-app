@@ -60,6 +60,21 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
     ],
   },
   {
+    id: 'careflow', title: 'CareFlow 360 e acompanhamento',
+    description: 'Episódios, sintomas, pressão, Brain e relatórios',
+    items: [
+      {id:'careflow',label:'CareFlow 360',description:'Centro de acompanhamento',href:'/saude/careflow',icon:'activity'},
+      {id:'episodios',label:'Episódio de atendimento',description:'Consulta e desdobramentos reais',href:'/saude/careflow/episodios',icon:'calendar'},
+      {id:'modo-medico',label:'Modo Médico 360',description:'Resumo para consulta e PDF',href:'/saude/careflow/modo-medico',icon:'stethoscope'},
+      {id:'linha-do-tempo',label:'Brain longitudinal',description:'História clínica rastreável',href:'/saude/careflow/linha-do-tempo',icon:'brain'},
+      {id:'dossie',label:'Dossiê de acompanhamento',description:'Linha do tempo da pessoa',href:'/saude/careflow/dossie',icon:'file'},
+      {id:'exames-360',label:'Pedidos e resultados 360',description:'Itens de exame e estados reais',href:'/saude/careflow/exames',icon:'flask'},
+      {id:'pressao',label:'Pressão e planos',description:'Medições reais e planos finitos',href:'/saude/careflow/pressao',icon:'heart'},
+      {id:'sintomas',label:'Sintomas e evolução',description:'Relatos com horário e intensidade',href:'/saude/careflow/sintomas',icon:'activity'},
+      {id:'biblioteca',label:'Biblioteca de PDFs',description:'Arquivos clínicos locais',href:'/saude/careflow/relatorios',icon:'file'},
+    ],
+  },
+  {
     id: 'documentos', title: 'Documentos e proteção',
     description: 'Arquivos de saúde e suporte pessoal',
     items: [
@@ -88,6 +103,14 @@ const clinicalSearchAliasesM150P5P5: Readonly<Record<string, readonly string[]>>
   brain: ['inteligencia','analise de medicamentos','alertas do brain'],
   pharmalens: ['fabricante','laboratorio','laboratorios'],
   documentos: ['receitas anexadas','arquivo clinico','documentos clinicos'],
+  episodios: ['episodio','pos consulta','retorno'],
+  'modo-medico': ['medico','relatorio medico','resumo de consulta'],
+  'linha-do-tempo': ['brain','linha do tempo','historico'],
+  dossie: ['dossie','historia clinica','pdf'],
+  'exames-360': ['laboratorio','pedido de exames','resultado'],
+  biblioteca: ['biblioteca de pdf','laudo','arquivo'],
+  pressao: ['pressao arterial','afericao'],
+  sintomas: ['dor','evolucao','relato'],
 };
 
 export function searchClinicalDirectoryM150(query: string): readonly ClinicalMapSectionM150[] {

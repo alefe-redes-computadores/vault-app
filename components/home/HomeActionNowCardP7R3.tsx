@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 export type HomeContextKind360 = "consulta" | "exame" | "careflow" | "dose" |
-  "receita" | "retirada" | "estoque" | "agenda" | "rotina" | "outro";
+  "receita" | "documento" | "retirada" | "estoque" | "agenda" | "rotina" | "outro";
 
 type Props = {
   title: string;
@@ -22,16 +22,26 @@ type Props = {
  * continua em app/page.tsx; este componente só apresenta e navega.
  * Não existe CTA secundária, acordeão, inferência clínica ou ação de escrita.
  */
+/** Source-safe shortening: one complete fact, no artificial sentence ellipsis or new clinical claim. */
+export function shortHomeEvidenceUX360(text:string,kind:HomeContextKind360):string{
+  const clean=text.replace(/\s+/g,' ').trim();
+  if(!clean)return '';
+  if(kind==='documento' && /(?:documento sus|processo p[úu]blico|receita regulat[óo]ria)/i.test(clean))
+    return 'Conferir documentos do processo SUS';
+  const first=clean.split(/(?<=[.!?])\s+/)[0]||clean;
+  // Keep complete text rather than trim a medical fact or cut a word.
+  return first;
+}
 export function HomeActionNowCardP7R3({
   title, description, eyebrow, onAction, urgent, kind = "outro",
 }: Props) {
-  const styles = urgent || kind === "receita" ? {
+  const styles = urgent && kind !== "documento" || kind === "receita" ? {
     border: "border-rose-300/20", background: "from-rose-300/[.075] via-surface/30 to-transparent",
     ink: "text-rose-300", badge: "bg-rose-300/10 border-rose-300/15",
   } : kind === "consulta" || kind === "exame" || kind === "careflow" || kind === "agenda" ? {
     border: "border-sky-300/20", background: "from-sky-300/[.055] via-surface/25 to-transparent",
     ink: "text-sky-300", badge: "bg-sky-300/10 border-sky-300/15",
-  } : kind === "estoque" || kind === "retirada" ? {
+  } : kind === "estoque" || kind === "retirada" || kind === "documento" ? {
     border: "border-amber-300/20", background: "from-amber-300/[.055] via-surface/25 to-transparent",
     ink: "text-amber-300", badge: "bg-amber-300/10 border-amber-300/15",
   } : kind === "dose" || kind === "rotina" ? {
@@ -47,6 +57,7 @@ export function HomeActionNowCardP7R3({
     : kind === "careflow" ? Activity
     : kind === "dose" ? Pill
     : kind === "receita" ? FileWarning
+    : kind === "documento" ? ClipboardList
     : kind === "retirada" ? ClipboardList
     : kind === "estoque" ? Package
     : kind === "agenda" ? CalendarDays
@@ -60,10 +71,10 @@ export function HomeActionNowCardP7R3({
       className={`group flex min-h-[88px] w-full items-center gap-3 border-b bg-gradient-to-r px-3.5 py-3 text-left transition-colors active:bg-surface-raised/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${styles.border} ${styles.background}`}>
       <div className="min-w-0 flex-1">
         <p className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.11em] ${styles.ink}`}>
-          <Icon size={13} aria-hidden="true"/>{eyebrow}
+          {eyebrow}
         </p>
         <h2 className="mt-1 break-words font-display text-[15px] font-bold leading-tight text-ink-primary">{title}</h2>
-        {description.trim() && <p className="mt-1 line-clamp-2 break-words text-[11px] leading-snug text-ink-secondary">{description}</p>}
+        {description.trim() && <p className="mt-1 break-words text-[11px] leading-snug text-ink-secondary">{shortHomeEvidenceUX360(description,kind)}</p>}
       </div>
       <span aria-hidden="true" className={`grid size-10 shrink-0 place-items-center rounded-[14px] border ${styles.badge} ${styles.ink}`}>
         <Icon size={20}/>
