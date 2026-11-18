@@ -11,6 +11,8 @@ import { useLocalDay } from '@/hooks/useLocalDay';
 import type { Medicamento } from '@/lib/types';
 import { projectBrainUniversalV7, shiftBrainDayV7 } from '@/lib/health-intelligence/brain-v7-universal';
 import { prepareBrainV7Dossier, type BrainV7Rationale } from '@/lib/health-intelligence/brain-v7-dossier';
+import { buildBrainClinicalReviewP6, brainClinicalReturnBriefP6 } from '@/lib/health-intelligence/brain-clinical-review-p6';
+import { BrainClinicalReviewMacro3 } from '@/components/saude/BrainClinicalReviewMacro3';
 
 function isRationale(value: unknown): value is BrainV7Rationale {
   if (!value || typeof value !== 'object') return false;
@@ -63,15 +65,17 @@ export function BrainV7UniversalConsole() {
   const data=useLiveQuery(async()=>{
     if(!uid||!pid)return null;
     try {
-      const from=shiftBrainDayV7(today,-39);
-      const [medications,acquisitions,doseLogs,records]=await Promise.all([
+      const from=shiftBrainDayV7(today,-70);
+      const [medications,acquisitions,doseLogs,records,consultations,withdrawals]=await Promise.all([
         db.medicamentos.where('[user_id+person_id]').equals([uid,pid]).toArray(),
         db.renovacoes.where('[user_id+person_id]').equals([uid,pid]).toArray(),
         db.doseLogs.where('[user_id+person_id+data]').between([uid,pid,from],[uid,pid,today],true,true).toArray(),
-        db.registros_saude.where('[user_id+person_id+data]').between([uid,pid,shiftBrainDayV7(today,-13)],[uid,pid,today],true,true).toArray(),
+        db.registros_saude.where('[user_id+person_id+data]').between([uid,pid,from],[uid,pid,today],true,true).toArray(),
+        db.consultas.where('[user_id+person_id]').equals([uid,pid]).toArray(),
+        db.retiradas.where('[user_id+person_id]').equals([uid,pid]).toArray(),
       ]);
-      return {scope,medications,acquisitions,doseLogs,records,error:''};
-    }catch(e){return {scope,medications:[] as Medicamento[],acquisitions:[],doseLogs:[],records:[],error:e instanceof Error?e.message:'Falha ao consultar registros.'};}
+      return {scope,medications,acquisitions,doseLogs,records,consultations,withdrawals,error:''};
+    }catch(e){return {scope,medications:[] as Medicamento[],acquisitions:[],doseLogs:[],records:[],consultations:[],withdrawals:[],error:e instanceof Error?e.message:'Falha ao consultar registros.'};}
   },[uid,pid,today]);
   const snapshot=data?.scope===scope?data:null;
   const ready=Boolean(uid&&pid&&loadedScope===scope&&snapshot&&!snapshot.error);
@@ -81,8 +85,15 @@ export function BrainV7UniversalConsole() {
   const report=useMemo(()=>ready&&snapshot?projectBrainUniversalV7({userId:uid,personId:pid,todayISO:today,nowISO,
     medications:medicines,acquisitions:snapshot.acquisitions,doseLogs:snapshot.doseLogs,records:snapshot.records,anchorMedicationIds:includedAnchors}):null,
     [ready,snapshot,uid,pid,today,nowISO,medicines,includedAnchors]);
-  const dossier=useMemo(()=>report&&snapshot?prepareBrainV7Dossier({report,userId:uid,personId:pid,medications:medicines,
-    acquisitions:snapshot.acquisitions,rationales:includedNotes}):'', [report,snapshot,uid,pid,medicines,includedNotes]);
+  const clinicalReviewP6=useMemo(()=>ready&&snapshot?buildBrainClinicalReviewP6({
+    userId:uid,personId:pid,todayISO:today,nowISO,medications:medicines,
+    consultations:snapshot.consultations,withdrawals:snapshot.withdrawals,
+    records:snapshot.records,doseLogs:snapshot.doseLogs,
+  }):null,[ready,snapshot,uid,pid,today,nowISO,medicines]);
+  const dossier=useMemo(()=>report&&snapshot?[prepareBrainV7Dossier({report,userId:uid,personId:pid,medications:medicines,
+    acquisitions:snapshot.acquisitions,rationales:includedNotes}),
+    clinicalReviewP6?brainClinicalReturnBriefP6(clinicalReviewP6):''].filter(Boolean).join('\n\n'):'',
+    [report,snapshot,uid,pid,medicines,includedNotes,clinicalReviewP6]);
   function saveSettings(nextAnchors: string[], nextNotes: BrainV7Rationale[]) {
     try {localStorage.setItem(storageKey,JSON.stringify({anchors:nextAnchors.slice(0,5),rationales:nextNotes.slice(-30)}));return true;}
     catch {setStatus('Não foi possível gravar no dispositivo. Verifique o armazenamento local.');return false;}
@@ -138,6 +149,7 @@ export function BrainV7UniversalConsole() {
       :data===undefined||loadedScope!==scope||!snapshot?<p role="status" className={subtle}>Consultando somente o histórico desta pessoa…</p>
       :snapshot.error?<p role="alert" className="rounded-xl border border-rose-400/30 p-3 text-xs text-rose-200">{snapshot.error}</p>
       :report&&<>
+        {clinicalReviewP6?<BrainClinicalReviewMacro3 review={clinicalReviewP6}/>:null}
         <section className={section}>
           <h2 className={title}><HeartPulse size={17} className="text-emerald-300"/>Stability Anchor · seu chão</h2>
           <p className={`mt-2 ${subtle}`}>Marque voluntariamente até 5 tratamentos contínuos como referência pessoal. Falta de registro NÃO equivale a falta de medicamento, e uma retomada não prova estabilidade farmacológica.</p>
