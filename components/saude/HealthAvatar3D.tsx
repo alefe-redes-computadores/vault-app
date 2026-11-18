@@ -686,6 +686,9 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
       return visibilityObserver;
     })():null;
     const visibility=()=>{if(!document.hidden)draw();};document.addEventListener("visibilitychange",visibility);
+    // M3 P3: ao ir para background cancelar o frame pendente, não apenas evitar o próximo draw.
+    const hiddenGpuP3=()=>{if(document.hidden&&frame){cancelAnimationFrame(frame);frame=0;}};
+    document.addEventListener("visibilitychange",hiddenGpuP3);
     let pointer:{id:number;x:number;y:number;angle:number;moved:boolean;rotating:boolean}|null=null;
     const raycaster=new THREE.Raycaster();
     const down=(e:PointerEvent)=>{if(!e.isPrimary || (e.pointerType==='mouse' && e.button!==0))return;transition=null;pointer={id:e.pointerId,x:e.clientX,y:e.clientY,angle:model.rotation.y,moved:false,rotating:false};};
@@ -697,7 +700,7 @@ export default function HealthAvatar3D({ framing="body",onFramingChange,skin, ap
     element.addEventListener("pointerdown",down);element.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up);element.addEventListener("lostpointercapture",up);renderer.domElement.addEventListener("webglcontextlost",lost);
     resize();
     return ()=>{
-      disposed=true;cancelAnimationFrame(frame);transition=null;cameraTransition=null;controller.current=null;if(resizeObserver)resizeObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();if(!resizeObserver)window.removeEventListener('resize',resize);document.removeEventListener("visibilitychange",visibility);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
+      disposed=true;cancelAnimationFrame(frame);transition=null;cameraTransition=null;controller.current=null;if(resizeObserver)resizeObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();if(!resizeObserver)window.removeEventListener('resize',resize);document.removeEventListener("visibilitychange",visibility);document.removeEventListener("visibilitychange",hiddenGpuP3);element.removeEventListener("pointerdown",down);element.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up);element.removeEventListener("lostpointercapture",up);renderer.domElement.removeEventListener("webglcontextlost",lost);
       const geometries=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();model.traverse(object=>{if(object instanceof THREE.Mesh){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])mats.add(m);}});[stage,stageRing].forEach(object=>{geometries.add(object.geometry);mats.add(object.material);});Object.values(materials).forEach(m=>mats.add(m));[markerGeometry,markerRingGeometry,markerHitGeometry].forEach(g=>geometries.add(g));Object.values(markerMaterials).forEach(m=>mats.add(m));markerLines.forEach(g=>geometries.add(g));Object.values(markerLineMaterials).forEach(m=>mats.add(m));mats.add(hitMaterial);geometries.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();
     };
     // Signature includes every appearance field used by this scene; metadata updates keep the canvas.
