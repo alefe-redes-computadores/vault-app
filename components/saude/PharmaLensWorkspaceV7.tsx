@@ -22,6 +22,7 @@ import { findPostStartSymptomsP6 } from '@/lib/health-intelligence/pharmalens-te
 import { PharmaLensEvidenceCardP6 } from '@/components/saude/PharmaLensEvidenceCardP6';
 import { PharmaLensDocumentStudioCI360 } from '@/components/saude/PharmaLensDocumentStudioCI360';
 import { PharmaLensLotEvidenceCI360 } from '@/components/saude/PharmaLensLotEvidenceCI360';
+import { RegulatorySourceTrailP4C } from '@/components/saude/RegulatorySourceTrailP4C';
 
 function daysAgo(day: string, n: number) {
   const t = new Date(`${day}T12:00:00Z`);
@@ -121,6 +122,10 @@ export function PharmaLensWorkspaceV7() {
               <PharmaLensDocumentStudioCI360 key={`${scopeKey}:${selected.id}`} medication={selected}/>
               <PharmaLensLotEvidenceCI360 report={report} observations={observations}/>
             </div>
+          </details>
+          <details className="group rounded-[22px] border border-surface-border/70 bg-surface/60 p-3">
+            <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 text-xs font-bold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span>Histórico e fontes do catálogo</span><span aria-hidden="true">▾</span></summary>
+            <RegulatorySourceTrailP4C key={`${scopeKey}:${selected.id}`} medication={selected} today={today}/>
           </details>
           <PharmaLensOverviewV7 report={report}/>
           <PharmaLensObservationPanelV7 report={report} observations={observations} medicationId={selected.id!}/>
