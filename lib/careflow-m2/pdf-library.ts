@@ -3,12 +3,20 @@ import { db } from '@/lib/db';
 import { getLocalFirstAuthUser } from '@/lib/supabase/local-auth';
 import type { Report360 } from '@/lib/clinical-report-360';
 export type VaultLocalPdfM2={id:string;user_id:string;person_id:string;title:string;start:string;end:string;year:string;origin:'imported'|'clinical_report';created_at:string;content:Blob;bytes:number};
+/** P6 P3 — valida assinatura do binario local; MIME/extensao nao bastam. */
+export async function hasPdfSignatureP6(blob:Blob):Promise<boolean>{
+  if(blob.size<10||blob.size>12*1024*1024)return false;
+  const header=await blob.slice(0,1024).text();
+  return /%PDF-[12]\.\d/.test(header);
+}
 export const pdfLibraryM2={
-  async add(personId:string,input:{title:string;start:string;end:string;origin:VaultLocalPdfM2['origin'];blob:Blob}):Promise<string>{
+  async add(personId:string,input:{title:string;start:string;end:string;origin:VaultLocalPdfM2['origin'];blob:Blob;scopeGuard?:()=>boolean}):Promise<string>{
     const {data,error}=await getLocalFirstAuthUser();const uid=data.user?.id;
     if(error||!uid||!personId)throw new Error('Conta/pessoa não identificada.');
     const person=await db.persons.get(personId);if(!person||person.user_id!==uid)throw new Error('Pessoa divergente.');
     if(input.blob.type!=='application/pdf'||input.blob.size<10||input.blob.size>12*1024*1024)throw new Error('Selecione um PDF de até 12 MB.');
+    if(!(await hasPdfSignatureP6(input.blob)))throw new Error('Arquivo sem assinatura PDF válida; nada foi arquivado.');
+    if(input.scopeGuard&&!input.scopeGuard())throw new Error('Pessoa/conta alterada durante o preparo; PDF não arquivado.');
     const title=input.title.trim().slice(0,120);if(!title)throw new Error('Informe o título do relatório.');
     const row:VaultLocalPdfM2={id:crypto.randomUUID(),user_id:uid,person_id:personId,title,start:input.start,end:input.end,year:(input.end||new Date().toISOString()).slice(0,4),origin:input.origin,created_at:new Date().toISOString(),content:input.blob,bytes:input.blob.size};
     await db.careflow_reports_m2.add(row);return row.id;
