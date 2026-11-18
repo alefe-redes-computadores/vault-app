@@ -50,7 +50,7 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-ice/10 text-ice" aria-hidden="true"><Pill size={17}/></span>
             <span className="flex min-w-0 flex-1 flex-col justify-center"><strong className="block break-words text-sm font-bold leading-snug text-ink-primary">Medicamentos</strong><span className="mt-1 block line-clamp-2 break-words text-xs leading-snug text-ink-muted">Rotina e estoque</span></span>
           </button>
-          <HomeClinicalAreaTile label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude" Icon={HeartPulse} tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go} />
+          <HomeClinicalAreaTile label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude" Icon={HeartPulse} tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go} />
         </div>
         {/* Acessos operacionais continuam disponíveis no Essencial, sem ocupar a primeira dobra. */}
         <details className="group overflow-hidden rounded-[18px] border border-amber-300/15 bg-gradient-to-r from-amber-300/[.035] via-surface to-surface shadow-sm">

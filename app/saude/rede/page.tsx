@@ -12,6 +12,8 @@ import {
   useSearchParams,
 } from "next/navigation";
 import {useReturnContext} from "@/hooks/useReturnContext";
+import { HealthHubSwitchR5 } from "@/components/saude/HealthHubSwitchR5";
+import { NetworkHubNavigatorR5 } from "@/components/saude/NetworkHubNavigatorR5";
 
 import {
   AnimatePresence,
@@ -1064,6 +1066,7 @@ export default function RedeSaudePage() {
           {/* VAULT_HEALTH_HUB_V81 */}
           <p className="mt-2 pl-14 text-[10px] leading-relaxed text-ink-muted">Rede, acompanhamento e histórico clínico em um só lugar.</p>
         </header>
+        <div className="px-5 pt-3"><HealthHubSwitchR5 active="rede" onNavigate={openFromNetwork}/></div>
 
         <section className="space-y-3.5 px-5 pt-4">
           {!activePersonId && (
@@ -1123,26 +1126,14 @@ export default function RedeSaudePage() {
                   <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink-primary">Inteligência de saúde</p><p className="text-[10px] text-ink-muted">Contexto, padrões e preparação para consulta</p></div><ArrowLeft size={16} className="rotate-180 text-violet-300" />
                 </button>
 
-                {/* VAULT_HEALTH_SUPPORT_DISCOVERY_V81 */}
-                <section>
-                  <div className="mb-2 flex items-end justify-between gap-3">
-                    <div><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-emerald-300/80">Rede de apoio</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Quem cuida de você</h2></div>
-                    <span className="text-[9px] text-ink-muted">Acessos diretos</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {tabs.filter((tab) => tab.id !== "visao-geral" && tab.id !== "tratamentos").map((tab) => {
-                      const Icon = tab.icon;
-                      const meta = {
-                        medicos: { count: stats.medicos, tone: "border-cyan-400/20 bg-cyan-400/[0.055] text-cyan-300" },
-                        farmacias: { count: stats.farmacias, tone: "border-amber-400/20 bg-amber-400/[0.055] text-amber-300" },
-                        hospitais: { count: stats.hospitais, tone: "border-rose-400/20 bg-rose-400/[0.055] text-rose-300" },
-                        locais: { count: stats.locais, tone: "border-emerald-400/20 bg-emerald-400/[0.055] text-emerald-300" },
-                      }[tab.id as "medicos" | "farmacias" | "hospitais" | "locais"];
-                      return <button key={tab.id} type="button" onClick={() => handleTabChange(tab.id)} className={`flex min-h-[74px] items-center gap-3 rounded-[20px] border p-3 text-left active:scale-[0.985] ${meta.tone}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/15"><Icon size={17}/></span><span className="min-w-0"><strong className="block text-xs text-ink-primary">{tab.label}</strong><span className="mt-0.5 block text-[9px] text-ink-muted">{meta.count} cadastrado(s)</span></span></button>;
-                    })}
-                  </div>
+                {/* VAULT_HEALTH_SUPPORT_DISCOVERY_V81 · UI360 R5: quatro destinos externos, sem duplicar menus. */}
+                <section aria-label="Minha Rede de Saúde — destinos" className="space-y-2">
+                  <div className="mb-2"><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-violet-300/80">Rede de apoio</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Quem cuida de você</h2><p className="mt-1 text-[11px] text-ink-muted">Profissionais, instituições, fornecimento e compromissos em um toque.</p></div>
+                  <NetworkHubNavigatorR5 onNavigate={openFromNetwork}/>
                 </section>
 
+                <details className="group rounded-[18px] border border-surface-border/55 bg-surface/40 p-3">
+                  <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold text-ink-secondary">Acessos clínicos relacionados <ChevronDown size={16} className="group-open:rotate-180"/></summary>
                 <section>
                   <div className="mb-2"><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-violet-300/80">Acompanhamento</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Seu cuidado contínuo</h2></div>
                   <div className="grid grid-cols-2 gap-2.5">
@@ -1156,6 +1147,7 @@ export default function RedeSaudePage() {
                     ].map((item) => { const Icon=item.icon; return <button key={item.path} type="button" onClick={() => openFromNetwork(item.path)} className={`flex min-h-[70px] items-center gap-2.5 rounded-[18px] border p-2.5 text-left active:scale-[0.985] ${item.tone}`}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/15"><Icon size={16}/></span><span className="min-w-0"><strong className="block text-[11px] text-ink-primary">{item.label}</strong><span className="mt-0.5 block text-[9px] leading-snug text-ink-muted">{item.sub}</span></span></button>; })}
                   </div>
                 </section>
+                </details>
 
                 {alertas.length >
                   0 && (
@@ -1251,6 +1243,8 @@ export default function RedeSaudePage() {
                   </div>
                 )}
 
+                <details className="group rounded-[18px] border border-surface-border/55 bg-surface/40 p-3">
+                  <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold text-ink-secondary">Resumo clínico vinculado <ChevronDown size={16} className="group-open:rotate-180"/></summary>
                 <section>
                   <div className="mb-2"><p className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-muted">Acervo conectado</p><h2 className="mt-1 text-sm font-semibold text-ink-primary">Resumo da sua saúde</h2></div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1399,6 +1393,7 @@ export default function RedeSaudePage() {
                   />
                   </div>
                 </section>
+                </details>
               </motion.div>
             )}
 

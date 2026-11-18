@@ -13,7 +13,7 @@ ok(home.includes('flex h-full min-h-[84px] !min-h-[72px] min-[380px]:!min-h-[76p
 ok(home.includes('items-center gap-2 rounded-[18px]')&&tile.includes('items-center gap-2.5 rounded-[18px]'),'conteúdo dos dois cartões fica centralizado verticalmente');
 ok(home.includes('flex min-w-0 flex-1 flex-col justify-center')&&!tile.includes('self-stretch gap-0.5'),'cartões sem esticamento interno desnecessário');
 ok(home.includes('rounded-[18px] border border-ice/20 bg-surface px-2.5 py-2.5 text-left touch-manipulation shadow-sm'),'M139 R3: sequência premium original preservada');
-ok(home.includes('go("/saude/medicamentos")')&&home.includes('label="Minha saúde" description="Perfil, sono e medidas" path="/saude/minha-saude"'),'rotas originais navegáveis');
+ok(home.includes('go("/saude/medicamentos")')&&home.includes('label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude"'),'rotas originais navegáveis');
 ok(home.includes('<HomeSupplyAccessTiles')&&home.includes('id="home-acessos-medicamentos"'),'atalhos de retirada e fornecimento mantidos');
 ok(tile.includes('onNavigate(path)')&&tile.includes('const surface = areaTone.split')&&tile.includes('${surface || "border-surface-border/60 bg-surface"}'),'cartão clínico mantém cores originais e haptics pela Home');
 ok(home.includes('h-full min-h-[84px]')&&tile.includes('h-full min-h-[84px]'),'M136: mínimo de toque legado preservado');

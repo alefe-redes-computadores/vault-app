@@ -55,6 +55,7 @@ import {
 import {
   PageTransition,
 } from "@/components/PageTransition";
+import { DoctorCareFlowRelationsR5 } from "@/components/saude/CareFlowRelationsR5";
 import {
   DetailSkeleton,
 } from "@/components/loading/DetailSkeleton";
@@ -1629,6 +1630,7 @@ function DetalhesMedicoContent() {
             ==================================================== */}
 
         <section className="space-y-5 px-5 pt-6">
+          <DoctorCareFlowRelationsR5 doctorId={medico.id||""} doctorOwnerId={medico.user_id}/>
           {/* ==================================================
               HERO / GLOBAL PROFILE
               ================================================== */}

@@ -82,6 +82,7 @@ import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
 import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
 import { buildCareRhythm } from "@/lib/health-intelligence/care-rhythm";
 import { useBrainV5Pulse } from "@/hooks/useBrainV5Pulse";
+import { HealthHubLauncherR5 } from "@/components/saude/HealthHubLauncherR5";
 import { AvatarCareWorkspace } from "@/components/saude/AvatarCareWorkspace";
 import { AvatarEvidenceStripM102 } from "@/components/saude/AvatarEvidenceStripM102";
 import { AvatarEvidenceLensM122 } from "@/components/saude/AvatarEvidenceLensM122";
@@ -132,6 +133,7 @@ function HealthDashboard({
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
+  const [personalPanelOpenR5,setPersonalPanelOpenR5]=useState(false);
   const [brainSummaryOpen,setBrainSummaryOpen]=useState(false);
   const [selectedInsight,setSelectedInsight]=useState<HealthInsight|null>(null);
   // V158 keeps overview vs full metric-history semantically distinct.
@@ -196,6 +198,22 @@ function HealthDashboard({
     router.push(path);
   }, [router, trigger]);
   const goFromHealth = useCallback((path: string) => go(withReturnTarget(path,"/saude/minha-saude")), [go]);
+  const openPersonalSectionR5=useCallback((id:string)=>{
+    if(!["meu-avatar","analises","fontes","indicadores","historico"].includes(id))return;
+    setPersonalPanelOpenR5(true);
+    if(typeof window!=="undefined")window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>{
+      document.getElementById(id)?.scrollIntoView({block:"start",behavior:"smooth"});
+    }));
+  },[]);
+  useEffect(()=>{
+    const sync=()=>{
+      let id=window.location.hash.slice(1);
+      try{id=decodeURIComponent(id);}catch{return;}
+      if(["meu-avatar","analises","fontes","indicadores","historico"].includes(id))setPersonalPanelOpenR5(true);
+    };
+    sync();window.addEventListener("hashchange",sync);
+    return()=>window.removeEventListener("hashchange",sync);
+  },[]);
   const open = (next: typeof panel) => {
     trigger("vibrate");
     setPanel(next);
@@ -278,6 +296,15 @@ function HealthDashboard({
           </p>
         ) : (
           <>
+            {/* R5: a entrada é o launcher; o painel de Fênix e métricas permanece íntegro. */}
+            <HealthHubLauncherR5 userId={person?.user_id||""} personId={personId||""} onOpenPersonalSection={openPersonalSectionR5}/>
+            <section id="painel-pessoal-r5" aria-label="Painel de saúde e Fênix" className="scroll-mt-24 overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface/60">
+              <button type="button" aria-expanded={personalPanelOpenR5} aria-controls="conteudo-painel-pessoal-r5" onClick={()=>setPersonalPanelOpenR5(v=>!v)} className="flex min-h-[64px] w-full items-center gap-3 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10"><FenixMark size="xs"/></span>
+                <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Meu painel clínico e Fênix</strong><span className="mt-1 block text-[11px] text-ink-muted">Avatar, indicadores, fontes e histórico detalhado</span></span>
+                <ChevronDown size={17} className={`text-emerald-300 transition-transform motion-reduce:transition-none ${personalPanelOpenR5?"rotate-180":""}`}/>
+              </button>
+              {personalPanelOpenR5?<div id="conteudo-painel-pessoal-r5" className="space-y-3 border-t border-emerald-300/10 p-2.5">
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             {/* M118: five real navigation destinations; care relationship panels do not precede the Avatar. */}
             <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Fênix",icon:<FenixMark size="xs"/>,iconClassName:"text-amber-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
@@ -726,6 +753,8 @@ function HealthDashboard({
               )}
             </section>
             </DeferredHealthSection>
+              </div>:null}
+            </section>
           </>
         )}
       </div>
