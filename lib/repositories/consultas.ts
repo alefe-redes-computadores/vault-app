@@ -306,6 +306,44 @@ export const consultasRepository = {
     return id;
   },
 
+  // P6 P3-D2: vínculo idempotente no repositório canônico.
+  // Não renomear tratamentos nem reescrever histórico clínico.
+  async linkMedicationFromCreationD2(consultationId: string, personId: string, medicationId: string) {
+    const person = requirePersonId(personId);
+    if (!consultationId?.trim() || !medicationId?.trim()) throw new Error("IDs da consulta e medicamento obrigatórios.");
+    const auth = await getLocalFirstAuthUser();
+    const userId = auth.data.user?.id;
+    if (!userId) throw new Error("Autenticação necessária para vincular medicamento.");
+    return db.transaction("rw", [db.consultas, db.medicamentos, db.syncQueue], async () => {
+      const consultation = await db.consultas.get(consultationId);
+      const medication = await db.medicamentos.get(medicationId);
+      if (!consultation || consultation.user_id !== userId || consultation.person_id !== person)
+        throw new Error("Consulta indisponível para a conta e pessoa ativas.");
+      if (!medication || medication.user_id !== userId || medication.person_id !== person)
+        throw new Error("Medicamento indisponível para a conta e pessoa ativas.");
+      if (consultation.status === "cancelada") throw new Error("Consulta cancelada não permite novo vínculo.");
+      if (consultation.revisao_vinculos_rejeitados?.includes(medicationId))
+        throw new Error("Vínculo previamente rejeitado; revise manualmente na consulta.");
+      const selected = consultation.medicamento_ids || [];
+      if (!Array.isArray(selected) || selected.length > 64 || selected.length !== new Set(selected).size)
+        throw new Error("Vínculos de consulta precisam de revisão antes de incluir outro.");
+      if (selected.includes(medicationId)) return "already-linked" as const;
+      if (selected.length >= 64) throw new Error("Limite de vínculos alcançado; revise a consulta.");
+      const updatedIds = [...selected, medicationId];
+      // Reutilizar a barreira canônica de IDs por conta e pessoa.
+      await scopedMedicationIdsP6(updatedIds, userId, person);
+      const updatedAt = new Date().toISOString();
+      const updated = await db.consultas.update(consultationId, {
+        medicamento_ids: updatedIds, updated_at: updatedAt, synced: false,
+      });
+      if (!updated) throw new Error("Consulta alterada durante o vínculo.");
+      await enfileirarOperacao("consultas", "update", {
+        id: consultationId, medicamento_ids: updatedIds, updated_at: updatedAt, synced: false,
+      });
+      return "linked" as const;
+    });
+  },
+
   // ==========================================================
   // DELETE
   // ==========================================================

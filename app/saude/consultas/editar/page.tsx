@@ -2576,6 +2576,15 @@ function EditarConsultaContent() {
             />
           </motion.div>
           <ConsultationMedicationSelectorP6 owner={{user_id:consulta?.user_id||"",person_id:activePersonId||""}} medications={medicationsP6} selected={medicamentoIdsP6} onChange={setMedicamentoIdsP6}/>
+          {consulta?.id && consulta.person_id === activePersonId && (
+            <div className="rounded-2xl border border-sky-300/20 bg-sky-300/[0.045] p-3">
+              <p className="mb-2 text-xs leading-relaxed text-ink-muted">Se você alterou esta consulta, salve as mudanças antes de abrir o cadastro. O médico será somente uma sugestão revisável.</p>
+              <button type="button" disabled={isSubmitting} onClick={() => router.push(`/saude/medicamentos/novo?consulta=${encodeURIComponent(consulta.id!)}&pessoa=${encodeURIComponent(activePersonId || "")}`)}
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[0.08] px-3 text-sm font-bold text-sky-200 disabled:opacity-50">
+                <Plus size={17}/> Adicionar medicamento desta consulta
+              </button>
+            </div>
+          )}
           <ConsultationVoicesEditorP6 personal={personalP6} professional={professionalP6} followUp={followUpP6} onPersonal={setPersonalP6} onProfessional={setProfessionalP6} onFollowUp={setFollowUpP6}/>
           {medicationsLoadingP6&&<p role="status" className="text-xs text-amber-300">Carregando medicamentos da pessoa; aguarde antes de salvar vínculos.</p>}
         </section>

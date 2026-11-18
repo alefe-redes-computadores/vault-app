@@ -107,6 +107,7 @@ import {
   medicamentosRepository,
 } from "@/lib/repositories/medicamentos";
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
+import { consultasRepository } from "@/lib/repositories/consultas";
 import { TemporaryCourseFields, emptyTemporaryCourseDraft, readTemporaryCourseDraft, type TemporaryCourseDraft } from "@/components/saude/TemporaryCourseFields";
 import { ManufacturerFieldM129 } from "@/components/saude/ManufacturerFieldM129";
 import { attachManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
@@ -255,6 +256,21 @@ export default function NovoMedicamentoPage() {
 
   const dosageAcknowledgementRef =
     useRef<string | null>(null);
+
+  // P6 P3-D2: o ID da consulta é somente uma solicitação de contexto.
+  // A autoridade é relida no repositório por conta + pessoa antes de qualquer gravação.
+  const [consultationStageD2, setConsultationStageD2] = useState<"none" | "loading" | "valid" | "invalid">("none");
+  const [consultationContextD2, setConsultationContextD2] = useState<{
+    id: string; user_id: string; person_id: string; medico_id?: string;
+    especialidade: string; data: string;
+  } | null>(null);
+  const [consultationErrorD2, setConsultationErrorD2] = useState("");
+  const [postSaveD2, setPostSaveD2] = useState<{
+    medicamentoId: string; consultationId: string; pending: boolean;
+  } | null>(null);
+  const [linkedConsultationD2, setLinkedConsultationD2] = useState<string | null>(null);
+
+
 
   const fileInputRef =
     useRef<HTMLInputElement>(
@@ -542,6 +558,49 @@ export default function NovoMedicamentoPage() {
     useState(
       ""
     );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("consulta");
+    const requestedPerson = params.get("pessoa");
+    if (!requested) { setConsultationContextD2(null); setConsultationStageD2("none"); setConsultationErrorD2(""); return; }
+    setConsultationContextD2(null);
+    setConsultationStageD2("loading");
+    if (!user?.id || !activePersonId) return;
+    if (requestedPerson && requestedPerson !== activePersonId) {
+      setConsultationErrorD2("Pessoa ativa diferente da consulta de origem. Volte à consulta para continuar.");
+      setConsultationStageD2("invalid");
+      return;
+    }
+    let cancelled = false;
+    consultasRepository.getById(requested, activePersonId).then((consultation) => {
+      if (cancelled) return;
+      if (!consultation?.id || consultation.user_id !== user.id || consultation.person_id !== activePersonId || consultation.status === "cancelada") {
+        setConsultationErrorD2("Consulta não encontrada, cancelada ou de outra pessoa. Nenhum medicamento será criado por este atalho.");
+        setConsultationStageD2("invalid");
+        return;
+      }
+      setConsultationContextD2({ id: consultation.id, user_id: consultation.user_id, person_id: activePersonId,
+        medico_id: consultation.medico_id, especialidade: consultation.especialidade, data: consultation.data });
+      setConsultationErrorD2("");
+      setConsultationStageD2("valid");
+    }).catch(() => {
+      if (cancelled) return;
+      setConsultationErrorD2("Não foi possível conferir a consulta no banco local. Tente novamente pela consulta.");
+      setConsultationStageD2("invalid");
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, activePersonId]);
+
+  // O médico só é sugerido se existir como entidade da mesma conta;
+  // uma escolha manual anterior jamais é sobrescrita.
+  useEffect(() => {
+    if (!consultationContextD2?.medico_id || consultationStageD2 !== "valid" || medicoId) return;
+    const candidate = medicos.find(doctor => doctor.id === consultationContextD2.medico_id && doctor.user_id === user?.id);
+    if (candidate?.id) { setMedicoId(candidate.id); setMedicoNome(candidate.nome); }
+  }, [consultationContextD2, consultationStageD2, medicos, medicoId, user?.id]);
+
+
 
   const [
     hospitalId,
@@ -1791,6 +1850,7 @@ export default function NovoMedicamentoPage() {
 
         return;
       }
+      if (postSaveD2) return; // Uma falha de vínculo nunca permite cadastrar duplicado.
       if (
         isSubmitLocked.current ||
         isSubmitting
@@ -1812,6 +1872,9 @@ export default function NovoMedicamentoPage() {
         return;
       }
 
+      let linkedConsultationOnSaveD2: string | null = null;
+      let pendingConsultationOnSaveD2: string | null = null;
+      let createdMedicationOnSaveD2: string | null = null;
       let didCompleteSave =
         false;
 
@@ -1853,6 +1916,12 @@ export default function NovoMedicamentoPage() {
 
           const personId =
             activePersonId;
+          const requestedConsultationD2 = new URLSearchParams(window.location.search).get("consulta");
+          if (requestedConsultationD2 &&
+            (consultationStageD2 !== "valid" || !consultationContextD2 ||
+             consultationContextD2.id !== requestedConsultationD2 ||
+             consultationContextD2.person_id !== personId || consultationContextD2.user_id !== user.id))
+            throw new Error("Revise a consulta de origem antes de cadastrar o medicamento.");
           const course = tipoUso === "temporario" ? readTemporaryCourseDraft({ ...temporaryCourse, enabled: true }) : null;
           if (tipoUso === "temporario" && !course) throw new Error("Informe o período e os horários do tratamento temporário.");
 
@@ -2403,6 +2472,21 @@ export default function NovoMedicamentoPage() {
             throw error;
           }
 
+          // P6 P3-D2: o medicamento já foi criado pelo fluxo original.
+          // Falha no vínculo é PENDÊNCIA, jamais motivo para recriá-lo.
+          if (consultationContextD2?.id && medicamentoId) {
+            createdMedicationOnSaveD2 = medicamentoId;
+            try {
+              await consultasRepository.linkMedicationFromCreationD2(
+                consultationContextD2.id, personId, medicamentoId
+              );
+              linkedConsultationOnSaveD2 = consultationContextD2.id;
+            } catch (error) {
+              pendingConsultationOnSaveD2 = consultationContextD2.id;
+              console.error("[P3-D2] Medicamento salvo; vínculo da consulta pendente:", error);
+            }
+          }
+
           // ====================================================
           // 5. NOTIFICAÇÕES
           // ====================================================
@@ -2527,6 +2611,14 @@ export default function NovoMedicamentoPage() {
             return;
           }
 
+          if (pendingConsultationOnSaveD2 && createdMedicationOnSaveD2) {
+            setPostSaveD2({ medicamentoId: createdMedicationOnSaveD2,
+              consultationId: pendingConsultationOnSaveD2, pending: true });
+            return;
+          }
+          if (linkedConsultationOnSaveD2) {
+            setLinkedConsultationD2(linkedConsultationOnSaveD2);
+          }
           if (
             retroactivePostCreatePayload
           ) {
@@ -2541,7 +2633,9 @@ export default function NovoMedicamentoPage() {
            * Cadastro comum preserva exatamente o efeito antigo
            * de goBackOnSuccess: true.
            */
-          router.replace("/saude/medicamentos");
+          router.replace(linkedConsultationOnSaveD2
+            ? `/saude/consultas/detalhes?id=${encodeURIComponent(linkedConsultationOnSaveD2)}`
+            : "/saude/medicamentos");
         }
       ).finally(
         () => {
@@ -2589,7 +2683,9 @@ export default function NovoMedicamentoPage() {
       /*
        * Equivalente ao antigo goBackOnSuccess.
        */
-      router.replace("/saude/medicamentos");
+      router.replace(linkedConsultationD2
+        ? `/saude/consultas/detalhes?id=${encodeURIComponent(linkedConsultationD2)}`
+        : "/saude/medicamentos");
     };
 
   // ==========================================================
@@ -2848,6 +2944,25 @@ export default function NovoMedicamentoPage() {
             {stepLabels.map((label,index)=><span key={label} aria-current={index+1===currentStep?"step":undefined} className={`min-w-0 break-words text-center text-[10px] font-bold uppercase leading-snug tracking-wide ${index+1===currentStep?"text-ice":index+1<currentStep?"text-emerald-300":"text-ink-faint"}`}>{label}</span>)}
           </div>
         </header>
+
+        {(consultationStageD2 !== "none" || postSaveD2) && (
+          <aside aria-live="polite" className="mx-4 mt-4 rounded-2xl border border-sky-300/25 bg-sky-300/[0.05] p-3">
+            {postSaveD2 ? <>
+              <h2 className="text-sm font-bold text-sky-200">Medicamento salvo · vínculo pendente</h2>
+              <p className="mt-1 text-xs text-ink-secondary">Não cadastre novamente. Abra a consulta e selecione o medicamento já criado para concluir o vínculo.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className="min-h-11 rounded-xl border border-sky-300/30 px-3 text-xs font-bold text-sky-200" onClick={() => router.replace(`/saude/consultas/editar?id=${encodeURIComponent(postSaveD2.consultationId)}`)}>Abrir consulta</button>
+                <button type="button" className="min-h-11 rounded-xl border border-surface-border px-3 text-xs font-bold text-ink-primary" onClick={() => router.replace(`/saude/medicamentos/detalhes?id=${encodeURIComponent(postSaveD2.medicamentoId)}`)}>Ver medicamento salvo</button>
+              </div>
+            </> : consultationStageD2 === "valid" && consultationContextD2 ? <>
+              <h2 className="text-sm font-bold text-sky-200">Medicamento desta consulta</h2>
+              <p className="mt-1 text-xs text-ink-secondary">{consultationContextD2.especialidade || "Consulta"} · {consultationContextD2.data || "Data não informada"}. O médico é sugestão; confira a prescrição, a duração e a data de início antes de salvar.</p>
+            </> : <>
+              <h2 className="text-sm font-bold text-amber-200">{consultationStageD2 === "loading" ? "Conferindo consulta de origem..." : "Consulta de origem indisponível"}</h2>
+              <p className="mt-1 text-xs text-ink-secondary">{consultationErrorD2 || "O vínculo será validado antes de qualquer gravação."}</p>
+            </>}
+          </aside>
+        )}
 
         <section className="space-y-6 px-5 pt-6">
           <AnimatePresence mode="wait">

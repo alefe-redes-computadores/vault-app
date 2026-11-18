@@ -8,6 +8,7 @@ import { normalizeMedicationQualityText, formatDate, getDateDaysAgoISO, getDoseS
 import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { PharmaLensMedicationEntryV7 } from "@/components/saude/PharmaLensMedicationEntryV7";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
+import { MedicationTreatmentJourneyD2 } from "@/components/saude/MedicationTreatmentJourneyD2";
 import { MedicationRegimeM1 } from "@/components/saude/MedicationRegimeM1";
 import { isTemporaryCoursePlannedDose, contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
@@ -3001,6 +3002,12 @@ function MedicamentoDetalhesContent() {
           <WithdrawalConflictReviewM2 medicationId={med.id} />
           {activePersonId && <MedicationRegimeM1 med={med} personId={activePersonId} />}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
+          <MedicationTreatmentJourneyD2
+            prescriptionDate={med.data_receita}
+            acquisitionDate={latestConfirmedAcquisitionM148 ? renewalEventDate(latestConfirmedAcquisitionM148) : null}
+            firstRecordedDose={dosesTomadas.map(log => log.tomado_em).filter((date): date is string => Boolean(date)).sort()[0] || null}
+            temporary={isTemporary}
+          />
           {/* ==================================================
               INTELIGÊNCIA E ATENÇÃO — V72
               A identidade essencial permanece sempre primeiro.
