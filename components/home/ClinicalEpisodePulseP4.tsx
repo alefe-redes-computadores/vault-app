@@ -8,6 +8,7 @@ import { useSharedHealthIntelligence } from '@/contexts/HealthIntelligenceContex
 import { useCareFlowM2 } from '@/hooks/useCareFlowM2';
 import { useLocalDay } from '@/hooks/useLocalDay';
 import { selectEpisodeActionP4 } from '@/lib/m3/clinical-episode-p4';
+import { prioritizeEpisodePromptD3, contextualEpisodeHrefD3 } from '@/lib/m3/brain-return-d3';
 
 /** No max-urgency override: just one contextually justified prompt after routine summary.
  * A dismiss is intentionally ephemeral; persistence must reuse Brain governance,
@@ -31,7 +32,10 @@ export function ClinicalEpisodePulseP4(){
     const byId=new Map(health.context.registrosSaude.filter(r=>r.id&&r.user_id===owner&&r.person_id===person).map(r=>[r.id!,r] as const));
     for(const consultation of available){
       const found=selectEpisodeActionP4({consultation,events:related,records:byId,userId:owner,personId:person,today});
-      if(found)return {...found,day:consultation.data,consultationId:consultation.id!};
+      const ranked=prioritizeEpisodePromptD3(found,today,found?.id.startsWith('symptom:')?byId.get(found.sourceId)?.data:null);
+      // Já houve registro hoje: não ressuscitar um cartão de consulta mais antiga.
+      if(found&&!ranked)return null;
+      if(ranked)return {...ranked,day:consultation.data,consultationId:consultation.id!};
     }
     return null;
   },[health.context,health.isLoading,events,loading,user?.id,activePersonId,today]);
@@ -46,7 +50,7 @@ export function ClinicalEpisodePulseP4(){
       <button type="button" aria-label="Dispensar esta sugestão por enquanto" onClick={()=>setHidden(scope)} className="grid size-10 shrink-0 place-items-center rounded-xl text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300"><X size={16}/></button>
     </div>
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <Link href={suggestion.href} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.07] px-3 text-xs font-semibold text-sky-200">Abrir registro <ArrowUpRight size={14}/></Link>
+      <Link href={contextualEpisodeHrefD3(suggestion.href,suggestion.consultationId)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-sky-300/20 bg-sky-300/[.07] px-3 text-xs font-semibold text-sky-200">Abrir registro <ArrowUpRight size={14}/></Link>
       <Link href={`/saude/careflow/episodios?consulta=${encodeURIComponent(suggestion.consultationId)}`} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-xl border border-surface-border px-3 text-xs font-semibold text-ink-secondary">Ver episódio <ArrowUpRight size={14}/></Link>
       <button type="button" aria-expanded={explain} onClick={()=>setExplain(x=>!x)} className="inline-flex min-h-11 items-center gap-1 rounded-xl px-2 text-xs text-ink-muted">Por quê? <ChevronDown size={14} className={explain?'rotate-180':''}/></button>
     </div>
