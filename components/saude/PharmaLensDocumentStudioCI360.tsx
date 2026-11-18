@@ -8,6 +8,7 @@ import {
   type PharmaLensTextOriginCI360,
 } from '@/lib/health-intelligence/pharmalens-document-candidate-ci360';
 import { auditPharmaLensDocumentCI360 } from '@/lib/health-intelligence/pharmalens-catalog-audit-ci360';
+import { PharmaLensEvidenceReviewP4B } from '@/components/saude/PharmaLensEvidenceReviewP4B';
 
 type TextBlockCI360={rawValue?:string};
 type TextDetectorCI360=new()=>{detect(image:ImageBitmap):Promise<TextBlockCI360[]>};
@@ -99,13 +100,12 @@ export function PharmaLensDocumentStudioCI360({medication}:{medication:Medicamen
       <div className="flex items-center gap-2"><FileCheck2 size={16} className="text-amber-200"/><strong className="text-xs text-ink-primary">3. Candidato privado · não confirmado</strong></div>
       <p className="text-[11px] text-ink-muted">Os campos abaixo são apenas sugestões extraídas. Você pode corrigi-los sem alterar o cadastro de {medication.nome}.</p>
       <div className="grid gap-2 sm:grid-cols-2">{fields.map(field=><label key={field} className="text-[11px] text-ink-muted">{labels[field]}<input value={candidate[field]} onChange={(event:ChangeEvent<HTMLInputElement>)=>setCandidate(current=>current?updatePharmaLensCandidateFieldCI360(current,field,event.target.value):current)} className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-surface-border bg-surface px-2.5 text-xs text-ink-primary"/></label>)}</div>
-      <div className="rounded-xl border border-surface-border/60 bg-void/20 p-2.5"><strong className="flex items-center gap-1 text-xs text-ink-primary"><Database size={13}/>Comparação OCR/transcrição × cadastro × catálogo</strong>
-        <p className="mt-1 text-[10px] text-ink-muted">{analysis.hasOfficialExact?'Existe referência oficial exata previamente vinculada no cadastro.':'Não há referência oficial exata comprovada para esta apresentação.'} A comparação de texto não valida registro na Anvisa.</p>
-        <div className="mt-2 space-y-1.5">{analysis.rows.map(row=><div key={row.field} className="rounded-lg border border-surface-border/40 px-2 py-1.5 text-[10px] text-ink-secondary"><strong className="text-ink-primary">{row.label}</strong><p>Candidato: {row.captured||'não identificado'} · Cadastro: {row.declared||'não informado'}</p>{row.catalog&&<p>Catálogo ({row.catalogAuthority}): {row.catalog}</p>}<p className={row.status==='diverge_do_cadastro'?'text-amber-200':'text-ink-muted'}>{row.status==='diverge_do_cadastro'?'Diferença para revisão':row.status==='concorda_com_cadastro'?'Texto coincide com cadastro (não confirma autenticidade)':'Sem correspondência certificada'} · {row.note}</p></div>)}</div>
-        {analysis.provenance.length>0&&<p className="mt-2 text-[10px] text-ink-muted">Proveniência vinculada: {analysis.provenance.slice(0,6).join(' · ')}</p>}
+      <div className="rounded-xl border border-surface-border/60 bg-void/20 p-2.5"><strong className="flex items-center gap-1 text-xs text-ink-primary"><Database size={13}/>Revisão documental</strong>
+        <p className="mt-1 text-[11px] text-ink-muted">{analysis.conflicts} diferença(s) no cadastro ou nos fatos vinculados para conferir. A comparação por origem aparece abaixo, sem validação automática de registro.</p>
       </div>
       <button type="button" aria-pressed={candidate.reviewedByPerson} onClick={()=>setCandidate(c=>c?{...c,reviewedByPerson:!c.reviewedByPerson}:c)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/20 px-3 text-xs font-semibold text-emerald-200"><ShieldCheck size={15}/>{candidate.reviewedByPerson?'Conferência visual marcada nesta sessão':'Marcar que conferi os campos visualmente'}</button>
       {candidate.reviewedByPerson&&<p role="note" className="text-[10px] text-emerald-200">Revisão humana local, não é verificação da Anvisa, prescrição, comprovação de compra ou entrada de estoque.</p>}
+      <PharmaLensEvidenceReviewP4B key={ownerKey} medication={medication} candidate={candidate}/>
     </div>}
     {status&&currentContextP3&&<p role="status" className="flex items-start gap-1.5 text-[11px] text-amber-200"><AlertTriangle size={13} className="mt-0.5 shrink-0"/>{status}</p>}
     <button type="button" onClick={reset} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-surface-border/60 px-3 text-xs text-ink-muted"><Eraser size={14}/>Descartar imagem, texto e candidato desta sessão</button>

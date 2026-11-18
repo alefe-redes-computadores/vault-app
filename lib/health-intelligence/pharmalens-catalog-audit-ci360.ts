@@ -8,18 +8,13 @@ export type PharmaLensAuditStatusCI360='concorda_com_cadastro'|'diverge_do_cadas
 export type PharmaLensAuditRowCI360={field:PharmaLensDocumentFieldCI360;label:string;captured:string;declared:string;catalog:string;catalogAuthority:string;status:PharmaLensAuditStatusCI360;note:string};
 export type PharmaLensAuditCI360={rows:PharmaLensAuditRowCI360[];coverage:'declared_only'|'partial'|'verified'|'unavailable';conflicts:number;provenance:string[];hasOfficialExact:boolean};
 const norm=(value:string)=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim();
-function factValue(knowledge:MedicationKnowledgeResolution,kind:string){
-  const facts=knowledge.facts.filter(f=>f.kind===kind&&f.authority!=='declared'&&f.authority!=='conflict');
-  return facts[0]||null;
-}
+// Fatos oficiais são exibidos por categoria no recibo, nunca como prova de nome
+// comercial, concentração exata ou lote a partir de uma linha OCR.
 export function auditPharmaLensDocumentCI360(candidate:PharmaLensCandidateCI360,medication:Medicamento,existing?:MedicationKnowledgeResolution):PharmaLensAuditCI360 {
   const knowledge=existing??resolveMedicationKnowledgeM153P4(medication);
-  const source=factValue(knowledge,'active_ingredient');
-  const presentation=factValue(knowledge,'presentation');
-  const forms=factValue(knowledge,'pharmaceutical_form');
-  const definitions:Array<[PharmaLensDocumentFieldCI360,string,string,string,ReturnType<typeof factValue>|null]> =[
-    ['name','Nome',candidate.name,medication.nome,source],
-    ['strength','Dosagem/apresentação',candidate.strength,medication.dosagem||'',presentation||forms],
+  const definitions:Array<[PharmaLensDocumentFieldCI360,string,string,string,MedicationKnowledgeResolution['facts'][number]|null]> =[
+    ['name','Nome',candidate.name,medication.nome,null],
+    ['strength','Dosagem/apresentação',candidate.strength,medication.dosagem||'',null],
     ['manufacturer','Fabricante',candidate.manufacturer,medication.laboratorio_etiqueta||'',null],
     ['batch','Lote',candidate.batch,'',null],
     ['expiry','Validade',candidate.expiry,'',null],

@@ -31,7 +31,12 @@ function cleanDate(value:string):string {
   const monthYear=/^(0[1-9]|1[0-2])[\/-](20\d{2})$/.exec(trimmed);
   if(monthYear)return`${monthYear[1]}/${monthYear[2]}`;
   const full=/^([0-2]\d|3[01])[\/-](0[1-9]|1[0-2])[\/-](20\d{2})$/.exec(trimmed);
-  if(full)return `${full[1]}/${full[2]}/${full[3]}`;
+  if(full){
+    const d=Number(full[1]),m=Number(full[2]),y=Number(full[3]);
+    const date=new Date(Date.UTC(y,m-1,d));
+    if(date.getUTCFullYear()===y&&date.getUTCMonth()+1===m&&date.getUTCDate()===d)
+      return `${full[1]}/${full[2]}/${full[3]}`;
+  }
   return '';
 }
 export function analyzePharmaLensDocumentTextCI360(text:string,origin:PharmaLensTextOriginCI360,at:string):PharmaLensTextAnalysisCI360 {
