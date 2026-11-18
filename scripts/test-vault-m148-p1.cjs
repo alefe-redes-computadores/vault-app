@@ -36,7 +36,7 @@ ok(med.includes('!isSuspenso && canQuickDose && quickDoseLabel')&&med.includes('
 ok(med.includes('MedicationOperationalStrip today={todayStatus}')&&med.includes('humanizeStockText(textoEstoquePrincipal)'),'informação de dose e saldo preservada');
 ok(med.includes('medicationCareStageNeedsAttention(')&&med.includes('medicationListAttentionReasonsM143('),'prioridade M146 e horário M143 preservados');
 ok(med.includes('density="compact"')&&med.includes('compactTight={compactCards}'),'controles de densidade preservados');
-ok(med.includes('className={compactCards ? "min-h-[108px]" : "min-h-[124px]"}')&&med.includes('actionLayoutM150P3.primary')&&!med.includes('min-h-[200px]'),'M109: cartões flexíveis sem altura mínima artificial');
+ok(med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}')&&med.includes('className={compactCards ? "min-h-0" : "min-h-[116px]"}')&&med.includes('actionLayoutM150P3.primary')&&!med.includes('min-h-[200px]'),'M109: cartões flexíveis sem altura mínima artificial');
 const overviewP9=read('components/saude/MedicationPortfolioOverview.tsx');
 ok(overviewP9.includes('text-[10px] font-bold uppercase') && overviewP9.includes('min-h-10')
   && !overviewP9.includes('min-h-[64px]'),

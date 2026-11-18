@@ -1,0 +1,56 @@
+/* VAULT CareFlow P0 R4 — tests of truth invariants, UI structure and safety. */
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {join}=require('node:path');
+const root=process.cwd();
+const source=p=>fs.readFileSync(join(root,p),'utf8');
+let checks=0;
+function ok(name,condition){assert.ok(condition,name);checks++;console.log('P0 OK · '+name);}
+const time=source('components/saude/HealthTimePicker.tsx');
+ok('horário HH:mm próprio sem relação clínica',time.includes('const VALID =')&&time.includes('type="text" inputMode="numeric"')&&!time.includes('HealthRelationPicker')&&!time.includes('const HOURS = Array.from'));
+ok('faixa horária 00–23/00–59 e acessibilidade',time.includes('00 a 23')&&time.includes('00 a 59')&&time.includes('VALID.test(candidate)'));
+const picker=source('components/saude/HealthRelationPicker.tsx');
+ok('consulta tem ícone próprio, sem Link2 genérico',picker.includes('kind === "consultation" ? CalendarDays')&&picker.includes('kind==="consultation"||kind==="symptom"'));
+const symptoms=source('app/saude/careflow/sintomas/page.tsx');
+ok('feedback fica perto do botão de salvar',symptoms.includes('Guardar relato real</button>{status&&<p role="status" aria-live="polite"'));
+const repairBlock=symptoms.split('const repair=async()=>')[1]?.split('const links=useMemo')[0]||'';
+ok('reparo reutiliza o ID salvo e não recria sintomas',Boolean(repairBlock)&&repairBlock.includes('related_id:recordId,parent_id:consultationId')&&!repairBlock.includes('createRegistro(')&&symptoms.includes('setPendingLink({recordId,consultationId:consultation,date,time})'));
+ok('formulário reinicia após registro canônico',symptoms.includes('setType(types[0]);setOther')&&symptoms.includes('setMedication(\'\');setConsultation(\'\')'));
+ok('evolução por sintoma, não conecta fatos distintos',symptoms.includes('own.filter(r=>r.nome===selectedTrend)')&&symptoms.includes('Evolução por tipo de sintoma'));
+ok('histórico agrupa por dia BR',symptoms.includes('history[i-1].data!==r.data')&&symptoms.includes("split('-').reverse().join('/')"));
+const brains=source('lib/m3/brain-facts-p2.ts');
+ok('Brain vincula sintoma pela identidade e pessoa',brains.includes('input.registros.find(r=>r.id===e.related_id&&owner(r))')&&brains.includes('consultation_to_existing_symptom')&&brains.includes('/saude/careflow/sintomas#'));
+ok('Brain não expõe termos de depuração',!brains.includes("'DoseLog da pessoa'")&&!brains.includes("'Evento CareFlow M2'"));
+const timeline=source('app/saude/careflow/linha-do-tempo/page.tsx');
+ok('Brain usa ícone por entidade',timeline.includes('factIcon=(kind:string,title:string)')&&timeline.includes('<FactIcon size={16}'));
+const careflowTimeline=source('lib/m3/careflow-timeline.ts');
+ok('dossiê pode hidratar sintoma sem nova autoridade',careflowTimeline.includes('registros:readonly')&&careflowTimeline.includes('r.person_id===personId')&&careflowTimeline.includes('Sintoma ·'));
+const dossier=source('app/saude/careflow/dossie/page.tsx');
+ok('dossiê recebe registros por pessoa e data BR',dossier.includes('buildCareFlowTimelineM3(events,user?.id||\'\',activePersonId||\'\',registros)')&&dossier.includes("row.date.split('-').reverse().join('/')"));
+const exams=source('app/saude/careflow/exames/page.tsx');
+ok('exames têm entrada unitária, edição, confirmação revisada por item',exams.includes('Adicionar um exame à solicitação')&&exams.includes('addLines(candidate)')&&exams.includes('Nome do exame ${i+1}')&&exams.includes('confirmed:false')); 
+ok('anexo premium não realiza OCR como resultado',exams.includes('Fotografar ou anexar pedido')&&exams.includes('não enviada automaticamente')&&exams.includes('Remover imagem')&&exams.includes('Revisar transcrição do OCR'));
+ok('exames canônicos e CareFlow continuam separáveis',exams.includes('href="/saude/exames"')&&source('app/saude/exames/page.tsx').includes('careflowOrders.slice(0,5).map'));
+const pressure=source('app/saude/careflow/pressao/page.tsx');
+ok('horário sugerido não vira prescrição e pressão não é inventada',pressure.includes('apenas sugestões da interface')&&pressure.includes('Registrar pressão realmente medida'));
+const med=source('app/saude/medicamentos/page.tsx');
+ok('compacto/conforto possuem densidades reais',med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}')&&med.includes('compactCards ? "gap-0.5" : "gap-1.5"'));
+ok('PillStudio e tarja regulatória canônica preservados',med.includes('<MedicationFormatIcon formato={med.formato} cores={med.cores}')&&med.includes('writing-mode:vertical-rl')&&med.includes('setSelectedRegulatory(regulatoryProfile)'));
+ok('regime e tratamentos são chips informativos',!med.includes('openMedicationContextP7R3("treatment")')&&!med.includes('openMedicationContextP7R3("regime")')&&med.includes('data-vault-med360-treatment-tags'));
+ok('contador secundário não finge outra classificação regulatória',med.includes('actionLayoutM150P3.secondary.length>0')&&!med.includes('absolute -right-1 -top-3 grid min-h-7'));
+ok('filtros ficam no topo com o handler original',med.includes('aria-label="Filtros rápidos de medicamentos"')&&med.includes('onChange={selectMedicationFilter}'));
+ok('estoque desconhecido mantém estado não informado',med.includes('stockUnknown ? "Não informado"')&&med.includes('stockTone={stockUnknown ? "unknown"'));
+ok('microaviso usa gaveta existente',med.includes('data-vault-med360-microbanner')&&med.includes('openMedicationSheet360(stockReview ? "estoque" : prescriptionReview360 ? "receita" : "estoque")'));
+const sheet=source('components/saude/MedicationSheet360R3.tsx');
+ok('aba ativa é distinguível e acessível',sheet.includes('aria-selected={tab===id}')&&sheet.includes('border-emerald-300/65 bg-emerald-300/[.16]'));
+ok('apresentações em chips com fonte original',sheet.includes('presentationChipsP0(value.officialPresentations)')&&sheet.includes('Conferir descrição técnica original'));
+ok('catálogo não sobrescreve receituário ou dose',sheet.includes('Manter meu cadastro')&&sheet.includes('Aplicar no editor')&&sheet.includes('não altera nenhum campo'));
+const medical=source('app/saude/careflow/modo-medico/page.tsx');
+ok('Modo Médico não mostra código interno',!medical.includes('VAULT · CI360 M3 P3')&&medical.includes('kind="consultation"'));
+const back=source('components/saude/ClinicalBackLinkP0.tsx');
+ok('retorno contextual exige URL interna ou histórico Next',back.includes('return_to')&&back.includes('window.history.state?.__NA')&&back.includes('router.push(fallback)'));
+for(const path of ['sintomas','pressao','exames','dossie','linha-do-tempo','modo-medico']){
+  ok(`voltar contextual em ${path}`,source(`app/saude/careflow/${path}/page.tsx`).includes('<ClinicalBackLinkP0 fallback="/saude/careflow"'));
+}
+console.log(`P0 CAREFLOW R4: ${checks} contratos orientados a comportamento OK`);

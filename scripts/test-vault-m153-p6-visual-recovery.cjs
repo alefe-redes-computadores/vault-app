@@ -35,7 +35,7 @@ ok("compacto preserva os metadados sem botões invisíveis e desloca procedênci
   assert.match(medications, /data-vault-compact-medication-meta className="sr-only"/);
   assert.match(medications, /latestManufacturer \|\| med\.laboratorio_etiqueta/);
   assert.match(medications, /openMedicationSheet360\("ficha"\)/);
-  assert.match(medications, /openMedicationContextP7R3\("regime"\)/);
+  assert.doesNotMatch(medications, /openMedicationContextP7R3\("regime"\)/);
   assert.match(medications, /catalogManufacturer: catalogIdentity\?\.manufacturer/);
   assert.match(sheet360, /value\.catalogManufacturer/);
   assert.match(sheet360, /value\.provenance/);

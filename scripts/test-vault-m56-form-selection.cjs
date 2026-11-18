@@ -112,7 +112,7 @@ let form=walk(q,n=>n.type==='form')[0];
  ok(hour.includes('disabled={disabled}')&&hour.includes('clearable && value'),'single time picker remains clearable when allowed');
  const treatment=read('components/saude/TreatmentRelationOption.tsx');
  ok(treatment.includes('break-words')&&!treatment.includes('truncate'),'long treatment identity and condition are not truncated');
- for(const [file,term] of [['components/SelectionModal.tsx','useModalGuard'],['components/saude/HealthRelationPicker.tsx','buildRelationMetadata'],['components/saude/HealthDateTimePicker.tsx','CustomDatePicker'],['components/saude/HealthTimePicker.tsx','HealthRelationPicker']])ok(read(file).includes(term),'existing authority and integration retained: '+file);
+ for(const [file,term] of [['components/SelectionModal.tsx','useModalGuard'],['components/saude/HealthRelationPicker.tsx','buildRelationMetadata'],['components/saude/HealthDateTimePicker.tsx','CustomDatePicker'],['components/saude/HealthTimePicker.tsx','inputMode="numeric"']])ok(read(file).includes(term),'existing authority and integration retained: '+file);
  const gate=read('scripts/test-v63-release-gate.mjs');
  ok(gate.includes('test-vault-m56-form-selection.cjs'),'M56 registered in release gate');
  ok(gate.includes('test-vault-m55-progressive-ux.cjs')&&gate.includes('test-vault-m54-dialog-guard.cjs'),'previous M55/M54 gates still required');

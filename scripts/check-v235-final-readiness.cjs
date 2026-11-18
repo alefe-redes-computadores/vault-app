@@ -28,7 +28,7 @@ check('Brain apresenta evidências legíveis e botão acessível',intelligenceSh
 const docsBanner=read('components/HealthDocsBanner.tsx');
 check('Atalhos para documentos usam alvos de toque amplos',docsBanner.includes('min-h-11 shrink-0')&&docsBanner.includes('h-11 w-11 items-center'));
 const time=read('components/saude/HealthTimePicker.tsx');
-check('Seletor visual próprio sem gerar opções por render',time.includes('const HOURS = Array.from')&&time.includes('const MINUTES = Array.from')&&time.includes('HealthRelationPicker'));
+check('Seletor de horário por segmentos, sem modal de relações',time.includes('type="text" inputMode="numeric"')&&time.includes('const VALID =')&&!time.includes('HealthRelationPicker')&&!time.includes('const HOURS = Array.from'));
 const critical=[
   ['Brain clínico','lib/health-intelligence/brain-v4.ts'],
   ['Cérebro comportamental','lib/health-intelligence/brain-v5.ts'],

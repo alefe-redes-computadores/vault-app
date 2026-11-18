@@ -2,7 +2,7 @@
 
 import { Children, isValidElement, useState, useEffect, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, MapPin, Stethoscope, Store, Link2, Building2 } from "lucide-react";
+import { ChevronDown, Check, MapPin, Stethoscope, Store, Link2, Building2, CalendarDays, Activity, ListChecks } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useActivePersonId } from "@/hooks/useActivePersonId";
@@ -26,7 +26,7 @@ type Props = {
   medications?: Medicamento[];
   medication?: Medicamento;
   compact?: boolean;
-  kind?: "doctor" | "place" | "pharmacy" | "hospital";
+  kind?: "doctor" | "place" | "pharmacy" | "hospital" | "consultation" | "symptom" | "status";
 };
 
 function textOf(node: ReactNode): string {
@@ -50,7 +50,7 @@ export function HealthRelationPicker({ children, value, defaultValue = "", onVal
   const [open, setOpen] = useState(false);
   const {user}=useAuth();const {activePersonId}=useActivePersonId();
   const enriched=useLiveQuery(async()=>{
-    if(!open||!kind||!user?.id)return null;
+    if(!open||!kind||kind==="consultation"||kind==="symptom"||kind==="status"||!user?.id)return null;
     const {db}=await import("@/lib/db");
     const uid=user.id;
     try {
@@ -73,11 +73,11 @@ export function HealthRelationPicker({ children, value, defaultValue = "", onVal
   useEffect(() => { setOpen(false); }, [activePersonId, user?.id, disabled]);
   const selectedId = String(value ?? localValue);
   const selected = choices.find(item => item.id === selectedId);
-  const Icon = kind === "doctor" ? Stethoscope : kind === "hospital" ? Building2 : kind === "place" ? MapPin : kind === "pharmacy" ? Store : Link2;
+  const Icon = kind === "doctor" ? Stethoscope : kind === "hospital" ? Building2 : kind === "place" ? MapPin : kind === "pharmacy" ? Store : kind === "consultation" ? CalendarDays : kind === "symptom" ? Activity : kind === "status" ? ListChecks : Link2;
   const icon = (choice: Choice) => {
     if(renderIcon)return renderIcon(choice.id);
     const medication = medicationById.get(choice.id) || (choice.id === relatedMedication?.id ? relatedMedication : undefined);
-    return medication ? <MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={24} /> : <Icon size={20} style={metadata[choice.id]?.color?{color:metadata[choice.id].color}:undefined} className={kind === "doctor" ? "text-violet-300" : kind === "hospital" ? "text-rose-300" : kind === "place" ? "text-cyan-300" : kind === "pharmacy" ? "text-emerald-400" : "text-ink-muted"} />;
+    return medication ? <MedicationFormatIcon formato={medication.formato} cores={medication.cores} size={24} /> : <Icon size={20} style={metadata[choice.id]?.color?{color:metadata[choice.id].color}:undefined} className={kind === "doctor" ? "text-violet-300" : kind === "hospital" ? "text-rose-300" : kind === "place" ? "text-cyan-300" : kind === "pharmacy" ? "text-emerald-400" : kind === "consultation" ? "text-sky-300" : kind === "symptom" ? "text-violet-300" : "text-ink-muted"} />;
   };
   return <>
     <select className="sr-only" tabIndex={-1} aria-hidden="true" value={selectedId} disabled={disabled} required={required} onChange={event => onValueChange(event.target.value)} onInvalid={event => { event.preventDefault(); setOpen(true); }}>{children}</select>

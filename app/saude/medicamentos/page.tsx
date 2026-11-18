@@ -1387,7 +1387,7 @@ export default function MedicamentosListPage() {
           density="compact"
           compactTight={compactCards}
           interactiveContent
-          className={compactCards ? "min-h-[108px]" : "min-h-[124px]"}
+          className={compactCards ? "min-h-0" : "min-h-[116px]"}
           showChevron={false}
           navigationLabel={`Ver detalhes de ${med.nome}`}
           railSize="label"
@@ -1429,7 +1429,7 @@ export default function MedicamentosListPage() {
             </span>
           }
         >
-              <div className={`relative flex min-w-0 flex-col ${compactCards ? "gap-1" : "gap-2.5"}`}>
+              <div data-vault-executive-density={compactCards?"compact":"comfort"} className={`relative flex min-w-0 flex-col ${compactCards ? "gap-0.5" : "gap-1.5"}`}>
 
 
             {/* IDENTIDADE · VAULT_V318_COMPACT_IDENTITY · M86_ALIGNED_IDENTITY */}
@@ -1448,7 +1448,7 @@ export default function MedicamentosListPage() {
                   </button>
                   <button type="button" aria-haspopup="dialog" aria-label={`Abrir menu 360 de ${med.nome}`} data-vault-med360-entry="menu"
                     onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("acoes");}}
-                    className="pointer-events-auto relative z-20 grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/45 bg-surface/35 text-ink-secondary transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Ellipsis size={19} aria-hidden="true"/></button>
+                    className="pointer-events-auto relative z-20 grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/45 bg-surface/35 text-ink-secondary transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Ellipsis size={19} aria-hidden="true"/>{actionLayoutM150P3.secondary.length>0&&<span className="absolute -bottom-1 -left-1 rounded-full border border-surface-border bg-surface px-1 text-[9px] font-bold text-ink-secondary" aria-hidden="true">+{actionLayoutM150P3.secondary.length}</span>}</button>
                 </div>
 
               </div>
@@ -1470,10 +1470,10 @@ export default function MedicamentosListPage() {
               )}
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
-                <button type="button" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("regime");}} className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-sky-300/20 bg-sky-300/[.05] text-sky-200" : "border-surface-border/50 bg-surface/40 text-ink-secondary"}`} aria-label="Regime de uso cadastrado">
+                <span className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-sky-300/20 bg-sky-300/[.05] text-sky-200" : "border-surface-border/50 bg-surface/40 text-ink-secondary"}`} aria-label="Regime de uso cadastrado">
                   <Repeat2 size={12} aria-hidden="true"/>
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
-                </button>
+                </span>
                 {isSOS && med.status === "descontinuado" && <span title="Cadastro descontinuado; registro factual de uso passado não significa retomada." className="rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 py-0.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</span>}
                 {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) &&
                   <span data-vault-compact-medication-meta className="sr-only">
@@ -1491,11 +1491,11 @@ export default function MedicamentosListPage() {
                 {cardTreatments.slice(0,compactCards ? 2 : 3).map(t=>{
                   const TreatmentIcon = getVaultTreatmentIcon(t.nome);
                   const color = safeTreatmentColorP7(t.cor);
-                  return <button key={t.id} type="button" onClick={event=>{event.stopPropagation();openMedicationContextP7R3("treatment");}}
+                  return <span key={t.id}
                     aria-label={`Ver tratamento ${t.nome}`} className="inline-flex min-h-8 max-w-full items-center gap-1 rounded-lg border border-surface-border/50 bg-surface/40 px-2 text-[10px] font-semibold"
                     style={color?{borderColor:`${color}66`,backgroundColor:`${color}12`,color}:undefined}>
                     <TreatmentIcon size={12} aria-hidden="true"/><span className="max-w-[10rem] truncate">{t.nome}</span>
-                  </button>;
+                  </span>;
                 })}
                 {cardTreatments.length>(compactCards?2:3)&&<span className="self-center text-[10px] text-ink-muted">+{cardTreatments.length-(compactCards?2:3)}</span>}
               </div>}
@@ -1515,13 +1515,7 @@ export default function MedicamentosListPage() {
                   {actionLayoutM150P3.primary === "care" ? careActionButtonM150P3 : null}
                   {actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3 : null}
                   {!actionLayoutM150P3.primary && <ChevronRight size={16} className="text-ink-faint" aria-hidden="true"/>}
-                  {actionLayoutM150P3.secondary.length>0 && <button type="button" aria-label={`Ver mais ${actionLayoutM150P3.secondary.length} ações de ${med.nome}`} onClick={event=>{event.stopPropagation();const controls:ReactNode[]=[];
-                    if(quickActionButtonM150P3)controls.push(quickActionButtonM150P3);
-                    if(careActionButtonM150P3)controls.push(careActionButtonM150P3);
-                    if(stockActionButtonM150P3)controls.push(stockActionButtonM150P3);
-                    if(historyActionButtonM150P3)controls.push(historyActionButtonM150P3);
-                    setSecondaryActionSheetR4({title:med.nome,controls});
-                  }} className="absolute -right-1 -top-3 grid min-h-7 min-w-7 place-items-center rounded-lg border border-amber-300/35 bg-amber-300/[.10] px-1 text-[10px] font-bold text-amber-200">+{actionLayoutM150P3.secondary.length}</button>}
+
                 </div>
               </div>
               {/* R4: acoes secundarias somente na gaveta; o card nao cresce. */}
@@ -1757,6 +1751,7 @@ export default function MedicamentosListPage() {
             </div>
             <button type="button" aria-label="Abrir filtros de medicamentos" aria-expanded={visualFilterSheetOpenR1} onClick={()=>{trigger("vibrate");setVisualFilterSheetOpenR1(true);}} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-surface-border/55 bg-surface-raised/30 px-2 text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><SlidersHorizontal size={18}/>{medicationFilter!=="todos"&&<span aria-label="Filtro ativo" className="size-1.5 rounded-full bg-amber-300"/>}</button>
           </div>
+          <div className="mt-2 border-t border-surface-border/35 pt-2" aria-label="Filtros rápidos de medicamentos"><MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/></div>
         </section>
 
         <BottomSheet isOpen={visualFilterSheetOpenR1} onClose={()=>setVisualFilterSheetOpenR1(false)} title="Filtros dos medicamentos" height="auto">

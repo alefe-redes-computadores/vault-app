@@ -54,6 +54,8 @@ import {
 } from "@/components/list";
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { useReturnContext } from "@/hooks/useReturnContext";
+import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
+import { projectExamOrdersM2 } from "@/lib/careflow-m2/domain";
 
 import type {
   Exame,
@@ -129,6 +131,8 @@ export default function ExamesPage() {
   } =
     useExames();
 
+  const {events:careflowEvents=[],userId:careflowUserId,activePersonId:careflowPersonId}=useCareFlowM2();
+  const careflowOrders=useMemo(()=>projectExamOrdersM2(careflowEvents,careflowUserId||'',careflowPersonId||''),[careflowEvents,careflowUserId,careflowPersonId]);
   const [
     search,
     setSearch,
@@ -517,6 +521,11 @@ export default function ExamesPage() {
             </button>
           </ListFilters>
         </ListPageHeader>
+        {careflowOrders.length>0&&<section className="mx-5 mt-3 space-y-2 rounded-2xl border border-sky-300/20 bg-surface p-3" aria-label="Pedidos de exames relacionados">
+          <div className="flex items-center justify-between gap-2"><h2 className="text-xs font-bold text-ink-primary">Pedidos de exames · CareFlow</h2><span className="text-[10px] text-ink-muted">{careflowOrders.length} pedido(s)</span></div>
+          {careflowOrders.slice(0,5).map(({order,items})=><button key={order.id} type="button" onClick={()=>router.push(`/saude/careflow/exames#careflow-pedido-${encodeURIComponent(order.id)}`)} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-void/30 px-3 py-2 text-left"><span className="min-w-0"><strong className="block truncate text-xs text-ink-primary">{String(order.payload.title||'Pedido')}</strong><span className="block text-[10px] text-ink-muted">{String(order.payload.date||'').split('-').reverse().join('/')} · {items.length} item(ns) · sem duplicar exames</span></span><FlaskConical size={16} className="shrink-0 text-sky-300"/></button>)}
+          {careflowOrders.length>5&&<button type="button" onClick={()=>router.push('/saude/careflow/exames')} className="min-h-11 w-full text-xs font-semibold text-sky-200">Ver todos os pedidos CareFlow</button>}
+        </section>}
 
         <section className="space-y-3.5 px-5 pt-4">
           <button type="button" onClick={()=>router.push('/saude/careflow/exames')}

@@ -8,17 +8,19 @@ const label:Record<CareFlowKindM2,string>={
 };
 export type CareFlowTimelineRowM3={id:string;kind:CareFlowKindM2;date:string;dateSource:'evento'|'cadastro';title:string;details:string;parentId:string|null;relatedId:string|null};
 const safe=(x:unknown,max=140)=>typeof x==='string'?x.trim().slice(0,max):'';
-export function buildCareFlowTimelineM3(events:readonly CareFlowEventM2[],ownerId:string,personId:string):CareFlowTimelineRowM3[]{
+export function buildCareFlowTimelineM3(events:readonly CareFlowEventM2[],ownerId:string,personId:string,registros:readonly {id?:string;user_id?:string;person_id?:string;nome:string;data:string;horario?:string;intensidade?:number|null;observacoes?:string|null}[]=[]):CareFlowTimelineRowM3[]{
   if(!ownerId||!personId)return [];
   return events.filter(e=>e.user_id===ownerId&&e.person_id===personId&&CAREFLOW_KINDS_M3.includes(e.kind))
     .map(e=>{
       const proposed=safe(e.payload.date,10)||safe(e.payload.start,10);
       const withDate=isIsoDateM2(proposed);
-      const date=withDate?proposed:safe(e.created_at,10);
-      const title=safe(e.payload.title)||safe(e.payload.name)||label[e.kind];
+      const linked=e.kind==='monitor_note'&&e.related_id&&e.payload.link==='consultation_to_existing_symptom'
+        ? registros.find(r=>r.id===e.related_id&&r.user_id===ownerId&&r.person_id===personId):undefined;
+      const date=linked&&isIsoDateM2(linked.data)?linked.data:withDate?proposed:safe(e.created_at,10);
+      const title=linked?`Sintoma · ${safe(linked.nome,100)}`:safe(e.payload.title)||safe(e.payload.name)|| (e.kind==='monitor_note'&&e.payload.link==='consultation_to_existing_symptom'?'Vínculo de sintoma a revisar':label[e.kind]);
       const details=[safe(e.payload.result),safe(e.payload.state),safe(e.payload.note),safe(e.payload.source)]
-        .filter(Boolean).join(' · ');
-      return {id:e.id,kind:e.kind,date,dateSource:withDate?'evento' as const:'cadastro' as const,
+        .filter(Boolean).join(' · ')+(linked?` · ${linked.intensidade==null?'Intensidade não informada':`Intensidade ${linked.intensidade}/10`}${linked.horario?` · ${linked.horario}`:''}${linked.observacoes?` · ${safe(linked.observacoes,140)}`:''}`:'');
+      return {id:e.id,kind:e.kind,date,dateSource:(Boolean(linked&&isIsoDateM2(linked.data))||withDate)?'evento' as const:'cadastro' as const,
         title,details,parentId:e.parent_id,relatedId:e.related_id};
     }).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
 }
@@ -36,7 +38,7 @@ export async function makeCareFlowTimelinePdfM3(personName:string,rows:readonly 
   line('Dados declarados ou vinculados no aplicativo. Não representam diagnóstico nem confirmação de uso.');
   if(rows.length===0)line('Sem registros selecionados para a linha do tempo.');
   for(const row of rows.slice(0,500)){
-    line(`${row.date} (${row.dateSource==='evento'?'data informada':'data do cadastro'}) · ${row.title}`,true);
+    line(`${/^\d{4}-\d{2}-\d{2}$/.test(row.date)?row.date.split('-').reverse().join('/'):row.date} (${row.dateSource==='evento'?'data informada':'data do cadastro'}) · ${row.title}`,true);
     line(`${label[row.kind]}${row.details?' · '+row.details:''}`);
   }
   line('Ausência de registro não prova ausência de evento. Compartilhamento somente após ação da pessoa.');

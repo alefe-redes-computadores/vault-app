@@ -25,11 +25,11 @@ ok(med.includes('data-vault-r3-flat-filters') || read('components/saude/Medicati
 ok(!med.includes('className="max-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))') && !med.includes('safe-area-inset-top'),'V31: pagina sem area superior propria');
 ok(read('app/globals.css').includes('.vault-r3-dialog-top-inset')&&read('app/globals.css').includes('safe-area-inset-top'),'safe area modal preservada no CSS');
 ok(med.includes('railSize="label"')&&med.includes('Abrir classificação:')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('[writing-mode:vertical-rl]'),'tarja textual acessível sem ícone redundante');
-ok(med.includes('onContext={openMedicationContextP7R3}')&&med.includes('openMedicationContextP7R3("treatment")')&&med.includes('openMedicationContextP7R3("regime")'),'badges com contexto vivo');
+ok(med.includes('onContext={openMedicationContextP7R3}')&&med.includes('data-vault-med360-treatment-tags')&&!med.includes('openMedicationContextP7R3("treatment")')&&!med.includes('openMedicationContextP7R3("regime")'),'badges com contexto vivo');
 ok(sheet.includes('role="dialog"')&&sheet.includes('onClose')&&sheet.includes('document.addEventListener("keydown"'),'sheet acessivel e somente leitura');
 ok(med.indexOf('id="medicamentos-panorama"')>med.indexOf('<BottomSheet isOpen={visualFilterSheetOpenR1}') && med.indexOf('id="medicamentos-panorama"')<med.indexOf('</BottomSheet>'),'panorama realocado para filtros, acessível sem rodapé');
 ok(help.includes('returnTo')&&help.includes('router.push(returnTo)')&&read('components/BottomNav.tsx').includes('"/ajuda"'),'Ajuda preserva retorno e barra');
-ok(med.includes('min-h-[108px]')&&med.includes('min-h-[124px]')&&med.includes('grid-cols-[minmax(0,1fr)_78px]')&&med.includes('data-vault-r4-main-action')&&med.includes('!actionLayoutM150P3.primary && <ChevronRight'),'CTA lateral fixa de R4 sem perder minima nem detalhe');
+ok(med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}')&&med.includes('min-h-[116px]')&&med.includes('grid-cols-[minmax(0,1fr)_78px]')&&med.includes('data-vault-r4-main-action')&&med.includes('!actionLayoutM150P3.primary && <ChevronRight'),'CTA lateral fixa de R4 sem perder minima nem detalhe');
 ok(med.includes('tone="amber"')&&med.includes('border-sky-400/35')&&med.includes('border-amber-400/35'),'acoes semanticamente diferentes');
 ok(!read('components/saude/MedicationRestockAction.tsx').includes('createMedication('),'nada de estoque ficticio na UI');
 ok(med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)') && med.includes('getVaultTreatmentIcon(t.nome)') && !med.includes('cardTreatments.map(t=>`${t.nome} (${t.status})`'), 'etiquetas individuais usam vínculos reais sem status inferido');

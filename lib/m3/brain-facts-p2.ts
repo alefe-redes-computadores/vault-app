@@ -9,8 +9,8 @@ export type BrainInputP2={
   cirurgias:readonly {id?:string;user_id?:string;person_id?:string;data:string;status:string;procedimento?:string}[];
   exames:readonly {id?:string;user_id?:string;person_id?:string;data:string;nome:string}[];
   doses:readonly {id?:string;user_id?:string;person_id?:string;data:string;horario?:string;tomado_em?:string;ignorado_em?:string}[];
-  registros:readonly {id?:string;user_id?:string;person_id?:string;data:string;nome:string;tipo?:string;valor_numerico?:number;valor_medicao?:string;unidade_medida?:string;source?:string|null}[];
-  careflow:readonly {id:string;user_id:string;person_id:string;created_at:string;kind:string;payload:Record<string,unknown>}[];
+  registros:readonly {id?:string;user_id?:string;person_id?:string;data:string;nome:string;tipo?:string;intensidade?:number;valor_numerico?:number;valor_medicao?:string;unidade_medida?:string;source?:string|null}[];
+  careflow:readonly {id:string;user_id:string;person_id:string;created_at:string;kind:string;related_id?:string|null;parent_id?:string|null;payload:Record<string,unknown>}[];
 };
 const trim=(v:unknown,n=80)=>typeof v==='string'?v.replace(/[\u0000-\u001f]/g,' ').trim().slice(0,n):'';
 const day=(s:unknown)=>{
@@ -32,7 +32,7 @@ export function buildBrainFactsP2(input:BrainInputP2,max=80):BrainFactP2[]{
   for(const d of input.doses.filter(owner)){
     const status:BrainFactKindP2=d.tomado_em?'dose_tomada':d.ignorado_em?'dose_ignorada':'dose_registrada';
     append(status,d.id,d.data,status==='dose_tomada'?'Dose marcada como tomada':status==='dose_ignorada'?'Dose marcada como ignorada':'Dose registrada sem confirmação',
-      trim(d.horario||''),'/hoje?focus=doses','DoseLog da pessoa');
+      trim(d.horario||''),'/hoje?focus=doses','Registro de dose');
   }
   for(const r of input.registros.filter(owner)){
     const num=typeof r.valor_numerico==='number'&&Number.isFinite(r.valor_numerico)?String(r.valor_numerico):'';
@@ -43,8 +43,14 @@ export function buildBrainFactsP2(input:BrainInputP2,max=80):BrainFactP2[]{
     append(measured?'medicao':'registro',r.id,r.data,trim(r.nome||r.tipo||'Registro de saúde'),measured?detail:'Registro pessoal; não equivale a uma aferição numérica','/saude/registros',r.source?'Registro · '+trim(r.source):'Registro informado');
   }
   for(const e of input.careflow.filter(owner)){
-    const described=trim(e.payload?.title||e.payload?.name||e.kind);
-    append('careflow',e.id,e.created_at,'CareFlow · '+described,'Evento vinculado; revisar fonte e documento','/saude/careflow/dossie','Evento CareFlow M2');
+    const labels:Record<string,string>={exam_order:'Pedido de exames',exam_item:'Exame solicitado',exam_status:'Situação de exame',exam_result:'Resultado de exame',monitor_plan:'Plano de acompanhamento',monitor_reading:'Medição vinculada',monitor_note:'Observação vinculada'};
+    const related=e.kind==='monitor_note'&&e.related_id?input.registros.find(r=>r.id===e.related_id&&owner(r)):undefined;
+    const contextual=e.kind==='monitor_note'&&e.payload?.link==='consultation_to_existing_symptom';
+    const title=related ? `Sintoma · ${trim(related.nome||related.tipo||'Relato pessoal')}` : contextual ? 'Vínculo de sintoma para conferir' : trim(e.payload?.title||e.payload?.name||labels[e.kind]||'Evento de acompanhamento');
+    const date=related?.data||day(e.payload?.date)||day(e.payload?.start)||e.created_at;
+    const detail=related ? `${typeof related.intensidade==='number'?`Intensidade ${related.intensidade}/10 · `:''}${trim(e.payload?.note||'Ligado à consulta registrada')}` : trim(e.payload?.note||e.payload?.state||'Registro de acompanhamento');
+    const href=related?.id?`/saude/careflow/sintomas#careflow-sintoma-${encodeURIComponent(related.id)}`:e.kind.startsWith('exam_')?'/saude/careflow/exames':e.kind==='monitor_plan'||e.kind==='monitor_reading'?'/saude/careflow/pressao':'/saude/careflow/dossie';
+    append('careflow',e.id,date,title,detail,href,related?'Sintoma relacionado à consulta':contextual?'Vínculo a revisar':'CareFlow · registro da pessoa');
   }
   const seen=new Set<string>();
   return rows.filter(r=>!seen.has(r.key)&&Boolean(seen.add(r.key)))

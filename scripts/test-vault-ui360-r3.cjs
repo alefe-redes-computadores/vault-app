@@ -19,7 +19,7 @@ ok(med.includes('useMedicationCatalogProfiles')&&med.includes('regulatoryProfile
 ok(med.includes('setQuickDoseMedId(med.id!)')&&med.includes('MedicationRestockAction')&&med.includes('router.push(careAction.href)'),'tomadas, estoque e caminho clinico originais');
 ok(med.includes('navigationP6.kind === "completed" ? null')&&med.includes('exactClosedWithdrawalP7'),'retirada concluida nao reativada pelo layout');
 ok(med.includes('data-vault-r4-main-action')&&med.includes('actionLayoutM150P3.primary')&&med.includes('grid-cols-[minmax(0,1fr)_78px]'),'acao canonica fixa no card');
-ok(med.includes('openMedicationContextP7R3("treatment")')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('railSize="label"'),'tratamento e tarja regulatoria continuam funcionais');
+ok(!med.includes('openMedicationContextP7R3("treatment")')&&med.includes('data-vault-med360-treatment-tags')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('railSize="label"'),'tratamento e tarja regulatoria continuam funcionais');
 ok(sheet.includes('value.controls.map')&&sheet.includes('window.setTimeout(onClose,0)'),'reutiliza controles clinicos sem recriar comandos');
 ok(sheet.includes('value.treatments.map')&&sheet.includes('getVaultTreatmentIcon(t.name)')&&med.includes('safeTreatmentColorP7(t.cor)'),'tratamentos explicitos e cores validas');
 ok(sheet.includes('max-h-[min(89dvh,790px)]')&&sheet.includes('safe-area-inset-bottom')&&sheet.includes('Escape'),'Android viewport, Safe Area e teclado');
@@ -29,7 +29,7 @@ ok(sheet.includes('Abrir detalhes completos')&&med.includes('detailHref'),'pagin
 ok(sheet.includes('medicamento')&&sheet.includes('não registra')&&sheet.includes('não confirma'),'contexto nao cria eventos');
 ok(help.includes('Compacto ou Conforto')&&help.includes('Toque no nome ou no menu •••')&&help.includes('Microavisos com contexto')&&help.includes('Conhecimento do catálogo'),'Ajuda atualizada com a jornada');
 ok(med.includes('className="sr-only"')&&med.includes('getVaultTreatmentIcon(t.nome)')&&med.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&med.includes('data-vault-med360-treatment-tags'), 'Compacto curto e ícones canonicos de tratamentos');
-ok(med.includes('compactCards ? "min-h-[108px]" : "min-h-[124px]"')&&med.includes('data-vault-compact-medication-meta'),'ambas densidades e metadados legados');
+ok(med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}')&&med.includes('data-vault-compact-medication-meta'),'ambas densidades e metadados legados');
 ok(med.includes('MedicationOperationalStrip today={todayStatus}')&&med.includes('MedicationContextSheetP7R3 value={medicationContextP7R3}')&&med.includes('MedicationActionsSheetR4 value={secondaryActionSheetR4}'),'componentes antigos mantidos para compatibilidade de retorno');
 ok(sheet.includes('grid-cols-5')&&sheet.includes('role="tablist"')&&!sheet.includes('tab==="tratamentos"'),'cinco abas: ficha inclui tratamentos vinculados');
 ok(med.indexOf('const prescriptionReview360')>med.indexOf('const catalogIdentity ='),'derivacao regulatoria nao acessa variavel antes da inicializacao');

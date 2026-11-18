@@ -63,7 +63,9 @@ function load(file,alias={}){
  const brain=load('lib/m3/brain-facts-p2.ts');
  const input={userId:'u1',personId:'p1',consultas:[{id:'c1',user_id:'u1',person_id:'p1',data:'2026-11-15',status:'realizada',motivo:'Consulta'}, {id:'secret',user_id:'u2',person_id:'p1',data:'2026-11-16',status:'realizada'}],cirurgias:[],exames:[],doses:[{id:'d1',user_id:'u1',person_id:'p1',data:'2026-11-17',horario:'08:00',tomado_em:'2026-11-17T08:00:00Z'}],registros:[],careflow:[]};
  const facts=brain.buildBrainFactsP2(input,10);check(facts.length===2,'Brain só usa fatos da conta e pessoa');
- check(facts.some(f=>f.kind==='dose_tomada'&&f.provenance.includes('DoseLog')),'dose somente quando explicitamente confirmada');
+ check(facts.some(f=>f.kind==='dose_tomada'&&f.sourceId==='d1'&&f.provenance==='Registro de dose'),'dose tomada exige prova explicita, nao rotulo tecnico');
+ const unconfirmed=brain.buildBrainFactsP2({...input,doses:[{...input.doses[0],id:'d2',tomado_em:undefined}]},10);
+ check(unconfirmed.some(f=>f.sourceId==='d2'&&f.kind==='dose_registrada')&&!unconfirmed.some(f=>f.sourceId==='d2'&&f.kind==='dose_tomada'),'dose sem confirmacao nunca vira tomada');
  check(facts.every(f=>!f.title.includes('secret')),'nenhum vazamento de outra conta');
  for(const file of ['components/notifications/EventPoliciesP2.tsx','app/saude/careflow/linha-do-tempo/page.tsx','lib/repositories/notificationPoliciesP2.ts']){
   const source=ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,file.endsWith('tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
