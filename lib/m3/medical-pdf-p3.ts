@@ -64,6 +64,7 @@ export async function makeMedicalPdfP3(report:MedicalDossierP3):Promise<Blob>{
   pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.setTextColor(19,47,58);
   pdf.text(report.mode==='summary'?'Resumo para consulta':'Dossiê clínico detalhado',left,y);y+=11;
   line(`Pessoa: ${report.personName}`,11,[24,52,59]);
+  if(report.episode)line(`Episódio selecionado: ${report.episode.title} · ${shortDay(report.episode.date)}. Apenas vínculos explícitos foram incluídos.`,9,[25,105,82]);
   line(`Período: ${shortDay(report.start)} a ${shortDay(report.end)} · Preparado em: ${clean(report.generatedAt,40)}`);
   line('Documento informativo gerado com registros existentes. Não é laudo, prescrição ou diagnóstico.',9,[129,95,45]);
   heading('Conteúdo selecionado');

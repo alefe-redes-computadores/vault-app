@@ -17,6 +17,15 @@ export function ConsultationRelationsViewP6({consultation,medications}:Props){
   <ConsultationLinkReviewP6P2R2 consultation={consultation} medications={medications} />
   <ConsultationDocumentsP6P2R2 consultation={consultation} />
   <ConsultationOutcomeM1 consultation={consultation} />
+  {consultation.id?<section aria-label="Desdobramentos desta consulta" className="rounded-2xl border border-sky-300/20 bg-surface p-3">
+    <h4 className="text-xs font-bold text-sky-200">Continuar este atendimento</h4>
+    <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Os formulários herdam somente o ID da consulta validada. Médico e local são sugestões revisáveis; salvar nunca significa tomar medicamento ou concluir exame.</p>
+    <div className="mt-3 grid grid-cols-1 gap-2 min-[370px]:grid-cols-3">
+      <button type="button" onClick={()=>router.push(`/saude/careflow/sintomas?consulta=${encodeURIComponent(consultation.id!)}`)} className="min-h-12 rounded-xl border border-violet-300/25 px-3 text-xs font-semibold text-violet-200">Registrar evolução</button>
+      <button type="button" onClick={()=>router.push(`/saude/careflow/exames?consulta=${encodeURIComponent(consultation.id!)}`)} className="min-h-12 rounded-xl border border-emerald-300/25 px-3 text-xs font-semibold text-emerald-200">Pedido de exames</button>
+      <button type="button" onClick={()=>router.push(`/saude/careflow/modo-medico?consulta=${encodeURIComponent(consultation.id!)}`)} className="min-h-12 rounded-xl border border-sky-300/25 px-3 text-xs font-semibold text-sky-200">Modo Médico do episódio</button>
+    </div>
+  </section>:null}
   {links.length?<div className="space-y-2">{links.map(link=><button key={link.id} type="button" onClick={()=>router.push(`/saude/medicamentos/detalhes?id=${encodeURIComponent(link.id)}&return_to=${encodeURIComponent(`/saude/consultas/detalhes?id=${consultation.id||""}`)}`)} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-surface-border/40 bg-surface px-3 py-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300"><span className="min-w-0"><strong className="block text-xs text-ink-primary">{link.nome}</strong><span className="text-[11px] text-ink-muted">{link.dosagem} · vínculo confirmado pelo usuário</span></span><span aria-hidden="true" className="text-sky-200">›</span></button>)}</div>:
     <p className="text-xs text-ink-muted">Nenhum medicamento diretamente vinculado a esta consulta. A ausência de vínculo não significa ausência de tratamento.</p>}
   {([['Relato pessoal',voices.personal],['Orientação relatada do profissional',voices.professional],['Providências / retorno',voices.followUp]] as const).filter(([,v])=>v).map(([label,value])=><div key={label} className="rounded-xl border border-surface-border/35 bg-surface p-3"><p className="text-[11px] font-semibold text-sky-200">{label}</p><p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-ink-primary">{value}</p></div>)}

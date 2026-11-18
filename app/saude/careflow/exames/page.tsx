@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ClipboardCheck, FileSearch, FlaskConical, Plus, ScanText, ShieldCheck, Check, ChevronDown, ArrowLeft } from 'lucide-react';
 import { useCareFlowM2 } from '@/hooks/useCareFlowM2';
@@ -21,6 +21,19 @@ export default function CareFlowExamsPage(){
   const [title,setTitle]=useState('Pedido de exames'),[date,setDate]=useState(getLocalTodayISO());
   const [consultation,setConsultation]=useState(''),[doctor,setDoctor]=useState(''),[lab,setLab]=useState('');
   const [doctorId,setDoctorId]=useState(''),[locationId,setLocationId]=useState('');
+  const appliedConsultation=useRef('');
+  useEffect(()=>{
+    if(!userId||!activePersonId)return;
+    const id=new URLSearchParams(window.location.search).get('consulta')||'';
+    const target=consultas.find(c=>c.id===id&&c.user_id===userId&&c.person_id===activePersonId);
+    const key=`${userId}:${activePersonId}:${id}`;
+    if(!target||appliedConsultation.current===key)return;
+    appliedConsultation.current=key;
+    setConsultation(current=>current||id);
+    if(target.medico_id&&medicos.some(m=>m.id===target.medico_id&&m.user_id===userId))setDoctorId(current=>current||target.medico_id||'');
+    if(target.local_id&&locais.some(l=>l.id===target.local_id&&l.user_id===userId))setLocationId(current=>current||target.local_id||'');
+    if(isIsoDateM2(target.data))setDate(target.data);
+  },[consultas,medicos,locais,userId,activePersonId]);
   const [search,setSearch]=useState(''),[yearFilter,setYearFilter]=useState('');
   const [candidate,setCandidate]=useState(''),[items,setItems]=useState<ExamItemReviewM2[]>([]);
   const [image,setImage]=useState<string|null>(null),[file,setFile]=useState<File|null>(null);
@@ -60,6 +73,9 @@ export default function CareFlowExamsPage(){
     try{
       const checked=checkedExamItemsM2(items);
       if(!activePersonId||!userId||!isIsoDateM2(date))throw new Error('Confira pessoa e data.');
+      if(consultation&&!consultas.some(c=>c.id===consultation&&c.user_id===userId&&c.person_id===activePersonId))throw new Error('Consulta vinculada não pertence à pessoa ativa.');
+      if(doctorId&&!medicos.some(m=>m.id===doctorId&&m.user_id===userId))throw new Error('Médico vinculado não pertence à conta ativa.');
+      if(locationId&&!locais.some(l=>l.id===locationId&&l.user_id===userId))throw new Error('Local vinculado não pertence à conta ativa.');
       const orderId=crypto.randomUUID();
       const rows=[{id:orderId,kind:'exam_order' as const,related_id:consultation||null,payload:{title:title.trim(),date,doctor:doctor.trim().slice(0,160),doctor_id:doctorId||null,location_id:locationId||null,laboratory:lab.trim().slice(0,160),origin:'user_verified_from_document',photoStored:false,checked:checked.length,unchecked:items.filter(x=>x.mark==='unchecked').length,uncertain:items.filter(x=>x.mark==='uncertain').length}},
         ...checked.map(name=>({id:crypto.randomUUID(),kind:'exam_item' as const,parent_id:orderId,payload:{name,confirmedByUser:true,state:'pending',origin:'human_selection'}}))];

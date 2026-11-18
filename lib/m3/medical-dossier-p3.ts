@@ -21,6 +21,7 @@ export type MedicalDossierP3 = {
   start: string; end: string; sections: MedicalSectionP3[];
   rows: MedicalRowP3[]; omittedBySummary: number;
   availableCount: number; generatedAt: string;
+  episode?: {consultationId:string; date:string; title:string};
   limitations: string[];
 };
 export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;description:string}[] = [
@@ -48,6 +49,7 @@ export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
   ownerId:string; personId:string; personName:string; start:string; end:string;
   mode:MedicalModeP3; sections:readonly MedicalSectionP3[]; includeBrain?:boolean; generatedAt?:string;
+  consultationId?:string;
 };
 function isOwner(x:{user_id?:string;person_id?:string},uid:string,pid:string):boolean {
   return x.user_id===uid&&x.person_id===pid;
@@ -73,8 +75,33 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
   const consulted=new Map(consults.filter(c=>c.id).map(c=>[c.id!,c] as const));
   const renewalMap=new Map(renewals.filter(r=>r.id).map(r=>[r.id!,r] as const));
   const doseMap=new Map(owned(context.doseLogs).filter(d=>d.id).map(d=>[d.id!,d] as const));
+  // P3-D1: relações derivadas somente de IDs de registros da MESMA pessoa.
+  const symptomMap=new Map(owned(context.registrosSaude).filter(r=>r.id&&r.categoria==='sintoma').map(r=>[r.id!,r] as const));
+  const symptomLinks=cf.filter(e=>e.kind==='monitor_note'&&e.payload.link==='consultation_to_existing_symptom'&&
+    consulted.has(e.parent_id||'')&&symptomMap.has(e.related_id||''));
+  const consultationLinksBySymptom=new Map<string,string[]>();
+  for(const link of symptomLinks){
+    const id=link.related_id!;const list=consultationLinksBySymptom.get(id)||[];
+    if(!list.includes(link.parent_id!))list.push(link.parent_id!);
+    consultationLinksBySymptom.set(id,list);
+  }
+  const consultation=input.consultationId?consulted.get(input.consultationId):undefined;
+  if(input.consultationId&&!consultation)throw Error('Consulta não pertence à pessoa e conta ativas.');
+  // Apenas relações explícitas; data/médico coincidentes NÃO vinculam eventos.
+  const episodeCareIds=new Set<string>();
+  if(consultation?.id){
+    let grown=true;
+    while(grown){grown=false;for(const e of cf){
+      if(episodeCareIds.has(e.id))continue;
+      if(e.related_id===consultation.id||e.parent_id===consultation.id||(e.parent_id&&episodeCareIds.has(e.parent_id))){
+        episodeCareIds.add(e.id);grown=true;
+      }
+    }}
+  }
+  const episodeSymptomIds=new Set(symptomLinks.filter(e=>consultation?.id&&e.parent_id===consultation.id).map(e=>e.related_id!));
   const careLabels=new Map(cf.map(e=>[e.id,nice(e.payload.title,nice(e.payload.name,'Evento CareFlow'))] as const));
-  const relatedLabels=new Map([...careLabels,...consults.filter(c=>c.id).map(c=>[c.id!,`Consulta ${safe(c.especialidade,90)} · ${date(c.data)||'sem data'}`] as const)]);
+  const relatedLabels=new Map([...careLabels,...consults.filter(c=>c.id).map(c=>[c.id!,`Consulta ${safe(c.especialidade,90)} · ${date(c.data)||'sem data'}`] as const),
+    ...[...symptomMap.values()].map(r=>[r.id!,`Sintoma ${safe(r.nome,90)} · ${date(r.data)||'sem data'}`] as const)]);
   const reportSections=sections.filter(s=>BASE.has(s)) as Report360Section[];
   const base=buildClinicalReport360({context,ledger:input.includeBrain?input.ledger??[]:[],ownerId:uid,personId:pid,
     personName:nice(input.personName,'Pessoa ativa'),start,end,sections:reportSections.length?reportSections:['consultations'],mode:input.includeBrain?'brain':'factual'});
@@ -88,7 +115,12 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
     if(row.category!=='brain'&&!selected(row.category))continue;
     if(row.category==='brain'&&!input.includeBrain)continue;
     const c=row.source==='consultation'?consulted.get(row.sourceId):undefined;
+    const symptom=row.category==='symptoms'?symptomMap.get(row.sourceId):undefined;
     const relations:string[]=[];
+    if(symptom)for(const consultationId of consultationLinksBySymptom.get(row.sourceId)||[]){
+      const linked=consulted.get(consultationId);
+      if(linked)relations.push(`Consulta relacionada: ${safe(linked.especialidade,90)||'Atendimento'} · ${date(linked.data)||'sem data'}`);
+    }
     const dose=row.source==='dose_log'?doseMap.get(row.sourceId):undefined;
     if(dose){const m=medMap.get(dose.medicamento_id);if(m)relations.push(`Medicamento: ${safe(m.nome,100)}`);}
     if(c){for(const id of c.medicamento_ids??[]){const m=medMap.get(id);if(m)relations.push(`Medicamento vinculado: ${safe(m.nome,100)}`);}
@@ -96,21 +128,37 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
     }
     add({section:row.category,date:row.date,time:row.time,title:row.title,detail:row.detail,source:row.source,
       sourceId:row.sourceId,registeredAt:null,provenance:row.category==='brain'?'motor':row.category==='symptoms'||row.category==='consultations'?'declarado':'registrado',relations,
-      href:row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:null});
+      href:row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:
+        symptom?.id?`/saude/careflow/sintomas#careflow-sintoma-${encodeURIComponent(symptom.id)}`:null});
   }
   if(selected('careflow'))for(const e of cf){
-    const declaredDay=date(e.payload.date)||date(e.payload.start);
+    const isSymptomLink=e.kind==='monitor_note'&&e.payload.link==='consultation_to_existing_symptom';
+    const symptom=isSymptomLink?symptomMap.get(e.related_id||''):undefined;
+    const visit=isSymptomLink?consulted.get(e.parent_id||''):undefined;
+    // O relato original continua autoridade; se exibido em Sintomas, não duplicar como outro fato.
+    if(isSymptomLink&&symptom&&visit&&selected('symptoms')&&within(date(symptom.data)))continue;
+    const declaredDay=symptom?date(symptom.data):date(e.payload.date)||date(e.payload.start);
     const fact=declaredDay||date(e.created_at);
     if(!within(fact))continue;
-    const parent=relation('Pedido/plano de origem',e.parent_id,careLabels);
-    const related=relation('Registro relacionado',e.related_id,relatedLabels);
-    const title=nice(e.payload.title,nice(e.payload.name,{
-      exam_order:'Pedido de exames',exam_item:'Exame solicitado',exam_status:'Status declarado',exam_result:'Resultado informado',
-      monitor_plan:'Plano de monitoramento',monitor_reading:'Aferição vinculada',monitor_note:'Observação vinculada'}[e.kind]));
-    const detail=[declaredDay?'Data clínica declarada':'Data do cadastro; data clínica não informada',safe(e.payload.result),safe(e.payload.state),safe(e.payload.note),safe(e.payload.source)].filter(Boolean).join(' · ');
-    add({section:'careflow',date:fact,time:null,title,detail:detail||'Sem complemento registrado.',source:`careflow_${e.kind}`,
-      sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',relations:[parent,related].filter((s):s is string=>Boolean(s)),
-      href:e.kind.startsWith('exam_')?'/saude/careflow/exames':'/saude/careflow/pressao'});
+    const parent=relation(isSymptomLink?'Consulta de origem':'Pedido/plano de origem',e.parent_id,relatedLabels);
+    const related=relation(isSymptomLink?'Relato original':'Registro relacionado',e.related_id,relatedLabels);
+    const title=isSymptomLink?(symptom&&visit?nice(symptom.nome,'Sintoma relatado'):'Vínculo de sintoma não verificável'):
+      nice(e.payload.title,nice(e.payload.name,{
+        exam_order:'Pedido de exames',exam_item:'Exame solicitado',exam_status:'Status declarado',exam_result:'Resultado informado',
+        monitor_plan:'Plano de monitoramento',monitor_reading:'Aferição vinculada',monitor_note:'Observação vinculada'}[e.kind]));
+    const clinicalNote=symptom&&visit?[
+      `Relato existente: ${safe(symptom.nome,140)}`,
+      typeof symptom.intensidade==='number'?`Intensidade declarada: ${symptom.intensidade}/10`:'Intensidade não informada',
+      clock(symptom.horario)?`Hora do fato: ${symptom.horario}`:'Hora não informada',
+      safe(symptom.observacoes,500),
+      'Vínculo com consulta declarado pela pessoa; não comprova causalidade.'
+    ].filter(Boolean).join(' · '):'';
+    const detail=isSymptomLink?(clinicalNote||'Referência não resolvida no escopo atual; não inferir conteúdo clínico.'):
+      [declaredDay?'Data clínica declarada':'Data do cadastro; data clínica não informada',safe(e.payload.result),safe(e.payload.state),safe(e.payload.note),safe(e.payload.source)].filter(Boolean).join(' · ');
+    add({section:'careflow',date:fact,time:symptom?clock(symptom.horario):clock(e.payload.time),title,detail:detail||'Sem complemento registrado.',source:`careflow_${e.kind}`,
+      sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',relations:[parent,related].filter((x):x is string=>Boolean(x)),
+      href:isSymptomLink?`/saude/careflow/sintomas${symptom?.id?`#careflow-sintoma-${encodeURIComponent(symptom.id)}`:''}`:
+        e.kind.startsWith('exam_')?'/saude/careflow/exames':'/saude/careflow/pressao'});
   }
   if(selected('exams'))for(const e of exams){
     const d=date(e.data);if(!within(d))continue;
@@ -153,16 +201,26 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       provenance:'registrado',relations:(r.medicamento_ids||[]).filter(id=>medMap.has(id)).map(id=>`Medicamento cadastrado: ${safe(medMap.get(id)?.nome,100)}`),
       href:'/saude/tratamentos'});
   }
-  rows.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')||a.section.localeCompare(b.section)||a.key.localeCompare(b.key));
+  // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
+  const episodeRows=consultation?rows.filter(r=>{
+    if(r.section==='consultations')return r.sourceId===consultation.id;
+    if(r.section==='careflow')return episodeCareIds.has(r.sourceId);
+    if(r.section==='symptoms')return episodeSymptomIds.has(r.sourceId);
+    if(r.section==='medications')return Boolean(consultation.medicamento_ids?.includes(r.sourceId));
+    if(r.section==='treatments')return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
+    return false;
+  }):rows;
+  episodeRows.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')||a.section.localeCompare(b.section)||a.key.localeCompare(b.key));
   // Uma coincidência de chave legada não autoriza apagar ocorrências históricas.
   const occurrences=new Map<string,number>();
-  const uniqueRows=rows.map(r=>{const n=occurrences.get(r.key)||0;occurrences.set(r.key,n+1);return n?{...r,key:`${r.key}::${n}`} :r;});
+  const uniqueRows=episodeRows.map(r=>{const n=occurrences.get(r.key)||0;occurrences.set(r.key,n+1);return n?{...r,key:`${r.key}::${n}`} :r;});
   const availableCount=uniqueRows.length;
   if(availableCount>6000)throw Error('Dossiê acima do limite de segurança local; reduza o período ou as seções.');
   const summaryLimit=30;
   const visible=input.mode==='summary'?uniqueRows.slice(0,summaryLimit):uniqueRows;
   return {version:3,mode:input.mode,personName:nice(input.personName,'Pessoa ativa'),start,end,
     sections,rows:visible,availableCount,omittedBySummary:availableCount-visible.length,
+    episode:consultation?.id?{consultationId:consultation.id,date:date(consultation.data),title:safe(consultation.especialidade,110)||'Consulta'}:undefined,
     generatedAt:input.generatedAt||new Date().toISOString(),
     limitations:[...base.limitations,
       'Os vínculos são exibidos apenas quando seus IDs existem no contexto autorizado; sem vínculo não significa ausência clínica.',
