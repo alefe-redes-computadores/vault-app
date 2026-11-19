@@ -936,12 +936,12 @@ export default function MaisPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] overflow-y-auto bg-void pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
         {/* =====================================================
             CABEÇALHO
         ===================================================== */}
 
-        <header className="px-5 pb-2 pt-5 header-safe-top">
+        <header className="px-4 pb-1 pt-3 header-safe-top sm:px-5">
           <h1 className="font-display text-xl font-semibold text-ink-primary">
             Mais
           </h1>
@@ -951,14 +951,14 @@ export default function MaisPage() {
           </p>
         </header>
 
-        <section className="space-y-4 px-4 pt-3 sm:px-5">
+        <section className="space-y-3 px-4 pt-2 sm:px-5">
           {/* ===================================================
               PERFIL
           =================================================== */}
 
           {/* VAULT_MORE_INFORMATION_ARCHITECTURE_V79 */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} className="space-y-4">
-            <div className="rounded-[20px] border border-surface-border/50 bg-surface p-3 shadow-sm">
+            <div className="rounded-[20px] border border-surface-border/50 bg-surface p-2.5 shadow-sm">
               <div className="flex items-center gap-2.5">
                 <div className="relative shrink-0">
                   {avatarUrl ? <img src={avatarUrl} alt={displayName} loading="lazy" className="h-11 w-11 rounded-full border-2 border-ice/20 object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full border border-surface-border/50 bg-surface-raised text-xl text-ink-muted">{displayName.charAt(0).toUpperCase()}</div>}
@@ -977,16 +977,16 @@ export default function MaisPage() {
 
             <div>
               <button type="button" onClick={() => { trigger("vibrate"); router.push("/saude/mapa?return_to=%2Fmais"); }}
-                className="mb-3 flex min-h-14 w-full items-center gap-3 rounded-[18px] border border-emerald-300/25 bg-emerald-300/[.06] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
+                className="mb-2 flex min-h-12 w-full items-center gap-2.5 rounded-[16px] border border-emerald-300/25 bg-emerald-300/[.06] px-2.5 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
                 aria-label="Abrir mapa de todas as áreas de saúde">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><Compass size={19}/></span>
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><Compass size={18}/></span>
                 <span className="min-w-0 flex-1"><strong className="block text-sm font-bold text-ink-primary">Explorar áreas de saúde</strong><span className="block text-[11px] text-ink-muted">Encontre todas as funções por tarefa</span></span>
                 <ChevronRight size={16} className="shrink-0 text-emerald-300"/>
               </button>
               {/* P4: Minha saúde e Brain são destinos de Saúde, fora do Cofre pessoal. */}
               <div className="grid min-w-0 grid-cols-2 gap-2" aria-label="Acessos de saúde">
-                <button type="button" onClick={()=>{trigger("vibrate");router.push("/saude/minha-saude");}} className="flex min-h-14 min-w-0 items-center gap-2 rounded-[17px] border border-coral/20 bg-coral/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Heart size={17} className="shrink-0 text-coral"/><span className="min-w-0 break-words text-xs font-semibold text-ink-primary">Minha saúde</span></button>
-                <button type="button" onClick={()=>{trigger("vibrate");router.push("/inteligencia");}} className="flex min-h-14 min-w-0 items-center gap-2 rounded-[17px] border border-violet-400/20 bg-violet-400/[0.045] px-3 text-left focus-visible:outline focus-visible:outline-ice"><BrainCircuit size={17} className="shrink-0 text-violet-300"/><span className="min-w-0 break-words text-xs font-semibold text-ink-primary">VAULT Brain</span></button>
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/saude/minha-saude");}} className="flex min-h-12 min-w-0 items-center gap-2 rounded-[15px] border border-coral/20 bg-coral/[0.045] px-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Heart size={17} className="shrink-0 text-coral"/><span className="min-w-0 break-words text-xs font-semibold text-ink-primary">Minha saúde</span></button>
+                <button type="button" onClick={()=>{trigger("vibrate");router.push("/inteligencia");}} className="flex min-h-12 min-w-0 items-center gap-2 rounded-[15px] border border-violet-400/20 bg-violet-400/[0.045] px-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><BrainCircuit size={17} className="shrink-0 text-violet-300"/><span className="min-w-0 break-words text-xs font-semibold text-ink-primary">VAULT Brain</span></button>
               </div>
             </div>
 
@@ -1001,8 +1001,8 @@ export default function MaisPage() {
             <div>
               <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">Preferências do aplicativo</h2>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={handleBiometricToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.035] p-3 text-left active:scale-[0.985]"><Fingerprint size={18} className={isBiometricEnabled ? "text-violet-300" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Biometria</p><p className="truncate text-[9px] text-ink-muted">{isBiometricEnabled ? "Ativa" : "Inativa"}</p></div></button>
-                <button type="button" onClick={handleNotificationsToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-left active:scale-[0.985]"><Bell size={18} className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Lembretes</p><p className="truncate text-[9px] text-ink-muted">{!isNativeApp ? "Somente APK" : isNotificationsEnabled ? "Ativos" : "Inativos"}</p></div></button>
+                <button type="button" onClick={handleBiometricToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-violet-400/15 bg-violet-400/[0.035] p-3 text-left active:scale-[0.985]"><Fingerprint size={18} className={isBiometricEnabled ? "text-violet-300" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Biometria</p><p className="truncate text-[11px] text-ink-muted">{isBiometricEnabled ? "Ativa" : "Inativa"}</p></div></button>
+                <button type="button" onClick={handleNotificationsToggle} className="flex min-w-0 items-center gap-2 rounded-[18px] border border-emerald-400/15 bg-emerald-400/[0.035] p-3 text-left active:scale-[0.985]"><Bell size={18} className={isNotificationsEnabled ? "text-emerald-400" : "text-ink-muted"} /><div className="min-w-0"><p className="truncate text-xs font-semibold text-ink-primary">Lembretes</p><p className="truncate text-[11px] text-ink-muted">{!isNativeApp ? "Somente APK" : isNotificationsEnabled ? "Ativos" : "Inativos"}</p></div></button>
               </div>
               <button type="button" onClick={() => {trigger("vibrate"); router.push("/saude/lembretes");}} className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.045] px-3 text-left text-xs font-semibold text-emerald-200 transition-colors active:scale-[0.985] motion-reduce:transform-none" aria-label="Abrir Central de notificações para personalizar categorias e horários"><span className="flex items-center gap-2"><Bell size={15}/> Central de notificações e categorias</span><ChevronRight size={14}/></button>
               {isNativeApp && isNotificationsEnabled ? <p className="mt-2 text-[10px] leading-relaxed text-ink-muted">Lembretes no mesmo horário são agrupados; cada tomada continua individual no prontuário.</p> : null}

@@ -14,6 +14,7 @@ import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
 import { todayTimelineGroupPresentation } from "@/components/hoje/TodayTimelineGroupPresentation";
 import { getDiasRestantesEstilo } from "@/lib/today/withdrawal-urgency-presentation";
 import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
+import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
 import { TodayUnscheduledRoutine } from "@/components/hoje/TodayUnscheduledRoutine";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
@@ -1619,7 +1620,7 @@ export default function HojePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-32">
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
         {/* M40 — Cabeçalho compacto: data e progresso, sem filtros redundantes. */}
         <header className="border-b border-surface-border/40 bg-void px-4 pb-3 pt-3 shadow-[0_10px_26px_-24px_rgba(47,227,201,0.4)]">
           <div className="flex items-center justify-between gap-3">
@@ -1646,6 +1647,11 @@ export default function HojePage() {
           />
           <span className="sr-only">Doses futuras não estão atrasadas antes do horário. Registros contraditórios exigem revisão separada.</span>
         </header>
+        {/* P5: a navegação de seções é uma camada de apresentação sobre dados já selecionados. */}
+        <div className="mx-auto max-w-3xl px-4 pt-2">
+          <TodayJourneyRailP5 isToday={isHoje} pendingCount={isHoje?totalPendentes:0}
+            onInteraction={()=>trigger("vibrate")}/>
+        </div>
         <div className="mx-auto max-w-3xl px-4 pt-3"><CareFlowSummaryM2 /></div>
 
         {/* =========================================================

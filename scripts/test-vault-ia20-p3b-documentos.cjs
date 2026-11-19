@@ -24,8 +24,8 @@ ok(personalHeader.includes('role="group" aria-label="Ferramentas do Cofre Pessoa
 for(const action of ['setShowFilters((previous) => !previous)','onClick={openGallery}','onClick={toggleViewMode}','<ExportCardButton cards={getExportCards()}'])ok(personalHeader.includes(action),`acao pessoal preservada ${action}`);
 ok((personalHeader.match(/h-11 w-11/g)||[]).length>=4,'quatro botoes da barra pessoal com piso 44');
 ok(personalHeader.includes('touchTarget="comfortable"'),'PDF pessoal pede area de toque 44');
-ok(personal.includes('max-h-[45dvh]')&&personal.includes('overscroll-y-contain')&&personal.includes('role="region" aria-label="Filtros do Cofre Pessoal"'),'filtros do cofre rolam localmente');
-ok(personal.includes('grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'),'grade evita dois cards espremidos a 320px');
+ok(personal.includes('max-h-[45dvh]')&&personal.includes('overscroll-y-contain')&&personal.includes('role="region" aria-label="Filtros do Cofre Pessoal"')&&personal.includes('aria-expanded={showFilters}')&&personal.includes('aria-controls="p5-filtros-cofre"'),'filtros do cofre rolam e anunciam expansao');
+ok(personal.includes('grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'),'grade mostra um documento por linha ate 479px, sem comprimir leitura');
 ok(personal.includes('viewMode ===')&&personal.includes('filteredDocs.map')&&personal.includes('InfiniteScrollTrigger'),'lista/grade e paginacao intactas');
 ok(personal.includes('exportDocumentSummariesToPDF(filteredDocs)')&&personal.includes('router.push(\n          "/documentos/novo"'),'exportacao e cadastro pessoal originais');
 ok(clinicalHeader.includes('flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between'),'Acervo separa cabecalho dos botoes a 320px');

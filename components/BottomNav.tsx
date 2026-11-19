@@ -428,11 +428,11 @@ export function BottomNav() {
                     aria-current={active ? "page" : undefined}
                     aria-label={item.label}
                     className={`
-                      relative isolate flex min-h-11 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-0.5 min-[360px]:px-2 py-1 transition-all duration-200 active:scale-95
+                      relative isolate flex min-h-11 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl px-0.5 min-[360px]:px-2 py-1 transition-all duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 motion-reduce:transition-none
                       ${
                         active
                           ? "text-ink-primary"
-                          : "text-ink-muted/65 hover:text-ink-primary"
+                          : "text-ink-muted/85 hover:text-ink-primary"
                       }
                     `}
                   >
@@ -463,7 +463,7 @@ export function BottomNav() {
                         className={`text-[9px] min-[360px]:text-[10px] font-medium ${
                           active
                             ? "text-ink-primary"
-                            : "text-ink-muted/65"
+                            : "text-ink-muted/85"
                         }`}
                       >
                         {

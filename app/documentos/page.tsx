@@ -1116,7 +1116,7 @@ export default function DocumentsPage() {
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-4 pb-4 pt-4 backdrop-blur-xl header-safe-top sm:px-5">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/95 px-4 pb-2 pt-3 backdrop-blur-xl header-safe-top sm:px-5">
           <div className="mx-auto max-w-5xl">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -1159,7 +1159,7 @@ export default function DocumentsPage() {
                {/* IA20_P3B_DOCS_TOOLS: busca completa em telas estreitas. */}
                <ListSearch initiallyExpanded className="w-full min-w-0 sm:flex-1" value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nome, número ou nota..." />
                <div role="group" aria-label="Ferramentas do Cofre Pessoal" className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto sm:shrink-0">
-              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
+              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} id="p5-toggle-filtros" aria-controls="p5-filtros-cofre" aria-expanded={showFilters} className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
                 <SlidersHorizontal size={16} />
                 {activeFilterCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1 text-[9px] font-bold text-void">{activeFilterCount}</span>}
               </button>
@@ -1273,9 +1273,9 @@ export default function DocumentsPage() {
                       1,
                     ],
                   }}
-                  className="overflow-hidden"
+                  className="absolute inset-x-2 top-full z-30 overflow-hidden rounded-b-2xl shadow-[0_18px_40px_rgba(0,0,0,0.5)]"
                 >
-                  <div role="region" aria-label="Filtros do Cofre Pessoal" className="mt-4 max-h-[45dvh] space-y-4 overflow-y-auto overscroll-y-contain rounded-[22px] border border-surface-border/40 bg-surface/95 p-4 shadow-sm">
+                  <div id="p5-filtros-cofre" role="region" aria-label="Filtros do Cofre Pessoal" className="mt-1 max-h-[45dvh] space-y-4 overflow-y-auto overscroll-y-contain rounded-[18px] border border-surface-border/60 bg-void/95 p-4 shadow-sm">
                     {/* ==========================================
                         CATEGORIA
                         ========================================== */}
@@ -1514,6 +1514,10 @@ export default function DocumentsPage() {
                         </button>
                       </div>
                     </div>
+                    <button type="button" onClick={()=>{setShowFilters(false);requestAnimationFrame(()=>document.getElementById("p5-toggle-filtros")?.focus());}}
+                      className="mt-1 flex min-h-11 w-full items-center justify-center rounded-xl border border-ice/30 bg-ice/10 px-3 text-xs font-semibold text-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">
+                      Fechar filtros
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -1745,7 +1749,7 @@ export default function DocumentsPage() {
                   }
                   initial="hidden"
                   animate="show"
-                  className="vault-deferred-lg grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+                  className="vault-deferred-lg grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
                 >
                   {filteredDocs.map(
                     (

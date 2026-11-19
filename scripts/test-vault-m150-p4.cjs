@@ -17,7 +17,7 @@ ok('Update Center preservado',more.includes('id="mais-atualizacoes"')&&(more.mat
 ok('Tema em três alvos iguais',more.includes('grid grid-cols-3')&&more.includes('h-[72px] w-full min-w-0')&&more.includes('aria-pressed={selected}'));
 ok('Diagnóstico avançado mantém dono',more.includes('isDiagnosticOwner && (')&&more.includes('diagnosticOpen && (')&&more.includes('handleErudaToggle'));
 ok('Limpeza de dados conserva confirmação',more.includes('setShowClearDataModal(true)')&&more.includes('RigorousConfirmInput'));
-ok('Rodapé respeita safe area',more.includes('pb-[calc(5rem+env(safe-area-inset-bottom))]'));
+ok('Rodapé respeita safe area',more.includes('pb-[calc(8rem+env(safe-area-inset-bottom,0px))]')&&!more.includes('min-h-[100dvh] overflow-y-auto bg-void'));
 ok('Paleta Home por domínio',center.includes('border-ice/20')&&center.includes('border-coral/20 bg-coral/[0.06] text-coral'));
 ok('Home explica recorte de doses',hero.includes('Home: horários de contínuos.')&&hero.includes('onOpenToday')&&home.includes('onOpenToday={() =>'));
 ok('Hoje não presume contagem igual à Home',pulse.includes('A Home resume apenas a rotina de medicamentos contínuos'));
