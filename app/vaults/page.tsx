@@ -241,11 +241,7 @@ export default function VaultsPage() {
             <EmptyState
               icon={Lock}
               title="Nenhum cofre criado"
-              description="Crie um cofre para organizar e compartilhar documentos com sua família, médicos ou cuidadores."
-              actionLabel="Criar cofre"
-              onAction={
-                handleCreateVault
-              }
+              description="Use “Novo cofre” no topo para organizar e compartilhar documentos com pessoas autorizadas."
             />
           ) : (
             vaults.map(

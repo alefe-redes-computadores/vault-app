@@ -881,18 +881,10 @@ function TratamentoListContent() {
               description={
                 hasFilters
                   ? "Nenhum tratamento corresponde à busca ou aos filtros atuais."
-                  : "Cadastre tratamentos para organizar medicamentos, diagnósticos, profissionais e o histórico de acompanhamento."
+                  : "Use “Novo Tratamento” no topo para organizar medicamentos, diagnósticos, profissionais e histórico de acompanhamento."
               }
-              actionLabel={
-                hasFilters
-                  ? "Limpar filtros"
-                  : "Criar tratamento"
-              }
-              onAction={
-                hasFilters
-                  ? handleClearFilters
-                  : handleCreate
-              }
+              actionLabel={hasFilters ? "Limpar filtros" : undefined}
+              onAction={hasFilters ? handleClearFilters : undefined}
             />
           ) : (
             filteredList.map(

@@ -349,14 +349,8 @@ export default function RetiradasPage() {
               variant={retiradas.length === 0 ? "default" : "no-results"}
               description={
                 retiradas.length === 0
-                  ? "Cadastre uma retirada para transformar a próxima obtenção do medicamento em um compromisso real."
+                  ? "Use “Nova Retirada” no topo para transformar a próxima obtenção do medicamento em um compromisso real."
                   : "Tente alterar a busca ou os filtros."
-              }
-              actionLabel={retiradas.length === 0 ? "Nova retirada" : undefined}
-              onAction={
-                retiradas.length === 0
-                  ? () => navigateWithReturn("/saude/retiradas/nova")
-                  : undefined
               }
             />
           ) : (

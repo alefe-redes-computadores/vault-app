@@ -512,11 +512,7 @@ export default function PasswordsPage() {
                   KeyRound
                 }
                 title="Nenhuma senha cadastrada"
-                description="Adicione a primeira credencial desta pessoa ao Vault."
-                actionLabel="Nova senha"
-                onAction={
-                  handleCreatePassword
-                }
+                description="Use “Nova senha” no topo para adicionar a primeira credencial desta pessoa ao Vault."
               />
             )
           ) : (

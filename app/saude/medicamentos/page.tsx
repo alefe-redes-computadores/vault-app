@@ -1683,18 +1683,8 @@ export default function MedicamentosListPage() {
                 <Search size={17} />
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  trigger("vibrate");
-                  router.push("/saude/retiradas");
-                }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-400/25 bg-amber-400/[.07] text-amber-300 transition-all active:scale-95"
-                aria-label="Abrir retiradas de medicamentos"
-                title="Retiradas"
-              >
-                <History size={18} />
-              </button>
+              {/* P0: Retiradas permanece na area proprio/fluxos clinicos.
+                  O espaco do cabecalho pertence a busca; criacao tem CTA dedicado. */}
 
             </div>
           }

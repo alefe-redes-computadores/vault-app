@@ -3,6 +3,8 @@ import fs from "node:fs";
 const nav = fs.readFileSync("components/BottomNav.tsx", "utf8");
 const compose = fs.readFileSync("lib/navigation/bottom-nav-compose.ts", "utf8");
 const cards = fs.readFileSync("app/cartoes/page.tsx", "utf8");
+const header = fs.readFileSync("components/list/ListPageHeader.tsx", "utf8");
+const create = fs.readFileSync("components/list/ContextualCreateP2.tsx", "utf8");
 const vaults = fs.readFileSync("app/vaults/page.tsx", "utf8");
 const tratamentos = fs.readFileSync("app/saude/tratamentos/page.tsx", "utf8");
 const retiradas = fs.readFileSync("app/saude/retiradas/page.tsx", "utf8");
@@ -28,9 +30,10 @@ ok(!vaults.includes('aria-label="Criar novo cofre"'), "FAB duplicado de cofres p
 ok(!tratamentos.includes('aria-label="Criar novo tratamento"'), "FAB duplicado de tratamentos permaneceu");
 ok(!retiradas.includes('aria-label="Nova retirada"'), "botão duplicado de retiradas permaneceu");
 
-ok(cards.includes('actionLabel="Novo cartão"'), "CTA EmptyState de cartões foi removido");
-ok(vaults.includes('actionLabel="Criar cofre"'), "CTA EmptyState de cofres foi removido");
-ok(tratamentos.includes('"Criar tratamento"'), "CTA EmptyState de tratamentos foi removido");
-ok(retiradas.includes('actionLabel={retiradas.length === 0 ? "Nova retirada" : undefined}'), "CTA EmptyState de retiradas foi removido");
+ok(!cards.includes('actionLabel="Novo cartão"'), "Cartões: cadastro único no cabeçalho, sem EmptyState duplicado");
+ok(!vaults.includes('actionLabel="Criar cofre"'), "Cofres: cadastro único no cabeçalho, sem EmptyState duplicado");
+ok(!tratamentos.includes('"Criar tratamento"'), "Tratamentos: cadastro único no cabeçalho, sem EmptyState duplicado");
+ok(!retiradas.includes('actionLabel={retiradas.length === 0 ? "Nova retirada" : undefined}'), "Retiradas: cadastro único no cabeçalho, sem EmptyState duplicado");
 
+ok(header.includes('data-vault-p0-create-row="visible"') && header.includes('<ContextualCreateP2 option={p2Options[0]}') && create.includes('withReturnTarget(option.path, origin)') && create.includes('const Icon = Plus;'), "CTA do cabeçalho visível, Plus universal e retorno contextual real");
 console.log("V44 CONTEXTUAL FAB CONTRACT: OK");

@@ -1,29 +1,6 @@
 // VAULT M6 — ações contextuais puras da navegação inferior.
 // Opções, ícones e tons sem estado de UI, consulta remota ou operações clínicas.
-import {
-  Home,
-  LayoutGrid,
-  Plus,
-  Pill,
-  FileWarning,
-  Stethoscope,
-  Building2,
-  CreditCard,
-  Landmark,
-  FolderHeart,
-  Calendar,
-  Syringe,
-  FlaskConical,
-  MapPin,
-  FileText,
-  Lock,
-  User,
-  Clock,
-  FolderOpen,
-  Zap,
-  Activity,
-  type LucideIcon,
-} from "lucide-react";
+import { Plus, type LucideIcon } from "lucide-react";
 
 export interface ComposeOption {
   id: string;
@@ -36,73 +13,73 @@ const SAUDE_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "medicamento",
     label: "Medicamento",
-    icon: Pill,
+    icon: Plus,
     path: "/saude/medicamentos/novo",
   },
   {
     id: "tratamento",
     label: "Tratamento",
-    icon: FolderHeart,
+    icon: Plus,
     path: "/saude/tratamentos/novo",
   },
   {
     id: "renovacao",
     label: "Renovação",
-    icon: FileWarning,
+    icon: Plus,
     path: "/saude/renovacao/nova",
   },
   {
     id: "medico",
     label: "Médico",
-    icon: Stethoscope,
+    icon: Plus,
     path: "/saude/medicos/novo",
   },
   {
     id: "farmacia",
     label: "Farmácia",
-    icon: Building2,
+    icon: Plus,
     path: "/saude/farmacias/novo",
   },
   {
     id: "hospital",
     label: "Hospital",
-    icon: Building2,
+    icon: Plus,
     path: "/saude/hospitais/novo",
   },
   {
     id: "local",
     label: "Posto / Local",
-    icon: MapPin,
+    icon: Plus,
     path: "/saude/locais/novo",
   },
   {
     id: "exame",
     label: "Exame",
-    icon: FlaskConical,
+    icon: Plus,
     path: "/saude/exames/novo",
   },
   {
     id: "consulta",
     label: "Consulta",
-    icon: Calendar,
+    icon: Plus,
     path: "/saude/consultas/nova",
   },
   {
     id: "cirurgia",
     label: "Cirurgia",
-    icon: Syringe,
+    icon: Plus,
     path: "/saude/cirurgias/nova",
   },
   {
     id: "cid",
     label: "CID",
-    icon: FileText,
+    icon: Plus,
     path: "/saude/cids/novo",
   },
   {
     id: "sintoma",
     label: "Sintoma / Medição",
-    icon: Activity,
+    icon: Plus,
     path: "/saude/registros/novo",
   },
 ];
@@ -120,13 +97,13 @@ const HOJE_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "dose-unica",
     label: "Dose Única",
-    icon: Zap,
+    icon: Plus,
     path: "/hoje?action=dose",
   },
   {
     id: "sintoma",
     label: "Novo Sintoma",
-    icon: Activity,
+    icon: Plus,
     path: "/saude/registros/novo",
   },
 ];
@@ -144,7 +121,7 @@ const MEDICOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-medico",
     label: "Novo Médico",
-    icon: Stethoscope,
+    icon: Plus,
     path: "/saude/medicos/novo",
   },
 ];
@@ -153,7 +130,7 @@ const MEDICAMENTOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-medicamento",
     label: "Novo Medicamento",
-    icon: Pill,
+    icon: Plus,
     path: "/saude/medicamentos/novo",
   },
 ];
@@ -162,7 +139,7 @@ const FARMACIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-farmacia",
     label: "Nova Farmácia",
-    icon: Building2,
+    icon: Plus,
     path: "/saude/farmacias/novo",
   },
 ];
@@ -171,7 +148,7 @@ const TRATAMENTOS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-tratamento",
     label: "Novo Tratamento",
-    icon: FolderHeart,
+    icon: Plus,
     path: "/saude/tratamentos/novo",
   },
 ];
@@ -180,7 +157,7 @@ const HOSPITAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-hospital",
     label: "Novo Hospital",
-    icon: Building2,
+    icon: Plus,
     path: "/saude/hospitais/novo",
   },
 ];
@@ -189,7 +166,7 @@ const LOCAIS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-local",
     label: "Novo Local",
-    icon: MapPin,
+    icon: Plus,
     path: "/saude/locais/novo",
   },
 ];
@@ -198,7 +175,7 @@ const RENOVACOES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-renovacao",
     label: "Nova Renovação",
-    icon: FileWarning,
+    icon: Plus,
     path: "/saude/renovacao/nova",
   },
 ];
@@ -207,7 +184,7 @@ const EXAMES_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-exame",
     label: "Novo Exame",
-    icon: FlaskConical,
+    icon: Plus,
     path: "/saude/exames/novo",
   },
 ];
@@ -216,7 +193,7 @@ const CONSULTAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-consulta",
     label: "Nova Consulta",
-    icon: Calendar,
+    icon: Plus,
     path: "/saude/consultas/nova",
   },
 ];
@@ -225,7 +202,7 @@ const CIRURGIAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-cirurgia",
     label: "Nova Cirurgia",
-    icon: Syringe,
+    icon: Plus,
     path: "/saude/cirurgias/nova",
   },
 ];
@@ -234,7 +211,7 @@ const CIDS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-cid",
     label: "Novo CID",
-    icon: FileText,
+    icon: Plus,
     path: "/saude/cids/novo",
   },
 ];
@@ -243,7 +220,7 @@ const REGISTROS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-registro",
     label: "Novo Registro",
-    icon: Activity,
+    icon: Plus,
     path: "/saude/registros/novo",
   },
 ];
@@ -252,7 +229,7 @@ const RETIRADAS_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-retirada",
     label: "Nova Retirada",
-    icon: Pill,
+    icon: Plus,
     path: "/saude/retiradas/nova",
   },
 ];
@@ -261,7 +238,7 @@ const SUPPLY_LIST_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-fornecimento",
     label: "Novo fornecimento",
-    icon: FolderHeart,
+    icon: Plus,
     path: "/saude/fornecimento?action=novo",
   },
 ];
@@ -270,7 +247,7 @@ const CARDS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "cartao",
     label: "Novo cartão",
-    icon: CreditCard,
+    icon: Plus,
     path: "/cartoes/novo",
   },
 ];
@@ -279,7 +256,7 @@ const CONTAS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "conta",
     label: "Nova conta bancária",
-    icon: Landmark,
+    icon: Plus,
     path: "/contas/novo",
   },
 ];
@@ -288,7 +265,7 @@ const VAULTS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "novo-cofre",
     label: "Novo cofre",
-    icon: Lock,
+    icon: Plus,
     path: "/vaults/novo",
   },
 ];
@@ -297,7 +274,7 @@ const SENHAS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-senha",
     label: "Nova senha",
-    icon: Lock,
+    icon: Plus,
     path: "/senhas/novo",
   },
 ];
@@ -306,7 +283,7 @@ const PESSOAS_COMPOSE_OPTIONS: ComposeOption[] = [
   {
     id: "nova-pessoa",
     label: "Nova Pessoa",
-    icon: User,
+    icon: Plus,
     path: "/pessoas/novo",
   },
 ];

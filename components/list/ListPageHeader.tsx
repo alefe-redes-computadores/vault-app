@@ -169,13 +169,21 @@ export function ListPageHeader({
           </div>
         </div>
 
-        {(rightAction || p2CreateVisible) && (
+        {rightAction && (
           <div className="flex min-w-0 max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5 self-start">
             {rightAction}
-            {p2CreateVisible && <ContextualCreateP2 option={p2Options[0]} pathname={pathname} searchParams={searchParams} />}
           </div>
         )}
       </div>
+
+      {/* P0: CTA autonomo, sempre no fluxo visivel do cabecalho e fora do overflow de rightAction.
+          Uma unica autoridade: se o header possui a criacao, o Compose inferior permanece suprimido. */}
+      {p2CreateVisible && (
+        <div data-vault-p0-create-row="visible" role="group" aria-label={`Adicionar em ${title}`}
+          className="mt-2 grid w-full min-w-0 grid-cols-1 sm:flex sm:justify-end">
+          <ContextualCreateP2 option={p2Options[0]} pathname={pathname} searchParams={searchParams} />
+        </div>
+      )}
 
       {children && (
         <div role="group" aria-label={`Ferramentas de ${title}`} className="mt-3 flex min-w-0 flex-wrap items-center gap-2">

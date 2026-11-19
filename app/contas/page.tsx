@@ -273,17 +273,7 @@ export default function ContasPage() {
               description={
                 hasSearch
                   ? "Tente buscar por outro título ou banco."
-                  : "Adicione suas contas bancárias para manter os dados organizados no Vault."
-              }
-              actionLabel={
-                hasSearch
-                  ? undefined
-                  : "Nova conta"
-              }
-              onAction={
-                hasSearch
-                  ? undefined
-                  : handleNewAccount
+                  : "Use “Nova conta bancária” no topo para manter os dados organizados no Vault."
               }
             />
           ) : (

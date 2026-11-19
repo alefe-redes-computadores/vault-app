@@ -365,11 +365,7 @@ export default function CartoesPage() {
                   CreditCard
                 }
                 title="Nenhum cartão cadastrado"
-                description="Adicione o primeiro cartão desta pessoa ao Vault."
-                actionLabel="Novo cartão"
-                onAction={
-                  handleCreateCard
-                }
+                description="Use “Novo cartão” no topo para adicionar o primeiro cartão desta pessoa ao Vault."
               />
             )
           ) : (
