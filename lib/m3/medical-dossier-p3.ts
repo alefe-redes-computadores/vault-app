@@ -45,6 +45,18 @@ const date = (v:unknown):string => {const s=safe(v,30).slice(0,10);return validC
 const clock = (v:unknown):string|null => typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v)?v:null;
 const keyOf = (x:unknown):string=>safe(x,180);
 const nice = (x:unknown,fallback='Não informado'):string=>safe(x)||fallback;
+/** P0: formatação somente leitura; date-only não sofre conversão UTC. */
+const human=(text:string):string=>text
+  .replace(/\bhealth_connect\b/gi,'Health Connect / dispositivo conectado')
+  .replace(/\bhealth_record\b/gi,'Registro de saúde')
+  .replace(/\bconsultation\b/gi,'Consulta médica')
+  .replace(/\bscheduled\b/gi,'Programada')
+  .replace(/\besporadico\b/gi,'esporádico')
+  .replace(/\bmanual\b/gi,'Avulsa')
+  .replace(/\b(20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d))\b/g,(value)=>{
+     const instant=new Date(value);return Number.isNaN(instant.getTime())?value:
+       new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(instant);
+  });
 export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
   ownerId:string; personId:string; personName:string; start:string; end:string;
@@ -108,7 +120,7 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
   const rows:MedicalRowP3[]=[];
   const add=(r:Omit<MedicalRowP3,'key'>)=>{
     if(!r.sourceId||!r.source||!within(r.date))return;
-    rows.push({...r,key:`${r.section}:${r.source}:${r.sourceId}`,title:safe(r.title,160)||'Registro sem título',detail:safe(r.detail,1200),
+    rows.push({...r,key:`${r.section}:${r.source}:${r.sourceId}`,title:human(safe(r.title,160))||'Registro sem título',detail:human(safe(r.detail,1200)),
       relations:[...new Set(r.relations.filter(Boolean))].slice(0,25)});
   };
   for(const row of base.rows){
@@ -122,13 +134,18 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       if(linked)relations.push(`Consulta relacionada: ${safe(linked.especialidade,90)||'Atendimento'} · ${date(linked.data)||'sem data'}`);
     }
     const dose=row.source==='dose_log'?doseMap.get(row.sourceId):undefined;
+    const reading=row.category==='measurements'?owned(context.registrosSaude).find(r=>r.id===row.sourceId):undefined;
     if(dose){const m=medMap.get(dose.medicamento_id);if(m)relations.push(`Medicamento: ${safe(m.nome,100)}`);}
     if(c){for(const id of c.medicamento_ids??[]){const m=medMap.get(id);if(m)relations.push(`Medicamento vinculado: ${safe(m.nome,100)}`);}
       for(const id of c.tratamento_ids??[]){const t=treatMap.get(id);if(t)relations.push(`Tratamento vinculado: ${safe(t.nome,100)}`);}
     }
-    add({section:row.category,date:row.date,time:row.time,title:row.title,detail:row.detail,source:row.source,
+    const medForDose=dose?medMap.get(dose.medicamento_id):undefined;
+    const doseTitle=medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · '+safe(medForDose.dosagem,45):''} — ${row.title}`:row.title;
+    add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:row.detail,source:row.source,
       sourceId:row.sourceId,registeredAt:null,provenance:row.category==='brain'?'motor':row.category==='symptoms'||row.category==='consultations'?'declarado':'registrado',relations,
-      href:row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:
+      href:dose?.id?`/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(dose.id)}`:
+       reading?.id?`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(reading.id)}`:
+       row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:
         symptom?.id?`/saude/careflow/sintomas#careflow-sintoma-${encodeURIComponent(symptom.id)}`:null});
   }
   if(selected('careflow'))for(const e of cf){

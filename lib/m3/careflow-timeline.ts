@@ -7,7 +7,8 @@ const label:Record<CareFlowKindM2,string>={
   monitor_plan:'Plano de acompanhamento',monitor_reading:'Aferição vinculada',monitor_note:'Observação vinculada'
 };
 export type CareFlowTimelineRowM3={id:string;kind:CareFlowKindM2;date:string;dateSource:'evento'|'cadastro';title:string;details:string;parentId:string|null;relatedId:string|null};
-const safe=(x:unknown,max=140)=>typeof x==='string'?x.trim().slice(0,max):'';
+const safe=(x:unknown,max=140)=>typeof x==='string'?x.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,max):'';
+const human=(s:string)=>s.replace(/\bhealth_connect\b/g,'Health Connect / dispositivo conectado').replace(/\bhealth_record\b/g,'Registro de saúde').replace(/\bconsultation\b/g,'Consulta médica').replace(/\bscheduled\b/g,'Programada');
 export function buildCareFlowTimelineM3(events:readonly CareFlowEventM2[],ownerId:string,personId:string,registros:readonly {id?:string;user_id?:string;person_id?:string;nome:string;data:string;horario?:string;intensidade?:number|null;observacoes?:string|null}[]=[]):CareFlowTimelineRowM3[]{
   if(!ownerId||!personId)return [];
   return events.filter(e=>e.user_id===ownerId&&e.person_id===personId&&CAREFLOW_KINDS_M3.includes(e.kind))
@@ -18,7 +19,7 @@ export function buildCareFlowTimelineM3(events:readonly CareFlowEventM2[],ownerI
         ? registros.find(r=>r.id===e.related_id&&r.user_id===ownerId&&r.person_id===personId):undefined;
       const date=linked&&isIsoDateM2(linked.data)?linked.data:withDate?proposed:safe(e.created_at,10);
       const title=linked?`Sintoma · ${safe(linked.nome,100)}`:safe(e.payload.title)||safe(e.payload.name)|| (e.kind==='monitor_note'&&e.payload.link==='consultation_to_existing_symptom'?'Vínculo de sintoma a revisar':label[e.kind]);
-      const details=[safe(e.payload.result),safe(e.payload.state),safe(e.payload.note),safe(e.payload.source)]
+      const details=[safe(e.payload.result),safe(e.payload.state),safe(e.payload.note),safe(e.payload.source)].map(human)
         .filter(Boolean).join(' · ')+(linked?` · ${linked.intensidade==null?'Intensidade não informada':`Intensidade ${linked.intensidade}/10`}${linked.horario?` · ${linked.horario}`:''}${linked.observacoes?` · ${safe(linked.observacoes,140)}`:''}`:'');
       return {id:e.id,kind:e.kind,date,dateSource:(Boolean(linked&&isIsoDateM2(linked.data))||withDate)?'evento' as const:'cadastro' as const,
         title,details,parentId:e.parent_id,relatedId:e.related_id};
