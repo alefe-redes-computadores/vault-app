@@ -5,6 +5,7 @@ import type { Medicamento, DoseLog } from "@/lib/types";
 import { temporaryCourseSummaries } from "@/lib/health-intelligence/temporary-course-insights";
 import { CourseReviewM1 } from "@/components/saude/CourseReviewM1";
 import { TemporaryCourseJourneyD4 } from "@/components/saude/TemporaryCourseJourneyD4";
+import { CourseDecisionControlD4 } from "@/components/saude/CourseDecisionControlD4";
 
 export function TemporaryCourseMedicationCard({ med, doseLogs, personId, today, onEdit }: {
   med: Medicamento; doseLogs: DoseLog[]; personId: string; today: string; onEdit: () => void;
@@ -26,6 +27,7 @@ export function TemporaryCourseMedicationCard({ med, doseLogs, personId, today, 
       <p className="font-mono text-[11px] text-ink-primary">{item.from.split("-").reverse().join("/")} → {item.through.split("-").reverse().join("/")}</p>
       <p className="mt-1 text-[10px] text-ink-muted">{item.pending} em aberto · {item.overdue} de dias anteriores · {item.taken} tomadas · {item.ignored} ignoradas</p>
       <TemporaryCourseJourneyD4 med={med} personId={personId} courseKey={item.key} today={today} doseLogs={doseLogs}/>
+      <CourseDecisionControlD4 med={med} personId={personId} courseKey={item.key} from={item.from} through={item.through} doseLogs={doseLogs}/>
       <CourseReviewM1 med={med} personId={personId} courseKey={item.key} through={item.through}/>
     </div>)}</div>
     {courses.length > 3 && <button type="button" aria-expanded={showAll} onClick={() => setShowAll(value => !value)}

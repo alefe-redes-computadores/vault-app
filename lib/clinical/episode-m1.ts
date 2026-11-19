@@ -24,7 +24,16 @@ export type CourseReviewM1 = {
   nota?: string;
   registrado_em: string;
 };
-export type MedicationClinicalContextM1 = { versao: 1; regimes: ClinicalRouteEpisodeM1[]; revisoes: CourseReviewM1[] };
+export type CourseDecisionD4 = {
+  id: string; course_key: string; tipo: "conclusao_relatada" | "interrupcao_relatada";
+  data_evento: string; fonte: "relato_usuario"; registrado_em: string;
+  nota?: string; substitui_id?: string;
+};
+export type MedicationClinicalContextM1 = {
+  versao: 1; regimes: ClinicalRouteEpisodeM1[]; revisoes: CourseReviewM1[];
+  /** Declarações do usuário: não mutam doses, prescrição ou agenda. */
+  decisoes_d4?: CourseDecisionD4[];
+};
 export type ConsultationDecisionKindM1 = "medicamento" | "exame" | "monitoramento" | "retorno" | "orientacao" | "outro";
 export type ConsultationDecisionStateM1 = "discutido" | "prescricao_relatada" | "solicitado_relato" | "pendente" | "realizado_confirmado";
 export type ConsultationDecisionM1 = {
@@ -45,8 +54,13 @@ export const dateIsValidM1=(date:string)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(date))
 export const emptyMedicationClinicalContextM1=():MedicationClinicalContextM1=>({versao:1,regimes:[],revisoes:[]});
 export function normalizeMedicationClinicalContextM1(input?:MedicationClinicalContextM1|null):MedicationClinicalContextM1{
  if(!input)return emptyMedicationClinicalContextM1();
- if(input.versao!==1||!Array.isArray(input.regimes)||!Array.isArray(input.revisoes)||input.regimes.length>120||input.revisoes.length>180)throw Error("Contexto clínico antigo ou inválido: revisar antes de salvar.");
- return {versao:1,regimes:[...input.regimes],revisoes:[...input.revisoes]};
+ if(input.versao!==1||!Array.isArray(input.regimes)||!Array.isArray(input.revisoes)||input.regimes.length>120||input.revisoes.length>180||
+    (input.decisoes_d4!==undefined && (!Array.isArray(input.decisoes_d4)||input.decisoes_d4.length>120||
+      input.decisoes_d4.some(x=>!x||typeof x.id!=="string"||typeof x.course_key!=="string"||
+        !["conclusao_relatada","interrupcao_relatada"].includes(x.tipo)||x.fonte!=="relato_usuario"||!dateIsValidM1(x.data_evento))||
+      new Set(input.decisoes_d4.map(x=>x.id)).size!==input.decisoes_d4.length)))
+    throw Error("Contexto clínico antigo ou inválido: revisar antes de salvar.");
+ return {versao:1,regimes:[...input.regimes],revisoes:[...input.revisoes],...(input.decisoes_d4!==undefined?{decisoes_d4:[...input.decisoes_d4]}:{})};
 }
 export function appendRouteEpisodeM1(context:MedicationClinicalContextM1|null|undefined,item:ClinicalRouteEpisodeM1):MedicationClinicalContextM1{
  const previous=normalizeMedicationClinicalContextM1(context);
@@ -67,6 +81,44 @@ export function recordCourseReviewM1(context:MedicationClinicalContextM1|null|un
  if(previous.revisoes.some(x=>x.id===item.id||x.course_key===item.course_key))throw Error("Este período já possui revisão. Não duplicar.");
  return {...previous,revisoes:[...previous.revisoes,item]};
 }
+/** D4 P2: autoridade única para declarações e retificações auditáveis.
+ * Registro NÃO resolve DoseLogs e NÃO altera o tratamento prescrito.
+ */
+export function appendCourseDecisionD4(context:MedicationClinicalContextM1|null|undefined,
+  item:CourseDecisionD4,medicationId:string,today:string):MedicationClinicalContextM1 {
+  const previous=normalizeMedicationClinicalContextM1(context);
+  if(!medicationId||!dateIsValidM1(today)||!item||typeof item.course_key!=="string")
+    throw Error("Identidade ou data de decisão inválida.");
+  const prefix=`${medicationId}|Tratamento temporário · `;
+  if(!item.course_key.startsWith(prefix)||item.course_key.length>280)throw Error("Chave do período não corresponde ao medicamento.");
+  const note=item.course_key.slice(prefix.length);
+  const match=/^(\d{4}-\d{2}-\d{2}) · (\d+) dia\(s\)(?: · intervalo (\d+)h · primeira (\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d))?$/.exec(note);
+  if(!match||!dateIsValidM1(match[1])||!Number.isInteger(Number(match[2]))||Number(match[2])<1||Number(match[2])>30)
+    throw Error("Origem do período não está validada.");
+  if(match[3] && (Number(match[3])<1||Number(match[3])>24||!match[4]?.startsWith(match[1])))
+    throw Error("Frequência ou início do período inválidos.");
+  if(!item.id||!/^[-a-zA-Z0-9]{8,80}$/.test(item.id)||
+    !["conclusao_relatada","interrupcao_relatada"].includes(item.tipo)||item.fonte!=="relato_usuario"||
+    !dateIsValidM1(item.data_evento)||item.data_evento<match[1]||item.data_evento>today||
+    typeof item.nota!=="string" && item.nota!==undefined||
+    (item.nota??"").length>500||!Number.isFinite(Date.parse(item.registrado_em)))
+    throw Error("Dados da declaração inválidos. Confira a data e o relato.");
+  const all=previous.decisoes_d4??[];
+  if(all.length>=120)throw Error("Limite de histórico atingido. Exporte o histórico antes de continuar.");
+  const matched=all.filter(x=>x.course_key===item.course_key);
+  const duplicate=all.find(x=>x.id===item.id);
+  if(duplicate){
+    // Idempotência de intenção: se exatamente o mesmo ID foi aplicado, não duplicar.
+    if(JSON.stringify(duplicate)===JSON.stringify(item))return previous;
+    throw Error("ID de declaração já usado com dados diferentes.");
+  }
+  const latest=matched.at(-1);
+  if(latest && item.substitui_id!==latest.id)throw Error("Este período já possui declaração; use uma retificação explícita.");
+  if(!latest && item.substitui_id)throw Error("Não existe declaração anterior para retificar.");
+  if(matched.length>=8)throw Error("Limite de retificações atingido; revise o histórico.");
+  return {...previous,decisoes_d4:[...all,item]};
+}
+
 export const emptyConsultationOutcomeM1=(now:string):ConsultationOutcomeM1=>({versao:1,relato:"",eventos:[],registrado_em:now,revisado_em:now});
 export function saveConsultationOutcomeM1(previous:ConsultationOutcomeM1|null|undefined,summary:string,event:ConsultationDecisionM1|null,now:string):ConsultationOutcomeM1{
  if(!Number.isFinite(Date.parse(now))||summary.length>4000)throw Error("Resumo excede o limite ou data inválida.");
