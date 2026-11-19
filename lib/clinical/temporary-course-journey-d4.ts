@@ -59,7 +59,7 @@ export function buildCourseJourneyD4(input: {
   let phase: CourseJourneyPhaseD4 = "review_dates";
   if (course) {
     try {
-      const end = temporaryCourseEnd({ ...course, times: course.intervalHours ? [] : ["00:00"] });
+      const end = temporaryCourseEnd({ ...course, times: course.intervalHours ? [] : [course.firstPlannedAt?.slice(11) || "00:00"] });
       const first = dayNumber(course.start), last = dayNumber(end), todayNo = dayNumber(today);
       if (first !== null && last !== null && todayNo !== null && last >= first && course.days >= 1) {
         usesHourInterval = Boolean(course.intervalHours);
@@ -83,6 +83,7 @@ export function buildCourseJourneyD4(input: {
     slots.add(slot);
     if (row.tomado_em && row.ignorado_em) conflicted = true;
     if (start && through && (row.data < start || row.data > through)) conflicted = true;
+    if (course?.firstPlannedAt && `${row.data}T${row.horario}` < course.firstPlannedAt) conflicted = true;
     if (row.tomado_em) confirmed++;
     else if (row.ignorado_em) ignored++;
     else if (row.data < today) earlierPending++;

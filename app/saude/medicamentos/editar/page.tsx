@@ -19,6 +19,8 @@ import { useMedicationCatalogDismiss } from "@/hooks/useMedicationCatalogDismiss
 import { doseLogsRepository } from "@/lib/repositories/doseLogs";
 import { TEMPORARY_COURSE_PREFIX, parseTemporaryCourseNote } from "@/lib/health-supply/temporary-course";
 import { TemporaryCourseFields, emptyTemporaryCourseDraft, readTemporaryCourseDraft, type TemporaryCourseDraft } from "@/components/saude/TemporaryCourseFields";
+import { previewTemporaryCourseRevisionD4P5, type TemporaryCourseRevisionLog } from "@/lib/clinical/temporary-course-revision-p5";
+import { TemporaryCourseRevisionPreviewP5 } from "@/components/saude/TemporaryCourseRevisionPreviewP5";
 
 import {
   buildMedicationRegulatoryContext,
@@ -30,6 +32,7 @@ import { getMedicationCatalogAuthority } from "@/lib/medication-catalog/authorit
 import {
   Suspense,
   useEffect,
+  useMemo,
   useRef,
   useState,
   } from "react";
@@ -570,6 +573,15 @@ function EditarMedicamentoContent() {
   const [temporaryCourse, setTemporaryCourse] = useState<TemporaryCourseDraft>(emptyTemporaryCourseDraft);
   const [frascosEdicao, setFrascosEdicao] = useState("1");
   const [hasExistingTemporaryCourse, setHasExistingTemporaryCourse] = useState(false);
+  // D4 P5: cópia somente para prévia; o repositório permanece a autoridade de escrita.
+  const [temporaryCourseExistingLogs, setTemporaryCourseExistingLogs] = useState<TemporaryCourseRevisionLog[]>([]);
+  const temporaryCourseRevisionPreview = useMemo(() => {
+    if (tipoUso !== "temporario" || !user?.id || !activePersonId || !id) return null;
+    try {
+      const course = readTemporaryCourseDraft({ ...temporaryCourse, enabled: true });
+      return course ? previewTemporaryCourseRevisionD4P5({ userId: user.id, personId: activePersonId, medicationId: id, course, logs: temporaryCourseExistingLogs }) : null;
+    } catch { return null; }
+  }, [tipoUso, user?.id, activePersonId, id, temporaryCourse, temporaryCourseExistingLogs]);
 
   const [
     vezesAoDia,
@@ -1319,9 +1331,11 @@ function EditarMedicamentoContent() {
                 "continuo"
             );
             if (activePersonId) {
-              const courseLogs = (await doseLogsRepository.getAll(activePersonId)).filter(log =>
-                log.medicamento_id === id && log.user_id === user?.id && log.motivo?.startsWith(TEMPORARY_COURSE_PREFIX));
+              const medicationLogs = (await doseLogsRepository.getAll(activePersonId)).filter(log =>
+                log.medicamento_id === id && log.user_id === user?.id && log.person_id === activePersonId);
+              const courseLogs = medicationLogs.filter(log => log.motivo?.startsWith(TEMPORARY_COURSE_PREFIX));
               if (cancelled) return;
+              setTemporaryCourseExistingLogs(medicationLogs);
               const todayISO = getLocalTodayISO();
               const futureLogs = courseLogs.filter(log => !log.tomado_em && !log.ignorado_em &&
                 `${log.data}T${log.horario}` > `${todayISO}T${new Date().toTimeString().slice(0,5)}`);
@@ -1338,6 +1352,8 @@ function EditarMedicamentoContent() {
                 days: String(parsedCourse.days),
                 times: usesInterval ? [] : [...new Set(currentCourseLogs.map(log => log.horario))].sort(),
                 firstTime: usesInterval ? parsedCourse.firstDoseAt!.slice(11, 16) : "",
+                firstFixedTime: usesInterval ? "" : (parsedCourse.firstPlannedAt?.slice(11, 16) || [...new Set(currentCourseLogs.map(log => log.horario))].sort()[0] || ""),
+                confirmedReview: false,
                 intervalHours: usesInterval ? String(parsedCourse.intervalHours) : "",
                 quantityPerDose: String(currentCourseLogs.find(log => log.quantidade)?.quantidade ?? item.estoque_unidade_por_dose ?? ""),
               } : emptyTemporaryCourseDraft);
@@ -2763,6 +2779,11 @@ function EditarMedicamentoContent() {
             activePersonId;
           const course = tipoUso === "temporario" ? readTemporaryCourseDraft({ ...temporaryCourse, enabled: true }) : null;
           if (tipoUso === "temporario" && !course) throw new Error("Informe o período e os horários do tratamento temporário.");
+          // D4 P5: nenhuma remoção de agendamento em aberto sem revisão explícita.
+          if (course && !temporaryCourseRevisionPreview) throw new Error("A conferência do planejamento não está pronta. Revise os horários antes de salvar.");
+          if (course && temporaryCourseRevisionPreview?.conflicts.length) throw new Error("Há conflitos nos horários do período. Revise o histórico antes de salvar.");
+          if (course && temporaryCourseRevisionPreview && temporaryCourseRevisionPreview.cancelled > 0 && !temporaryCourse.confirmedReview)
+            throw new Error("Confirme quais agendamentos em aberto sairão do planejamento antes de salvar.");
 
           const horariosFiltrados =
             tipoUso ===
@@ -5362,7 +5383,8 @@ function EditarMedicamentoContent() {
 
                   {tipoUso === "temporario" && (
                     <div className="mt-4 space-y-3 border-t border-surface-border/40 pt-5">
-                      <TemporaryCourseFields value={{ ...temporaryCourse, enabled: true }} onChange={next => { setTemporaryCourse(next); markChanged(); }} existing={hasExistingTemporaryCourse} />
+                      <TemporaryCourseFields value={{ ...temporaryCourse, enabled: true }} onChange={next => { setTemporaryCourse({ ...next, confirmedReview: false }); markChanged(); }} existing={hasExistingTemporaryCourse} />
+                      <TemporaryCourseRevisionPreviewP5 preview={temporaryCourseRevisionPreview} acknowledged={Boolean(temporaryCourse.confirmedReview)} onAcknowledge={confirmedReview => setTemporaryCourse(current => ({ ...current, confirmedReview }))} />
                       <p className="text-xs leading-relaxed text-ink-muted">
                         O plano usa somente período, horários e quantidade informados. Alterações preservam tomadas e doses ignoradas já registradas.
                       </p>

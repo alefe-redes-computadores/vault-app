@@ -60,7 +60,7 @@ export function buildCourseAgendaPreviewD4(input: {
   else {
     try {
       start = parsed.start;
-      end = temporaryCourseEnd({ ...parsed, times: parsed.intervalHours ? [] : ["00:00"] });
+      end = temporaryCourseEnd({ ...parsed, times: parsed.intervalHours ? [] : [parsed.firstPlannedAt?.slice(11) || "00:00"] });
       if (parsed.intervalHours) expectedInterval = new Set(
         temporaryCourseSlots({ ...parsed, times: [] }).map(s => `${s.date}|${s.time}`));
     } catch { invalid = true; }
@@ -72,6 +72,7 @@ export function buildCourseAgendaPreviewD4(input: {
     const day = numberDay(row.data);
     const key = `${row.data}|${row.horario}`;
     if (day === null || !TIME.test(row.horario) || unique.has(key) || (start && end && (row.data < start || row.data > end)) ||
+        (parsed?.firstPlannedAt && `${row.data}T${row.horario}` < parsed.firstPlannedAt) ||
         (expectedInterval !== null && !expectedInterval.has(key)) || Boolean(row.tomado_em && row.ignorado_em)) {
       invalid = true;
       continue;

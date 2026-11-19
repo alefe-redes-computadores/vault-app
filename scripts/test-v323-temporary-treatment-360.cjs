@@ -17,7 +17,8 @@ const today=read('app/hoje/page.tsx'),todayProjection=read('lib/today/build-time
 assert(types.includes('"temporario"'));
 assert(repo.includes('resolveDoseQuantity(medication, course?.quantityPerDose)'));
 assert(repo.includes('settledBySlot')&&repo.includes('person_id: safePersonId')&&repo.includes('user_id: user.id'));
-assert(fields.includes('Quantidade a cada dose')&&fields.includes('Plano calculado')&&fields.includes('estoque muda apenas ao confirmar'));
+assert(fields.includes('Quantidade a cada dose')&&fields.includes('Conferência antes de salvar')&&fields.includes('não confirma tomadas nem altera estoque'),
+  'revisão pré-salvamento, doses declaradas e estoque protegido permanecem explícitos');
 for(const page of [create,edit]){assert(page.includes('setTipoUso("temporario")'));assert(page.includes('tipoUso === "temporario" ? readTemporaryCourseDraft'));}
 assert(today.includes('buildTodayTimelineItems')&&todayProjection.includes('log.dose_kind === "planned"'));
 assert(list.includes('isTemporary ? "Por período"') && list.includes('dosesEsperadasHoje'));

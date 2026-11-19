@@ -1,18 +1,18 @@
-/** Explicit finite schedule. Dates and times come from the user's prescription. */
+/** Agenda finita declarada pelo usuário. Planejamento não comprova tomada. */
 export type TemporaryCourse = {
   start: string;
   days: number;
-  /** Horários fixos por dia. Mantido para cursos legados. */
+  /** Horários fixos por dia; usados também por cursos legados. */
   times?: string[];
-  /** Intervalo corrido prescrito. Nunca é inferido a partir dos horários. */
+  /** Intervalo corrido informado; não inferido de "X vezes ao dia". */
   intervalHours?: number;
-  /** Primeira dose local no formato YYYY-MM-DDTHH:mm. */
+  /** Âncora do modo por intervalo. Nunca confirma administração. */
   firstDoseAt?: string;
-  /** Quantidade prescrita em cada horário. Ausente em cursos legados. */
+  /** D4 P5: primeiro horário *planejado* no dia inicial de um curso por horários fixos. */
+  firstPlannedAt?: string;
   quantityPerDose?: number;
 };
 export const TEMPORARY_COURSE_PREFIX = "Tratamento temporário · ";
-
 const LOCAL_DATE_TIME = /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):([0-5]\d)$/;
 
 function intervalSlots(course: TemporaryCourse): Array<{ date: string; time: string }> {
@@ -21,10 +21,13 @@ function intervalSlots(course: TemporaryCourse): Array<{ date: string; time: str
       !Number.isInteger(course.days) || course.days < 1 || course.days > 30) {
     throw new Error("Informe a primeira dose, duração de 1 a 30 dias e intervalo de 1 a 24 horas conforme a prescrição.");
   }
+  if (course.firstPlannedAt) throw new Error("Escolha horários fixos ou intervalo entre doses, sem misturar as âncoras.");
   const match = LOCAL_DATE_TIME.exec(course.firstDoseAt)!;
   if (match[1] !== course.start) throw new Error("A primeira dose deve ocorrer na data inicial informada.");
   const base = new Date(`${course.firstDoseAt}:00Z`);
-  if (Number.isNaN(base.getTime())) throw new Error("Data e horário da primeira dose inválidos.");
+  if (Number.isNaN(base.getTime()) || base.toISOString().slice(0, 16) !== course.firstDoseAt) {
+    throw new Error("Data e horário da primeira dose inválidos.");
+  }
   const limit = base.getTime() + course.days * 24 * 60 * 60 * 1000;
   const step = course.intervalHours! * 60 * 60 * 1000;
   const slots: Array<{ date: string; time: string }> = [];
@@ -51,10 +54,21 @@ export function temporaryCourseSlots(course: TemporaryCourse): Array<{ date: str
     throw new Error("Informe uma quantidade válida por dose, conforme a prescrição.");
   const base = new Date(`${start}T12:00:00Z`);
   if (Number.isNaN(base.getTime()) || base.toISOString().slice(0, 10) !== start) throw new Error("Data de início inválida.");
+  if (course.firstPlannedAt) {
+    const declared = LOCAL_DATE_TIME.exec(course.firstPlannedAt);
+    if (!declared || declared[1] !== start || !times.includes(`${declared[2]}:${declared[3]}`)) {
+      throw new Error("O primeiro horário planejado deve ser um dos horários da data inicial informada.");
+    }
+  }
   const slots: Array<{ date: string; time: string }> = [];
   for (let day = 0; day < days; day++) {
     const date = new Date(base); date.setUTCDate(date.getUTCDate() + day);
-    for (const time of times) slots.push({ date: date.toISOString().slice(0, 10), time });
+    const calendarDay = date.toISOString().slice(0, 10);
+    for (const time of [...times].sort()) {
+      // Só corta o início declarado: não compensa no último dia nem altera a prescrição.
+      if (course.firstPlannedAt && day === 0 && time < course.firstPlannedAt.slice(11)) continue;
+      slots.push({ date: calendarDay, time });
+    }
   }
   return slots;
 }
@@ -79,22 +93,24 @@ export function temporaryCourseNote(course: TemporaryCourse): string {
   const base = `${TEMPORARY_COURSE_PREFIX}${course.start} · ${course.days} dia(s)`;
   return course.intervalHours && course.firstDoseAt
     ? `${base} · intervalo ${course.intervalHours}h · primeira ${course.firstDoseAt}`
-    : base;
+    : course.firstPlannedAt
+      ? `${base} · primeiro previsto ${course.firstPlannedAt}`
+      : base;
 }
 
-/** Lê notas novas e legadas sem transformar texto arbitrário em prescrição. */
-export function parseTemporaryCourseNote(note: string): Pick<TemporaryCourse, "start" | "days" | "intervalHours" | "firstDoseAt"> | null {
-  const match = /^Tratamento temporário · (\d{4}-\d{2}-\d{2}) · (\d+) dia\(s\)(?: · intervalo (\d+)h · primeira (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}))?$/.exec(note);
+/** Lê notas novas/legadas sem transformar texto arbitrário em prescrição. */
+export function parseTemporaryCourseNote(note: string): Pick<TemporaryCourse, "start" | "days" | "intervalHours" | "firstDoseAt" | "firstPlannedAt"> | null {
+  const match = /^Tratamento temporário · (\d{4}-\d{2}-\d{2}) · (\d+) dia\(s\)(?: · intervalo (\d+)h · primeira (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}))?(?: · primeiro previsto (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}))?$/.exec(note);
   if (!match) return null;
-  const parsed = {
+  if (match[3] && match[5]) return null;
+  const parsed: Pick<TemporaryCourse, "start" | "days" | "intervalHours" | "firstDoseAt" | "firstPlannedAt"> = {
     start: match[1], days: Number(match[2]),
     intervalHours: match[3] ? Number(match[3]) : undefined,
     firstDoseAt: match[4] || undefined,
   };
+  if (match[5]) parsed.firstPlannedAt = match[5];
   try {
-    temporaryCourseSlots({ ...parsed, times: parsed.intervalHours ? [] : ["00:00"] });
+    temporaryCourseSlots({ ...parsed, times: parsed.intervalHours ? [] : [parsed.firstPlannedAt?.slice(11) || "00:00"] });
     return parsed;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }

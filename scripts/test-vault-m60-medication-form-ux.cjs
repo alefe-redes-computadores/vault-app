@@ -33,7 +33,15 @@ const imports={
  '@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:()=>null},
  '@/lib/medications/form-presentation':{MEDICATION_IDENTITY_COLORS:['#F00000','#00FF00','#112233']},
  '@/lib/health-supply/temporary-course':{
- temporaryCourseSlots:course=>{if(!course.start || course.days<1 || course.days>30 || course.times.some(x=>!/^\d{2}:\d{2}$/.test(x)))throw Error('invalid');return [course]},
+ temporaryCourseSlots:course=>{if(!course.start || course.days<1 || course.days>30 || course.times.some(x=>!/^\d{2}:\d{2}$/.test(x)))throw Error('invalid');const slots=[];
+ for(let day=0;day<course.days;day++){
+  const date=new Date(`${course.start}T12:00:00Z`); date.setUTCDate(date.getUTCDate()+day);
+  for(const time of [...course.times].sort()){
+   if(day===0&&course.firstPlannedAt&&`${course.start}T${time}`<course.firstPlannedAt)continue;
+   slots.push({date:date.toISOString().slice(0,10),time});
+  }
+ }
+ return slots;},
  temporaryCourseEnd:()=> '2026-11-15',
  temporaryCourseTotals:course=>({plannedDoses:course.times.length*course.days,plannedUnits:course.times.length*course.days*course.quantityPerDose}),
  },
