@@ -20,6 +20,8 @@ interface ListPageHeaderProps {
   showBack?: boolean;
   backUrl?: string;
   rightAction?: ReactNode;
+  /** P3: do not duplicate the create CTA while an inline form is mounted. */
+  suppressCreate?: boolean;
   children?: ReactNode;
   icon?: ReactNode;
   iconColor?: string;
@@ -87,6 +89,7 @@ export function ListPageHeader({
   showBack = true,
   backUrl,
   rightAction,
+  suppressCreate = false,
   children,
   icon,
   iconColor = "text-ice",
@@ -99,7 +102,7 @@ export function ListPageHeader({
   const searchParams = useSearchParams();
   const { trigger } = useHapticFeedback();
   const p2Options = getComposeOptions(pathname, searchParams);
-  const p2CreateVisible = ia20P2HeaderOwnsCreate(pathname, p2Options.length, searchParams);
+  const p2CreateVisible = !suppressCreate && ia20P2HeaderOwnsCreate(pathname, p2Options.length, searchParams);
 
   const handleBack = () => {
     trigger("vibrate");

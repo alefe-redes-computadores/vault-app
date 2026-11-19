@@ -21,6 +21,13 @@ export function ia20P2Route(pathname: string): string {
   return p || '/';
 }
 
+/** P3 QG2: Supply's form lives IN the list route, so its FAB is never a fallback.
+ * When not editing, the ListPageHeader is the sole create entry; when editing,
+ * the inline ProcessForm alone owns Save.  Other routes retain existing FAB. */
+export function ia20P3SuppressFallbackCompose(pathname: string): boolean {
+  return ia20P2Route(pathname) === '/saude/fornecimento';
+}
+
 export function ia20P2HeaderOwnsCreate(
   pathname: string, optionCount: number, searchParams?: Pick<URLSearchParams,'get'>,
 ): boolean {

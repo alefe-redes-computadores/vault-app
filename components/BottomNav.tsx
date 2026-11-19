@@ -3,7 +3,7 @@
 import { getComposeOptions, getOptionColorClass, getIa20CreateAccent, type ComposeOption } from "@/lib/navigation/bottom-nav-compose";
 import { withReturnTarget } from "@/lib/navigation/return-context";
 import { ia20ActiveRoot, ia20IsCareflowOverview } from "@/lib/navigation/ia20-root-navigation";
-import { ia20P2HeaderOwnsCreate } from "@/lib/navigation/ia20-p2-create";
+import { ia20P2HeaderOwnsCreate, ia20P3SuppressFallbackCompose } from "@/lib/navigation/ia20-p2-create";
 // VAULT_INTELLIGENCE_NAV_CONTEXT_V65
 // VAULT_BOTTOM_NAV_POLISH_V70
 // VAULT_CONTEXTUAL_FAB_PATH_NORMALIZATION_V44: a rota é normalizada antes do catálogo M6.
@@ -212,7 +212,8 @@ export function BottomNav() {
 
   // P2: 19 listas recebem CTA no cabecalho; o FAB sobrevive nos demais hubs.
   const showCompose =
-    composeOptions.length > 0 && !ia20P2HeaderOwnsCreate(pathname, composeOptions.length, searchParams);
+    composeOptions.length > 0 && !ia20P2HeaderOwnsCreate(pathname, composeOptions.length, searchParams)
+      && !ia20P3SuppressFallbackCompose(pathname);
 
   // IA 2.0: one existing destination shows its own icon/label; multiple actions open
   // the same accessible Compose sheet. Clinical forms still own data creation.

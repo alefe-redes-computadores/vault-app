@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
@@ -19,6 +19,13 @@ export function ContextualCreateP2({
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const [navigating, setNavigating] = useState(false);
+  // A stalled client navigation must never strand the create CTA disabled.
+  // This only resets navigation feedback; it does not confirm any clinical write.
+  useEffect(() => {
+    if (!navigating) return;
+    const recovery = window.setTimeout(() => setNavigating(false), 8000);
+    return () => window.clearTimeout(recovery);
+  }, [navigating]);
   const Icon = option.icon;
   const query = searchParams.toString();
   const origin = `${ia20P2Route(pathname)}${query ? `?${query}` : ""}`;
@@ -35,7 +42,8 @@ export function ContextualCreateP2({
       if (navigating) return;
       setNavigating(true);
       trigger("vibrate");
-      router.push(target);
+      try { router.push(target); }
+      catch { setNavigating(false); }
     }}
     className={`inline-flex min-h-11 min-w-0 max-w-full shrink-0 items-center justify-center gap-2 rounded-2xl border px-3.5 py-2 text-[12px] font-semibold shadow-sm transition-transform active:scale-[.98] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60 ${getIa20CreateAccent(option.id)}`}
   >

@@ -1244,6 +1244,7 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
     <main key={personId} className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-void pb-32">
       <ListPageHeader
         title="Fornecimento"
+        suppressCreate={creating || editing || !processes.length}
         badgeLabel="PROCESSOS E CICLOS"
         badgeColor="text-emerald-300"
         backUrl={backTarget}
