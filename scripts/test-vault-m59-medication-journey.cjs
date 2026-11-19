@@ -38,6 +38,7 @@ const imports={
  '@/components/saude/CourseReviewM1':{CourseReviewM1:()=>null},
  '@/components/saude/TemporaryCourseJourneyD4':{TemporaryCourseJourneyD4:()=>null},
  '@/components/saude/CourseDecisionControlD4':{CourseDecisionControlD4:()=>null},
+ '@/components/saude/CourseAgendaPreviewD4':{CourseAgendaPreviewD4:()=>null},
  '@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:()=>null},
  '@/components/ui/AvatarMedicamento':{AvatarMedicamento:()=>null},
  '@/components/saude/visual-studio/PillStudioV8':{PillStudioV8:()=>null}, // V8P2_INTEGRATED_M59_MOCK

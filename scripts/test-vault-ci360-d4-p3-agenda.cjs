@@ -1,0 +1,93 @@
+'use strict';
+/** D4 P3: testes herméticos do núcleo, sem rede, dados reais ou plugins Android. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),Module=require('node:module');
+const ts=require('typescript');
+const root=path.resolve(__dirname,'..');
+let checked=0;
+const ok=(value,label)=>{assert.ok(value,`D4 P3: ${label}`);console.log(`OK D4 P3 ${++checked}: ${label}`)};
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+function load(p,imports={}){
+  const file=path.join(root,p),src=read(p);
+  const transpiled=ts.transpileModule(src,{fileName:file,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX},reportDiagnostics:true});
+  ok(!(transpiled.diagnostics||[]).some(d=>d.category===ts.DiagnosticCategory.Error),`transpilação ${p}`);
+  const m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));
+  m.require=name=>{if(Object.hasOwn(imports,name))return imports[name];throw Error('Import runtime inesperado: '+name)};
+  m._compile(transpiled.outputText,file);
+  return m.exports;
+}
+const supply=load('lib/health-supply/temporary-course.ts');
+const view=load('lib/clinical/course-decision-view-d4.ts');
+const core=load('lib/clinical/course-agenda-preview-d4.ts',{
+  '@/lib/health-supply/temporary-course':supply,
+  '@/lib/clinical/course-decision-view-d4':view,
+});
+const med='med-1',u='u1',p='p1';
+const note='Tratamento temporário · 2026-11-17 · 5 dia(s)';
+const key=med+'|'+note;
+const row=(date,time='09:00',other={})=>({id:date+time,user_id:u,person_id:p,medicamento_id:med,dose_kind:'planned',motivo:note,data:date,horario:time,...other});
+const run=(logs,extra={})=>core.buildCourseAgendaPreviewD4({userId:u,personId:p,medicationId:med,courseKey:key,today:'2026-11-18',localTime:'08:00',logs,...extra});
+const rows=[row('2026-11-17','09:00',{tomado_em:'2026-11-17T09:00:00'}),row('2026-11-18','09:00'),row('2026-11-19','08:00'),row('2026-11-20','09:00'),row('2026-11-21','10:00')];
+let result=run(rows);
+ok(result!==null,'agenda somente do curso real e pessoa ativa');
+ok(result.mode==='ready','curso íntegro sem declaração fica em prévia');
+ok(result.futureInWindow===4&&result.next.length===3,'prévia mostra três primeiros sem omitir contagem real');
+ok(result.next[0].key==='2026-11-18|09:00'&&result.next[2].key==='2026-11-20|09:00','ordenada por data e hora locais');
+ok(result.settled===1&&result.alreadyDue===0,'tomada confirmada não é pendência');
+ok(run([row('2026-11-18','07:00')]).alreadyDue===1,'horário anterior no mesmo dia não vira futuro');
+ok(run([row('2026-11-18','08:00')]).futureInWindow===1,'horário exatamente atual permanece no horizonte');
+ok(run([row('2026-11-17','22:00')]).alreadyDue===1,'horário anterior ao dia atual permanece sem decisão');
+ok(run([row('2026-11-19','08:00',{ignorado_em:'2026-11-19T09:00:00'})]).settled===1,'ignorado explicitamente é estado resolvido');
+ok(run([row('2026-11-20')],{windowDays:2}).futureBeyondWindow===1,'horizonte curto não esconde quantidades posteriores');
+ok(run([row('2026-11-20')],{windowDays:3}).futureInWindow===1,'limite do terceiro dia incluso');
+ok(run([row('2026-11-20')],{windowDays:1}).next.length===0,'sem horário no horizonte produz lista vazia');
+ok(run([row('2026-11-18')],{windowDays:0})===null,'janela zero bloqueada');
+ok(run([row('2026-11-18')],{windowDays:31})===null,'janela excessiva bloqueada');
+ok(run([row('2026-11-18')],{localTime:'99:99'})===null,'horário atual impossível bloqueado');
+ok(run([row('2026-11-18')],{today:'2026-02-30'})===null,'data de hoje inválida bloqueada');
+ok(run([])===null,'sem DoseLog não inventa horários prescritos');
+ok(run([row('2026-11-18',{a:1})])?.mode==='review','horário de log malformado exige revisão');
+ok(run([row('2026-11-18','09:00'),row('2026-11-18','09:00',{id:'duplicado'})]).mode==='review','horário duplicado causa revisão');
+ok(run([row('2026-11-18','09:00',{tomado_em:'x',ignorado_em:'x'})]).mode==='review','tomado e ignorado simultaneamente causa revisão');
+ok(run([row('2026-11-22')]).mode==='review','slot após o período não é futuro válido');
+ok(run([row('2026-11-18','09:00',{user_id:'u2'})])===null,'outro usuário não contamina a agenda');
+ok(run([row('2026-11-18','09:00',{person_id:'p2'})])===null,'outra pessoa não contamina a agenda');
+ok(run([row('2026-11-18','09:00',{medicamento_id:'med-2'})])===null,'outro medicamento não contamina a agenda');
+ok(run([row('2026-11-18','09:00',{dose_kind:'sos'})])===null,'SOS não vira tratamento temporário');
+ok(run([row('2026-11-18','09:00',{motivo:'Agendamento avulso'})])===null,'avulsa não vira curso temporário');
+ok(run([row('2026-11-18')],{courseKey:'med-2|'+note})===null,'chave de outro medicamento bloqueada');
+ok(run([row('2026-11-18')],{courseKey:med+'|Dose avulsa'})===null,'chave sem origem canônica bloqueada');
+const event={id:'declare-1',course_key:key,tipo:'interrupcao_relatada',data_evento:'2026-11-18',fonte:'relato_usuario',registrado_em:'2026-11-18T11:00:00Z'};
+result=run([row('2026-11-19')],{context:{versao:1,regimes:[],revisoes:[],decisoes_d4:[event]}});
+ok(result.mode==='declared'&&result.declared==='interrupcao_relatada','interrupção declarada pede conferência e não cancela futuro');
+ok(result.futureInWindow===1&&result.warning.includes('não cancelou'),'horário futuro preservado após declaração');
+result=run([row('2026-11-19')],{context:{versao:1,regimes:[],revisoes:[],decisoes_d4:[event,{...event,id:'declare-2',tipo:'conclusao_relatada',substitui_id:'declare-1'}]}});
+ok(result.declared==='conclusao_relatada'&&result.mode==='declared','última retificação canônica prevalece na prévia');
+ok(run([row('2026-11-19','77:77')],{context:{versao:1,regimes:[],revisoes:[],decisoes_d4:[event]}}).mode==='review','dado inválido tem prioridade sobre declaração');
+const interNote='Tratamento temporário · 2026-11-17 · 1 dia(s) · intervalo 8h · primeira 2026-11-17T23:00';
+const ir=(date,time)=>row(date,time,{motivo:interNote});
+result=run([ir('2026-11-18','07:00')],{courseKey:med+'|'+interNote});
+ok(result.mode==='ready'&&result.futureInWindow===0&&result.alreadyDue===1,'intervalo cruza meia-noite com hora exata');
+ok(run([ir('2026-11-18','08:00')],{courseKey:med+'|'+interNote}).mode==='review','intervalo rejeita horário não previsto mesmo dentro do período');
+const leapNote='Tratamento temporário · 2028-02-28 · 3 dia(s)';
+result=run([row('2028-02-29','09:00',{motivo:leapNote})],{today:'2028-02-29',courseKey:med+'|'+leapNote});
+ok(result.mode==='ready','29 fevereiro de ano bissexto preservado');
+const brokenNote='Tratamento temporário · 2026-02-30 · 2 dia(s)';
+ok(run([row('2026-03-01','09:00',{motivo:brokenNote})],{today:'2026-03-01',courseKey:med+'|'+brokenNote}).mode==='review','curso de origem impossível requer revisão');
+const ui=read('components/saude/CourseAgendaPreviewD4.tsx');
+const card=read('components/saude/TemporaryCourseMedicationCard.tsx');
+const gate=read('scripts/test-v63-release-gate.mjs');
+const m59=read('scripts/test-vault-m59-medication-journey.cjs');
+for(const name of ['lib/clinical/course-agenda-preview-d4.ts','components/saude/CourseAgendaPreviewD4.tsx']){
+  const parsed=ts.createSourceFile(name,read(name),ts.ScriptTarget.Latest,true,name.endsWith('tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+  ok(parsed.parseDiagnostics.length===0,'parser TS/TSX '+name);
+}
+ok(!/(?:\.schedule\(|\.cancel\(|\.update\(|db\.|supabase\.|getPending\(|setVaultNotification)/.test(read('lib/clinical/course-agenda-preview-d4.ts')),'motor D4 P3 não toca notificações ou persistência');
+ok(!/(?:\.schedule\(|\.cancel\(|\.update\(|db\.|supabase\.|getPending\(|setVaultNotification)/.test(ui),'painel D4 P3 somente leitura, sem agendar nativamente');
+ok(ui.includes('não uma confirmação de aviso agendado')&&ui.includes('nada é criado ou cancelado aqui'),'limitações de notificação visíveis');
+ok(card.includes('<CourseDecisionControlD4')&&card.includes('<TemporaryCourseJourneyD4')&&card.includes('<CourseReviewM1'),'P1/P2/M1 preservadas no mesmo card');
+ok(card.includes('<CourseAgendaPreviewD4 med={med} personId={personId} courseKey={item.key} today={today} doseLogs={doseLogs}/>'),'agenda nova integrada sem nova fonte de dados');
+ok(m59.includes("'@/components/saude/CourseAgendaPreviewD4':{CourseAgendaPreviewD4:()=>null}"),'loader legado M59 continua fechado e compatível');
+ok((gate.match(/"scripts\/test-vault-ci360-d4-p3-agenda.cjs"/g)||[]).length===1,'contrato P3 registrado uma única vez no V63');
+ok(gate.includes('"scripts/test-vault-ci360-d4-p2-decisoes.cjs"'),'contrato P2 preservado');
+console.log(`D4 P3: ${checked} verificações dirigidas, sem IO clínico nem promessas nativas.`);
