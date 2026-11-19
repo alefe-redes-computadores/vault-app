@@ -70,6 +70,7 @@ const ALLOWED_NAV_PATHS = [
   "/saude/careflow", // D3: hub intermediário, não formulário
   // M150 P2: explorações são destinos principais; apenas formulários escondem a barra.
   "/saude/minha-saude",
+  "/saude/fenix", // IA 2.0 P4: perfil detalhado mantem barra de cinco abas
   "/saude/brain-v7",
   "/saude/visual-studio",
   "/saude/pharmalens",

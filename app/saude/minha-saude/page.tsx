@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   ArrowLeft,
   Activity,
@@ -76,7 +76,7 @@ import { ageOn, bmi } from "@/lib/health-profile/metrics";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { HealthInsightSheet } from "@/components/vault-intelligence/HealthInsightSheet";
-import { withReturnTarget } from "@/lib/navigation/return-context";
+import { withReturnTarget, safeReturnTarget } from "@/lib/navigation/return-context";
 import type { HealthInsight } from "@/lib/health-insights";
 import { NewHealthDataSummary } from "@/components/saude/NewHealthDataSummary";
 import { buildHealthDashboardIndex } from "@/lib/health-profile/dashboard-index";
@@ -119,9 +119,50 @@ function DeferredHealthSection({id,title,description,badge,icon,children}:{id:st
     {open?<div id={`${id}-content`} className="vault-deferred space-y-3 border-t border-surface-border/60 p-3">{children}</div>:null}
   </section>;
 }
+/** P4: lightweight root. Fênix sources/Avatar/Brain mount only in the dedicated profile route. */
 export default function MyHealthPage() {
-  const data = useHealthProfile();
-  return <HealthDashboard key={data.personId || "none"} data={data} />;
+  const data=useHealthProfile();
+  const pathname=usePathname();
+  return pathname==="/saude/fenix"
+    ? <HealthDashboard key={data.personId || "none"} data={data}/>
+    : <HealthHubRootP4 key={data.personId || "none"} data={data}/>;
+}
+function HealthHubRootP4({data}:{data:ReturnType<typeof useHealthProfile>}){
+  const router=useRouter();const {trigger}=useHapticFeedback();
+  const {personId,person,error}=data;
+  const open=(path:string)=>{trigger("vibrate");router.push(withReturnTarget(path,"/saude/minha-saude"));};
+  useEffect(()=>{
+    const redirectOldBookmark=()=>{
+      let id=window.location.hash.slice(1);
+      try{id=decodeURIComponent(id);}catch{return;}
+      if(["meu-avatar","analises","fontes","indicadores","historico"].includes(id))
+        router.replace(`/saude/fenix?return_to=%2Fsaude%2Fminha-saude#${encodeURIComponent(id)}`);
+    };
+    redirectOldBookmark();
+    window.addEventListener("hashchange",redirectOldBookmark);
+    return()=>window.removeEventListener("hashchange",redirectOldBookmark);
+  },[router]);
+  const openPersonalSectionFromHubP4=(id:string)=>{
+    if(!["meu-avatar","analises","fontes","indicadores","historico"].includes(id))return;
+    trigger("vibrate");router.push(`/saude/fenix?return_to=%2Fsaude%2Fminha-saude#${encodeURIComponent(id)}`);
+  };
+  return <main className="min-h-[100dvh] bg-void px-3.5 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 min-[420px]:pt-6 text-ink-primary min-[420px]:px-4">
+    <div className="mx-auto max-w-xl space-y-3">
+      <header className="flex items-center gap-3">
+        <button type="button" onClick={()=>{trigger("vibrate");router.push("/");}} aria-label="Voltar ao início" className="grid size-11 shrink-0 place-items-center rounded-2xl border border-surface-border bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><ArrowLeft size={20}/></button>
+        <div className="min-w-0 flex-1"><p className="text-[10px] uppercase tracking-[.12em] text-emerald-300">Saúde e rotina</p><h1 className="font-display text-xl font-semibold tracking-tight text-ink-primary">{"Minha saúde"}</h1></div>
+        <button type="button" onClick={()=>open("/saude/lembretes")} aria-label="Configurar lembretes" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/50 bg-surface/65 text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><Bell size={20}/></button>
+      </header>
+      {error?<p role="alert" className="rounded-xl border border-coral/30 p-3 text-xs text-coral">{error}</p>:null}
+      {!personId?<p className="text-xs text-ink-muted">Selecione uma pessoa para organizar a saúde.</p>:<>
+        <HealthHubLauncherR5 userId={person?.user_id||""} personId={personId} onOpenPersonalSection={openPersonalSectionFromHubP4}/>
+        <button type="button" onClick={()=>open("/saude/fenix")} aria-label="Abrir Fênix e Perfil Clínico" className="flex min-h-[72px] w-full min-w-0 items-center gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/[.045] p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10"><FenixMark size="xs"/></span>
+          <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Fênix e Perfil Clínico</strong><span className="mt-1 block text-[11px] text-ink-muted">Avatar, medidas, análises, fontes e histórico</span></span><ChevronRight size={17} className="shrink-0 text-emerald-300"/>
+        </button>
+      </>}
+    </div>
+  </main>;
 }
 function HealthDashboard({
   data,
@@ -132,8 +173,8 @@ function HealthDashboard({
     { trigger } = useHapticFeedback(),
     { showToast } = useToast(),
     { registros, isLoading } = useRegistrosSaude();
+  const profileOnly = usePathname()==="/saude/fenix";
   const [bodyPart,setBodyPart]=useState<AvatarBodyPart|null>(null);
-  const [personalPanelOpenR5,setPersonalPanelOpenR5]=useState(false);
   const [brainSummaryOpen,setBrainSummaryOpen]=useState(false);
   const [selectedInsight,setSelectedInsight]=useState<HealthInsight|null>(null);
   // V158 keeps overview vs full metric-history semantically distinct.
@@ -152,7 +193,7 @@ function HealthDashboard({
     [archive, setArchive] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
   const [insightTarget,setInsightTarget]=useState<MetricInsightTarget|null>(null);
-  const closeMetric=()=>{setMetric(null);setInsightTarget(null);if(insightTarget){const query=clearMetricInsightQuery(new URLSearchParams(window.location.search));router.replace(`/saude/minha-saude${query?`?${query}`:""}`);}};
+  const closeMetric=()=>{setMetric(null);setInsightTarget(null);if(insightTarget){const query=clearMetricInsightQuery(new URLSearchParams(window.location.search));router.replace(`${profileOnly?"/saude/fenix":"/saude/minha-saude"}${query?`?${query}`:""}`);}};
   const deviceEditorRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{if(panel!=="device")return;const frame=requestAnimationFrame(()=>{deviceEditorRef.current?.scrollIntoView({block:"start",behavior:"auto"});deviceEditorRef.current?.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[panel,editDevice]);
   const profileEditorId = useId();
@@ -197,23 +238,23 @@ function HealthDashboard({
     trigger("vibrate");
     router.push(path);
   }, [router, trigger]);
-  const goFromHealth = useCallback((path: string) => go(withReturnTarget(path,"/saude/minha-saude")), [go]);
+  const goFromHealth = useCallback((path: string) => go(withReturnTarget(path,profileOnly?"/saude/fenix":"/saude/minha-saude")), [go,profileOnly]);
   const openPersonalSectionR5=useCallback((id:string)=>{
     if(!["meu-avatar","analises","fontes","indicadores","historico"].includes(id))return;
-    setPersonalPanelOpenR5(true);
-    if(typeof window!=="undefined")window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>{
-      document.getElementById(id)?.scrollIntoView({block:"start",behavior:"smooth"});
-    }));
-  },[]);
+    go(`/saude/fenix?return_to=%2Fsaude%2Fminha-saude#${encodeURIComponent(id)}`);
+  },[go]);
+  // Old bookmarks stay valid; the giant accordion is no longer mounted in the hub.
   useEffect(()=>{
-    const sync=()=>{
-      let id=window.location.hash.slice(1);
-      try{id=decodeURIComponent(id);}catch{return;}
-      if(["meu-avatar","analises","fontes","indicadores","historico"].includes(id))setPersonalPanelOpenR5(true);
+    if(profileOnly)return;
+    const relocate=()=>{
+      const id=decodeURIComponent(window.location.hash.slice(1));
+      if(["meu-avatar","analises","fontes","indicadores","historico"].includes(id))
+        router.replace(`/saude/fenix?return_to=%2Fsaude%2Fminha-saude#${encodeURIComponent(id)}`);
     };
-    sync();window.addEventListener("hashchange",sync);
-    return()=>window.removeEventListener("hashchange",sync);
-  },[]);
+    try{relocate();}catch{/* invalid hash does not change navigation */}
+    window.addEventListener("hashchange",relocate);
+    return()=>window.removeEventListener("hashchange",relocate);
+  },[profileOnly,router]);
   const open = (next: typeof panel) => {
     trigger("vibrate");
     setPanel(next);
@@ -261,8 +302,8 @@ function HealthDashboard({
         <header className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => go("/")}
-            aria-label="Voltar ao início"
+            onClick={() => go(profileOnly?safeReturnTarget(new URLSearchParams(window.location.search).get("return_to"),"/saude/minha-saude"):"/")}
+             aria-label={profileOnly?"Voltar à origem":"Voltar ao início"}
             className="grid size-11 shrink-0 place-items-center rounded-2xl border border-surface-border bg-surface text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
           >
             <ArrowLeft size={20} />
@@ -271,7 +312,7 @@ function HealthDashboard({
             <p className="text-xs uppercase tracking-[.14em] text-emerald-400">
               Saúde e rotina
             </p>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-primary">Minha saúde</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-primary">{profileOnly?"Fênix e Perfil Clínico":"Minha saúde"}</h1>
           </div>
           <button
             type="button"
@@ -297,19 +338,17 @@ function HealthDashboard({
         ) : (
           <>
             {/* R5: a entrada é o launcher; o painel de Fênix e métricas permanece íntegro. */}
-            <HealthHubLauncherR5 userId={person?.user_id||""} personId={personId||""} onOpenPersonalSection={openPersonalSectionR5}/>
+            {!profileOnly?<HealthHubLauncherR5 userId={person?.user_id||""} personId={personId||""} onOpenPersonalSection={openPersonalSectionR5}/>:null}
             <section id="painel-pessoal-r5" aria-label="Painel de saúde e Fênix" className="scroll-mt-24 overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface/60">
-              <button type="button" aria-expanded={personalPanelOpenR5} aria-controls="conteudo-painel-pessoal-r5" onClick={()=>setPersonalPanelOpenR5(v=>!v)} className="flex min-h-[64px] w-full items-center gap-3 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10"><FenixMark size="xs"/></span>
-                <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Meu painel clínico e Fênix</strong><span className="mt-1 block text-[11px] text-ink-muted">Avatar, indicadores, fontes e histórico detalhado</span></span>
-                <ChevronDown size={17} className={`text-emerald-300 transition-transform motion-reduce:transition-none ${personalPanelOpenR5?"rotate-180":""}`}/>
-              </button>
-              {personalPanelOpenR5?<div id="conteudo-painel-pessoal-r5" className="space-y-3 border-t border-emerald-300/10 p-2.5">
+               {!profileOnly?<button type="button" onClick={()=>goFromHealth("/saude/fenix")} className="flex min-h-[72px] w-full items-center gap-3 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300" aria-label="Abrir Fênix e Perfil Clínico">
+                 <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10"><FenixMark size="xs"/></span>
+                 <span className="min-w-0 flex-1"><strong className="block text-sm text-ink-primary">Fênix e Perfil Clínico</strong><span className="mt-1 block text-[11px] leading-snug text-ink-muted">Avatar, medidas, fontes e histórico em uma página própria</span></span><ChevronRight size={17} className="shrink-0 text-emerald-300"/>
+               </button>:null}
+               {profileOnly?<div id="conteudo-painel-pessoal-r5" className="space-y-3 p-2.5">
+                 <div className="flex items-center gap-2 rounded-xl border border-emerald-300/15 bg-emerald-300/[.045] px-3 py-2"><FenixMark size="xs"/><span className="text-xs text-ink-secondary">Seu perfil detalhado, organizado por assunto</span></div>
             <NewHealthDataSummary records={records} userId={person?.user_id||""} personId={personId} onOpen={()=>goFromHealth("/saude/registros")}/>
             {/* M118: five real navigation destinations; care relationship panels do not precede the Avatar. */}
-            <ClinicalSectionNav label="Áreas de Minha Saúde" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Fênix",icon:<FenixMark size="xs"/>,iconClassName:"text-amber-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
-            {/* A23: acesso direto ao mapa sem alterar a pessoa selecionada. */}
-            <button type="button" onClick={() => goFromHealth('/saude/mapa?return_to=%2Fsaude%2Fminha-saude')} aria-label="Explorar as áreas de saúde" className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[.04] px-3 text-left text-xs font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span>Explorar todas as áreas de saúde</span><ChevronRight size={15} aria-hidden="true"/></button>
+            <ClinicalSectionNav label="Áreas de Fênix e Perfil Clínico" layout="grid" density="compact" priorityCount={5} items={[{id:"meu-avatar",label:"Fênix",icon:<FenixMark size="xs"/>,iconClassName:"text-amber-300",},{id:"analises",label:"Análises",icon:<BarChart3 size={14}/>,iconClassName:"text-violet-300",},{id:"fontes",label:"Fontes",icon:<Database size={14}/>,iconClassName:"text-sky-300",},{id:"indicadores",label:"Indicadores",icon:<ListChecks size={14}/>,iconClassName:"text-cyan-300",},{id:"historico",label:"Histórico",icon:<CalendarRange size={14}/>,iconClassName:"text-amber-300",}]}/>
             {/* M148: entrada principal no domínio de acompanhamento; não duplica a listagem de medicamentos. */}
             <button type="button" onClick={() => goFromHealth("/saude/central-m144")}
               className="my-3 flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.045] px-3 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
@@ -640,7 +679,7 @@ function HealthDashboard({
                   <Network size={19} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold">Minha rede de saúde</span>
+                  <span className="block text-xs font-semibold">Profissionais e locais</span>
                   <span className="mt-0.5 block text-[10px] text-ink-muted">Profissionais, locais e cuidado contínuo</span>
                 </span>
                 <ChevronRight size={16} className="text-emerald-300" />

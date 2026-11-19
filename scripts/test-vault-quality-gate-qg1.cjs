@@ -20,6 +20,7 @@ const tile=read('components/home/HomeClinicalAreaTile.tsx');
 ok(homePrimaryMinHeightQG1(home,76),'Medicamentos: usable touch and real navigation');
 ok(clinicalTileMinHeightQG1(tile,76),'Minha saúde: usable touch and preserved semantic color');
 ok(extractClassAfter(home,'onClick={() => go("/saude/medicamentos")}').includes('min-h-[76px]'),'Home compacto usa 76px e mantém toque acessível');
+ok(read('components/home/HomeVivaP4.tsx').includes('min-h-11')&&home.includes('viva?<HomeVivaP4 data={viva}'),'Home Viva preserva alvos tocaveis e integracao no lugar do tile redundante');
 ok(extractClassAfter(tile,'<button type="button" onClick={() => onNavigate(path)}').includes('min-h-[76px]'),'Saúde compacta usa 76px e mantém toque acessível');
 ok(home.includes('grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1'),'320px single-column, wider screens paired');
 const map=read('app/saude/mapa/page.tsx'),directory=read('lib/navigation/clinical-directory-m150.ts');

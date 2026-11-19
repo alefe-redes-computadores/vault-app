@@ -37,7 +37,7 @@ export const clinicalDirectoryM150: readonly ClinicalMapSectionM150[] = [
     id: 'saude', title: 'Consultas e registros',
     description: 'Perfil clínico, fatos observados e compromissos',
     items: [
-      {id:'minha-saude',label:'Minha Saúde e Fênix',description:'Avatar e informações do perfil',href:'/saude/minha-saude',icon:'heart'},
+      {id:'minha-saude',label:'Fênix e Perfil Clínico',description:'Avatar, medidas e histórico',href:'/saude/fenix',icon:'eye'},
       {id:'registros',label:'Diário de saúde',description:'Registros e relatos informados',href:'/saude/registros',icon:'clipboard'},
       {id:'consultas',label:'Consultas',description:'Agenda e profissionais',href:'/saude/consultas',icon:'stethoscope'},
       {id:'exames',label:'Exames',description:'Pedidos e resultados',href:'/saude/exames',icon:'flask'},

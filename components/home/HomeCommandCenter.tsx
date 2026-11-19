@@ -8,8 +8,10 @@ import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { HomeClinicalAreaTile } from "@/components/home/HomeClinicalAreaTile";
 import { HomeSupplyAccessTiles } from "@/components/home/HomeSupplyAccessTiles";
 import { HomeCareOrganizationTiles } from "@/components/home/HomeCareOrganizationTiles";
+import { HomeVivaP4 } from "@/components/home/HomeVivaP4";
+import type { HomeVivaInputP4 } from "@/lib/home/home-viva-p4";
 
-type Props = { gastoMes: number; diferencaMes: number; totalRede: number; mode?: "all" | "primary" | "secondary"; onOpenOccurrences?: () => void };
+type Props = { gastoMes: number; diferencaMes: number; totalRede: number; mode?: "all" | "primary" | "secondary"; onOpenOccurrences?: () => void; viva?: HomeVivaInputP4 };
 
 const clinical = [
   { label: "Consultas", sub: "Agenda", path: "/saude/consultas", icon: CalendarDays, tone: "border-sky-400/20 bg-sky-400/[0.06] text-sky-300" },
@@ -19,7 +21,7 @@ const clinical = [
   { label: "Linha de cuidado", sub: "Sintomas, doses e histórico", path: "/saude/registros", icon: Activity, tone: "border-coral/20 bg-coral/[0.06] text-coral" },
 ] as const;
 
-export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "all", onOpenOccurrences }: Props) {
+export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "all", onOpenOccurrences, viva }: Props) {
   const router = useRouter();
   const { trigger } = useHapticFeedback();
   const go = (path: string) => { trigger("vibrate"); router.push(path); };
@@ -45,12 +47,12 @@ export function HomeCommandCenter({ gastoMes, diferencaMes, totalRede, mode = "a
 
       {/* M131: dois destinos principais, com cores e componentes canônicos. */}
       <div id="home-acessos-medicamentos" className="scroll-mt-28 space-y-2" aria-label="Acessos principais de saúde e medicamentos">
-        <div className="grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1" aria-label="Medicamentos e Minha saúde">
+        <div className={`grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1 ${viva?"!grid-cols-1":""}`} aria-label="Medicamentos e acompanhamento contextual">
           <button type="button" onClick={() => go("/saude/medicamentos")} className="group flex h-full min-h-[76px] w-full min-w-0 items-center gap-2 rounded-[18px] border border-emerald-300/25 bg-emerald-300/[.06] px-2.5 py-2.5 text-left touch-manipulation shadow-sm transition-colors hover:bg-surface-raised motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300" aria-hidden="true"><Pill size={17}/></span>
             <span className="flex min-w-0 flex-1 flex-col justify-center"><strong className="block break-words text-sm font-bold leading-snug text-ink-primary">Medicamentos</strong><span className="mt-1 block line-clamp-2 break-words text-xs leading-snug text-ink-muted">Rotina e estoque</span></span>
           </button>
-          <HomeClinicalAreaTile label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude" Icon={HeartPulse} tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go} />
+          {viva?<HomeVivaP4 data={viva} onNavigate={go}/>:<HomeClinicalAreaTile label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude" Icon={HeartPulse} tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go} />}
         </div>
         {/* Acessos operacionais continuam disponíveis no Essencial, sem ocupar a primeira dobra. */}
         <details className="group overflow-hidden rounded-[18px] border border-emerald-300/15 bg-gradient-to-r from-emerald-300/[.035] via-surface to-surface shadow-sm">

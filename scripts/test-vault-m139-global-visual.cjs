@@ -35,7 +35,7 @@ ok(home.includes('min-h-[100dvh]')&&home.includes('safe-area-inset-bottom')&&hom
 ok(home.includes('grid-cols-2 gap-2 self-center min-[420px]:grid-cols-3')&&home.includes('col-span-2 min-[420px]:col-span-1'),'altura, peso e IMC não são espremidos na mesma linha estreita');
 ok(home.includes('min-[350px]:grid-cols-3')&&home.includes('Anterior com dados')&&home.includes('Próximo com dados'),'navegação entre dias adapta a tela e preserva rótulos');
 ok(home.includes('<HealthBody key={personId}')&&home.includes('<AvatarEvidenceLensM122')&&home.includes('<AvatarCareWorkspace'),'Fênix, lente e Brain permanecem integrados à Minha Saúde');
-ok(home.includes('onClick={() => go("/")}')&&home.includes('onClick={() => go("/saude/lembretes")}'),'voltar e configurações continuam navegáveis');
+ok(home.includes('onClick={() => go(profileOnly?safeReturnTarget(')&&home.includes('aria-label={profileOnly?"Voltar à origem":"Voltar ao início"}')&&home.includes('onClick={() => go("/saude/lembretes")}'),'Voltar mantém origem segura na Fênix e início no Hub; lembretes continuam navegáveis');
 const lens=read(files[1]);
 ok(lens.includes('const expanded=opened&&activeDomain===domain.id')&&lens.includes('expanded ? "min-[380px]:col-span-2"')&&lens.includes('min-[380px]:grid-cols-2'),'uma evidência expandida usa a largura disponível, sem desaparecer outra área');
 ok(lens.includes('onNavigate(entry.href)')&&lens.includes('onExplain(insight)')&&lens.includes('onNavigate(domain.route)'),'links de evidências continuam ligados à origem real');

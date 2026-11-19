@@ -17,16 +17,16 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"dossie",title:"Dossiê Clínico",description:"Linha do tempo e PDF local",href:"/saude/careflow/dossie",group:"intelligence",icon:"folder",keywords:["relatorio","medico","pdf","linha do tempo"]},
   {id:"pressao",title:"Pressão arterial",description:"Planos e aferições reais",href:"/saude/careflow/pressao",group:"body",icon:"heart",keywords:["monitoramento","pressao","afericao"]},
   {id:"sintomas",title:"Sintomas e reações",description:"Relatos e evolução",href:"/saude/careflow/sintomas",group:"body",icon:"thermometer",keywords:["dor","reacoes","diario","sintoma"]},
-  {id:"sono",title:"Sono e medidas",description:"Indicadores do corpo",href:"/saude/minha-saude#indicadores",group:"body",icon:"moon",keywords:["sono","medidas","peso","altura","biometria"]},
+  {id:"sono",title:"Sono e medidas",description:"Indicadores do corpo",href:"/saude/fenix#indicadores",group:"body",icon:"moon",keywords:["sono","medidas","peso","altura","biometria"]},
   {id:"hidratacao",title:"Hidratação",description:"Água e metas registradas",href:"/saude/hidratacao",group:"body",icon:"droplets",keywords:["agua","consumo"]},
   {id:"pharmalens",title:"Conferência e bula",description:"PharmaLens e documentos",href:"/saude/pharmalens",group:"capture",icon:"scan",keywords:["receita","ocr","imagem","pedido"]},
   {id:"biblioteca",title:"Biblioteca de PDFs",description:"Relatórios CareFlow locais",href:"/saude/careflow/relatorios",group:"capture",icon:"files",keywords:["documento","pdf","laudo","arquivo"]},
   {id:"relatorio",title:"Relatório Clínico 360",description:"Resumo clínico completo",href:"/saude/relatorios",group:"capture",icon:"book",keywords:["relatorio medico","pdf","a4"]},
   {id:"tratamentos",title:"Tratamentos",description:"Condições e vínculos",href:"/saude/tratamentos",group:"foundation",icon:"shield",keywords:["condicao","tratamento","cuidado"]},
   {id:"medicamentos",title:"Medicamentos 360",description:"Rotina e estoque",href:"/saude/medicamentos",group:"foundation",icon:"pill",keywords:["dose","remedio","estoque"]},
-  {id:"fenix",title:"Perfil e Fênix",description:"Avatar e perfil pessoal",href:"/saude/minha-saude#meu-avatar",group:"foundation",icon:"user",keywords:["fenix","avatar","perfil","alergia"]},
+  {id:"fenix",title:"Fênix e Perfil Clínico",description:"Avatar, medidas e histórico",href:"/saude/fenix",group:"foundation",icon:"user",keywords:["fenix","avatar","perfil","alergia","minha saude"]},
   {id:"studio",title:"Fênix Studio",description:"Aparência e identidade visual",href:"/saude/visual-studio",group:"foundation",icon:"sparkles",keywords:["avatar","studio","corpo"]},
-  {id:"fontes",title:"Fontes de saúde",description:"Relógio, anel e aparelhos",href:"/saude/minha-saude#fontes",group:"foundation",icon:"chart",keywords:["samsung","health connect","relogio","anel","sincronizacao"]},
+  {id:"fontes",title:"Fontes de saúde",description:"Relógio, anel e aparelhos",href:"/saude/fenix#fontes",group:"foundation",icon:"chart",keywords:["samsung","health connect","relogio","anel","sincronizacao"]},
   {id:"seguranca",title:"Plano de segurança",description:"Apoio e contatos escolhidos",href:"/saude/plano-seguranca",group:"foundation",icon:"lock",keywords:["apoio","contatos","seguranca"]},
   // D3: entries of the real clinical directory are also pinnable in Explorar.
   {id:"consultas",title:"Consultas",description:"Agenda e retornos",href:"/saude/consultas",group:"intelligence",icon:"calendar",keywords:["medico","atendimento","consulta"]},
@@ -42,7 +42,6 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"escudo",title:"Estoque e embalagens",description:"Unidades e conferência",href:"/saude/supply-shield",group:"foundation",icon:"package",keywords:["estoque","unidade","embalagem"]},
   {id:"resumo",title:"Resumo longitudinal",description:"Relatórios de registros",href:"/saude/registros/relatorio",group:"intelligence",icon:"chart",keywords:["historico","resumo","relatorio"]},
   {id:"documentos",title:"Documentos de saúde",description:"Acervo clínico",href:"/saude/documentos",group:"capture",icon:"files",keywords:["receita","documento","pdf"]},
-  {id:"minha-saude",title:"Minha saúde",description:"Painel pessoal",href:"/saude/minha-saude",group:"foundation",icon:"heart",keywords:["perfil","cuidado","saude"]},
   {id:"brain",title:"VAULT Brain",description:"Observações e evidências",href:"/saude/brain-v7",group:"intelligence",icon:"activity",keywords:["brain","inteligencia","observacao"]},
   {id:"modo-medico",title:"Modo Médico 360",description:"Resumo para consulta",href:"/saude/careflow/modo-medico",group:"intelligence",icon:"stethoscope",keywords:["medico","pdf","dossie"]},
   {id:"episodios",title:"Episódio de atendimento",description:"Fatos de uma consulta",href:"/saude/careflow/episodios",group:"intelligence",icon:"calendar",keywords:["episodio","consulta","retorno"]},
@@ -65,7 +64,12 @@ export const HEALTH_GROUPS_R5: readonly {id:HealthGroupR5;title:string;subtitle:
 export const MODULE_IDS_R5 = new Set(HEALTH_MODULES_R5.map(item => item.id));
 export type HubPreferenceR5 = {version:1; favorites:string[]; recent:string[]};
 export const EMPTY_PREFERENCES_R5:HubPreferenceR5 = {version:1,favorites:[],recent:[]};
-const uniqueValid=(raw:unknown,limit:number)=>Array.isArray(raw)?[...new Set(raw.filter((x):x is string => typeof x==="string" && MODULE_IDS_R5.has(x)))].slice(0,limit):[];
+/** Migrate the old "Minha saúde" favorite onto the Fênix destination without losing scope or order. */
+const uniqueValid=(raw:unknown,limit:number)=>Array.isArray(raw)
+  ? [...new Set(raw.filter((x):x is string=>typeof x==="string")
+    .map(id=>id==="minha-saude"?"fenix":id)
+    .filter(id=>MODULE_IDS_R5.has(id)))].slice(0,limit)
+  : [];
 export function parseHubPreferencesR5(raw:unknown):HubPreferenceR5 {
   if(!raw||typeof raw!=="object"||Array.isArray(raw))return {...EMPTY_PREFERENCES_R5};
   const candidate=raw as Record<string,unknown>;
@@ -109,7 +113,7 @@ export function buildHealthFocusR5(input:FocusInputR5):FocusR5[]{
     if(item.person_id!==input.personId||item.state!=="active"||(item.snoozed_until&&item.snoozed_until>input.now.toISOString()))continue;
     const href=item.snapshot.link||"";
     const module=HEALTH_MODULES_R5.find(m=>href===m.href||href.startsWith(m.href+"?"))||[...HEALTH_MODULES_R5].sort((a,b)=>b.href.length-a.href.length).find(m=>href.startsWith(m.href+"/"));
-    if(module)add(module.id,`Brain: ${String(item.snapshot.titulo||"Atenção registrada").slice(0,90)}`,"brain");
+    if(module)add(module.id,String(item.snapshot.titulo||"Atenção registrada").slice(0,90),"brain");
   }
   const soon=ownedConsultations.some(c=>{
     if(c.status!=="agendada")return false;

@@ -52,7 +52,7 @@ for(const e of entries){
   ok(e.href.startsWith('/')&&!e.href.startsWith('//')&&fs.existsSync(path.join('app',e.href,'page.tsx')),`destino existente: ${e.href}`);
 }
 const fenix=catalog.searchClinicalDirectoryM150('fenix').flatMap(g=>g.items);
-ok(fenix.some(e=>e.href==='/saude/minha-saude'),'busca sem acento encontra Fenix');
+ok(fenix.some(e=>e.href==='/saude/fenix'),'busca sem acento encontra Fenix');
 const s=catalog.searchClinicalDirectoryM150('SUS').flatMap(g=>g.items);
 ok(s.some(e=>e.href==='/saude/fornecimento'),'busca encontra fornecimento/SUS');
 ok(catalog.searchClinicalDirectoryM150('nadaexistente').length===0,'busca nao inventa destinos');

@@ -7,9 +7,9 @@ import { Reorder, useDragControls, useReducedMotion } from "framer-motion";
 import {
   Activity, ArrowDown, ArrowUp, BellRing, BookHeart, BrainCircuit, Building2,
   CalendarCheck, ChevronRight, Droplets, FileSearch, FlaskConical, FolderHeart,
-  GripVertical, HeartPulse, LayoutGrid, Moon, PackageCheck, Pill, Pin, PinOff,
+  GripVertical, HeartPulse, LayoutGrid, Moon, PackageCheck, Pill, Star,
   ScanLine, Search, ShieldCheck, ShieldPlus, SlidersHorizontal, Sparkles, Stethoscope,
-  Thermometer, UserCheck, Users, X, type LucideIcon,
+  Thermometer, UserRoundCheck, Users, X, type LucideIcon,
 } from "lucide-react";
 import { useConsultas } from "@/hooks/useConsultas";
 import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
@@ -27,7 +27,7 @@ import {
 const ICONS:Record<HealthIconR5,LucideIcon>={
   activity:Activity,flask:FlaskConical,folder:FolderHeart,heart:HeartPulse,
   thermometer:Thermometer,moon:Moon,droplets:Droplets,scan:ScanLine,files:FileSearch,
-  shield:ShieldPlus,user:UserCheck,sparkles:Sparkles,pill:Pill,book:BookHeart,
+  shield:ShieldPlus,user:UserRoundCheck,sparkles:Sparkles,pill:Pill,book:BookHeart,
   chart:Activity,lock:ShieldCheck,stethoscope:Stethoscope,building:Building2,
   package:PackageCheck,calendar:CalendarCheck,users:Users,
 };
@@ -50,20 +50,19 @@ const IA20_ESSENTIAL_LINKS: ReadonlyArray<{label:string;href:string;icon:LucideI
 ];
 
 
+/** Compact family shared semantically with Explorar: one open target and one separate favorite action. */
 function HubModuleTileR5({module,pinned,onOpen,onPin,compact=false,reason}:{module:HubModuleR5;pinned:boolean;onOpen:(m:HubModuleR5)=>void;onPin:(id:string)=>void;compact?:boolean;reason?:string}){
   const Icon=ICONS[module.icon],tone=TONES[module.group];
-  return <article data-vault-r5-module={module.id} className={`group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[20px] border p-3 shadow-[0_10px_30px_rgba(0,0,0,.09)] ${tone.surface}`}>
-    <div className="mb-2 flex items-start justify-between gap-2">
-      <span aria-hidden="true" className={`grid size-10 shrink-0 place-items-center rounded-[14px] border ${tone.icon}`}><Icon size={19}/></span>
-      <button type="button" onClick={()=>onPin(module.id)} aria-label={pinned?`Desafixar ${module.title}`:`Fixar ${module.title}`} aria-pressed={pinned}
-        className={`grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/40 transition active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 ${pinned?"bg-emerald-300/10 text-emerald-200":"text-ink-muted hover:bg-surface-raised"}`}>
-        {pinned?<PinOff size={15}/>:<Pin size={15}/>}</button>
-    </div>
-    <button type="button" onClick={()=>onOpen(module)} className="flex min-h-[62px] w-full min-w-0 flex-1 flex-col items-start justify-between gap-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
-      <strong className="block w-full break-words text-[12px] font-semibold leading-snug text-ink-primary">{module.title}</strong>
-      {!compact?<span className="block w-full text-[10px] leading-snug text-ink-muted">{module.description}</span>:null}
-      {reason?<span className="mt-1 block w-full text-[10px] leading-snug text-ink-secondary">{reason}</span>:null}
-      <span className={`mt-1 inline-flex items-center gap-1 text-[10px] font-semibold ${tone.heading}`}>Abrir <ChevronRight size={13}/></span>
+  return <article data-vault-r5-module={module.id} className={`relative flex min-h-[72px] min-w-0 items-stretch overflow-hidden rounded-2xl border shadow-sm ${tone.surface}`}>
+    <button type="button" onClick={()=>onOpen(module)} aria-label={`Abrir ${module.title}`}
+      className="flex min-w-0 flex-1 items-center gap-2 p-2.5 pr-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 motion-reduce:transition-none">
+      <span className={`grid size-9 shrink-0 place-items-center rounded-xl border ${tone.icon}`} aria-hidden="true"><Icon size={17}/></span>
+      <span className="min-w-0 flex-1"><strong className="block break-words text-xs font-semibold leading-snug text-ink-primary">{module.title}</strong>
+        {reason?<span className="mt-0.5 block break-words text-[10px] leading-snug text-ink-muted">{reason}</span>:!compact?<span className="mt-0.5 block break-words text-[10px] leading-snug text-ink-muted">{module.description}</span>:null}</span>
+    </button>
+    <button type="button" aria-label={pinned?`Remover ${module.title} dos favoritos`:`Adicionar ${module.title} aos favoritos`}
+      aria-pressed={pinned} onClick={()=>onPin(module.id)} className="grid min-h-11 w-11 shrink-0 place-items-center text-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+      <Star size={17} fill={pinned?"currentColor":"none"} aria-hidden="true"/>
     </button>
   </article>;
 }
@@ -74,7 +73,7 @@ function SortableFavoriteR5({module,index,count,onOpen,onMove,onUnpin}:{module:H
     <button type="button" onClick={()=>onOpen(module)} className="flex min-w-0 flex-1 items-center gap-2 text-left"><Icon className={tone.heading} size={18}/><span className="min-w-0 break-words text-xs font-semibold">{module.title}</span></button>
     <button type="button" disabled={index===0} onClick={()=>onMove(module.id,-1)} aria-label={`Subir ${module.title}`} className="grid size-9 place-items-center rounded-lg disabled:opacity-30"><ArrowUp size={16}/></button>
     <button type="button" disabled={index===count-1} onClick={()=>onMove(module.id,1)} aria-label={`Descer ${module.title}`} className="grid size-9 place-items-center rounded-lg disabled:opacity-30"><ArrowDown size={16}/></button>
-    <button type="button" onClick={()=>onUnpin(module.id)} aria-label={`Desafixar ${module.title}`} className="grid size-9 place-items-center rounded-lg text-rose-200"><X size={16}/></button>
+    <button type="button" onClick={()=>onUnpin(module.id)} aria-label={`Desafixar ${module.title}`} className="grid size-9 place-items-center rounded-lg text-rose-200"><Star size={16}/></button>
   </Reorder.Item>;
 }
 
@@ -107,7 +106,7 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
   const markRecent=(id:string)=>{if(!ready)return;save({...current,recent:recordHubRecentR5(current.recent,id)});};
   const open=(module:HubModuleR5)=>{
     trigger("light");markRecent(module.id);
-    if(module.href.startsWith("/saude/minha-saude#")){
+    if(module.href.startsWith("/saude/fenix#")||module.href.startsWith("/saude/minha-saude#")){
       onOpenPersonalSection(module.href.split("#")[1]);return;
     }
     router.push(withReturnTarget(module.href,"/saude/minha-saude"));
@@ -118,21 +117,19 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
   const favorites=current.favorites.map(id=>BY_ID.get(id)).filter((item):item is HubModuleR5=>Boolean(item));
   const focus=useMemo(()=>buildHealthFocusR5({userId:ready?userId:"",personId:ready?personId:"",consultations:consultas,events,brain:brain.records,favorites:current.favorites,recent:current.recent,now}),[ready,userId,personId,consultas,events,current.favorites,current.recent,brain.records,now]);
   const query=search.trim(),searchHits=useMemo(()=>query?[...HEALTH_MODULES_R5.filter(m=>matchHubModuleR5(m,query)),...NETWORK_SEARCH_R5.filter(m=>matchHubModuleR5(m,query))]:[],[query]);
-  return <section data-vault-ui360-r5-launcher className="space-y-4" aria-label="Hub inteligente de Minha Saúde">
+  return <section data-vault-ui360-r5-launcher className="space-y-3 pb-5" aria-label="Hub inteligente de Minha Saúde">
     <HealthHubSwitchR5 active="saude" onNavigate={navigateToOther}/>
-    <div className="overflow-hidden rounded-[24px] border border-sky-300/20 bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,.12),transparent_55%),linear-gradient(140deg,rgba(12,21,34,.98),rgba(9,16,25,.94))] p-4 shadow-[0_16px_44px_rgba(0,0,0,.17)]">
-      <div className="flex items-center gap-2 text-sky-200"><BrainCircuit size={17}/><span className="text-[10px] font-bold uppercase tracking-[.16em]">Painel de saúde</span></div>
-      <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-ink-primary">Sua saúde, em um só lugar.</h2>
-      <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Encontre registros, consultas e medicamentos.</p>
-      <div className="relative mt-3"><Search size={17} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"/>
-        <input type="search" value={search} onChange={e=>setSearch(e.target.value.slice(0,80))} aria-label="Buscar módulos de saúde e rede" placeholder="Buscar exame, pressão, receita, médico…" className="min-h-12 w-full rounded-[15px] border border-surface-border/70 bg-void/65 pl-10 pr-10 text-sm text-ink-primary outline-none placeholder:text-ink-muted focus:border-sky-300/50"/>
+    <div className="rounded-[18px] border border-sky-300/15 bg-surface/65 p-3 shadow-sm">
+      <div className="flex items-center gap-2 text-sky-200"><BrainCircuit size={16} aria-hidden="true"/><h2 className="text-xs font-semibold">Painel de saúde</h2><span className="ml-auto text-[10px] text-ink-muted">Buscar ou escolher</span></div>
+      <div className="relative mt-2"><Search size={17} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"/>
+        <input type="search" value={search} onChange={e=>setSearch(e.target.value.slice(0,80))} aria-label="Buscar módulos de saúde e rede" placeholder="Exame, pressão, receita, médico…" className="min-h-11 w-full rounded-xl border border-surface-border/70 bg-void/65 pl-10 pr-10 text-sm text-ink-primary outline-none placeholder:text-ink-muted focus:border-sky-300/50"/>
         {search?<button type="button" onClick={()=>setSearch("")} aria-label="Limpar busca" className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center text-ink-muted"><X size={17}/></button>:null}
       </div>
     </div>
     {!query && <section aria-label="Acessos essenciais" className="space-y-3">
       <div className="flex items-center gap-2"><HeartPulse size={16} className="text-emerald-300"/><h3 className="text-[13px] font-semibold">Acessos rápidos</h3></div>
-      <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
-        {IA20_ESSENTIAL_LINKS.map(({label,href,icon:Icon})=><button key={href} type="button" onClick={()=>navigateToOther(href)} className={`flex min-h-14 min-w-0 items-center gap-2 rounded-2xl border p-3 text-left text-xs font-semibold text-ink-primary transition-colors active:bg-surface-raised focus-visible:outline focus-visible:outline-2 ${getIa20ShortcutTone(href).surface}`}><Icon size={18} className={`shrink-0 ${getIa20ShortcutTone(href).icon}`} aria-hidden="true"/><span className="min-w-0 break-words">{label}</span></button>)}
+      <div className="grid grid-cols-2 gap-1.5 min-[430px]:grid-cols-3">
+        {IA20_ESSENTIAL_LINKS.map(({label,href,icon:Icon})=><button key={href} type="button" onClick={()=>navigateToOther(href)} className={`flex min-h-[52px] min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs font-semibold text-ink-primary transition-colors active:bg-surface-raised focus-visible:outline focus-visible:outline-2 ${getIa20ShortcutTone(href).surface}`}><Icon size={18} className={`shrink-0 ${getIa20ShortcutTone(href).icon}`} aria-hidden="true"/><span className="min-w-0 break-words">{label}</span></button>)}
       </div>
     </section>}
     {query?<section aria-label="Resultados da busca" className="space-y-2 rounded-[22px] border border-surface-border/60 bg-surface/50 p-3"><div className="flex items-center justify-between"><h3 className="text-xs font-semibold">Resultados · {searchHits.length}</h3><span className="text-[10px] text-ink-muted">Saúde e Rede</span></div>
@@ -141,13 +138,18 @@ export function HealthHubLauncherR5({userId,personId,onOpenPersonalSection}:{use
         const Icon=ICONS[item.icon];return <button key={item.id} type="button" onClick={()=>navigateToOther(item.href)} className="flex min-h-[70px] items-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] p-3 text-left"><Icon size={18} className="shrink-0 text-violet-300"/><span className="min-w-0"><strong className="block text-xs">{item.title}</strong><span className="block text-[10px] text-ink-muted">{item.description}</span></span><ChevronRight size={14} className="shrink-0 text-violet-300"/></button>;})}</div>:<p className="py-3 text-xs text-ink-muted">Nenhum módulo corresponde à busca. Confira o termo.</p>}
     </section>:<>
       {favorites.length>0?<section aria-label="Módulos fixados" className="space-y-2">
-        <div className="flex items-center justify-between gap-2"><div><h3 className="flex items-center gap-1.5 text-[13px] font-semibold"><Pin size={15} className="text-sky-300"/>Fixados</h3><p className="mt-0.5 text-[10px] text-ink-muted">Seus acessos, na ordem que você escolher</p></div>
+        <div className="flex items-center justify-between gap-2"><div><h3 className="flex items-center gap-1.5 text-[13px] font-semibold"><Star size={15} className="text-amber-300"/>Favoritos</h3><p className="mt-0.5 text-[10px] text-ink-muted">Mesmos favoritos do Explorar</p></div>
           <button type="button" aria-pressed={organizing} onClick={()=>setOrganizing(x=>!x)} className="flex min-h-11 items-center gap-1 rounded-xl border border-surface-border px-3 text-[11px] font-semibold text-ink-secondary"><SlidersHorizontal size={14}/>{organizing?"Concluir":"Organizar"}</button></div>
         {organizing?<Reorder.Group axis="y" values={current.favorites} onReorder={reorder} className="space-y-2" style={{touchAction:"pan-y"}}>{favorites.map((m,i)=><SortableFavoriteR5 key={m.id} module={m} index={i} count={favorites.length} onOpen={open} onMove={(id,d)=>save({...current,favorites:moveHubFavoriteR5(current.favorites,id,d)})} onUnpin={togglePin}/>)}</Reorder.Group>:<div className="grid grid-cols-2 gap-2 max-[349px]:grid-cols-1">{favorites.map(m=><HubModuleTileR5 key={m.id} module={m} pinned onOpen={open} onPin={togglePin} compact/>)}</div>}
         <span className="sr-only">{reducedMotion?"Movimento reduzido ativado.":"Você também pode reorganizar pelos botões subir e descer."}</span>
       </section>:null}
-      {focus.length>0?<section aria-label="Em foco agora" className="space-y-2"><div className="flex items-center gap-2"><BellRing size={16} className="text-amber-300"/><h3 className="text-[13px] font-semibold">Em foco agora</h3></div><p className="text-[10px] text-ink-muted">Fatos da sua rotina e acessos recentes neste Hub — sem criar tarefas.</p>
-        <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">{focus.map(f=>{const module=BY_ID.get(f.id);return module?<div key={f.id} className="w-[min(75vw,240px)] shrink-0 snap-start"><HubModuleTileR5 module={module} pinned={false} onOpen={open} onPin={togglePin} reason={f.reason}/></div>:null;})}</div>
+      {focus.length>0?<section aria-label="Em foco agora" className="space-y-2"><div className="flex items-center gap-2"><BellRing size={16} className="text-sky-300"/><h3 className="text-[13px] font-semibold">Em foco agora</h3></div>
+        <p className="text-[10px] text-ink-muted">Registros e acessos recentes, sem criar novas tarefas.</p>
+        <div className="grid grid-cols-1 gap-2 pb-1">{focus.map(f=>{const module=BY_ID.get(f.id);if(!module)return null;const Icon=ICONS[module.icon];return <button key={f.id} type="button" onClick={()=>open(module)} aria-label={`Conferir ${module.title}`}
+          className="flex min-h-[66px] min-w-0 items-center gap-2.5 rounded-xl border border-sky-300/20 bg-sky-300/[.04] p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-sky-300/10 text-sky-200"><Icon size={17} aria-hidden="true"/></span>
+          <span className="min-w-0 flex-1"><strong className="block break-words text-xs text-ink-primary">{module.title}</strong><span className="mt-0.5 block break-words text-[11px] leading-snug text-ink-muted">{f.reason}</span></span><ChevronRight size={15} className="shrink-0 text-sky-300" aria-hidden="true"/>
+        </button>;})}</div>
       </section>:null}
       <section aria-label="Explorar todas as áreas" className="space-y-2">
         <button type="button" onClick={()=>navigateToOther("/saude/mapa")} className="flex min-h-12 w-full items-center justify-between gap-2 rounded-2xl border border-violet-300/20 bg-violet-300/[.045] px-3 text-left text-xs font-semibold text-violet-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300"><span className="flex items-center gap-2"><LayoutGrid size={17} aria-hidden="true"/>Ver todas as áreas de saúde</span><ChevronRight size={17} aria-hidden="true"/></button>

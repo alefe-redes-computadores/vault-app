@@ -104,6 +104,7 @@ import {
 } from "@/components/PendingDosesModal";
 import { HealthInsightExplanationSheet } from "@/components/health-intelligence/HealthInsightExplanationSheet";
 import { HomeCommandCenter } from "@/components/home/HomeCommandCenter";
+import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
 import { HomeEssentialToggleM118 } from "@/components/home/HomeEssentialToggleM118";
 import { buildHomeFinancialSummary } from "@/lib/home/financial-summary";
 import { buildHomeDoseProgress } from "@/lib/home/dose-progress";
@@ -236,6 +237,7 @@ function mapUrgenciaToAlertLevel(
 // ============================================================
 
 export default function HomePage() {
+ const {events:homeCareFlowEvents=[]}=useCareFlowM2();
  const supplyOverview=useSupplyOverview();
  const sourceNotesById=useMemo(() => new Map((supplyOverview?.renewals||[]).filter(r=>r.id).map(r=>[r.id!,r])),[supplyOverview?.renewals]);
   const router = useRouter();
@@ -1385,7 +1387,8 @@ export default function HomePage() {
           {/* M136: destino clínico mais frequente agora fica na primeira dobra. */}
           <HomeCommandCenter gastoMes={metricasFinanceiras.gastoMesAtual}
             diferencaMes={metricasFinanceiras.diff}
-            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary" />
+            totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary"
+            viva={{userId:user?.id||"",personId:activePersonId||"",today:hoje,medications:medicamentosAtivos,consultations:consultas,events:homeCareFlowEvents}} />
           <CareFlowSummaryM2 />
           {/* P6 P4-A: somente um acompanhamento opcional, evidência de consulta, sem mexer em Ação Agora. */}
           <ClinicalEpisodePulseP4 />
