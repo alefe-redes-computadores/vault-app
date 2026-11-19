@@ -46,7 +46,7 @@ const meds=read('app/saude/medicamentos/page.tsx'),home=read('app/page.tsx'),fil
 ok(meds.includes('indexMedicationTreatmentsP7(')&&meds.includes('db.tratamentos.where("[user_id+person_id]")')&&meds.includes('[treatmentOwner.id, activePersonId]'),'query reativa na conta/pessoa');
 ok(meds.includes('med.id ? (treatmentsByMedication.get(med.id) || []) : []'),'ID opcional protegido');
 ok(meds.includes('data-vault-med360-treatment-tags')&&meds.includes('cardTreatments.length > 0')&&meds.includes('cardTreatments.slice(0,compactCards ? 2 : 3)')&&meds.includes('getVaultTreatmentIcon(t.nome)'),'etiquetas individuais por tratamento, com limite de densidade');
-ok(meds.includes('safeTreatmentColorP7(t.cor)')&&meds.includes('style={color?{borderColor:`${color}66`,backgroundColor:`${color}12`,color}:undefined}'),'cores individuais passam pelo sanitizador canônico');
+ok(meds.includes('safeTreatmentColorP7(t.cor)')&&meds.includes('style={color ? (compactCards ? {color} : {borderColor:`${color}66`,backgroundColor:`${color}12`,color}) : undefined}'),'cores individuais sanitizadas preservadas em compacto e conforto');
 ok(meds.includes('railSize="label"')&&meds.includes('[writing-mode:vertical-rl]'),'tarja R5 inalterada');
 ok(meds.includes('selectedRegulatory.sourceLabel')&&meds.includes('selectedRegulatory.verified'),'fonte e verificacao permanecem no dialogo');
 ok((meds.match(/setSelectedRegulatory\(regulatoryProfile\)/g)||[]).length===1,'somente um handler regulatorio');

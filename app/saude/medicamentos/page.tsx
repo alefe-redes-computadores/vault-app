@@ -1457,7 +1457,7 @@ export default function MedicamentosListPage() {
                   </button>
                   <button type="button" aria-haspopup="dialog" aria-label={`Abrir menu 360 de ${med.nome}`} data-vault-med360-entry="menu"
                     onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("acoes");}}
-                    className="pointer-events-auto relative z-20 grid size-10 shrink-0 place-items-center rounded-xl border border-surface-border/45 bg-surface/35 text-ink-secondary transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Ellipsis size={19} aria-hidden="true"/>{actionLayoutM150P3.secondary.length>0&&<span className="absolute -bottom-1 -left-1 rounded-full border border-surface-border bg-surface px-1 text-[9px] font-bold text-ink-secondary" aria-hidden="true">+{actionLayoutM150P3.secondary.length}</span>}</button>
+                    className="pointer-events-auto relative z-20 grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border/45 bg-surface/35 text-ink-secondary transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><Ellipsis size={19} aria-hidden="true"/></button>
                 </div>
 
               </div>
@@ -1479,7 +1479,7 @@ export default function MedicamentosListPage() {
               )}
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px]">
-                <span className={`inline-flex min-h-7 shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${isSOS ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : isTemporary ? "border-sky-300/20 bg-sky-300/[.05] text-sky-200" : "border-surface-border/50 bg-surface/40 text-ink-secondary"}`} aria-label="Regime de uso cadastrado">
+                <span className={`inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold ${compactCards ? (isSOS ? "text-amber-300" : isTemporary ? "text-sky-200" : "text-ink-secondary") : isSOS ? "min-h-7 rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-amber-300" : isTemporary ? "min-h-7 rounded-md border border-sky-300/20 bg-sky-300/[.05] px-1.5 py-0.5 text-sky-200" : "min-h-7 rounded-md border border-surface-border/50 bg-surface/40 px-1.5 py-0.5 text-ink-secondary"}`} aria-label="Regime de uso cadastrado">
                   <Repeat2 size={12} aria-hidden="true"/>
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
                 </span>
@@ -1501,19 +1501,19 @@ export default function MedicamentosListPage() {
                   const TreatmentIcon = getVaultTreatmentIcon(t.nome);
                   const color = safeTreatmentColorP7(t.cor);
                   return <span key={t.id}
-                    aria-label={`Ver tratamento ${t.nome}`} className="inline-flex min-h-8 max-w-full items-center gap-1 rounded-lg border border-surface-border/50 bg-surface/40 px-2 text-[10px] font-semibold"
-                    style={color?{borderColor:`${color}66`,backgroundColor:`${color}12`,color}:undefined}>
+                    aria-label={`Tratamento vinculado: ${t.nome}`} className={`inline-flex max-w-full items-center gap-1 text-[10px] font-semibold ${compactCards ? "min-h-0 border-0 bg-transparent px-0" : "min-h-8 rounded-lg border border-surface-border/50 bg-surface/40 px-2"}`}
+                    style={color ? (compactCards ? {color} : {borderColor:`${color}66`,backgroundColor:`${color}12`,color}) : undefined}>
                     <TreatmentIcon size={12} aria-hidden="true"/><span className="max-w-[10rem] truncate">{t.nome}</span>
                   </span>;
                 })}
-                {cardTreatments.length>(compactCards?2:3)&&<span className="self-center text-[10px] text-ink-muted">+{cardTreatments.length-(compactCards?2:3)}</span>}
+                {!compactCards && cardTreatments.length>3&&<span className="self-center text-[10px] text-ink-muted">+{cardTreatments.length-3} tratamentos na gaveta</span>}
               </div>}
               </div>
               {/* VAULT_V318_OPERATIONAL_STRIP: resumo clinico unico, antes das acoes; sem painel duplicado. */}
               {(attentionReasonsM143.get(med.id||"")||[]).length>0 && !(stockReview || prescriptionReview360 || (!stockUnknown && (isEstoqueCritico || isEstoqueZerado))) && <p className="mt-1 text-xs leading-relaxed text-amber-200" aria-label="Motivo da atenção">Atenção: {(attentionReasonsM143.get(med.id||"")||[]).join(" · ")}</p>}
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_78px] items-center gap-2">
                 <div className="min-w-0 flex-1">
-              <MedicationOperationalStrip today={todayStatus}
+              <MedicationOperationalStrip today={todayStatus} compact={compactCards}
               stockLabel={stockUnknown ? "Não informado" : medicationStockLabelM149(stockSnapshot, med.estoque_unidade_medida, humanizeStockText(textoEstoquePrincipal))}
               stockDetail={stockUnknown ? "Saldo ainda não informado" : textoEstoqueSecundario || estoqueStatus}
               stockTone={stockUnknown ? "unknown" : stockEmpty ? "empty" : isEstoqueCritico ? "low" : "known"}
@@ -1537,7 +1537,7 @@ export default function MedicamentosListPage() {
             {(stockReview || prescriptionReview360 || (!stockUnknown && (isEstoqueCritico || isEstoqueZerado))) && <button type="button" data-vault-med360-microbanner
               onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360(stockReview ? "estoque" : prescriptionReview360 ? "receita" : "estoque");}}
               aria-label={`Conferir ${stockReview ? "unidade de estoque" : prescriptionReview360 ? "tipo de receita" : "saldo"} de ${med.nome}`}
-              className="pointer-events-auto relative z-20 mt-1 flex min-h-10 w-full items-center gap-2 rounded-lg border border-amber-300/25 bg-amber-300/[.055] px-2.5 py-1.5 text-left text-[11px] font-semibold text-amber-200 transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+              className={`pointer-events-auto relative z-20 mt-1 flex min-h-11 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[11px] font-semibold text-amber-200 transition-transform active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 ${compactCards ? "border-t border-amber-300/15 bg-amber-300/[.025] py-1" : "border border-amber-300/25 bg-amber-300/[.055] py-1.5"}`}>
               <AlertTriangle size={14} className="shrink-0" aria-hidden="true"/>
               <span className="min-w-0 flex-1 truncate">{stockReview ? "Unidade do estoque diferente · conferir" : prescriptionReview360 ? "Receita e catálogo: conferir" : isEstoqueZerado ? "Sem estoque registrado · conferir" : "Estoque baixo · conferir"}</span>
               <ChevronRight size={14} className="shrink-0" aria-hidden="true"/>
@@ -1760,7 +1760,6 @@ export default function MedicamentosListPage() {
             </div>
             <button type="button" aria-label="Abrir filtros de medicamentos" aria-expanded={visualFilterSheetOpenR1} onClick={()=>{trigger("vibrate");setVisualFilterSheetOpenR1(true);}} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border border-surface-border/55 bg-surface-raised/30 px-2 text-emerald-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><SlidersHorizontal size={18}/>{medicationFilter!=="todos"&&<span aria-label="Filtro ativo" className="size-1.5 rounded-full bg-amber-300"/>}</button>
           </div>
-          <div className="mt-2 border-t border-surface-border/35 pt-2" aria-label="Filtros rápidos de medicamentos"><MedicationFilterBar value={medicationFilter} onChange={selectMedicationFilter}/></div>
         </section>
 
         <BottomSheet isOpen={visualFilterSheetOpenR1} onClose={()=>setVisualFilterSheetOpenR1(false)} title="Filtros dos medicamentos" height="auto">

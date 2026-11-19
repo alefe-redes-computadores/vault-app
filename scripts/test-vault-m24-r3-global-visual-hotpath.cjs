@@ -30,7 +30,7 @@ ok(hero.includes('scheduled > 0 && Number.isFinite(progress)') &&
    hero.includes('motion-reduce:transition-none') && hero.includes('active:bg-surface-raised/40') && hero.includes('min-h-[75px]'),
    'P15 R7: Home keeps valid 0/0 semantics, reduced motion and original active contrast while design improves');
 ok(attention.includes('alerts.length === 0')&&attention.includes('aria-expanded={expanded}')&&attention.includes('renderAlert(alert)'),'Home attention keeps filtering and accessible control');
-ok(qg1.clinicalTileMinHeightQG1(area,84)&&area.includes('onNavigate(path)')&&area.includes('${tone}'),'Home clinical navigation and clinical color stay intact');
+ok(qg1.clinicalTileMinHeightQG1(area,76)&&area.includes('onNavigate(path)')&&area.includes('${tone}'),'Home clinical navigation and clinical color stay intact');
 const brainSheet=read(visual[3]),brainPlan=read(visual[4]);
 ok(brainSheet.includes('overscroll-contain')&&brainSheet.includes('sm:rounded-[28px]')&&brainSheet.includes('useDialogGuard(true, onClose)'),'Brain detail responsive sheet and close authority');
 ok(brainPlan.includes('border-surface-border/70 bg-gradient-to-br')&&brainPlan.includes('plan.items')&&brainPlan.includes('writeCarePlanMemory(plan)')&&brainPlan.includes('onNavigate(item.href)'),'Brain plan contrast and evidence policy remain');

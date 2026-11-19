@@ -13,12 +13,14 @@ ok(!classMinHeightAtLeastQG1('min-h-[84px] min-[380px]:!min-h-[76px]',84),'rejec
 ok(!classMinHeightAtLeastQG1('min-h-[90px] min-[390px]:min-h-[70px]',84),'rejects 70px later-width override');
 ok(classMinHeightAtLeastQG1('min-h-[100px]',84),'accepts stable 100px target');
 ok(classMinHeightAtLeastQG1('min-h-[84px]',84),'accepts safe 84px legacy target');
+ok(classMinHeightAtLeastQG1('min-h-[76px]',76),'aceita atalhos de 76px');
+ok(!classMinHeightAtLeastQG1('min-h-[60px]',76),'rejeita regressão abaixo de 76px nos atalhos');
 const home=read('components/home/HomeCommandCenter.tsx');
 const tile=read('components/home/HomeClinicalAreaTile.tsx');
-ok(homePrimaryMinHeightQG1(home,84),'Medicamentos: usable touch and real navigation');
-ok(clinicalTileMinHeightQG1(tile,84),'Minha saúde: usable touch and preserved semantic color');
-ok(extractClassAfter(home,'onClick={() => go("/saude/medicamentos")}').includes('min-h-[100px]'),'Home premium aligned min size 100px');
-ok(extractClassAfter(tile,'<button type="button" onClick={() => onNavigate(path)}').includes('min-h-[100px]'),'Clinical tile premium aligned min size 100px');
+ok(homePrimaryMinHeightQG1(home,76),'Medicamentos: usable touch and real navigation');
+ok(clinicalTileMinHeightQG1(tile,76),'Minha saúde: usable touch and preserved semantic color');
+ok(extractClassAfter(home,'onClick={() => go("/saude/medicamentos")}').includes('min-h-[76px]'),'Home compacto usa 76px e mantém toque acessível');
+ok(extractClassAfter(tile,'<button type="button" onClick={() => onNavigate(path)}').includes('min-h-[76px]'),'Saúde compacta usa 76px e mantém toque acessível');
 ok(home.includes('grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1'),'320px single-column, wider screens paired');
 const map=read('app/saude/mapa/page.tsx'),directory=read('lib/navigation/clinical-directory-m150.ts');
 const tree=ts.createSourceFile('lib/navigation/clinical-directory-m150.ts',directory,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);

@@ -44,7 +44,10 @@ ok('Ações reais em coluna fixa e gaveta sem altura adicional',
       med.includes('actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3') &&
       med.includes('actionLayoutM150P3.primary === "care" ? careActionButtonM150P3') &&
       med.includes('actionLayoutM150P3.primary === "stock" ? stockActionButtonM150P3') &&
-      med.includes('actionLayoutM150P3.secondary.length>0') &&
+      med.includes('data-vault-med360-entry="menu"') &&
+      med.includes('openMedicationSheet360("acoes")') &&
+      med.includes('className="pointer-events-auto relative z-20 grid size-11') &&
+      !med.includes('aria-hidden="true">+{actionLayoutM150P3.secondary.length}') &&
       med.includes('MedicationActionsSheetR4') &&
       med.includes('router.push(careAction.href)')
 );

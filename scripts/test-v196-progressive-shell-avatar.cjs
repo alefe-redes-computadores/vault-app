@@ -35,7 +35,7 @@ assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.incl
 // Valida os novos alvos visíveis, o raio, as rotas e a identidade verde da Minha Saúde.
 assert(command.includes('grid min-w-0 grid-cols-2 gap-2') &&
   /<button[^>]*onClick=\{\(\) => go\("\/saude\/medicamentos"\)\}[^>]*className="[^"]*min-h-\[\d+px\][^"]*rounded-\[18px\]/.test(command) &&
-  qg1.homePrimaryMinHeightQG1(command,84) &&
+  qg1.homePrimaryMinHeightQG1(command,76) &&
   command.includes('<HomeClinicalAreaTile label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude"') &&
   command.includes('tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go}'));
 

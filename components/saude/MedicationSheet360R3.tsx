@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { catalogPackagesForMedicationUXR4 } from "@/lib/medications/catalog-packaging-ux-r4";
 import { ArrowUpRight, Brain, CalendarClock, ChevronRight, Clock3, Factory, FileCheck2, FilePenLine, History, Layers3, Package, Pill, Repeat2, ShieldCheck, ShoppingBag, X } from "lucide-react";
 
 export type Medication360Tab = "ficha" | "rotina" | "estoque" | "receita" | "acoes";
@@ -48,14 +49,16 @@ const sections: { id: Medication360Tab; title: string; Icon: typeof Pill }[] = [
   {id:"receita",title:"Receita",Icon:FileCheck2},
   {id:"acoes",title:"Ações",Icon:Layers3},
 ];
-function presentationChipsP0(raw:string|null){
-  const parts=(raw||'').split(/[•;\n]+/).map(x=>x.trim()).filter(Boolean);
-  if(!parts.length)return <p className="mt-2 text-[11px] text-ink-muted">Nenhuma apresentação oficial resolvida para esta referência.</p>;
-  return <div className="mt-2 flex flex-wrap gap-2" aria-label="Apresentações da referência no catálogo">{parts.map((part,i)=>{
-    const count=part.match(/\bX\s*(\d+)\b/i);
-    const readable=count?`Caixa c/ ${count[1]}`:part;
-    return <span key={`${part}-${i}`} title={part} className="inline-flex min-h-8 max-w-full items-center rounded-lg border border-sky-300/25 bg-sky-300/[.055] px-2.5 py-1 text-[11px] font-medium text-sky-100">{readable}</span>;
-  })}<details className="w-full text-[10px] text-ink-muted"><summary className="min-h-9 cursor-pointer py-2">Conferir descrição técnica original</summary><p className="break-words rounded-lg border border-surface-border/50 p-2">{raw}</p></details></div>;
+function presentationChipsP0(raw:string|null,dosage:string,form:string|null){
+  const reviewed=catalogPackagesForMedicationUXR4(raw,dosage,form);
+  if (!reviewed.options.length) return <div className="mt-2 space-y-2">
+    <p className="text-[11px] text-ink-muted">Não foi possível confirmar embalagens para esta concentração e forma farmacêutica. Confira a descrição original.</p>
+    {raw && <details className="text-[10px] text-ink-muted"><summary className="min-h-11 cursor-pointer py-2">Conferir referência técnica original</summary><p className="break-words rounded-lg border border-surface-border/50 p-2">{raw}</p></details>}
+  </div>;
+  return <div className="mt-2 space-y-2"><p className="text-[10px] text-ink-muted">Embalagens encontradas no catálogo — não são caixas registradas ou adquiridas.</p>
+    <div className="flex flex-wrap gap-2" aria-label="Embalagens encontradas no catálogo">{reviewed.options.map(option=><span key={option.size} title={option.original} className="inline-flex min-h-8 items-center rounded-lg border border-sky-300/25 bg-sky-300/[.055] px-2.5 py-1 text-[11px] font-medium text-sky-100">{option.label}</span>)}</div>
+    <details className="text-[10px] text-ink-muted"><summary className="min-h-11 cursor-pointer py-2">Conferir descrição técnica original</summary><p className="break-words rounded-lg border border-surface-border/50 p-2">{raw}</p></details>
+  </div>;
 }
 const rowClass = "flex min-h-11 items-center gap-2.5 rounded-xl border border-surface-border/45 bg-surface/45 px-3 py-2.5";
 const labelClass = "text-[10px] font-medium text-ink-muted";
@@ -107,7 +110,7 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
       </header>
       <div role="tablist" aria-label="Assuntos do medicamento" className="grid shrink-0 grid-cols-5 gap-1 border-y border-surface-border/45 px-2 py-2">
         {sections.map(({id,title,Icon})=><button key={id} role="tab" type="button" aria-selected={tab===id} aria-controls="med360-tabpanel" onClick={()=>setTab(id)}
-          className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-lg border px-1 text-[10px] font-semibold transition-colors active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${tab===id?"border-emerald-300/65 bg-emerald-300/[.16] text-emerald-100 shadow-[inset_0_0_0_1px_rgba(110,231,183,.14)]":"border-surface-border/50 bg-surface/45 text-ink-secondary"}`}><Icon size={13} className="hidden min-[410px]:block"/>{title}</button>)}
+          className={`inline-flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-lg border px-1 text-[10px] font-semibold transition-colors active:scale-[.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice ${tab===id?"border-white bg-white text-slate-950 shadow-sm":"border-surface-border/50 bg-surface/45 text-ink-secondary"}`}><Icon size={13} className="hidden min-[410px]:block"/>{title}</button>)}
       </div>
       <div role="tabpanel" id="med360-tabpanel" className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {tab==="ficha" && <>
@@ -115,14 +118,14 @@ export function MedicationSheet360R3({value,onClose,onNavigate}:{value:Medicatio
           <div className="grid grid-cols-2 gap-2">
             <Field icon={<Factory size={14}/>} label="Fabricante" value={value.manufacturer || value.declaredManufacturer || "Não informado"}/>
             <Field icon={<Pill size={14}/>} label="Via de uso" value={value.route}/>
-            <Field icon={<Pill size={14}/>} label="Apresentação" value={value.form || "Não informada"}/>
+            <Field icon={<Pill size={14}/>} label="Dose cadastrada" value={value.dose || "Não informada"}/>
             <Field icon={<ShoppingBag size={14}/>} label="Origem" value={value.origin || "Não informada"}/>
           </div>
           <p className="rounded-lg border border-surface-border/40 bg-surface/30 px-3 py-2 text-[11px] text-ink-muted">Fabricante no catálogo: {value.catalogManufacturer || "não identificado"} · {value.regulatory.authority}. Cadastro e aquisição são fontes diferentes; não presumir lote físico.</p>
           <div className="rounded-xl border border-surface-border/45 bg-surface/45 p-3">
             <p className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><FileCheck2 size={15} className="text-sky-300"/>Apresentações no catálogo</p>
-            {presentationChipsP0(value.officialPresentations)}
-            <p className="mt-1 text-[10px] text-ink-muted">{value.catalogCoverage === "verified" ? "Correspondência exata disponível" : value.catalogCoverage === "partial" ? "Referência parcial: confira concentração e forma" : "Dados declarados ou referência não disponível"}. A apresentação encontrada não determina a posologia.</p>
+            {presentationChipsP0(value.officialPresentations,value.dosage,value.form)}
+            <p className="mt-1 text-[10px] text-ink-muted">{value.catalogCoverage === "verified" && catalogPackagesForMedicationUXR4(value.officialPresentations,value.dosage,value.form).options.length ? "Embalagens compatíveis com a referência" : value.catalogCoverage === "partial" ? "Referência parcial: confira concentração e forma" : "Dados declarados ou referência não disponível"}. A apresentação encontrada não determina a posologia.</p>
           </div>
           {value.declaredManufacturer && value.manufacturer && value.declaredManufacturer!==value.manufacturer && <p className="rounded-lg border border-surface-border/45 p-2 text-[11px] text-ink-secondary">Fabricante da etiqueta: {value.declaredManufacturer}. A última aquisição pode ter outro fabricante.</p>}
           <div className="rounded-xl border border-surface-border/40 bg-surface/30 p-2.5">{value.provenance}</div>

@@ -970,6 +970,18 @@ export default function HomePage() {
     [operationalAlerts, resumoContextual, aliasesRetiradaM147, retiradasAgendaM147]
   );
   const duplicatePrimaryWithdrawalP5 = Boolean(primaryMedicationCareOpportunity && continuationWithdrawalAlreadyVisibleP5(primaryMedicationCareOpportunity.actionHref, retiradasAgendaM147));
+  // UX360 R4: evitar segunda superfície de estoque para o mesmo medicamento
+  // explicitamente identificado no bloco Atenção; nunca deduzir pelo nome.
+  const duplicatePrimaryStockUXR4 = Boolean(primaryMedicationCareOpportunity &&
+    primaryMedicationCareOpportunity.level !== "urgent" &&
+    ["stock_review","acquisition_needed"].includes(primaryMedicationCareOpportunity.careStage) &&
+    unifiedAlerts.some(alert => {
+      if (alert.kind !== "estoque") return false;
+      try {
+        const uri = new URL(alert.href, "https://vault.invalid");
+        return (uri.searchParams.get("id") || uri.searchParams.get("medicamento_id")) === primaryMedicationCareOpportunity.medicamentoId;
+      } catch { return false; }
+    }));
   const quantityFollowUpInsight = healthIntelligence.insights.find(item => item.id.startsWith("quantidade-confirmada-")) ?? null;
   const quantityFollowUpFeedback = quantityFollowUpInsight
     ? healthIntelligence.experienceFeedback.find(item => item.insightId === quantityFollowUpInsight.id)
@@ -1870,7 +1882,7 @@ export default function HomePage() {
             </motion.section>
           )}
 
-          {primaryMedicationCareOpportunity && !duplicatePrimaryWithdrawalP5 && (
+          {primaryMedicationCareOpportunity && !duplicatePrimaryWithdrawalP5 && !duplicatePrimaryStockUXR4 && (
             <motion.section
               initial={{
                 opacity:

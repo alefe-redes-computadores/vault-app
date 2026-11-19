@@ -37,7 +37,7 @@ ok(med.includes('actionLayoutM150P3.primary')&&med.includes('setQuickDoseMedId(m
 ok((med.match(/id="medicamentos-panorama"/g)||[]).length===1&&med.indexOf('id="medicamentos-panorama"')<med.indexOf('</BottomSheet>'),'panorama e ferramentas movidos para a gaveta de filtros');
 ok(med.includes('MedicationListGroupNavigation')&&med.includes('Ocorrências, ciclos e vacinas')&&med.includes('Ajuda sobre medicamentos'),'ferramentas de apoio mantidas acessíveis');
 for(const tab of ['ficha','rotina','estoque','receita','acoes'])ok(sheet.includes(`tab==="${tab}"`),`aba 360 ${tab}`);
-ok(sheet.includes('label="Fabricante"')&&sheet.includes('label="Via de uso"')&&sheet.includes('label="Apresentação"')&&sheet.includes('label="Origem"'),'Ficha 2x2 fiel ao desenho');
+ok(sheet.includes('label="Fabricante"')&&sheet.includes('label="Via de uso"')&&sheet.includes('label="Dose cadastrada"')&&sheet.includes('presentationChipsP0(value.officialPresentations,value.dosage,value.form)')&&sheet.includes('label="Origem"'),'Ficha 2x2 fiel ao desenho');
 ok(sheet.includes('Fabricante no catálogo')&&sheet.includes('value.officialPresentations')&&sheet.includes('value.regulatory.source')&&sheet.includes('value.regulatory.verified'),'dados do catálogo e origem distintos');
 ok(sheet.includes('Manter meu cadastro')&&sheet.includes('Aplicar no editor')&&sheet.includes('não altera nenhum campo'),'revisão humana explícita; nenhuma escrita automática');
 ok(sheet.includes('safe-area-inset-bottom')&&sheet.includes('max-h-[min(89dvh,790px)]')&&sheet.includes('Escape')&&sheet.includes('original?.focus()'),'Android Safe Area, viewport e retorno de foco');
