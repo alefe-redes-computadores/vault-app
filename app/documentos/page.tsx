@@ -1116,7 +1116,7 @@ export default function DocumentsPage() {
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-5 pb-4 pt-4 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/85 px-4 pb-4 pt-4 backdrop-blur-xl header-safe-top sm:px-5">
           <div className="mx-auto max-w-5xl">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -1155,19 +1155,22 @@ export default function DocumentsPage() {
 
             {/* VAULT_DOCUMENT_TOOLBAR_V79 */}
             {/* VAULT_DOCUMENT_TOOLBAR_V80 */}
-            <div className="mt-3 flex items-center gap-2">
-              <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nome, número ou nota..." />
-              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
+            <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+               {/* IA20_P3B_DOCS_TOOLS: busca completa em telas estreitas. */}
+               <ListSearch initiallyExpanded className="w-full min-w-0 sm:flex-1" value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nome, número ou nota..." />
+               <div role="group" aria-label="Ferramentas do Cofre Pessoal" className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto sm:shrink-0">
+              <button type="button" onClick={() => { trigger("vibrate"); setShowFilters((previous) => !previous); }} className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border active:scale-95 ${hasActiveFilters || showFilters ? "border-ice/30 bg-ice/10 text-ice" : "border-surface-border/45 bg-surface-raised text-ink-muted"}`} aria-label="Abrir filtros" aria-pressed={showFilters}>
                 <SlidersHorizontal size={16} />
                 {activeFilterCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ice px-1 text-[9px] font-bold text-void">{activeFilterCount}</span>}
               </button>
-              <button type="button" onClick={openGallery} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label="Abrir galeria"><Images size={16} /></button>
-              <button type="button" onClick={toggleViewMode} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label={viewMode === "list" ? "Usar visualização em grade" : "Usar visualização em lista"} aria-pressed={viewMode === "grid"}>
+              <button type="button" onClick={openGallery} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label="Abrir galeria"><Images size={16} /></button>
+              <button type="button" onClick={toggleViewMode} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-surface-border/45 bg-surface-raised text-ink-muted active:scale-95" aria-label={viewMode === "list" ? "Usar visualização em grade" : "Usar visualização em lista"} aria-pressed={viewMode === "grid"}>
                 {viewMode === "list" ? <Grid3X3 size={16} /> : <LayoutList size={16} />}
               </button>
               {filteredDocs.length > 0 && (
-                <ExportCardButton cards={getExportCards()} onExport={() => exportDocumentSummariesToPDF(filteredDocs)} title="Resumo de documentos sem anexos" variant="secondary" size="sm" label="" className="h-10 w-10 shrink-0 rounded-xl p-0" />
+                <ExportCardButton cards={getExportCards()} onExport={() => exportDocumentSummariesToPDF(filteredDocs)} title="Resumo de documentos sem anexos" variant="secondary" size="sm" label="" touchTarget="comfortable" className="h-11 w-11 shrink-0 rounded-xl p-0" />
               )}
+               </div>
             </div>
 
             {/* ==================================================
@@ -1272,7 +1275,7 @@ export default function DocumentsPage() {
                   }}
                   className="overflow-hidden"
                 >
-                  <div className="mt-4 space-y-4 rounded-[22px] border border-surface-border/40 bg-surface/95 p-4 shadow-sm">
+                  <div role="region" aria-label="Filtros do Cofre Pessoal" className="mt-4 max-h-[45dvh] space-y-4 overflow-y-auto overscroll-y-contain rounded-[22px] border border-surface-border/40 bg-surface/95 p-4 shadow-sm">
                     {/* ==========================================
                         CATEGORIA
                         ========================================== */}
@@ -1742,7 +1745,7 @@ export default function DocumentsPage() {
                   }
                   initial="hidden"
                   animate="show"
-                  className="vault-deferred-lg grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                  className="vault-deferred-lg grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
                 >
                   {filteredDocs.map(
                     (

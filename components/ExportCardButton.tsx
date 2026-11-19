@@ -15,6 +15,7 @@ interface ExportCardButtonProps {
   className?: string;
   label?: string;
   compact?: boolean;
+  touchTarget?: "comfortable";
   onBeforeExport?: () => void | Promise<void>;
   onAfterExport?: () => void;
   onExport?: () => Promise<void>;
@@ -29,6 +30,7 @@ export function ExportCardButton({
   className = "",
   label = "Exportar PDF",
   compact = false,
+  touchTarget,
   onBeforeExport,
   onAfterExport,
   onExport,
@@ -92,7 +94,7 @@ export function ExportCardButton({
         size={size}
         onClick={handleExport}
         disabled={isLoading}
-        className={`inline-flex shrink-0 items-center justify-center gap-2 ${iconOnly ? "!h-10 !w-10 !min-h-10 !min-w-10 !p-0" : ""} ${className}`}
+        className={`inline-flex shrink-0 items-center justify-center gap-2 ${iconOnly ? (touchTarget === "comfortable" ? "!h-11 !w-11 !min-h-11 !min-w-11 !p-0" : "!h-10 !w-10 !min-h-10 !min-w-10 !p-0") : ""} ${className}`}
       >
         {isLoading ? (
           <>

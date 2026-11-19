@@ -3575,7 +3575,7 @@ export default function DocumentsPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-28">
+      <main className="min-h-[100dvh] bg-void pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
         {/* ====================================================
             EXPORT SURFACE
             ==================================================== */}
@@ -3622,8 +3622,9 @@ export default function DocumentsPage() {
             HEADER
             ==================================================== */}
 
-        <header className="sticky top-0 z-30 border-b border-surface-border/40 bg-void/90 px-5 pb-4 pt-4 header-safe-top backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-30 border-b border-surface-border/40 bg-void/90 px-4 pb-4 pt-4 header-safe-top backdrop-blur-xl sm:px-5">
+          {/* IA20_P3B_CLINICAL_TOOLS: no celular, titulo e acoes nao disputam a mesma linha. */}
+           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -3667,11 +3668,10 @@ export default function DocumentsPage() {
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div role="group" aria-label="Ferramentas do Acervo Clínico" className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto sm:shrink-0">
               {uniqueDocumentViewModels.length >
                 0 && (
                 <ExportCardButton
-                  compact
                   onBeforeExport={prepareExportSurface}
                   onAfterExport={releaseExportSurface}
                   cards={
@@ -3681,6 +3681,7 @@ export default function DocumentsPage() {
                   variant="secondary"
                   size="sm"
                   label="Exportar"
+                   className="min-h-11"
                 />
               )}
 
@@ -3718,10 +3719,10 @@ export default function DocumentsPage() {
               placeholder="Buscar documento, medicamento, médico, exame..."
             />
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Período do acervo">
-            <button type="button" aria-pressed={selectedMonth==='all'} onClick={()=>setSelectedMonth('all')} className={`min-h-11 rounded-xl border px-3 text-xs ${selectedMonth==='all'?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>Todo o acervo</button>
-            <button type="button" aria-pressed={selectedMonth===format(new Date(),'yyyy-MM')} onClick={()=>setSelectedMonth(format(new Date(),'yyyy-MM'))} className={`min-h-11 rounded-xl border px-3 text-xs ${selectedMonth===format(new Date(),'yyyy-MM')?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>Este mês</button>
-            <button type="button" onClick={()=>setShowFilters(true)} className="min-h-11 px-2 text-xs text-ink-muted">Escolher mês ›</button>
+          <div role="group" className="mt-3 flex min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:thin]" aria-label="Período do acervo">
+            <button type="button" aria-pressed={selectedMonth==='all'} onClick={()=>setSelectedMonth('all')} className={`min-h-11 shrink-0 rounded-xl border px-3 text-xs ${selectedMonth==='all'?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>Todo o acervo</button>
+            <button type="button" aria-pressed={selectedMonth===format(new Date(),'yyyy-MM')} onClick={()=>setSelectedMonth(format(new Date(),'yyyy-MM'))} className={`min-h-11 shrink-0 rounded-xl border px-3 text-xs ${selectedMonth===format(new Date(),'yyyy-MM')?'border-emerald-300/30 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-muted'}`}>Este mês</button>
+            <button type="button" onClick={()=>setShowFilters(true)} className="min-h-11 shrink-0 px-2 text-xs text-ink-muted">Escolher mês ›</button>
           </div>
         </header>
 
