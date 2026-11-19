@@ -10,7 +10,7 @@ assert(alerts.includes('item.dias !==\n                    null')&&!alerts.inclu
 assert(alerts.includes('retirada.person_id === medicamento.person_id'));
 assert(alerts.includes('diasRetirada < 0')&&alerts.includes('Math.abs(diasRetirada)'));
 assert((meds.includes('BottomSheet isOpen={visualFilterSheetOpenR1}') && meds.includes('data-vault-filter-sheet="r1"'))&&meds.includes('@vault:meds_density_v1'));
-assert(meds.includes('Por período')&&meds.includes('Regime de uso cadastrado'));
+assert(meds.includes('Por período')&&meds.includes('data-vault-r5-context="regime"')&&meds.includes('openMedicationSheet360("rotina")')&&meds.includes('aria-label={`Abrir rotina e regime de ${med.nome}`}'));
 assert(meds.includes('exactClosedWithdrawalP7')&&meds.includes('activeScheduledWithdrawalP5P4'));
 assert(!meds.includes('max-h-6 overflow-hidden')&&!meds.includes('writingMode: "vertical-rl"'));
 assert(!meds.includes('Organização e indicadores')&&meds.includes('Próximas doses de hoje'));

@@ -40,6 +40,8 @@ export interface ListCardProps {
   density?: "default" | "compact";
   /** V318: very compact medication list; opt-in, not a global size change. */
   compactTight?: boolean;
+  /** R5: medication-only floating icon; metadata and actions can use full width below header. */
+  medicationFlow?: boolean;
   /** Conteúdo com ações próprias; navegação vira um botão irmão. */
   interactiveContent?: boolean;
   navigationLabel?: string;
@@ -63,6 +65,7 @@ export function ListCard({
   showChevron = true,
   density = "default",
   compactTight = false,
+  medicationFlow = false,
   interactiveContent = false,
   navigationLabel = "Ver detalhes",
 }: ListCardProps) {
@@ -106,7 +109,7 @@ export function ListCard({
         className={`
           absolute
           bottom-0 left-0 top-0
-          ${rail ? (railSize === "slim" ? "w-4" : railSize === "label" ? "w-8" : "w-6") : "w-1.5"}
+          ${rail ? (railSize === "slim" ? "w-4" : railSize === "label" ? (medicationFlow ? "w-7" : "w-8") : "w-6") : "w-1.5"}
           ${softRail ? "opacity-75" : ""}
           ${isDisabled && !rail ? "bg-coral" : ""}
         `}
@@ -122,7 +125,7 @@ export function ListCard({
               ? railSize === "slim"
                 ? (isTight ? "p-2.5 pl-6" : "p-3 pl-6")
                 : railSize === "label"
-                ? (isTight ? "p-2.5 pl-10" : "p-3 pl-10")
+                ? (medicationFlow ? (isTight ? "p-2 pl-9" : "p-3 pl-9") : (isTight ? "p-2.5 pl-10" : "p-3 pl-10"))
                 : (isTight ? "p-2.5 pl-8" : "p-3 pl-8")
               : "p-4 pl-10"
             : isCompact
@@ -139,14 +142,15 @@ export function ListCard({
               className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:bg-ice/[0.035]"
             />
             <div
-              className={`pointer-events-none relative z-10 flex w-full items-start text-left [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-20 ${
-                isCompact ? "gap-2.5" : "gap-3.5"
+              className={`pointer-events-none relative z-10 w-full text-left ${medicationFlow ? "block" : "flex items-start"} [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-20 ${
+                medicationFlow ? "block" : isCompact ? "gap-2.5" : "gap-3.5"
               } ${contentClassName}`}
             >
               <div
                 className={`
               flex
               ${isTight ? "h-9 w-9 rounded-xl" : isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
+              ${medicationFlow ? "absolute left-0 top-1" : ""}
               shrink-0
               items-center
               justify-center

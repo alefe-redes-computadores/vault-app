@@ -41,7 +41,7 @@ ok('O estado híbrido não herda etiqueta de origem ativa',
 // FIX5: R2 substituiu a grade antiga por uma coluna principal fixa com
 // gaveta secundaria. Verificar a estrutura real, ambos os alvos táteis e ARIA.
 ok('M86/R2: faixa compacta, ação independente e alvos táteis preservados',
-  med.includes('grid-cols-[minmax(0,1fr)_78px]') &&
+  med.includes('grid-cols-[minmax(0,1fr)_88px]') &&
   med.includes('aria-label="Ações do medicamento" data-vault-r4-main-action className="relative flex min-h-11') &&
   med.includes('[&>button]:min-h-11') &&
   med.includes('secondaryActionSheetR4') &&

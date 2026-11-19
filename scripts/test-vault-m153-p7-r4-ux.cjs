@@ -34,7 +34,7 @@ assert(update.includes('state.installedVersion||APP_VERSION'),'no made-up APK ve
 assert(more.includes('grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&_button]:min-w-0')&&more.includes('grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3'),'data grid');
 assert(more.includes('return_to=%2Fmais')&&profile.includes('Voltar para Mais')&&person.includes('fromMoreR4 ? "/mais" : "/pessoas"'),'canonical return Mais');
 assert(help.includes('topicGroupsR4')&&help.includes('searchHelpTopics(query)'),'help semantic groups and search');
-assert(med.includes('grid-cols-[minmax(0,1fr)_78px]')&&med.includes('showChevron={false}'),'fixed 78px action slot');
+assert(med.includes('grid-cols-[minmax(0,1fr)_88px]')&&med.includes('showChevron={false}'),'fixed 88px action slot only when actionable');
 const medLucideImports=med.match(/import\s*\{([^}]+)\}\s*from\s*["']lucide-react["']/);
 assert(medLucideImports&&/\bChevronRight\b/.test(medLucideImports[1]),'ChevronRight used in 78px action column must be imported');
 assert(med.includes('secondaryActionSheetR4')&&med.includes('aria-label="Ações do medicamento"')&&actions.includes('window.setTimeout(onClose,0)'),'secondary actions run before closing sheet');

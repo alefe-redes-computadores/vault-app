@@ -38,7 +38,7 @@ ok('SOS recolhido no panorama e progressivo',med.includes('tone="sos" forceOpen=
 ok('Grupos por prioridade e dose rápida preservados',med.includes('medsPrioridade.map(renderCard)') && med.includes('setQuickDoseMedId(med.id!)'));
 ok('Classificação regulatória interativa preservada',med.includes('regulatoryProfile?.label') && med.includes('setSelectedRegulatory(regulatoryProfile)'));
 ok('Ações reais em coluna fixa e gaveta sem altura adicional',
-      med.includes('grid-cols-[minmax(0,1fr)_78px]') &&
+      med.includes('grid-cols-[minmax(0,1fr)_88px]') &&
       med.includes('aria-label="Ações do medicamento"') &&
       med.includes('data-vault-r4-main-action') &&
       med.includes('actionLayoutM150P3.primary === "dose" ? quickActionButtonM150P3') &&

@@ -18,7 +18,7 @@ ok(sheet.includes('Notificação')===false,'nao inventa classe regulatoria dentr
 ok(med.includes('useMedicationCatalogProfiles')&&med.includes('regulatoryProfiles[med.id]')&&med.includes('catalogIdentities[med.id]'),'catálogo canônico continua fonte');
 ok(med.includes('setQuickDoseMedId(med.id!)')&&med.includes('MedicationRestockAction')&&med.includes('router.push(careAction.href)'),'tomadas, estoque e caminho clinico originais');
 ok(med.includes('navigationP6.kind === "completed" ? null')&&med.includes('exactClosedWithdrawalP7'),'retirada concluida nao reativada pelo layout');
-ok(med.includes('data-vault-r4-main-action')&&med.includes('actionLayoutM150P3.primary')&&med.includes('grid-cols-[minmax(0,1fr)_78px]'),'acao canonica fixa no card');
+ok(med.includes('data-vault-r4-main-action')&&med.includes('actionLayoutM150P3.primary')&&med.includes('grid-cols-[minmax(0,1fr)_88px]'),'acao canonica fixa no card');
 ok(!med.includes('openMedicationContextP7R3("treatment")')&&med.includes('data-vault-med360-treatment-tags')&&med.includes('setSelectedRegulatory(regulatoryProfile)')&&med.includes('railSize="label"'),'tratamento e tarja regulatoria continuam funcionais');
 ok(sheet.includes('value.controls.map')&&sheet.includes('window.setTimeout(onClose,0)'),'reutiliza controles clinicos sem recriar comandos');
 ok(sheet.includes('value.treatments.map')&&sheet.includes('getVaultTreatmentIcon(t.name)')&&med.includes('safeTreatmentColorP7(t.cor)'),'tratamentos explicitos e cores validas');

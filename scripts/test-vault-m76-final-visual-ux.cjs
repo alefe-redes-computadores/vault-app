@@ -46,7 +46,7 @@ ok(today.indexOf('id="hoje-doses"')<today.indexOf('<TodayActionCenter')&&today.i
 ok(today.includes('id="hoje-compromissos"')&&today.includes('buildTodayAgendaOverview'),"reaproveita a agenda e os destinos reais");
 const meds=parse("app/saude/medicamentos/page.tsx");
 ok(meds.includes('className="sr-only" title={`Princípio ativo: ${activeIngredient}`}') &&
-   meds.includes('aria-hidden="true" className="min-w-0 line-clamp-1 break-words text-[11px] font-normal leading-snug text-ink-muted"') &&
+   meds.includes('data-vault-r5-active-ingredient') && meds.includes('compactCards ? "text-[10px] leading-tight" : "text-xs leading-snug"') &&
    !meds.includes('<span className="text-ink-faint">Princípio ativo: </span>{activeIngredient}'),
    "princípio ativo mantém descrição assistiva e rótulo secundário padronizado");
 ok(meds.includes('const showActiveIngredient = activeIngredients.length > 0;') &&

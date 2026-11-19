@@ -64,7 +64,7 @@ check(Boolean(cardColorAttribute && ts.isJsxAttribute(cardColorAttribute) &&
  'classificação na borda e etiqueta regulatória preservada via AST');
 check(list.includes('style={medicationPersonalAccentStyle(med)}'),'cor pessoal limitada ao ícone');
 check(list.includes('const personalAccent = medicationPersonalAccent(med);'),'uma resolução por medicamento');
-check(list.includes('aria-hidden="true" className="inline-block h-2 w-2'),'marca visual decorativa sem redundância');
+check(!list.includes('aria-hidden="true" className="inline-block h-2 w-2') && list.includes('style={medicationPersonalAccentStyle(med)}'),'cor pessoal no ícone sem ponto decorativo órfão');
 const hook=file('hooks/useTodayOwnerData.ts');
 check(hook.includes('const ownerData = useLiveQuery')&&hook.includes('const dayData = useLiveQuery'),'duas consultas reativas independentes');
 check(hook.includes('}, [userId, personId]);') && hook.includes('}, [userId, personId, date]);'),'consulta de dono não depende da data');
