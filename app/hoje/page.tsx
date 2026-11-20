@@ -1620,7 +1620,7 @@ export default function HojePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
+      <main className="min-h-screen bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))] vault-adaptive-tail">
         {/* M40 — Cabeçalho compacto: data e progresso, sem filtros redundantes. */}
         <header className="border-b border-surface-border/40 bg-void px-4 pb-3 pt-3 shadow-[0_10px_26px_-24px_rgba(47,227,201,0.4)]">
           <div className="flex items-center justify-between gap-3">

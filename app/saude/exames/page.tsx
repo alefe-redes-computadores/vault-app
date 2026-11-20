@@ -422,7 +422,7 @@ export default function ExamesPage() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-28">
+      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail">
         <ListPageHeader
           title="Exames e Laudos"
           subtitle={

@@ -1575,7 +1575,7 @@ export default function MedicamentosListPage() {
     renewalsLoading
   ) {
     return (
-      <main className="min-h-screen bg-void px-5 pb-28 pt-6" aria-busy="true" aria-label="Carregando medicamentos">
+      <main className="min-h-screen bg-void px-5 pb-28 pt-6 vault-adaptive-tail" aria-busy="true" aria-label="Carregando medicamentos">
         <p role="status" className="sr-only">Carregando medicamentos e contexto de cuidado da pessoa selecionada.</p>
         <CardListSkeleton />
       </main>
@@ -1592,7 +1592,7 @@ export default function MedicamentosListPage() {
 
   return (
     <PageTransition>
-      <main className="relative min-h-screen bg-void pb-28">
+      <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail">
         {/* GRADIENTES DOS ÍCONES */}
 
         <svg

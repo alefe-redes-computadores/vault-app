@@ -1194,7 +1194,7 @@ export default function HomePage() {
 
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-void px-5 pb-36 pt-6">
+      <main className="min-h-screen bg-void px-5 pb-36 pt-6 vault-adaptive-tail">
         <div className="mb-6 space-y-3">
           <div className="h-5 w-32 animate-pulse rounded-lg bg-surface-raised" />
           <div className="h-9 w-52 animate-pulse rounded-xl bg-surface-raised" />
@@ -1213,7 +1213,7 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      <main className="min-h-screen overflow-x-hidden bg-void pb-36">
+      <main className="min-h-screen overflow-x-hidden bg-void pb-36 vault-adaptive-tail">
         {/* =====================================================
             HEADER
         ===================================================== */}

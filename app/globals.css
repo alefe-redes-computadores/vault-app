@@ -374,3 +374,27 @@ html[data-vault-home-essential-p6="1"] [data-vault-home-optional-p6] { display: 
 /* P7 R3: modal owns the inset; pages do not assume the global top inset. */
 .vault-r3-dialog-top-inset { padding-top: max(1rem, env(safe-area-inset-top, 0px)); }
 .vault-r3-regulatory-height { max-height: calc(100dvh - max(2rem, env(safe-area-inset-top, 0px)) - max(2rem, env(safe-area-inset-bottom, 0px))); }
+
+/* VAULT_R4_RESPIRO_GLOBAL — opt-in nas páginas auditadas.
+ * Não altera os dados nem o menu. A barra é fixed e pode ter um CTA
+ * flutuante de 48px acima dela. Nenhuma página pode esconder o último botão.
+ * Navegadores sem :has mantêm a reserva conservadora original (8rem).
+ */
+.vault-adaptive-tail {
+  min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+@supports selector(body:has(nav.vault-bottom-nav)) {
+  /* Subtela sem barra global: apenas respiro final e a Safe Area. */
+  body:not(:has(nav.vault-bottom-nav)) .vault-adaptive-tail {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Barra com cinco destinos, SEM CTA de criação flutuante. */
+  body:has(nav.vault-bottom-nav) .vault-adaptive-tail {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Barra COM o botão superior: mantém a proteção para o último card. */
+  body:has(nav.vault-bottom-nav button.absolute) .vault-adaptive-tail {
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

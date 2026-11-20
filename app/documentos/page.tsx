@@ -1111,7 +1111,7 @@ export default function DocumentsPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(7.5rem+env(safe-area-inset-bottom))] vault-adaptive-tail">
         {/* ====================================================
             HEADER
             ==================================================== */}

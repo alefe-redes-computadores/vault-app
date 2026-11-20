@@ -90,7 +90,7 @@ function EpisodeClinicalViewP4(){
     if(!ep)return null;
     try{return buildReturnBriefD3(ep,today);}catch{return null;}
   },[ep,today]);
-  return <PageTransition><main className="min-h-screen bg-void px-3 pb-36 pt-5 text-ink-primary header-safe-top sm:px-5">
+  return <PageTransition><main className="min-h-screen bg-void px-3 pb-36 pt-5 text-ink-primary header-safe-top sm:px-5 vault-adaptive-tail">
     <div className="mx-auto max-w-3xl space-y-4">
       <header className="flex items-start gap-3"><ClinicalBackLinkP0 fallback="/saude/careflow" aria-label="Voltar à origem do atendimento" className="grid size-11 shrink-0 place-items-center rounded-2xl border border-surface-border bg-surface" /><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-sky-300">VAULT · Jornada Clínica</p><h1 className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl">Episódio de atendimento</h1><p className="mt-1 text-xs leading-relaxed text-ink-muted">Uma consulta, seus desdobramentos comprovados e o resumo para mostrar ao profissional.</p></div></header>
       <section className="overflow-hidden rounded-[25px] border border-sky-300/20 bg-[linear-gradient(150deg,#14242f,#0c151d)] p-4">
@@ -131,4 +131,4 @@ function EpisodeClinicalViewP4(){
     </div>
   </main></PageTransition>;
 }
-export default function ClinicalEpisodePageP4(){return <Suspense fallback={<main className="min-h-screen bg-void p-6 text-sm text-ink-muted">Carregando episódio…</main>}><EpisodeClinicalViewP4/></Suspense>;}
+export default function ClinicalEpisodePageP4(){return <Suspense fallback={<main className="min-h-screen bg-void p-6 text-sm text-ink-muted vault-adaptive-tail">Carregando episódio…</main>}><EpisodeClinicalViewP4/></Suspense>;}

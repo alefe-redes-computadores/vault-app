@@ -936,7 +936,7 @@ export default function MaisPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(8rem+env(safe-area-inset-bottom,0px))] vault-adaptive-tail">
         {/* =====================================================
             CABEÇALHO
         ===================================================== */}
