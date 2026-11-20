@@ -292,13 +292,19 @@ export const consultasRepository = {
           );
         }
 
+        const consultaAtualizadaP0: Consulta = {
+          ...current,
+          ...payload,
+          id,
+          user_id: ownerP6.id,
+          person_id: safePersonId,
+          created_at: current.created_at,
+        };
+
         await enfileirarOperacao(
           "consultas",
           "update",
-          {
-            id,
-            ...payload,
-          }
+          consultaAtualizadaP0
         );
       }
     );

@@ -2,6 +2,7 @@
 
 "use client";
 
+import { resolveConsultaSyncPayloadP0 } from "@/lib/sync/consulta-payload-authority";
 import {
   useCallback,
   useEffect,
@@ -2662,8 +2663,14 @@ export function useSyncQueue() {
       const client =
         requireSupabase();
 
-      const consulta =
-        item.payload as unknown as Consulta;
+      const queuedConsultaP0 =
+        item.payload as unknown as Partial<Consulta> & { id?: string };
+      const localConsultaP0 = queuedConsultaP0.id
+        ? await db.consultas.get(queuedConsultaP0.id)
+        : undefined;
+      const consulta = item.operation === "delete"
+        ? queuedConsultaP0 as Consulta
+        : resolveConsultaSyncPayloadP0(queuedConsultaP0, localConsultaP0);
 
       switch (
         item.operation
