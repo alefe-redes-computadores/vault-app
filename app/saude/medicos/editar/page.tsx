@@ -1,5 +1,6 @@
 // app/saude/medicos/editar/page.tsx
 "use client";
+import { ProfessionalClassificationA1, type A1ProfessionalCategory } from "@/components/saude/ProfessionalClassificationA1";
 
 import {
   Suspense,
@@ -294,6 +295,10 @@ function EditarMedicoContent() {
     setCrm,
   ] =
     useState("");
+  const [categoriaProfissional,setCategoriaProfissional]=useState<A1ProfessionalCategory|"">("");
+  const [conselhoTipo,setConselhoTipo]=useState("");
+  const [conselhoNumero,setConselhoNumero]=useState("");
+  const [conselhoUf,setConselhoUf]=useState("");
 
   const [
     observacoes,
@@ -383,6 +388,10 @@ function EditarMedicoContent() {
               item.crm ||
                 ""
             );
+            setCategoriaProfissional(item.categoria_profissional || "");
+            setConselhoTipo(item.conselho_tipo || "");
+            setConselhoNumero(item.conselho_numero || "");
+            setConselhoUf(item.conselho_uf || "");
 
             setObservacoes(
               item.observacoes ||
@@ -692,6 +701,10 @@ function EditarMedicoContent() {
                 crm:
                   crm.trim() ||
                   undefined,
+                  categoria_profissional: categoriaProfissional || null,
+                  conselho_tipo: conselhoTipo.trim() || null,
+                  conselho_numero: conselhoNumero.trim() || null,
+                  conselho_uf: conselhoUf.trim() || null,
 
                 observacoes:
                   observacoes.trim() ||
@@ -701,10 +714,10 @@ function EditarMedicoContent() {
           },
           {
             successMessage:
-              "Médico atualizado com sucesso",
+              "Profissional atualizado com sucesso",
 
             errorMessage:
-              "Erro ao atualizar médico",
+              "Erro ao atualizar profissional",
 
             goBackOnSuccess:
               true,
@@ -805,7 +818,7 @@ function EditarMedicoContent() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -829,7 +842,7 @@ function EditarMedicoContent() {
             <div className="min-w-0 flex-1">
               <h1 className="truncate font-display text-xl font-semibold text-ink-primary">
                 {nome ||
-                  "Editar médico"}
+                  "Editar profissional"}
               </h1>
 
               <p className="mt-1 text-xs text-ink-muted">
@@ -896,7 +909,14 @@ function EditarMedicoContent() {
               required
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <ProfessionalClassificationA1
+              category={categoriaProfissional} onCategory={setCategoriaProfissional}
+              board={conselhoTipo} onBoard={setConselhoTipo}
+              number={conselhoNumero} onNumber={setConselhoNumero}
+              uf={conselhoUf} onUf={setConselhoUf}
+            />
+
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input
                 label="Especialidade"
                 placeholder="Cardiologia"
@@ -915,7 +935,7 @@ function EditarMedicoContent() {
               />
 
               <Input
-                label="CRM"
+                label="CRM (somente medicina)"
                 placeholder="12345-MG"
                 value={
                   crm

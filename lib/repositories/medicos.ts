@@ -130,6 +130,8 @@ export const medicosRepository = {
       user_id:
         user.id,
 
+      a1_identity_revision: 1,
+
       created_at:
         now,
 
@@ -194,6 +196,8 @@ export const medicosRepository = {
 
       user_id:
         current.user_id,
+
+      a1_identity_revision: (current.a1_identity_revision ?? 0) + 1,
 
       /*
        * Campos legados intencionalmente não são
@@ -278,6 +282,12 @@ export const medicosRepository = {
         "Médico não encontrado."
       );
     }
+
+    // A1: immutable treatment phases refer to this account-wide professional.
+    const usedInPhase=(await db.a1_treatment_phases.toArray()).some(
+      row=>row.user_id===medico.user_id && row.profissional_id===id && !row.deleted_at
+    );
+    if(usedInPhase)throw new Error("Profissional com evolução clínica vinculada: preserve seu cadastro e histórico.");
 
     const now =
       new Date().toISOString();

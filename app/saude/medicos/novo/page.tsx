@@ -1,5 +1,6 @@
 // app/saude/medicos/novo/page.tsx
 "use client";
+import { ProfessionalClassificationA1, type A1ProfessionalCategory } from "@/components/saude/ProfessionalClassificationA1";
 
 import {
   useRef,
@@ -153,6 +154,10 @@ export default function NovoMedicoPage() {
     setCrm,
   ] =
     useState("");
+  const [categoriaProfissional,setCategoriaProfissional]=useState<A1ProfessionalCategory|"">("");
+  const [conselhoTipo,setConselhoTipo]=useState("");
+  const [conselhoNumero,setConselhoNumero]=useState("");
+  const [conselhoUf,setConselhoUf]=useState("");
 
   const [
     telefone,
@@ -256,6 +261,10 @@ export default function NovoMedicoPage() {
               crm:
                 crm.trim() ||
                 undefined,
+                  categoria_profissional: categoriaProfissional || null,
+                  conselho_tipo: conselhoTipo.trim() || null,
+                  conselho_numero: conselhoNumero.trim() || null,
+                  conselho_uf: conselhoUf.trim() || null,
 
               telefone:
                 telefone.trim() ||
@@ -272,10 +281,10 @@ export default function NovoMedicoPage() {
           },
           {
             successMessage:
-              "Médico cadastrado com sucesso",
+              "Profissional cadastrado com sucesso",
 
             errorMessage:
-              "Erro ao cadastrar médico",
+              "Erro ao cadastrar profissional",
 
             goBackOnSuccess:
               true,
@@ -293,7 +302,7 @@ export default function NovoMedicoPage() {
 
   return (
     <PageTransition>
-      <main className="min-h-[100dvh] bg-void pb-[calc(10rem+env(safe-area-inset-bottom))]">
+      <main className="min-h-[100dvh] bg-void pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))]">
         <header className="sticky top-0 z-20 border-b border-surface-border/30 bg-void/82 px-5 header-safe-top pb-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <button
@@ -322,12 +331,12 @@ export default function NovoMedicoPage() {
                 />
 
                 <h1 className="truncate font-display text-xl font-semibold text-ink-primary">
-                  Novo médico
+                  Novo profissional
                 </h1>
               </div>
 
               <p className="mt-1 text-sm text-ink-muted">
-                Cadastre o profissional na sua rede médica.
+                Cadastre na Rede de Saúde, incluindo profissionais não médicos.
               </p>
             </div>
           </div>
@@ -373,7 +382,14 @@ export default function NovoMedicoPage() {
               required
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <ProfessionalClassificationA1
+              category={categoriaProfissional} onCategory={setCategoriaProfissional}
+              board={conselhoTipo} onBoard={setConselhoTipo}
+              number={conselhoNumero} onNumber={setConselhoNumero}
+              uf={conselhoUf} onUf={setConselhoUf}
+            />
+
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input
                 label="Especialidade"
                 placeholder="Cardiologia"
@@ -392,7 +408,7 @@ export default function NovoMedicoPage() {
               />
 
               <Input
-                label="CRM"
+                label="CRM (somente medicina)"
                 placeholder="12345-MG"
                 value={
                   crm
@@ -491,7 +507,7 @@ export default function NovoMedicoPage() {
                 <Save
                   size={16}
                 />
-                Salvar médico
+                Salvar profissional
               </>
             )}
           </Button>

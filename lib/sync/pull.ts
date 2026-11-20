@@ -1748,6 +1748,24 @@ async function performPullAllData(userId: string): Promise<void> {
             ),
     });
 
+    // A1: after legacy providers, prescriptions and treatments are hydrated.
+    // processTable protects unsynced local events and pending queue entries.
+    await processTable({
+      remoteTable: "a1_treatment_phases", queueTable: "a1_treatment_phases",
+      localTable: db.a1_treatment_phases,
+      query: async () => await supabase.from("a1_treatment_phases").select("*").eq("user_id",userId),
+    });
+    await processTable({
+      remoteTable: "a1_prescription_links", queueTable: "a1_prescription_links",
+      localTable: db.a1_prescription_links,
+      query: async () => await supabase.from("a1_prescription_links").select("*").eq("user_id",userId),
+    });
+    await processTable({
+      remoteTable: "a1_supply_locations", queueTable: "a1_supply_locations",
+      localTable: db.a1_supply_locations,
+      query: async () => await supabase.from("a1_supply_locations").select("*").eq("user_id",userId),
+    });
+
     // ==========================================================
     // FINALIZAÇÃO
     // ==========================================================

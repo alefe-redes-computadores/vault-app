@@ -23,6 +23,7 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"biblioteca",title:"Biblioteca de PDFs",description:"Relatórios CareFlow locais",href:"/saude/careflow/relatorios",group:"capture",icon:"files",keywords:["documento","pdf","laudo","arquivo"]},
   {id:"relatorio",title:"Relatório Clínico 360",description:"Resumo clínico completo",href:"/saude/relatorios",group:"capture",icon:"book",keywords:["relatorio medico","pdf","a4"]},
   {id:"tratamentos",title:"Tratamentos",description:"Condições e vínculos",href:"/saude/tratamentos",group:"foundation",icon:"shield",keywords:["condicao","tratamento","cuidado"]},
+  {id:"engenharia-clinica",title:"Engenharia Clínica 360",description:"Fases, receitas vinculadas e locais",href:"/saude/engenharia-clinica",group:"foundation",icon:"activity",keywords:["evolucao","tratamento","receita","renovacao","fornecimento","fases"]},
   {id:"medicamentos",title:"Medicamentos 360",description:"Rotina e estoque",href:"/saude/medicamentos",group:"foundation",icon:"pill",keywords:["dose","remedio","estoque"]},
   {id:"fenix",title:"Fênix e Perfil Clínico",description:"Avatar, medidas e histórico",href:"/saude/fenix",group:"foundation",icon:"user",keywords:["fenix","avatar","perfil","alergia","minha saude"]},
   {id:"studio",title:"Fênix Studio",description:"Aparência e identidade visual",href:"/saude/visual-studio",group:"foundation",icon:"sparkles",keywords:["avatar","studio","corpo"]},
@@ -49,7 +50,7 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
 ] as const;
 
 export const NETWORK_SEARCH_R5: readonly Pick<HubModuleR5,"id"|"title"|"description"|"href"|"icon"|"keywords">[] = [
-  {id:"rede-medicos",title:"Médicos e especialistas",description:"Rede de Saúde",href:"/saude/medicos",icon:"stethoscope",keywords:["doutor","crm","especialidade"]},
+  {id:"rede-medicos",title:"Profissionais de saúde",description:"Rede multiprofissional",href:"/saude/medicos",icon:"stethoscope",keywords:["doutor","crm","especialidade"]},
   {id:"rede-unidades",title:"Hospitais e unidades",description:"Rede de Saúde",href:"/saude/hospitais",icon:"building",keywords:["hospital","clinica","laboratorio","local"]},
   {id:"rede-farmacias",title:"Farmácias e SUS",description:"Rede de Saúde",href:"/saude/farmacias",icon:"package",keywords:["fornecimento","retirada","medicamento"]},
   {id:"rede-consultas",title:"Consultas e retornos",description:"Rede de Saúde",href:"/saude/consultas",icon:"calendar",keywords:["agenda","consulta","medico"]},

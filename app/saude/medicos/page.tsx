@@ -546,6 +546,9 @@ export default function MedicosPage() {
             medico.nome,
             medico.especialidade,
             medico.crm,
+            medico.categoria_profissional,
+            medico.conselho_tipo,
+            medico.conselho_numero,
             medico.telefone,
             ...medico.tratamentos.map((item) => item.nome),
             ...medico.hospitais.map((item) => item.nome),
@@ -876,14 +879,14 @@ export default function MedicosPage() {
     <PageTransition>
       <main className="relative min-h-screen bg-void pb-28">
         <ListPageHeader
-          title="Médicos"
+          title="Profissionais de Saúde"
           subtitle={`${filteredMedicos.length} ${
             filteredMedicos.length ===
             1
               ? "profissional"
               : "profissionais"
           }`}
-          badgeLabel="Rede médica"
+          badgeLabel="Rede multiprofissional"
           badgeColor="text-sky-300"
           icon={
             <Stethoscope
@@ -895,7 +898,7 @@ export default function MedicosPage() {
           <ListSearch
             value={search}
             onChange={setSearch}
-            placeholder="Buscar nome, especialidade ou CRM..."
+            placeholder="Buscar nome, atuação ou conselho..."
           />
 
           <ListFilters
@@ -1216,10 +1219,8 @@ export default function MedicosPage() {
                     <div className="flex min-w-0 items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <h3 className="truncate font-display text-base font-bold text-ink-primary">
-                          Dr(a).{" "}
-                          {
-                            medico.nome
-                          }
+                          {(medico.categoria_profissional === "medicina" || (!medico.categoria_profissional && medico.crm)) ? "Dr(a). " : ""}
+                          {medico.nome}
                         </h3>
 
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">

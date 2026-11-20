@@ -1,5 +1,6 @@
 // app/saude/medicos/detalhes/page.tsx
 "use client";
+import { professionalCategoryLabel } from "@/components/saude/ProfessionalClassificationA1";
 
 import {
   Suspense,
@@ -1664,12 +1665,18 @@ function DetalhesMedicoContent() {
 
                 <div className="min-w-0 pt-1">
                   <h2 className="min-w-0 break-words font-display text-xl font-bold leading-tight text-ink-primary">
-                    Dr(a).{" "}
-                    {
-                      medico.nome
-                    }
+                    {(medico.categoria_profissional === "medicina" || (!medico.categoria_profissional && medico.crm)) ? "Dr(a). " : ""}
+                    {medico.nome}
                   </h2>
 
+                  <p className="mt-0.5 text-xs font-medium text-sky-300">
+                    {professionalCategoryLabel(medico.categoria_profissional)}
+                  </p>
+                  {medico.conselho_tipo && medico.conselho_numero && (
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      {medico.conselho_tipo} · {medico.conselho_numero}{medico.conselho_uf ? ` / ${medico.conselho_uf}` : ""}
+                    </p>
+                  )}
                   {medico.especialidade && (
                     <p className="mt-0.5 text-sm font-medium text-ice">
                       {

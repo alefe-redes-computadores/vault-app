@@ -1,6 +1,7 @@
 import type { ConnectConnection, ConnectImport } from "@/lib/health-connect/types";
 import type {HealthProfile,HealthDevice} from "@/lib/health-profile/types";
 import type {SupplyProcess,SupplyCycle,SupplyItem,SupplyDocumentLink} from "@/lib/health-supply/types";
+import type { A1TreatmentPhase, A1PrescriptionLink, A1SupplyLocation } from "@/lib/clinical-a1/types";
 // lib/db/index.ts
 
 import Dexie, {
@@ -156,6 +157,9 @@ class VaultDB extends Dexie {
   vaults!: Table<Vault, string>;
   vaultMembers!: Table<VaultMember, string>;
 
+  a1_treatment_phases!: Table<A1TreatmentPhase,string>;
+  a1_prescription_links!: Table<A1PrescriptionLink,string>;
+  a1_supply_locations!: Table<A1SupplyLocation,string>;
   medicos!: Table<Medico, string>;
   farmacias!: Table<Farmacia, string>;
   hospitais!: Table<Hospital, string>;
@@ -1470,6 +1474,13 @@ class VaultDB extends Dexie {
       clinical_asset_links:'id, user_id, person_id, [user_id+person_id], asset_id, [entity_type+entity_id], updated_at, deleted_at, synced',
       consultation_exam_order_links:'id, user_id, person_id, [user_id+person_id], order_id, consultation_id, role, updated_at, deleted_at, synced',
     });
+    // A1: fully additive tables. Existing stores and M1/M2 migrations untouched.
+    this.version(50).stores({
+      a1_treatment_phases: 'id, user_id, person_id, [user_id+person_id], tratamento_id, data_efetiva, updated_at, deleted_at, synced',
+      a1_prescription_links: 'id, user_id, person_id, [user_id+person_id], medicamento_id, renovacao_atual_id, updated_at, deleted_at, synced',
+      a1_supply_locations: 'id, user_id, person_id, [user_id+person_id], fornecimento_id, inicio_vigencia, updated_at, deleted_at, synced',
+    });
+
   }
 }
 

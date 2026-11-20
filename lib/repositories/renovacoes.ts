@@ -1615,6 +1615,11 @@ export const renovacoesRepository = {
       );
     }
 
+    // A1: prevent a local unlink that would later fail the Postgres historical FK.
+    const linkedRx=await db.a1_prescription_links.where("person_id").equals(safePersonId)
+      .filter(x=>x.user_id===userId && !x.deleted_at && (x.renovacao_anterior_id===safeId || x.renovacao_atual_id===safeId)).first();
+    if(linkedRx)throw new Error("Receita vinculada a outra versão: preserve os dois registros e seu histórico.");
+
     await db.transaction(
       "rw",
       [

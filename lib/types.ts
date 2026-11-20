@@ -761,7 +761,10 @@ export interface SyncQueueItem {
     | "health_devices"
     | "health_goals"
     | "brain_active_probes"
-    | "brain_active_probe_responses";
+    | "brain_active_probe_responses"
+    | "a1_treatment_phases"
+    | "a1_prescription_links"
+    | "a1_supply_locations";
   operation: "add" | "update" | "delete";
   payload: Record<string, unknown>;
   created_at: string;
@@ -1332,6 +1335,12 @@ export interface Medico {
   id?: string;
   user_id: string;
   nome: string;
+  /** A1 - optional, never infer a board or professional license from an empty field. */
+  categoria_profissional?: import("@/components/saude/ProfessionalClassificationA1").A1ProfessionalCategory | null;
+  conselho_tipo?: string | null;
+  conselho_numero?: string | null;
+  conselho_uf?: string | null;
+  a1_identity_revision?: number;
   especialidade?: string;
   crm?: string;
   telefone?: string;

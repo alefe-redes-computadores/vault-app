@@ -933,6 +933,25 @@ export function useSyncQueue() {
       }
     };
 
+  // A1: same offline queue, no parallel sync engine.
+  const syncClinicalA1Ledger = async (item: SyncQueueItem) => {
+    const client = requireSupabase();
+    if(item.operation === "delete") throw new Error("A1: historical records require explicit soft-delete workflow.");
+    const payload = item.payload as Record<string,unknown>;
+    const id = requirePayloadId(item);
+    const personId = requirePersonId(payload.person_id as string | undefined, "Registro A1", id);
+    const userId = requireUserId(payload.user_id as string | undefined, "Registro A1", id);
+    const pending = await db.syncQueue.toArray();
+    const parent = item.table === "a1_treatment_phases" ? ["tratamentos",payload.tratamento_id]
+       : item.table === "a1_prescription_links" ? ["renovacoes",payload.renovacao_atual_id]
+       : ["fornecimentos",payload.fornecimento_id];
+    if(pending.some(row=>row.id!==item.id && row.chave===`${parent[0]}:${parent[1]}`))
+      throw new Error(`A1: aguardar a sincronização da entidade de origem (${parent[0]}).`);
+    const {synced, ...clean} = payload;
+    const {error} = await client.from(item.table).upsert({...clean,user_id:userId,person_id:personId},{onConflict:"id"});
+    if(error) throw new Error(`A1 ${item.table} ${id}: ${error.message}`);
+  };
+
   // ============================================================
   // MÉDICOS
   // ============================================================
@@ -978,6 +997,12 @@ export function useSyncQueue() {
                   crm:
                     medico.crm ||
                     null,
+
+                  categoria_profissional: medico.categoria_profissional ?? null,
+                  conselho_tipo: medico.conselho_tipo ?? null,
+                  conselho_numero: medico.conselho_numero ?? null,
+                  conselho_uf: medico.conselho_uf ?? null,
+                  a1_identity_revision: medico.a1_identity_revision ?? 0,
 
                   telefone:
                     medico.telefone ||
@@ -4999,6 +5024,12 @@ export function useSyncQueue() {
           );
           break;
 
+        case "a1_treatment_phases":
+          await markRecordSyncedIfCurrent(db.a1_treatment_phases,payload.id,expectedUpdatedAt);break;
+        case "a1_prescription_links":
+          await markRecordSyncedIfCurrent(db.a1_prescription_links,payload.id,expectedUpdatedAt);break;
+        case "a1_supply_locations":
+          await markRecordSyncedIfCurrent(db.a1_supply_locations,payload.id,expectedUpdatedAt);break;
         case "medicos":
           await markRecordSyncedIfCurrent(
             db.medicos,
@@ -5305,6 +5336,8 @@ export function useSyncQueue() {
           );
           return;
 
+        case "a1_treatment_phases": case "a1_prescription_links": case "a1_supply_locations":
+          await syncClinicalA1Ledger(item);return;
         case "medicos":
           await syncMedico(
             item
@@ -5632,6 +5665,7 @@ export function useSyncQueue() {
                   "documents",
 
                   "tratamentos",
+                  "a1_treatment_phases",
                   "medicamentos",
 
                   "exames",
@@ -5646,6 +5680,7 @@ export function useSyncQueue() {
                   "cirurgias",
 
                   "renovacoes",
+                  "a1_prescription_links",
                   "health_profiles",
                   "health_devices",
                   "fornecimentos",
@@ -5653,6 +5688,7 @@ export function useSyncQueue() {
                   "fornecimento_itens",
                   "retiradas",
                   "fornecimento_documentos",
+                  "a1_supply_locations",
                   "doseLogs",
 
                   "anexos_clinicos",

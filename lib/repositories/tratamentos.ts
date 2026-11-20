@@ -1307,6 +1307,11 @@ export const tratamentosRepository = {
       );
     }
 
+    // A1: a treatment cannot be physically deleted while its factual phase ledger exists.
+    const linkedPhase=await db.a1_treatment_phases.where("person_id").equals(safePersonId)
+      .filter(x=>x.user_id===userId && x.tratamento_id===safeId && !x.deleted_at).first();
+    if(linkedPhase)throw new Error("Tratamento com fases históricas: mantenha a identidade e registre uma conclusão.");
+
     const now =
       nowIso();
 
