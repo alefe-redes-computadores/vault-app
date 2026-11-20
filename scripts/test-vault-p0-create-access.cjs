@@ -90,6 +90,11 @@ ok(createSource.includes('router.push(target)')&&createSource.includes('withRetu
 ok(createSource.includes('const Icon = Plus;') && createSource.includes('LoaderCircle, Plus'), 'CTA global usa Lucide Plus canonico');
 ok(createSource.includes('useToast()') && createSource.includes('showInfo(`Abrindo ${option.label.toLocaleLowerCase("pt-BR")}…`, 1600)') && createSource.includes('trigger("vibrate")'), 'feedback tactil, toast informativo e nenhum sucesso clinico inventado');
 const medicationCreateMarkup=rendered('/saude/medicamentos');
+const androidMedicationCreateMarkup=rendered('/saude/medicamentos/');
+ok((androidMedicationCreateMarkup.match(/data-ia20-p2-create=/g)||[]).length===1
+ && androidMedicationCreateMarkup.includes('data-vault-p0-create-row="visible"')
+ && androidMedicationCreateMarkup.includes('data-lucide="Plus"'),
+ 'Android trailing slash /saude/medicamentos/ exibe CTA Novo Medicamento uma vez');
 ok(medicationCreateMarkup.includes('data-lucide="Plus"')&&!medicationCreateMarkup.includes('data-lucide="Pill"'), 'Medicamento apresenta Plus e nao Pill');
 const treatmentCreateMarkup=rendered('/saude/tratamentos');
 ok(treatmentCreateMarkup.includes('data-lucide="Plus"')&&!treatmentCreateMarkup.includes('data-lucide="FolderHeart"'), 'Tratamentos tambem usam Plus');

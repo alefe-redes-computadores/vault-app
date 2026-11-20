@@ -42,7 +42,7 @@ ok(Array.isArray(own.IA20_P2_LOCAL_CREATE_ROUTES)&&own.IA20_P2_LOCAL_CREATE_ROUT
 ok(new Set(own.IA20_P2_LOCAL_CREATE_ROUTES).size===19,'19 rotas distintas');
 ok(own.ia20P2Route('/saude/consultas///?x=1')==='/saude/consultas','normalizacao de caminho');
 const matrix=[];
-const optionsFor=route=>{const u=new URL(route,'https://vault.local');return compose.getComposeOptions(u.pathname,new URLSearchParams(u.search));};
+const optionsFor=route=>{const u=new URL(route,'https://vault.local');return compose.getComposeOptions(own.ia20P2Route(u.pathname),new URLSearchParams(u.search));};
 function audited(route,expectedMode){
  const u=new URL(route,'https://vault.local'),ops=optionsFor(route);
  const local=own.ia20P2HeaderOwnsCreate(u.pathname,ops.length,new URLSearchParams(u.search));
@@ -65,6 +65,7 @@ for(const route of own.IA20_P2_LOCAL_CREATE_ROUTES){
  ok(read('app'+route+'/page.tsx').includes('<ListPageHeader'),'cabeçalho real montado '+route);
  ok(optionsFor(route).length===1,'cadastro unico comprovado '+route);
  audited(route,'header');
+ audited(route+'/', 'header'); // CAPACITOR_BUILD trailingSlash: true
 }
 for(const route of ['/', '/hoje','/documentos','/saude/documentos','/saude',
  '/saude/minha-saude','/saude/mapa','/saude/careflow','/saude/careflow/episodios',
@@ -81,6 +82,7 @@ ok(!own.ia20P2HeaderOwnsCreate('/saude/fornecimento',1,new URLSearchParams('acti
 ok(own.ia20P2HeaderOwnsCreate('/saude/fornecimento',1,new URLSearchParams('tab=pedidos')),'fornecimento lista mantem CTA');
 ok(!own.ia20P2HeaderOwnsCreate('/saude/medicos',2),'lista de multiplas operacoes usa fallback');
 ok(header.includes('<ContextualCreateP2')&&header.includes('ia20P2HeaderOwnsCreate(')&&header.includes('rightAction'),'header integra CTA sem destruir ferramentas');
+ok(header.includes('getComposeOptions(ia20P2Route(pathname), searchParams)'), 'cabecalho normaliza barra final ANTES de resolver o CTA Android');
 ok(button.includes('getIa20CreateAccent(option.id)')&&button.includes('withReturnTarget(option.path, origin)'),'um unico catalogo e retorno seguro');
 ok(button.includes('min-h-11')&&button.includes('focus-visible:outline')&&button.includes('motion-reduce:transition-none'),'area tocavel, foco e movimento reduzido');
 ok(button.includes('disabled={navigating}')&&button.includes('aria-busy={navigating}')&&button.includes('LoaderCircle'),'feedback de navegacao sem alegar sucesso clinico');

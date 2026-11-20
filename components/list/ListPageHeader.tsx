@@ -11,7 +11,7 @@ import { ArrowLeft } from "lucide-react";
 import { useHapticFeedback } from "@/lib/haptics";
 import { safeReturnTarget } from "@/lib/navigation/return-context";
 import { getComposeOptions } from "@/lib/navigation/bottom-nav-compose";
-import { ia20P2HeaderOwnsCreate } from "@/lib/navigation/ia20-p2-create";
+import { ia20P2HeaderOwnsCreate, ia20P2Route } from "@/lib/navigation/ia20-p2-create";
 import { ContextualCreateP2 } from "@/components/list/ContextualCreateP2";
 
 interface ListPageHeaderProps {
@@ -101,7 +101,8 @@ export function ListPageHeader({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { trigger } = useHapticFeedback();
-  const p2Options = getComposeOptions(pathname, searchParams);
+  // Android Capacitor export uses trailingSlash: true. Normalize BEFORE resolving creation.
+  const p2Options = getComposeOptions(ia20P2Route(pathname), searchParams);
   const p2CreateVisible = !suppressCreate && ia20P2HeaderOwnsCreate(pathname, p2Options.length, searchParams);
 
   const handleBack = () => {

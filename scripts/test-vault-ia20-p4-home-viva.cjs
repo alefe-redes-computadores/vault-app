@@ -45,7 +45,7 @@ ok(new Set(fronts.map(x=>x.id)).size===fronts.length,'sem tabs duplicadas');
 const home=read('components/home/HomeCommandCenter.tsx'),page=read('app/page.tsx'),viva=read('components/home/HomeVivaP4.tsx');
 ok(home.includes('viva?<HomeVivaP4 data={viva}')&&page.includes('mode="primary"')&&page.includes('viva={{userId:'),'home mostra vivo no lugar do tile redundante');
 ok(viva.includes('fronts.length>=2')&&viva.includes('aria-pressed={active.id===front.id}'),'selecao interna so com duas frentes');
-ok(viva.includes('active.id==="routine"')&&viva.includes('onNavigate("/saude/minha-saude")'),'rotina neutra oferece Hoje e Saúde sem inventar alerta');
+ok(viva.includes('active.id==="routine"?"/saude/careflow/sintomas":active.href')&&viva.includes('onNavigate("/saude/careflow/pressao")')&&!viva.includes('onNavigate("/saude/minha-saude")')&&fs.existsSync('app/saude/careflow/sintomas/page.tsx')&&fs.existsSync('app/saude/careflow/pressao/page.tsx'),'rotina neutra oferece formulários reais, sem duplicar Hoje e Saúde');
 ok(viva.includes('min-h-11')&&viva.includes('focus-visible:outline')&&viva.includes('motion-reduce:transition-none')&&viva.includes('trigger("light")'),'CTA, toque e haptics intactos');
 ok(!/setInterval|\.insert\(|\.update\(|supabase|fetch\(/.test(read('lib/home/home-viva-p4.ts')),'modelo nao grava nem busca dados');
 const nav=read('components/BottomNav.tsx');ok(nav.includes('"/saude/fenix"')&&nav.includes('shouldShowNav(pathname)'),'Fênix mantém BottomNav e aba Saúde');

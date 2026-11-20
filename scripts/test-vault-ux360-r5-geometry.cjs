@@ -45,7 +45,7 @@ ok(med.includes('data-vault-r5-comfort-context')&&med.includes('data-vault-r5-co
 ok(med.includes('supplyRoute?.mode === "hybrid" ? "Origens históricas · conferir"')&&med.includes('SUS · cadastrado')&&med.includes('Comprado · cadastrado'),'origem não presume fornecimento atual');
 ok(med.includes('reconciliationP6.hasDocumentEvidence')&&med.includes('openMedicationSheet360("receita")'),'documento só se houver evidência; destino Receita');
 ok(med.includes('latestManufacturer ? `Última aquisição: ${latestManufacturer}` : `Etiqueta: ${med.laboratorio_etiqueta}`'),'fabricante identifica fonte da evidência');
-ok(med.includes('className={compactCards ? "min-h-0" : "min-h-[116px]"}')&&med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}'),'duas densidades preservadas sem altura artificial nova');
+ok(med.includes('className="min-h-0"')&&med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}'),'duas densidades sem altura minima artificial');
 ok(med.includes('MedicationOperationalStrip today={todayStatus} compact={compactCards}')&&op.includes('aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}.'),'resumo clínico canônico com acessibilidade');
 ok(med.includes('setQuickDoseMedId(med.id!)')&&med.includes('router.push(careAction.href)')&&med.includes('MedicationRestockAction'),'tomada, cuidado e estoque intactos');
 ok(med.includes('data-vault-med360-microbanner')&&med.includes('openMedicationSheet360(stockReview ? "estoque" : prescriptionReview360 ? "receita" : "estoque")'),'microaviso real mantém aba correta');
@@ -55,4 +55,9 @@ ok(!med.includes('aria-hidden="true">+{actionLayoutM150P3.secondary.length}')&&s
 ok(!med.includes('data-vault-home-viva'),'Home Viva pertence à outra frente');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.split('"scripts/test-vault-ux360-r5-geometry.cjs"').length===2,'R5 registrado exatamente uma vez no gate V63');
+ok(med.includes('data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-nowrap') && med.includes('overflow-x-auto'), 'Conforto não empilha caixas de 44px');
+ok(!med.includes('inline-flex min-h-11 max-w-full items-center gap-1 text-[10px] font-semibold ${compactCards ?'), 'tratamento não força linha 44px');
+ok(!med.includes('inline-flex min-h-11 shrink-0 items-center gap-1 text-[10px] font-semibold ${compactCards ?'), 'regime não força linha 44px');
+ok(op.includes('h-[18px]') && !op.includes('basis-full truncate'), 'faixa operacional compacta e sem +doses órfãs');
+ok(med.includes('data-vault-r5-active-ingredient'), 'princípio ativo preservado, não ocultado');
 console.log('VAULT UX360 R5:',n,'contratos sem alteração clínica.');

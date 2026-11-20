@@ -27,10 +27,10 @@ export function HomeVivaP4({data,onNavigate}:Props){
     <p className="mt-2 break-words text-[11px] leading-snug text-ink-secondary">{active.description}</p>
     <p className="mt-1 text-[10px] leading-snug text-ink-muted">{active.detail}</p>
     <div className={`mt-2 grid gap-2 ${active.id==="routine"?"grid-cols-2":"grid-cols-1"}`}>
-      <button type="button" onClick={()=>onNavigate(active.href)} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-current/20 bg-black/10 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none">
-        <span>{active.id==="routine"?"Abrir Hoje":"Conferir registros"}</span><ChevronRight size={16} className="shrink-0" aria-hidden="true"/>
+      <button type="button" onClick={()=>onNavigate(active.id==="routine"?"/saude/careflow/sintomas":active.href)} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-current/20 bg-black/10 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none">
+        <span>{active.id==="routine"?"Registrar sintoma":"Conferir registros"}</span><ChevronRight size={16} className="shrink-0" aria-hidden="true"/>
       </button>
-      {active.id==="routine"?<button type="button" onClick={()=>onNavigate("/saude/minha-saude")} className="flex min-h-11 min-w-0 items-center justify-between gap-1 rounded-xl border border-current/20 bg-black/5 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none"><span>Minha saúde</span><ChevronRight size={15} className="shrink-0" aria-hidden="true"/></button>:null}
+      {active.id==="routine"?<button type="button" onClick={()=>onNavigate("/saude/careflow/pressao")} className="flex min-h-11 min-w-0 items-center justify-between gap-1 rounded-xl border border-current/20 bg-black/5 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none"><span>Registrar pressão</span><ChevronRight size={15} className="shrink-0" aria-hidden="true"/></button>:null}
     </div>
   </section>;
 }
