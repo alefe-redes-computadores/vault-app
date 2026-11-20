@@ -31,6 +31,11 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
     ["document_id", "documents"],
     ["retirada_id", "retiradas"],
   ],
+  exam_order_items: [["order_id", "exam_orders"]],
+  exam_sessions: [["order_id", "exam_orders"]],
+  exam_session_items: [["order_id", "exam_orders"], ["exam_order_item_id", "exam_order_items"], ["session_id", "exam_sessions"]],
+  clinical_asset_links: [["asset_id", "clinical_assets"]],
+  consultation_exam_order_links: [["order_id", "exam_orders"], ["consultation_id", "consultas"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -46,6 +51,13 @@ export function blockedSyncDependency(
   for (const [field, table] of REFERENCES[item.table] ?? []) {
     const id = typeof item.payload[field] === "string" ? item.payload[field].trim() : "";
     if (id && failedEntities.has(`${table}:${id}`)) return `${table}:${id}`;
+  }
+  // Polymorphic asset links have an explicit, scoped target dependency.
+  if(item.table==='clinical_asset_links'){
+    const p=item.payload, type=p.entity_type, id=p.entity_id;
+    const table=type==='exam_order'?'exam_orders':type==='exam_order_item'?'exam_order_items':
+      type==='exam_session'?'exam_sessions':type==='consultation'?'consultas':null;
+    if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
   return null;
 }

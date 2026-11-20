@@ -14,6 +14,7 @@ import { planMedicationTreatmentReconciliationM105 } from "@/lib/sync/medication
 
 import type { Table } from "dexie";
 import type { SyncQueueItem } from "@/lib/types";
+import { CLINICAL_EXAM_TABLES_M1, isClinicalExamTableM1, type ClinicalExamTableM1, type ClinicalExamRowM1 } from "@/lib/clinical-exams-m1/types";
 
 // ============================================================
 // TRAVA GLOBAL DE MÓDULO
@@ -173,6 +174,7 @@ async function performPullAllData(userId: string): Promise<void> {
     beginPullDiagnostics();
     // V234: falha no pull de doses não deve virar falso sucesso global.
     const criticalPullErrors: string[] = [];
+    const clinicalM1PullErrors: string[] = [];
 
     const {
       data:
@@ -304,6 +306,7 @@ async function performPullAllData(userId: string): Promise<void> {
             // mesmo quando não lança exception.
             tableOk = false;
             if (remoteTable === "dose_logs") criticalPullErrors.push(error.message || "Consulta de doses falhou");
+            if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${error.message || 'Erro de rede'}`);
             console.error(
               `❌ [Pull] Erro ao buscar ${remoteTable}:`,
               error
@@ -423,6 +426,7 @@ async function performPullAllData(userId: string): Promise<void> {
 
           tableOk = false;
           if (remoteTable === "dose_logs") criticalPullErrors.push(message);
+          if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${message}`);
           console.error(
             `❌ [Pull] Erro ao processar ${remoteTable}: ${message}`
           );
@@ -430,6 +434,20 @@ async function performPullAllData(userId: string): Promise<void> {
           recordPullTable(remoteTable, performance.now() - tableStartedAt, tableOk);
         }
       };
+
+    // M1: full paginated scoped pull; existing unsynced/pending rows win over cloud.
+    const pullClinicalExamM1=async (table:ClinicalExamTableM1):Promise<QueryResult>=>{
+      const rows:RemoteRow[]=[];
+      const page=400;
+      for(let offset=0;offset<100000;offset+=page){
+        const r=await supabase.from(table).select('*').eq('user_id',userId)
+          .order('id',{ascending:true}).range(offset,offset+page-1);
+        if(r.error)return {data:null,error:r.error};
+        const batch=(r.data||[]) as RemoteRow[];rows.push(...batch);
+        if(batch.length<page)return {data:rows,error:null};
+      }
+      return {data:null,error:{message:`M1 ${table}: limite seguro de paginação atingido.`}};
+    };
 
     // ==========================================================
     // HEALTH GOALS (person-scoped, sincronizados)
@@ -1083,6 +1101,12 @@ async function performPullAllData(userId: string): Promise<void> {
             ),
       }),
 
+      // M1: separate physical tables, no conversion or mutation of legacy exams.
+      ...CLINICAL_EXAM_TABLES_M1.map(table=>()=>processTable({
+        remoteTable:table,queueTable:table,localTable:db[table] as unknown as Table<ClinicalExamRowM1,string>,
+        query:()=>pullClinicalExamM1(table),
+      })),
+
       // CI360 M2 — append-only clinical events from cloud to Dexie (fully paginated).
       () => processTable({
         remoteTable: 'careflow_events_m2', queueTable: 'careflow_events_m2',localTable: db.careflow_events_m2,
@@ -1723,6 +1747,9 @@ async function performPullAllData(userId: string): Promise<void> {
     // ==========================================================
     // FINALIZAÇÃO
     // ==========================================================
+    if (clinicalM1PullErrors.length>0){
+      throw new Error(`M1: importação clínica incompleta: ${clinicalM1PullErrors.join(' · ')}`);
+    }
     if (criticalPullErrors.length > 0) {
       throw new Error(`Falha na importação das doses: ${criticalPullErrors.join(" · ")}`);
     }

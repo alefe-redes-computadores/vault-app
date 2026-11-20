@@ -39,6 +39,7 @@ import type {
 } from '@/lib/types';
 
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
+import type { ExamOrderM1, ExamOrderItemM1, ExamSessionM1, ExamSessionItemM1, ClinicalAssetM1, ClinicalAssetLinkM1, ConsultationExamOrderLinkM1 } from '@/lib/clinical-exams-m1/types';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -190,6 +191,13 @@ class VaultDB extends Dexie {
 
   careflow_events_m2!: Table<CareFlowEventM2,string>;
   careflow_reports_m2!: Table<VaultLocalPdfM2,string>;
+  exam_orders!: Table<ExamOrderM1,string>;
+  exam_order_items!: Table<ExamOrderItemM1,string>;
+  exam_sessions!: Table<ExamSessionM1,string>;
+  exam_session_items!: Table<ExamSessionItemM1,string>;
+  clinical_assets!: Table<ClinicalAssetM1,string>;
+  clinical_asset_links!: Table<ClinicalAssetLinkM1,string>;
+  consultation_exam_order_links!: Table<ConsultationExamOrderLinkM1,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
@@ -1451,6 +1459,16 @@ class VaultDB extends Dexie {
     // CI360 M3 P2: tabela aditiva, sem migração destrutiva de dados.
     this.version(48).stores({
       notification_policies_p2: 'id, user_id, person_id, [user_id+person_id], [user_id+person_id+event_kind+event_id], event_kind, updated_at, synced',
+    });
+    // M1 exams: new stores only. Version 49 never modifies or clears legacy data.
+    this.version(49).stores({
+      exam_orders:'id, user_id, person_id, [user_id+person_id], order_kind, requested_on, updated_at, deleted_at, synced',
+      exam_order_items:'id, user_id, person_id, [user_id+person_id], order_id, status, updated_at, deleted_at, synced',
+      exam_sessions:'id, user_id, person_id, [user_id+person_id], order_id, scheduled_at, status, updated_at, deleted_at, synced',
+      exam_session_items:'id, user_id, person_id, [user_id+person_id], order_id, session_id, exam_order_item_id, status, updated_at, deleted_at, synced',
+      clinical_assets:'id, user_id, person_id, [user_id+person_id], sha256, storage_path, upload_status, updated_at, deleted_at, synced',
+      clinical_asset_links:'id, user_id, person_id, [user_id+person_id], asset_id, [entity_type+entity_id], updated_at, deleted_at, synced',
+      consultation_exam_order_links:'id, user_id, person_id, [user_id+person_id], order_id, consultation_id, role, updated_at, deleted_at, synced',
     });
   }
 }

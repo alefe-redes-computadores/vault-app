@@ -57,6 +57,9 @@ import {
   SYNC_MAX_RETRIES,
 } from "@/lib/sync/queue-health";
 import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
+import { clinicalExamDependenciesM1 } from "@/lib/clinical-exams-m1/dependencies";
+import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
+import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
   blockedSyncDependency,
   syncEntityKey,
@@ -4045,6 +4048,19 @@ export function useSyncQueue() {
     throw new Error(`CareFlow insert error: ${error.message}`);
   };
 
+  // M1: guards dependency chains even when a parent is deferred in the offline queue.
+  const syncClinicalCanonicalM1 = async (item: SyncQueueItem) => {
+    const client=requireSupabase();
+    const {data,error}=await client.auth.getUser();
+    if(error||!data.user)throw Error('M1 requer sessão autenticada.');
+    if(!isClinicalExamTableM1(item.table))throw Error('M1: tabela inesperada.');
+    for(const dep of clinicalExamDependenciesM1(item)){
+      const pending=await db.syncQueue.where('chave').equals(`${dep.table}:${dep.id}`).first();
+      if(pending)throw new SyncDependencyDeferredError(`M1 ${item.table} aguarda ${dep.table} sincronizar.`);
+    }
+    await syncClinicalExamM1(item,data.user.id);
+  };
+
   // CI360 M3 P2: fila offline separada de eventos clínicos. Sem escrita em consulta/dose/estoque.
   const syncNotificationPolicyP2 = async (item: SyncQueueItem) => {
     const client = requireSupabase(), p = item.payload as Record<string,unknown>;
@@ -5117,6 +5133,13 @@ export function useSyncQueue() {
         case "notification_policies_p2":
           await markRecordSyncedIfCurrent(db.notification_policies_p2,payload.id,expectedUpdatedAt);
           break;
+        case "exam_orders": await markRecordSyncedIfCurrent(db.exam_orders,payload.id,expectedUpdatedAt); break;
+        case "exam_order_items": await markRecordSyncedIfCurrent(db.exam_order_items,payload.id,expectedUpdatedAt); break;
+        case "exam_sessions": await markRecordSyncedIfCurrent(db.exam_sessions,payload.id,expectedUpdatedAt); break;
+        case "exam_session_items": await markRecordSyncedIfCurrent(db.exam_session_items,payload.id,expectedUpdatedAt); break;
+        case "clinical_assets": await markRecordSyncedIfCurrent(db.clinical_assets,payload.id,expectedUpdatedAt); break;
+        case "clinical_asset_links": await markRecordSyncedIfCurrent(db.clinical_asset_links,payload.id,expectedUpdatedAt); break;
+        case "consultation_exam_order_links": await markRecordSyncedIfCurrent(db.consultation_exam_order_links,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5388,6 +5411,10 @@ export function useSyncQueue() {
         case "careflow_events_m2":
           await syncCareFlowM2(item);
           return;
+        case "exam_orders": case "exam_order_items": case "exam_sessions": case "exam_session_items":
+        case "clinical_assets": case "clinical_asset_links": case "consultation_exam_order_links":
+          await syncClinicalCanonicalM1(item);
+          return;
 
         case "notification_policies_p2":
           await syncNotificationPolicyP2(item);
@@ -5600,6 +5627,13 @@ export function useSyncQueue() {
 
                   "exames",
                   "consultas",
+                  "exam_orders",
+                  "exam_order_items",
+                  "exam_sessions",
+                  "exam_session_items",
+                  "clinical_assets",
+                  "clinical_asset_links",
+                  "consultation_exam_order_links",
                   "cirurgias",
 
                   "renovacoes",

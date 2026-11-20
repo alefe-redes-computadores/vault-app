@@ -15,8 +15,10 @@ const diagnostics = read("lib/sync/diagnostics.ts");
 const gate = read("scripts/test-v63-release-gate.mjs");
 
 ok(
+  // Semantic contract: the error branch must mark the table failed and return.
+  // Do not constrain the character distance: M1 adds legitimate audit code here.
   pull.includes("VAULT_FINAL_RELEASE_V69_QUERY_ERROR") &&
-    /if \(error\) \{[\s\S]{0,260}tableOk = false;[\s\S]{0,260}return;/.test(pull),
+    /if\s*\(\s*error\s*\)\s*\{\s*\/\/\s*VAULT_FINAL_RELEASE_V69_QUERY_ERROR[\s\S]*?\btableOk\s*=\s*false\s*;[\s\S]*?\breturn\s*;\s*\}/.test(pull),
   "erro retornado pela consulta marca diagnóstico da tabela como falha"
 );
 
