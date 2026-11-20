@@ -87,6 +87,7 @@ import {
 } from "@/lib/db";
 
 import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
+import { clearClinicalCacheM3 } from "@/lib/clinical-exams-m3/cache";
 import { InsightNotificationReconciler } from "@/components/InsightNotificationReconciler";
 import { DoseSafetyEpisodeReconciler } from "@/components/health-intelligence/DoseSafetyEpisodeReconciler";
 import { DoseNotificationReconciler } from "@/components/DoseNotificationReconciler";
@@ -257,6 +258,22 @@ export function Providers({
     loading,
   } =
     useAuth();
+
+  // M3 cache lifecycle: native app-private bytes are purged upon logout or account switch.
+  // Never purge during auth hydration; no clinical rows are deleted.
+  useEffect(() => {
+    if (loading || typeof window==='undefined') return;
+    const current=user?.id||'';
+    let prior='';
+    try{prior=window.localStorage.getItem('vault:m3:clinical-cache-owner')||'';}catch{}
+    if(!current || (prior && prior!==current)){
+      void clearClinicalCacheM3().catch(()=>{/* only cache, never clinical data */});
+    }
+    try{
+      if(current)window.localStorage.setItem('vault:m3:clinical-cache-owner',current);
+      else window.localStorage.removeItem('vault:m3:clinical-cache-owner');
+    }catch{}
+  },[loading,user?.id]);
 
   const {
     activePersonId,

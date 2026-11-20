@@ -63,6 +63,7 @@ import {
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { DocumentArchiveOverview } from "@/components/saude/DocumentArchiveOverview";
+import { ClinicalAssetLibraryM3 } from "@/components/saude/ClinicalAssetLibraryM3";
 import { CareJourney360 } from "@/components/saude/CareJourney360";
 import { ClinicalDisclosure } from "@/components/saude/ClinicalDisclosure";
 import { useSharedHealthIntelligence } from "@/contexts/HealthIntelligenceContext";
@@ -3730,6 +3731,7 @@ export default function DocumentsPage() {
             CONTENT
             ==================================================== */}
 
+        <ClinicalAssetLibraryM3 />
         <section className="px-5 pt-4">
           {!activePersonId ? (
             <div className="flex flex-col items-center justify-center rounded-[28px] border border-surface-border/50 bg-surface px-6 py-14 text-center">

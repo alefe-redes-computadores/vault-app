@@ -15,6 +15,7 @@ import { getLocalTodayISO } from '@/lib/health-utils';
 import { CustomDatePicker } from '@/components/DatePicker';
 import { HealthTimePicker } from '@/components/saude/HealthTimePicker';
 import { HealthRelationPicker } from '@/components/saude/HealthRelationPicker';
+import { ExamClinicalDocumentsM3 } from '@/components/saude/ExamClinicalDocumentsM3';
 
 const input='mt-1 block min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-sm text-ink-primary outline-none focus:border-sky-300';
 const button='inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border px-3 py-2 text-xs font-semibold text-ink-primary transition hover:border-sky-300';
@@ -213,7 +214,7 @@ function OrdersPage(){
           <SessionFields {...{scheduledAt,setScheduledAt,laboratory,setLaboratory,labProtocol,setLabProtocol,expectedResult,setExpectedResult,prepSource,setPrepSource,prepMinutes,setPrepMinutes,prepInstructions,setPrepInstructions,prepConfirmed,setPrepConfirmed,prepAlert,setPrepAlert,sessionAlert,setSessionAlert,resultAlert,setResultAlert,input}}/>
         </section>}
         <section className={box}><h2 className="text-sm font-bold">Resultados factuais e próximos retornos</h2>
-          <p className="my-2 text-xs text-ink-muted">O resultado só será registrado após sua confirmação explícita. Laudos em PDF compartilhados entram na M3.</p>
+          <p className="my-2 text-xs text-ink-muted">Resultados factuais exigem confirmação. Laudos compartilhados são anexados abaixo, na autoridade privada M3.</p>
           <div className="space-y-3">{selected.items.map(item=><div key={item.id} className="rounded-lg border border-surface-border/60 p-3">
             <div className="flex flex-wrap items-start justify-between gap-2"><strong className="min-w-0 text-xs">{item.name}</strong><span className="text-[11px] text-sky-300">{statusName[item.status]||item.status}</span></div>
             {(item.status==='collected'||item.status==='result_pending')&&<div className="mt-2 flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 text-xs">Resumo factual<input className={input} value={resultEdits[item.id]||''} onChange={e=>setResultEdits(x=>({...x,[item.id]:e.target.value}))} placeholder="Resultado transcrito, sem diagnóstico"/></label>
@@ -223,6 +224,9 @@ function OrdersPage(){
           <div className="mt-3 flex flex-wrap gap-2"><HealthRelationPicker title="Consulta de revisão" kind="consultation" value={reviewId} className={`${input} flex-1`} onValueChange={setReviewId}><option value="">Vincular consulta de retorno</option>{state?.consultas.map(c=><option key={c.id} value={c.id}>{c.data} · {c.especialidade||c.medico||'Consulta'}</option>)}</HealthRelationPicker>
             <button type="button" className={button} disabled={busy||!reviewId} onClick={()=>busyCall(()=>linkExamReviewConsultationM2(pid,selected.order.id,reviewId).then(()=>{}))}>Vincular retorno</button></div>
         </section>
+        <ExamClinicalDocumentsM3 orderId={selected.order.id}
+          items={selected.items.map(i=>({id:i.id,name:i.name,status:i.status}))}
+          sessions={selected.sessions.map(({session,links})=>({id:session.id,label:session.laboratory_name||'Sessão de exames',itemIds:links.map(l=>l.exam_order_item_id)}))}/>
       </>}
       <section className={box}><h2 className="text-sm font-bold">Alertas Android — diagnóstico</h2>
         <p className="mt-1 text-xs text-ink-muted">Avisos exigem consentimento por sessão, notificações do VAULT habilitadas e permissão do Android. Em Espaço Privado bloqueado, o Android 15 pode não entregar avisos.</p>
