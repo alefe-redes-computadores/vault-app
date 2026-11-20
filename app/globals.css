@@ -398,3 +398,18 @@ html[data-vault-home-essential-p6="1"] [data-vault-home-optional-p6] { display: 
     padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* UX360 P0: Episódio é uma subtela de conteúdo, não deve reservar
+ * uma segunda dobra preta vazia; mantém safe area e cinco raízes. */
+body:has(nav.vault-bottom-nav) .vault-adaptive-tail.vault-episode-compact {
+  min-height: 0 !important;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+body:not(:has(nav.vault-bottom-nav)) .vault-adaptive-tail.vault-episode-compact {
+  min-height: 0 !important;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+/* Home tem Compose integrado acima das cinco abas: reservar altura efetiva. */
+body:has(nav.vault-bottom-nav [data-vault-home-compose]) .vault-adaptive-tail {
+  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)) !important;
+}

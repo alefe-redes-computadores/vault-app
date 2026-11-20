@@ -5,12 +5,14 @@ import { ManufacturerBadge } from "@/components/saude/ManufacturerBadge";
 import type { MedicationDetailHubViewM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
 
 /** M148 P2: a compact relational entrance. The original clinical sections stay authoritative. */
-export function MedicationDetailCareHubM148({ view, hasRoutine, hasPharmaLens, onOpenSection, onOpenOccurrences }: {
+export function MedicationDetailCareHubM148({ view, hasRoutine, hasPharmaLens, onOpenSection, onOpenOccurrences, showOccurrences = false }: {
   view: MedicationDetailHubViewM148;
   hasRoutine: boolean;
   hasPharmaLens: boolean;
   onOpenSection: (sectionId: string) => void;
   onOpenOccurrences: () => void;
+  /** Ocorrências é entrada avançada opt-in, não contexto automático de cada medicamento. */
+  showOccurrences?: boolean;
 }) {
   const links = [
     { id: hasRoutine ? "medicamento-rotina" : "medicamento-agora", icon: Activity, ...view.treatment, tone: "text-sky-300" },
@@ -38,13 +40,13 @@ export function MedicationDetailCareHubM148({ view, hasRoutine, hasPharmaLens, o
     <details className="group mt-2.5 rounded-xl border border-surface-border/50 bg-void/15 px-3">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="flex items-center gap-2"><Factory size={15} className="text-violet-300"/> Fabricantes e origem das informações</span><ChevronDown size={15} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
       <div className="space-y-3 border-t border-surface-border/40 pb-3 pt-3 text-xs leading-relaxed text-ink-muted">
-        <div><p className="mb-1 font-semibold text-ink-secondary">Etiqueta declarada no cadastro</p>{view.manufacturer.label ? <ManufacturerBadge manufacturer={view.manufacturer.label}/> : <p>Não informada</p>}</div>
+        <div><p title="Etiqueta declarada no cadastro" className="mb-1 font-semibold text-ink-secondary">Laboratório informado</p>{view.manufacturer.label ? <ManufacturerBadge manufacturer={view.manufacturer.label}/> : <p>Não informada</p>}</div>
         <div><p className="mb-1 font-semibold text-ink-secondary">Fabricante da última aquisição realizada</p>{view.manufacturer.latestAcquisition ? <ManufacturerBadge manufacturer={view.manufacturer.latestAcquisition}/> : <p>{view.manufacturer.hasCompletedAcquisition ? "Não informado no registro da última aquisição" : "Nenhuma aquisição realizada registrada"}</p>}{manufacturerDate ? <p className="mt-1 flex items-center gap-1.5"><CalendarClock size={13}/> Aquisição registrada em {manufacturerDate}</p> : null}</div>
         <p className="rounded-lg border border-amber-300/15 bg-amber-300/[.04] p-2.5">O fabricante da última aquisição não comprova qual embalagem está em uso. A etiqueta é uma informação declarada, não um laudo ou identificação física verificada.</p>
         {hasPharmaLens ? <button type="button" onClick={() => onOpenSection("pharmalens-v7")} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[.045] px-3 text-xs font-semibold text-violet-200">Explorar relatos e trocas de fabricante <ChevronRight size={15}/></button> : null}
       </div>
     </details>
     <p className="mt-2.5 text-[11px] leading-relaxed text-ink-muted">{view.note}</p>
-    <button type="button" onClick={onOpenOccurrences} className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/55 bg-surface/40 px-3 text-left text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="flex items-center gap-2"><ClipboardList size={15} className="text-emerald-300"/> Ocorrências, ciclos e vacinas</span><ChevronRight size={15}/></button>
+    {showOccurrences && <button type="button" onClick={onOpenOccurrences} className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/55 bg-surface/40 px-3 text-left text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="flex items-center gap-2"><ClipboardList size={15} className="text-emerald-300"/> Ocorrências, ciclos e vacinas</span><ChevronRight size={15}/></button>}
   </section>;
 }

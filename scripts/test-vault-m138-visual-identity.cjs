@@ -58,7 +58,7 @@ const provenanceM138=read('components/saude/MedicationProvenanceBadge.tsx');
 ok(list.includes('<MedicationProvenanceLineM150P3') && list.includes('declaredManufacturer={med.laboratorio_etiqueta}') && read('lib/medications/medication-list-provenance-m150-p3.ts').includes('Laboratório declarado na etiqueta do cadastro') &&
    provenanceM138.includes('Laboratório declarado na etiqueta') &&
    provenanceM138.includes('Não comprova fabricação da última aquisição') &&
-   detail.includes('Etiqueta visual · {med.laboratorio_etiqueta}') &&
+   detail.includes('title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}') && detail.includes('<Factory size={12} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{med.laboratorio_etiqueta}</span>') && !detail.includes('Etiqueta visual · {med.laboratorio_etiqueta}') &&
    preview.includes('Etiqueta · {label}'),
    'etiqueta declarada visível na lista, detalhe e prévia, sem se confundir com fabricante da aquisição');
 // M137 ja possui a associacao de fabricante a uma aquisicao efetiva no cadastro.

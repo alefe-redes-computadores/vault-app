@@ -58,8 +58,8 @@ ok(
 );
 
 ok(
-  routine > insight,
-  "inteligência permanece antes da rotina detalhada"
+  routine > hero && routine < insight,
+  "rotina e estoque precedem análises avançadas"
 );
 
 ok(

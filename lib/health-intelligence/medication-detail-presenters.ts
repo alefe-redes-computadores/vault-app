@@ -53,7 +53,7 @@ export function formatDate(
 
     return format(
       date,
-      "dd MMM yyyy",
+      "dd/MM/yyyy",
       {
         locale:
           ptBR,

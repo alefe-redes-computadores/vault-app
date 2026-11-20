@@ -276,6 +276,42 @@ export function BottomNav() {
   // O botão + é flutuante, acima da barra, e não oculta a aba Saúde.
   const gridClass = "grid-cols-5";
 
+  // UX360 P0: um único Compose, integrado ao rodapé na Home, flutuante onde necessário.
+  const renderComposeButton = (embedded: boolean) => (
+    <button
+                ref={composeButtonRef}
+                type="button"
+                onClick={handleComposePress}
+                aria-haspopup={composeOptions.length > 1 ? "dialog" : undefined}
+                aria-expanded={composeOptions.length > 1 ? isComposeMenuOpen : undefined}
+                aria-label={
+                  composeOptions.length >
+                  1
+                    ? "Adicionar"
+                    : composeOptions[0]
+                        .label
+                }
+                className={`${embedded ? "relative z-10" : "absolute -top-12 right-2 z-10"} flex min-h-11 max-w-[min(55vw,190px)] items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-xs font-bold shadow-sm transition-all duration-200 active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${createAccent}`}
+              >
+                <motion.div
+                  animate={{
+                    rotate:
+                      isComposeMenuOpen
+                        ? 45
+                        : 0,
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                  }}
+                >
+                  <ComposeIcon size={20} strokeWidth={2.4} aria-hidden="true"/>
+                </motion.div>
+                <span className="min-w-0 truncate">{createTitle}</span>
+              </button>
+  );
+
   return (
     <>
       <AnimatePresence>
@@ -402,6 +438,11 @@ export function BottomNav() {
         className="vault-bottom-nav fixed inset-x-0 bottom-0 z-50 bg-surface transition-opacity visible opacity-100"
       >
         <div className="border-t border-surface-border/40 bg-surface/95 px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-xl">
+          {showCompose && pathname === "/" && (
+            <div data-vault-home-compose className="mx-auto mb-1 flex max-w-md justify-end">
+              {renderComposeButton(true)}
+            </div>
+          )}
           <div
             className={`relative mx-auto grid max-w-md ${gridClass} items-end justify-items-center`}
           >
@@ -479,40 +520,7 @@ export function BottomNav() {
               }
             )}
 
-            {showCompose && (
-              <button
-                ref={composeButtonRef}
-                type="button"
-                onClick={handleComposePress}
-                aria-haspopup={composeOptions.length > 1 ? "dialog" : undefined}
-                aria-expanded={composeOptions.length > 1 ? isComposeMenuOpen : undefined}
-                aria-label={
-                  composeOptions.length >
-                  1
-                    ? "Adicionar"
-                    : composeOptions[0]
-                        .label
-                }
-                className={`absolute -top-12 right-2 z-10 flex min-h-12 max-w-[min(55vw,190px)] items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-xs font-bold shadow-[0_10px_26px_rgba(0,0,0,0.3)] transition-all duration-200 active:scale-95 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${createAccent}`}
-              >
-                <motion.div
-                  animate={{
-                    rotate:
-                      isComposeMenuOpen
-                        ? 45
-                        : 0,
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20,
-                  }}
-                >
-                  <ComposeIcon size={20} strokeWidth={2.4} aria-hidden="true"/>
-                </motion.div>
-                <span className="min-w-0 truncate">{createTitle}</span>
-              </button>
-            )}
+            {showCompose && pathname !== "/" && renderComposeButton(false)}
           </div>
         </div>
       </nav>

@@ -21,7 +21,7 @@ for(const p of files.slice(0,3)){
 const detail=read(files[0]);const hub=read(files[1]);const model=read(files[2]);const gate=read(files[3]);
 ok(detail.includes('VAULT_M148_P2_RELATIONAL_HUB')&&detail.includes('<MedicationDetailCareHubM148'),'one contextual hub');
 ok((detail.match(/<MedicationDetailCareHubM148/g)||[]).length===1,'no duplicate hub');
-ok(detail.indexOf('VAULT_V320_QUICK_DOSE_TOP')<detail.indexOf('VAULT_M148_P2_RELATIONAL_HUB')&&detail.indexOf('VAULT_M148_P2_RELATIONAL_HUB')<detail.indexOf('VAULT_V320_FINANCE_PROGRESSIVE'),'real action first, progressive history after');
+ok(detail.indexOf('VAULT_V320_QUICK_DOSE_TOP')<detail.indexOf('VAULT_V320_FINANCE_PROGRESSIVE')&&detail.indexOf('VAULT_V320_FINANCE_PROGRESSIVE')<detail.indexOf('VAULT_M148_P2_RELATIONAL_HUB')&&detail.includes('id="medicamento-contexto-avancado"'),'real action first, progressive history after');
 ok(detail.includes('<MedicationDetailNavigation hasRoutine={hasRoutineSection}')&&detail.includes('Explorar todas as áreas do medicamento'),'legacy navigation retained under expandable grouping');
 for(const anchor of ['medicamento-agora','medicamento-rotina','medicamento-receita','medicamento-fornecimento','historico-aquisicoes','pharmalens-v7'])ok(detail.includes(anchor),'existing anchor '+anchor);
 ok(hub.includes('id: "medicamento-fornecimento"')&&hub.includes('id: "medicamento-receita"')&&hub.includes('hasRoutine ? "medicamento-rotina" : "medicamento-agora"'),'three destinations real, no dead anchor');

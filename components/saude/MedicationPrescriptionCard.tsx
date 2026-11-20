@@ -30,11 +30,14 @@ const statePresentation: Record<PrescriptionStatus, { label: string; tone: strin
 /** P15 R4: apresentação somente. Validade, vínculos e comandos continuam no dossiê autorizado. */
 export function MedicationPrescriptionCard({ typeLabel, badge, status, issuedAt, expiresAt, nextAt, validityLabel, nextLabel, hasAttachment, onPlan, onAttachment, onLink, onReceived }: Props) {
   const state = statePresentation[status];
+  // Tipo e faixa regulatória podem ser sinônimos ("Receita azul" + "AZUL").
+  // Não repetir a mesma classificação; preservar o badge quando acrescentar informação.
+  const redundantBadge = Boolean(badge?.label && typeLabel.toLocaleLowerCase("pt-BR").includes(badge.label.toLocaleLowerCase("pt-BR")));
   return <div className="rounded-[18px] border border-surface-border/60 bg-surface p-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-ink-primary"><FileText size={14} aria-hidden="true"/>{typeLabel}</span>
-        {badge && <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase ${badge.colorClass}`}>{badge.label}</span>}
+        {badge && !redundantBadge && <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase ${badge.colorClass}`}>{badge.label}</span>}
       </div>
       <span role="status" className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${state.tone}`}>{state.label}</span>
     </div>

@@ -17,13 +17,14 @@ for(const [name,code,tsx] of [
  assert.equal(parsed.parseDiagnostics.length,0,`${name} parses correctly`);
 }
 assert(details.indexOf('const journeySnapshot = useMemo(')<details.indexOf('  if (\n    med ===\n    undefined'),'V299 React hook-order fix preserved');
-const main=details.indexOf('<MedicationDetailNavigation');
-const identity=details.indexOf('VAULT_MEDICATION_HIERARCHY_V72',main);
+const main=details.indexOf('VAULT_MEDICATION_HIERARCHY_V72');
+const identity=main;
 const hero=details.indexOf('<section className="relative overflow-hidden',identity);
 const action=details.indexOf('{(careDecision.stage !== "stable" || brainCareAction) && (',main);
 const journal=details.indexOf('<ClinicalDisclosure id="medicamento-jornada"',main);
 const supply=details.indexOf('<ClinicalDisclosure id="medicamento-fornecimento"',main);
-assert(main>=0 && identity>main && hero>identity && action>hero && journal>action && supply>journal &&
+const nav=details.indexOf('<MedicationDetailNavigation',hero);
+assert(main>=0 && hero>identity && action>hero && journal>action && supply>journal && nav>supply &&
   details.slice(hero,action).includes('med.nome') &&
   details.slice(hero,action).includes('med.dosagem') &&
   details.slice(hero,action).includes('regulatoryProfile'),

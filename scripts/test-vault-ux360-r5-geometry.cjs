@@ -29,9 +29,9 @@ for (const file of ['app/saude/medicamentos/page.tsx','components/list/ListCard.
 }
 
 ok(med.includes('medicationFlow')&&card.includes('medicationFlow?: boolean')&&card.includes('medicationFlow = false'),'ListCard opt-in; outros cards preservados');
-ok(card.includes('medicationFlow ? "absolute left-0 top-1"')&&card.includes('medicationFlow ? "block" : "flex items-start"'),'ícone flutuante só no cabeçalho, operacional usa largura inteira');
+ok(card.includes('medicationFlow ? "relative col-start-1 row-start-1"')&&card.includes('grid grid-cols-[40px_minmax(0,1fr)] items-start gap-x-2'),'ícone flutuante só no cabeçalho, operacional usa largura inteira');
 ok(card.includes('railSize === "label" ? (medicationFlow ? "w-7" : "w-8")'),'tarja acessível e reduzida somente em medicamentos');
-ok(med.includes('data-vault-med360-header')&&med.includes('gap-1.5 pl-11'),'nome/dose/seta alinhados com ícone');
+ok(med.includes('data-vault-med360-header')&&!med.includes('data-vault-med360-header className="flex min-w-0 w-full items-center gap-1.5 pl-11"')&&card.includes('col-start-2 row-start-1 min-w-0'),'nome/dose/seta alinhados com ícone');
 ok(!med.includes('personalAccent && <span aria-hidden="true" className="inline-block h-2 w-2'),'ponto decorativo órfão removido');
 ok(med.includes('data-vault-r5-active-ingredient')&&med.includes('text-[10px] leading-tight')&&med.includes('text-xs leading-snug'),'princípio ativo visível nos dois modos, hierarquias distintas');
 ok(med.includes('grid-cols-[minmax(0,1fr)_88px]')&&med.includes('actionLayoutM150P3.primary ?')&&med.includes('actionLayoutM150P3.primary && <div'),'coluna CTA 88px somente quando há ação');
@@ -42,9 +42,9 @@ ok(med.includes('data-vault-r5-context="regime"')&&med.includes('openMedicationS
 ok(med.includes('data-vault-r5-context="tratamento"')&&med.includes('router.push(`/saude/tratamentos/detalhes?id=${encodeURIComponent(t.id)}`)'),'tratamento vinculado com rota real para sua identidade');
 ok(med.includes('safeTreatmentColorP7(t.cor)')&&med.includes('style={color ? (compactCards ? {color} : {borderColor:`${color}66`,backgroundColor:`${color}12`,color}) : undefined}'),'cores do tratamento sanitizadas');
 ok(med.includes('data-vault-r5-comfort-context')&&med.includes('data-vault-r5-context="origem"')&&med.includes('data-vault-r5-context="fabricante"')&&med.includes('data-vault-r5-context="receita"'),'Conforto agrega tags com informação útil');
-ok(med.includes('supplyRoute?.mode === "hybrid" ? "Origens históricas · conferir"')&&med.includes('SUS · cadastrado')&&med.includes('Comprado · cadastrado'),'origem não presume fornecimento atual');
+ok(med.includes('supplyRoute?.mode === "hybrid" ? "Origens · conferir"')&&med.includes('med.tipo_aquisicao === "sus" ? "SUS"')&&med.includes('med.tipo_aquisicao === "comprado" ? "Comprado"')&&!med.includes('SUS · cadastrado')&&!med.includes('Comprado · cadastrado'),'origem não presume fornecimento atual');
 ok(med.includes('reconciliationP6.hasDocumentEvidence')&&med.includes('openMedicationSheet360("receita")'),'documento só se houver evidência; destino Receita');
-ok(med.includes('latestManufacturer ? `Última aquisição: ${latestManufacturer}` : `Etiqueta: ${med.laboratorio_etiqueta}`'),'fabricante identifica fonte da evidência');
+ok(med.includes('{latestManufacturer || med.laboratorio_etiqueta}')&&!med.includes('`Etiqueta: ${med.laboratorio_etiqueta}`'),'fabricante identifica fonte da evidência');
 ok(med.includes('className="min-h-0"')&&med.includes('data-vault-executive-density={compactCards?"compact":"comfort"}'),'duas densidades sem altura minima artificial');
 ok(med.includes('MedicationOperationalStrip today={todayStatus} compact={compactCards}')&&op.includes('aria-label={`Hoje: ${today.label}. Estoque: ${stockLabel}.'),'resumo clínico canônico com acessibilidade');
 ok(med.includes('setQuickDoseMedId(med.id!)')&&med.includes('router.push(careAction.href)')&&med.includes('MedicationRestockAction'),'tomada, cuidado e estoque intactos');
@@ -55,7 +55,7 @@ ok(!med.includes('aria-hidden="true">+{actionLayoutM150P3.secondary.length}')&&s
 ok(!med.includes('data-vault-home-viva'),'Home Viva pertence à outra frente');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.split('"scripts/test-vault-ux360-r5-geometry.cjs"').length===2,'R5 registrado exatamente uma vez no gate V63');
-ok(med.includes('data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-nowrap') && med.includes('overflow-x-auto'), 'Conforto não empilha caixas de 44px');
+ok(med.includes('data-vault-r5-comfort-context className="pointer-events-auto relative z-20 flex min-w-0 flex-wrap') && !med.includes('overscroll-x-contain pb-0.5'), 'Conforto não empilha caixas de 44px');
 ok(!med.includes('inline-flex min-h-11 max-w-full items-center gap-1 text-[10px] font-semibold ${compactCards ?'), 'tratamento não força linha 44px');
 ok(!med.includes('inline-flex min-h-11 shrink-0 items-center gap-1 text-[10px] font-semibold ${compactCards ?'), 'regime não força linha 44px');
 ok(op.includes('h-[18px]') && !op.includes('basis-full truncate'), 'faixa operacional compacta e sem +doses órfãs');

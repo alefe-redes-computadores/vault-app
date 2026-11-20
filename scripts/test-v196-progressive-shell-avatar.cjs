@@ -33,8 +33,11 @@ assert(more.match(/className="vault-deferred/g)?.length >= 5);
 assert(command.includes('className="vault-deferred-lg space-y-3"')&&command.includes('<ClinicalDisclosure'));
 // M131 R5: o cartão único de 20px foi substituído por dois destinos premium.
 // Valida os novos alvos visíveis, o raio, as rotas e a identidade verde da Minha Saúde.
+const homeMedClasses=qg1.extractClassAfter(command,'onClick={() => go("/saude/medicamentos")}');
 assert(command.includes('grid min-w-0 grid-cols-2 gap-2') &&
-  /<button[^>]*onClick=\{\(\) => go\("\/saude\/medicamentos"\)\}[^>]*className="[^"]*min-h-\[\d+px\][^"]*rounded-\[18px\]/.test(command) &&
+  homeMedClasses.includes('min-h-[76px]') &&
+  homeMedClasses.includes('rounded-[18px]') &&
+  homeMedClasses.includes('${viva ? "h-auto self-start" : "h-full"}') &&
   qg1.homePrimaryMinHeightQG1(command,76) &&
   command.includes('<HomeClinicalAreaTile label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude"') &&
   command.includes('tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go}'));

@@ -9,7 +9,7 @@ const files=['app/page.tsx','components/home/HomeCommandCenter.tsx','components/
 for(const path of files){const code=read(path);const parsed=ts.createSourceFile(path,code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);ok(!parsed.parseDiagnostics.length,'TSX sintaticamente íntegro: '+path);}
 const [page,home,tile,supply,command]=files.map(read);
 ok(page.includes('flex min-h-[70px] w-full min-w-0 items-center')&&page.includes('withReturnTarget(`/saude/tratamentos/detalhes?id=${tratamento.id}`, "/")'),'cartões de tratamento mais compactos com rota canônica preservada');
-ok(home.includes('grid min-w-0 grid-cols-2 gap-2 items-stretch max-[349px]:grid-cols-1'),'Home mantém grade M139 em 320px');
+ok(home.includes('grid min-w-0 grid-cols-2 gap-2 items-start max-[349px]:grid-cols-1')&&home.includes('${viva ? "h-auto self-start" : "h-full"}'),'Home mantém grade M139 em 320px');
 ok(qg1.homePrimaryMinHeightQG1(home,76) && qg1.clinicalTileMinHeightQG1(tile,76),'Home limita altura dos dois cartões sem eliminar alvo de toque legado');
 ok(home.includes('items-center gap-2 rounded-[18px]')&&tile.includes('items-center gap-2.5 rounded-[18px]'),'conteúdo dos dois cartões fica centralizado verticalmente');
 ok(home.includes('flex min-w-0 flex-1 flex-col justify-center')&&!tile.includes('self-stretch gap-0.5'),'cartões sem esticamento interno desnecessário');

@@ -163,7 +163,7 @@ check(getIa20CreateAccent('nova-consulta')!==getIa20CreateAccent('nova-farmacia'
 check(getIa20CreateAccent('novo-tratamento')!==getIa20CreateAccent('novo-medicamento'),'violeta e âmbar distintos');
 check(bottom.includes('const ComposeIcon = composeOptions.length === 1 ? composeOptions[0].icon : Plus'),'ícone por ação real');
 check(bottom.includes('const createTitle = composeOptions.length === 1 ? composeOptions[0].label : "Adicionar"'),'nome contextual do botão');
-check(bottom.includes('className={`absolute -top-12 right-2')&&bottom.includes('${createAccent}'),'ação flutuante contextual, fora dos cinco slots');
+check(bottom.includes('const renderComposeButton = (embedded: boolean)')&&bottom.includes('embedded ? "relative z-10" : "absolute -top-12 right-2 z-10"')&&bottom.includes('renderComposeButton(true)')&&bottom.includes('renderComposeButton(false)')&&bottom.includes('pathname === "/"')&&bottom.includes('grid-cols-5')&&bottom.includes('${createAccent}'),'Compose contextual: na Home integrado, fora dela flutuante, cinco abas intactas');
 check(!bottom.includes('col-start-4')&&!bottom.includes('-translate-x-1/2 -translate-y-[34%]'),'botão + central removido');
 check(bottom.includes('withReturnTarget(composeOptions[0].path, composeReturnTo)')&&bottom.includes('withReturnTarget(option.path, composeReturnTo)'),'criação preserva caminho de retorno');
 check(bottom.includes('aria-haspopup={composeOptions.length > 1 ? "dialog" : undefined}'),'sheet contextual acessível');

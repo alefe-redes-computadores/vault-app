@@ -16,7 +16,7 @@ ok(center.includes('mode !== "secondary"')&&center.includes('mode !== "primary"'
 ok(home.includes('<HomeQuickMetrics')&&home.includes('indicators={<HomeQuickMetrics')&&!home.includes('id="home-resumo-da-rotina"'), 'indicadores continuam sob demanda');
 ok(home.includes('HomeQuickMetrics')&&home.includes('<HomeAttentionRail')&&home.includes('<HomeBrainEvidenceGroup'), 'agenda, alertas e evidências individuais preservados');
 ok(home.includes('<HomeEssentialToggleM118 />')&&home.indexOf('<HomeEssentialToggleM118 />')<home.indexOf('id="home-agora"')&&home.includes('id="home-brain"'), 'modo essencial na primeira dobra e Brain disponíveis');
-ok(center.includes('grid-cols-2 gap-2 items-stretch')&&qg1.homePrimaryMinHeightQG1(center,76)&&qg1.clinicalTileMinHeightQG1(tile,76) ,'blocos principais alinham alturas sem corte');
+ok(center.includes('grid-cols-2 gap-2 items-start')&&center.includes('${viva ? "h-auto self-start" : "h-full"}')&&qg1.homePrimaryMinHeightQG1(center,76)&&qg1.clinicalTileMinHeightQG1(tile,76) ,'blocos principais alinham alturas sem corte');
 ok(med.includes('railSize="label"')&&med.includes('[writing-mode:vertical-rl]')&&med.includes('medicationRegulatoryShortLabel(regulatoryProfile, receita?.sigla)')&&med.includes('setSelectedRegulatory(regulatoryProfile)'), 'faixa regulatória textual, legível e interativa');
 ok(med.includes('compactTight={compactCards}')&&med.includes('min-h-11')&&med.includes('<MedicationOperationalStrip'), 'cards dinâmicos mantêm ações e estados');
 ok(med.includes('isTemporary')&&med.includes('isSOS')&&med.includes('stockUnknown'), 'estados de uso e estoque permanecem diferentes');

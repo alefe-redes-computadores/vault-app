@@ -95,6 +95,7 @@ import {
   Droplet,
   Edit3,
   ExternalLink,
+  Factory,
   FileText,
   FileWarning,
   Gift,
@@ -2737,12 +2738,6 @@ function MedicamentoDetalhesContent() {
 
         <div className="mx-auto max-w-3xl space-y-3 px-4 pt-3 sm:px-5">
           {/* M148 P2: full legacy section map remains reachable but does not crowd the first fold. */}
-          <details className="group rounded-[16px] border border-surface-border/55 bg-surface/45 px-3">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Explorar todas as áreas do medicamento <ChevronDown size={15} className="text-ink-muted transition-transform group-open:rotate-180"/></summary>
-            <div className="border-t border-surface-border/40 pb-2 pt-2">
-              <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasStock={Boolean(temEstoque && (med.status !== "descontinuado" || isSOS))} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
-            </div>
-          </details>
           <span id="medicamento-agora" className="block scroll-mt-24" aria-hidden="true"/>
           {/* VAULT_MEDICATION_HIERARCHY_V72 */}
           {/* ==================================================
@@ -2815,7 +2810,7 @@ function MedicamentoDetalhesContent() {
                     )}
                   </div>
 
-                  {med.laboratorio_etiqueta && <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-violet-200" title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}><span className="min-w-0 break-words">Etiqueta visual · {med.laboratorio_etiqueta}</span></p>}
+                  {med.laboratorio_etiqueta && <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-violet-200" title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}><Factory size={12} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{med.laboratorio_etiqueta}</span></p>}
                   <p className="mt-1 text-sm font-medium leading-relaxed text-ink-secondary">
                     {med.dosagem}
                     <span>
@@ -2981,33 +2976,190 @@ function MedicamentoDetalhesContent() {
               </button>
             </section>
           )}
-          {/* VAULT_M148_P2_RELATIONAL_HUB: facts are read-only, original authority preserved. */}
-          {/* VAULT_M144_DETAIL_ENTRY: contextual access, not an orphan bottom action. */}
-          <MedicationDetailCareHubM148
-            view={detailHubM148}
-            hasRoutine={hasRoutineSection}
-            hasPharmaLens={Boolean(med.id && med.person_id && activePersonId === med.person_id)}
-            onOpenSection={sectionId => {
-              trigger("vibrate");
-              if (typeof window === "undefined") return;
-              if (window.location.hash === `#${sectionId}`) window.dispatchEvent(new Event("hashchange"));
-              else window.location.hash = sectionId;
-              window.requestAnimationFrame(() => document.getElementById(sectionId)?.scrollIntoView({behavior:"smooth",block:"start"}));
-            }}
-            onOpenOccurrences={() => router.push(`/saude/central-m144?return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?${searchParams.toString()}`)}`)}
-          />
-          <MedicationKnowledgePanelM153P4 medication={med}/>
+{/* ==================================================
+              ROTINA E DOSES
+              ================================================== */}
+
+          {(med.status !==
+            "descontinuado" ||
+            isSOS) && (
+            <section id="medicamento-rotina" className="vault-deferred scroll-mt-24 space-y-3">
+              <SectionTitle
+                icon={
+                  <Clock
+                    size={
+                      15
+                    }
+                  />
+                }
+                title="Rotina & Uso"
+              />
+
+              {/* P15 R6: toda a autoridade do slot e dos registros fica nesta página. */}
+              <MedicationRoutineSummary
+                sos={isSOS}
+                takenToday={dosesTomadasHoje.length}
+                todayQuantity={formatKnownQuantitySummary(quantidadeHoje)}
+                todayQuantityLabel="Quantidade registrada hoje"
+                todayQuantityPartial={!quantidadeHoje.complete && quantidadeHoje.totalCount > 0}
+                takenLast7Days={dosesTomadasUltimos7Dias.length}
+                last7DaysQuantity={formatKnownQuantitySummary(quantidadeUltimos7Dias)}
+                last7DaysQuantityPartial={!quantidadeUltimos7Dias.complete && quantidadeUltimos7Dias.totalCount > 0}
+                resolvedToday={dosesResolvidasHoje}
+                plannedToday={dosesEsperadasHoje}
+                takenScheduledToday={dosesTomadasProgramadasHoje}
+                ignoredScheduledToday={dosesIgnoradasProgramadasHoje}                 quantityPerDose={(() => { const slot = isTemporary ? logsHoje.find(log => isTemporaryCoursePlannedDose(log)) : undefined; const quantity = contextualDoseQuantity(med, slot); return quantity !== null ? formatQuantidade(quantity) : null; })()}
+                doseUnit={med.estoque_unidade_medida || "unidade(s)"}                 scheduleKind={isTemporary ? "temporary" : "continuous"}
+                 hours={horariosConfigurados}
+                takenHours={horariosTomadosHoje}
+                ignoredHours={horariosIgnoradosHoje}
+                lastDose={ultimaDose ? {date:formatDate(ultimaDose.data),time:ultimaDose.horario || ""} : null}
+                hasStockControl={temEstoque}
+              />
+            </section>
+          )}
+
+          {/* ==================================================
+              HISTÓRICO DE DOSES
+              ================================================== */}
+          <MedicationDoseHistoryLink onOpen={() => {
+            trigger("vibrate");
+            // P14 R6 R4: URL segura preservando o destino canônico exigido pelo V70.
+            const id = encodeURIComponent(med.id ?? "");
+            router.push(`/saude/medicamentos/historico?id=${id}`);
+          }}/>
+          {med.id && med.tipo_uso !== "sos" && med.tipo_uso !== "esporadico" && <button type="button" onClick={() => {
+            trigger("vibrate");
+            const returnTo=`/saude/medicamentos/detalhes?${searchParams.toString()}`;
+            router.push(withReturnTarget(`${retroReviewHref(med.id!)}&origem=detalhes`,returnTo));
+          }} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/[.045] px-4 py-3 text-left text-xs font-semibold text-ice">
+            <span>Revisar várias doses antigas</span><span className="text-[10px] text-ink-muted">Selecionar dias e horários</span>
+          </button>}
+
+          {/* M42 — estoque desconhecido tem seu próprio estado, sem convertê-lo em zero. */}
+          {(med.status !== "descontinuado" || isSOS) && !temEstoque && med.id && (
+            <section id="medicamento-estoque" className="vault-deferred scroll-mt-24 rounded-[18px] border border-surface-border/70 bg-surface p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-ink-primary">Estoque não informado</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">Sem contagem registrada. Isso não significa que o medicamento acabou.</p>
+                </div>
+                <MedicationRestockAction name={med.nome} label="Informar saldo" onOpen={() => {
+                  trigger("vibrate");
+                  router.push(medicationStockCountHref(med.id!, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}`));
+                }} />
+                <MedicationRestockAction name={med.nome} label="+ Registrar aquisição" onOpen={() => {
+                  trigger("vibrate");
+                  const returnTo = `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-estoque`;
+                  router.push(medicationRestockHref(med.id!, returnTo));
+                }} />
+              </div>
+            </section>
+          )}
+
+          {/* ==================================================
+              ESTOQUE
+              ================================================== */}
+
+          {(med.status !==
+              "descontinuado" ||
+              isSOS) &&
+            temEstoque && (
+              <section
+                id="medicamento-estoque"
+                className={`vault-deferred scroll-mt-24 overflow-hidden rounded-[22px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
+              >
+                <MedicationStockOverview
+                  statusLabel={estoqueStatus.label} statusColor={estoqueStatus.color}
+                  statusBackground={estoqueStatus.bg} statusIcon={<EstoqueStatusIcon size={10}/>}
+                  quantity={quantidadeDisponivel} unit={med.estoque_unidade_medida || "unidade(s)"}
+                  equivalentMl={estoqueEquivalenteMl}
+                  negative={estoqueNegativo} registeredBalance={saldoRegistrado}
+                  sos={isSOS} daysRemaining={estoqueInfo?.diasRestantes ?? null}
+                  dosesAvailable={dosesDisponiveis ?? null}
+                  hasStockProjection={Boolean(estoqueInfo)}
+                  doseEstimatePossible={Boolean(estoqueInfo?.estimativaDosesDisponivel)}
+                  doseQuantity={unidadePorDose}
+                  referenceDay={formatDate(med.estoque_data_referencia)}
+                  dropsConversionMissing={isGota && (unidadeEstoque.includes("ml") || unidadeEstoque.includes("frasco")) && gotasPorMl === null}
+                  formatWarning={medicationStockUnitReview(med)}
+                  formatQuantity={formatQuantidade}
+                />
+                {med.id && med.status !== "descontinuado" ? (
+                  <div className="flex justify-end px-3 pb-3">
+                    <MedicationRestockAction name={med.nome} label={estoqueNegativo ? "Revisar saldo" : "Repor estoque"} onOpen={() => {
+                      trigger("vibrate");
+                      const returnTo = `/saude/medicamentos/detalhes?${searchParams.toString()}#medicamento-estoque`;
+                      router.push(estoqueNegativo
+                        ? medicationStockCountHref(med.id!, returnTo)
+                        : medicationRestockHref(med.id!, returnTo));
+                    }} />
+                  </div>
+                ) : null}
+              </section>
+            )}
+
+          {/* SS7: independent stock/planning console; no new stock writes. */}
+          {med.id && <button type="button" onClick={() => { trigger("vibrate");router.push('/saude/supply-shield'); }} className="mt-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/[.04] px-3 text-left text-xs font-semibold text-emerald-200">Supply Shield · ver planejamento <span aria-hidden="true">›</span></button>}
+
+
+          <section id="medicamento-receita" className="vault-deferred scroll-mt-24 space-y-3">
+            <SectionTitle
+              icon={
+                <FileText
+                  size={
+                    15
+                  }
+                />
+              }
+              title="Receita"
+              action={
+                <button
+                  type="button"
+                  onClick={
+                    () => {
+                      trigger(
+                        "vibrate"
+                      );
+
+                      setInfoModalOpen(
+                        true
+                      );
+                    }
+                  }
+                  className="flex items-center gap-1 rounded-full bg-surface-raised px-2.5 py-1 text-[9px] font-bold uppercase text-ink-muted"
+                >
+                  <Info
+                    size={
+                      11
+                    }
+                  />
+
+                  Info
+                </button>
+              }
+            />
+
+            <MedicationPrescriptionCard
+              typeLabel={tipoReceitaLabel} badge={receitaBadge}
+              status={!med.data_receita ? "missing" : !validadeReceitaAtual.dataValidade ? "undetermined" : validadeReceitaAtual.vencida ? "expired" : validadeReceitaAtual.status === "vence_hoje" ? "due_today" : "current"}
+              issuedAt={formatDate(med.data_receita)} expiresAt={formatDate(validadeReceitaAtual.dataValidade)}
+              nextAt={formatDate(med.lembrete_receita_modo === "data_personalizada" && med.lembrete_receita_data ? med.lembrete_receita_data : med.proxima_renovacao)}
+              validityLabel="Validade de referência" nextLabel="Próxima solicitação planejada"
+              hasAttachment={Boolean(documento?.attachments?.length)}
+              onPlan={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&mode=plan&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
+              onAttachment={abrirAnexo}
+              onLink={() => router.push(`/saude/medicamentos/editar?id=${id}&intent=rede`)}
+              onReceived={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
+            />
+          </section>
+
+
           {/* V300: details open with the medicine's identity, followed by
               important action and progressively disclosed historical tools. */}
           <WithdrawalConflictReviewM2 medicationId={med.id} />
           {activePersonId && <MedicationRegimeM1 med={med} personId={activePersonId} />}
           {activePersonId && <TemporaryCourseMedicationCard med={med} doseLogs={doseLogs} personId={activePersonId} today={getLocalTodayISO()} onEdit={() => router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(med.id!)}&intent=posologia`)} />}
-          <MedicationTreatmentJourneyD2
-            prescriptionDate={med.data_receita}
-            acquisitionDate={latestConfirmedAcquisitionM148 ? renewalEventDate(latestConfirmedAcquisitionM148) : null}
-            firstRecordedDose={dosesTomadas.map(log => log.tomado_em).filter((date): date is string => Boolean(date)).sort()[0] || null}
-            temporary={isTemporary}
-          />
           {/* ==================================================
               INTELIGÊNCIA E ATENÇÃO — V72
               A identidade essencial permanece sempre primeiro.
@@ -3190,132 +3342,6 @@ function MedicamentoDetalhesContent() {
           )}
           </div>
 
-{/* ==================================================
-              ROTINA E DOSES
-              ================================================== */}
-
-          {(med.status !==
-            "descontinuado" ||
-            isSOS) && (
-            <section id="medicamento-rotina" className="vault-deferred scroll-mt-24 space-y-3">
-              <SectionTitle
-                icon={
-                  <Clock
-                    size={
-                      15
-                    }
-                  />
-                }
-                title="Rotina & Uso"
-              />
-
-              {/* P15 R6: toda a autoridade do slot e dos registros fica nesta página. */}
-              <MedicationRoutineSummary
-                sos={isSOS}
-                takenToday={dosesTomadasHoje.length}
-                todayQuantity={formatKnownQuantitySummary(quantidadeHoje)}
-                todayQuantityLabel="Quantidade registrada hoje"
-                todayQuantityPartial={!quantidadeHoje.complete && quantidadeHoje.totalCount > 0}
-                takenLast7Days={dosesTomadasUltimos7Dias.length}
-                last7DaysQuantity={formatKnownQuantitySummary(quantidadeUltimos7Dias)}
-                last7DaysQuantityPartial={!quantidadeUltimos7Dias.complete && quantidadeUltimos7Dias.totalCount > 0}
-                resolvedToday={dosesResolvidasHoje}
-                plannedToday={dosesEsperadasHoje}
-                takenScheduledToday={dosesTomadasProgramadasHoje}
-                ignoredScheduledToday={dosesIgnoradasProgramadasHoje}                 quantityPerDose={(() => { const slot = isTemporary ? logsHoje.find(log => isTemporaryCoursePlannedDose(log)) : undefined; const quantity = contextualDoseQuantity(med, slot); return quantity !== null ? formatQuantidade(quantity) : null; })()}
-                doseUnit={med.estoque_unidade_medida || "unidade(s)"}                 scheduleKind={isTemporary ? "temporary" : "continuous"}
-                 hours={horariosConfigurados}
-                takenHours={horariosTomadosHoje}
-                ignoredHours={horariosIgnoradosHoje}
-                lastDose={ultimaDose ? {date:formatDate(ultimaDose.data),time:ultimaDose.horario || ""} : null}
-                hasStockControl={temEstoque}
-              />
-            </section>
-          )}
-
-          {/* ==================================================
-              HISTÓRICO DE DOSES
-              ================================================== */}
-          <MedicationDoseHistoryLink onOpen={() => {
-            trigger("vibrate");
-            // P14 R6 R4: URL segura preservando o destino canônico exigido pelo V70.
-            const id = encodeURIComponent(med.id ?? "");
-            router.push(`/saude/medicamentos/historico?id=${id}`);
-          }}/>
-          {med.id && med.tipo_uso !== "sos" && med.tipo_uso !== "esporadico" && <button type="button" onClick={() => {
-            trigger("vibrate");
-            const returnTo=`/saude/medicamentos/detalhes?${searchParams.toString()}`;
-            router.push(withReturnTarget(`${retroReviewHref(med.id!)}&origem=detalhes`,returnTo));
-          }} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/[.045] px-4 py-3 text-left text-xs font-semibold text-ice">
-            <span>Revisar várias doses antigas</span><span className="text-[10px] text-ink-muted">Selecionar dias e horários</span>
-          </button>}
-
-          {/* M42 — estoque desconhecido tem seu próprio estado, sem convertê-lo em zero. */}
-          {(med.status !== "descontinuado" || isSOS) && !temEstoque && med.id && (
-            <section id="medicamento-estoque" className="vault-deferred scroll-mt-24 rounded-[18px] border border-surface-border/70 bg-surface p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-ink-primary">Estoque não informado</p>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">Sem contagem registrada. Isso não significa que o medicamento acabou.</p>
-                </div>
-                <MedicationRestockAction name={med.nome} label="Informar saldo" onOpen={() => {
-                  trigger("vibrate");
-                  router.push(medicationStockCountHref(med.id!, `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}`));
-                }} />
-                <MedicationRestockAction name={med.nome} label="+ Registrar aquisição" onOpen={() => {
-                  trigger("vibrate");
-                  const returnTo = `/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id!)}#medicamento-estoque`;
-                  router.push(medicationRestockHref(med.id!, returnTo));
-                }} />
-              </div>
-            </section>
-          )}
-
-          {/* ==================================================
-              ESTOQUE
-              ================================================== */}
-
-          {(med.status !==
-              "descontinuado" ||
-              isSOS) &&
-            temEstoque && (
-              <section
-                id="medicamento-estoque"
-                className={`vault-deferred scroll-mt-24 overflow-hidden rounded-[22px] border ${estoqueStatus.border} ${estoqueStatus.bg} p-1`}
-              >
-                <MedicationStockOverview
-                  statusLabel={estoqueStatus.label} statusColor={estoqueStatus.color}
-                  statusBackground={estoqueStatus.bg} statusIcon={<EstoqueStatusIcon size={10}/>}
-                  quantity={quantidadeDisponivel} unit={med.estoque_unidade_medida || "unidade(s)"}
-                  equivalentMl={estoqueEquivalenteMl}
-                  negative={estoqueNegativo} registeredBalance={saldoRegistrado}
-                  sos={isSOS} daysRemaining={estoqueInfo?.diasRestantes ?? null}
-                  dosesAvailable={dosesDisponiveis ?? null}
-                  hasStockProjection={Boolean(estoqueInfo)}
-                  doseEstimatePossible={Boolean(estoqueInfo?.estimativaDosesDisponivel)}
-                  doseQuantity={unidadePorDose}
-                  referenceDay={formatDate(med.estoque_data_referencia)}
-                  dropsConversionMissing={isGota && (unidadeEstoque.includes("ml") || unidadeEstoque.includes("frasco")) && gotasPorMl === null}
-                  formatWarning={medicationStockUnitReview(med)}
-                  formatQuantity={formatQuantidade}
-                />
-                {med.id && med.status !== "descontinuado" ? (
-                  <div className="flex justify-end px-3 pb-3">
-                    <MedicationRestockAction name={med.nome} label={estoqueNegativo ? "Revisar saldo" : "Repor estoque"} onOpen={() => {
-                      trigger("vibrate");
-                      const returnTo = `/saude/medicamentos/detalhes?${searchParams.toString()}#medicamento-estoque`;
-                      router.push(estoqueNegativo
-                        ? medicationStockCountHref(med.id!, returnTo)
-                        : medicationRestockHref(med.id!, returnTo));
-                    }} />
-                  </div>
-                ) : null}
-              </section>
-            )}
-
-          {/* SS7: independent stock/planning console; no new stock writes. */}
-          {med.id && <button type="button" onClick={() => { trigger("vibrate");router.push('/saude/supply-shield'); }} className="mt-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/[.04] px-3 text-left text-xs font-semibold text-emerald-200">Supply Shield · ver planejamento <span aria-hidden="true">›</span></button>}
-
           {/* ==================================================
               SUSPENSÃO / SUBSTITUIÇÃO
               ================================================== */}
@@ -3361,6 +3387,15 @@ function MedicamentoDetalhesContent() {
           {/* P14 R5: rotina/estoque antes de contexto secundário (âncoras preservadas). */}
           <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Receita, aquisição e retirada · etapas registradas ou planejadas" icon={<CalendarDays size={18}/>} iconClassName="text-sky-300">
             <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
+            <details className="mt-2 rounded-xl border border-surface-border/50 bg-surface-raised/30 px-3 py-1">
+              <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Conferir datas documentais</summary>
+          <MedicationTreatmentJourneyD2
+            prescriptionDate={med.data_receita}
+            acquisitionDate={latestConfirmedAcquisitionM148 ? renewalEventDate(latestConfirmedAcquisitionM148) : null}
+            firstRecordedDose={dosesTomadas.map(log => log.tomado_em).filter((date): date is string => Boolean(date)).sort()[0] || null}
+            temporary={isTemporary}
+          />
+            </details>
           </ClinicalDisclosure>
           {med.id && med.person_id && activePersonId === med.person_id ? (
             <ClinicalDisclosure id="pharmalens-v7" title="PharmaLens · fabricantes" description="Trocas, experiências e evidências pessoais por fabricante" icon={<LineChart size={18}/>} iconClassName="text-violet-300">
@@ -3436,57 +3471,6 @@ function MedicamentoDetalhesContent() {
           {/* ==================================================
               RECEITA
               ================================================== */}
-
-          <section id="medicamento-receita" className="vault-deferred scroll-mt-24 space-y-3">
-            <SectionTitle
-              icon={
-                <FileText
-                  size={
-                    15
-                  }
-                />
-              }
-              title="Receita"
-              action={
-                <button
-                  type="button"
-                  onClick={
-                    () => {
-                      trigger(
-                        "vibrate"
-                      );
-
-                      setInfoModalOpen(
-                        true
-                      );
-                    }
-                  }
-                  className="flex items-center gap-1 rounded-full bg-surface-raised px-2.5 py-1 text-[9px] font-bold uppercase text-ink-muted"
-                >
-                  <Info
-                    size={
-                      11
-                    }
-                  />
-
-                  Info
-                </button>
-              }
-            />
-
-            <MedicationPrescriptionCard
-              typeLabel={tipoReceitaLabel} badge={receitaBadge}
-              status={!med.data_receita ? "missing" : !validadeReceitaAtual.dataValidade ? "undetermined" : validadeReceitaAtual.vencida ? "expired" : validadeReceitaAtual.status === "vence_hoje" ? "due_today" : "current"}
-              issuedAt={formatDate(med.data_receita)} expiresAt={formatDate(validadeReceitaAtual.dataValidade)}
-              nextAt={formatDate(med.lembrete_receita_modo === "data_personalizada" && med.lembrete_receita_data ? med.lembrete_receita_data : med.proxima_renovacao)}
-              validityLabel="Validade de referência" nextLabel="Próxima solicitação planejada"
-              hasAttachment={Boolean(documento?.attachments?.length)}
-              onPlan={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&mode=plan&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
-              onAttachment={abrirAnexo}
-              onLink={() => router.push(`/saude/medicamentos/editar?id=${id}&intent=rede`)}
-              onReceived={() => router.push(`/saude/renovacao/nova-receita?medicamento_id=${encodeURIComponent(med.id!)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${med.id}`)}`)}
-            />
-          </section>
 
           {/* ==================================================
               RENOVAÇÕES
@@ -3594,6 +3578,39 @@ function MedicamentoDetalhesContent() {
               </div>}
             </ClinicalDisclosure>
           )}
+          {/* UX360 P0: informações suplementares sem repetição na primeira dobra. */}
+          <ClinicalDisclosure id="medicamento-contexto-avancado" title="Relações e conhecimento" description="Profissionais, procedência e referências para consultar sob demanda" icon={<Stethoscope size={18}/>} iconClassName="text-sky-300">
+            {() => <div className="space-y-3">
+          {/* VAULT_M148_P2_RELATIONAL_HUB: facts are read-only, original authority preserved. */}
+          {/* VAULT_M144_DETAIL_ENTRY: contextual access, not an orphan bottom action. */}
+          <MedicationDetailCareHubM148
+            view={{...detailHubM148, documents: {...detailHubM148.documents,
+              summary: med.data_receita && journeySnapshot.prescriptions === 0
+                ? "Receita informada no cadastro" : detailHubM148.documents.summary,
+              detail: med.data_receita && journeySnapshot.prescriptions === 0
+                ? "Sem evento separado de receita; confira a data declarada no cadastro."
+                : detailHubM148.documents.detail,
+            }}}
+            hasRoutine={hasRoutineSection}
+            hasPharmaLens={Boolean(med.id && med.person_id && activePersonId === med.person_id)}
+            onOpenSection={sectionId => {
+              trigger("vibrate");
+              if (typeof window === "undefined") return;
+              if (window.location.hash === `#${sectionId}`) window.dispatchEvent(new Event("hashchange"));
+              else window.location.hash = sectionId;
+              window.requestAnimationFrame(() => document.getElementById(sectionId)?.scrollIntoView({behavior:"smooth",block:"start"}));
+            }}
+            onOpenOccurrences={() => router.push(`/saude/central-m144?return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?${searchParams.toString()}`)}`)}
+          />
+          <MedicationKnowledgePanelM153P4 medication={med}/>
+            </div>}
+          </ClinicalDisclosure>
+          <details className="group rounded-[16px] border border-surface-border/55 bg-surface/45 px-3">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Explorar todas as áreas do medicamento <ChevronDown size={15} className="text-ink-muted transition-transform group-open:rotate-180"/></summary>
+            <div className="border-t border-surface-border/40 pb-2 pt-2">
+              <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasStock={Boolean(temEstoque && (med.status !== "descontinuado" || isSOS))} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
+            </div>
+          </details>
         </div>
 
         {/* ====================================================

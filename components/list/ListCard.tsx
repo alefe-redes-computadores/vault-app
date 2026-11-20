@@ -142,15 +142,15 @@ export function ListCard({
               className="absolute inset-0 z-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:bg-ice/[0.035]"
             />
             <div
-              className={`pointer-events-none relative z-10 w-full text-left ${medicationFlow ? "block" : "flex items-start"} [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-20 ${
-                medicationFlow ? "block" : isCompact ? "gap-2.5" : "gap-3.5"
+              className={`pointer-events-none relative z-10 w-full text-left ${medicationFlow ? "grid grid-cols-[40px_minmax(0,1fr)] items-start gap-x-2" : "flex items-start"} [&_button]:pointer-events-auto [&_button]:relative [&_button]:z-20 ${
+                medicationFlow ? "" : isCompact ? "gap-2.5" : "gap-3.5"
               } ${contentClassName}`}
             >
               <div
                 className={`
               flex
               ${isTight ? "h-9 w-9 rounded-xl" : isCompact ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-2xl"}
-              ${medicationFlow ? "absolute left-0 top-1" : ""}
+              ${medicationFlow ? "relative col-start-1 row-start-1" : ""}
               shrink-0
               items-center
               justify-center
@@ -167,7 +167,7 @@ export function ListCard({
                 {icon}
               </div>
 
-              <div className="min-w-0 flex-1">{children}</div>
+              <div className={medicationFlow ? "col-start-2 row-start-1 min-w-0" : "min-w-0 flex-1"}>{children}</div>
 
               {showChevron && (
                 <ChevronRight
