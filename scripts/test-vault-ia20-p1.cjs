@@ -101,7 +101,9 @@ check(g.includes('"scripts/test-vault-ia20-p1.cjs"'),'teste no V63');
 check(g.includes('"scripts/test-vault-ci360-p6-p5-macro2.cjs"'),'regressão macro2 mantida');
 check(g.includes('"scripts/test-vault-ci360-p6-p6-macro3.cjs"'),'regressão macro3 mantida');
 check(read('scripts/test-v71-1-empirical-repair-contract.mjs').includes('network.includes("Profissionais e locais")'),'regressão V71 adaptada ao novo nome, mantendo demais contratos');
-check(careflow.includes('withReturnTarget(href,"/saude/careflow")'),'links do CareFlow preservam origem no retorno');
+const careflowReturnLinks = (careflow.match(/withReturnTarget\s*\(\s*href\s*,\s*['"]\/saude\/careflow['"]\s*\)/g)||[]).length;
+const careflowPrimaryReturn = /withReturnTarget\s*\(\s*primary\.href\s*,\s*['"]\/saude\/careflow['"]\s*\)/;
+check(careflowReturnLinks >= 2 && careflowPrimaryReturn.test(careflow),'links do CareFlow preservam origem no retorno');
 
 // Create coverage: run the actual Compose registry with icon-only dependency stubs.
 const createSource=read('lib/navigation/bottom-nav-compose.ts');
