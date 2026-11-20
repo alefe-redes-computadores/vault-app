@@ -1222,6 +1222,7 @@ function DetalhesConsultaContent() {
 
             {consulta && <ConsultationRelationsViewP6 consultation={consulta} medications={scopedMedicamentos}/>}
             {consulta?.id && <ClinicalConsultationAssetsM3 consultationId={consulta.id} />}
+            {consulta?.id && <button type="button" onClick={()=>router.push(`/saude/jornada?consulta=${encodeURIComponent(consulta.id||'')}`)} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-sky-300/20 bg-sky-300/[.06] px-4 text-left text-xs font-semibold text-sky-200"><span>Ver jornada e exames vinculados</span><Stethoscope size={17}/></button>}
 
             {consulta.observacoes && (
               <div className="rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">

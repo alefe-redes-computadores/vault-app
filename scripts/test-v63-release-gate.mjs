@@ -503,6 +503,7 @@ const contracts = [
   "scripts/test-vault-m1-exames-offline.cjs",
   "scripts/test-vault-m2-exams-360.cjs",
   "scripts/test-vault-m3-clinical-assets.cjs",
+  "scripts/test-vault-m4-clinical-journey.cjs",
   "scripts/test-vault-r4-respiro-global.cjs",
   "scripts/test-vault-ci360-p6-p3-premium-pdf.cjs",
   "scripts/test-vault-ci360-p6-p3-d1.cjs",
