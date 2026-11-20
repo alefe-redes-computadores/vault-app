@@ -148,7 +148,11 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
        row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:
         symptom?.id?`/saude/careflow/sintomas#careflow-sintoma-${encodeURIComponent(symptom.id)}`:null});
   }
+  // R6: a aferição canônica já está em Medições; não repetir a mesma medida
+  // apenas porque um evento imutável a vinculou ao plano.
   if(selected('careflow'))for(const e of cf){
+    if(e.kind==='monitor_reading'&&selected('measurements')&&e.related_id&&
+      owned(context.registrosSaude).some(r=>r.id===e.related_id&&r.tipo==='pressao_arterial'&&within(date(r.data))))continue;
     const isSymptomLink=e.kind==='monitor_note'&&e.payload.link==='consultation_to_existing_symptom';
     const symptom=isSymptomLink?symptomMap.get(e.related_id||''):undefined;
     const visit=isSymptomLink?consulted.get(e.parent_id||''):undefined;
@@ -172,17 +176,29 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
     ].filter(Boolean).join(' · '):'';
     const detail=isSymptomLink?(clinicalNote||'Referência não resolvida no escopo atual; não inferir conteúdo clínico.'):
       [declaredDay?'Data clínica declarada':'Data do cadastro; data clínica não informada',safe(e.payload.result),safe(e.payload.state),safe(e.payload.note),safe(e.payload.source)].filter(Boolean).join(' · ');
+    // Destino exato só para ID validado na pessoa ativa, nunca por nome/data.
+    const examItem=e.kind==='exam_item'?e:
+      (e.kind==='exam_status'||e.kind==='exam_result')?
+        cf.find(x=>x.kind==='exam_item'&&x.id===e.parent_id):undefined;
+    const examOrder=e.kind==='exam_order'?e:
+      cf.find(x=>x.kind==='exam_order'&&x.id===(examItem?.parent_id||e.parent_id));
+    const originalReading=e.related_id?owned(context.registrosSaude).find(x=>x.id===e.related_id):undefined;
+    const exactHrefR6=e.kind==='exam_order'?`/saude/careflow/exames#careflow-pedido-${encodeURIComponent(e.id)}`:
+      examItem&&examOrder?`/saude/careflow/exames#careflow-exame-${encodeURIComponent(examItem.id)}`:
+      e.kind==='monitor_plan'?`/saude/careflow/pressao#careflow-plano-${encodeURIComponent(e.id)}`:
+      e.kind==='monitor_reading'&&originalReading?`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(originalReading.id!)}`:
+      isSymptomLink&&symptom?`/saude/careflow/sintomas#careflow-sintoma-${encodeURIComponent(symptom.id!)}`:
+      e.kind==='monitor_note'&&originalReading?`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(originalReading.id!)}`:null;
     add({section:'careflow',date:fact,time:symptom?clock(symptom.horario):clock(e.payload.time),title,detail:detail||'Sem complemento registrado.',source:`careflow_${e.kind}`,
       sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',relations:[parent,related].filter((x):x is string=>Boolean(x)),
-      href:isSymptomLink?`/saude/careflow/sintomas${symptom?.id?`#careflow-sintoma-${encodeURIComponent(symptom.id)}`:''}`:
-        e.kind.startsWith('exam_')?'/saude/careflow/exames':'/saude/careflow/pressao'});
+      href:exactHrefR6});
   }
   if(selected('exams'))for(const e of exams){
     const d=date(e.data);if(!within(d))continue;
     add({section:'exams',date:d,time:clock(e.horario),title:nice(e.nome,'Exame'),detail:
       `Exame cadastrado. ${e.motivo?safe(e.motivo,350):'Motivo não informado'}. Não implica coleta ou laudo concluído.`,
       source:'exame_cadastrado',sourceId:e.id||`${d}:${safe(e.nome,100)}`,registeredAt:e.created_at||null,
-      provenance:'declarado',relations:(e.tratamento_ids||[]).filter(id=>treatMap.has(id)).map(id=>`Tratamento: ${safe(treatMap.get(id)?.nome,100)}`),href:'/saude/exames'});
+      provenance:'declarado',relations:(e.tratamento_ids||[]).filter(id=>treatMap.has(id)).map(id=>`Tratamento: ${safe(treatMap.get(id)?.nome,100)}`),href:e.id?`/saude/exames/detalhes?id=${encodeURIComponent(e.id)}`:null});
   }
   if(selected('surgeries'))for(const e of surgeries){
     const d=date(e.data);if(!within(d))continue;

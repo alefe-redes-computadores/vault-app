@@ -12,9 +12,9 @@ const areas=[
  {href:'/saude/careflow/episodios',title:'Atendimentos',description:'Consultas e vínculos reais',icon:GitBranch,tone:'text-sky-300'},
  {href:'/saude/careflow/linha-do-tempo',title:'Evolução clínica',description:'Doses, sintomas e medições',icon:Brain,tone:'text-violet-300'},
  {href:'/saude/careflow/dossie',title:'Dossiê clínico',description:'Histórico e exportação privada',icon:FileArchive,tone:'text-amber-300'},
- {href:'/saude/careflow/exames',title:'Pedidos e exames',description:'Pedidos, itens e resultados',icon:FlaskConical,tone:'text-emerald-300'},
- {href:'/saude/careflow/pressao',title:'Pressão arterial',description:'Aferições informadas',icon:HeartPulse,tone:'text-rose-300'},
- {href:'/saude/careflow/sintomas',title:'Sintomas',description:'Relatos por data e intensidade',icon:MessageSquareHeart,tone:'text-violet-300'},
+ {href:'/saude/careflow/exames',title:'Pedidos de exames',description:'Pedidos agrupados, integrados a Exames e Laudos',icon:FlaskConical,tone:'text-emerald-300'},
+ {href:'/saude/careflow/pressao',title:'Planos de pressão',description:'Medições na Linha de cuidado; plano e contexto aqui',icon:HeartPulse,tone:'text-rose-300'},
+ {href:'/saude/careflow/sintomas',title:'Sintomas e evolução',description:'Mesmos relatos da Linha de cuidado',icon:MessageSquareHeart,tone:'text-violet-300'},
  {href:'/saude/careflow/relatorios',title:'PDFs clínicos',description:'Documentos privados arquivados',icon:FileArchive,tone:'text-amber-300'},
 ];
 export default function CareFlowDashboard(){

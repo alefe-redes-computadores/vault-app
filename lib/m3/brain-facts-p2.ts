@@ -1,13 +1,13 @@
 /** M3 P2 + CareFlow P0 R1: projecao factual de leitura, sem escrita ou inferencia clinica. */
 export type BrainFactKindP2='consulta'|'cirurgia'|'exame'|'dose_tomada'|'dose_ignorada'|'dose_registrada'|'medicao'|'registro'|'careflow';
-export type BrainFactP2={key:string;sourceId:string;kind:BrainFactKindP2;title:string;date:string;time:string;provenance:string;href:string;detail:string;intensity?:number};
+export type BrainFactP2={key:string;sourceId:string;kind:BrainFactKindP2;title:string;date:string;time:string;provenance:string;href:string;detail:string;intensity?:number; medicationVisual?:{formato?:string|null;cores?:string[]|null}};
 export type BrainInputP2={
  userId:string;personId:string;
  consultas:readonly {id?:string;user_id?:string;person_id?:string;data:string;status:string;motivo?:string}[];
  cirurgias:readonly {id?:string;user_id?:string;person_id?:string;data:string;status:string;procedimento?:string}[];
  exames:readonly {id?:string;user_id?:string;person_id?:string;data:string;nome:string}[];
  doses:readonly {id?:string;user_id?:string;person_id?:string;medicamento_id?:string|null;data:string;horario?:string;tomado_em?:string;ignorado_em?:string}[];
- medicamentos?:readonly {id?:string;user_id?:string;person_id?:string|null;nome:string;dosagem?:string|null}[];
+ medicamentos?:readonly {id?:string;user_id?:string;person_id?:string|null;nome:string;dosagem?:string|null;formato?:string|null;cores?:string[]|null}[];
  registros:readonly {id?:string;user_id?:string;person_id?:string;data:string;nome:string;horario?:string;tipo?:string;intensidade?:number;valor_numerico?:number;valor_medicao?:string;unidade_medida?:string;source?:string|null}[];
  careflow:readonly {id:string;user_id:string;person_id:string;created_at:string;kind:string;related_id?:string|null;parent_id?:string|null;payload:Record<string,unknown>}[];
 };
@@ -25,9 +25,9 @@ export function buildBrainFactsP2(input:BrainInputP2,max=80):BrainFactP2[]{
  const owner=(x:{user_id?:string;person_id?:string|null})=>x.user_id===input.userId&&x.person_id===input.personId;
  const meds=new Map((input.medicamentos||[]).filter(m=>owner(m)&&m.id).map(m=>[m.id!,m] as const));
  const rows:BrainFactP2[]=[];
- const append=(kind:BrainFactKindP2,id:string|undefined,date:string,title:string,detail:string,href:string,provenance:string,hour='',intensity?:number)=>{
+ const append=(kind:BrainFactKindP2,id:string|undefined,date:string,title:string,detail:string,href:string,provenance:string,hour='',intensity?:number,medicationVisual?:BrainFactP2['medicationVisual'])=>{
   if(!id||!day(date))return;
-  rows.push({key:`${kind}:${id}`,sourceId:id,kind,title:trim(title,140),date:day(date),time:time(hour),detail:trim(detail,260),href,provenance,intensity});
+  rows.push({key:`${kind}:${id}`,sourceId:id,kind,title:trim(title,140),date:day(date),time:time(hour),detail:trim(detail,260),href,provenance,intensity,...(medicationVisual?{medicationVisual}:{})});
  };
  for(const c of input.consultas.filter(owner))append('consulta',c.id,c.data,'Consulta · '+trim(c.motivo||'Compromisso'),`Situação registrada: ${trim(c.status)}`,`/saude/consultas/detalhes?id=${encodeURIComponent(c.id||'')}`,'Consulta cadastrada');
  for(const c of input.cirurgias.filter(owner))append('cirurgia',c.id,c.data,'Cirurgia · '+trim(c.procedimento||'Procedimento'),`Situação registrada: ${trim(c.status)}`,`/saude/cirurgias/detalhes?id=${encodeURIComponent(c.id||'')}`,'Cirurgia cadastrada');
@@ -37,8 +37,10 @@ export function buildBrainFactsP2(input:BrainInputP2,max=80):BrainFactP2[]{
   const med=d.medicamento_id?meds.get(d.medicamento_id):undefined;
   const name=med?`${trim(med.nome,100)}${trim(med.dosagem,45)?' · '+trim(med.dosagem,45):''}`:'Medicamento não identificado neste perfil';
   const label=status==='dose_tomada'?'tomada registrada':status==='dose_ignorada'?'ignorada registrada':'registro sem confirmação';
+  // Reutilizar APENAS a identidade declarada do medicamento da mesma pessoa, nunca um desenho inferido.
+  const medicationVisual=med&&(trim(med.formato,45)||Array.isArray(med.cores)&&med.cores.some(c=>typeof c==='string'&&c.trim()))?{formato:trim(med.formato,45),cores:Array.isArray(med.cores)?med.cores.filter(c=>typeof c==='string'&&c.trim()).slice(0,3):[]}:undefined;
   append(status,d.id,d.data,`${name} — ${label}`,`Horário previsto: ${time(d.horario)||'não informado'}. Estado factual: ${label}.`,
-   `/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(d.id||'')}`,'Registro de dose',d.horario||'');
+   `/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(d.id||'')}`,'Registro de dose',d.horario||'',undefined,medicationVisual);
  }
  for(const r of input.registros.filter(owner)){
   const n=typeof r.valor_numerico==='number'&&Number.isFinite(r.valor_numerico)?numberText(r.valor_numerico):'';

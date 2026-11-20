@@ -103,7 +103,9 @@ export function buildClinicalEpisodeP4(input:EpisodeInputP4):EpisodeSnapshotP4{
         evKind==='exam_status'?`Estado registrado: ${text(e.payload.state)||'não informado'}`:'',
         evKind==='exam_order'?'Pedido vinculado explicitamente à consulta.':''].filter(Boolean).join(' · '),
       relations:parent?[`Origem: ${text(parent.payload.title)||text(parent.payload.name)||'Evento relacionado'}`]:[`Consulta: ${start}`],
-      href:'/saude/careflow/exames'});
+      href:evKind==='exam_order'?`/saude/careflow/exames#careflow-pedido-${encodeURIComponent(e.id)}`:
+        evKind==='exam_item'&&parent?.kind==='exam_order'?`/saude/careflow/exames#careflow-exame-${encodeURIComponent(e.id)}`:
+        (evKind==='exam_status'||evKind==='exam_result')&&parent?.kind==='exam_item'?`/saude/careflow/exames#careflow-exame-${encodeURIComponent(parent.id)}`:null});
   }
   for(const medId of directMedicationIds){
     const med=meds.get(medId)!;

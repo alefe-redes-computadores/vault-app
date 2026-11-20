@@ -225,7 +225,10 @@ export function BottomNav() {
 
   // V31.2: a rota decide se a navegação existe.
   // A biometria apenas oculta visualmente a barra enquanto o lock estiver ativo.
-  if (!shouldShowNav(pathname)) {
+  // R6: editor clínico com teclado tem foco exclusivo; barra reaparece na lista.
+  const isFocusedClinicalEditor = /^\/saude\/careflow\/(?:exames|sintomas|pressao)\/?$/.test(pathname)
+    && (searchParams.has("novo") || searchParams.has("plano") || searchParams.has("consulta"));
+  if (!shouldShowNav(pathname) || isFocusedClinicalEditor) {
     return null;
   }
 

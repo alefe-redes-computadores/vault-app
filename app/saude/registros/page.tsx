@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, AlertTriangle, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Droplets, FileDown, HeartPulse, Pill, Plus } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
@@ -11,6 +11,8 @@ import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
+import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
+import { filterClinicalEventsR6, type ClinicalFocusR6 } from "@/lib/clinical-unified-r6";
 import { useAllDoseLogs } from "@/hooks/useDoseLogs";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +45,7 @@ export default function RegistrosSaudePage() {
   const {backTarget,preserveReturn}=useReturnContext("/saude/rede");
   const { trigger } = useHapticFeedback();
   const { registros, isLoading } = useRegistrosSaude();
+  const { events: careFlowEvents = [] } = useCareFlowM2();
   const { allDoseLogs, isLoading: dosesLoading } = useAllDoseLogs();
   const { medicamentos = [], isLoading: medicationsLoading } = useMedicamentos();
   const { user } = useAuth();
@@ -51,7 +54,16 @@ export default function RegistrosSaudePage() {
   const [exportState, setExportState] = useState<"idle" | "saving" | "error">("idle");
   const [monthKey, setMonthKey] = useState(currentClinicalMonth);
   const [filter, setFilter] = useState<ViewFilter>("todos");
+  const [focus, setFocus] = useState<ClinicalFocusR6>('todos');
+  useEffect(()=>{
+    const target=new URLSearchParams(window.location.search).get('foco');
+    if(target==='sintomas'){setFocus('sintomas');setFilter('sintoma');}
+    if(target==='pressao'){setFocus('pressao');setFilter('medicao');}
+  },[]);
   const [search, setSearch] = useState("");
+  const pressurePlans=useMemo(()=>careFlowEvents.filter(e=>
+    e.kind==='monitor_plan'&&e.user_id===user?.id&&e.person_id===activePersonId
+  ).sort((a,b)=>b.created_at.localeCompare(a.created_at)),[careFlowEvents,user?.id,activePersonId]);
   const monthReport = useMemo(() => user?.id && activePersonId ? buildClinicalMonthReport({
     monthKey, userId: user.id, personId: activePersonId,
     doseLogs: allDoseLogs, medications: medicamentos, healthRecords: registros, brainLedger: brainEpisodes,
@@ -73,11 +85,13 @@ export default function RegistrosSaudePage() {
   const allEvents = useMemo(() => buildClinicalEvents(registros, allDoseLogs, medicamentos), [registros, allDoseLogs, medicamentos]);
   const month = useMemo(() => buildClinicalMonth(allEvents, monthKey), [allEvents, monthKey]);
   const eventSearchIndex = useMemo(() => createLocalSearchIndex(month.events, event => [event.title,event.subtitle,event.category,event.date,event.time,event.medication?.nome,event.medication?.dosagem]), [month.events]);
-  const visibleEvents = useMemo(() => filterLocalSearchIndex(eventSearchIndex,search).filter(event => filter === "todos" || event.category === filter), [eventSearchIndex, filter, search]);
+  const visibleEvents = useMemo(() => filterClinicalEventsR6(
+    filterLocalSearchIndex(eventSearchIndex,search).filter(event => filter === "todos" || event.category === filter),focus
+  ), [eventSearchIndex, filter, search,focus]);
   const visibleIds = useMemo(() => new Set(visibleEvents.map(item => item.id)), [visibleEvents]);
   const stats = useMemo(() => { let records=0,doses=0,alerts=0;const days=new Set<string>();for(const event of month.events){days.add(event.date);if(event.kind==="record")records+=1;if(event.category==="dose")doses+=1;if(event.record){const insight=analisarRegistroSaude(event.record.nome,event.record.valor_medicao,event.record.intensidade,event.record.observacoes);if(insight&&insight.status!=="normal")alerts+=1;}}return {records,doses,alerts,days:days.size}; }, [month.events]);
   if (isLoading || dosesLoading || medicationsLoading) return <CardListSkeleton />;
-  const selectFilter = (next: ViewFilter) => { trigger("vibrate"); setFilter(next); };
+  const selectFilter = (next: ViewFilter) => { trigger("vibrate"); setFocus("todos"); setFilter(next); };
   return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
     <ListPageHeader title="Linha de cuidado" badgeLabel="PRONTUÁRIO CLÍNICO" badgeColor="text-violet-300" subtitle="Registros e doses, sem substituir avaliação profissional" backUrl={backTarget} className="print:static print:bg-white">
       <div className="flex w-full items-center gap-2 print:hidden"><button type="button" aria-label="Mês anterior" onClick={() => setMonthKey(shiftClinicalMonth(monthKey,-1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised"><ChevronLeft size={17}/></button><button type="button" onClick={() => setMonthKey(currentClinicalMonth())} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface text-sm font-semibold"><CalendarDays size={15} className="text-ink-muted"/>{month.label.charAt(0).toLocaleUpperCase("pt-BR")+month.label.slice(1)}</button><button type="button" aria-label="Próximo mês" disabled={monthKey >= currentClinicalMonth()} onClick={() => setMonthKey(shiftClinicalMonth(monthKey,1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised disabled:opacity-30"><ChevronRight size={17}/></button></div>
@@ -95,12 +109,22 @@ export default function RegistrosSaudePage() {
         ],[
           "Fadiga", "apatia", "border-surface-border bg-surface-raised text-ink-primary"
         ]] as const).map(([label,preset,tone]) =>
-          <button key={preset} type="button" onClick={() => router.push(preserveReturn(`/saude/registros/novo?preset=${preset}`))}
+          <button key={preset} type="button" onClick={() => router.push(preserveReturn(preset==="sintoma"?"/saude/careflow/sintomas?novo=1":`/saude/registros/novo?preset=${preset}`))}
             className={`min-h-11 rounded-xl border px-3 text-[11px] font-semibold transition-all active:scale-[.98] ${tone}`}>
             + {label}
           </button>
         )}
       </div>
+      <section aria-label="Acompanhamentos relacionados" className="rounded-2xl border border-surface-border/60 bg-surface p-3 print:hidden"><h2 className="text-xs font-bold text-ink-primary">Acompanhamentos desta Linha de cuidado</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Sintomas e pressão usam os registros desta pessoa. Planos de aferição são apenas orientações de acompanhamento; não são novas medições.</p><div className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2"><button type="button" onClick={()=>{setFocus("sintomas");setFilter("sintoma");setSearch("");}} aria-pressed={focus==='sintomas'} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold ${focus==='sintomas'?'border-violet-300/70 bg-violet-300/[.18] text-violet-100':'border-violet-300/25 bg-violet-300/[.06] text-violet-200'}`}><HeartPulse size={15}/>Sintomas e evolução</button><button type="button" onClick={()=>{setFocus("pressao");setFilter("medicao");setSearch("");}} aria-pressed={focus==='pressao'} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold ${focus==='pressao'?'border-sky-300/70 bg-sky-300/[.18] text-sky-100':'border-sky-300/25 bg-sky-300/[.06] text-sky-200'}`}><Activity size={15}/>Pressão e planos</button></div></section>
+      {focus==='pressao'&&<section aria-label="Planos de pressão da pessoa ativa" className="space-y-3 rounded-2xl border border-sky-300/20 bg-surface p-3 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-bold text-ink-primary">Pressão arterial · planos e medições</h2><span className="text-[11px] text-ink-muted">{pressurePlans.length} plano(s) registrados</span></div>
+        <p className="text-[11px] text-ink-muted">As aferições aparecem na mesma Linha de cuidado. Planos são orientações de acompanhamento, não medições.</p>
+        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+          <button type="button" onClick={()=>router.push(preserveReturn('/saude/careflow/pressao?plano=1'))} className="min-h-11 rounded-xl border border-sky-300/30 px-3 text-xs font-bold text-sky-200">Novo plano</button>
+          <button type="button" onClick={()=>router.push(preserveReturn('/saude/careflow/pressao?novo=1'))} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void">Registrar aferição</button>
+        </div>
+        {pressurePlans.map(p=><button key={p.id} type="button" onClick={()=>router.push(preserveReturn(`/saude/careflow/pressao#careflow-plano-${encodeURIComponent(p.id)}`))} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/70 bg-void/20 px-3 py-2 text-left"><span className="text-xs text-ink-secondary">Plano · {String(p.payload.start||'').split('-').reverse().join('/')} a {String(p.payload.end||'').split('-').reverse().join('/')}</span><ChevronRight size={15} className="text-sky-300"/></button>)}
+      </section>}
       <span id="registros-resumo" className="block scroll-mt-24" aria-hidden="true"/>
       <div><ClinicalListSummary icon={ClipboardList} eyebrow="Resumo do período" title={stats.days ? `${stats.days} dias documentados` : "Sem eventos neste mês"} detail="Cobertura descritiva dos dados registrados; não mede adesão clínica." metrics={[{label:"Registros",value:stats.records},{label:"Doses",value:stats.doses,tone:"positive"},{label:"Destaques",value:stats.alerts,tone:stats.alerts?"attention":"neutral"}]}/><div className="mt-2 grid grid-cols-2 gap-2 print:hidden"><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/evolucao"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><BarChart3 size={15} className="text-violet-300"/>Ver evolução</button><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/relatorio"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><FileDown size={15} className="text-emerald-300"/>Resumo clínico</button></div>
       <button type="button" onClick={() => router.push(preserveReturn("/saude/relatorios"))} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/[.06] px-3 text-xs font-semibold text-violet-300 print:hidden"><FileDown size={15}/>Central de Relatórios 360 · PDF, CSV e JSON</button>
@@ -108,7 +132,7 @@ export default function RegistrosSaudePage() {
       {exportState === "error" ? <p role="alert" className="mt-1 text-xs text-coral print:hidden">Falha ao gerar o PDF. Nenhum registro foi alterado; tente novamente.</p> : null}</div>
       <div id="registros-linha" className="flex min-w-0 scroll-mt-24 items-center gap-2 print:hidden">
         <ListSearch value={search} onChange={setSearch} placeholder="Buscar na linha clínica" />
-        <ListFilters activeCount={Number(filter !== "todos")+Number(Boolean(search.trim()))} onClear={() => {setFilter("todos");setSearch("");}} title="Filtrar linha de cuidado">
+        <ListFilters activeCount={Number(filter !== "todos")+Number(Boolean(search.trim()))} onClear={() => {setFocus("todos");setFilter("todos");setSearch("");}} title="Filtrar linha de cuidado">
           {([['todos','Tudo'],['sintoma','Sintomas'],['medicao','Medições'],['hidratacao','Água'],['dose','Doses']] as [ViewFilter,string][]).map(([key,label])=><button key={key} type="button" onClick={()=>selectFilter(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${filter===key?'border-ice/60 bg-ice/15 text-ice':'border-surface-border bg-surface-raised text-ink-muted'}`}>{label}</button>)}
         </ListFilters>
       </div>

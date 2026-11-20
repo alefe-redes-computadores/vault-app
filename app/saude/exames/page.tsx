@@ -16,6 +16,9 @@ import {
   CheckCircle2,
   Clock,
   FlaskConical,
+  Plus,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   useLiveQuery,
@@ -56,6 +59,7 @@ import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { useReturnContext } from "@/hooks/useReturnContext";
 import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
 import { projectExamOrdersM2 } from "@/lib/careflow-m2/domain";
+import { buildUnifiedExamWorkspaceR6 } from "@/lib/clinical-unified-r6";
 
 import type {
   Exame,
@@ -114,7 +118,7 @@ function formatDateDisplay(
 export default function ExamesPage() {
   const router =
     useRouter();
-  const { preserveReturn } = useReturnContext("/saude/exames");
+  const { backTarget, preserveReturn } = useReturnContext("/saude/rede");
 
   const {
     trigger,
@@ -356,6 +360,11 @@ export default function ExamesPage() {
       filtroStatus,
     ]);
 
+  // R6: a LISTA principal é uma projeção única de exames existentes e pedidos agrupados.
+  // Não há migração/duplicação: cada linha mantém origem e ID próprios.
+  const unifiedRows = useMemo(() => buildUnifiedExamWorkspaceR6(
+    filteredExames, careflowOrders, search, filtroStatus === "todos"
+  ), [filteredExames, careflowOrders, search, filtroStatus]);
   const exameStats = useMemo(() => {
     let upcoming = 0, expired = 0;
     for (const exame of examesComStatus) {
@@ -425,9 +434,10 @@ export default function ExamesPage() {
       <main className="relative min-h-screen bg-void pb-28 vault-adaptive-tail">
         <ListPageHeader
           title="Exames e Laudos"
+          backUrl={backTarget}
           subtitle={
             activePersonId
-              ? `${exames.length} registros`
+              ? `${exames.length} exames · ${careflowOrders.length} pedidos`
               : "Nenhuma pessoa ativa"
           }
           badgeLabel="REGISTROS CLÍNICOS"
@@ -521,20 +531,16 @@ export default function ExamesPage() {
             </button>
           </ListFilters>
         </ListPageHeader>
-        {careflowOrders.length>0&&<section className="mx-5 mt-3 space-y-2 rounded-2xl border border-sky-300/20 bg-surface p-3" aria-label="Pedidos de exames relacionados">
-          <div className="flex items-center justify-between gap-2"><h2 className="text-xs font-bold text-ink-primary">Pedidos de exames · CareFlow</h2><span className="text-[10px] text-ink-muted">{careflowOrders.length} pedido(s)</span></div>
-          {careflowOrders.slice(0,5).map(({order,items})=><button key={order.id} type="button" onClick={()=>router.push(`/saude/careflow/exames#careflow-pedido-${encodeURIComponent(order.id)}`)} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/60 bg-void/30 px-3 py-2 text-left"><span className="min-w-0"><strong className="block truncate text-xs text-ink-primary">{String(order.payload.title||'Pedido')}</strong><span className="block text-[10px] text-ink-muted">{String(order.payload.date||'').split('-').reverse().join('/')} · {items.length} item(ns) · sem duplicar exames</span></span><FlaskConical size={16} className="shrink-0 text-sky-300"/></button>)}
-          {careflowOrders.length>5&&<button type="button" onClick={()=>router.push('/saude/careflow/exames')} className="min-h-11 w-full text-xs font-semibold text-sky-200">Ver todos os pedidos CareFlow</button>}
-        </section>}
-
-        <section className="space-y-3.5 px-5 pt-4">
-          <button type="button" onClick={()=>router.push('/saude/careflow/exames')}
-            className="min-h-12 w-full rounded-2xl border border-emerald-300/30 bg-emerald-300/[.06] px-3 text-left text-xs font-bold text-emerald-300">Pedido com vários exames · CareFlow 360</button>
+        <section className="mx-5 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-300/20 bg-surface px-4 py-3" aria-label="Criar pedidos de exames">
+          <div className="min-w-0"><h2 className="text-xs font-bold text-ink-primary">Pedidos de exames ({careflowOrders.length})</h2><p className="mt-1 text-[11px] text-ink-muted">Pedidos e exames aparecem juntos na lista abaixo. São registros de naturezas diferentes.</p></div>
+          <button type="button" onClick={()=>router.push(preserveReturn('/saude/careflow/exames?novo=1'))} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"><Plus size={16}/>Novo pedido</button>
+        </section>
+                <section className="space-y-3.5 px-5 pt-4">
           {activePersonId && (
             <ClinicalListSummary
               icon={ChartNoAxesCombined}
               eyebrow="Acompanhamento"
-              title={examesComStatus.length ? "Validades e retornos organizados" : "Nenhum exame cadastrado"}
+              title={unifiedRows.length ? "Exames e pedidos organizados" : "Nenhum exame ou pedido cadastrado"}
               detail="Situação calculada somente pelas datas registradas"
               metrics={[{label:"Registros",value:examesComStatus.length},{label:"Próximos",value:exameStats.upcoming,tone:"attention"},{label:"Vencidos",value:exameStats.expired,tone:exameStats.expired?"critical":"neutral"}]}
             />
@@ -547,7 +553,7 @@ export default function ExamesPage() {
               title="Nenhuma pessoa ativa"
               description="Selecione uma pessoa no Vault para visualizar seus exames."
             />
-          ) : filteredExames.length ===
+          ) : unifiedRows.length ===
             0 ? (
             <EmptyState
               icon={
@@ -569,11 +575,55 @@ export default function ExamesPage() {
               }
             />
           ) : (
-            filteredExames.map(
+            unifiedRows.map(
               (
-                exame,
+                entry,
                 index
               ) => {
+                if (entry.kind === 'order') {
+                  const {order,items} = entry;
+                  const received=items.filter(x=>x.state==='result_received').length;
+                  const collected=items.filter(x=>x.state==='collected').length;
+                  const pending=items.filter(x=>x.state==='pending').length;
+                  const cancelled=items.filter(x=>x.state==='cancelled').length;
+                  const statusLabel={pending:'Pendente',collected:'Coletado',result_received:'Resultado recebido',cancelled:'Cancelado'} as const;
+                  return (
+                    <details key={entry.key} id={`careflow-pedido-${order.id}`}
+                      className="group overflow-hidden rounded-[22px] border border-sky-300/25 bg-surface shadow-[0_8px_28px_rgba(0,0,0,0.12)] transition-colors open:border-sky-300/40">
+                      <summary className="flex min-h-[98px] cursor-pointer list-none items-start gap-3 px-4 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 [&::-webkit-details-marker]:hidden">
+                        <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-sky-300/20 bg-sky-300/[.08] text-sky-300"><FlaskConical size={21}/></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-bold uppercase tracking-[.08em] text-sky-200">Pedido de exames</span><span className="rounded-full bg-sky-300/[.09] px-2 py-0.5 text-[10px] font-bold tabular-nums text-sky-200">{items.length} {items.length===1?'exame':'exames'}</span></span>
+                          <strong className="mt-1.5 block break-words text-sm font-bold text-ink-primary">{String(order.payload.title||'Pedido registrado')}</strong>
+                          <span className="mt-1 block text-[11px] text-ink-muted">Solicitado em {String(order.payload.date||'').split('-').reverse().join('/')} · a solicitação não comprova realização</span>
+                          <span className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold tabular-nums">
+                            {received>0&&<span className="rounded-md bg-emerald-300/[.08] px-2 py-1 text-emerald-300">{received} com situação de resultado recebido</span>}
+                            {collected>0&&<span className="rounded-md bg-cyan-300/[.08] px-2 py-1 text-cyan-200">{collected} coletados</span>}
+                            {pending>0&&<span className="rounded-md bg-amber-300/[.07] px-2 py-1 text-amber-200">{pending} pendentes</span>}
+                            {cancelled>0&&<span className="rounded-md bg-rose-300/[.06] px-2 py-1 text-rose-200">{cancelled} cancelados</span>}
+                          </span>
+                        </span>
+                        <ChevronDown size={18} className="mt-1 shrink-0 text-sky-300 transition-transform group-open:rotate-180" aria-hidden="true"/>
+                      </summary>
+                      <div className="space-y-3 border-t border-surface-border/50 px-4 pb-4 pt-3">
+                        <p className="text-xs text-ink-muted">Itens deste pedido · os estados e os resultados são individuais. Nenhum exame foi cadastrado novamente.</p>
+                        <ul className="divide-y divide-surface-border/40 rounded-xl border border-surface-border/50 bg-void/20">
+                          {items.map(({item,state})=><li key={item.id}>
+                            <button type="button" onClick={()=>router.push(preserveReturn(`/saude/careflow/exames#careflow-exame-${encodeURIComponent(item.id)}`))}
+                              className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
+                              <span className="min-w-0 flex-1 break-words font-medium text-ink-primary">{String(item.payload.name||'Exame sem nome')}</span>
+                              <span className="shrink-0 text-[10px] text-ink-muted">{statusLabel[state]}</span>
+                              <ChevronRight size={14} className="shrink-0 text-sky-300" aria-hidden="true"/>
+                            </button>
+                          </li>)}
+                        </ul>
+                        <button type="button" onClick={()=>router.push(preserveReturn(`/saude/careflow/exames#careflow-pedido-${encodeURIComponent(order.id)}`))}
+                          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-sky-300/30 bg-sky-300/[.06] px-3 text-xs font-bold text-sky-200">Abrir pedido e gerenciar resultados <ChevronRight size={15}/></button>
+                      </div>
+                    </details>
+                  );
+                }
+                const exame=entry.exame;
                 const corBorda =
                   exame.vencido
                     ? "#EF4444"

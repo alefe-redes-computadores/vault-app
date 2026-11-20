@@ -46,7 +46,7 @@ check(timeline.includes('db.medicamentos.where')&&timeline.includes('buildBrainF
 check(timeline.includes('aria-pressed={days===n}')&&timeline.includes('[7,15,30,90]'),'todos os chips temporais com estado');
 check(detail.includes('db.doseLogs.get(id)')&&detail.includes('db.registros_saude.get(id)')&&detail.includes('d.person_id!==pid')&&detail.includes('r.person_id!==pid'),'detalhe factual protege origem pessoa');
 check(!detail.includes('createRegistro')&&!detail.includes('db.doseLogs.put')&&!detail.includes('db.registros_saude.put'),'detalhe nunca grava fatos');
-check(exams.includes("tab==='orders'")&&exams.includes("tab==='new'")&&exams.includes('Meus pedidos'),'pedidos e novo pedido em abas');
+check(exams.includes("tab==='orders'")&&exams.includes("tab==='new'")&&exams.includes('Meus pedidos')&&!exams.includes('role="tablist"')&&exams.includes('Ações dos pedidos')&&exams.includes('Voltar aos pedidos'),'histórico principal e criação contextual sem abas concorrentes');
 check(exams.includes("setTab('orders');setItems([])")&&exams.includes('target:ring-2'),'pedido salvo retorna ao histórico e deep link destaca o item real');
 check(exams.includes('itemStates[item.id]||state')&&exams.includes('itemStates[itemId]||existing.state'),'status exibido é o estado salvado por item');
 check(exams.includes('draft(item.id).resultValue')&&exams.includes('draft(itemId)'),'resultados isolados por item');
