@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 import { db } from "@/lib/db";
 import { preserveMedicationTreatmentLinks } from "@/lib/sync/medication-pull-links";
+import { preserveA0Cirurgia, preserveA0Tratamento, preserveA0Hospital } from "@/lib/sync/a0-preserve-local-parity";
 import {documentPullResultP6P3B} from "@/lib/sync/document-pull-guard-p6p3b";
 import { planMedicationTreatmentReconciliationM105 } from "@/lib/sync/medication-treatment-reconciliation-m105";
 
@@ -599,6 +600,7 @@ async function performPullAllData(userId: string): Promise<void> {
         "hospitais",
       localTable:
         db.hospitais,
+      mapRemote: preserveA0Hospital,
       query:
         async () =>
           await supabase
@@ -1052,6 +1054,7 @@ async function performPullAllData(userId: string): Promise<void> {
         "tratamentos",
       localTable:
         db.tratamentos,
+      mapRemote: preserveA0Tratamento,
       query:
         async () =>
           await supabase
@@ -1149,6 +1152,7 @@ async function performPullAllData(userId: string): Promise<void> {
         "cirurgias",
       localTable:
         db.cirurgias,
+      mapRemote: preserveA0Cirurgia,
       query:
         async () =>
           await supabase

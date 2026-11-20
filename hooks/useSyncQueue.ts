@@ -1715,6 +1715,10 @@ export function useSyncQueue() {
                     tratamento.cid_ids ||
                     [],
 
+                  // A0: paridade TypeScript/Dexie/Postgres; omissões legadas não devem apagar histórico.
+                  data_inicio: tratamento.data_inicio ?? null,
+                  condicao: tratamento.condicao ?? null,
+
                   created_at:
                     tratamento.created_at,
 
@@ -2853,6 +2857,11 @@ export function useSyncQueue() {
                   observacoes:
                     cirurgia.observacoes ||
                     null,
+
+                  // A0: NULL indica cliente legado/sem campo; o trigger conserva os vínculos já remotos.
+                  // [] é a retirada explícita de TODOS os vínculos pelo cliente atual.
+                  tratamento_ids: cirurgia.tratamento_ids ?? null,
+                  cid_ids: cirurgia.cid_ids ?? null,
 
                   created_at:
                     cirurgia.created_at,
