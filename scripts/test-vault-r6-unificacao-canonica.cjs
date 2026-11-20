@@ -45,7 +45,13 @@ ok(main.includes('const received=items.filter')&&main.includes('const pending=it
   'resumo do pedido mostra progresso factual sem converter pedido em laudo');
 ok(!main.includes('items.map(({item,state})=><ListCard'),
   'um pedido com 15 itens jamais renderiza 15 cards na tela de exames');
-ok(main.includes('unifiedRows.length')&&main.includes('Novo pedido')&&main.includes('preserveReturn(\'/saude/careflow/exames?novo=1\')'),'criação e estado vazio coerentes com dados combinados');
+const canonicalOrdersPage=read('app/saude/exames/pedidos/page.tsx');
+ok(main.includes('unifiedRows.length') && main.includes('Novo pedido') &&
+  main.includes("preserveReturn('/saude/exames/pedidos?novo=1')") &&
+  main.includes('canonicalCountM2===0') &&
+  main.includes('<CanonicalExamOrdersM2') &&
+  canonicalOrdersPage.includes('createExamOrderM1('),
+  'criação única pela autoridade relacional e estado vazio coerente com registros legados e canônicos');
 const recordsPage=read('app/saude/registros/page.tsx');
 ok(recordsPage.includes('filterClinicalEventsR6(')&&recordsPage.includes("focus==='pressao'")&&recordsPage.includes('pressurePlans.map('),'mesma Linha de cuidado para aferições e planos');
 ok(recordsPage.includes('setFocus("sintomas")')&&recordsPage.includes('setFocus("pressao")'),'sintomas e pressão abrem filtros na tela principal');

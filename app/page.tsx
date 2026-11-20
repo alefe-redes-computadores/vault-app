@@ -8,6 +8,7 @@ import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
+import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -1338,6 +1339,7 @@ export default function HomePage() {
 
           <VaultUpdateHomePromptM117 />
           <HomeEssentialToggleM118 />
+          <ExamAgendaM2 compact />
           {/* VAULT_M144_HOME_ENTRY · M149: item integrado na grade de áreas da Home, não um botão solto. */}
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
 

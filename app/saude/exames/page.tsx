@@ -60,6 +60,7 @@ import { useReturnContext } from "@/hooks/useReturnContext";
 import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
 import { projectExamOrdersM2 } from "@/lib/careflow-m2/domain";
 import { buildUnifiedExamWorkspaceR6 } from "@/lib/clinical-unified-r6";
+import { CanonicalExamOrdersM2 } from "@/components/saude/CanonicalExamOrdersM2";
 
 import type {
   Exame,
@@ -137,6 +138,11 @@ export default function ExamesPage() {
 
   const {events:careflowEvents=[],userId:careflowUserId,activePersonId:careflowPersonId}=useCareFlowM2();
   const careflowOrders=useMemo(()=>projectExamOrdersM2(careflowEvents,careflowUserId||'',careflowPersonId||''),[careflowEvents,careflowUserId,careflowPersonId]);
+  const canonicalCountM2=useLiveQuery(async()=>{
+    if(!activePersonId||!careflowUserId)return 0;
+    const rows=await db.exam_orders.where('person_id').equals(activePersonId).toArray();
+    return rows.filter(x=>x.user_id===careflowUserId&&!x.deleted_at).length;
+  },[activePersonId,careflowUserId],0)??0;
   const [
     search,
     setSearch,
@@ -531,12 +537,13 @@ export default function ExamesPage() {
             </button>
           </ListFilters>
         </ListPageHeader>
+        <div className="mx-5 mt-3"><CanonicalExamOrdersM2 /></div>
         <section className="mx-5 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-300/20 bg-surface px-4 py-3" aria-label="Criar pedidos de exames">
           <div className="min-w-0"><h2 className="text-xs font-bold text-ink-primary">Pedidos de exames ({careflowOrders.length})</h2><p className="mt-1 text-[11px] text-ink-muted">Pedidos e exames aparecem juntos na lista abaixo. São registros de naturezas diferentes.</p></div>
-          <button type="button" onClick={()=>router.push(preserveReturn('/saude/careflow/exames?novo=1'))} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"><Plus size={16}/>Novo pedido</button>
+          <button type="button" onClick={()=>router.push(preserveReturn('/saude/exames/pedidos?novo=1'))} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"><Plus size={16}/>Novo pedido</button>
         </section>
                 <section className="space-y-3.5 px-5 pt-4">
-          {activePersonId && (
+          {activePersonId && (unifiedRows.length>0||canonicalCountM2===0) && (
             <ClinicalListSummary
               icon={ChartNoAxesCombined}
               eyebrow="Acompanhamento"
@@ -554,7 +561,7 @@ export default function ExamesPage() {
               description="Selecione uma pessoa no Vault para visualizar seus exames."
             />
           ) : unifiedRows.length ===
-            0 ? (
+            0 && canonicalCountM2===0 ? (
             <EmptyState
               icon={
                 FlaskConical

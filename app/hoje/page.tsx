@@ -84,6 +84,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRetiradas } from "@/hooks/useRetiradas";
 import { LazyQuickDoseModal as QuickDoseModal } from "@/components/saude/LazyQuickDoseModal";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
+import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
 import { useHealthReminders } from "@/hooks/useHealthReminders";
 import { reminderRunsOnWeekday } from "@/lib/health-reminders/domain";
 import { VersiculoDia } from "@/components/VersiculoDia";
@@ -1653,6 +1654,7 @@ export default function HojePage() {
             onInteraction={()=>trigger("vibrate")}/>
         </div>
         <div className="mx-auto max-w-3xl px-4 pt-3"><CareFlowSummaryM2 /></div>
+        <div className="mx-auto max-w-3xl px-4 pt-2"><ExamAgendaM2 day={dataSelecionada} /></div>
 
         {/* =========================================================
             CONTEÚDO

@@ -15,6 +15,7 @@ import { ClinicalBackLinkP0 } from '@/components/saude/ClinicalBackLinkP0';
 import { CustomDatePicker } from '@/components/DatePicker';
 import { HealthRelationPicker } from '@/components/saude/HealthRelationPicker';
 import { CareFlowOrderRelationsR5 } from '@/components/saude/CareFlowRelationsR5';
+import { createExamOrderM1 } from '@/lib/clinical-exams-m1/repository';
 const B='min-h-11 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary focus:border-emerald-300/60 outline-none';
 const stateNames:Record<ExamItemStateM2,string>={pending:'Solicitado',collected:'Realizado / coletado',result_received:'Resultado recebido',cancelled:'Cancelado (informado)'};
 type DetectorBlock={rawValue?:string};type Detector=new()=>{detect(b:ImageBitmap):Promise<DetectorBlock[]>};
@@ -32,6 +33,7 @@ export default function CareFlowExamsPage(){
   const [consultation,setConsultation]=useState(''),[doctor,setDoctor]=useState(''),[lab,setLab]=useState('');
   const [doctorId,setDoctorId]=useState(''),[locationId,setLocationId]=useState('');
   const appliedConsultation=useRef('');
+  const m2CreateIntent=useRef<{key:string;orderId:string;itemIds:string[];linkId?:string}|null>(null);
   useEffect(()=>{
     if(!userId||!activePersonId)return;
     const id=new URLSearchParams(window.location.search).get('consulta')||'';
@@ -99,10 +101,19 @@ export default function CareFlowExamsPage(){
       if(consultation&&!consultas.some(c=>c.id===consultation&&c.user_id===userId&&c.person_id===activePersonId))throw new Error('Consulta vinculada não pertence à pessoa ativa.');
       if(doctorId&&!medicos.some(m=>m.id===doctorId&&m.user_id===userId))throw new Error('Médico vinculado não pertence à conta ativa.');
       if(locationId&&!locais.some(l=>l.id===locationId&&l.user_id===userId))throw new Error('Local vinculado não pertence à conta ativa.');
-      const orderId=crypto.randomUUID();
-      const rows=[{id:orderId,kind:'exam_order' as const,related_id:consultation||null,payload:{title:title.trim(),date,doctor:(doctorId?'':doctor.trim().slice(0,160)),doctor_id:doctorId||null,location_id:locationId||null,laboratory:lab.trim().slice(0,160),origin:'user_verified_from_document',photoStored:false,checked:checked.length,unchecked:items.filter(x=>x.mark==='unchecked').length,uncertain:items.filter(x=>x.mark==='uncertain').length}},
-        ...checked.map(name=>({id:crypto.randomUUID(),kind:'exam_item' as const,parent_id:orderId,payload:{name,confirmedByUser:true,state:'pending',origin:'human_selection'}}))];
-      await appendMany(rows);setStatus(`${checked.length} exame(s) salvo(s). Itens não marcados/duvidosos não foram importados.`);
+      // M2: OCR/manual review keeps its UI, but ALL new writes use the canonical tables.
+      const description=[!doctorId&&doctor.trim()?`Solicitante informado: ${doctor.trim().slice(0,160)}`:'',
+        lab.trim()?`Laboratório citado no pedido (não agendado): ${lab.trim().slice(0,160)}`:'',
+        locationId?`Local citado: ${locais.find(x=>x.id===locationId)?.nome||'não informado'}`:''].filter(Boolean).join(' | ');
+      const key=JSON.stringify([userId,activePersonId,title,date,consultation,doctorId,description,checked]);
+      if(m2CreateIntent.current?.key!==key)m2CreateIntent.current={key,orderId:crypto.randomUUID(),
+        itemIds:checked.map(()=>crypto.randomUUID()),linkId:consultation?crypto.randomUUID():undefined};
+      await createExamOrderM1({personId:activePersonId,title:title.trim()||'Pedido de exames',
+        items:checked,kind:'medical_request',requestedOn:date,doctorId:doctorId||null,
+        consultationId:consultation||null,note:description||null,
+        idempotency:{orderId:m2CreateIntent.current!.orderId,itemIds:m2CreateIntent.current!.itemIds,linkId:m2CreateIntent.current!.linkId}});
+      m2CreateIntent.current=null;
+      setStatus(`${checked.length} exame(s) salvo(s). Itens não marcados/duvidosos não foram importados.`);
  router.replace(preserveReturnTarget('/saude/exames',new URLSearchParams(window.location.search)));
       setTab('orders');setItems([]);setImage(null);setFile(null);setText('');setZoom(100);
     }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível guardar o pedido.');}

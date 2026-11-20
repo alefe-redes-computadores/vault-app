@@ -50,7 +50,14 @@ check(exams.includes("tab==='orders'")&&exams.includes("tab==='new'")&&exams.inc
 check(exams.includes("setTab('orders');setItems([])")&&exams.includes('target:ring-2'),'pedido salvo retorna ao histórico e deep link destaca o item real');
 check(exams.includes('itemStates[item.id]||state')&&exams.includes('itemStates[itemId]||existing.state'),'status exibido é o estado salvado por item');
 check(exams.includes('draft(item.id).resultValue')&&exams.includes('draft(itemId)'),'resultados isolados por item');
-check(exams.includes("origin==='ocr'?'uncertain':'checked'")&&exams.includes('Revisei este item na solicitação original')&&exams.includes("doctor:(doctorId?'':doctor.trim().slice(0,160))"),'OCR distinto de entrada manual e sem confirmação automática');
+check(exams.includes("origin==='ocr'?'uncertain':'checked'") &&
+  exams.includes('Revisei este item na solicitação original') &&
+  exams.includes('checkedExamItemsM2(items)') &&
+  exams.includes('await createExamOrderM1(') &&
+  exams.includes('doctorId:doctorId||null') &&
+  exams.includes('Solicitante informado:') &&
+  !exams.includes('await appendMany(rows)'),
+  'OCR mantém marcação duvidosa, exige confirmação humana e grava apenas na autoridade canônica, preservando solicitante');
 check(symptoms.includes('iconOf=(t:string)')&&symptoms.includes('intensityTone=(n:number')&&symptoms.includes('aria-pressed={type===name}'),'sete sintomas com cores e ícones');
 check(symptoms.includes('dateEdited.current=false')&&symptoms.includes('timeEdited.current=false')&&symptoms.includes('setDate(getLocalTodayISO())')&&symptoms.includes('setTime(new Date().toTimeString().slice(0,5))'),'reset de dia e hora após salvamento com controle de edição');
 check(dossier.includes('row.kind.startsWith')&&dossier.includes('makeCareFlowTimelinePdfM3'),'dossiê com ícones sem substituir exportação');

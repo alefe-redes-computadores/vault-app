@@ -40,7 +40,13 @@ check(orders.includes("tab==='orders'")&&orders.includes("tab==='new'")&&orders.
 check(orders.includes('runOCR()')&&orders.includes('origin===\'ocr\'')&&orders.includes('Revisei este item na solicitação original'),'revisão manual/OCR preservada');
 check(orders.includes('itemStates[item.id]||state')&&orders.includes('draft(item.id).resultValue'),'estado e resultado independentes por item');
 check(orders.includes("get('novo')==='1'")&&orders.includes('careflow-pedido-'),'atalho contextual e deep link por ID preservados');
-check(exams.includes('Pedidos de exames (')&&exams.includes('unifiedRows.map(')&&exams.includes("preserveReturn('/saude/careflow/exames?novo=1')"),'Exames e Laudos integra pedidos e exames em uma lista, preservando novo pedido');
+const canonicalOrders=read('app/saude/exames/pedidos/page.tsx');
+check(exams.includes('Pedidos de exames (') && exams.includes('unifiedRows.map(') &&
+  exams.includes("preserveReturn('/saude/exames/pedidos?novo=1')") &&
+  exams.includes('canonicalCountM2===0') &&
+  exams.includes('<CanonicalExamOrdersM2') &&
+  canonicalOrders.includes('createExamOrderM1('),
+  'Exames integra histórico, pedido relacional único, criação canônica e estado vazio sem ocultar registros');
 check(!exams.includes('Pedido com vários exames · CareFlow 360')&&exams.includes('examesComStatus'),'CTA redundante removido sem apagar exames canônicos');
 check(symptoms.includes('composeOpen')&&symptoms.includes('Registrar sintoma')&&symptoms.includes('useRegistrosSaude')&&symptoms.includes("createRegistro({categoria:'sintoma'"),'sintoma usa escrita canônica e formulário sob demanda');
 check(symptoms.includes('historyLimit')&&symptoms.includes('revealCountR3')&&symptoms.includes('careflow-sintoma-'),'histórico além de 100 e retorno por ID preservados');

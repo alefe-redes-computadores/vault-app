@@ -4,6 +4,7 @@
 import {
   useRef,
   useState,
+  useEffect,
 } from "react";
 import {
   useRouter,
@@ -378,6 +379,12 @@ function getTratamentoIcon(
 export default function NovoExamePage() {
   const router =
     useRouter();
+  // M2 cutover: this legacy editor must not write new rows to db.exames.
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    query.set('novo','1');
+    router.replace(`/saude/exames/pedidos?${query.toString()}`);
+  },[router]);
 
   const {
     trigger,
@@ -1325,6 +1332,13 @@ export default function NovoExamePage() {
 
   const handleSave =
     () => {
+      // Safety guard even during the short redirect interval: fail closed.
+      if (typeof window !== 'undefined') {
+        const query=new URLSearchParams(window.location.search);query.set('novo','1');
+        router.replace(`/saude/exames/pedidos?${query.toString()}`);
+        showToast('Novos exames devem ser registrados no Pedido 360.', 'error');
+        return;
+      }
       trigger(
         "vibrate"
       );

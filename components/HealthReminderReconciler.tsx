@@ -17,6 +17,8 @@ import {
   type HealthEventNotificationInput,
 } from "@/lib/health-reminders/event-scheduler";
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { projectExamWorkspaceM2, type ExamWorkspaceM2 } from "@/lib/clinical-exams-m2/domain";
+import { reconcileExamSessionNotificationsM2 } from "@/lib/clinical-exams-m2/notifications";
 import {checkinInvitationsP2,dailyCheckinBudgetP2} from "@/lib/m3/checkins-p2";
 import type {EventPolicyRecordP2} from "@/lib/m3/policy-record-p2";
 import { isFutureAcquisition, isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
@@ -48,6 +50,7 @@ export function HealthReminderReconciler() {
           reminders: [],
           events: [] as HealthEventNotificationInput[],
           policies: [] as EventPolicyRecordP2[],
+          examWorkspacesM2: [] as ExamWorkspaceM2[],
         };
       }
 
@@ -60,6 +63,17 @@ export function HealthReminderReconciler() {
         db.cirurgias.where("user_id").equals(user.id).toArray(),
         db.notification_policies_p2.where("user_id").equals(user.id).toArray(),
       ]);
+
+      // M2 projection reads canonical rows; legacy exams are never copied or overwritten.
+      const [examOrdersM2,examItemsM2,examSessionsM2,examSessionLinksM2]=await Promise.all([
+        db.exam_orders.where('user_id').equals(user.id).toArray(),
+        db.exam_order_items.where('user_id').equals(user.id).toArray(),
+        db.exam_sessions.where('user_id').equals(user.id).toArray(),
+        db.exam_session_items.where('user_id').equals(user.id).toArray(),
+      ]);
+      const personIdsM2=new Set(examOrdersM2.map(o=>o.person_id));
+      const examWorkspacesM2=[...personIdsM2].flatMap(pid=>
+        projectExamWorkspaceM2(examOrdersM2,examItemsM2,examSessionsM2,examSessionLinksM2,user.id,pid));
 
       /*
        * V36.1:
@@ -171,7 +185,7 @@ export function HealthReminderReconciler() {
           kind:"checkin",title:"Acompanhamento voluntário do Vault",date:row.date,time:row.time,status:"agendada",
           targetRoute:`/saude/lembretes?checkin=${encodeURIComponent(row.appointmentId)}&dia=${row.day}`});
       }
-      return { reminders, events, policies:policies.filter(p=>p.user_id===user.id) };
+      return { reminders, events, policies:policies.filter(p=>p.user_id===user.id), examWorkspacesM2 };
     },
     [user?.id]
   );
@@ -182,6 +196,7 @@ export function HealthReminderReconciler() {
     void Promise.all([
       reconcileHealthReminderNotifications(notificationContext.reminders),
       reconcileHealthEventNotifications(notificationContext.events,notificationContext.policies),
+      reconcileExamSessionNotificationsM2(notificationContext.examWorkspacesM2),
     ]).catch((error) =>
       console.error("[Health notifications] Falha ao reconciliar:", error)
     );
