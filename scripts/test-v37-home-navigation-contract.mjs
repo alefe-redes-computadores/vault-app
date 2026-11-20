@@ -16,7 +16,7 @@ ok(
   "Fallback real da raiz ausente"
 );
 ok(
-  nav.includes("if (!shouldShowNav(pathname))"),
+  /if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\|\|\s*isFocusedClinicalEditor\s*\)\s*\{\s*return\s+null\s*;\s*\}/s.test(nav),
   "V31.2 BottomNav regrediu"
 );
 ok(

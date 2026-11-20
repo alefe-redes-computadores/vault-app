@@ -35,7 +35,7 @@ assert(
 
 assert(nav.includes("vault-bottom-nav"), "BottomNav perdeu marcador");
 assert(
-  nav.includes("if (!shouldShowNav(pathname))"),
+  /if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\|\|\s*isFocusedClinicalEditor\s*\)\s*\{\s*return\s+null\s*;\s*\}/s.test(nav),
   "regressão V31.2: rota deve continuar sendo dona da montagem"
 );
 assert(

@@ -21,7 +21,7 @@ for (const [file, marker] of canonical) {
 const bottom = read("components/BottomNav.tsx");
 ok(bottom.includes("router.replace(path);"), "BottomNav: tabs devem usar replace");
 ok(bottom.includes("router.push("), "BottomNav: drill-down/compose deve continuar push");
-ok(bottom.includes("if (!shouldShowNav(pathname))"), "BottomNav V31.2 regrediu");
+ok(/if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\|\|\s*isFocusedClinicalEditor\s*\)\s*\{\s*return\s+null\s*;\s*\}/s.test(bottom), "BottomNav V31.2 regrediu");
 
 const providers = read("components/Providers.tsx");
 ok(providers.includes('Capacitor.getPlatform() !== "android"'), "V30.5 StatusBar regrediu");

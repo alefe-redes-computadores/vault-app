@@ -47,7 +47,7 @@ ok(
 
 ok(nav.includes("z-50"), "BottomNav perdeu sua camada base");
 ok(
-  /if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\)\s*\{\s*return null;\s*\}/s.test(nav),
+  /if\s*\(\s*!shouldShowNav\s*\(\s*pathname\s*\)\s*\|\|\s*isFocusedClinicalEditor\s*\)\s*\{\s*return\s+null\s*;\s*\}/s.test(nav),
   "V31.2 mount por rota regrediu"
 );
 
