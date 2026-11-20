@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import {useEffect,useMemo,useState} from 'react';
+import {Suspense,useEffect,useMemo,useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {useLiveQuery} from 'dexie-react-hooks';
 import {Activity,Brain,CalendarClock,ShieldCheck,ChevronRight,Pill,Stethoscope,Moon,HeartPulse,FlaskConical,MessageSquareHeart,ClipboardCheck,Footprints,Wind} from 'lucide-react';
@@ -11,10 +11,11 @@ import {useActivePersonId} from '@/hooks/useActivePersonId';
 import {withReturnTarget} from '@/lib/navigation/return-context';
 import {db} from '@/lib/db';
 import {buildBrainFactsP2} from '@/lib/m3/brain-facts-p2';
+import {recordKeyFromHashR3,revealCountR3} from '@/lib/m3/careflow-display-r3';
 const factIcon=(kind:string,title:string)=>kind==='consulta'?Stethoscope:kind==='cirurgia'?ClipboardCheck:kind==='exame'?FlaskConical:kind.startsWith('dose_')?Pill:kind==='medicao'?HeartPulse:kind==='registro'&&/sono/i.test(title)?Moon:kind==='registro'&&/caminha|passos/i.test(title)?Footprints:kind==='registro'&&/satura|oxig/i.test(title)?Wind:kind==='registro'?Activity:/exame|resultado/i.test(title)?FlaskConical:/sintoma|observa/i.test(title)?MessageSquareHeart:CalendarClock;
 const dayText=(day:string)=>/^\d{4}-\d{2}-\d{2}$/.test(day)?day.split('-').reverse().join('/'):day;
 function dateMinus(days:number){const now=new Date();now.setHours(12,0,0,0);now.setDate(now.getDate()-Math.max(0,days-1));return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;}
-export default function BrainLongitudinalP2(){
+function BrainLongitudinalP2View(){
  const {user}=useAuth(),{activePersonId}=useActivePersonId();const uid=user?.id||'',pid=activePersonId||'';
  const params=useSearchParams();const [days,setDays]=useState<7|15|30|90>(30),[visible,setVisible]=useState(60);
  useEffect(()=>{const v=Number(params.get('dias'));if(v===7||v===15||v===30||v===90)setDays(v);},[params]);
@@ -30,6 +31,17 @@ export default function BrainLongitudinalP2(){
  const facts=result?.uid===uid&&result?.pid===pid?result.facts:[];
  const filtered=useMemo(()=>facts.filter(f=>f.date>=dateMinus(days)),[facts,days]);
  const displayed=filtered.slice(0,visible);
+ // R3: ao voltar de um fato antigo, a origem exata pode estar após o primeiro lote.
+ useEffect(()=>{
+  const key=recordKeyFromHashR3(window.location.hash,'#fato-');
+  if(!key)return;
+  const index=filtered.findIndex(f=>f.key===key);
+  if(index<0)return;
+  const next=revealCountR3(index,visible,60);
+  if(next>visible){setVisible(next);return;}
+  const frame=window.requestAnimationFrame(()=>document.getElementById(`fato-${key}`)?.scrollIntoView({block:'center',behavior:'auto'}));
+  return()=>window.cancelAnimationFrame(frame);
+ },[filtered,visible]);
  const color=(kind:string,intensity?:number)=>kind.startsWith('dose_')?'text-emerald-300 border-emerald-300/25 bg-emerald-300/[.06]':kind==='medicao'?'text-rose-300 border-rose-300/25 bg-rose-300/[.06]':kind==='registro'&&typeof intensity==='number'&&intensity>=7?'text-rose-300 border-rose-300/25 bg-rose-300/[.09]':kind==='consulta'?'text-sky-300 border-sky-300/25 bg-sky-300/[.06]':'text-violet-300 border-violet-300/25 bg-violet-300/[.06]';
  return <PageTransition><main className="min-h-screen bg-void px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-5 header-safe-top text-ink-primary"><div className="mx-auto max-w-2xl space-y-4">
   <header className="flex items-start gap-3"><ClinicalBackLinkP0 fallback="/saude/careflow" aria-label="Voltar ao CareFlow" className="grid size-11 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface"/><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-widest text-violet-300">Inteligência · Histórico factual</p><h1 className="text-xl font-bold">Brain longitudinal</h1><p className="mt-1 text-xs text-ink-muted">Doses identificadas, medições reais e fatos por data. Sem inferir diagnóstico ou causalidade.</p></div></header>
@@ -47,4 +59,9 @@ export default function BrainLongitudinalP2(){
   {facts.length===10000&&<p className="rounded-xl border border-amber-300/25 p-3 text-xs text-amber-200">Projeção limitada a 10.000 fatos por segurança. Consulte as origens para outros registros.</p>}
   <p className="flex gap-2 text-[11px] leading-relaxed text-ink-muted"><CalendarClock size={14} className="shrink-0"/>Links com origem comprovada abrem o fato específico. O Brain não cria doses, estoque ou diagnósticos.</p>
  </div></main></PageTransition>;
+}
+
+/** useSearchParams exige Suspense em rotas pré-renderizadas pelo Next 14. */
+export default function BrainLongitudinalP2(){
+ return <Suspense fallback={<main className="min-h-screen bg-void p-6 text-sm text-ink-muted">Carregando evolução clínica…</main>}><BrainLongitudinalP2View/></Suspense>;
 }
