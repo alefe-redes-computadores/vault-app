@@ -11,6 +11,7 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { MedicationAuthorityMap } from "@/components/saude/MedicationAuthorityMap";
 import { AccessCommandOverview } from "@/components/saude/AccessCommandOverview";
 import { SupplyProcessJourney } from "@/components/saude/SupplyProcessJourney";
+import { SupplyContinuityA3 } from "@/components/saude/SupplyContinuityA3";
 import { SupplyRelationshipMap } from "@/components/saude/SupplyRelationshipMap";
 import { summarizeWithdrawalProgress } from "@/lib/health-intelligence/operational-triage";
 import { ListPageHeader } from "@/components/list/ListPageHeader";
@@ -1263,6 +1264,18 @@ function Content({ supply }: { supply: ReturnType<typeof useHealthSupply> }) {
           <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">{processView.activeProcesses.map(renderProcess)}</div>
         </>}
       </section>
+      {/* VAULT_A3_P1_CANONICAL_CONTINUITY: no duplicate route or writer. */}
+      {!contextLoading && process && <SupplyContinuityA3
+        userId={user?.id || ""}
+        personId={personId}
+        medicationIds={relationalIndex.medicationIdsByProcess.get(process.id) || new Set<string>()}
+        medications={medicamentos}
+        renewals={renovacoes}
+        withdrawals={retiradas}
+        pharmacies={farmacias}
+        places={locais}
+        today={getLocalTodayISO()}
+      />}
       {/* VAULT_V329_DOCUMENT_FOCUS: a real list of unmet linked requirements. */}
       <section id="documentos-pendentes" className={`min-w-0 max-w-full overflow-hidden scroll-mt-28 rounded-[20px] border p-3 ${missingDocumentItems.length ? "border-amber-300/25 bg-amber-300/[0.035]" : "border-surface-border/60 bg-surface/60"}`} aria-label="Documentos que exigem conferência">
         <div className="flex items-start gap-2.5">
