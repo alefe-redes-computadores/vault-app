@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ListPageHeader } from '@/components/list/ListPageHeader';
 import { useHapticFeedback } from '@/lib/haptics';
 import { RehabM5PremiumSections } from '@/components/saude/RehabM5PremiumSections';
+import { HospitalizationA5ReverseLinks } from '@/components/saude/HospitalizationA5ReverseLinks';
 import { withReturnTarget } from '@/lib/navigation/return-context';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Activity, ArrowLeft, ArrowRight, CalendarClock, Check, ClipboardList,
@@ -172,6 +173,7 @@ export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string
     <button disabled={busy||!originId} className={secondary} onClick={()=>void action(async()=>{await addRehabOriginM5({personId,programId:selected.id,type:originType,originId});setOriginId('');},'Origem vinculada por identidade real.')}><Link2 size={15}/> Vincular</button>
    </section>
    <RehabM5PremiumSections programId={selected.id} />
+   <HospitalizationA5ReverseLinks kind="rehab_program" recordId={selected.id} returnTo={`/saude/reabilitacao/detalhes?id=${encodeURIComponent(selected.id)}`} />
    <div className="flex items-center gap-2 text-[11px] text-ink-muted"><ShieldCheck size={16}/> Dados escopados à pessoa e à conta. Histórico factual mantido.</div>
   </>)}
  </main>;

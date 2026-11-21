@@ -541,6 +541,7 @@ const contracts = [
   "scripts/test-vault-ui360-r5.cjs",
   "scripts/test-vault-medication-document-sync-p0.cjs",
   "scripts/test-vault-p0-consulta-sync-owner.cjs",
+  "scripts/test-vault-a5-v28.cjs",
 ];
 
 for (const contract of contracts) {

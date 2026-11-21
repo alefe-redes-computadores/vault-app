@@ -62,6 +62,7 @@ import { clinicalExamDependenciesM1 } from "@/lib/clinical-exams-m1/dependencies
 import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
 import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-links-p2";
 import { syncRehabM5 } from "@/lib/rehab-m5/sync";
+import { syncHospitalizationA5,pendingA5Dependency } from "@/lib/hospitalizations-a5/sync";
 import { REHAB_ALL_TABLES_M5, type RehabTableM5 } from "@/lib/rehab-m5/types";
 import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
@@ -5203,6 +5204,12 @@ export function useSyncQueue() {
         case "rehab_origin_links_m5": await markRecordSyncedIfCurrent(db.rehab_origin_links_m5,payload.id,expectedUpdatedAt); break;
         case "rehab_session_events_m5": await markRecordSyncedIfCurrent(db.rehab_session_events_m5,payload.id,expectedUpdatedAt); break;
         case "rehab_milestones_m5": await markRecordSyncedIfCurrent(db.rehab_milestones_m5,payload.id,expectedUpdatedAt); break;
+        case "hospitalizations_a5": await markRecordSyncedIfCurrent(db.hospitalizations_a5,payload.id,expectedUpdatedAt); break;
+        case "hospitalization_stays_a5": await markRecordSyncedIfCurrent(db.hospitalization_stays_a5,payload.id,expectedUpdatedAt); break;
+        case "hospitalization_team_a5": await markRecordSyncedIfCurrent(db.hospitalization_team_a5,payload.id,expectedUpdatedAt); break;
+        case "hospitalization_events_a5": await markRecordSyncedIfCurrent(db.hospitalization_events_a5,payload.id,expectedUpdatedAt); break;
+        case "hospitalization_relations_a5": await markRecordSyncedIfCurrent(db.hospitalization_relations_a5,payload.id,expectedUpdatedAt); break;
+        case "hospitalization_discharge_a5": await markRecordSyncedIfCurrent(db.hospitalization_discharge_a5,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5473,6 +5480,14 @@ export function useSyncQueue() {
           );
           return;
 
+        case 'hospitalizations_a5': case 'hospitalization_stays_a5': case 'hospitalization_team_a5':
+        case 'hospitalization_events_a5': case 'hospitalization_relations_a5': case 'hospitalization_discharge_a5': {
+          const client=requireSupabase();const {data,error}=await client.auth.getUser();
+          if(error||!data.user)throw Error('A5: conta autenticada obrigatória.');
+          const pending=await pendingA5Dependency(item,async(table,id)=>Boolean(await db.syncQueue.where('chave').equals(`${table}:${id}`).first()));
+          if(pending)throw new SyncDependencyDeferredError('A5: aguardando vínculo local pendente '+pending);
+          await syncHospitalizationA5(item,data.user.id);return;
+        }
         case 'rehab_programs_m5': case 'rehab_program_team_m5': case 'rehab_sessions_m5':
         case 'rehab_session_team_m5': case 'rehab_origin_links_m5': case 'rehab_session_events_m5': case 'rehab_milestones_m5': {
           const client=requireSupabase();const {data,error}=await client.auth.getUser();

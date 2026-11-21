@@ -1771,6 +1771,19 @@ async function performPullAllData(userId: string): Promise<void> {
       localTable:db.rehab_session_events_m5,query:async()=>await supabase.from('rehab_session_events_m5').select('*').eq('user_id',userId)});
     await processTable({remoteTable:'rehab_milestones_m5',queueTable:'rehab_milestones_m5',
       localTable:db.rehab_milestones_m5,query:async()=>await supabase.from('rehab_milestones_m5').select('*').eq('user_id',userId)});
+    // A5: six canonical hospitalization tables, owner scoped and queue-aware.
+    await processTable({remoteTable:'hospitalizations_a5',queueTable:'hospitalizations_a5',
+      localTable:db.hospitalizations_a5,query:async()=>await supabase.from('hospitalizations_a5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'hospitalization_stays_a5',queueTable:'hospitalization_stays_a5',
+      localTable:db.hospitalization_stays_a5,query:async()=>await supabase.from('hospitalization_stays_a5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'hospitalization_team_a5',queueTable:'hospitalization_team_a5',
+      localTable:db.hospitalization_team_a5,query:async()=>await supabase.from('hospitalization_team_a5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'hospitalization_events_a5',queueTable:'hospitalization_events_a5',
+      localTable:db.hospitalization_events_a5,query:async()=>await supabase.from('hospitalization_events_a5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'hospitalization_relations_a5',queueTable:'hospitalization_relations_a5',
+      localTable:db.hospitalization_relations_a5,query:async()=>await supabase.from('hospitalization_relations_a5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'hospitalization_discharge_a5',queueTable:'hospitalization_discharge_a5',
+      localTable:db.hospitalization_discharge_a5,query:async()=>await supabase.from('hospitalization_discharge_a5').select('*').eq('user_id',userId)});
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

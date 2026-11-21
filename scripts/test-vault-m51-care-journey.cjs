@@ -55,7 +55,7 @@ choose('Limpar filtros');ok(treeText(root).includes('Proc-Alfa')&&treeText(root)
 const search=walk(root,x=>x.type==='input'&&x.props.type==='search')[0];ok(!!search,'search remains available');search.props.onChange({target:{value:'Doc-Beta'}});root=draw();ok(treeText(root).includes('Doc-Beta')&&!treeText(root).includes('Proc-Alfa'),'text search limits visible relationships');
 choose('Limpar filtros');ok(fixture.processes[0].titulo==='Proc-Alfa'&&fixture.renewals.length===3&&fixture.documents.length===1,'display never mutates clinical source');
 const docButton=walk(root,x=>x.type==='button'&&treeText(x).includes('Doc-Beta'))[0];docButton.props.onClick();ok(navigate[0]==='/saude/documentos/detalhes?id=d1','document navigation retains exact registered ID');
-const journey=load(paths[2],{...ui,'@/lib/health-intelligence/medication-journey-signal':{medicationJourneySignal:()=>({tone:'planning',label:'Planejamento',explanation:'Não registra compra'})}}).MedicationJourneySummary;
+const journey=load(paths[2],{...ui,'@/lib/medications/visual-copy':require('./vault-visual-copy-test.cjs'),'@/lib/health-intelligence/medication-journey-signal':{medicationJourneySignal:()=>({tone:'planning',label:'Planejamento',explanation:'Não registra compra'})}}).MedicationJourneySummary;
 const snapshot={prescriptions:1,completedAcquisitions:0,plannedAcquisitions:2,pendingWithdrawals:1,overdueWithdrawals:0,latestPrescriptionDate:'2026-11-01',nextPlannedAcquisitionDate:'2026-11-10',nextWithdrawalDate:'2026-11-05'};
 root=journey({snapshot,medicationId:'m1',onNavigate:href=>navigate.push(href)});
 ok(treeText(root).includes('Compra futura registrada')&&treeText(root).includes('Ainda não é aquisição realizada'),'planned acquisition stays distinct from completed');
@@ -69,10 +69,10 @@ cursor=0;root=visit({dossier,color:'#fff',onNavigate:href=>navigate.push(href)})
 ok(/Outras consultas vinculadas\s*·\s*2/.test(treeText(root)),'additional consultations stay discoverable');
 ok(treeText(root).includes('Consulta vinculada sem destino'),'missing relation ID never fabricates destination');
 const second=walk(root,x=>x.type==='button'&&treeText(x).includes('09/11/2026'))[0];ok(!!second,'second linked consultation is actionable');second.props.onClick();ok(navigate.at(-1)==='/saude/consultas/detalhes?id=c2','exact consultation ID navigated');
-const network=load(paths[4],{...ui,'@/components/detail/DetailComponents':{DetailInfoRow:({children})=>jsx('div',{children})}}).MedicationCareNetworkDetails;
+const network=load(paths[4],{...ui,'@/lib/medications/visual-copy':require('./vault-visual-copy-test.cjs'),'@/components/detail/DetailComponents':{DetailInfoRow:({children})=>jsx('div',{children})}}).MedicationCareNetworkDetails;
 root=network({doctor:{name:'Dr A',otherMedicationCount:1,id:'dr1'},hospital:{id:'',name:'Sem código',phone:'',address:''},location:null,pharmacy:null,latestPublicAcquisition:null,onNavigate:href=>navigate.push(href),onMap:()=>{},onCall:()=>{},formatDay:x=>x});
 ok(treeText(root).includes('Vínculo não confirma atendimento, fornecimento ou retirada'),'network relationships not treated as completed care');
-ok(treeText(root).includes('2 referência(s)'),'network displays current linked references without queries');
+ok(treeText(root).includes('2 referências de cuidado exibidas'),'network displays current linked references without queries');
 const acq=load(paths[5],ui).MedicationAcquisitionHistoryCard;
 for(const [kind,expected] of [['prescription','não demonstra compra'],['planned','ainda não realizada'],['public','confirme a retirada'],['private','movimentação salva']]){
  root=acq({kind,dateLabel:'03/11/2026',requiresPrescription:false,enabled:true,onOpen:()=>{}});

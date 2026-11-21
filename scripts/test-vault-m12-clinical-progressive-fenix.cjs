@@ -39,7 +39,8 @@ const jsx=(type,props)=>({type,props:props||{}}),icon=()=>null;
 const deps={
  'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'Fragment'},
  'lucide-react':new Proxy({},{get:()=>icon}),
- '@/lib/health-intelligence/medication-journey-signal':{medicationJourneySignal:()=>({tone:'quiet',label:'Evidência',explanation:'Sem conclusões automáticas'})},
+  '@/lib/medications/visual-copy':require('./vault-visual-copy-test.cjs'),
+  '@/lib/health-intelligence/medication-journey-signal':{medicationJourneySignal:()=>({tone:'quiet',label:'Evidência',explanation:'Sem conclusões automáticas'})},
 };
 function load(path){const mod=new Module(path,module);mod.require=id=>{if(id in deps)return deps[id];throw Error('M12 dependency unexpected '+id)};mod._compile(ts.transpileModule(read(path),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,path);return mod.exports;}
 function walk(node){if(Array.isArray(node))return node.flatMap(walk);if(node&&typeof node==='object'&&'props'in node)return [node,...walk(node.props.children)];return []}

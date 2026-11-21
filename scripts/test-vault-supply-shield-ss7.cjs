@@ -97,7 +97,7 @@ ok(acq.includes('writePackageEvidenceSS7'),'prova só gravada após confirmaçã
 ok(acq.includes('<MedicationAcquisitionQuantityGuide medicamento={selectedMedicamento} quantity={quantidadeAdicionar}/>'),'guia de unidade legado preservado');
 const detail=read('app/saude/medicamentos/detalhes/page.tsx');
 ok(detail.includes('label="+ Registrar aquisição"'),'estoque desconhecido permite recebimento real');
-ok(detail.includes('Supply Shield · ver planejamento'),'entrada de abastecimento na tela de detalhes');
+ok(detail.includes('Planejamento de estoque e fornecimento')&&detail.includes("router.push('/saude/supply-shield')"),'entrada de abastecimento na tela de detalhes');
 ok(detail.includes('medicationStockCountHref')&&detail.includes('medicationRestockHref'),'saldo e compra mantêm autoridades distintas');
 const board=read('components/saude/SupplyShieldDashboardSS7.tsx');
 ok(board.includes('indexMedicationSupplyRoutes'),'rotas canônicas por item e processo');

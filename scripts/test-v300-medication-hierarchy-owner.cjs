@@ -30,7 +30,7 @@ assert(main>=0 && hero>identity && action>hero && journal>action && supply>journ
   details.slice(hero,action).includes('regulatoryProfile'),
   'Medication identity, dose and regulatory status precede next action, history and supply');
 assert.equal(details.split('<MedicationJourneySummary snapshot={journeySnapshot}').length-1,1,'no duplicate journey');
-assert.equal(details.split('<HealthSupplyEntry medicamentoId={med.id!}/>').length-1,1,'canonical supply surface preserved');
+assert.equal(details.split('<HealthSupplyEntry medicamentoId={med.id!} completedAcquisitions={journeySnapshot.completedAcquisitions}/>').length-1,1,'canonical supply surface preserved');
 assert(details.includes('id="medicamento-lembretes"'),'notifications are an accessible on-demand section');
 assert(disclosure.includes('window.addEventListener("hashchange", revealHash)') && disclosure.includes('if (hash === id) setOpen(true)'), 'deep-links open deferred section');
 assert(disclosure.includes('{open && ('),'heavy content mounts only when opened');

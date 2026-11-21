@@ -72,7 +72,7 @@ ok(health.includes('onOpenCentral={selectedInsight?') && health.includes('setSel
 ok(avatar.includes('Ver contexto registrado · não é diagnóstico'),'Fênix explica o significado do toque');
 ok(avatar.includes('<span aria-hidden="true">Ver</span></button>:null}') && !avatar.includes('<span aria-hidden="true">Ver</span></button>:null>'),'botão da Fênix mantém JSX ternário bem formado');
 // Medications: no new reads; summaries retained, more useful hierarchy in first fold.
-ok(meds.includes('Organização da lista de medicamentos') && meds.includes('Prioridades primeiro · rotina e SOS separados'),'lista comunica ordem e categorias');
+ok(meds.includes('aria-label="Organizar medicamentos"') && meds.includes('aria-label="Exibição dos medicamentos"') && meds.includes('aria-label="Escolher densidade dos cartões"') && meds.includes('medsPrioridade.map(renderCard)') && meds.includes('medsSOS.map(renderCard)'),'lista comunica ordem e categorias');
 ok(meds.includes('<details id="medicamentos-panorama"') && meds.includes('Entender indicadores, doses e estados'),'panorama secundário recolhido inicialmente');
 ok(meds.includes('medsPrioridade.map(renderCard)') && meds.includes('medsSOS.map(renderCard)'),'grupos canônicos não alterados');
 ok(meds.includes('setQuickDoseMedId(med.id!)') && meds.includes('regulatoryProfile?.label'),'dose rápida e receita regulatória intactas');

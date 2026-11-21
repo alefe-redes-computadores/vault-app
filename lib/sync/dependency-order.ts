@@ -44,6 +44,12 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   rehab_session_events_m5: [["session_id", "rehab_sessions_m5"]],
   rehab_milestones_m5: [["program_id", "rehab_programs_m5"], ["session_id", "rehab_sessions_m5"],
     ["professional_id", "medicos"], ["consultation_id", "consultas"], ["exam_order_id", "exam_orders"]],
+  hospitalizations_a5: [["hospital_id","hospitais"],["local_id","locais"],["previous_hospitalization_id","hospitalizations_a5"]],
+  hospitalization_stays_a5: [["hospitalization_id","hospitalizations_a5"],["hospital_id","hospitais"],["local_id","locais"]],
+  hospitalization_team_a5: [["hospitalization_id","hospitalizations_a5"],["professional_id","medicos"],["stay_id","hospitalization_stays_a5"]],
+  hospitalization_events_a5: [["hospitalization_id","hospitalizations_a5"],["stay_id","hospitalization_stays_a5"],["source_professional_id","medicos"],["corrects_event_id","hospitalization_events_a5"]],
+  hospitalization_relations_a5: [["hospitalization_id","hospitalizations_a5"]],
+  hospitalization_discharge_a5: [["hospitalization_id","hospitalizations_a5"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -66,11 +72,19 @@ export function blockedSyncDependency(
     const table=type==='consulta'?'consultas':type==='cirurgia'?'cirurgias':type==='tratamento'?'tratamentos':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
+  if(item.table==='hospitalization_relations_a5'){
+    const p=item.payload, id=p.entity_id, type=p.entity_type;
+    const table=type==='cirurgia'?'cirurgias':type==='consulta'?'consultas':type==='exam_order'?'exam_orders':
+      type==='tratamento'?'tratamentos':type==='rehab_program'?'rehab_programs_m5':type==='medicamento'?'medicamentos':null;
+    if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
+  }
   if(item.table==='clinical_asset_links'){
     const p=item.payload, type=p.entity_type, id=p.entity_id;
     const table=type==='exam_order'?'exam_orders':type==='exam_order_item'?'exam_order_items':
       type==='exam_session'?'exam_sessions':type==='consultation'?'consultas':
-      type==='rehab_program'?'rehab_programs_m5':type==='rehab_session'?'rehab_sessions_m5':null;
+      type==='rehab_program'?'rehab_programs_m5':type==='rehab_session'?'rehab_sessions_m5':
+      type==='hospitalization'?'hospitalizations_a5':type==='hospitalization_event'?'hospitalization_events_a5':
+      type==='hospitalization_discharge'?'hospitalization_discharge_a5':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
   return null;

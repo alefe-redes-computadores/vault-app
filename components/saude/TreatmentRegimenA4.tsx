@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useToast } from "@/components/ToastProvider";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Activity, CalendarDays, CheckCircle2, ChevronDown, History, Loader2, ShieldCheck } from "lucide-react";
@@ -43,15 +44,17 @@ const LATERALITIES = [
   {value:"bilateral",label:"Bilateral"},
   {value:"nao_aplicavel",label:"Não se aplica"},
 ] as const;
-const field = "w-full min-h-11 rounded-2xl border border-surface-border/60 bg-surface-raised px-3 py-2.5 text-sm text-ink-primary placeholder:text-ink-faint focus:outline-none focus:border-violet-400/60";
+const field = "w-full min-h-11 rounded-2xl border border-surface-border/60 bg-surface-raised px-3 py-2.5 text-sm text-ink-primary placeholder:text-ink-faint focus:outline-none focus:border-emerald-400/60";
 const label = "mb-1.5 block text-xs font-semibold text-ink-primary";
 
 export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doctors,consultations,documents}: Props) {
   const {trigger} = useHapticFeedback();
+  const {showToast}=useToast();
+  const formDetails=useRef<HTMLDetailsElement|null>(null);
   const [kind,setKind] = useState<A1PhaseKind>("ajuste");
   const [nature,setNature] = useState<"temporario"|"continuo"|"nao_informado">("nao_informado");
   const [source,setSource] = useState<A1Source>("relato_pessoal");
-  const [date,setDate] = useState(a1Today());
+  const [date,setDate] = useState("");
   const [title,setTitle] = useState("");
   const [notes,setNotes] = useState("");
   const [medicationId,setMedicationId] = useState("");
@@ -74,7 +77,7 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
     setMedicationId("");setDoctorId("");setConsultationId("");setDocumentId("");
     setDose("");setFrequency("");setTimes("");setRoute("");setSide("");
     setBodySite("");setPlannedEnd("");setTitle("");setNotes("");
-    setKind("ajuste");setNature("nao_informado");setSource("relato_pessoal");setDate(a1Today());setError("");setSuccess("");
+    setKind("ajuste");setNature("nao_informado");setSource("relato_pessoal");setDate("");setError("");setSuccess("");
   },[treatmentId,userId,personId]);
 
   const events = useLiveQuery(async () => {
@@ -96,6 +99,7 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
     setSaving(true);setError("");setSuccess("");
     try {
       if (!userId || !personId || !treatmentId) throw new Error("Selecione uma pessoa válida para registrar.");
+      if (!date) throw new Error("Informe a data efetiva do fato; não será preenchida automaticamente.");
       const hasStructuredRegimen = Boolean(nature!=="nao_informado" || medicationId || dose.trim() || frequency.trim() || times.trim() || route.trim() || side || bodySite.trim() || plannedEnd || consultationId || documentId);
       if (kindIsRegimen && !hasStructuredRegimen && !notes.trim()) throw new Error("Informe a mudança declarada ou descreva-a em observações.");
       const id = await clinicalA1Repository.recordPhase({
@@ -113,22 +117,25 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
       setSuccess(`Mudança registrada localmente (${id.slice(0,8)}). A sincronização pode continuar pendente.`);
       setTitle("");setNotes("");setDose("");setFrequency("");setTimes("");setRoute("");setSide("");
       setBodySite("");setPlannedEnd("");setMedicationId("");setDoctorId("");setConsultationId("");setDocumentId("");
-      trigger("success");
+       formDetails.current?.removeAttribute('open');
+       showToast('Mudança registrada; os fatos anteriores foram preservados.','success');
+       trigger("success");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível registrar a mudança de tratamento.");
-      trigger("error");
+       showToast(cause instanceof Error ? cause.message : 'Não foi possível registrar a mudança.','error');
+       trigger("error");
     } finally { setSaving(false); }
   }
 
-  return <section id="tratamento-regimes" className="vault-deferred scroll-mt-24 rounded-[28px] border border-violet-400/20 bg-surface/80 p-4 sm:p-5" aria-label="Histórico versionado do tratamento">
+  return <section id="tratamento-regimes" className="vault-deferred scroll-mt-24 rounded-[28px] border border-surface-border bg-surface/80 p-4 sm:p-5" aria-label="Histórico versionado do tratamento">
     <div className="flex items-start gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-200"><History size={19}/></div>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-surface text-ink-muted"><History size={19}/></div>
       <div className="min-w-0 flex-1">
         <h2 className="font-display text-base font-semibold text-ink-primary">Regime e mudanças do tratamento</h2>
         <p className="mt-1 text-xs leading-5 text-ink-muted">Fases registradas por data, origem e vínculo real. Este histórico não altera doses tomadas, estoque, receita ou status do tratamento automaticamente.</p>
       </div>
     </div>
-    <p className="mt-3 rounded-2xl border border-violet-400/15 bg-violet-400/[0.05] px-3 py-2 text-xs leading-5 text-violet-100" role="note">{a4RecordedSummary(history)}</p>
+    <p className="mt-3 rounded-2xl border border-surface-border/70 bg-surface-raised/30 px-3 py-2 text-xs leading-5 text-ink-primary" role="note">{a4RecordedSummary(history)}</p>
     <div className="mt-3 space-y-2">
       {history.length===0 ? <p className="text-xs text-ink-muted">Nenhuma fase registrada. Você pode documentar um fato sem assumir que o tratamento foi iniciado ou encerrado automaticamente.</p> : history.map(({item,nextRecordedDate,isLatestRecorded}) => {
         const s=item.regime_a4;
@@ -137,11 +144,11 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
         return <article key={item.id} className="rounded-2xl border border-surface-border/50 bg-surface-raised px-3.5 py-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0"><p className="text-sm font-semibold text-ink-primary">{item.titulo}</p><p className="mt-1 text-xs text-ink-muted">{a4PhaseKindLabel(item.tipo)} · {a1DateBR(item.data_efetiva)}</p></div>
-            {isLatestRecorded?<span className="rounded-full border border-violet-400/20 px-2 py-1 text-[10px] text-violet-200">Último registro</span>:null}
+            {isLatestRecorded?<span className="rounded-full border border-surface-border px-2 py-1 text-[10px] text-ink-muted">Último registro</span>:null}
           </div>
           <p className="mt-2 text-xs text-ink-muted">{a4PhaseSourceLabel(item.origem)}{doctor?` · ${doctor.nome}`:""}{nextRecordedDate?` · Registro posterior em ${a1DateBR(nextRecordedDate)}`:""}</p>
           {s ? <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-ink-primary">
-            <span className="rounded-lg bg-violet-400/10 px-2 py-1 text-violet-200">{s.natureza==="continuo"?"Contínuo declarado":s.natureza==="temporario"?"Temporário declarado":"Duração não informada"}</span>
+            <span className="rounded-lg bg-surface px-2 py-1 text-ink-muted">{s.natureza==="continuo"?"Contínuo declarado":s.natureza==="temporario"?"Temporário declarado":"Duração não informada"}</span>
             {medicine?<Link href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicine.id||"")}`} className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-200 underline-offset-2 focus-visible:underline">{medicine.nome}</Link>:s.medicamento_id?<span className="rounded-lg border border-amber-400/20 px-2 py-1 text-amber-200">Medicamento vinculado indisponível nesta pessoa</span>:null}
             {[s.dose_texto,s.frequencia_texto,s.via,s.local_anatomico,...s.horarios].filter(Boolean).map((value,i)=><span key={`${item.id}-${i}`} className="rounded-lg bg-void/70 px-2 py-1">{value}</span>)}
             {s.lateralidade&&s.lateralidade!=="nao_aplicavel"?<span className="rounded-lg bg-void/70 px-2 py-1">{s.lateralidade}</span>:null}
@@ -149,18 +156,18 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
             {s.consulta_id?<span className="rounded-lg border border-sky-400/20 px-2 py-1 text-sky-200">Consulta vinculada</span>:null}
             {s.documento_id?<span className="rounded-lg border border-amber-400/20 px-2 py-1 text-amber-200">Documento vinculado</span>:null}
           </div>:null}
-          {s?.fim_previsto?<p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Revisão prevista não cria alerta automaticamente. <Link href="/saude/lembretes" className="font-semibold text-violet-200 underline underline-offset-2">Configurar um lembrete voluntariamente</Link>.</p>:null}
+          {s?.fim_previsto?<p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Revisão prevista não cria alerta automaticamente. <Link href="/saude/lembretes" className="font-semibold text-ink-muted underline underline-offset-2">Configurar um lembrete voluntariamente</Link>.</p>:null}
           {item.observacoes?<p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-ink-muted">{item.observacoes}</p>:null}
           {!item.synced?<p className="mt-2 text-[11px] text-amber-200">Pendente de sincronização — registro local preservado</p>:null}
         </article>;
       })}
     </div>
 
-    <details className="mt-4 rounded-2xl border border-violet-400/20 bg-violet-400/[0.04] group">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-violet-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+    <details ref={formDetails} className="mt-4 rounded-2xl border border-surface-border bg-surface-raised/35 group">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
         <span className="flex items-center gap-2"><Activity size={17}/>Registrar mudança real</span><ChevronDown className="group-open:rotate-180 transition-transform" size={17}/>
       </summary>
-      <form onSubmit={submit} className="space-y-4 border-t border-violet-400/15 px-4 pb-4 pt-4">
+      <form onSubmit={submit} className="space-y-4 border-t border-surface-border/70 px-4 pb-4 pt-4">
         <p className="text-xs leading-5 text-ink-muted">Novo registro é histórico e aditivo. Não modifica a prescrição médica nem gera lembretes ou tomadas automaticamente.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div><span className={label}>Tipo de registro</span><HealthRelationPicker title="Tipo de evento" value={kind} onValueChange={v=>setKind(v as A1PhaseKind)} className={field}>{KINDS.map(k=><option value={k.value} key={k.value}>{k.label}</option>)}</HealthRelationPicker></div>
@@ -188,7 +195,7 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
         <div className="flex items-start gap-2 rounded-xl bg-void/70 p-3 text-xs leading-5 text-ink-muted"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-emerald-300"/><span>Registro associado à pessoa ativa. Salvar aqui não altera medicamentos, logs de dose, estoque ou status do tratamento. A origem é uma declaração, não uma prescrição validada automaticamente.</span></div>
         {error?<p className="rounded-xl border border-rose-400/25 bg-rose-400/5 p-3 text-xs text-rose-200" role="alert">{error}</p>:null}
         {success?<p className="flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/5 p-3 text-xs text-emerald-200" role="status"><CheckCircle2 size={16}/>{success}</p>:null}
-        <button disabled={saving||!userId||!personId} type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-400/15 px-4 text-sm font-semibold text-violet-100 active:scale-[.99] disabled:opacity-50">{saving?<Loader2 size={17} className="animate-spin"/>:<CalendarDays size={17}/>} {saving?"Registrando…":"Registrar fase no histórico"}</button>
+        <button disabled={saving||!userId||!personId} type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-emerald-300/30 bg-emerald-400 px-4 text-sm font-semibold text-void active:scale-[.99] disabled:opacity-50">{saving?<Loader2 size={17} className="animate-spin"/>:<CalendarDays size={17}/>} {saving?"Registrando…":"Registrar fase no histórico"}</button>
       </form>
     </details>
   </section>;

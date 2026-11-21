@@ -43,6 +43,7 @@ import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { ExamOrderM1, ExamOrderItemM1, ExamSessionM1, ExamSessionItemM1, ClinicalAssetM1, ClinicalAssetLinkM1, ConsultationExamOrderLinkM1 } from '@/lib/clinical-exams-m1/types';
 import type { SurgeryConsultationLinkM4P2 } from '@/lib/clinical-journey-m4/surgery-links-p2';
 import type { RehabProgramM5, RehabTeamM5, RehabSessionM5, RehabSessionTeamM5, RehabOriginM5, RehabSessionEventM5, RehabMilestoneM5 } from '@/lib/rehab-m5/types';
+import type { A5Episode,A5Stay,A5Team,A5Event,A5Relation,A5Discharge } from '@/lib/hospitalizations-a5/types';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -212,6 +213,12 @@ class VaultDB extends Dexie {
   rehab_origin_links_m5!: Table<RehabOriginM5,string>;
   rehab_session_events_m5!: Table<RehabSessionEventM5,string>;
   rehab_milestones_m5!: Table<RehabMilestoneM5,string>;
+  hospitalizations_a5!: Table<A5Episode,string>;
+  hospitalization_stays_a5!: Table<A5Stay,string>;
+  hospitalization_team_a5!: Table<A5Team,string>;
+  hospitalization_events_a5!: Table<A5Event,string>;
+  hospitalization_relations_a5!: Table<A5Relation,string>;
+  hospitalization_discharge_a5!: Table<A5Discharge,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
@@ -1517,6 +1524,15 @@ class VaultDB extends Dexie {
           if(p[key]===undefined)p[key]=null;
         if(p.reminder_opt_in===undefined)p.reminder_opt_in=false;
       });
+    });
+    // A5 Internações 360: six additive stores, local and remote names identical.
+    this.version(54).stores({
+      hospitalizations_a5: 'id, user_id, person_id, [user_id+person_id], status, planned_admission_on, admitted_on, updated_at, deleted_at, synced',
+      hospitalization_stays_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, entered_on, updated_at, deleted_at, synced',
+      hospitalization_team_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, professional_id, updated_at, deleted_at, synced',
+      hospitalization_events_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, kind, occurred_on, updated_at, deleted_at, synced',
+      hospitalization_relations_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, entity_id, [entity_type+entity_id], updated_at, deleted_at, synced',
+      hospitalization_discharge_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, updated_at, deleted_at, synced',
     });
 
   }

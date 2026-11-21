@@ -31,6 +31,7 @@ const imports={
  '@/components/DatePicker':{CustomDatePicker:()=>null},
  '@/components/saude/HealthTimePicker':{HealthTimePicker:()=>null},
  '@/components/saude/MedicationFormatIcon':{MedicationFormatIcon:()=>null},
+ '@/lib/medications/visual-copy':require('./vault-visual-copy-test.cjs'),
  '@/lib/medications/form-presentation':{MEDICATION_IDENTITY_COLORS:['#F00000','#00FF00','#112233']},
  '@/lib/health-supply/temporary-course':{
  temporaryCourseSlots:course=>{if(!course.start || course.days<1 || course.days>30 || course.times.some(x=>!/^\d{2}:\d{2}$/.test(x)))throw Error('invalid');const slots=[];
@@ -113,7 +114,7 @@ recipeButtons.forEach(x=>x.props.onClick());ok(events.join('|')==='plan|link|rec
 const {MedicationJourneySummary}=load(files[7]);
 const snap={overdueWithdrawals:1,pendingWithdrawals:2,plannedAcquisitions:1,completedAcquisitions:3,prescriptions:2,latestPrescriptionDate:'2026-11-01',latestAcquisitionDate:'2026-11-02',nextPlannedAcquisitionDate:'2026-11-10',nextWithdrawalDate:'2026-11-04'};
 let opened=[];let journey=MedicationJourneySummary({snapshot:snap,medicationId:'med 1',onNavigate:h=>opened.push(h)});
-ok(text(journey).includes('Retiradas: 2 pendente(s)'),'contador não anuncia retirada realizada');
+ok(text(journey).includes('Retiradas: 2 pendentes'),'contador não anuncia retirada realizada');
 ok(text(journey).includes('Compras')===false || text(journey).includes('Planejadas'),'planejamento continua identificado como tal');
 ok(text(journey).includes('Receitas')&&text(journey).includes('Aquisições'),'eventos separados');
 ok(nodes(journey,'button').some(b=>String(b.props['aria-label']).includes('retiradas')),'navegação de retiradas comunica escopo');

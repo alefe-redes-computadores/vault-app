@@ -82,7 +82,7 @@ export interface ClinicalAssetM1 extends ClinicalRecordBaseM1 {
 }
 export interface ClinicalAssetLinkM1 extends ClinicalRecordBaseM1 {
   asset_id: string;
-  entity_type: 'exam_order' | 'exam_order_item' | 'exam_session' | 'consultation' | 'rehab_program' | 'rehab_session';
+  entity_type: 'exam_order' | 'exam_order_item' | 'exam_session' | 'consultation' | 'rehab_program' | 'rehab_session' | 'hospitalization' | 'hospitalization_event' | 'hospitalization_discharge';
   entity_id: string;
   role: 'request' | 'result' | 'protocol' | 'supporting';
   note: string | null;

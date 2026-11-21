@@ -75,7 +75,7 @@ ok(summary.includes('availableMedicationDocuments')&&!summary.includes('availabl
 // A M139 publicada usa o componente de navegação com contador explícito.
 // Preservar contador e entrada canônica, sem voltar ao código legado.
 const medicationDetails=read('app/saude/medicamentos/detalhes/page.tsx');
-ok(medicationDetails.includes('historyCount={renovacoes.length}')&&medicationDetails.includes('<MedicationDetailNavigation')&&medicationDetails.includes('<HealthSupplyEntry medicamentoId={med.id!}/>'),
+ok(medicationDetails.includes('historyCount={renovacoes.length}')&&medicationDetails.includes('<MedicationDetailNavigation')&&medicationDetails.includes('<HealthSupplyEntry medicamentoId={med.id!} completedAcquisitions={journeySnapshot.completedAcquisitions}/>'),
   'contador real e entrada canônica de fornecimento preservados na navegação atual');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.includes('"scripts/test-vault-m140-supply.cjs"')&&gate.includes('"scripts/test-vault-m139-global-visual.cjs"')&&gate.includes('"scripts/test-vault-m142-documents.cjs"'),'M139, M140 e M142 integrados ao gate global');
