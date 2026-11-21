@@ -60,6 +60,7 @@ import {
 import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
 import { clinicalExamDependenciesM1 } from "@/lib/clinical-exams-m1/dependencies";
 import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
+import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-links-p2";
 import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
   blockedSyncDependency,
@@ -5187,6 +5188,7 @@ export function useSyncQueue() {
         case "clinical_assets": await markRecordSyncedIfCurrent(db.clinical_assets,payload.id,expectedUpdatedAt); break;
         case "clinical_asset_links": await markRecordSyncedIfCurrent(db.clinical_asset_links,payload.id,expectedUpdatedAt); break;
         case "consultation_exam_order_links": await markRecordSyncedIfCurrent(db.consultation_exam_order_links,payload.id,expectedUpdatedAt); break;
+        case "surgery_consultation_links_m4": await markRecordSyncedIfCurrent(db.surgery_consultation_links_m4,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5457,6 +5459,16 @@ export function useSyncQueue() {
           );
           return;
 
+        case 'surgery_consultation_links_m4': {
+          const client=requireSupabase();const {data,error}=await client.auth.getUser();
+          if(error||!data.user)throw Error('M4 P2 requer sessão autenticada.');
+          for(const table of ['cirurgias','consultas'] as const){
+            const id=table==='cirurgias'?item.payload.cirurgia_id:item.payload.consulta_id;
+            if(typeof id!=='string'||await db.syncQueue.where('chave').equals(`${table}:${id}`).first())
+              throw new SyncDependencyDeferredError(`M4 P2 aguarda ${table} ser sincronizada.`);
+          }
+          await syncSurgeryConsultationLinkM4P2(item,data.user.id);return;
+        }
         case "careflow_events_m2":
           await syncCareFlowM2(item);
           return;

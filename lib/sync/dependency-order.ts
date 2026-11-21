@@ -36,6 +36,7 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   exam_session_items: [["order_id", "exam_orders"], ["exam_order_item_id", "exam_order_items"], ["session_id", "exam_sessions"]],
   clinical_asset_links: [["asset_id", "clinical_assets"]],
   consultation_exam_order_links: [["order_id", "exam_orders"], ["consultation_id", "consultas"]],
+  surgery_consultation_links_m4: [["cirurgia_id", "cirurgias"], ["consulta_id", "consultas"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {

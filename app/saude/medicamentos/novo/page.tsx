@@ -2,6 +2,7 @@
 "use client";
 import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
+import { MedicationStableTimeInputM4P2 } from "@/components/saude/MedicationStableTimeInputM4P2";
 import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { MedicationIdentityColorPicker } from "@/components/saude/MedicationIdentityColorPicker";
@@ -3936,39 +3937,11 @@ export default function NovoMedicamentoPage() {
                               : ""
                           }`}
                         >
-                          <Input
+                          <MedicationStableTimeInputM4P2
                             label="Horário inicial"
-                            type="text"
-                            placeholder="00:00"
-                            maxLength={
-                              5
-                            }
-                            value={
-                              primeiroHorario
-                            }
-                            onChange={
-                              (
-                                event
-                              ) =>
-                                setPrimeiroHorario(
-                                  handleTimeMask(
-                                    event
-                                      .target
-                                      .value
-                                  )
-                                )
-                            }
-                            error={
-                              errors.primeiroHorario
-                            }
-                            icon={
-                              <Clock
-                                size={
-                                  16
-                                }
-                                className="text-ink-muted"
-                              />
-                            }
+                            value={primeiroHorario}
+                            onChange={setPrimeiroHorario}
+                            error={errors.primeiroHorario}
                           />
                         </div>
                       </div>

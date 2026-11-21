@@ -755,6 +755,7 @@ export interface SyncQueueItem {
     | "clinical_assets"
     | "clinical_asset_links"
     | "consultation_exam_order_links"
+    | "surgery_consultation_links_m4"
     | "health_reminders"
     | "notification_policies_p2"
     | "health_profiles"

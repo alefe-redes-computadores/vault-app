@@ -4,6 +4,7 @@
 "use client";
 
 import { useId } from "react";
+import { MEDICATION_ADDITIONAL_FORMATS } from "@/lib/medications/form-presentation";
 import { normalizedPillV8 } from "@/lib/health-intelligence/visual-studio-v8";
 
 interface MedicationFormatIconProps {
@@ -34,6 +35,13 @@ export function MedicationFormatIcon({
   const normalizedFormat = p.kind;
   const elongated = normalizedFormat === "capsula" || normalizedFormat === "oblongo" || normalizedFormat === "oblongo_sulcado";
   const scored = normalizedFormat === "partido" || normalizedFormat === "oblongo_sulcado";
+  // Não mostrar um comprimido para suspensão, creme, spray ou outros formatos reais.
+  // O ícone é exatamente o que o catálogo "Mais formatos" oferece.
+  const additional = MEDICATION_ADDITIONAL_FORMATS.find(item=>item.id===canonFormat);
+  if(additional && !['oblongo','oblongo_sulcado','sublingual'].includes(canonFormat)) {
+    const Icon=additional.icon;
+    return <Icon size={size} stroke={p.first} fill="none" className={className} aria-hidden="true"/>;
+  }
 
   return (
     <svg

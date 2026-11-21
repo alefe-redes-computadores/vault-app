@@ -1,6 +1,7 @@
 "use client";
 
 import { MEDICATION_IDENTITY_COLORS } from "@/lib/medications/form-presentation";
+import { Check } from "lucide-react";
 
 /** M7: paleta acessível única para edição e criação.
  * A regra canônica de até duas cores permanece em toggleMedicationIdentityColor
@@ -24,6 +25,7 @@ export function MedicationIdentityColorPicker({
     <div className={`flex flex-wrap ${density === "compact" ? "gap-2.5" : "gap-3"}`} role="group" aria-label="Cores do medicamento">
       {MEDICATION_IDENTITY_COLORS.map(hex => {
         const active = colors.includes(hex);
+        const order = colors.indexOf(hex);
         return (
           <button
             type="button"
@@ -33,7 +35,7 @@ export function MedicationIdentityColorPicker({
             aria-pressed={active}
             className={`h-11 w-11 shrink-0 rounded-full border-[3px] transition-[transform,border-color,box-shadow] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 motion-reduce:transform-none motion-reduce:transition-none ${active ? "scale-105 border-emerald-300 shadow-[0_0_0_1px_rgba(0,0,0,.25)]" : "border-surface-border/25"}`}
             style={{ backgroundColor: hex }}
-          />
+          >{active&&<span aria-hidden="true" className="grid size-6 place-items-center rounded-full border border-white/20 bg-black/65 text-[10px] font-bold text-white">{maxColors===2?order+1:<Check size={13}/>}</span>}</button>
         );
       })}
       <label
@@ -46,6 +48,7 @@ export function MedicationIdentityColorPicker({
         <input type="color" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Cor personalizada do medicamento" onChange={event => onToggleColor(event.target.value.toUpperCase())}/>
       </label>
     </div>
+    {colors.length>0&&<div className="flex flex-wrap gap-2" aria-label="Ordem das cores escolhidas">{colors.map((color,index)=><span key={`${color}-${index}`} className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-surface-border/60 bg-surface-raised/50 px-2 text-[10px] text-ink-secondary"><span className="size-3.5 rounded-full border border-white/25" style={{backgroundColor:color}}/>{maxColors===2?`${index+1}ª cor`: 'Cor'} · {color}</span>)}</div>}
     {customColors.length > 0 && (
       <div className="flex flex-wrap gap-2" role="group" aria-label="Cores personalizadas selecionadas">
         {customColors.map(color => (

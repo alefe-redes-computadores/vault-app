@@ -37,6 +37,7 @@ import {
 } from "dexie-react-hooks";
 
 import { loadSurgeryDetailDossier } from "@/lib/surgery-detail-dossier";
+import { SurgeryConsultationLinksM4P2 } from "@/components/saude/SurgeryConsultationLinksM4P2";
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
@@ -972,6 +973,7 @@ function DetalhesCirurgiaContent() {
         </header>
 
         <div className="px-5 pt-4"><button type="button" onClick={()=>router.push(`/saude/jornada?cirurgia=${encodeURIComponent(cirurgia.id||'')}`)} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-sky-300/20 bg-sky-300/[.06] px-4 text-left text-xs font-semibold text-sky-200"><span>Ver jornada clínica relacionada</span><Stethoscope size={17}/></button></div>
+        <div className="px-5 pt-3"><SurgeryConsultationLinksM4P2 surgeryId={cirurgia.id!}/></div>
         <section className="space-y-5 px-5 pt-6">
           {/* ==================================================
               HERO

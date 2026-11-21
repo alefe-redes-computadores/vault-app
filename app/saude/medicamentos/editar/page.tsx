@@ -2,6 +2,7 @@
 "use client";
 import { projectMedicationCatalogChoices } from "@/lib/medications/catalog-review-projection";
 import { toggleMedicationIdentityColor } from "@/lib/medications/identity-color-selection";
+import { MedicationStableTimeInputM4P2 } from "@/components/saude/MedicationStableTimeInputM4P2";
 import { MedicationAppearanceColors, MedicationAppearancePanel } from "@/components/saude/MedicationAppearancePanel";
 import { MedicationFormatPicker } from "@/components/saude/MedicationFormatPicker";
 import { PillStudioV8 } from "@/components/saude/visual-studio/PillStudioV8";
@@ -5238,40 +5239,11 @@ function EditarMedicamentoContent() {
                               : ""
                           }`}
                         >
-                          <Input
+                          <MedicationStableTimeInputM4P2
                             label="Horário inicial"
-                            type="text"
-                            placeholder="00:00"
-                            maxLength={
-                              5
-                            }
-                            value={
-                              primeiroHorario
-                            }
-                            onChange={
-                              (
-                                event
-                              ) => {
-                                setPrimeiroHorario(
-                                  handleTimeMask(
-                                    event.target.value
-                                  )
-                                );
-
-                                markChanged();
-                              }
-                            }
-                            error={
-                              errors.primeiroHorario
-                            }
-                            icon={
-                              <Clock
-                                size={
-                                  16
-                                }
-                                className="text-ink-muted"
-                              />
-                            }
+                            value={primeiroHorario}
+                            onChange={next => {setPrimeiroHorario(next); markChanged();}}
+                            error={errors.primeiroHorario}
                           />
                         </div>
                       </div>
@@ -5305,27 +5277,11 @@ function EditarMedicamentoContent() {
                                 }
                                 className="flex items-center gap-1"
                               >
-                                <input
-                                  type="text"
-                                  placeholder="00:00"
-                                  value={
-                                    horario
-                                  }
-                                  maxLength={
-                                    5
-                                  }
-                                  onChange={
-                                    (
-                                      event
-                                    ) =>
-                                      updateHorario(
-                                        index,
-                                        handleTimeMask(
-                                          event.target.value
-                                        )
-                                      )
-                                  }
-                                  className="w-[76px] rounded-xl border border-surface-border bg-void py-2.5 text-center font-mono text-sm text-ink-primary outline-none shadow-inner focus:border-ice"
+                                <MedicationStableTimeInputM4P2
+                                  compact
+                                  value={horario}
+                                  onChange={next => updateHorario(index,next)}
+                                  className="w-[110px]"
                                 />
 
                                 <button

@@ -41,6 +41,7 @@ import type {
 
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { ExamOrderM1, ExamOrderItemM1, ExamSessionM1, ExamSessionItemM1, ClinicalAssetM1, ClinicalAssetLinkM1, ConsultationExamOrderLinkM1 } from '@/lib/clinical-exams-m1/types';
+import type { SurgeryConsultationLinkM4P2 } from '@/lib/clinical-journey-m4/surgery-links-p2';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -202,6 +203,7 @@ class VaultDB extends Dexie {
   clinical_assets!: Table<ClinicalAssetM1,string>;
   clinical_asset_links!: Table<ClinicalAssetLinkM1,string>;
   consultation_exam_order_links!: Table<ConsultationExamOrderLinkM1,string>;
+  surgery_consultation_links_m4!: Table<SurgeryConsultationLinkM4P2,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
@@ -1479,6 +1481,10 @@ class VaultDB extends Dexie {
       a1_treatment_phases: 'id, user_id, person_id, [user_id+person_id], tratamento_id, data_efetiva, updated_at, deleted_at, synced',
       a1_prescription_links: 'id, user_id, person_id, [user_id+person_id], medicamento_id, renovacao_atual_id, updated_at, deleted_at, synced',
       a1_supply_locations: 'id, user_id, person_id, [user_id+person_id], fornecimento_id, inicio_vigencia, updated_at, deleted_at, synced',
+    });
+    // M4 P2: schema aditivo, versão superior à A1 V50. Sem migração destrutiva.
+    this.version(51).stores({
+      surgery_consultation_links_m4: 'id, user_id, person_id, [user_id+person_id], cirurgia_id, consulta_id, role, updated_at, deleted_at, synced',
     });
 
   }

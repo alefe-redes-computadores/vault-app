@@ -54,10 +54,12 @@ function compileMock(file,imports){
 const domain=compileMock('lib/health-intelligence/visual-studio-v8.ts',{'./brain-v7-universal':{validBrainDayV7:()=>true,shiftBrainDayV7:()=>''}});
 const jsx=(type,props)=>({type,props:props||{}});
 let uniq=0;
+const m148AdditionalSprayIcon=()=>null;
 const ui=compileMock('components/saude/MedicationFormatIcon.tsx',{
   react:{useId:()=>`:icon-${++uniq}:`},
   'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},
   '@/lib/health-intelligence/visual-studio-v8':{normalizedPillV8:domain.normalizedPillV8},
+  '@/lib/medications/form-presentation':{MEDICATION_ADDITIONAL_FORMATS:[{id:'spray',icon:m148AdditionalSprayIcon}]},
 });
 const all=(node)=>node&&typeof node==='object'?[node,...(Array.isArray(node.props?.children)?node.props.children:[node.props?.children]).flatMap(all)]:[];
 const formats=['capsula','comprimido','partido','oblongo','oblongo_sulcado','gota','adesivo','injecao'];
@@ -69,6 +71,11 @@ for(const formato of formats){
   ok(tree.some(item=>item.type==='path'||item.type==='ellipse'||item.type==='rect'),`${formato}: contorno real`);
   ok(tree.some(item=>item.props?.stopColor==='#ab12ef'),`${formato}: cor declarada preservada`);
 }
+// M4 P2: ícone não comprimido usa o catálogo novo, sem apagar as provas SVG.
+const sprayNode=ui.MedicationFormatIcon({formato:'spray',cores:['#ab12ef','#45bc98'],size:23});
+ok(sprayNode.type===m148AdditionalSprayIcon,'M4 P2: spray usa o ícone próprio do catálogo');
+ok(sprayNode.props.size===23&&sprayNode.props.stroke==='#ab12ef',
+  'M4 P2: tamanho e cor declarada preservados no ícone especial');
 const shade=all(ui.MedicationFormatIcon({formato:'capsula',cores:['url(javascript:evil)'],size:18}));
 ok(shade.every(item=>item.props?.stopColor!=='url(javascript:evil)'),'cores fora de HEX bloqueadas pelo normalizador V8');
 const cap1=ui.MedicationFormatIcon({formato:'capsula',cores:['#000000','#ffffff']});

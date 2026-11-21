@@ -307,6 +307,7 @@ async function performPullAllData(userId: string): Promise<void> {
             // mesmo quando não lança exception.
             tableOk = false;
             if (remoteTable === "dose_logs") criticalPullErrors.push(error.message || "Consulta de doses falhou");
+            if (remoteTable === "surgery_consultation_links_m4") criticalPullErrors.push(error.message || "M4 P2: vínculos de cirurgia indisponíveis");
             if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${error.message || 'Erro de rede'}`);
             console.error(
               `❌ [Pull] Erro ao buscar ${remoteTable}:`,
@@ -1748,6 +1749,12 @@ async function performPullAllData(userId: string): Promise<void> {
             ),
     });
 
+    // M4 P2: pull owner-scoped, respeita fila local e tombstones; falha entra no gate crítico.
+    await processTable({
+      remoteTable: 'surgery_consultation_links_m4',queueTable: 'surgery_consultation_links_m4',
+      localTable: db.surgery_consultation_links_m4,
+      query: async()=>await supabase.from('surgery_consultation_links_m4').select('*').eq('user_id',userId),
+    });
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

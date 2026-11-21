@@ -2,6 +2,7 @@
 import { useId } from 'react';
 import type { Medicamento } from '@/lib/types';
 import { normalizedPillV8 } from '@/lib/health-intelligence/visual-studio-v8';
+import { MEDICATION_ADDITIONAL_FORMATS } from '@/lib/medications/form-presentation';
 
 type Props={medication:Pick<Medicamento,'formato'|'forma_farmaceutica'|'cores'|'cor_principal'|'cor_secundaria'>;large?:boolean};
 /** A high-quality SVG illustration of the *declared* presentation. Not a photo of a real tablet. */
@@ -11,8 +12,11 @@ export function PillStudioV8({medication,large=false}:Props){
   const a=`pillA-${id}`,b=`pillB-${id}`,light=`pillL-${id}`,shadow=`pillS-${id}`;
   const elongated=['oblongo','oblongo_sulcado','capsula'].includes(p.kind);
   const scored=['partido','oblongo_sulcado'].includes(p.kind);
+  const raw=(medication.formato||medication.forma_farmaceutica||'').trim().toLowerCase();
+  const additional=MEDICATION_ADDITIONAL_FORMATS.find(x=>x.id===raw&&!['oblongo','oblongo_sulcado','sublingual'].includes(raw));
+  const AdditionalIcon=additional?.icon;
   return <div className={`relative mx-auto grid aspect-square place-items-center overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_45%_34%,rgba(148,163,184,.13),rgba(15,23,42,.8)_65%,rgba(5,9,21,.96))] ${large?'max-w-[280px]':'max-w-[160px]'}`} role="img" aria-label={`Ilustração de apresentação ${p.kind}; aparência declarada, não imagem da embalagem real`}>
-    <svg viewBox="0 0 240 240" className="h-full w-full" aria-hidden="true">
+    <svg viewBox="0 0 240 240" className={`${additional?'hidden':'h-full w-full'}`} aria-hidden="true">
       <defs>
         <linearGradient id={a} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset=".27" stopColor={p.first}/><stop offset=".73" stopColor={p.first}/><stop offset="1" stopColor="#000" stopOpacity=".27"/></linearGradient>
         <linearGradient id={b} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".25"/><stop offset=".4" stopColor={p.second}/><stop offset="1" stopColor="#000" stopOpacity=".18"/></linearGradient>
@@ -48,6 +52,7 @@ export function PillStudioV8({medication,large=false}:Props){
       {p.kind==='adesivo'?<g transform="rotate(-15 120 115)"><rect x="57" y="53" width="128" height="128" rx="21" fill={`url(#${a})`} stroke="#fff" strokeOpacity=".33" strokeWidth="2"/><rect x="72" y="68" width="98" height="98" rx="15" fill={`url(#${b})`} stroke="#fff" strokeOpacity=".25" strokeDasharray="4 5"/></g>:null}
       {p.kind==='injecao'?<g transform="rotate(-42 120 120)"><rect x="96" y="61" width="48" height="119" rx="10" fill={`url(#${a})`} stroke="#fff" strokeOpacity=".3" strokeWidth="2"/><path d="M111 60V27M129 60V27M108 27H132M120 180V212" stroke="#e2e8f0" strokeWidth="4" strokeLinecap="round"/><path d="M108 90H131M108 112H131M108 134H131" stroke="#fff" strokeOpacity=".4" strokeWidth="2"/></g>:null}
     </svg>
+    {AdditionalIcon && <span aria-hidden="true" className="grid place-items-center rounded-[28px] border border-white/10 bg-surface-raised/25" style={{width:large?150:90,height:large?150:90,color:p.first}}><AdditionalIcon size={large?100:60} stroke={p.first} fill="none"/></span>}
     <span className="pointer-events-none absolute bottom-2 left-2 right-2 text-center text-[9px] font-semibold uppercase tracking-[.16em] text-slate-400">Prévia ilustrativa · não é foto do produto</span>
   </div>;
 }
