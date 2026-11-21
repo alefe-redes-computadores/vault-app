@@ -61,6 +61,8 @@ import { setVaultSyncRuntime } from "@/lib/sync/runtime-status";
 import { clinicalExamDependenciesM1 } from "@/lib/clinical-exams-m1/dependencies";
 import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
 import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-links-p2";
+import { syncRehabM5 } from "@/lib/rehab-m5/sync";
+import { REHAB_TABLES_M5, type RehabTableM5 } from "@/lib/rehab-m5/types";
 import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
   blockedSyncDependency,
@@ -5194,6 +5196,12 @@ export function useSyncQueue() {
         case "clinical_asset_links": await markRecordSyncedIfCurrent(db.clinical_asset_links,payload.id,expectedUpdatedAt); break;
         case "consultation_exam_order_links": await markRecordSyncedIfCurrent(db.consultation_exam_order_links,payload.id,expectedUpdatedAt); break;
         case "surgery_consultation_links_m4": await markRecordSyncedIfCurrent(db.surgery_consultation_links_m4,payload.id,expectedUpdatedAt); break;
+        case "rehab_programs_m5": await markRecordSyncedIfCurrent(db.rehab_programs_m5,payload.id,expectedUpdatedAt); break;
+        case "rehab_program_team_m5": await markRecordSyncedIfCurrent(db.rehab_program_team_m5,payload.id,expectedUpdatedAt); break;
+        case "rehab_sessions_m5": await markRecordSyncedIfCurrent(db.rehab_sessions_m5,payload.id,expectedUpdatedAt); break;
+        case "rehab_session_team_m5": await markRecordSyncedIfCurrent(db.rehab_session_team_m5,payload.id,expectedUpdatedAt); break;
+        case "rehab_origin_links_m5": await markRecordSyncedIfCurrent(db.rehab_origin_links_m5,payload.id,expectedUpdatedAt); break;
+        case "rehab_session_events_m5": await markRecordSyncedIfCurrent(db.rehab_session_events_m5,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5464,6 +5472,29 @@ export function useSyncQueue() {
           );
           return;
 
+        case 'rehab_programs_m5': case 'rehab_program_team_m5': case 'rehab_sessions_m5':
+        case 'rehab_session_team_m5': case 'rehab_origin_links_m5': case 'rehab_session_events_m5': {
+          const client=requireSupabase();const {data,error}=await client.auth.getUser();
+          if(error||!data.user)throw Error('M5 REAB: sessão autenticada obrigatória.');
+          const key=item.table as RehabTableM5;
+          if(!REHAB_TABLES_M5.includes(key))throw Error('M5 REAB: tabela desconhecida.');
+          const p=item.payload;
+          const deps:keyof typeof db = key==='rehab_program_team_m5'?'rehab_programs_m5':key==='rehab_sessions_m5'?'rehab_programs_m5':
+            key==='rehab_session_team_m5'?'rehab_sessions_m5':key==='rehab_origin_links_m5'?'rehab_programs_m5':
+            key==='rehab_session_events_m5'?'rehab_sessions_m5':'rehab_programs_m5';
+          const parent=deps==='rehab_programs_m5'?p.program_id:p.session_id;
+          if(parent&&typeof parent==='string'&&await db.syncQueue.where('chave').equals(`${deps}:${parent}`).first())
+            throw new SyncDependencyDeferredError('M5 REAB: aguardar origem pendente.');
+          if(key==='rehab_session_team_m5'&&typeof p.program_team_id==='string'&&
+             await db.syncQueue.where('chave').equals(`rehab_program_team_m5:${p.program_team_id}`).first())
+             throw new SyncDependencyDeferredError('M5 REAB: aguardar equipe pendente.');
+          if(key==='rehab_origin_links_m5'){
+            const target=p.origin_type==='consulta'?'consultas':p.origin_type==='cirurgia'?'cirurgias':p.origin_type==='tratamento'?'tratamentos':null;
+            if(target&&typeof p.origin_id==='string'&&await db.syncQueue.where('chave').equals(`${target}:${p.origin_id}`).first())
+              throw new SyncDependencyDeferredError('M5 REAB: aguardar origem clínica.');
+          }
+          await syncRehabM5(item,data.user.id);return;
+        }
         case 'surgery_consultation_links_m4': {
           const client=requireSupabase();const {data,error}=await client.auth.getUser();
           if(error||!data.user)throw Error('M4 P2 requer sessão autenticada.');

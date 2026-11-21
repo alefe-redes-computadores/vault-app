@@ -37,6 +37,11 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   clinical_asset_links: [["asset_id", "clinical_assets"]],
   consultation_exam_order_links: [["order_id", "exam_orders"], ["consultation_id", "consultas"]],
   surgery_consultation_links_m4: [["cirurgia_id", "cirurgias"], ["consulta_id", "consultas"]],
+  rehab_program_team_m5: [["program_id", "rehab_programs_m5"], ["professional_id", "medicos"]],
+  rehab_sessions_m5: [["program_id", "rehab_programs_m5"]],
+  rehab_session_team_m5: [["session_id", "rehab_sessions_m5"], ["program_team_id", "rehab_program_team_m5"]],
+  rehab_origin_links_m5: [["program_id", "rehab_programs_m5"]],
+  rehab_session_events_m5: [["session_id", "rehab_sessions_m5"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -54,6 +59,11 @@ export function blockedSyncDependency(
     if (id && failedEntities.has(`${table}:${id}`)) return `${table}:${id}`;
   }
   // Polymorphic asset links have an explicit, scoped target dependency.
+  if(item.table==='rehab_origin_links_m5'){
+    const type=item.payload.origin_type, id=item.payload.origin_id;
+    const table=type==='consulta'?'consultas':type==='cirurgia'?'cirurgias':type==='tratamento'?'tratamentos':null;
+    if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
+  }
   if(item.table==='clinical_asset_links'){
     const p=item.payload, type=p.entity_type, id=p.entity_id;
     const table=type==='exam_order'?'exam_orders':type==='exam_order_item'?'exam_order_items':

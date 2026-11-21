@@ -308,6 +308,7 @@ async function performPullAllData(userId: string): Promise<void> {
             tableOk = false;
             if (remoteTable === "dose_logs") criticalPullErrors.push(error.message || "Consulta de doses falhou");
             if (remoteTable === "surgery_consultation_links_m4") criticalPullErrors.push(error.message || "M4 P2: vínculos de cirurgia indisponíveis");
+            if (remoteTable.endsWith("_m5") && remoteTable.startsWith("rehab_")) criticalPullErrors.push(`${remoteTable}: ${error.message || "Reabilitação 360 indisponível"}`);
             if (isClinicalExamTableM1(remoteTable)) clinicalM1PullErrors.push(`${remoteTable}: ${error.message || 'Erro de rede'}`);
             console.error(
               `❌ [Pull] Erro ao buscar ${remoteTable}:`,
@@ -1755,6 +1756,19 @@ async function performPullAllData(userId: string): Promise<void> {
       localTable: db.surgery_consultation_links_m4,
       query: async()=>await supabase.from('surgery_consultation_links_m4').select('*').eq('user_id',userId),
     });
+    // M5 REAB: após consultas, cirurgias e profissionais legados; respeita pendências e tombstones.
+    await processTable({remoteTable:'rehab_programs_m5',queueTable:'rehab_programs_m5',
+      localTable:db.rehab_programs_m5,query:async()=>await supabase.from('rehab_programs_m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'rehab_program_team_m5',queueTable:'rehab_program_team_m5',
+      localTable:db.rehab_program_team_m5,query:async()=>await supabase.from('rehab_program_team_m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'rehab_sessions_m5',queueTable:'rehab_sessions_m5',
+      localTable:db.rehab_sessions_m5,query:async()=>await supabase.from('rehab_sessions_m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'rehab_session_team_m5',queueTable:'rehab_session_team_m5',
+      localTable:db.rehab_session_team_m5,query:async()=>await supabase.from('rehab_session_team_m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'rehab_origin_links_m5',queueTable:'rehab_origin_links_m5',
+      localTable:db.rehab_origin_links_m5,query:async()=>await supabase.from('rehab_origin_links_m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'rehab_session_events_m5',queueTable:'rehab_session_events_m5',
+      localTable:db.rehab_session_events_m5,query:async()=>await supabase.from('rehab_session_events_m5').select('*').eq('user_id',userId)});
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

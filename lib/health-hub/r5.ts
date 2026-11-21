@@ -33,6 +33,7 @@ export const HEALTH_MODULES_R5: readonly HubModuleR5[] = [
   {id:"consultas",title:"Consultas",description:"Agenda e retornos",href:"/saude/consultas",group:"intelligence",icon:"calendar",keywords:["medico","atendimento","consulta"]},
   {id:"exames-clinicos",title:"Exames registrados",description:"Área clínica de exames",href:"/saude/exames",group:"intelligence",icon:"flask",keywords:["exame","pedido","resultado"]},
   {id:"cirurgias",title:"Procedimentos",description:"Cirurgias e histórico",href:"/saude/cirurgias",group:"intelligence",icon:"stethoscope",keywords:["cirurgia","operacao","procedimento"]},
+  {id:"reabilitacao",title:"Reabilitação 360",description:"Programas, equipe e sessões",href:"/saude/reabilitacao",group:"intelligence",icon:"heart",keywords:["reabilitacao","fisioterapia","recuperacao funcional","sessao","terapia ocupacional"]},
   {id:"registros",title:"Diário de saúde",description:"Registros e relatos",href:"/saude/registros",group:"body",icon:"book",keywords:["sintomas","humor","diario"]},
   {id:"retiradas",title:"Retiradas",description:"Compromissos e fornecimento",href:"/saude/retiradas",group:"foundation",icon:"package",keywords:["sus","retirada","medicamento"]},
   {id:"renovacao",title:"Receitas e aquisições",description:"Renovação documental",href:"/saude/renovacao",group:"foundation",icon:"files",keywords:["receitas","renovacao","aquisicao"]},
