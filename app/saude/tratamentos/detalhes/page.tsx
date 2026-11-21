@@ -8,6 +8,7 @@ import {treatmentCareContext} from "@/lib/treatment-care-context";
 import {TreatmentCareLinks} from "@/components/saude/TreatmentCareLinks";
 import {TreatmentSymptomTimeline} from "@/components/saude/TreatmentSymptomTimeline";
 import { TreatmentTimelineRow } from "@/components/saude/TreatmentTimelineRow";
+import { TreatmentRegimenA4 } from "@/components/saude/TreatmentRegimenA4";
 import {TreatmentVisitBrief} from "@/components/saude/TreatmentVisitBrief";
 import {buildTreatmentCareDossier} from "@/lib/health-network/care-continuity";
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
@@ -1209,6 +1210,8 @@ function TratamentoContent() {
               ))}
             </motion.div>
           )}
+
+          <TreatmentRegimenA4 treatmentId={tratamento.id!} userId={user?.id || ""} personId={activePersonId || ""} medications={linkedMedicamentos} doctors={medicos} consultations={consultas} documents={documentosDaPessoa} />
 
           <motion.div id="tratamento-linha"
             variants={fadeUp}

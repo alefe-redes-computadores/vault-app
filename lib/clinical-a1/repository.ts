@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { enfileirarOperacao, solicitarProcessamentoSync } from "@/lib/sync/enfileirarOperacao";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
 import { captureHistoricalLocationA3 } from "@/lib/health-supply/a3-historical-locations";
-import { a1Today, validCivilDate, type A1Source, type A1PhaseKind, type A1TreatmentPhase, type A1PrescriptionLink, type A1SupplyLocation } from "./types";
+import { a1Today, validCivilDate, type A1Source, type A1PhaseKind, type A1TreatmentPhase, type A4RegimenSnapshot, type A1PrescriptionLink, type A1SupplyLocation } from "./types";
 
 const str=(value: string | null | undefined):string => typeof value==="string"?value.trim():"";
 function ensureDate(date:string, factual=true):string {
@@ -23,14 +23,32 @@ async function requireProfessional(id:string|null,userId:string):Promise<void>{
 function completed():void{solicitarProcessamentoSync();}
 
 export const clinicalA1Repository={
-  async recordPhase(input:{userId:string;personId:string;treatmentId:string;tipo:A1PhaseKind;data:string;origem:A1Source;professionalId?:string|null;titulo:string;observacoes?:string}):Promise<string>{
+  async recordPhase(input:{userId:string;personId:string;treatmentId:string;tipo:A1PhaseKind;data:string;origem:A1Source;professionalId?:string|null;titulo:string;observacoes?:string;regimeA4?:Partial<A4RegimenSnapshot>|null}):Promise<string>{
     ensureIdentity(input.userId,input.personId);
     const treatment=await db.tratamentos.get(input.treatmentId);
     if(!treatment||treatment.user_id!==input.userId||treatment.person_id!==input.personId)throw new Error("Tratamento de outra pessoa ou indisponível.");
     await requireProfessional(input.professionalId??null,input.userId);
     const title=str(input.titulo);
     if(title.length<3||title.length>110)throw new Error("Informe um título de 3 a 110 caracteres.");
-    const row:A1TreatmentPhase={...newMeta(input.userId,input.personId),tratamento_id:input.treatmentId,tipo:input.tipo,data_efetiva:ensureDate(input.data),origem:input.origem,profissional_id:input.professionalId||null,titulo:title,observacoes:str(input.observacoes).slice(0,1000)||null};
+    // A4 records only a user-declared event. Nothing updates medication, treatment, DoseLog or inventory.
+    const effectiveOn=ensureDate(input.data);
+    const regimeA4=input.regimeA4 ? (await import("@/lib/treatment-a4/regimen")).normalizeA4Regimen(input.regimeA4,effectiveOn) : null;
+    if (regimeA4?.medicamento_id) {
+      const med=await db.medicamentos.get(regimeA4.medicamento_id);
+      if(!med||med.user_id!==input.userId||med.person_id!==input.personId)
+        throw new Error("Medicamento fora da pessoa ativa; não foi criado vínculo automático.");
+    }
+    if (regimeA4?.consulta_id) {
+      const consulta=await db.consultas.get(regimeA4.consulta_id);
+      if(!consulta||consulta.user_id!==input.userId||consulta.person_id!==input.personId)
+        throw new Error("Consulta não pertence à pessoa ativa.");
+    }
+    if (regimeA4?.documento_id) {
+      const documento=await db.documents.get(regimeA4.documento_id);
+      if(!documento||documento.user_id!==input.userId||documento.person_id!==input.personId)
+        throw new Error("Documento não pertence à pessoa ativa.");
+    }
+    const row:A1TreatmentPhase={...newMeta(input.userId,input.personId),tratamento_id:input.treatmentId,tipo:input.tipo,data_efetiva:effectiveOn,origem:input.origem,profissional_id:input.professionalId||null,titulo:title,observacoes:str(input.observacoes).slice(0,1000)||null,regime_a4:regimeA4};
     await db.transaction("rw",[db.a1_treatment_phases,db.syncQueue],async()=>{
       await db.a1_treatment_phases.add(row);
       await enfileirarOperacao("a1_treatment_phases","add",row,{dispatchSync:false});

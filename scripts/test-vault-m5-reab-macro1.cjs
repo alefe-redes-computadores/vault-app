@@ -64,7 +64,7 @@ check(repo.includes('addRehabSessionProfessionalM5')&&repo.includes('session.pro
 check(deps.includes('rehab_program_team_m5:')&&deps.includes("item.table==='rehab_origin_links_m5'"),'queue causal ordering');
 check(ui.includes('useActivePersonId')&&ui.includes('useAuth')&&ui.includes('person?.user_id!==uid'),'UI person isolation');
 check(ui.includes('info.scope!==scope')&&ui.includes('p.person_id===personId'),'UI stale query cannot leak previous person');
-check(ui.includes('datetime-local')&&ui.includes('Remarcar')&&ui.includes('Profissional')&&ui.includes('Origem e vínculos'),'journey operational UI');
+check(ui.includes('HealthDateTimePicker')&&ui.includes('CustomDatePicker')&&ui.includes('HealthRelationPicker')&&!ui.includes('<select')&&!ui.includes('datetime-local')&&ui.includes('Remarcar')&&ui.includes('Profissional')&&ui.includes('Origem e vínculos'),'journey Premium preserves real session workflow without visible native controls');
 check(hub.includes('id:"reabilitacao"')&&hub.includes('href:"/saude/reabilitacao"'),'discoverable route');
 check(gate.split('"scripts/test-vault-m5-reab-macro1.cjs"').length===2,'registered exactly once in V63');
 check(!/\bdose_logs\b|\bestoque_quantidade\b|\bmedicamento_tratamentos\b/.test(repo),'no dose or stock writes');

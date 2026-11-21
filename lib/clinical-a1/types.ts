@@ -10,7 +10,24 @@ export interface A1Record {
   deleted_at: string | null;
   synced?: boolean;
 }
+/** A4 enriches the ONE A1 ledger, no second treatment phase table or duplicated medicine. */
+export interface A4RegimenSnapshot {
+  versao: 1;
+  natureza: "temporario" | "continuo" | "nao_informado";
+  medicamento_id: string | null;
+  dose_texto: string | null;
+  frequencia_texto: string | null;
+  horarios: string[];
+  via: string | null;
+  lateralidade: "esquerda" | "direita" | "bilateral" | "nao_aplicavel" | null;
+  local_anatomico: string | null;
+  fim_previsto: string | null;
+  documento_id: string | null;
+  consulta_id: string | null;
+}
 export interface A1TreatmentPhase extends A1Record {
+  /** Append-only A4 regime; historical A1 rows may not have this field. */
+  regime_a4?: A4RegimenSnapshot | null;
   tratamento_id: string;
   tipo: A1PhaseKind;
   data_efetiva: string;
