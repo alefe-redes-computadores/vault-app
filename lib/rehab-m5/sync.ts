@@ -1,15 +1,16 @@
 /** M5-REAB: server CAS on the canonical queue; no second client sync engine. */
 import { supabase } from '@/lib/supabase/client';
 import type { SyncQueueItem } from '@/lib/types';
-import { REHAB_TABLES_M5, validUuidM5, type RehabTableM5 } from './types';
+import { REHAB_ALL_TABLES_M5, validUuidM5, type RehabTableM5 } from './types';
 const COMMON=['id','user_id','person_id','created_at','updated_at','deleted_at'] as const;
 const FIELDS:Record<RehabTableM5,readonly string[]>={
- rehab_programs_m5:[...COMMON,'title','specialty','functional_goal','body_region','laterality','status','start_date','expected_end_date'],
+ rehab_programs_m5:[...COMMON,'title','specialty','functional_goal','body_region','laterality','status','start_date','expected_end_date','modality','primary_professional_id','primary_facility_id','discharged_at','discharge_summary','interruption_reason'],
  rehab_program_team_m5:[...COMMON,'program_id','professional_id','role','start_date','end_date'],
- rehab_sessions_m5:[...COMMON,'program_id','scheduled_at','timezone','status','mode','local_id','hospital_id','place_note','notes'],
+ rehab_sessions_m5:[...COMMON,'program_id','scheduled_at','timezone','status','mode','local_id','hospital_id','place_note','notes','procedures_notes','functional_notes','pain_before','pain_after','professional_id','reminder_opt_in'],
  rehab_session_team_m5:[...COMMON,'session_id','program_team_id'],
  rehab_origin_links_m5:[...COMMON,'program_id','origin_type','origin_id','note'],
  rehab_session_events_m5:[...COMMON,'session_id','action','from_at','to_at','from_status','to_status','note'],
+ rehab_milestones_m5:[...COMMON,'program_id','session_id','kind','source','recorded_at','notes','professional_id','consultation_id','exam_order_id'],
 };
 const IDENTITIES:Record<RehabTableM5,readonly string[]>={
  rehab_programs_m5:['id','user_id','person_id','created_at'],
@@ -18,6 +19,7 @@ const IDENTITIES:Record<RehabTableM5,readonly string[]>={
  rehab_session_team_m5:['id','user_id','person_id','created_at','session_id','program_team_id'],
  rehab_origin_links_m5:['id','user_id','person_id','created_at','program_id','origin_type','origin_id'],
  rehab_session_events_m5:['id','user_id','person_id','created_at','session_id','action','from_at','to_at','from_status','to_status','note'],
+ rehab_milestones_m5:['id','user_id','person_id','created_at','program_id','session_id','kind','source','recorded_at','notes','professional_id','consultation_id','exam_order_id'],
 };
 function same(a:Record<string,unknown>,b:Record<string,unknown>,fields:readonly string[]){return fields.every(k=>{
  if(k.endsWith('_at')&&typeof a[k]==='string'&&typeof b[k]==='string'){
@@ -27,7 +29,7 @@ function same(a:Record<string,unknown>,b:Record<string,unknown>,fields:readonly 
 });}
 export async function syncRehabM5(item:SyncQueueItem,userId:string):Promise<void>{
  const table=item.table as RehabTableM5;
- if(!REHAB_TABLES_M5.includes(table)||item.operation==='delete')throw Error('M5 REAB: operação física proibida.');
+ if(!REHAB_ALL_TABLES_M5.includes(table)||item.operation==='delete')throw Error('M5 REAB: operação física proibida.');
  const raw=item.payload as Record<string,unknown>,keys=FIELDS[table];
  if(!validUuidM5(raw.id)||!validUuidM5(raw.person_id)||raw.user_id!==userId||
    keys.some(k=>raw[k]===undefined)||typeof raw.created_at!=='string'||typeof raw.updated_at!=='string'||

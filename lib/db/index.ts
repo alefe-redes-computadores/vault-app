@@ -42,7 +42,7 @@ import type {
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { ExamOrderM1, ExamOrderItemM1, ExamSessionM1, ExamSessionItemM1, ClinicalAssetM1, ClinicalAssetLinkM1, ConsultationExamOrderLinkM1 } from '@/lib/clinical-exams-m1/types';
 import type { SurgeryConsultationLinkM4P2 } from '@/lib/clinical-journey-m4/surgery-links-p2';
-import type { RehabProgramM5, RehabTeamM5, RehabSessionM5, RehabSessionTeamM5, RehabOriginM5, RehabSessionEventM5 } from '@/lib/rehab-m5/types';
+import type { RehabProgramM5, RehabTeamM5, RehabSessionM5, RehabSessionTeamM5, RehabOriginM5, RehabSessionEventM5, RehabMilestoneM5 } from '@/lib/rehab-m5/types';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -211,6 +211,7 @@ class VaultDB extends Dexie {
   rehab_session_team_m5!: Table<RehabSessionTeamM5,string>;
   rehab_origin_links_m5!: Table<RehabOriginM5,string>;
   rehab_session_events_m5!: Table<RehabSessionEventM5,string>;
+  rehab_milestones_m5!: Table<RehabMilestoneM5,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
@@ -1501,6 +1502,21 @@ class VaultDB extends Dexie {
       rehab_session_team_m5: 'id, user_id, person_id, [user_id+person_id], session_id, program_team_id, updated_at, deleted_at, synced',
       rehab_origin_links_m5: 'id, user_id, person_id, [user_id+person_id], program_id, origin_type, updated_at, deleted_at, synced',
       rehab_session_events_m5: 'id, user_id, person_id, [user_id+person_id], session_id, action, created_at, updated_at, deleted_at, synced',
+    });
+    // M5 MACRO2: additive Dexie v53; legacy programs/sessions preserved.
+    this.version(53).stores({
+      rehab_milestones_m5: 'id, user_id, person_id, [user_id+person_id], program_id, session_id, kind, recorded_at, updated_at, deleted_at, synced',
+    }).upgrade(async tx=>{
+      // Preserve old M5 rows while making new TS -> Dexie -> SQL -> push/pull fields explicit.
+      await tx.table('rehab_programs_m5').toCollection().modify((p:Record<string,unknown>)=>{
+        for(const key of ['modality','primary_professional_id','primary_facility_id','discharged_at','discharge_summary','interruption_reason'])
+          if(p[key]===undefined)p[key]=null;
+      });
+      await tx.table('rehab_sessions_m5').toCollection().modify((p:Record<string,unknown>)=>{
+        for(const key of ['procedures_notes','functional_notes','pain_before','pain_after','professional_id'])
+          if(p[key]===undefined)p[key]=null;
+        if(p.reminder_opt_in===undefined)p.reminder_opt_in=false;
+      });
     });
 
   }

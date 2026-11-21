@@ -39,6 +39,8 @@ export async function createRehabProgramM5(input:{personId:string;title:string;s
   title,specialty:text(input.specialty,100)||null,functional_goal:text(input.functionalGoal,1000)||null,
   body_region:text(input.bodyRegion,100)||null,laterality:input.laterality||null,
   status:'planned',start_date:input.startDate||null,expected_end_date:input.expectedEndDate||null,
+  modality:null,primary_professional_id:null,primary_facility_id:null,
+  discharged_at:null,discharge_summary:null,interruption_reason:null,
   created_at:stamp,updated_at:stamp,deleted_at:null,synced:false};
  await db.transaction('rw',db.rehab_programs_m5,db.syncQueue,async()=>{
   await db.rehab_programs_m5.add(row);await queue('rehab_programs_m5','add',row as unknown as Record<string,unknown>);
@@ -55,6 +57,10 @@ export async function updateRehabProgramM5(input:{personId:string;id:string;titl
    specialty:input.specialty===undefined?old.specialty:text(input.specialty,100)||null,
    status:input.status??old.status,
    expected_end_date:input.expectedEndDate===undefined?old.expected_end_date:input.expectedEndDate});
+  if(input.status==='completed'||input.status==='interrupted')
+    throw Error('Alta ou interrupção precisam de data e resumo. Use a ação de encerramento.');
+  if((old.status==='completed'||old.status==='interrupted')&&input.status)
+    throw Error('Ciclo encerrado exige revisão documental; não reabrir automaticamente.');
   if(!next.title)throw Error('Título obrigatório.');checkDate(next.expected_end_date);
   if(next.start_date&&next.expected_end_date&&next.expected_end_date<next.start_date)throw Error('Datas inconsistentes.');
   await db.rehab_programs_m5.put(next);await queue('rehab_programs_m5','update',next as unknown as Record<string,unknown>);changed=true;
@@ -90,6 +96,7 @@ export async function scheduleRehabSessionM5(input:{personId:string;programId:st
   const stamp=now();const row:RehabSessionM5={id:id(),user_id:uid,person_id:input.personId,program_id:input.programId,
    scheduled_at:d.toISOString(),timezone:input.timezone,status:'scheduled',mode:input.mode,
    local_id:input.localId||null,hospital_id:input.hospitalId||null,place_note:text(input.placeNote,240)||null,notes:text(input.notes,500)||null,
+   procedures_notes:null,functional_notes:null,pain_before:null,pain_after:null,professional_id:null,reminder_opt_in:false,
    created_at:stamp,updated_at:stamp,deleted_at:null,synced:false};
   const event:RehabSessionEventM5={id:id(),user_id:uid,person_id:input.personId,session_id:row.id,
    action:'scheduled',from_at:null,to_at:row.scheduled_at,from_status:null,to_status:'scheduled',note:null,

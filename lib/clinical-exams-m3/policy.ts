@@ -41,7 +41,7 @@ export function uniqueTargetsM3(input:readonly TargetM3[],role:RoleM3):TargetM3[
  const keys=new Set<string>();
  const out:TargetM3[]=[];
  for(const row of input){
-   if(!['exam_order','exam_order_item','exam_session','consultation'].includes(row.entity_type)||!isUuidM3(row.entity_id))
+   if(!['exam_order','exam_order_item','exam_session','consultation','rehab_program','rehab_session'].includes(row.entity_type)||!isUuidM3(row.entity_id))
      throw Error('Vínculo clínico inválido.');
    if(role==='result'&&row.entity_type!=='exam_order_item')throw Error('Laudo por item exige exames selecionados.');
    const key=`${row.entity_type}:${row.entity_id}`;

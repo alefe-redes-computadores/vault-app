@@ -6,7 +6,7 @@ const shortDay=(iso:string)=>/^\d{4}-\d{2}-\d{2}$/.test(iso)?`${iso.slice(8,10)}
 const sectionLabels:Record<string,string>={
   consultations:'Consultas',careflow:'CareFlow e pedidos',medications:'Medicamentos',doses:'Doses registradas',
   symptoms:'Sintomas e humor',measurements:'Medições',exams:'Exames avulsos',surgeries:'Cirurgias',
-  withdrawals:'Retiradas',prescriptions:'Receitas e aquisições',treatments:'Tratamentos',documents:'Documentos',brain:'Brain (interpretação registrada)'
+  withdrawals:'Retiradas',prescriptions:'Receitas e aquisições',treatments:'Tratamentos',rehabilitation:'Reabilitação',documents:'Documentos',brain:'Brain (interpretação registrada)'
 };
 export function medicalP3FileName(input:MedicalDossierP3):string{
   return `VAULT-Modo-Medico-${input.mode==='summary'?'Resumo':'Detalhado'}-${input.start}-${input.end}.pdf`;

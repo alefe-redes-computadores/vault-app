@@ -87,6 +87,7 @@ import {
 } from "@/lib/db";
 
 import { HealthReminderReconciler } from "@/components/HealthReminderReconciler";
+import { RehabM5NotificationReconciler } from "@/components/saude/RehabM5NotificationReconciler";
 import { clearClinicalCacheM3 } from "@/lib/clinical-exams-m3/cache";
 import { InsightNotificationReconciler } from "@/components/InsightNotificationReconciler";
 import { DoseSafetyEpisodeReconciler } from "@/components/health-intelligence/DoseSafetyEpisodeReconciler";
@@ -1369,6 +1370,7 @@ export function Providers({
       {notificationReconcilersReady && (
         <>
           <HealthReminderReconciler />
+          <RehabM5NotificationReconciler />
           <InsightNotificationReconciler />
           <DoseSafetyEpisodeReconciler />
           <DoseNotificationReconciler />

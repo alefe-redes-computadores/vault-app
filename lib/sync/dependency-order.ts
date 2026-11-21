@@ -42,6 +42,8 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   rehab_session_team_m5: [["session_id", "rehab_sessions_m5"], ["program_team_id", "rehab_program_team_m5"]],
   rehab_origin_links_m5: [["program_id", "rehab_programs_m5"]],
   rehab_session_events_m5: [["session_id", "rehab_sessions_m5"]],
+  rehab_milestones_m5: [["program_id", "rehab_programs_m5"], ["session_id", "rehab_sessions_m5"],
+    ["professional_id", "medicos"], ["consultation_id", "consultas"], ["exam_order_id", "exam_orders"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -67,7 +69,8 @@ export function blockedSyncDependency(
   if(item.table==='clinical_asset_links'){
     const p=item.payload, type=p.entity_type, id=p.entity_id;
     const table=type==='exam_order'?'exam_orders':type==='exam_order_item'?'exam_order_items':
-      type==='exam_session'?'exam_sessions':type==='consultation'?'consultas':null;
+      type==='exam_session'?'exam_sessions':type==='consultation'?'consultas':
+      type==='rehab_program'?'rehab_programs_m5':type==='rehab_session'?'rehab_sessions_m5':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
   return null;

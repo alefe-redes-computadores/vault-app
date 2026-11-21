@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import Link from 'next/link';
 import { withReturnTarget } from '@/lib/navigation/return-context';
 import { ArrowLeft, Archive, CalendarDays, Check, ChevronRight, ClipboardList, Download, FileCheck2, FileText, LockKeyhole, Search, ShieldCheck, Stethoscope, WandSparkles, Pill, HeartPulse, FlaskConical, MessageSquareHeart, Brain, CalendarCheck, Activity } from 'lucide-react';
@@ -46,6 +48,15 @@ export default function MedicalModeP3Page(){
   const signature=[start,end,mode,sections.join(','),includeBrain?'brain':'factual',episode].join('|');
   scopeRef.current={userId:user?.id||'',personId:activePersonId||'',sig:signature};
   const scopeKey=`${user?.id||''}:${activePersonId||''}`;
+  const rehab=useLiveQuery(async()=>{
+    const uid=user?.id||'',pid=activePersonId||'';
+    if(!uid||!pid)return {scope:scopeKey,programs:[],sessions:[],milestones:[],origins:[]};
+    const [person,programs,sessions,milestones,origins]=await Promise.all([db.persons.get(pid),
+      db.rehab_programs_m5.where('user_id').equals(uid).toArray(),db.rehab_sessions_m5.where('user_id').equals(uid).toArray(),
+      db.rehab_milestones_m5.where('user_id').equals(uid).toArray(),db.rehab_origin_links_m5.where('user_id').equals(uid).toArray()]);
+    if(person?.user_id!==uid)return {scope:scopeKey,programs:[],sessions:[],milestones:[],origins:[]};
+    return {scope:scopeKey,programs,sessions,milestones,origins};
+  },[user?.id,activePersonId]);
   const notes=notesDraft.scope===scopeKey?notesDraft.text:'';
   useEffect(()=>{
     setNotesDraft({scope:'',text:''});setMessage('');setQ('');setLimit(40);setFocusSection('all');setEpisode('');setReadingMode(false);
@@ -77,22 +88,22 @@ export default function MedicalModeP3Page(){
     if(item.data&&item.data<start)setStart(item.data);
   },[scopeKey,user?.id,activePersonId,health.context,consultations,start]);
   const person=persons.find(p=>p.id===activePersonId);
-  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId);
+  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey));
   const prepared=useMemo(()=>{
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:''};
     try{
       return {report:buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,
-        ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined}),error:''};
+        ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined,rehab:rehab?.scope===scopeKey?rehab:undefined}),error:''};
     }catch(error){return {report:null,error:error instanceof Error?error.message:'Não foi possível preparar esta prévia.'};}
-  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode]);
+  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey]);
   const normalized=q.trim().toLocaleLowerCase('pt-BR');
   // Busca percorre a projeção detalhada completa, mas não altera o PDF.
   const searchReport=useMemo(()=>{
     if(!normalized||!ready||!user?.id||!activePersonId||!health.context)return prepared.report;
     try{return buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,
-      ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined});}
+      ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined,rehab:rehab?.scope===scopeKey?rehab:undefined});}
     catch{return prepared.report;}
-  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report]);
+  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey]);
   const filtered=useMemo(()=>searchReport?.rows.filter(r=>
     (focusSection==='all'||r.section===focusSection)&&
     (!normalized||[r.title,r.detail,r.source,...r.relations].join(' ').toLocaleLowerCase('pt-BR').includes(normalized)))||[],

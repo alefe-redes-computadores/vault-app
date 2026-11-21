@@ -8,6 +8,12 @@ const content=fs.readFileSync(p,'utf8');
 const compiled=ts.transpileModule(content,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true},reportDiagnostics:true});
 assert.equal((compiled.diagnostics||[]).filter(x=>x.category===ts.DiagnosticCategory.Error).length,0);
 const m={exports:{}};
+const rehabSource=fs.readFileSync('lib/rehab-m5/projection.ts','utf8');
+const rehabCompiled=ts.transpileModule(rehabSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const rehabMod={exports:{}};
+vm.runInNewContext(rehabCompiled,{module:rehabMod,exports:rehabMod.exports,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,encodeURIComponent},
+ {filename:'lib/rehab-m5/projection.ts',timeout:10000});
+
 const fakeClinical={
  validClinicalDay:s=>{if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;return !Number.isNaN(Date.parse(s+'T12:00:00Z'));},
  buildClinicalReport360:({context,sections,ownerId,personId})=>{
@@ -20,7 +26,7 @@ const fakeClinical={
 };
 vm.runInNewContext(compiled.outputText,{
  exports:m.exports,module:m,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,
- require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;throw Error('Dependência não permitida '+id);}
+ require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;throw Error('Dependência não permitida '+id);}
 },{filename:p,timeout:10000});
 const {buildMedicalDossierP3}=m.exports;
 const owner={user_id:'u',person_id:'p'},foreign={user_id:'outro',person_id:'p'};
@@ -40,6 +46,13 @@ const options={context:ctx,careflow:cf,ownerId:'u',personId:'p',personName:'Pess
 const all=buildMedicalDossierP3(options);
 const symptom=all.rows.find(x=>x.sourceId==='s');
 assert.ok(symptom,'sintoma original preservado');
+// M5: future safe relations must be real and person-scoped, without hiding legacy facts.
+const rehabRow={id:'r-p6',user_id:'u',person_id:'p',title:'Reabilitação documentada',status:'active',start_date:'2026-11-17',created_at:'2026-11-17T12:00:00Z',deleted_at:null};
+const rehabReport=buildMedicalDossierP3({...options,sections:['rehabilitation'],rehab:{programs:[rehabRow],sessions:[],milestones:[],origins:[]}});
+assert.ok(rehabReport.rows.some(x=>x.sourceId==='r-p6'),'real M5 projection available in detailed medical report');
+const wrongAccount=buildMedicalDossierP3({...options,sections:['rehabilitation'],rehab:{programs:[{...rehabRow,user_id:'other'}],sessions:[],milestones:[],origins:[]}});
+assert.ok(!wrongAccount.rows.some(x=>x.sourceId==='r-p6'),'foreign-account rehab filtered');
+
 assert.ok(symptom.relations.some(x=>x.includes('Consulta relacionada: Otorrino')),'reverso sintoma→consulta');
 assert.ok(symptom.href.includes('/saude/careflow/sintomas#careflow-sintoma-s'),'destino correto');
 assert.ok(!all.rows.some(x=>x.sourceId==='e'),'sem duplicação sintoma + nota CareFlow');

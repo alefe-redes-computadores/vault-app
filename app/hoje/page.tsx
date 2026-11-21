@@ -8,6 +8,7 @@ import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
 import { TodayRemindersPanel } from "@/components/hoje/TodayRemindersPanel";
 import { TodayAgendaOverview } from "@/components/hoje/TodayAgendaOverview";
+import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
 import { buildTodayAgendaOverview } from "@/lib/today/agenda-overview";
 import { countHiddenTodayResolved } from "@/lib/today/timeline-visibility-metrics";
 import { todayTimelineGroupContext } from "@/lib/today/timeline-group-context";
@@ -1655,6 +1656,7 @@ export default function HojePage() {
         </div>
         <div className="mx-auto max-w-3xl px-4 pt-3"><CareFlowSummaryM2 /></div>
         <div className="mx-auto max-w-3xl px-4 pt-2"><ExamAgendaM2 day={dataSelecionada} /></div>
+        {isHoje && <div className="mx-auto max-w-3xl"><RehabM5AgendaStrip /></div>}
 
         {/* =========================================================
             CONTEÚDO

@@ -1769,6 +1769,8 @@ async function performPullAllData(userId: string): Promise<void> {
       localTable:db.rehab_origin_links_m5,query:async()=>await supabase.from('rehab_origin_links_m5').select('*').eq('user_id',userId)});
     await processTable({remoteTable:'rehab_session_events_m5',queueTable:'rehab_session_events_m5',
       localTable:db.rehab_session_events_m5,query:async()=>await supabase.from('rehab_session_events_m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'rehab_milestones_m5',queueTable:'rehab_milestones_m5',
+      localTable:db.rehab_milestones_m5,query:async()=>await supabase.from('rehab_milestones_m5').select('*').eq('user_id',userId)});
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

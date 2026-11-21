@@ -12,11 +12,12 @@ function load(path,aliases={}){
   const sandbox={exports:m.exports,module:m,require:id=>{
     if(Object.prototype.hasOwnProperty.call(aliases,id))return aliases[id];
     throw Error(`M3 P3: dependência inesperada no núcleo puro ${id}`);
-  },Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console};
+  },Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,encodeURIComponent};
   vm.runInNewContext(js,sandbox,{filename:path,timeout:7000});return m.exports;
 }
 const report=load('lib/clinical-report-360.ts');
-const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report});
+const rehabProjection=load('lib/rehab-m5/projection.ts');
+const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection});
 const scope=load('lib/m3/medical-scope-p3.ts');
 const timestamp='2026-11-17T11:00:00-03:00';
 const ctx=()=>({userId:'own-a',personId:'person-a',medicamentos:[],doseLogs:[],renovacoes:[],tratamentos:[],
@@ -69,6 +70,14 @@ const short=med.buildMedicalDossierP3({...args(many),sections:['treatments'],mod
 assert.equal(short.rows.length,30);assert.equal(short.availableCount,38);assert.equal(short.omittedBySummary,8);
 const full=med.buildMedicalDossierP3({...args(many),sections:['treatments'],mode:'detailed'});
 assert.equal(full.rows.length,38);assert.equal(full.omittedBySummary,0);
+// M5: real projection must produce factual, owner-scoped rows inside the existing medical dossier.
+const factualRehab={id:'rehab-1',user_id:'own-a',person_id:'person-a',title:'Reabilitação declarada',status:'active',start_date:'2026-11-10',created_at:'2026-11-10T12:00:00Z',deleted_at:null};
+const rehabInput={programs:[factualRehab],sessions:[],milestones:[],origins:[]};
+const scopedRehab=med.buildMedicalDossierP3({...args(ctx()),sections:['rehabilitation'],rehab:rehabInput});
+assert.ok(scopedRehab.rows.some(r=>r.sourceId==='rehab-1'&&r.title.includes('Reabilitação')),'M5 factual program is included only when selected');
+const foreignRehab=med.buildMedicalDossierP3({...args(ctx()),sections:['rehabilitation'],rehab:{...rehabInput,programs:[{...factualRehab,user_id:'another-account'}]}});
+assert.ok(!foreignRehab.rows.some(r=>r.sourceId==='rehab-1'),'M5 foreign owner is never projected');
+
 assert.doesNotThrow(()=>scope.assertMedicalScopeP3({userId:'u',personId:'p',signature:'a'}, {userId:'u',personId:'p',signature:'a'}));
 for(const otherScope of [{userId:'u2',personId:'p',signature:'a'},{userId:'u',personId:'p2',signature:'a'},{userId:'u',personId:'p',signature:'b'}])
   assert.throws(()=>scope.assertMedicalScopeP3({userId:'u',personId:'p',signature:'a'},otherScope),/mudou/);

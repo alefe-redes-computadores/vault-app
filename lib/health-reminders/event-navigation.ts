@@ -7,6 +7,7 @@ const EVENT_ROUTES: Record<string, string> = {
   retirada: "/saude/retiradas/detalhes",
   compra: "/saude/renovacao/detalhes",
   cirurgia: "/saude/cirurgias/detalhes",
+  reabilitacao: "/saude/reabilitacao/detalhes",
   retorno: "/saude/exames/detalhes",
   checkin: "/saude/lembretes",
 };

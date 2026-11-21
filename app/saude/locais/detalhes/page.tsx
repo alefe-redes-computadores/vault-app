@@ -1,6 +1,7 @@
 // app/saude/locais/detalhes/page.tsx
 "use client";
 // VAULT_LOCATION_MEDICATION_ICON_V70
+import { RehabM5ReverseLinks } from "@/components/saude/RehabM5ReverseLinks";
 
 import {
   Suspense,
@@ -1293,6 +1294,7 @@ function DetalhesLocalContent() {
           </div>
         </header>
 
+        {local?.id && <div className="px-5 pt-3"><RehabM5ReverseLinks kind="local" recordId={local.id} returnTo={`/saude/locais/detalhes?id=${encodeURIComponent(local.id)}`} /></div>}
         <section className="space-y-5 px-5 pt-6">
           <motion.div
             variants={

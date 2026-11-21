@@ -37,6 +37,7 @@ import {
 } from "dexie-react-hooks";
 
 import { db } from "@/lib/db";
+import { RehabM5ReverseLinks } from "@/components/saude/RehabM5ReverseLinks";
 import {
   useHapticFeedback,
 } from "@/lib/haptics";
@@ -919,6 +920,7 @@ function DetalhesHospitalContent() {
           </div>
         </header>
 
+        {hospital?.id && <div className="px-5 pt-3"><RehabM5ReverseLinks kind="hospital" recordId={hospital.id} returnTo={`/saude/hospitais/detalhes?id=${encodeURIComponent(hospital.id)}`} /></div>}
         <section className="space-y-5 px-5 pt-6">
           {/* ==================================================
               HERO

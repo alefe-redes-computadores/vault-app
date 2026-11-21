@@ -762,6 +762,7 @@ export interface SyncQueueItem {
     | "rehab_session_team_m5"
     | "rehab_origin_links_m5"
     | "rehab_session_events_m5"
+    | "rehab_milestones_m5"
     | "health_reminders"
     | "notification_policies_p2"
     | "health_profiles"

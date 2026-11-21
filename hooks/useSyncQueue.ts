@@ -62,7 +62,7 @@ import { clinicalExamDependenciesM1 } from "@/lib/clinical-exams-m1/dependencies
 import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
 import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-links-p2";
 import { syncRehabM5 } from "@/lib/rehab-m5/sync";
-import { REHAB_TABLES_M5, type RehabTableM5 } from "@/lib/rehab-m5/types";
+import { REHAB_ALL_TABLES_M5, type RehabTableM5 } from "@/lib/rehab-m5/types";
 import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
   blockedSyncDependency,
@@ -5202,6 +5202,7 @@ export function useSyncQueue() {
         case "rehab_session_team_m5": await markRecordSyncedIfCurrent(db.rehab_session_team_m5,payload.id,expectedUpdatedAt); break;
         case "rehab_origin_links_m5": await markRecordSyncedIfCurrent(db.rehab_origin_links_m5,payload.id,expectedUpdatedAt); break;
         case "rehab_session_events_m5": await markRecordSyncedIfCurrent(db.rehab_session_events_m5,payload.id,expectedUpdatedAt); break;
+        case "rehab_milestones_m5": await markRecordSyncedIfCurrent(db.rehab_milestones_m5,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5473,21 +5474,28 @@ export function useSyncQueue() {
           return;
 
         case 'rehab_programs_m5': case 'rehab_program_team_m5': case 'rehab_sessions_m5':
-        case 'rehab_session_team_m5': case 'rehab_origin_links_m5': case 'rehab_session_events_m5': {
+        case 'rehab_session_team_m5': case 'rehab_origin_links_m5': case 'rehab_session_events_m5': case 'rehab_milestones_m5': {
           const client=requireSupabase();const {data,error}=await client.auth.getUser();
           if(error||!data.user)throw Error('M5 REAB: sessão autenticada obrigatória.');
           const key=item.table as RehabTableM5;
-          if(!REHAB_TABLES_M5.includes(key))throw Error('M5 REAB: tabela desconhecida.');
+          if(!REHAB_ALL_TABLES_M5.includes(key))throw Error('M5 REAB: tabela desconhecida.');
           const p=item.payload;
           const deps:keyof typeof db = key==='rehab_program_team_m5'?'rehab_programs_m5':key==='rehab_sessions_m5'?'rehab_programs_m5':
             key==='rehab_session_team_m5'?'rehab_sessions_m5':key==='rehab_origin_links_m5'?'rehab_programs_m5':
-            key==='rehab_session_events_m5'?'rehab_sessions_m5':'rehab_programs_m5';
+            key==='rehab_session_events_m5'?'rehab_sessions_m5':key==='rehab_milestones_m5'?'rehab_programs_m5':'rehab_programs_m5';
           const parent=deps==='rehab_programs_m5'?p.program_id:p.session_id;
           if(parent&&typeof parent==='string'&&await db.syncQueue.where('chave').equals(`${deps}:${parent}`).first())
             throw new SyncDependencyDeferredError('M5 REAB: aguardar origem pendente.');
           if(key==='rehab_session_team_m5'&&typeof p.program_team_id==='string'&&
              await db.syncQueue.where('chave').equals(`rehab_program_team_m5:${p.program_team_id}`).first())
              throw new SyncDependencyDeferredError('M5 REAB: aguardar equipe pendente.');
+          if(key==='rehab_milestones_m5'){
+            for(const [field,table] of [['session_id','rehab_sessions_m5'],['professional_id','medicos'],
+              ['consultation_id','consultas'],['exam_order_id','exam_orders']] as const){
+              const ident=p[field];if(typeof ident==='string'&&await db.syncQueue.where('chave').equals(`${table}:${ident}`).first())
+                throw new SyncDependencyDeferredError('M5: aguardar vínculo clínico pendente.');
+            }
+          }
           if(key==='rehab_origin_links_m5'){
             const target=p.origin_type==='consulta'?'consultas':p.origin_type==='cirurgia'?'cirurgias':p.origin_type==='tratamento'?'tratamentos':null;
             if(target&&typeof p.origin_id==='string'&&await db.syncQueue.where('chave').equals(`${target}:${p.origin_id}`).first())
