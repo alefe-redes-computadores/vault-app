@@ -12,9 +12,10 @@ import {useActivePersonId} from '@/hooks/useActivePersonId';
 import {withReturnTarget} from '@/lib/navigation/return-context';
 import {db} from '@/lib/db';
 import {buildBrainFactsP2} from '@/lib/m3/brain-facts-p2';
+import {projectA4ClinicalFacts} from '@/lib/treatment-a4/clinical-bridge';
 import { RehabM5FactualDigest } from '@/components/saude/RehabM5FactualDigest';
 import {recordKeyFromHashR3,revealCountR3} from '@/lib/m3/careflow-display-r3';
-const factIcon=(kind:string,title:string)=>kind==='consulta'?Stethoscope:kind==='cirurgia'?ClipboardCheck:kind==='exame'?FlaskConical:kind.startsWith('dose_')?Pill:/press[aã]o|arterial/i.test(title)?HeartPulse:/caminha|passos/i.test(title)?Footprints:/satura|oxig|spo2/i.test(title)?Wind:/sono|dormi/i.test(title)?Moon:/sintoma|zumbido|n[aá]usea|tontura|dor|cansa/i.test(title)?MessageSquareHeart:kind==='medicao'?Activity:kind==='registro'?Activity:/exame|resultado/i.test(title)?FlaskConical:CalendarClock;
+const factIcon=(kind:string,title:string)=>kind==='tratamento_fase'?CalendarClock:kind==='consulta'?Stethoscope:kind==='cirurgia'?ClipboardCheck:kind==='exame'?FlaskConical:kind.startsWith('dose_')?Pill:/press[aã]o|arterial/i.test(title)?HeartPulse:/caminha|passos/i.test(title)?Footprints:/satura|oxig|spo2/i.test(title)?Wind:/sono|dormi/i.test(title)?Moon:/sintoma|zumbido|n[aá]usea|tontura|dor|cansa/i.test(title)?MessageSquareHeart:kind==='medicao'?Activity:kind==='registro'?Activity:/exame|resultado/i.test(title)?FlaskConical:CalendarClock;
 const dayText=(day:string)=>/^\d{4}-\d{2}-\d{2}$/.test(day)?day.split('-').reverse().join('/'):day;
 function dateMinus(days:number){const now=new Date();now.setHours(12,0,0,0);now.setDate(now.getDate()-Math.max(0,days-1));return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;}
 function BrainLongitudinalP2View(){
@@ -23,12 +24,15 @@ function BrainLongitudinalP2View(){
  useEffect(()=>{const v=Number(params.get('dias'));if(v===7||v===15||v===30||v===90)setDays(v);},[params]);
  const result=useLiveQuery(async()=>{
   if(!uid||!pid)return {uid,pid,facts:[]};
-  const [consultas,cirurgias,exames,doses,registros,careflow,medicamentos]=await Promise.all([
+  const [consultas,cirurgias,exames,doses,registros,careflow,medicamentos,treatmentPhases,treatments]=await Promise.all([
    db.consultas.where('user_id').equals(uid).toArray(),db.cirurgias.where('user_id').equals(uid).toArray(),
    db.exames.where('user_id').equals(uid).toArray(),db.doseLogs.where('user_id').equals(uid).toArray(),
    db.registros_saude.where('user_id').equals(uid).toArray(),db.careflow_events_m2.where('user_id').equals(uid).toArray(),
-   db.medicamentos.where('user_id').equals(uid).toArray()]);
-  return {uid,pid,facts:buildBrainFactsP2({userId:uid,personId:pid,consultas,cirurgias,exames,doses,registros,careflow,medicamentos},10000)};
+   db.medicamentos.where('user_id').equals(uid).toArray(),
+   db.a1_treatment_phases.where('[user_id+person_id]').equals([uid,pid]).toArray(),
+   db.tratamentos.where('user_id').equals(uid).toArray()]);
+  return {uid,pid,facts:buildBrainFactsP2({userId:uid,personId:pid,consultas,cirurgias,exames,doses,registros,careflow,medicamentos,
+    treatmentFacts:projectA4ClinicalFacts({userId:uid,personId:pid,phases:treatmentPhases,treatments,medications:medicamentos,max:10000})},10000)};
  },[uid,pid]);
  const facts=result?.uid===uid&&result?.pid===pid?result.facts:[];
  const filtered=useMemo(()=>facts.filter(f=>f.date>=dateMinus(days)),[facts,days]);
@@ -53,7 +57,7 @@ function BrainLongitudinalP2View(){
   <p className="rounded-xl border border-surface-border bg-surface p-3 text-[11px] text-ink-muted"><Activity size={14} className="mr-1 inline text-violet-300"/>Últimos 7 dias: {facts.filter(f=>f.date>=dateMinus(7)).length} fatos. Últimos 30: {facts.filter(f=>f.date>=dateMinus(30)).length}. Exibindo {displayed.length} de {filtered.length} nesta janela.</p>
   <section aria-label="Linha do tempo por pessoa" className="space-y-2">{!uid||!pid?<p className="rounded-2xl border border-surface-border p-5 text-xs text-amber-200">Entre na sua conta e selecione uma pessoa.</p>:!filtered.length?<p className="rounded-2xl border border-dashed border-surface-border p-6 text-xs text-ink-muted">Nenhum fato registrado nesta janela. Experimente ampliar o período.</p>:displayed.map((item,i)=>{
    const FactIcon=factIcon(item.kind,item.title),tone=color(item.kind,item.intensity);
-   const exact=/^\/saude\/(?:careflow\/fato\?|careflow\/sintomas#|careflow\/exames#|consultas\/detalhes\?|cirurgias\/detalhes\?|exames\/detalhes\?)/.test(item.href);
+   const exact=/^\/saude\/(?:careflow\/fato\?|careflow\/sintomas#|careflow\/exames#|consultas\/detalhes\?|cirurgias\/detalhes\?|exames\/detalhes\?|tratamentos\/detalhes\?)/.test(item.href);
    const origin=`/saude/careflow/linha-do-tempo?dias=${days}#fato-${encodeURIComponent(item.key)}`;
    const content=<><span className={`grid size-10 shrink-0 place-items-center rounded-xl border ${tone}`}>{item.kind.startsWith('dose_')&&item.medicationVisual?<MedicationFormatIcon size={26} formato={item.medicationVisual.formato} cores={item.medicationVisual.cores} className="shrink-0"/>:<FactIcon size={16} aria-hidden="true"/>}</span><span className="min-w-0 flex-1"><strong className="block break-words text-sm font-semibold text-ink-primary">{item.title}</strong><span className="mt-1 block text-[11px] text-ink-muted">{dayText(item.date)} {item.time?`às ${item.time}`:'· horário não informado'} · {item.provenance}</span>{item.intensity!==undefined&&<span className={`mt-1 inline-block rounded-lg border px-2 py-0.5 text-[10px] font-semibold ${tone}`}>Intensidade declarada: {item.intensity}/10</span>}<span className="mt-1 block break-words text-[11px] leading-relaxed text-ink-secondary">{item.detail}</span>{!exact&&<span className="mt-1 block text-[10px] text-amber-200">Origem exata indisponível; não abriremos uma lista genérica.</span>}</span>{exact?<ChevronRight size={16} className="mt-2 shrink-0 text-ink-faint"/>:null}</>;
    return <div key={item.key}>{(i===0||displayed[i-1].date!==item.date)&&<h3 className="pt-3 text-xs font-bold text-violet-200">{dayText(item.date)}</h3>}{exact?<Link id={`fato-${item.key}`} href={withReturnTarget(item.href,origin)} className="flex min-h-[86px] scroll-mt-24 items-start gap-3 rounded-2xl border border-surface-border/70 bg-surface p-3 active:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">{content}</Link>:<article id={`fato-${item.key}`} className="flex min-h-[86px] scroll-mt-24 items-start gap-3 rounded-2xl border border-surface-border/70 bg-surface p-3">{content}</article>}</div>;

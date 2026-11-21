@@ -10,7 +10,7 @@ import {useAuth} from '@/hooks/useAuth';
 const areas=[
  {href:'/saude/careflow/modo-medico',title:'Modo Médico',description:'Conferir informações para a consulta',icon:Stethoscope,tone:'text-emerald-200'},
  {href:'/saude/careflow/episodios',title:'Atendimentos',description:'Consultas e vínculos reais',icon:GitBranch,tone:'text-sky-300'},
- {href:'/saude/careflow/linha-do-tempo',title:'Evolução clínica',description:'Doses, sintomas e medições',icon:Brain,tone:'text-violet-300'},
+ {href:'/saude/careflow/linha-do-tempo',title:'Evolução clínica',description:'Doses, sintomas, medições e fases de tratamentos',icon:Brain,tone:'text-violet-300'},
  {href:'/saude/careflow/dossie',title:'Dossiê clínico',description:'Histórico e exportação privada',icon:FileArchive,tone:'text-amber-300'},
  {href:'/saude/careflow/exames',title:'Pedidos de exames',description:'Pedidos agrupados, integrados a Exames e Laudos',icon:FlaskConical,tone:'text-emerald-300'},
  {href:'/saude/careflow/pressao',title:'Planos de pressão',description:'Medições na Linha de cuidado; plano e contexto aqui',icon:HeartPulse,tone:'text-rose-300'},

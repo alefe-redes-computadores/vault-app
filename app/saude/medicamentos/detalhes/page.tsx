@@ -9,6 +9,7 @@ import {HealthSupplyEntry} from "@/components/saude/HealthSupplyEntry";
 import { PharmaLensMedicationEntryV7 } from "@/components/saude/PharmaLensMedicationEntryV7";
 import { TemporaryCourseMedicationCard } from "@/components/saude/TemporaryCourseMedicationCard";
 import { MedicationTreatmentJourneyD2 } from "@/components/saude/MedicationTreatmentJourneyD2";
+import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
 import { MedicationRegimeM1 } from "@/components/saude/MedicationRegimeM1";
 import { isTemporaryCoursePlannedDose, contextualDoseQuantity } from "@/lib/dose-plan-authority";
 import { MedicationAlertPreferences } from "@/components/saude/MedicationAlertPreferences";
@@ -3396,6 +3397,7 @@ function MedicamentoDetalhesContent() {
             temporary={isTemporary}
           />
             </details>
+            {med.id && med.person_id===activePersonId ? <TreatmentContinuityA4 context="careflow" maxItems={2} medicationId={med.id}/> : null}
           </ClinicalDisclosure>
           {med.id && med.person_id && activePersonId === med.person_id ? (
             <ClinicalDisclosure id="pharmalens-v7" title="PharmaLens · fabricantes" description="Trocas, experiências e evidências pessoais por fabricante" icon={<LineChart size={18}/>} iconClassName="text-violet-300">

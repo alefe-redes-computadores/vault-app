@@ -8,6 +8,7 @@ import { ArrowLeft, Archive, CalendarDays, Check, ChevronRight, ClipboardList, D
 import { PageTransition } from '@/components/PageTransition';
 import { ClinicalBackLinkP0 } from '@/components/saude/ClinicalBackLinkP0';
 import { CustomDatePicker } from '@/components/DatePicker';
+import { projectA4ClinicalFacts } from '@/lib/treatment-a4/clinical-bridge';
 import { HealthRelationPicker } from '@/components/saude/HealthRelationPicker';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivePersonId } from '@/hooks/useActivePersonId';
@@ -20,7 +21,7 @@ import { assertMedicalScopeP3 } from '@/lib/m3/medical-scope-p3';
 
 function shiftDay(today:string,days:number){const [y,m,d]=today.split('-').map(Number);return new Date(Date.UTC(y,m-1,d-days+1)).toISOString().slice(0,10);}
 function fmt(day:string){return /^\d{4}-\d{2}-\d{2}$/.test(day)?`${day.slice(8)}/${day.slice(5,7)}/${day.slice(0,4)}`:day;}
-const DEFAULT_SECTIONS:MedicalSectionP3[]=['consultations','careflow'];
+const DEFAULT_SECTIONS:MedicalSectionP3[]=['consultations','careflow','treatments'];
 const tags={registrado:'Registro acessível',declarado:'Informado no VAULT',motor:'Interpretação registrada'} as const;
 export default function MedicalModeP3Page(){
   const {user}=useAuth(),{activePersonId,persons}=useActivePersonId();
@@ -48,6 +49,13 @@ export default function MedicalModeP3Page(){
   const signature=[start,end,mode,sections.join(','),includeBrain?'brain':'factual',episode].join('|');
   scopeRef.current={userId:user?.id||'',personId:activePersonId||'',sig:signature};
   const scopeKey=`${user?.id||''}:${activePersonId||''}`;
+  // Scoped A4 ledger read: no duplicate writer, and no stale person's phases in a PDF.
+  const a4Phases=useLiveQuery(async()=>{
+    const ownerId=user?.id||'',personId=activePersonId||'';
+    if(!ownerId||!personId)return {scope:scopeKey,rows:[]};
+    const rows=await db.a1_treatment_phases.where('[user_id+person_id]').equals([ownerId,personId]).toArray();
+    return {scope:scopeKey,rows:rows.filter(r=>r.user_id===ownerId&&r.person_id===personId)};
+  },[scopeKey]);
   const rehab=useLiveQuery(async()=>{
     const uid=user?.id||'',pid=activePersonId||'';
     if(!uid||!pid)return {scope:scopeKey,programs:[],sessions:[],milestones:[],origins:[]};
@@ -88,22 +96,26 @@ export default function MedicalModeP3Page(){
     if(item.data&&item.data<start)setStart(item.data);
   },[scopeKey,user?.id,activePersonId,health.context,consultations,start]);
   const person=persons.find(p=>p.id===activePersonId);
-  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey));
+  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey)&&a4Phases?.scope===scopeKey);
+  const a4Facts=useMemo(()=>user?.id&&activePersonId&&health.context&&a4Phases?.scope===scopeKey?
+    projectA4ClinicalFacts({userId:user.id,personId:activePersonId,phases:a4Phases.rows,
+      treatments:health.context.tratamentos,medications:health.context.medicamentos,from:start,through:end,max:2000}):[],
+    [user?.id,activePersonId,health.context,a4Phases,scopeKey,start,end]);
   const prepared=useMemo(()=>{
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:''};
     try{
-      return {report:buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,
+      return {report:buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,
         ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined,rehab:rehab?.scope===scopeKey?rehab:undefined}),error:''};
     }catch(error){return {report:null,error:error instanceof Error?error.message:'Não foi possível preparar esta prévia.'};}
-  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey]);
+  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts]);
   const normalized=q.trim().toLocaleLowerCase('pt-BR');
   // Busca percorre a projeção detalhada completa, mas não altera o PDF.
   const searchReport=useMemo(()=>{
     if(!normalized||!ready||!user?.id||!activePersonId||!health.context)return prepared.report;
-    try{return buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,
+    try{return buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,
       ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined,rehab:rehab?.scope===scopeKey?rehab:undefined});}
     catch{return prepared.report;}
-  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey]);
+  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts]);
   const filtered=useMemo(()=>searchReport?.rows.filter(r=>
     (focusSection==='all'||r.section===focusSection)&&
     (!normalized||[r.title,r.detail,r.source,...r.relations].join(' ').toLocaleLowerCase('pt-BR').includes(normalized)))||[],

@@ -1,8 +1,10 @@
 /** M3 P2 + CareFlow P0 R1: projecao factual de leitura, sem escrita ou inferencia clinica. */
-export type BrainFactKindP2='consulta'|'cirurgia'|'exame'|'dose_tomada'|'dose_ignorada'|'dose_registrada'|'medicao'|'registro'|'careflow';
+import type { A4ClinicalFact } from '@/lib/treatment-a4/clinical-bridge';
+export type BrainFactKindP2='consulta'|'cirurgia'|'exame'|'dose_tomada'|'dose_ignorada'|'dose_registrada'|'medicao'|'registro'|'careflow'|'tratamento_fase';
 export type BrainFactP2={key:string;sourceId:string;kind:BrainFactKindP2;title:string;date:string;time:string;provenance:string;href:string;detail:string;intensity?:number; medicationVisual?:{formato?:string|null;cores?:string[]|null}};
 export type BrainInputP2={
  userId:string;personId:string;
+ treatmentFacts?:readonly A4ClinicalFact[];
  consultas:readonly {id?:string;user_id?:string;person_id?:string;data:string;status:string;motivo?:string}[];
  cirurgias:readonly {id?:string;user_id?:string;person_id?:string;data:string;status:string;procedimento?:string}[];
  exames:readonly {id?:string;user_id?:string;person_id?:string;data:string;nome:string}[];
@@ -67,6 +69,13 @@ export function buildBrainFactsP2(input:BrainInputP2,max=80):BrainFactP2[]{
     orderId?`/saude/careflow/exames#careflow-pedido-${encodeURIComponent(orderId)}`:
     e.kind==='monitor_plan'||e.kind==='monitor_reading'?'/saude/careflow/pressao':'/saude/careflow/dossie';
   append('careflow',e.id,date,title,detail,href,related?'Sintoma relacionado à consulta':contextual?'Vínculo a revisar':'Acompanhamento da pessoa',trim(e.payload?.time||'',8),related?.intensidade);
+ }
+ // A4 phases are explicit source events, not inferred from the current treatment status.
+ for(const fact of input.treatmentFacts||[]){
+  if(fact.userId!==input.userId||fact.personId!==input.personId)continue;
+  append('tratamento_fase',fact.id,fact.date,`${fact.treatmentName} · ${fact.kindLabel}`,
+    [fact.sourceLabel,fact.title,fact.medicationName?`Medicamento: ${fact.medicationName}`:''].filter(Boolean).join(' · '),
+    fact.href,'Fase declarada do tratamento');
  }
  const seen=new Set<string>();
  return rows.filter(r=>!seen.has(r.key)&&Boolean(seen.add(r.key)))

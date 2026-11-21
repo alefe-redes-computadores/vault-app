@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Activity, CalendarDays, CheckCircle2, ChevronDown, History, Loader2, ShieldCheck } from "lucide-react";
 import { db } from "@/lib/db";
@@ -141,13 +142,14 @@ export function TreatmentRegimenA4({treatmentId,userId,personId,medications,doct
           <p className="mt-2 text-xs text-ink-muted">{a4PhaseSourceLabel(item.origem)}{doctor?` · ${doctor.nome}`:""}{nextRecordedDate?` · Registro posterior em ${a1DateBR(nextRecordedDate)}`:""}</p>
           {s ? <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-ink-primary">
             <span className="rounded-lg bg-violet-400/10 px-2 py-1 text-violet-200">{s.natureza==="continuo"?"Contínuo declarado":s.natureza==="temporario"?"Temporário declarado":"Duração não informada"}</span>
-            {medicine?<span className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-200">{medicine.nome}</span>:s.medicamento_id?<span className="rounded-lg border border-amber-400/20 px-2 py-1 text-amber-200">Medicamento vinculado indisponível nesta pessoa</span>:null}
+            {medicine?<Link href={`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicine.id||"")}`} className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-200 underline-offset-2 focus-visible:underline">{medicine.nome}</Link>:s.medicamento_id?<span className="rounded-lg border border-amber-400/20 px-2 py-1 text-amber-200">Medicamento vinculado indisponível nesta pessoa</span>:null}
             {[s.dose_texto,s.frequencia_texto,s.via,s.local_anatomico,...s.horarios].filter(Boolean).map((value,i)=><span key={`${item.id}-${i}`} className="rounded-lg bg-void/70 px-2 py-1">{value}</span>)}
             {s.lateralidade&&s.lateralidade!=="nao_aplicavel"?<span className="rounded-lg bg-void/70 px-2 py-1">{s.lateralidade}</span>:null}
             {s.fim_previsto?<span className="rounded-lg border border-amber-400/20 px-2 py-1 text-amber-200">Revisão/fim previsto: {a1DateBR(s.fim_previsto)} · não confirmado</span>:null}
             {s.consulta_id?<span className="rounded-lg border border-sky-400/20 px-2 py-1 text-sky-200">Consulta vinculada</span>:null}
             {s.documento_id?<span className="rounded-lg border border-amber-400/20 px-2 py-1 text-amber-200">Documento vinculado</span>:null}
           </div>:null}
+          {s?.fim_previsto?<p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Revisão prevista não cria alerta automaticamente. <Link href="/saude/lembretes" className="font-semibold text-violet-200 underline underline-offset-2">Configurar um lembrete voluntariamente</Link>.</p>:null}
           {item.observacoes?<p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-ink-muted">{item.observacoes}</p>:null}
           {!item.synced?<p className="mt-2 text-[11px] text-amber-200">Pendente de sincronização — registro local preservado</p>:null}
         </article>;

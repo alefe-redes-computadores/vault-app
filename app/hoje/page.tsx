@@ -3,6 +3,7 @@
 import { describeTodayDate } from "@/lib/today/timeline-date-presentation";
 import { projectRemindersForDay } from "@/lib/today/reminder-day-projection";
 import { TodayRoutinePulse } from "@/components/hoje/TodayRoutinePulse";
+import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
 import { formatPtBrQuantity } from "@/lib/ui/quantity-ptbr";
 import { medicationsForOwner } from "@/lib/health-intelligence/medication-owner-scope";
 import { TodayTimelineGuide } from "@/components/hoje/TodayTimelineGuide";
@@ -1655,6 +1656,7 @@ export default function HojePage() {
             onInteraction={()=>trigger("vibrate")}/>
         </div>
         <div className="mx-auto max-w-3xl px-4 pt-3"><CareFlowSummaryM2 /></div>
+        {isHoje && !retroReviewMode ? <div className="mx-auto max-w-3xl px-4 pt-2"><TreatmentContinuityA4 context="today" maxItems={2} /></div> : null}
         <div className="mx-auto max-w-3xl px-4 pt-2"><ExamAgendaM2 day={dataSelecionada} /></div>
         {isHoje && <div className="mx-auto max-w-3xl"><RehabM5AgendaStrip /></div>}
 

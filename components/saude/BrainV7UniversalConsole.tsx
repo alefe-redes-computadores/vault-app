@@ -13,6 +13,8 @@ import { projectBrainUniversalV7, shiftBrainDayV7 } from '@/lib/health-intellige
 import { prepareBrainV7Dossier, type BrainV7Rationale } from '@/lib/health-intelligence/brain-v7-dossier';
 import { buildBrainClinicalReviewP6, brainClinicalReturnBriefP6 } from '@/lib/health-intelligence/brain-clinical-review-p6';
 import { BrainClinicalReviewMacro3 } from '@/components/saude/BrainClinicalReviewMacro3';
+import { TreatmentContinuityA4 } from '@/components/saude/TreatmentContinuityA4';
+import { projectA4ClinicalFacts, formatA4ClinicalDossier } from '@/lib/treatment-a4/clinical-bridge';
 
 function isRationale(value: unknown): value is BrainV7Rationale {
   if (!value || typeof value !== 'object') return false;
@@ -77,9 +79,20 @@ export function BrainV7UniversalConsole() {
       return {scope,medications,acquisitions,doseLogs,records,consultations,withdrawals,error:''};
     }catch(e){return {scope,medications:[] as Medicamento[],acquisitions:[],doseLogs:[],records:[],consultations:[],withdrawals:[],error:e instanceof Error?e.message:'Falha ao consultar registros.'};}
   },[uid,pid,today]);
+  const a4Ledger=useLiveQuery(async()=>{
+    if(!uid||!pid)return {scope,phases:[],treatments:[]};
+    const [phases,treatments]=await Promise.all([
+      db.a1_treatment_phases.where('[user_id+person_id]').equals([uid,pid]).toArray(),
+      db.tratamentos.where('user_id').equals(uid).toArray(),
+    ]);
+    return {scope,phases,treatments};
+  },[uid,pid]);
   const snapshot=data?.scope===scope?data:null;
-  const ready=Boolean(uid&&pid&&loadedScope===scope&&snapshot&&!snapshot.error);
+  const ready=Boolean(uid&&pid&&loadedScope===scope&&snapshot&&!snapshot.error&&a4Ledger?.scope===scope);
   const medicines=useMemo(()=>(ready&&snapshot?snapshot.medications:[]).filter((m):m is Medicamento & {id:string}=>Boolean(m.id&&m.user_id===uid&&m.person_id===pid)),[snapshot,ready,uid,pid]);
+  const a4Facts=useMemo(()=>ready&&a4Ledger?.scope===scope?
+    projectA4ClinicalFacts({userId:uid,personId:pid,phases:a4Ledger.phases,treatments:a4Ledger.treatments,medications:medicines,max:30}):[],
+    [ready,a4Ledger,scope,uid,pid,medicines]);
   const includedAnchors=useMemo(()=>anchors.filter(id=>medicines.some(m=>m.id===id&&m.tipo_uso==='continuo')),[anchors,medicines]);
   const includedNotes=useMemo(()=>rationales.filter(x=>medicines.some(m=>m.id===x.medicationId)),[rationales,medicines]);
   const report=useMemo(()=>ready&&snapshot?projectBrainUniversalV7({userId:uid,personId:pid,todayISO:today,nowISO,
@@ -92,8 +105,9 @@ export function BrainV7UniversalConsole() {
   }):null,[ready,snapshot,uid,pid,today,nowISO,medicines]);
   const dossier=useMemo(()=>report&&snapshot?[prepareBrainV7Dossier({report,userId:uid,personId:pid,medications:medicines,
     acquisitions:snapshot.acquisitions,rationales:includedNotes}),
-    clinicalReviewP6?brainClinicalReturnBriefP6(clinicalReviewP6):''].filter(Boolean).join('\n\n'):'',
-    [report,snapshot,uid,pid,medicines,includedNotes,clinicalReviewP6]);
+    clinicalReviewP6?brainClinicalReturnBriefP6(clinicalReviewP6):'',
+    formatA4ClinicalDossier(a4Facts,12)].filter(Boolean).join('\n\n'):'',
+    [report,snapshot,uid,pid,medicines,includedNotes,clinicalReviewP6,a4Facts]);
   function saveSettings(nextAnchors: string[], nextNotes: BrainV7Rationale[]) {
     try {localStorage.setItem(storageKey,JSON.stringify({anchors:nextAnchors.slice(0,5),rationales:nextNotes.slice(-30)}));return true;}
     catch {setStatus('Não foi possível gravar no dispositivo. Verifique o armazenamento local.');return false;}
@@ -150,6 +164,7 @@ export function BrainV7UniversalConsole() {
       :snapshot.error?<p role="alert" className="rounded-xl border border-rose-400/30 p-3 text-xs text-rose-200">{snapshot.error}</p>
       :report&&<>
         {clinicalReviewP6?<BrainClinicalReviewMacro3 review={clinicalReviewP6}/>:null}
+        <TreatmentContinuityA4 context="brain" maxItems={4}/>
         <section className={section}>
           <h2 className={title}><HeartPulse size={17} className="text-emerald-300"/>Stability Anchor · seu chão</h2>
           <p className={`mt-2 ${subtle}`}>Marque voluntariamente até 5 tratamentos contínuos como referência pessoal. Falta de registro NÃO equivale a falta de medicamento, e uma retomada não prova estabilidade farmacológica.</p>

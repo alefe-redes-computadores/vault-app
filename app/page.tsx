@@ -8,6 +8,7 @@ import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
+import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
 import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
@@ -1394,6 +1395,7 @@ export default function HomePage() {
             totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary"
             viva={{userId:user?.id||"",personId:activePersonId||"",today:hoje,medications:medicamentosAtivos,consultations:consultas,events:homeCareFlowEvents}} />
           <CareFlowSummaryM2 />
+          <TreatmentContinuityA4 context="home" maxItems={2} />
           {/* P6 P4-A: somente um acompanhamento opcional, evidência de consulta, sem mexer em Ação Agora. */}
           <ClinicalEpisodePulseP4 />
           {/* M145: Compromissos reais primeiro; análises e cards de evidência vêm depois. */}
