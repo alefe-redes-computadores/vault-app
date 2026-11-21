@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bell, CalendarDays, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Bell, CalendarDays, AlertTriangle, ChevronDown, ShieldCheck } from "lucide-react";
 import type { Medicamento, DoseLog } from "@/lib/types";
 import { buildCourseAgendaPreviewD4 } from "@/lib/clinical/course-agenda-preview-d4";
 
@@ -26,9 +26,10 @@ export function CourseAgendaPreviewD4({ med, personId, courseKey, today, doseLog
     medicationId: med.id, courseKey, today: clock.day, localTime: clock.time,
     logs: doseLogs, context: med.contexto_clinico_m1 });
   if (!agenda) return null;
-  return <details className="mt-2 rounded-xl border border-sky-300/20 bg-sky-300/[0.035] p-2.5" aria-label="Prévia de agenda e lembretes">
-    <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-sky-200">
+  return <details className="group mt-2 rounded-xl border border-sky-300/20 bg-sky-300/[0.035] p-2.5" aria-label="Prévia de agenda e lembretes">
+    <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-semibold text-sky-200">
       <CalendarDays size={16} aria-hidden="true"/>Próximos horários e lembretes
+      <ChevronDown size={15} aria-hidden="true" className="ml-auto text-ink-muted transition-transform group-open:rotate-180"/>
     </summary>
     <div className="mt-2 space-y-2 text-[11px] text-ink-muted">
       <p>{agenda.futureInWindow} horário(s) ainda sem decisão nos próximos {agenda.windowDays} dias; {agenda.futureBeyondWindow} além da janela.</p>

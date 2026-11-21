@@ -2,6 +2,7 @@
 
 import { DollarSign, LineChart } from "lucide-react";
 import { StatCard } from "@/components/detail/DetailComponents";
+import { countLabel } from "@/lib/medications/visual-copy";
 
 type Props = {
   paidCount: number;
@@ -16,7 +17,7 @@ export function MedicationPaidCostCards({ paidCount, paidTotal, paidAverage, ref
     return (
       <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 min-[400px]:gap-3" aria-label="Resumo de aquisições realizadas">
         <StatCard icon={<LineChart size={14} />} label="Compras registradas"
-          value={`R$ ${paidTotal.toFixed(2)}`} description={`${paidCount} aquisição(ões) pagas`} />
+          value={`R$ ${paidTotal.toFixed(2)}`} description={countLabel(paidCount, "aquisição paga", "aquisições pagas")} />
         <StatCard icon={<DollarSign size={14} />} label="Preço médio"
           value={`R$ ${paidAverage.toFixed(2)}`} description="Média das aquisições registradas" />
       </div>

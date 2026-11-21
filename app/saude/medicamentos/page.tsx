@@ -141,6 +141,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { MedicationActionsSheetR4, type MedicationActionsR4 } from "@/components/saude/MedicationActionsSheetR4";
 import { MedicationSheet360R3, type Medication360Value, type Medication360Tab } from "@/components/saude/MedicationSheet360R3";
 import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
+import { shortPrescriptionKnowledgeLabel } from "@/lib/medications/visual-copy";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { MedicationContextSheetP7R3, type MedicationContextP7R3 } from "@/components/saude/MedicationContextSheetP7R3";
 import { MedicationListActiveFilter } from "@/components/saude/MedicationListActiveFilter";
@@ -970,15 +971,18 @@ export default function MedicamentosListPage() {
         catalogIdentities[med.id];
       const reconciliationP6=reconcileMedicationP6({medication:med,documents:prescriptionDocumentsP6||[],
         renewals:renewalsByMedication.get(med.id||'')||[],userId:treatmentOwner?.id||'',personId:activePersonId||'',regulatory:regulatoryProfile});
-      const prescriptionIdentityP6=medicationListEvidenceLabelP6(reconciliationP6,regulatoryProfile);
+      const stablePrescriptionFact = medicationKnowledge360.facts.find(fact => fact.kind === "prescription_type" && fact.authority !== "conflict");
+      const prescriptionIdentityP6=medicationListEvidenceLabelP6(reconciliationP6,regulatoryProfile)
+        ?? shortPrescriptionKnowledgeLabel(stablePrescriptionFact?.value);
       const prescriptionReview360 = medicationKnowledge360.conflicts.some(f => f.kind === "prescription_type") && regulatoryProfile?.verified === true && catalogIdentity?.authorityState === "confirmed";
 
+      const knowledgeIngredient = medicationKnowledge360.facts.find(fact => fact.kind === "active_ingredient")?.value;
       const activeIngredients =
         catalogIdentity?.activeIngredients?.length
           ? catalogIdentity.activeIngredients
           : catalogIdentity?.activeIngredient
             ? [catalogIdentity.activeIngredient]
-            : [];
+            : knowledgeIngredient ? [knowledgeIngredient] : [];
 
       const activeIngredient =
         activeIngredients.join(" + ");
@@ -1486,9 +1490,9 @@ export default function MedicamentosListPage() {
                   {isSOS ? "SOS" : isTemporary ? "Por período" : med.tipo_uso === "continuo" ? "Contínuo" : "Conferir regime"}
                 </button>
                 {isSOS && med.status === "descontinuado" && <button type="button" aria-label={`Conferir regime suspenso SOS de ${med.nome}`} title="Cadastro descontinuado; registro factual de uso passado não significa retomada." onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("rotina");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center rounded-md border border-amber-300/20 bg-amber-300/[0.045] px-1.5 text-[10px] font-semibold text-amber-200">Suspenso · SOS</button>}
-                {compactCards && (activeIngredient || latestManufacturer || med.laboratorio_etiqueta || med.tipo_aquisicao) &&
+                {compactCards && activeIngredient &&
                   <span data-vault-compact-medication-meta className="sr-only">
-                    {[activeIngredient, latestManufacturer || med.laboratorio_etiqueta, med.tipo_aquisicao].filter(Boolean).join(" · ")}
+                    {activeIngredient}
                   </span>}
                 {catalogIdentity?.authorityState === "possible_divergence" && (
                   <button type="button" aria-label={`Conferir identidade divergente de ${med.nome}`} onClick={event=>{event.preventDefault();event.stopPropagation();openMedicationSheet360("ficha");}} className="pointer-events-auto relative z-20 inline-flex min-h-6 items-center rounded-md bg-amber-400/10 px-2 text-[11px] font-bold text-amber-300">Revisar identidade</button>
@@ -1810,9 +1814,7 @@ export default function MedicamentosListPage() {
         {/* CONTEÚDO */}
         <section className="px-4 pt-2.5">
           <MedicationListActiveFilter view={listPresentation} onClear={() => { trigger("vibrate"); setSearchQuery(""); selectMedicationFilter("todos"); }} />
-          <div className="mb-2 flex min-w-0 items-center justify-between gap-2" aria-label="Organização da lista de medicamentos">
-            <div className="min-w-0"><h2 className="text-sm font-bold tracking-tight text-ink-primary">Seus medicamentos</h2>
-              <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-muted">{unifiedList ? "Lista única · acesso direto aos medicamentos" : "Prioridades primeiro · rotina e SOS separados"}</p></div>
+          <div className="mb-2 flex min-w-0 items-center justify-end gap-2" aria-label="Resumo da lista de medicamentos">
             {medsPrioridade.length > 0 ? <span className="shrink-0 rounded-lg border border-amber-400/20 bg-amber-400/[.07] px-2 py-1 text-[10px] font-semibold text-amber-200">{medsPrioridade.length} em atenção</span> : null}
           </div>
 

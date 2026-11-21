@@ -2,6 +2,7 @@
 
 import { AlertCircle, Building2, ChevronRight, Gift, MapPin, Phone, Store, Stethoscope } from "lucide-react";
 import { DetailInfoRow } from "@/components/detail/DetailComponents";
+import { countLabel, humanizeCareLocationKind } from "@/lib/medications/visual-copy";
 
 type NetworkNode = {id?: string | null; name: string; address?: string | null; phone?: string | null; kind?: string | null};
 type LatestPublicAcquisition = {nextWithdrawalDate?: string | null; needsPrescription?: boolean | null};
@@ -38,7 +39,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
   const linkedLocations = Number(Boolean(doctor.id)) + Number(Boolean(hospital)) + Number(Boolean(location)) + Number(Boolean(pharmacy));
   return <div className="min-w-0 space-y-3.5" aria-label="Rede de cuidado vinculada ao medicamento">
     <p role="note" className="rounded-xl border border-surface-border/50 bg-surface-raised/30 px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
-      {linkedLocations>0?`${linkedLocations} referência(s) de cuidado exibida(s) conforme os vínculos registrados.`:"Nenhuma referência de rede confirmada nesta ficha."} Vínculo não confirma atendimento, fornecimento ou retirada.
+      {linkedLocations>0?`${countLabel(linkedLocations, "referência de cuidado exibida", "referências de cuidado exibidas")} conforme os vínculos registrados.`:"Nenhuma referência de rede confirmada nesta ficha."} Vínculo não confirma atendimento, fornecimento ou retirada.
     </p>
     <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-sky-400/10 text-sky-300" label="Médico Prescritor"
       action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : undefined}>
@@ -51,7 +52,7 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
     </DetailInfoRow> : null}
     {location ? <DetailInfoRow icon={<MapPin size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-400" label="Local de Saúde" action={nodeActions("locais",location)}>
       <p className="break-words text-sm font-bold text-ink-primary">{location.name}</p>
-      <p className="mt-0.5 text-[11px] text-ink-muted">{location.kind || "Local de saúde"}</p>
+      <p className="mt-0.5 text-[11px] text-ink-muted">{humanizeCareLocationKind(location.kind)}</p>
       {location.address ? <p className="mt-0.5 break-words text-[11px] text-ink-muted">{location.address}</p> : null}
     </DetailInfoRow> : null}
     {pharmacy ? <DetailInfoRow icon={<Store size={19}/>} iconClassName="bg-emerald-400/10 text-emerald-300" label="Farmácia Vinculada" action={nodeActions("farmacias",pharmacy)}>

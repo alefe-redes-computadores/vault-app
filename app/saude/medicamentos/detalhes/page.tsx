@@ -26,6 +26,10 @@ import { MedicationPurchaseRhythmCard } from "@/components/saude/MedicationPurch
 import { MedicationDetailNavigation } from "@/components/saude/MedicationWorkspaceNavigation";
 import { MedicationDetailCareHubM148 } from "@/components/saude/MedicationDetailCareHubM148";
 import { MedicationKnowledgePanelM153P4 } from "@/components/saude/MedicationKnowledgePanelM153P4";
+import { resolveMedicationKnowledgeM153P4 } from "@/lib/medication-intelligence/knowledge-resolver-m153p4";
+import { countLabel, humanizeStockUnit, shortPrescriptionKnowledgeLabel } from "@/lib/medications/visual-copy";
+import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
+import { safeTreatmentColorP7 } from "@/lib/health-intelligence/medication-treatment-links-p7";
 import { buildMedicationDetailHubM148 } from "@/lib/health-intelligence/medication-detail-hub-m148";
 import { readManufacturerMetadata } from "@/lib/medications/manufacturer-experience";
 import { MedicationDecisionAuthority } from "@/components/saude/MedicationDecisionAuthority";
@@ -102,6 +106,7 @@ import {
   Gift,
   Info,
   LineChart,
+  LayoutGrid,
   MoreHorizontal,
   Package,
   Pill,
@@ -1834,6 +1839,10 @@ function MedicamentoDetalhesContent() {
     labelManufacturer: med.laboratorio_etiqueta,
     latestAcquisitionManufacturer: manufacturerOfLatestAcquisitionM148,
   });
+  const stableMedicationKnowledge = resolveMedicationKnowledgeM153P4(med, med.data_receita || undefined);
+  const stablePrescriptionKnowledge = stableMedicationKnowledge.facts.find(fact => fact.kind === "prescription_type" && fact.authority !== "conflict");
+  const stableIngredientKnowledge = stableMedicationKnowledge.facts.find(fact => fact.kind === "active_ingredient")?.value;
+  const regulatoryHeaderLabel = regulatoryProfile?.label || shortPrescriptionKnowledgeLabel(stablePrescriptionKnowledge?.value);
 
   // ==========================================================
   // IDENTIDADE
@@ -2266,8 +2275,10 @@ function MedicamentoDetalhesContent() {
               saldoRegistrado
             )
           )} ${
-            med.estoque_unidade_medida ||
-            "unidade(s)"
+            humanizeStockUnit(
+              med.estoque_unidade_medida,
+              Math.max(0, saldoRegistrado)
+            )
           }`
         );
       }
@@ -2320,8 +2331,10 @@ function MedicamentoDetalhesContent() {
               saldoRegistrado
             )
           )} ${
-            med.estoque_unidade_medida ||
-            "unidade(s)"
+            humanizeStockUnit(
+              med.estoque_unidade_medida,
+              Math.max(0, saldoRegistrado)
+            )
           }`
         );
       }
@@ -2796,13 +2809,13 @@ function MedicamentoDetalhesContent() {
                       </span>
                     )}
 
-                    {regulatoryProfile && (
+                    {regulatoryHeaderLabel && (
                       <span
                         className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${regulatorySurface.badgeClass}`}
-                        title={regulatoryProfile.detail}
+                        title={regulatoryProfile?.detail || stablePrescriptionKnowledge?.value}
                       >
-                        {regulatoryProfile.label}
-                        {!regulatoryProfile.verified &&
+                        {regulatoryHeaderLabel}
+                        {regulatoryProfile && !regulatoryProfile.verified &&
                         regulatoryProfile.tone !==
                           "unknown"
                           ? " · cadastro"
@@ -2836,10 +2849,10 @@ function MedicamentoDetalhesContent() {
                       <span className="ml-auto text-[10px] font-medium text-ice/80 group-open:hidden">Ver ficha</span>
                       </summary>
 
-                      {catalogIdentity.activeIngredients.length > 0 && (
+                      {(catalogIdentity.activeIngredients.length > 0 || stableIngredientKnowledge) && (
                         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
                           <span className="text-ink-muted/60">Princípio ativo · </span>
-                          {catalogIdentity.activeIngredients.join(" + ")}
+                          {catalogIdentity.activeIngredients.join(" + ") || stableIngredientKnowledge}
                         </p>
                       )}
 
@@ -2860,16 +2873,18 @@ function MedicamentoDetalhesContent() {
                           tratamento:
                             Tratamento
                         ) => (
-                          <span
+                          (() => { const TreatmentIcon = getVaultTreatmentIcon(tratamento.nome); const color = safeTreatmentColorP7(tratamento.cor); return <span
                             key={
                               tratamento.id
                             }
-                            className="rounded-full border border-surface-border bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ink-muted"
+                            className="inline-flex items-center gap-1 rounded-full border border-surface-border bg-surface-raised px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ink-muted"
+                            style={color ? {borderColor:`${color}66`,backgroundColor:`${color}12`,color} : undefined}
                           >
+                            <TreatmentIcon size={10}/>
                             {
                               tratamento.nome
                             }
-                          </span>
+                          </span>; })()
                         )
                       )}
                     </div>
@@ -2905,9 +2920,8 @@ function MedicamentoDetalhesContent() {
                                 }
                               />
 
-                              {
-                                cid.codigo
-                              }
+                              <span>{cid.codigo}</span>
+                              {cid.descricao ? <span className="max-w-[12rem] truncate normal-case tracking-normal opacity-80">· {cid.descricao}</span> : null}
                             </span>
                           );
                         }
@@ -3010,7 +3024,7 @@ function MedicamentoDetalhesContent() {
                 plannedToday={dosesEsperadasHoje}
                 takenScheduledToday={dosesTomadasProgramadasHoje}
                 ignoredScheduledToday={dosesIgnoradasProgramadasHoje}                 quantityPerDose={(() => { const slot = isTemporary ? logsHoje.find(log => isTemporaryCoursePlannedDose(log)) : undefined; const quantity = contextualDoseQuantity(med, slot); return quantity !== null ? formatQuantidade(quantity) : null; })()}
-                doseUnit={med.estoque_unidade_medida || "unidade(s)"}                 scheduleKind={isTemporary ? "temporary" : "continuous"}
+                doseUnit={humanizeStockUnit(med.estoque_unidade_medida)}                 scheduleKind={isTemporary ? "temporary" : "continuous"}
                  hours={horariosConfigurados}
                 takenHours={horariosTomadosHoje}
                 ignoredHours={horariosIgnoradosHoje}
@@ -3034,7 +3048,7 @@ function MedicamentoDetalhesContent() {
             const returnTo=`/saude/medicamentos/detalhes?${searchParams.toString()}`;
             router.push(withReturnTarget(`${retroReviewHref(med.id!)}&origem=detalhes`,returnTo));
           }} className="mt-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl border border-ice/20 bg-ice/[.045] px-4 py-3 text-left text-xs font-semibold text-ice">
-            <span>Revisar várias doses antigas</span><span className="text-[10px] text-ink-muted">Selecionar dias e horários</span>
+            <span>Revisar várias doses antigas</span><span className="flex items-center gap-1 text-[10px] text-ink-muted">Selecionar dias e horários <ChevronRight size={14}/></span>
           </button>}
 
           {/* M42 — estoque desconhecido tem seu próprio estado, sem convertê-lo em zero. */}
@@ -3073,7 +3087,7 @@ function MedicamentoDetalhesContent() {
                 <MedicationStockOverview
                   statusLabel={estoqueStatus.label} statusColor={estoqueStatus.color}
                   statusBackground={estoqueStatus.bg} statusIcon={<EstoqueStatusIcon size={10}/>}
-                  quantity={quantidadeDisponivel} unit={med.estoque_unidade_medida || "unidade(s)"}
+                  quantity={quantidadeDisponivel} unit={humanizeStockUnit(med.estoque_unidade_medida, quantidadeDisponivel)}
                   equivalentMl={estoqueEquivalenteMl}
                   negative={estoqueNegativo} registeredBalance={saldoRegistrado}
                   sos={isSOS} daysRemaining={estoqueInfo?.diasRestantes ?? null}
@@ -3101,7 +3115,7 @@ function MedicamentoDetalhesContent() {
             )}
 
           {/* SS7: independent stock/planning console; no new stock writes. */}
-          {med.id && <button type="button" onClick={() => { trigger("vibrate");router.push('/saude/supply-shield'); }} className="mt-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/[.04] px-3 text-left text-xs font-semibold text-emerald-200">Supply Shield · ver planejamento <span aria-hidden="true">›</span></button>}
+          {med.id && <button type="button" onClick={() => { trigger("vibrate");router.push('/saude/supply-shield'); }} className="mt-2 flex min-h-11 w-full items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/[.04] px-3 text-left text-xs font-semibold text-emerald-200">Planejamento de estoque e fornecimento <ChevronRight size={15}/></button>}
 
 
           <section id="medicamento-receita" className="vault-deferred scroll-mt-24 space-y-3">
@@ -3401,11 +3415,11 @@ function MedicamentoDetalhesContent() {
           </ClinicalDisclosure>
           {med.id && med.person_id && activePersonId === med.person_id ? (
             <ClinicalDisclosure id="pharmalens-v7" title="PharmaLens · fabricantes" description="Trocas, experiências e evidências pessoais por fabricante" icon={<LineChart size={18}/>} iconClassName="text-violet-300">
-              {() => <PharmaLensMedicationEntryV7 medicationId={med.id!} userId={med.user_id} personId={med.person_id!}/>}
+              {() => <PharmaLensMedicationEntryV7 medicationId={med.id!} userId={med.user_id} personId={med.person_id!} referenceManufacturer={med.laboratorio_etiqueta}/>}
             </ClinicalDisclosure>
           ) : null}
           <ClinicalDisclosure id="medicamento-fornecimento" title="Fornecimento e documentos" description="Fornecimento público ou particular e documentos relacionados" icon={<Package size={18}/>} iconClassName="text-emerald-300">
-            <HealthSupplyEntry medicamentoId={med.id!}/>
+            <HealthSupplyEntry medicamentoId={med.id!} completedAcquisitions={journeySnapshot.completedAcquisitions}/>
           </ClinicalDisclosure>
           {med.id && activePersonId === med.person_id && (
             <ClinicalDisclosure id="medicamento-lembretes" title="Alertas e lembretes" description="Preferências de aviso para este medicamento" icon={<Clock size={18}/>} iconClassName="text-amber-300">
@@ -3440,7 +3454,7 @@ function MedicamentoDetalhesContent() {
               {medicationCosts.planned.length > 0 && (
                 <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.05] p-3">
                   <div className="flex items-center justify-between gap-3"><span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Planejado · não realizado</span><strong className="text-xs text-ink-primary">{medicationCosts.plannedWithPrice ? `R$ ${medicationCosts.plannedKnownTotal.toFixed(2)}` : "Valor não informado"}</strong></div>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{medicationCosts.planned.length} aquisição(ões) futura(s). Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{countLabel(medicationCosts.planned.length, "aquisição futura", "aquisições futuras")}. Não entram no gasto, no preço médio nem no estoque até serem confirmadas.</p>
                 </div>
               )}
               {/* VAULT_V320_FINANCE_PROGRESSIVE: calculations retained, advanced projection optional */}
@@ -3593,6 +3607,7 @@ function MedicamentoDetalhesContent() {
                 ? "Sem evento separado de receita; confira a data declarada no cadastro."
                 : detailHubM148.documents.detail,
             }}}
+            treatments={tratamentos}
             hasRoutine={hasRoutineSection}
             hasPharmaLens={Boolean(med.id && med.person_id && activePersonId === med.person_id)}
             onOpenSection={sectionId => {
@@ -3608,7 +3623,7 @@ function MedicamentoDetalhesContent() {
             </div>}
           </ClinicalDisclosure>
           <details className="group rounded-[16px] border border-surface-border/55 bg-surface/45 px-3">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice">Explorar todas as áreas do medicamento <ChevronDown size={15} className="text-ink-muted transition-transform group-open:rotate-180"/></summary>
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ice"><span className="flex items-center gap-2"><LayoutGrid size={16} className="text-sky-300"/>Explorar todas as áreas do medicamento</span><ChevronDown size={15} className="text-ink-muted transition-transform group-open:rotate-180"/></summary>
             <div className="border-t border-surface-border/40 pb-2 pt-2">
               <MedicationDetailNavigation hasRoutine={hasRoutineSection} hasStock={Boolean(temEstoque && (med.status !== "descontinuado" || isSOS))} hasFinancial={hasFinancialSection} historyCount={renovacoes.length}/>
             </div>

@@ -10,9 +10,11 @@ import { summarizeMedicationSupplyRelations } from "@/lib/health-supply/relation
 export function HealthSupplyEntry({
   medicamentoId,
   retiradaId,
+  completedAcquisitions = 0,
 }: {
   medicamentoId: string;
   retiradaId?: string;
+  completedAcquisitions?: number;
 }) {
   const { data, loading } = useHealthSupply();
   const summary = useMemo(
@@ -33,7 +35,7 @@ export function HealthSupplyEntry({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-            <h2 className="text-sm font-semibold text-ink-primary">Fornecimento e documentos</h2>
+            <h2 className="text-sm font-semibold text-ink-primary">Processos de fornecimento</h2>
             {!loading && summary.processes.length > 0 && (
               <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-medium text-emerald-200">
                 {summary.processes.length} {summary.processes.length === 1 ? "processo" : "processos"}
@@ -45,7 +47,9 @@ export function HealthSupplyEntry({
               ? "Conferindo vínculos locais…"
               : summary.processes.length
                 ? summary.origins.join(" · ")
-                : "Nenhum processo ativo vinculado. Organize a origem e os documentos deste medicamento."}
+                : completedAcquisitions > 0
+                  ? `${completedAcquisitions === 1 ? "1 aquisição já consta" : `${completedAcquisitions} aquisições já constam`} no histórico. Não há processo contínuo de fornecimento vinculado.`
+                  : "Nenhum processo ativo vinculado. Organize a origem e os documentos deste medicamento."}
           </p>
           {!loading && summary.processes.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Situação dos ciclos vinculados">
