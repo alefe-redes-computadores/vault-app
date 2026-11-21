@@ -9,7 +9,7 @@ const ICON:Record<HomeVivaFrontP4["id"],LucideIcon>={temporary:ShieldCheck,monit
 const TONE:Record<HomeVivaFrontP4["tone"],string>={
   emerald:"border-emerald-300/25 bg-emerald-300/[.06] text-emerald-200",
   sky:"border-sky-300/25 bg-sky-300/[.06] text-sky-200",
-  violet:"border-violet-300/25 bg-violet-300/[.06] text-violet-200",
+  violet:"border-surface-border bg-surface text-emerald-200",
 };
 export function HomeVivaP4({data,onNavigate}:Props){
   const {trigger}=useHapticFeedback();
@@ -30,7 +30,7 @@ export function HomeVivaP4({data,onNavigate}:Props){
       <button type="button" onClick={()=>onNavigate(active.id==="routine"?"/saude/careflow/sintomas":active.href)} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-current/20 bg-black/10 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none">
         <span>{active.id==="routine"?"Registrar sintoma":"Conferir registros"}</span><ChevronRight size={16} className="shrink-0" aria-hidden="true"/>
       </button>
-      {active.id==="routine"?<button type="button" onClick={()=>onNavigate("/saude/careflow/pressao")} className="flex min-h-11 min-w-0 items-center justify-between gap-1 rounded-xl border border-current/20 bg-black/5 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none"><span>Registrar pressão</span><ChevronRight size={15} className="shrink-0" aria-hidden="true"/></button>:null}
+      {active.id==="routine"?<button type="button" onClick={()=>onNavigate("/saude/careflow/pressao?novo=1")} className="flex min-h-11 min-w-0 items-center justify-between gap-1 rounded-xl border border-current/20 bg-black/5 px-2.5 text-left text-[11px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-current active:opacity-80 motion-reduce:transition-none"><span>Registrar pressão</span><ChevronRight size={15} className="shrink-0" aria-hidden="true"/></button>:null}
     </div>
   </section>;
 }

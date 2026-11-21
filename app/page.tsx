@@ -8,10 +8,7 @@ import { formatVaultClinicalDateBR } from "@/lib/home/format-clinical-date";
 import { getVaultTreatmentIcon } from "@/lib/health-profile/treatment-icon";
 import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coherence";
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
-import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
-import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
-import { HospitalizationA5AgendaStrip } from "@/components/saude/HospitalizationA5AgendaStrip";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
@@ -426,6 +423,7 @@ export default function HomePage() {
 
   const {
     doseLogs,
+    isLoading: doseLogsHojeLoading,
 
     marcarComoTomadaEm:
       marcarDoseHojeEm,
@@ -434,12 +432,14 @@ export default function HomePage() {
       ignorarDoseHoje,
   } =
     useDoseLogs(
-      hoje
+      hoje,
+      user?.id ?? null
     );
 
   const {
     doseLogs:
       doseLogsOntem,
+    isLoading: doseLogsOntemLoading,
 
     marcarComoTomadaEm:
       marcarDoseOntemEm,
@@ -448,7 +448,8 @@ export default function HomePage() {
       ignorarDoseOntem,
   } =
     useDoseLogs(
-      ontem
+      ontem,
+      user?.id ?? null
     );
 
   // Um agendamento explícito não desaparece da Home depois de "ontem".
@@ -460,8 +461,7 @@ export default function HomePage() {
           log.dose_kind === "planned" &&
           log.data < ontem && !log.tomado_em && !log.ignorado_em).toArray()
       : [],
-    [activePersonId, user?.id, ontem],
-    []
+    [activePersonId, user?.id, ontem]
   );
 
   // Uma única leitura reativa sustenta a fila limitada de revisão (7 dias).
@@ -471,8 +471,7 @@ export default function HomePage() {
       ? db.doseLogs.where("[user_id+person_id]").equals([user.id, activePersonId]).filter(log =>
           log.data >= addDaysToLocalDate(hoje, -6) && log.data <= hoje).toArray()
       : [],
-    [activePersonId, user?.id, hoje],
-    []
+    [activePersonId, user?.id, hoje]
   );
 
   // ==========================================================
@@ -619,10 +618,11 @@ export default function HomePage() {
   // DOSES PENDENTES
   // ==========================================================
 
-  const dosesPendentesAtrasadas = useMemo<PendingDose[]>(() => buildHomePendingDoseProjection({
+  const doseProjectionReady=!doseLogsHojeLoading&&!doseLogsOntemLoading&&plannedEarlier!==undefined&&reviewDoseLogs!==undefined;
+  const dosesPendentesAtrasadas = useMemo<PendingDose[]>(() => doseProjectionReady?buildHomePendingDoseProjection({
     medications: medicamentosAtivos,
-    reviewLogs: reviewDoseLogs,
-    plannedEarlier,
+    reviewLogs: reviewDoseLogs??[],
+    plannedEarlier: plannedEarlier??[],
     yesterdayLogs: doseLogsOntem,
     todayLogs: doseLogs,
     userId: user?.id,
@@ -630,7 +630,8 @@ export default function HomePage() {
     today: hoje,
     yesterday: ontem,
     currentTime: horaAtual,
-  }), [
+  }):[], [
+    doseProjectionReady,
     medicamentosAtivos,
     reviewDoseLogs,
     plannedEarlier,
@@ -1343,8 +1344,6 @@ export default function HomePage() {
           <VaultUpdateHomePromptM117 />
           <HomeEssentialToggleM118 />
           <ExamAgendaM2 compact />
-          <RehabM5AgendaStrip />
-          <HospitalizationA5AgendaStrip />
           {/* VAULT_M144_HOME_ENTRY · M149: item integrado na grade de áreas da Home, não um botão solto. */}
           <p className="sr-only" role="note"><span className="sr-only">Home: prioridades e decisões · Hoje: horários e registros · Brain: explicações e evidências. </span>Prioridades de hoje · acessos principais · demais indicadores sob demanda.</p>
 
@@ -1397,7 +1396,6 @@ export default function HomePage() {
             totalRede={medicos.length + farmacias.length + hospitais.length + locais.length} mode="primary"
             viva={{userId:user?.id||"",personId:activePersonId||"",today:hoje,medications:medicamentosAtivos,consultations:consultas,events:homeCareFlowEvents}} />
           <CareFlowSummaryM2 />
-          <TreatmentContinuityA4 context="home" maxItems={2} />
           {/* P6 P4-A: somente um acompanhamento opcional, evidência de consulta, sem mexer em Ação Agora. */}
           <ClinicalEpisodePulseP4 />
           {/* M145: Compromissos reais primeiro; análises e cards de evidência vêm depois. */}

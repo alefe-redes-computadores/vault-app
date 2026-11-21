@@ -1,14 +1,9 @@
 // app/saude/consultas/page.tsx
 "use client";
 
-import {
-  useMemo,
-  useState,
-} from "react";
+import { useMemo, useState } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import {
   Building2,
@@ -20,45 +15,25 @@ import {
   XCircle,
 } from "lucide-react";
 
-import {
-  useHapticFeedback,
-} from "@/lib/haptics";
+import { useHapticFeedback } from "@/lib/haptics";
 
-import {
-  getDaysUntil,
-} from "@/lib/health-utils";
+import { getDaysUntil } from "@/lib/health-utils";
 
-import {
-  useConsultas,
-} from "@/hooks/useConsultas";
+import { useConsultas } from "@/hooks/useConsultas";
 
-import {
-  useActivePersonId,
-} from "@/hooks/useActivePersonId";
+import { useActivePersonId } from "@/hooks/useActivePersonId";
 
-import {
-  useMedicos,
-} from "@/hooks/useMedicos";
+import { useMedicos } from "@/hooks/useMedicos";
 
-import {
-  useHospitais,
-} from "@/hooks/useHospitais";
+import { useHospitais } from "@/hooks/useHospitais";
 
-import {
-  useLocais,
-} from "@/hooks/useLocais";
+import { useLocais } from "@/hooks/useLocais";
 
-import {
-  PageTransition,
-} from "@/components/PageTransition";
+import { PageTransition } from "@/components/PageTransition";
 
-import {
-  EmptyState,
-} from "@/components/EmptyState";
+import { EmptyState } from "@/components/EmptyState";
 
-import {
-  CardListSkeleton,
-} from "@/components/loading/CardListSkeleton";
+import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 
 import {
   ListCard,
@@ -69,54 +44,28 @@ import {
 import { ClinicalListSummary } from "@/components/saude/ClinicalListSummary";
 import { useReturnContext } from "@/hooks/useReturnContext";
 
-import type {
-  Consulta,
-} from "@/lib/types";
+import type { Consulta } from "@/lib/types";
 
 // ============================================================
 // TIPOS
 // ============================================================
 
-type ConsultaStatus =
-  | "agendada"
-  | "realizada"
-  | "cancelada";
+type ConsultaStatus = "agendada" | "realizada" | "cancelada";
 
-type FiltroStatus =
-  | "todos"
-  | ConsultaStatus;
-
-type AbaConsulta =
-  | "proximas"
-  | "historico";
+type FiltroStatus = "todos" | ConsultaStatus;
 
 // ============================================================
 // HELPERS
 // ============================================================
 
 function getTodayISO(): string {
-  const now =
-    new Date();
+  const now = new Date();
 
-  const year =
-    now.getFullYear();
+  const year = now.getFullYear();
 
-  const month =
-    String(
-      now.getMonth() +
-        1
-    ).padStart(
-      2,
-      "0"
-    );
+  const month = String(now.getMonth() + 1).padStart(2, "0");
 
-  const day =
-    String(
-      now.getDate()
-    ).padStart(
-      2,
-      "0"
-    );
+  const day = String(now.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -129,56 +78,31 @@ function normalizeSearch(value?: string): string {
     .trim();
 }
 
-function getCivilDate(
-  value?: string
-): string {
-  if (
-    !value
-  ) {
+function getCivilDate(value?: string): string {
+  if (!value) {
     return "";
   }
 
-  return value.includes(
-    "T"
-  )
-    ? value.split(
-        "T"
-      )[0]
-    : value;
+  return value.includes("T") ? value.split("T")[0] : value;
 }
 
-function formatDateDisplay(
-  isoStr: string
-): string {
-  if (
-    !isoStr
-  ) {
+function formatDateDisplay(isoStr: string): string {
+  if (!isoStr) {
     return "";
   }
 
-  const datePart =
-    getCivilDate(
-      isoStr
-    );
+  const datePart = getCivilDate(isoStr);
 
-  const parts =
-    datePart.split(
-      "-"
-    );
+  const parts = datePart.split("-");
 
-  if (
-    parts.length !==
-    3
-  ) {
+  if (parts.length !== 3) {
     return isoStr;
   }
 
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
-function getStatusConfig(
-  status: string
-): {
+function getStatusConfig(status: string): {
   color: string;
 
   icon:
@@ -187,87 +111,53 @@ function getStatusConfig(
     | typeof XCircle
     | typeof Stethoscope;
 } {
-  switch (
-    status
-  ) {
+  switch (status) {
     case "agendada":
       return {
-        color:
-          "#34D399",
+        color: "#34D399",
 
-        icon:
-          Clock,
+        icon: Clock,
       };
 
     case "realizada":
       return {
-        color:
-          "#38BDF8",
+        color: "#38BDF8",
 
-        icon:
-          CheckCircle2,
+        icon: CheckCircle2,
       };
 
     case "cancelada":
       return {
-        color:
-          "#EF4444",
+        color: "#EF4444",
 
-        icon:
-          XCircle,
+        icon: XCircle,
       };
 
     default:
       return {
-        color:
-          "#38BDF8",
+        color: "#38BDF8",
 
-        icon:
-          Stethoscope,
+        icon: Stethoscope,
       };
   }
 }
 
-function getDiasRestantesLabel(
-  dias: number | null
-): string | null {
-  if (
-    dias ===
-    null
-  ) {
+function getDiasRestantesLabel(dias: number | null): string | null {
+  if (dias === null) {
     return null;
   }
 
-  if (
-    dias ===
-    0
-  ) {
+  if (dias === 0) {
     return "Hoje";
   }
 
-  if (
-    dias <
-    0
-  ) {
-    const absolute =
-      Math.abs(
-        dias
-      );
+  if (dias < 0) {
+    const absolute = Math.abs(dias);
 
-    return `Há ${absolute} dia${
-      absolute >
-      1
-        ? "s"
-        : ""
-    }`;
+    return `Há ${absolute} dia${absolute > 1 ? "s" : ""}`;
   }
 
-  return `Em ${dias} dia${
-    dias >
-    1
-      ? "s"
-      : ""
-  }`;
+  return `Em ${dias} dia${dias > 1 ? "s" : ""}`;
 }
 
 // ============================================================
@@ -275,63 +165,30 @@ function getDiasRestantesLabel(
 // ============================================================
 
 export default function ConsultasPage() {
-  const router =
-    useRouter();
+  const router = useRouter();
   const { preserveReturn } = useReturnContext("/saude/consultas");
 
-  const {
-    trigger,
-  } =
-    useHapticFeedback();
+  const { trigger } = useHapticFeedback();
 
-  const {
-    activePersonId,
-  } =
-    useActivePersonId();
+  const { activePersonId } = useActivePersonId();
 
-  const {
-    consultas,
-  } =
-    useConsultas();
+  const { consultas } = useConsultas();
 
   // ==========================================================
   // GLOBAL ENTITIES
   // ==========================================================
 
-  const {
-    medicos = [],
-  } =
-    useMedicos();
+  const { medicos = [] } = useMedicos();
 
-  const {
-    hospitais = [],
-  } =
-    useHospitais();
+  const { hospitais = [] } = useHospitais();
 
-  const {
-    locais = [],
-  } =
-    useLocais();
+  const { locais = [] } = useLocais();
 
   // ==========================================================
   // UI STATE
   // ==========================================================
 
-  const [
-    abaAtiva,
-    setAbaAtiva,
-  ] =
-    useState<AbaConsulta>(
-      "proximas"
-    );
-
-  const [
-    filtroStatus,
-    setFiltroStatus,
-  ] =
-    useState<FiltroStatus>(
-      "todos"
-    );
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos");
 
   const [search, setSearch] = useState("");
 
@@ -339,86 +196,35 @@ export default function ConsultasPage() {
   // GLOBAL INDEXES
   // ==========================================================
 
-  const medicosMap =
-    useMemo(
-      () =>
-        new Map(
-          medicos
-            .filter(
-              (
-                medico
-              ) =>
-                Boolean(
-                  medico.id
-                )
-            )
-            .map(
-              (
-                medico
-              ) => [
-                medico.id!,
-                medico,
-              ]
-            )
-        ),
-      [
-        medicos,
-      ]
-    );
+  const medicosMap = useMemo(
+    () =>
+      new Map(
+        medicos
+          .filter((medico) => Boolean(medico.id))
+          .map((medico) => [medico.id!, medico])
+      ),
+    [medicos]
+  );
 
-  const hospitaisMap =
-    useMemo(
-      () =>
-        new Map(
-          hospitais
-            .filter(
-              (
-                hospital
-              ) =>
-                Boolean(
-                  hospital.id
-                )
-            )
-            .map(
-              (
-                hospital
-              ) => [
-                hospital.id!,
-                hospital,
-              ]
-            )
-        ),
-      [
-        hospitais,
-      ]
-    );
+  const hospitaisMap = useMemo(
+    () =>
+      new Map(
+        hospitais
+          .filter((hospital) => Boolean(hospital.id))
+          .map((hospital) => [hospital.id!, hospital])
+      ),
+    [hospitais]
+  );
 
-  const locaisMap =
-    useMemo(
-      () =>
-        new Map(
-          locais
-            .filter(
-              (
-                local
-              ) =>
-                Boolean(
-                  local.id
-                )
-            )
-            .map(
-              (
-                local
-              ) => [
-                local.id!,
-                local,
-              ]
-            )
-        ),
-      [
-        locais,
-      ]
-    );
+  const locaisMap = useMemo(
+    () =>
+      new Map(
+        locais
+          .filter((local) => Boolean(local.id))
+          .map((local) => [local.id!, local])
+      ),
+    [locais]
+  );
 
   // ==========================================================
   // PERSON SCOPE
@@ -429,308 +235,156 @@ export default function ConsultasPage() {
   // explícita antes de renderizar ou agregar os registros.
   // ==========================================================
 
-  const scopedConsultas =
-    useMemo(
-      () => {
-        if (
-          !activePersonId
-        ) {
-          return [];
-        }
+  const scopedConsultas = useMemo(() => {
+    if (!activePersonId) {
+      return [];
+    }
 
-        return (
-          consultas ||
-          []
-        ).filter(
-          (
-            consulta:
-              Consulta
-          ) =>
-            consulta.person_id ===
-            activePersonId
-        );
-      },
-      [
-        consultas,
-        activePersonId,
-      ]
+    return (consultas || []).filter(
+      (consulta: Consulta) => consulta.person_id === activePersonId
     );
+  }, [consultas, activePersonId]);
 
   // ==========================================================
   // PRÓXIMAS / HISTÓRICO
   // ==========================================================
 
-  const {
-    proximas,
-    historico,
-    consultasAtrasadas,
-  } =
-    useMemo(
-      () => {
-        const todayISO =
-          getTodayISO();
+  const { proximas, historico, consultasAtrasadas } = useMemo(() => {
+    const todayISO = getTodayISO();
 
-        const next:
-          Consulta[] =
-          [];
+    const next: Consulta[] = [];
 
-        const history:
-          Consulta[] =
-          [];
-        let overdue = 0;
+    const history: Consulta[] = [];
+    let overdue = 0;
 
-        scopedConsultas.forEach(
-          (
-            consulta
-          ) => {
-            const data =
-              getCivilDate(
-                consulta.data
-              );
+    scopedConsultas.forEach((consulta) => {
+      const data = getCivilDate(consulta.data);
 
-            const isPast =
-              Boolean(
-                data &&
-                  data <
-                    todayISO
-              );
+      const isPast = Boolean(data && data < todayISO);
 
-            const belongsToHistory =
-              isPast ||
-              consulta.status ===
-                "realizada" ||
-              consulta.status ===
-                "cancelada";
+      const belongsToHistory =
+        isPast ||
+        consulta.status === "realizada" ||
+        consulta.status === "cancelada";
 
-            if (isPast && consulta.status === "agendada") overdue += 1;
+      if (isPast && consulta.status === "agendada") overdue += 1;
 
-            if (
-              belongsToHistory
-            ) {
-              history.push(
-                consulta
-              );
+      if (belongsToHistory) {
+        history.push(consulta);
 
-              return;
-            }
+        return;
+      }
 
-            next.push(
-              consulta
-            );
-          }
-        );
+      next.push(consulta);
+    });
 
-        next.sort(
-          (
-            first,
-            second
-          ) => {
-            const dateComparison =
-              getCivilDate(
-                first.data
-              ).localeCompare(
-                getCivilDate(
-                  second.data
-                )
-              );
+    next.sort((first, second) => {
+      const dateComparison = getCivilDate(first.data).localeCompare(
+        getCivilDate(second.data)
+      );
 
-            if (
-              dateComparison !==
-              0
-            ) {
-              return dateComparison;
-            }
+      if (dateComparison !== 0) {
+        return dateComparison;
+      }
 
-            return (
-              first.horario ||
-              ""
-            ).localeCompare(
-              second.horario ||
-                ""
-            );
-          }
-        );
+      return (first.horario || "").localeCompare(second.horario || "");
+    });
 
-        history.sort(
-          (
-            first,
-            second
-          ) => {
-            const dateComparison =
-              getCivilDate(
-                second.data
-              ).localeCompare(
-                getCivilDate(
-                  first.data
-                )
-              );
+    history.sort((first, second) => {
+      const dateComparison = getCivilDate(second.data).localeCompare(
+        getCivilDate(first.data)
+      );
 
-            if (
-              dateComparison !==
-              0
-            ) {
-              return dateComparison;
-            }
+      if (dateComparison !== 0) {
+        return dateComparison;
+      }
 
-            return (
-              second.horario ||
-              ""
-            ).localeCompare(
-              first.horario ||
-                ""
-            );
-          }
-        );
+      return (second.horario || "").localeCompare(first.horario || "");
+    });
 
-        return {
-          proximas:
-            next,
+    return {
+      proximas: next,
 
-          historico:
-            history,
-          consultasAtrasadas: overdue,
-        };
-      },
-      [
-        scopedConsultas,
-      ]
-    );
+      historico: history,
+      consultasAtrasadas: overdue,
+    };
+  }, [scopedConsultas]);
 
-  const listaBase =
-    abaAtiva ===
-    "proximas"
-      ? proximas
-      : historico;
+  const listaBase = [...proximas, ...historico];
 
-  const listaExibida =
-    useMemo(
-      () => {
-        const term = normalizeSearch(search);
-        return listaBase.filter((consulta) => {
-          if (filtroStatus !== "todos" && consulta.status !== filtroStatus) return false;
-          if (!term) return true;
-          const medico = consulta.medico_id ? medicosMap.get(consulta.medico_id)?.nome : "";
-          const hospital = consulta.hospital_id ? hospitaisMap.get(consulta.hospital_id)?.nome : "";
-          const local = consulta.local_id ? locaisMap.get(consulta.local_id)?.nome : "";
-          return normalizeSearch([medico, hospital, local, consulta.motivo].filter(Boolean).join(" ")).includes(term);
-        });
-      },
-      [
-        listaBase,
-        filtroStatus,
-        search,
-        medicosMap,
-        hospitaisMap,
-        locaisMap,
-      ]
-    );
+  const listaExibida = useMemo(() => {
+    const term = normalizeSearch(search);
+    return listaBase.filter((consulta) => {
+      if (filtroStatus !== "todos" && consulta.status !== filtroStatus)
+        return false;
+      if (!term) return true;
+      const medico = consulta.medico_id
+        ? medicosMap.get(consulta.medico_id)?.nome
+        : "";
+      const hospital = consulta.hospital_id
+        ? hospitaisMap.get(consulta.hospital_id)?.nome
+        : "";
+      const local = consulta.local_id
+        ? locaisMap.get(consulta.local_id)?.nome
+        : "";
+      return normalizeSearch(
+        [medico, hospital, local, consulta.motivo].filter(Boolean).join(" ")
+      ).includes(term);
+    });
+  }, [listaBase, filtroStatus, search, medicosMap, hospitaisMap, locaisMap]);
 
   // ==========================================================
   // RELATION HELPERS
   // ==========================================================
 
-  const getMedicoNome =
-    (
-      id?: string
-    ) => {
-      if (
-        !id
-      ) {
-        return "Médico não vinculado";
-      }
+  const getMedicoNome = (id?: string) => {
+    if (!id) {
+      return "Médico não vinculado";
+    }
 
-      const medico =
-        medicosMap.get(
-          id
-        );
+    const medico = medicosMap.get(id);
 
-      return medico
-        ? `Dr(a). ${medico.nome}`
-        : "Médico não encontrado";
-    };
+    return medico ? `Dr(a). ${medico.nome}` : "Médico não encontrado";
+  };
 
-  const getHospitalNome =
-    (
-      id?: string
-    ) => {
-      if (
-        !id
-      ) {
-        return null;
-      }
+  const getHospitalNome = (id?: string) => {
+    if (!id) {
+      return null;
+    }
 
-      return (
-        hospitaisMap.get(
-          id
-        )?.nome ||
-        null
-      );
-    };
+    return hospitaisMap.get(id)?.nome || null;
+  };
 
-  const getLocalNome =
-    (
-      id?: string
-    ) => {
-      if (
-        !id
-      ) {
-        return null;
-      }
+  const getLocalNome = (id?: string) => {
+    if (!id) {
+      return null;
+    }
 
-      return (
-        locaisMap.get(
-          id
-        )?.nome ||
-        null
-      );
-    };
+    return locaisMap.get(id)?.nome || null;
+  };
 
   // ==========================================================
   // FILTER ACTIONS
   // ==========================================================
 
-  const handleClearFilters =
-    () => {
-      trigger(
-        "vibrate"
-      );
+  const handleClearFilters = () => {
+    trigger("vibrate");
 
-      setFiltroStatus(
-        "todos"
-      );
-    };
+    setFiltroStatus("todos");
+  };
 
-  const toggleFiltro =
-    (
-      status:
-        ConsultaStatus
-    ) => {
-      trigger(
-        "vibrate"
-      );
+  const toggleFiltro = (status: ConsultaStatus) => {
+    trigger("vibrate");
 
-      setFiltroStatus(
-        (
-          current
-        ) =>
-          current ===
-          status
-            ? "todos"
-            : status
-      );
-    };
+    setFiltroStatus((current) => (current === status ? "todos" : status));
+  };
 
   // ==========================================================
   // LOADING
   // ==========================================================
 
-  if (
-    consultas ===
-    undefined
-  ) {
-    return (
-      <CardListSkeleton />
-    );
+  if (consultas === undefined) {
+    return <CardListSkeleton />;
   }
 
   // ==========================================================
@@ -749,79 +403,9 @@ export default function ConsultasPage() {
           }
           badgeLabel="Agenda"
           badgeColor="text-ice/90"
-          icon={
-            <Stethoscope
-              size={
-                14
-              }
-            />
-          }
+          icon={<Stethoscope size={14} />}
           iconColor="text-ice"
         >
-          <div className="order-3 grid w-full grid-cols-2 gap-2 rounded-2xl border border-surface-border/40 bg-surface-raised p-1">
-            <button
-              type="button"
-              onClick={
-                () => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  setAbaAtiva(
-                    "proximas"
-                  );
-                }
-              }
-              className={`rounded-xl py-2.5 text-xs font-medium transition-all ${
-                abaAtiva ===
-                "proximas"
-                  ? "border border-surface-border/50 bg-surface text-ink-primary shadow-sm"
-                  : "text-ink-muted hover:text-ink-primary"
-              }`}
-              aria-pressed={
-                abaAtiva ===
-                "proximas"
-              }
-            >
-              Próximas (
-              {
-                proximas.length
-              }
-              )
-            </button>
-
-            <button
-              type="button"
-              onClick={
-                () => {
-                  trigger(
-                    "vibrate"
-                  );
-
-                  setAbaAtiva(
-                    "historico"
-                  );
-                }
-              }
-              className={`rounded-xl py-2.5 text-xs font-medium transition-all ${
-                abaAtiva ===
-                "historico"
-                  ? "border border-surface-border/50 bg-surface text-ink-primary shadow-sm"
-                  : "text-ink-muted hover:text-ink-primary"
-              }`}
-              aria-pressed={
-                abaAtiva ===
-                "historico"
-              }
-            >
-              Histórico (
-              {
-                historico.length
-              }
-              )
-            </button>
-          </div>
-
           <ListSearch
             value={search}
             onChange={setSearch}
@@ -831,336 +415,279 @@ export default function ConsultasPage() {
 
           <ListFilters
             className="order-2"
-            activeCount={(filtroStatus !== "todos" ? 1 : 0)}
-            onClear={
-              handleClearFilters
-            }
+            activeCount={filtroStatus !== "todos" ? 1 : 0}
+            onClear={handleClearFilters}
           >
             <button
               type="button"
-              onClick={
-                () =>
-                  toggleFiltro(
-                    "agendada"
-                  )
-              }
+              onClick={() => toggleFiltro("agendada")}
               className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
-                filtroStatus ===
-                "agendada"
+                filtroStatus === "agendada"
                   ? "border-emerald-400 bg-emerald-400/20 text-emerald-300"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
-              aria-pressed={
-                filtroStatus ===
-                "agendada"
-              }
+              aria-pressed={filtroStatus === "agendada"}
             >
               Agendada
             </button>
 
             <button
               type="button"
-              onClick={
-                () =>
-                  toggleFiltro(
-                    "realizada"
-                  )
-              }
+              onClick={() => toggleFiltro("realizada")}
               className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
-                filtroStatus ===
-                "realizada"
+                filtroStatus === "realizada"
                   ? "border-ice bg-ice/20 text-ice"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
-              aria-pressed={
-                filtroStatus ===
-                "realizada"
-              }
+              aria-pressed={filtroStatus === "realizada"}
             >
               Realizada
             </button>
 
             <button
               type="button"
-              onClick={
-                () =>
-                  toggleFiltro(
-                    "cancelada"
-                  )
-              }
+              onClick={() => toggleFiltro("cancelada")}
               className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition-all ${
-                filtroStatus ===
-                "cancelada"
+                filtroStatus === "cancelada"
                   ? "border-coral bg-coral/20 text-coral"
                   : "border-surface-border/40 bg-surface-raised text-ink-muted hover:border-surface-border/80"
               }`}
-              aria-pressed={
-                filtroStatus ===
-                "cancelada"
-              }
+              aria-pressed={filtroStatus === "cancelada"}
             >
               Cancelada
             </button>
           </ListFilters>
         </ListPageHeader>
-        {activePersonId && <section className="mx-4 mt-3 rounded-[22px] border border-violet-300/20 bg-gradient-to-br from-violet-400/[.08] via-surface to-surface p-3.5" aria-label="Preparação de consulta">
-          <div className="flex items-start gap-2.5"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-400/10 text-violet-300"><Stethoscope size={18}/></span><div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Preparar resumo da consulta</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Medicamentos, doses confirmadas, SOS e observações dos últimos 30 dias. Você decide o que compartilhar.</p></div></div>
-          <button type="button" onClick={()=>{trigger("vibrate");router.push(preserveReturn("/saude/registros/relatorio"));}} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-violet-300/25 bg-violet-300/[.075] px-3 text-xs font-bold text-violet-200">Preparar resumo · 30 dias</button>
-        </section>}
+        {activePersonId && (
+          <section
+            className="mx-4 mt-3 rounded-[22px] border border-violet-300/20 bg-gradient-to-br from-violet-400/[.08] via-surface to-surface p-3.5"
+            aria-label="Preparação de consulta"
+          >
+            <div className="flex items-start gap-2.5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-400/10 text-violet-300">
+                <Stethoscope size={18} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-bold text-ink-primary">
+                  Preparar resumo da consulta
+                </h2>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+                  Medicamentos, doses confirmadas, SOS e observações dos últimos
+                  30 dias. Você decide o que compartilhar.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                trigger("vibrate");
+                router.push(preserveReturn("/saude/registros/relatorio"));
+              }}
+              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-violet-300/25 bg-violet-300/[.075] px-3 text-xs font-bold text-violet-200"
+            >
+              Preparar resumo · 30 dias
+            </button>
+          </section>
+        )}
 
         <section className="space-y-3.5 px-5 pt-4">
           {activePersonId && (
             <ClinicalListSummary
               icon={CalendarDays}
               eyebrow="Agenda clínica"
-              title={proximas[0] ? `Próxima · ${formatDateDisplay(proximas[0].data)}` : "Nenhuma consulta futura"}
-              detail={proximas[0]?.horario ? `Horário ${proximas[0].horario}` : "Histórico preservado no Vault"}
-              metrics={[{label:"Próximas",value:proximas.length,tone:"positive"},{label:"Histórico",value:historico.length},{label:"Revisar",value:consultasAtrasadas,tone:consultasAtrasadas?"critical":"neutral"}]}
+              title={
+                proximas[0]
+                  ? `Próxima · ${formatDateDisplay(proximas[0].data)}`
+                  : "Nenhuma consulta futura"
+              }
+              detail={
+                proximas[0]?.horario
+                  ? `Horário ${proximas[0].horario}`
+                  : "Histórico preservado no Vault"
+              }
+              metrics={[
+                { label: "Próximas", value: proximas.length, tone: "positive" },
+                { label: "Histórico", value: historico.length },
+                {
+                  label: "Revisar",
+                  value: consultasAtrasadas,
+                  tone: consultasAtrasadas ? "critical" : "neutral",
+                },
+              ]}
             />
           )}
           {!activePersonId ? (
             <EmptyState
-              icon={
-                Stethoscope
-              }
+              icon={Stethoscope}
               title="Nenhuma pessoa ativa"
               description="Selecione uma pessoa no Vault para visualizar as consultas médicas."
             />
-          ) : listaExibida.length ===
-            0 ? (
+          ) : listaExibida.length === 0 ? (
             <EmptyState
-              icon={
-                Stethoscope
-              }
+              icon={Stethoscope}
               title={
-                filtroStatus !==
-                "todos"
+                filtroStatus !== "todos"
                   ? "Nenhuma consulta com esse status"
-                  : abaAtiva ===
-                      "proximas"
-                    ? "Nenhuma consulta agendada"
-                    : "Nenhuma consulta no histórico"
+                  : "Nenhuma consulta registrada"
               }
               description={
-                filtroStatus !==
-                "todos"
+                filtroStatus !== "todos"
                   ? "Tente remover ou alterar o filtro selecionado."
-                  : abaAtiva ===
-                      "proximas"
-                    ? "Agende uma nova consulta."
-                    : "Consultas realizadas, canceladas ou já ocorridas aparecerão aqui."
+                  : "Agende uma consulta ou preserve aqui um atendimento já realizado."
               }
             />
           ) : (
-            listaExibida.map(
-              (
-                consulta,
-                index
-              ) => {
-                const hospitalNome =
-                  getHospitalNome(
-                    consulta.hospital_id
-                  );
+            listaExibida.map((consulta, index) => {
+              const hospitalNome = getHospitalNome(consulta.hospital_id);
 
-                const localNome =
-                  getLocalNome(
-                    consulta.local_id
-                  );
+              const localNome = getLocalNome(consulta.local_id);
 
-                const {
-                  color,
-                  icon:
-                    StatusIcon,
-                } =
-                  getStatusConfig(
-                    consulta.status
-                  );
+              const { color, icon: StatusIcon } = getStatusConfig(
+                consulta.status
+              );
 
-                const diasRestantes =
-                  getDaysUntil(
-                    getCivilDate(
-                      consulta.data
-                    )
-                  );
+              const diasRestantes = getDaysUntil(getCivilDate(consulta.data));
 
-                const dataPassada =
-                  Boolean(
-                    diasRestantes !==
-                      null &&
-                      diasRestantes <
-                        0
-                  );
+              const dataPassada = Boolean(
+                diasRestantes !== null && diasRestantes < 0
+              );
 
-                const temHorario =
-                  Boolean(
-                    consulta.horario?.trim()
-                  );
+              const temHorario = Boolean(consulta.horario?.trim());
 
-                return (
-                  <ListCard
-                    key={
-                      consulta.id
+              return (
+                <ListCard
+                  key={consulta.id}
+                  id={consulta.id!}
+                  color={color}
+                  onClick={() => {
+                    if (!consulta.id) {
+                      return;
                     }
-                    id={
-                      consulta.id!
-                    }
-                    color={
-                      color
-                    }
-                    onClick={
-                      () => {
-                        if (
-                          !consulta.id
-                        ) {
-                          return;
-                        }
 
-                        trigger(
-                          "vibrate"
-                        );
+                    trigger("vibrate");
 
-                        router.push(
-                          preserveReturn(`/saude/consultas/detalhes?id=${consulta.id}`)
-                        );
-                      }
-                    }
-                    delay={
-                      index *
-                      0.025
-                    }
-                    density="compact"
-                    icon={
-                      <StatusIcon
-                        size={
-                          22
-                        }
-                      />
-                    }
-                  >
-                    <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-                      <span
-                        className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold"
-                        style={{
-                          color,
-                        }}
-                      >
-                        {formatDateDisplay(
-                          consulta.data
-                        )}
+                    router.push(
+                      preserveReturn(
+                        `/saude/consultas/detalhes?id=${consulta.id}`
+                      )
+                    );
+                  }}
+                  delay={index * 0.025}
+                  density="compact"
+                  icon={<StatusIcon size={22} />}
+                >
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+                    <span
+                      className="shrink-0 whitespace-nowrap font-mono text-xs font-semibold"
+                      style={{
+                        color,
+                      }}
+                    >
+                      {formatDateDisplay(consulta.data)}
+                    </span>
+
+                    {temHorario && (
+                      <span className="shrink-0 whitespace-nowrap font-mono text-[10px] text-ink-muted">
+                        • {consulta.horario}
                       </span>
+                    )}
 
-                      {temHorario && (
-                        <span className="shrink-0 whitespace-nowrap font-mono text-[10px] text-ink-muted">
-                          •{" "}
-                          {
-                            consulta.horario
-                          }
+                    <span
+                      className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                        consulta.status === "agendada"
+                          ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
+                          : consulta.status === "realizada"
+                          ? "border-ice/20 bg-ice/10 text-ice"
+                          : "border-coral/20 bg-coral/10 text-coral"
+                      }`}
+                    >
+                      {consulta.status}
+                    </span>
+
+                    {dataPassada && consulta.status === "agendada" && (
+                      <span className="shrink-0 whitespace-nowrap rounded-full border border-coral/20 bg-coral/20 px-2 py-0.5 text-[9px] font-bold uppercase text-coral">
+                        Data passada
+                      </span>
+                    )}
+
+                    {diasRestantes !== null &&
+                      diasRestantes >= 0 &&
+                      consulta.status === "agendada" && (
+                        <span
+                          className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${
+                            diasRestantes <= 2
+                              ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
+                              : "border-ice/20 bg-ice/10 text-ice"
+                          }`}
+                        >
+                          {getDiasRestantesLabel(diasRestantes)}
                         </span>
                       )}
+                  </div>
 
-                      <span
-                        className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                          consulta.status ===
-                          "agendada"
-                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400"
-                            : consulta.status ===
-                                "realizada"
-                              ? "border-ice/20 bg-ice/10 text-ice"
-                              : "border-coral/20 bg-coral/10 text-coral"
-                        }`}
-                      >
-                        {
-                          consulta.status
-                        }
+                  <h3 className="mt-1 truncate text-base font-semibold text-ink-primary">
+                    {getMedicoNome(consulta.medico_id)}
+                  </h3>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                    {consulta.especialidade ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/20 bg-sky-300/[.06] px-2 py-1 text-sky-200">
+                        <Stethoscope size={11} />
+                        {consulta.especialidade}
                       </span>
+                    ) : null}
+                    {(consulta.tratamento_ids?.length ?? 0) > 0 ? (
+                      <span className="rounded-full border border-fuchsia-300/20 bg-fuchsia-300/[.05] px-2 py-1 text-fuchsia-200">
+                        {consulta.tratamento_ids!.length}{" "}
+                        {consulta.tratamento_ids!.length === 1
+                          ? "tratamento"
+                          : "tratamentos"}
+                      </span>
+                    ) : null}
+                    {(consulta.medicamento_ids?.length ?? 0) > 0 ? (
+                      <span className="rounded-full border border-emerald-300/20 bg-emerald-300/[.05] px-2 py-1 text-emerald-200">
+                        {consulta.medicamento_ids!.length}{" "}
+                        {consulta.medicamento_ids!.length === 1
+                          ? "medicamento"
+                          : "medicamentos"}
+                      </span>
+                    ) : null}
+                  </div>
 
-                      {dataPassada &&
-                        consulta.status ===
-                          "agendada" && (
-                          <span className="shrink-0 whitespace-nowrap rounded-full border border-coral/20 bg-coral/20 px-2 py-0.5 text-[9px] font-bold uppercase text-coral">
-                            Data passada
-                          </span>
-                        )}
+                  {(hospitalNome || localNome) && (
+                    <div className="mt-1.5 space-y-1">
+                      {hospitalNome && (
+                        <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                          <Building2
+                            size={13}
+                            className="shrink-0 text-violet-400"
+                          />
 
-                      {diasRestantes !==
-                        null &&
-                        diasRestantes >=
-                          0 &&
-                        consulta.status ===
-                          "agendada" && (
-                          <span
-                            className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase ${
-                              diasRestantes <=
-                              2
-                                ? "border-amber-400/30 bg-amber-400/20 text-amber-400"
-                                : "border-ice/20 bg-ice/10 text-ice"
-                            }`}
-                          >
-                            {getDiasRestantesLabel(
-                              diasRestantes
-                            )}
-                          </span>
-                        )}
-                    </div>
-
-                    <h3 className="mt-1 truncate text-base font-semibold text-ink-primary">
-                      {getMedicoNome(
-                        consulta.medico_id
+                          <span className="truncate">{hospitalNome}</span>
+                        </div>
                       )}
-                    </h3>
 
-                    {(hospitalNome ||
-                      localNome) && (
-                      <div className="mt-1.5 space-y-1">
-                        {hospitalNome && (
-                          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                            <Building2
-                              size={
-                                13
-                              }
-                              className="shrink-0 text-violet-400"
-                            />
+                      {localNome && (
+                        <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                          <MapPin
+                            size={13}
+                            className="shrink-0 text-emerald-400"
+                          />
 
-                            <span className="truncate">
-                              {
-                                hospitalNome
-                              }
-                            </span>
-                          </div>
-                        )}
+                          <span className="truncate">{localNome}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                        {localNome && (
-                          <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                            <MapPin
-                              size={
-                                13
-                              }
-                              className="shrink-0 text-emerald-400"
-                            />
-
-                            <span className="truncate">
-                              {
-                                localNome
-                              }
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {consulta.motivo && (
-                      <p className="mt-1.5 truncate text-xs italic text-ink-faint">
-                        “
-                        {
-                          consulta.motivo
-                        }
-                        ”
-                      </p>
-                    )}
-                  </ListCard>
-                );
-              }
-            )
+                  {consulta.motivo && (
+                    <p className="mt-1.5 truncate text-xs italic text-ink-faint">
+                      “{consulta.motivo}”
+                    </p>
+                  )}
+                </ListCard>
+              );
+            })
           )}
         </section>
       </main>

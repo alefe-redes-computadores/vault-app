@@ -1021,6 +1021,11 @@ export default function NovoRegistroSaudePage() {
         "vibrate"
       );
 
+      if (item.tipo === "pressao_arterial") {
+        router.push("/saude/careflow/pressao?novo=1");
+        return;
+      }
+
       setCategoria(
         item.categoria
       );

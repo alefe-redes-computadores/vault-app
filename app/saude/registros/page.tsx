@@ -2,7 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertTriangle, BarChart3, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, Droplets, FileDown, HeartPulse, Pill, Plus } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Droplets,
+  FileDown,
+  HeartPulse,
+  Pill,
+  Plus,
+} from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { CardListSkeleton } from "@/components/loading/CardListSkeleton";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,7 +26,10 @@ import { ClinicalSectionNav } from "@/components/saude/ClinicalSectionNav";
 import { useHapticFeedback } from "@/lib/haptics";
 import { useRegistrosSaude } from "@/hooks/useRegistrosSaude";
 import { useCareFlowM2 } from "@/hooks/useCareFlowM2";
-import { filterClinicalEventsR6, type ClinicalFocusR6 } from "@/lib/clinical-unified-r6";
+import {
+  filterClinicalEventsR6,
+  type ClinicalFocusR6,
+} from "@/lib/clinical-unified-r6";
 import { useAllDoseLogs } from "@/hooks/useDoseLogs";
 import { useMedicamentos } from "@/hooks/useMedicamentos";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,127 +39,835 @@ import { buildClinicalMonthReport } from "@/lib/clinical-month-report";
 import type { ClinicalDoseSafetyEpisode } from "@/lib/clinical-safety-episodes";
 import { AvatarMedicamento } from "@/components/ui/AvatarMedicamento";
 import { analisarRegistroSaude } from "@/lib/health-insights";
-import { buildClinicalDays, buildClinicalEvents, buildClinicalMonth, currentClinicalMonth, localDateKey, shiftClinicalMonth, type ClinicalEvent } from "@/lib/clinical-record-timeline";
+import {
+  buildClinicalDays,
+  buildClinicalEvents,
+  buildClinicalMonth,
+  currentClinicalMonth,
+  localDateKey,
+  shiftClinicalMonth,
+  type ClinicalEvent,
+} from "@/lib/clinical-record-timeline";
 import { useReturnContext } from "@/hooks/useReturnContext";
-import { createLocalSearchIndex, filterLocalSearchIndex } from "@/lib/local-search";
+import {
+  createLocalSearchIndex,
+  filterLocalSearchIndex,
+} from "@/lib/local-search";
 
 type ViewFilter = "todos" | "sintoma" | "medicao" | "hidratacao" | "dose";
 // O relatório dedicado mantém window.print() e declara: Não é diagnóstico nem prescrição.
-const displayDate = (key: string) => { const [y,m,d]=key.split("-"); return `${d}/${m}/${y}`; };
+const displayDate = (key: string) => {
+  const [y, m, d] = key.split("-");
+  return `${d}/${m}/${y}`;
+};
 const isSosDose = (event: ClinicalEvent) => event.dose?.dose_kind === "sos";
 const isExtraDose = (event: ClinicalEvent) => event.dose?.dose_kind === "extra";
-const categoryMeta: Record<ClinicalEvent["category"], { label: string; tone: string; icon: typeof Activity }> = {
-  sintoma: { label: "Sintoma", tone: "border-violet-400/25 bg-violet-400/10 text-violet-300", icon: HeartPulse },
-  medicao: { label: "Medição", tone: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200", icon: Activity },
-  humor: { label: "Humor", tone: "border-fuchsia-400/25 bg-fuchsia-400/10 text-fuchsia-300", icon: HeartPulse },
-  hidratacao: { label: "Hidratação", tone: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300", icon: Droplets },
-  dose: { label: "Dose", tone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300", icon: Pill },
-  outro: { label: "Registro", tone: "border-surface-border bg-surface-raised text-ink-muted", icon: ClipboardList },
+const categoryMeta: Record<
+  ClinicalEvent["category"],
+  { label: string; tone: string; icon: typeof Activity }
+> = {
+  sintoma: {
+    label: "Sintoma",
+    tone: "border-violet-400/25 bg-violet-400/10 text-violet-300",
+    icon: HeartPulse,
+  },
+  medicao: {
+    label: "Medição",
+    tone: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200",
+    icon: Activity,
+  },
+  humor: {
+    label: "Humor",
+    tone: "border-fuchsia-400/25 bg-fuchsia-400/10 text-fuchsia-300",
+    icon: HeartPulse,
+  },
+  hidratacao: {
+    label: "Hidratação",
+    tone: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300",
+    icon: Droplets,
+  },
+  dose: {
+    label: "Dose",
+    tone: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300",
+    icon: Pill,
+  },
+  outro: {
+    label: "Registro",
+    tone: "border-surface-border bg-surface-raised text-ink-muted",
+    icon: ClipboardList,
+  },
 };
 
 export default function RegistrosSaudePage() {
   const router = useRouter();
-  const {backTarget,preserveReturn}=useReturnContext("/saude/rede");
+  const { backTarget, preserveReturn } = useReturnContext("/saude/rede");
   const { trigger } = useHapticFeedback();
   const { registros, isLoading } = useRegistrosSaude();
   const { events: careFlowEvents = [] } = useCareFlowM2();
   const { allDoseLogs, isLoading: dosesLoading } = useAllDoseLogs();
-  const { medicamentos = [], isLoading: medicationsLoading } = useMedicamentos();
+  const { medicamentos = [], isLoading: medicationsLoading } =
+    useMedicamentos();
   const { user } = useAuth();
   const { activePersonId } = useActivePersonId();
   const { records: brainEpisodes } = useBrainV5Pulse();
-  const [exportState, setExportState] = useState<"idle" | "saving" | "error">("idle");
+  const [exportState, setExportState] = useState<"idle" | "saving" | "error">(
+    "idle"
+  );
   const [monthKey, setMonthKey] = useState(currentClinicalMonth);
   const [filter, setFilter] = useState<ViewFilter>("todos");
-  const [focus, setFocus] = useState<ClinicalFocusR6>('todos');
-  useEffect(()=>{
-    const target=new URLSearchParams(window.location.search).get('foco');
-    if(target==='sintomas'){setFocus('sintomas');setFilter('sintoma');}
-    if(target==='pressao'){setFocus('pressao');setFilter('medicao');}
-  },[]);
+  const [focus, setFocus] = useState<ClinicalFocusR6>("todos");
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("foco");
+    if (target === "sintomas") {
+      setFocus("sintomas");
+      setFilter("sintoma");
+    }
+    if (target === "pressao") {
+      setFocus("pressao");
+      setFilter("medicao");
+    }
+  }, []);
   const [search, setSearch] = useState("");
-  const pressurePlans=useMemo(()=>careFlowEvents.filter(e=>
-    e.kind==='monitor_plan'&&e.user_id===user?.id&&e.person_id===activePersonId
-  ).sort((a,b)=>b.created_at.localeCompare(a.created_at)),[careFlowEvents,user?.id,activePersonId]);
-  const monthReport = useMemo(() => user?.id && activePersonId ? buildClinicalMonthReport({
-    monthKey, userId: user.id, personId: activePersonId,
-    doseLogs: allDoseLogs, medications: medicamentos, healthRecords: registros, brainLedger: brainEpisodes,
-  }) : null, [monthKey, user?.id, activePersonId, allDoseLogs, medicamentos, registros, brainEpisodes]);
-  const safetyByDoseId = useMemo(() => new Map<string, ClinicalDoseSafetyEpisode>(
-    (monthReport?.alerts || []).map(item => [item.doseId, item] as const)
-  ), [monthReport]);
+  const pressurePlans = useMemo(
+    () =>
+      careFlowEvents
+        .filter(
+          (e) =>
+            e.kind === "monitor_plan" &&
+            e.user_id === user?.id &&
+            e.person_id === activePersonId
+        )
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [careFlowEvents, user?.id, activePersonId]
+  );
+  const activeSymptomCount = useMemo(
+    () =>
+      registros.filter(
+        (record) =>
+          record.user_id === user?.id &&
+          record.person_id === activePersonId &&
+          record.categoria === "sintoma"
+      ).length,
+    [registros, user?.id, activePersonId]
+  );
+  const monthReport = useMemo(
+    () =>
+      user?.id && activePersonId
+        ? buildClinicalMonthReport({
+            monthKey,
+            userId: user.id,
+            personId: activePersonId,
+            doseLogs: allDoseLogs,
+            medications: medicamentos,
+            healthRecords: registros,
+            brainLedger: brainEpisodes,
+          })
+        : null,
+    [
+      monthKey,
+      user?.id,
+      activePersonId,
+      allDoseLogs,
+      medicamentos,
+      registros,
+      brainEpisodes,
+    ]
+  );
+  const safetyByDoseId = useMemo(
+    () =>
+      new Map<string, ClinicalDoseSafetyEpisode>(
+        (monthReport?.alerts || []).map((item) => [item.doseId, item] as const)
+      ),
+    [monthReport]
+  );
   const exportMonth = async () => {
     if (!monthReport || exportState === "saving") return;
     setExportState("saving");
     try {
-      const { exportClinicalMonthPdf } = await import("@/lib/clinical-month-pdf");
+      const { exportClinicalMonthPdf } = await import(
+        "@/lib/clinical-month-pdf"
+      );
       await exportClinicalMonthPdf(monthReport);
       setExportState("idle");
     } catch {
       setExportState("error");
     }
   };
-  const allEvents = useMemo(() => buildClinicalEvents(registros, allDoseLogs, medicamentos), [registros, allDoseLogs, medicamentos]);
-  const month = useMemo(() => buildClinicalMonth(allEvents, monthKey), [allEvents, monthKey]);
-  const eventSearchIndex = useMemo(() => createLocalSearchIndex(month.events, event => [event.title,event.subtitle,event.category,event.date,event.time,event.medication?.nome,event.medication?.dosagem]), [month.events]);
-  const visibleEvents = useMemo(() => filterClinicalEventsR6(
-    filterLocalSearchIndex(eventSearchIndex,search).filter(event => filter === "todos" || event.category === filter),focus
-  ), [eventSearchIndex, filter, search,focus]);
-  const visibleIds = useMemo(() => new Set(visibleEvents.map(item => item.id)), [visibleEvents]);
-  const stats = useMemo(() => { let records=0,doses=0,alerts=0;const days=new Set<string>();for(const event of month.events){days.add(event.date);if(event.kind==="record")records+=1;if(event.category==="dose")doses+=1;if(event.record){const insight=analisarRegistroSaude(event.record.nome,event.record.valor_medicao,event.record.intensidade,event.record.observacoes);if(insight&&insight.status!=="normal")alerts+=1;}}return {records,doses,alerts,days:days.size}; }, [month.events]);
-  if (isLoading || dosesLoading || medicationsLoading) return <CardListSkeleton />;
-  const selectFilter = (next: ViewFilter) => { trigger("vibrate"); setFocus("todos"); setFilter(next); };
-  return <PageTransition><main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
-    <ListPageHeader title="Linha de cuidado" badgeLabel="PRONTUÁRIO CLÍNICO" badgeColor="text-violet-300" subtitle="Registros e doses, sem substituir avaliação profissional" backUrl={backTarget} className="print:static print:bg-white">
-      <div className="flex w-full items-center gap-2 print:hidden"><button type="button" aria-label="Mês anterior" onClick={() => setMonthKey(shiftClinicalMonth(monthKey,-1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised"><ChevronLeft size={17}/></button><button type="button" onClick={() => setMonthKey(currentClinicalMonth())} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface text-sm font-semibold"><CalendarDays size={15} className="text-ink-muted"/>{month.label.charAt(0).toLocaleUpperCase("pt-BR")+month.label.slice(1)}</button><button type="button" aria-label="Próximo mês" disabled={monthKey >= currentClinicalMonth()} onClick={() => setMonthKey(shiftClinicalMonth(monthKey,1))} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised disabled:opacity-30"><ChevronRight size={17}/></button></div>
-    </ListPageHeader>
-    <section className="space-y-4 px-5 pt-4">
-      <div className="print:hidden"><ClinicalSectionNav label="Áreas da linha de cuidado" items={[{id:"registros-agora",label:"Atalhos",icon:<Plus size={14}/>},{id:"registros-resumo",label:"Resumo",icon:<ClipboardList size={14}/>,badge:stats.records+stats.doses},{id:"registros-linha",label:"Linha clínica",icon:<CalendarDays size={14}/>,badge:visibleEvents.length}]}/></div>
-      {/* V224: one-tap diary shortcuts reuse the existing offline-first record repository. */}
-      <div id="registros-agora" className="flex scroll-mt-24 flex-wrap items-center gap-2 print:hidden" aria-label="Registrar rapidamente">
-        {([[
-          "Humor", "humor", "border-fuchsia-400/25 bg-fuchsia-400/[.06] text-fuchsia-200"
-        ],[
-          "Sintoma", "sintoma", "border-violet-400/25 bg-violet-400/[.06] text-violet-200"
-        ],[
-          "Ansiedade", "ansiedade", "border-amber-400/25 bg-amber-400/[.06] text-amber-200"
-        ],[
-          "Fadiga", "apatia", "border-surface-border bg-surface-raised text-ink-primary"
-        ]] as const).map(([label,preset,tone]) =>
-          <button key={preset} type="button" onClick={() => router.push(preserveReturn(preset==="sintoma"?"/saude/careflow/sintomas?novo=1":`/saude/registros/novo?preset=${preset}`))}
-            className={`min-h-11 rounded-xl border px-3 text-[11px] font-semibold transition-all active:scale-[.98] ${tone}`}>
-            + {label}
-          </button>
-        )}
-      </div>
-      <section aria-label="Acompanhamentos relacionados" className="rounded-2xl border border-surface-border/60 bg-surface p-3 print:hidden"><h2 className="text-xs font-bold text-ink-primary">Acompanhamentos desta Linha de cuidado</h2><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">Sintomas e pressão usam os registros desta pessoa. Planos de aferição são apenas orientações de acompanhamento; não são novas medições.</p><div className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2"><button type="button" onClick={()=>{setFocus("sintomas");setFilter("sintoma");setSearch("");}} aria-pressed={focus==='sintomas'} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold ${focus==='sintomas'?'border-violet-300/70 bg-violet-300/[.18] text-violet-100':'border-violet-300/25 bg-violet-300/[.06] text-violet-200'}`}><HeartPulse size={15}/>Sintomas e evolução</button><button type="button" onClick={()=>{setFocus("pressao");setFilter("medicao");setSearch("");}} aria-pressed={focus==='pressao'} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 text-xs font-semibold ${focus==='pressao'?'border-sky-300/70 bg-sky-300/[.18] text-sky-100':'border-sky-300/25 bg-sky-300/[.06] text-sky-200'}`}><Activity size={15}/>Pressão e planos</button></div></section>
-      {focus==='pressao'&&<section aria-label="Planos de pressão da pessoa ativa" className="space-y-3 rounded-2xl border border-sky-300/20 bg-surface p-3 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-bold text-ink-primary">Pressão arterial · planos e medições</h2><span className="text-[11px] text-ink-muted">{pressurePlans.length} plano(s) registrados</span></div>
-        <p className="text-[11px] text-ink-muted">As aferições aparecem na mesma Linha de cuidado. Planos são orientações de acompanhamento, não medições.</p>
-        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-          <button type="button" onClick={()=>router.push(preserveReturn('/saude/careflow/pressao?plano=1'))} className="min-h-11 rounded-xl border border-sky-300/30 px-3 text-xs font-bold text-sky-200">Novo plano</button>
-          <button type="button" onClick={()=>router.push(preserveReturn('/saude/careflow/pressao?novo=1'))} className="min-h-11 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void">Registrar aferição</button>
-        </div>
-        {pressurePlans.map(p=><button key={p.id} type="button" onClick={()=>router.push(preserveReturn(`/saude/careflow/pressao#careflow-plano-${encodeURIComponent(p.id)}`))} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/70 bg-void/20 px-3 py-2 text-left"><span className="text-xs text-ink-secondary">Plano · {String(p.payload.start||'').split('-').reverse().join('/')} a {String(p.payload.end||'').split('-').reverse().join('/')}</span><ChevronRight size={15} className="text-sky-300"/></button>)}
-      </section>}
-      <span id="registros-resumo" className="block scroll-mt-24" aria-hidden="true"/>
-      <div><ClinicalListSummary icon={ClipboardList} eyebrow="Resumo do período" title={stats.days ? `${stats.days} dias documentados` : "Sem eventos neste mês"} detail="Cobertura descritiva dos dados registrados; não mede adesão clínica." metrics={[{label:"Registros",value:stats.records},{label:"Doses",value:stats.doses,tone:"positive"},{label:"Destaques",value:stats.alerts,tone:stats.alerts?"attention":"neutral"}]}/><div className="mt-2 grid grid-cols-2 gap-2 print:hidden"><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/evolucao"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><BarChart3 size={15} className="text-violet-300"/>Ver evolução</button><button type="button" onClick={() => router.push(preserveReturn("/saude/registros/relatorio"))} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"><FileDown size={15} className="text-emerald-300"/>Resumo clínico</button></div>
-      <button type="button" onClick={() => router.push(preserveReturn("/saude/relatorios"))} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/[.06] px-3 text-xs font-semibold text-violet-300 print:hidden"><FileDown size={15}/>Central de Relatórios 360 · PDF, CSV e JSON</button>
-      <button type="button" onClick={() => void exportMonth()} disabled={!monthReport || exportState === "saving"} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/[.07] px-3 text-xs font-semibold text-emerald-300 disabled:opacity-50 print:hidden"><FileDown size={15}/>{exportState === "saving" ? "Preparando PDF mensal…" : `Exportar PDF · ${month.label}`}</button>
-      {exportState === "error" ? <p role="alert" className="mt-1 text-xs text-coral print:hidden">Falha ao gerar o PDF. Nenhum registro foi alterado; tente novamente.</p> : null}</div>
-      <div id="registros-linha" className="flex min-w-0 scroll-mt-24 items-center gap-2 print:hidden">
-        <ListSearch value={search} onChange={setSearch} placeholder="Buscar na linha clínica" />
-        <ListFilters activeCount={Number(filter !== "todos")+Number(Boolean(search.trim()))} onClear={() => {setFocus("todos");setFilter("todos");setSearch("");}} title="Filtrar linha de cuidado">
-          {([['todos','Tudo'],['sintoma','Sintomas'],['medicao','Medições'],['hidratacao','Água'],['dose','Doses']] as [ViewFilter,string][]).map(([key,label])=><button key={key} type="button" onClick={()=>selectFilter(key)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${filter===key?'border-ice/60 bg-ice/15 text-ice':'border-surface-border bg-surface-raised text-ink-muted'}`}>{label}</button>)}
-        </ListFilters>
-      </div>
-      {visibleEvents.length===0?<EmptyState icon={Activity} title="Nenhum evento encontrado" description={month.events.length?"Ajuste a busca ou o filtro selecionado.":"Nenhum registro ou dose foi encontrado neste período."} actionLabel="Novo registro" onAction={()=>router.push(preserveReturn('/saude/registros/novo'))}/>:month.weeks.map(week=>{const events=week.events.filter(e=>visibleIds.has(e.id));if(!events.length)return null;const forceOpen=Boolean(search.trim())||filter!=="todos";const isCurrentWeek=week.events.some(e=>e.date===localDateKey());return <details key={week.key} open={forceOpen||isCurrentWeek} className="group overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface [content-visibility:auto] [contain-intrinsic-size:220px]"><summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3"><div><p className="font-mono text-xs uppercase tracking-widest text-ink-faint">Semana</p><h2 className="text-sm font-semibold text-ink-primary">{week.label}</h2></div><span className="flex items-center gap-2 text-xs text-ink-muted">{events.length} eventos<ChevronDown size={15} className="transition group-open:rotate-180"/></span></summary><div className="space-y-2 border-t border-surface-border/50 bg-void/20 p-2">{buildClinicalDays(events).map(day=><DayGroup key={day.key} date={day.key} label={day.label} events={day.events} forceOpen={forceOpen} onOpenRecord={id=>router.push(preserveReturn(`/saude/registros/detalhes?id=${encodeURIComponent(id)}`))} safetyByDoseId={safetyByDoseId}/>)}</div></details>})}
-      <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-3 text-[11px] leading-relaxed text-ink-muted"><AlertTriangle size={14} className="mr-2 inline text-amber-300"/>Destaques são leituras dos registros nas datas informadas. O Vault não diagnostica, não prescreve e não recomenda alterar dose.</div>
-    </section>
-
-  </main></PageTransition>;
+  const allEvents = useMemo(
+    () => buildClinicalEvents(registros, allDoseLogs, medicamentos),
+    [registros, allDoseLogs, medicamentos]
+  );
+  const month = useMemo(
+    () => buildClinicalMonth(allEvents, monthKey),
+    [allEvents, monthKey]
+  );
+  const eventSearchIndex = useMemo(
+    () =>
+      createLocalSearchIndex(month.events, (event) => [
+        event.title,
+        event.subtitle,
+        event.category,
+        event.date,
+        event.time,
+        event.medication?.nome,
+        event.medication?.dosagem,
+      ]),
+    [month.events]
+  );
+  const visibleEvents = useMemo(
+    () =>
+      filterClinicalEventsR6(
+        filterLocalSearchIndex(eventSearchIndex, search).filter(
+          (event) => filter === "todos" || event.category === filter
+        ),
+        focus
+      ),
+    [eventSearchIndex, filter, search, focus]
+  );
+  const visibleIds = useMemo(
+    () => new Set(visibleEvents.map((item) => item.id)),
+    [visibleEvents]
+  );
+  const stats = useMemo(() => {
+    let records = 0,
+      doses = 0,
+      alerts = 0;
+    const days = new Set<string>();
+    for (const event of month.events) {
+      days.add(event.date);
+      if (event.kind === "record") records += 1;
+      if (event.category === "dose") doses += 1;
+      if (event.record) {
+        const insight = analisarRegistroSaude(
+          event.record.nome,
+          event.record.valor_medicao,
+          event.record.intensidade,
+          event.record.observacoes
+        );
+        if (insight && insight.status !== "normal") alerts += 1;
+      }
+    }
+    return { records, doses, alerts, days: days.size };
+  }, [month.events]);
+  if (isLoading || dosesLoading || medicationsLoading)
+    return <CardListSkeleton />;
+  const selectFilter = (next: ViewFilter) => {
+    trigger("vibrate");
+    setFocus("todos");
+    setFilter(next);
+  };
+  return (
+    <PageTransition>
+      <main className="min-h-screen bg-void pb-28 print:bg-white print:text-black">
+        <ListPageHeader
+          title="Linha de cuidado"
+          badgeLabel="PRONTUÁRIO CLÍNICO"
+          badgeColor="text-violet-300"
+          subtitle="Registros e doses, sem substituir avaliação profissional"
+          backUrl={backTarget}
+          className="print:static print:bg-white"
+        >
+          <div className="flex w-full items-center gap-2 print:hidden">
+            <button
+              type="button"
+              aria-label="Mês anterior"
+              onClick={() => setMonthKey(shiftClinicalMonth(monthKey, -1))}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised"
+            >
+              <ChevronLeft size={17} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMonthKey(currentClinicalMonth())}
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface text-sm font-semibold"
+            >
+              <CalendarDays size={15} className="text-ink-muted" />
+              {month.label.charAt(0).toLocaleUpperCase("pt-BR") +
+                month.label.slice(1)}
+            </button>
+            <button
+              type="button"
+              aria-label="Próximo mês"
+              disabled={monthKey >= currentClinicalMonth()}
+              onClick={() => setMonthKey(shiftClinicalMonth(monthKey, 1))}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-raised disabled:opacity-30"
+            >
+              <ChevronRight size={17} />
+            </button>
+          </div>
+        </ListPageHeader>
+        <section className="space-y-4 px-5 pt-4">
+          <div className="print:hidden">
+            <ClinicalSectionNav
+              label="Áreas da linha de cuidado"
+              items={[
+                {
+                  id: "registros-agora",
+                  label: "Atalhos",
+                  icon: <Plus size={14} />,
+                },
+                {
+                  id: "registros-resumo",
+                  label: "Resumo",
+                  icon: <ClipboardList size={14} />,
+                  badge: stats.records + stats.doses,
+                },
+                {
+                  id: "registros-linha",
+                  label: "Linha clínica",
+                  icon: <CalendarDays size={14} />,
+                  badge: visibleEvents.length,
+                },
+              ]}
+            />
+          </div>
+          <div
+            id="registros-agora"
+            className="grid scroll-mt-24 grid-cols-1 gap-2 print:hidden min-[360px]:grid-cols-2"
+            aria-label="Acompanhamentos ativos"
+          >
+            {activeSymptomCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFocus("sintomas");
+                  setFilter("sintoma");
+                  setSearch("");
+                }}
+                className="flex min-h-11 items-center justify-between rounded-xl border border-fuchsia-300/25 bg-fuchsia-300/[.05] px-3 text-xs font-semibold text-fuchsia-200"
+              >
+                <span className="flex items-center gap-2">
+                  <HeartPulse size={15} />
+                  Sintomas · {activeSymptomCount}
+                </span>
+                <ChevronRight size={15} />
+              </button>
+            ) : null}
+            {pressurePlans.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFocus("pressao");
+                  setFilter("medicao");
+                  setSearch("");
+                }}
+                className="flex min-h-11 items-center justify-between rounded-xl border border-sky-300/25 bg-sky-300/[.05] px-3 text-xs font-semibold text-sky-200"
+              >
+                <span className="flex items-center gap-2">
+                  <Activity size={15} />
+                  Pressão · {pressurePlans.length}{" "}
+                  {pressurePlans.length === 1 ? "plano" : "planos"}
+                </span>
+                <ChevronRight size={15} />
+              </button>
+            ) : null}
+            {activeSymptomCount === 0 && pressurePlans.length === 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(preserveReturn("/saude/registros/novo"))
+                }
+                className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-sm font-bold text-void"
+              >
+                <Plus size={16} />
+                Novo registro
+              </button>
+            ) : null}
+          </div>
+          {focus === "pressao" && (
+            <section
+              aria-label="Planos de pressão da pessoa ativa"
+              className="space-y-3 rounded-2xl border border-sky-300/20 bg-surface p-3 print:hidden"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-bold text-ink-primary">
+                  Pressão arterial · planos e medições
+                </h2>
+                <span className="text-[11px] text-ink-muted">
+                  {pressurePlans.length}{" "}
+                  {pressurePlans.length === 1
+                    ? "plano registrado"
+                    : "planos registrados"}
+                </span>
+              </div>
+              <p className="text-[11px] text-ink-muted">
+                As aferições aparecem na mesma Linha de cuidado. Planos são
+                orientações de acompanhamento, não medições.
+              </p>
+              <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      preserveReturn("/saude/careflow/pressao?plano=1")
+                    )
+                  }
+                  className="min-h-11 rounded-xl border border-sky-300/30 px-3 text-xs font-bold text-sky-200"
+                >
+                  Novo plano
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      preserveReturn("/saude/careflow/pressao?novo=1")
+                    )
+                  }
+                  className="min-h-11 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"
+                >
+                  Registrar aferição
+                </button>
+              </div>
+              {pressurePlans.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      preserveReturn(
+                        `/saude/careflow/pressao#careflow-plano-${encodeURIComponent(
+                          p.id
+                        )}`
+                      )
+                    )
+                  }
+                  className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/70 bg-void/20 px-3 py-2 text-left"
+                >
+                  <span className="text-xs text-ink-secondary">
+                    Plano ·{" "}
+                    {String(p.payload.start || "")
+                      .split("-")
+                      .reverse()
+                      .join("/")}{" "}
+                    a{" "}
+                    {String(p.payload.end || "")
+                      .split("-")
+                      .reverse()
+                      .join("/")}
+                  </span>
+                  <ChevronRight size={15} className="text-sky-300" />
+                </button>
+              ))}
+            </section>
+          )}
+          <span
+            id="registros-resumo"
+            className="block scroll-mt-24"
+            aria-hidden="true"
+          />
+          <div>
+            <ClinicalListSummary
+              icon={ClipboardList}
+              eyebrow="Resumo do período"
+              title={
+                stats.days
+                  ? `${stats.days} dias documentados`
+                  : "Sem eventos neste mês"
+              }
+              detail="Cobertura descritiva dos dados registrados; não mede adesão clínica."
+              metrics={[
+                { label: "Registros", value: stats.records },
+                { label: "Doses", value: stats.doses, tone: "positive" },
+                {
+                  label: "Destaques",
+                  value: stats.alerts,
+                  tone: stats.alerts ? "attention" : "neutral",
+                },
+              ]}
+            />
+            <div className="mt-2 grid grid-cols-2 gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(preserveReturn("/saude/registros/evolucao"))
+                }
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"
+              >
+                <BarChart3 size={15} className="text-violet-300" />
+                Ver evolução
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(preserveReturn("/saude/registros/relatorio"))
+                }
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"
+              >
+                <FileDown size={15} className="text-emerald-300" />
+                Resumo clínico
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push(preserveReturn("/saude/relatorios"))}
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/[.06] px-3 text-xs font-semibold text-violet-300 print:hidden"
+            >
+              <FileDown size={15} />
+              Central de Relatórios 360 · PDF, CSV e JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => void exportMonth()}
+              disabled={!monthReport || exportState === "saving"}
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/[.07] px-3 text-xs font-semibold text-emerald-300 disabled:opacity-50 print:hidden"
+            >
+              <FileDown size={15} />
+              {exportState === "saving"
+                ? "Preparando PDF mensal…"
+                : `Exportar PDF · ${month.label}`}
+            </button>
+            {exportState === "error" ? (
+              <p role="alert" className="mt-1 text-xs text-coral print:hidden">
+                Falha ao gerar o PDF. Nenhum registro foi alterado; tente
+                novamente.
+              </p>
+            ) : null}
+          </div>
+          <div
+            id="registros-linha"
+            className="flex min-w-0 scroll-mt-24 items-center gap-2 print:hidden"
+          >
+            <ListSearch
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar na linha clínica"
+            />
+            <ListFilters
+              activeCount={
+                Number(filter !== "todos") + Number(Boolean(search.trim()))
+              }
+              onClear={() => {
+                setFocus("todos");
+                setFilter("todos");
+                setSearch("");
+              }}
+              title="Filtrar linha de cuidado"
+            >
+              {(
+                [
+                  ["todos", "Tudo"],
+                  ["sintoma", "Sintomas"],
+                  ["medicao", "Medições"],
+                  ["hidratacao", "Água"],
+                  ["dose", "Doses"],
+                ] as [ViewFilter, string][]
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selectFilter(key)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase ${
+                    filter === key
+                      ? "border-ice/60 bg-ice/15 text-ice"
+                      : "border-surface-border bg-surface-raised text-ink-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </ListFilters>
+          </div>
+          {visibleEvents.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="Nenhum evento encontrado"
+              description={
+                month.events.length
+                  ? "Ajuste a busca ou o filtro selecionado."
+                  : "Nenhum registro ou dose foi encontrado neste período."
+              }
+              actionLabel="Novo registro"
+              onAction={() =>
+                router.push(preserveReturn("/saude/registros/novo"))
+              }
+            />
+          ) : (
+            month.weeks.map((week) => {
+              const events = week.events.filter((e) => visibleIds.has(e.id));
+              if (!events.length) return null;
+              const forceOpen = Boolean(search.trim()) || filter !== "todos";
+              const isCurrentWeek = week.events.some(
+                (e) => e.date === localDateKey()
+              );
+              return (
+                <details
+                  key={week.key}
+                  open={forceOpen || isCurrentWeek}
+                  className="group overflow-hidden rounded-[24px] border border-surface-border/60 bg-surface [content-visibility:auto] [contain-intrinsic-size:220px]"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="font-mono text-xs uppercase tracking-widest text-ink-faint">
+                        Semana
+                      </p>
+                      <h2 className="text-sm font-semibold text-ink-primary">
+                        {week.label}
+                      </h2>
+                    </div>
+                    <span className="flex items-center gap-2 text-xs text-ink-muted">
+                      {events.length} eventos
+                      <ChevronDown
+                        size={15}
+                        className="transition group-open:rotate-180"
+                      />
+                    </span>
+                  </summary>
+                  <div className="space-y-2 border-t border-surface-border/50 bg-void/20 p-2">
+                    {buildClinicalDays(events).map((day) => (
+                      <DayGroup
+                        key={day.key}
+                        date={day.key}
+                        label={day.label}
+                        events={day.events}
+                        forceOpen={forceOpen}
+                        onOpenRecord={(id) =>
+                          router.push(
+                            preserveReturn(
+                              `/saude/registros/detalhes?id=${encodeURIComponent(
+                                id
+                              )}`
+                            )
+                          )
+                        }
+                        safetyByDoseId={safetyByDoseId}
+                      />
+                    ))}
+                  </div>
+                </details>
+              );
+            })
+          )}
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-3 text-[11px] leading-relaxed text-ink-muted">
+            <AlertTriangle size={14} className="mr-2 inline text-amber-300" />
+            Destaques são leituras dos registros nas datas informadas. O Vault
+            não diagnostica, não prescreve e não recomenda alterar dose.
+          </div>
+        </section>
+      </main>
+    </PageTransition>
+  );
 }
 
-function DayGroup({date,label,events,forceOpen,onOpenRecord,safetyByDoseId}:{date:string;label:string;events:ClinicalEvent[];forceOpen:boolean;onOpenRecord:(id:string)=>void;safetyByDoseId:Map<string,ClinicalDoseSafetyEpisode>}) { const records=events.filter(e=>e.kind==="record");const doses=events.filter(e=>e.kind==="dose");const groups=new Map<string,ClinicalEvent[]>();for(const dose of doses){const origin=dose.dose?.dose_kind||"scheduled";const key=`${dose.dose?.medicamento_id||dose.title}:${origin}`;groups.set(key,[...(groups.get(key)||[]),dose]);}const summary=[records.length&&`${records.length} registro${records.length===1?'':'s'}`,doses.length&&`${doses.length} dose${doses.length===1?'':'s'}`].filter(Boolean).join(" · ");return <details open={forceOpen||date===localDateKey()} className="group/day overflow-hidden rounded-2xl border border-surface-border/50 bg-surface-raised/60"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5"><div><p className="text-xs font-semibold capitalize text-ink-primary">{label}</p><p className="mt-0.5 text-xs text-ink-muted">{summary}</p></div><ChevronDown size={14} className="text-ink-muted transition group-open/day:rotate-180"/></summary><div className="border-t border-surface-border/40">{records.map(event=><EventRow key={event.id} event={event} onOpen={()=>event.record?.id&&onOpenRecord(event.record.id)}/>)}{[...groups.values()].map(items=><DoseGroup key={items[0].id} events={items} safetyByDoseId={safetyByDoseId}/>)}</div></details>; }
-function DoseGroup({events,safetyByDoseId}:{events:ClinicalEvent[];safetyByDoseId:Map<string,ClinicalDoseSafetyEpisode>}) { const first=events[0];const medication=first.medication;const times=events.map(e=>e.time.slice(0,5));const origins=new Set(events.map(e=>e.dose?.dose_kind));const origin=events.some(isSosDose)?"SOS":events.some(isExtraDose)?"Extra":first.dose?.ignorado_em?"Ignorada":"Programada";return <details className="group/dose border-b border-surface-border/40 last:border-0"><summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5">{medication?<AvatarMedicamento nome={medication.nome} formato={medication.formato||medication.forma_farmaceutica} cores={medication.cores?.length?medication.cores:medication.cor_principal?[medication.cor_principal,medication.cor_secundaria||medication.cor_principal]:[]} tamanho={10}/>:<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface"><Pill size={17} className="text-ink-muted"/></div>}<div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-ink-primary">{first.title}</p><p className="text-xs text-ink-muted">{events.length} {events.length===1?'dose':'doses'} · {origin}</p>{events.some(event=>event.dose?.id && safetyByDoseId.has(event.dose.id)) ? <p className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-amber-300"><AlertTriangle size={12}/> Registro com alerta preservado</p> : null}</div><span className="font-mono text-[9px] text-ink-faint">{events.length===1?times[0]:`${times.length} horários`}</span><ChevronDown size={13} className="text-ink-faint transition group-open/dose:rotate-180"/></summary><div className="bg-void/20 px-3 py-1">{events.map(event=><div key={event.id} className="border-t border-surface-border/30 py-2 pl-[52px] text-[10px]"><div className="flex items-center justify-between gap-2"><span className="text-ink-muted">{event.subtitle}</span><span className="font-mono text-ink-faint">{event.time.slice(0,5)}</span></div>{event.dose?.id && safetyByDoseId.has(event.dose.id) ? <p role="note" className="mt-1 flex items-center gap-1 text-[10px] text-amber-300"><AlertTriangle size={12}/>{safetyByDoseId.get(event.dose.id)?.title} · Evidência preservada no Brain</p> : null}</div>)}</div></details>; }
-function EventRow({event,onOpen}:{event:ClinicalEvent;onOpen:()=>void}) { const meta=categoryMeta[event.category];const Icon=meta.icon;const insight=event.record?analisarRegistroSaude(event.record.nome,event.record.valor_medicao,event.record.intensidade,event.record.observacoes):null;return <button type="button" onClick={onOpen} disabled={!event.record?.id} className="flex w-full items-start gap-3 border-b border-surface-border/40 px-4 py-3 text-left last:border-0 disabled:cursor-default"><div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${meta.tone}`}><Icon size={16}/></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold text-ink-primary">{event.title}</p><p className="mt-0.5 truncate text-xs text-ink-muted">{event.subtitle||meta.label}</p></div><span className="shrink-0 font-mono text-[9px] text-ink-muted">{displayDate(event.date)} · {event.time.slice(0,5)}</span></div>{typeof event.intensity==='number'&&<div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-raised"><div className="h-full rounded-full bg-violet-400" style={{width:`${Math.min(100,event.intensity*10)}%`}}/></div>}{insight&&insight.status!=="normal"&&<p className={`mt-2 text-[9px] font-semibold ${insight.status==='critico'?'text-coral':'text-amber-300'}`}>{insight.titulo}</p>}</div></button>; }
+function DayGroup({
+  date,
+  label,
+  events,
+  forceOpen,
+  onOpenRecord,
+  safetyByDoseId,
+}: {
+  date: string;
+  label: string;
+  events: ClinicalEvent[];
+  forceOpen: boolean;
+  onOpenRecord: (id: string) => void;
+  safetyByDoseId: Map<string, ClinicalDoseSafetyEpisode>;
+}) {
+  const records = events.filter((e) => e.kind === "record");
+  const doses = events.filter((e) => e.kind === "dose");
+  const groups = new Map<string, ClinicalEvent[]>();
+  for (const dose of doses) {
+    const origin = dose.dose?.dose_kind || "scheduled";
+    const key = `${dose.dose?.medicamento_id || dose.title}:${origin}`;
+    groups.set(key, [...(groups.get(key) || []), dose]);
+  }
+  const summary = [
+    records.length &&
+      `${records.length} registro${records.length === 1 ? "" : "s"}`,
+    doses.length && `${doses.length} dose${doses.length === 1 ? "" : "s"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <details
+      open={forceOpen || date === localDateKey()}
+      className="group/day overflow-hidden rounded-2xl border border-surface-border/50 bg-surface-raised/60"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+        <div>
+          <p className="text-xs font-semibold capitalize text-ink-primary">
+            {label}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-muted">{summary}</p>
+        </div>
+        <ChevronDown
+          size={14}
+          className="text-ink-muted transition group-open/day:rotate-180"
+        />
+      </summary>
+      <div className="border-t border-surface-border/40">
+        {records.map((event) => (
+          <EventRow
+            key={event.id}
+            event={event}
+            onOpen={() => event.record?.id && onOpenRecord(event.record.id)}
+          />
+        ))}
+        {[...groups.values()].map((items) => (
+          <DoseGroup
+            key={items[0].id}
+            events={items}
+            safetyByDoseId={safetyByDoseId}
+          />
+        ))}
+      </div>
+    </details>
+  );
+}
+function DoseGroup({
+  events,
+  safetyByDoseId,
+}: {
+  events: ClinicalEvent[];
+  safetyByDoseId: Map<string, ClinicalDoseSafetyEpisode>;
+}) {
+  const first = events[0];
+  const medication = first.medication;
+  const times = events.map((e) => e.time.slice(0, 5));
+  const origins = new Set(events.map((e) => e.dose?.dose_kind));
+  const origin = events.some(isSosDose)
+    ? "SOS"
+    : events.some(isExtraDose)
+    ? "Extra"
+    : first.dose?.ignorado_em
+    ? "Ignorada"
+    : "Programada";
+  return (
+    <details className="group/dose border-b border-surface-border/40 last:border-0">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5">
+        {medication ? (
+          <AvatarMedicamento
+            nome={medication.nome}
+            formato={medication.formato || medication.forma_farmaceutica}
+            cores={
+              medication.cores?.length
+                ? medication.cores
+                : medication.cor_principal
+                ? [
+                    medication.cor_principal,
+                    medication.cor_secundaria || medication.cor_principal,
+                  ]
+                : []
+            }
+            tamanho={10}
+          />
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surface-border bg-surface">
+            <Pill size={17} className="text-ink-muted" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink-primary">
+            {first.title}
+          </p>
+          <p className="text-xs text-ink-muted">
+            {events.length} {events.length === 1 ? "dose" : "doses"} · {origin}
+          </p>
+          {events.some(
+            (event) => event.dose?.id && safetyByDoseId.has(event.dose.id)
+          ) ? (
+            <p className="mt-1 flex items-center gap-1 text-[10px] font-semibold text-amber-300">
+              <AlertTriangle size={12} /> Registro com alerta preservado
+            </p>
+          ) : null}
+        </div>
+        <span className="font-mono text-[9px] text-ink-faint">
+          {events.length === 1 ? times[0] : `${times.length} horários`}
+        </span>
+        <ChevronDown
+          size={13}
+          className="text-ink-faint transition group-open/dose:rotate-180"
+        />
+      </summary>
+      <div className="bg-void/20 px-3 py-1">
+        {events.map((event) => (
+          <div
+            key={event.id}
+            className="border-t border-surface-border/30 py-2 pl-[52px] text-[10px]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-ink-muted">{event.subtitle}</span>
+              <span className="font-mono text-ink-faint">
+                {event.time.slice(0, 5)}
+              </span>
+            </div>
+            {event.dose?.id && safetyByDoseId.has(event.dose.id) ? (
+              <p
+                role="note"
+                className="mt-1 flex items-center gap-1 text-[10px] text-amber-300"
+              >
+                <AlertTriangle size={12} />
+                {safetyByDoseId.get(event.dose.id)?.title} · Evidência
+                preservada no Brain
+              </p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+function EventRow({
+  event,
+  onOpen,
+}: {
+  event: ClinicalEvent;
+  onOpen: () => void;
+}) {
+  const meta = categoryMeta[event.category];
+  const Icon = meta.icon;
+  const insight = event.record
+    ? analisarRegistroSaude(
+        event.record.nome,
+        event.record.valor_medicao,
+        event.record.intensidade,
+        event.record.observacoes
+      )
+    : null;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={!event.record?.id}
+      className="flex w-full items-start gap-3 border-b border-surface-border/40 px-4 py-3 text-left last:border-0 disabled:cursor-default"
+    >
+      <div
+        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${meta.tone}`}
+      >
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-ink-primary">
+              {event.title}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-ink-muted">
+              {event.subtitle || meta.label}
+            </p>
+          </div>
+          <span className="shrink-0 font-mono text-[9px] text-ink-muted">
+            {displayDate(event.date)} · {event.time.slice(0, 5)}
+          </span>
+        </div>
+        {typeof event.intensity === "number" && (
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-raised">
+            <div
+              className="h-full rounded-full bg-violet-400"
+              style={{ width: `${Math.min(100, event.intensity * 10)}%` }}
+            />
+          </div>
+        )}
+        {insight && insight.status !== "normal" && (
+          <p
+            className={`mt-2 text-[9px] font-semibold ${
+              insight.status === "critico" ? "text-coral" : "text-amber-300"
+            }`}
+          >
+            {insight.titulo}
+          </p>
+        )}
+      </div>
+    </button>
+  );
+}

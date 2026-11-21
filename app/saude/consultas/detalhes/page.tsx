@@ -2,8 +2,6 @@
 "use client";
 import {ConsultationRelationsViewP6} from "@/components/saude/ConsultationRelationsViewP6";
 import { SurgeryConsultationLinksM4P2 } from "@/components/saude/SurgeryConsultationLinksM4P2";
-import { RehabM5ReverseLinks } from "@/components/saude/RehabM5ReverseLinks";
-import { HospitalizationA5ReverseLinks } from "@/components/saude/HospitalizationA5ReverseLinks";
 import { ClinicalConsultationAssetsM3 } from "@/components/saude/ClinicalConsultationAssetsM3";
 
 import { ContextualHealthIntelligence } from "@/components/vault-intelligence/ContextualHealthIntelligence";
@@ -617,7 +615,8 @@ function DetalhesConsultaContent() {
     tratamentosRelacionados.length +
     cidsRelacionados.length +
     medicamentosRelacionados.length +
-    examesRelacionados.length;
+    examesRelacionados.length +
+    new Set(consulta?.medicamento_ids ?? []).size;
 
   // ==========================================================
   // LOADING
@@ -1226,8 +1225,6 @@ function DetalhesConsultaContent() {
             {consulta && <ConsultationRelationsViewP6 consultation={consulta} medications={scopedMedicamentos}/>}
             {consulta?.id && <ClinicalConsultationAssetsM3 consultationId={consulta.id} />}
             {consulta?.id && <SurgeryConsultationLinksM4P2 consultationId={consulta.id} />}
-            {consulta?.id && <RehabM5ReverseLinks kind="consulta" recordId={consulta.id} returnTo={`/saude/consultas/detalhes?id=${encodeURIComponent(consulta.id)}`} />}
-            {consulta?.id && <HospitalizationA5ReverseLinks kind="consulta" recordId={consulta.id} returnTo={`/saude/consultas/detalhes?id=${encodeURIComponent(consulta.id)}`} />}
             {consulta?.id && <button type="button" onClick={()=>router.push(`/saude/jornada?consulta=${encodeURIComponent(consulta.id||'')}`)} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-sky-300/20 bg-sky-300/[.06] px-4 text-left text-xs font-semibold text-sky-200"><span>Ver jornada e exames vinculados</span><Stethoscope size={17}/></button>}
 
             {consulta.observacoes && (
@@ -1318,10 +1315,10 @@ function DetalhesConsultaContent() {
               title={`Tratamentos Relacionados (${tratamentosRelacionados.length})`}
             />
 
-            <section className="space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <section className="space-y-2 rounded-2xl border border-surface-border/50 bg-surface p-3 shadow-sm">
               {tratamentosRelacionados.length ===
               0 ? (
-                <p className="py-2 text-xs leading-5 text-ink-muted">
+                <p className="text-xs leading-5 text-ink-muted">
                   Nenhum tratamento foi vinculado diretamente a esta consulta.
                 </p>
               ) : (
@@ -1406,10 +1403,10 @@ function DetalhesConsultaContent() {
               title={`CIDs Relacionados (${cidsRelacionados.length})`}
             />
 
-            <section className="space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <section className="space-y-2 rounded-2xl border border-surface-border/50 bg-surface p-3 shadow-sm">
               {cidsRelacionados.length ===
               0 ? (
-                <p className="py-2 text-xs leading-5 text-ink-muted">
+                <p className="text-xs leading-5 text-ink-muted">
                   Nenhum CID foi vinculado diretamente a esta consulta.
                 </p>
               ) : (
@@ -1515,15 +1512,15 @@ function DetalhesConsultaContent() {
               title={`Medicamentos via Tratamentos (${medicamentosRelacionados.length})`}
             />
 
-            <section className="space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <section className="space-y-2 rounded-2xl border border-surface-border/50 bg-surface p-3 shadow-sm">
               {tratamentoIds.size ===
               0 ? (
-                <p className="py-2 text-xs leading-5 text-ink-muted">
+                <p className="text-xs leading-5 text-ink-muted">
                   Vincule tratamentos à consulta para cruzar medicamentos relacionados com segurança.
                 </p>
               ) : medicamentosRelacionados.length ===
                 0 ? (
-                <p className="py-2 text-xs leading-5 text-ink-muted">
+                <p className="text-xs leading-5 text-ink-muted">
                   Nenhum medicamento da pessoa ativa utiliza os tratamentos vinculados a esta consulta.
                 </p>
               ) : (
@@ -1619,15 +1616,15 @@ function DetalhesConsultaContent() {
               title={`Exames via Tratamentos (${examesRelacionados.length})`}
             />
 
-            <section className="space-y-2 rounded-[24px] border border-surface-border/50 bg-surface p-4 shadow-sm">
+            <section className="space-y-2 rounded-2xl border border-surface-border/50 bg-surface p-3 shadow-sm">
               {tratamentoIds.size ===
               0 ? (
-                <p className="py-2 text-xs leading-5 text-ink-muted">
+                <p className="text-xs leading-5 text-ink-muted">
                   Vincule tratamentos à consulta para cruzar exames relacionados com segurança.
                 </p>
               ) : examesRelacionados.length ===
                 0 ? (
-                <p className="py-2 text-xs leading-5 text-ink-muted">
+                <p className="text-xs leading-5 text-ink-muted">
                   Nenhum exame da pessoa ativa utiliza os tratamentos vinculados a esta consulta.
                 </p>
               ) : (

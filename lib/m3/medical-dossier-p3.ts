@@ -6,11 +6,8 @@ import { buildClinicalReport360, validClinicalDay, type Report360Section } from 
 import type { HealthInsightContext } from '@/lib/health-insights';
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { BrainV5Alert } from '@/lib/health-intelligence/brain-v5';
-import type { A4ClinicalFact } from '@/lib/treatment-a4/clinical-bridge';
-import { rehabFactsM5, localDayRehabM5 } from '@/lib/rehab-m5/projection';
-import type { RehabProgramM5, RehabSessionM5, RehabMilestoneM5, RehabOriginM5 } from '@/lib/rehab-m5/types';
 
-export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation';
+export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments';
 export type MedicalModeP3 = 'summary' | 'detailed';
 export type MedicalProvenanceP3 = 'registrado' | 'declarado' | 'motor';
 export type MedicalRowP3 = {
@@ -38,8 +35,7 @@ export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;des
   {id:'surgeries',label:'Cirurgias',description:'Eventos e status registrados'},
   {id:'withdrawals',label:'Retiradas',description:'Conclusão e ciclo sem recalcular estoque'},
   {id:'prescriptions',label:'Receitas e aquisições',description:'Data da receita versus data da aquisição'},
-  {id:'treatments',label:'Tratamentos',description:'Fases versionadas declaradas e cadastro atual'},
-  {id:'rehabilitation',label:'Reabilitação',description:'Ciclos, sessões e marcos documentados'},
+  {id:'treatments',label:'Tratamentos',description:'Cadastro atual e relações explícitas'},
   {id:'documents',label:'Documentos',description:'Somente títulos e metadados permitidos'},
 ];
 const ALLOWED = new Set<MedicalSectionP3>(MEDICAL_SECTIONS_P3.map(s=>s.id));
@@ -63,12 +59,9 @@ const human=(text:string):string=>text
   });
 export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
-  treatmentFacts?:readonly A4ClinicalFact[];
   ownerId:string; personId:string; personName:string; start:string; end:string;
   mode:MedicalModeP3; sections:readonly MedicalSectionP3[]; includeBrain?:boolean; generatedAt?:string;
   consultationId?:string;
-  rehab?:{programs:readonly RehabProgramM5[];sessions:readonly RehabSessionM5[];
-    milestones:readonly RehabMilestoneM5[];origins:readonly RehabOriginM5[]};
 };
 function isOwner(x:{user_id?:string;person_id?:string},uid:string,pid:string):boolean {
   return x.user_id===uid&&x.person_id===pid;
@@ -147,13 +140,22 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       for(const id of c.tratamento_ids??[]){const t=treatMap.get(id);if(t)relations.push(`Tratamento vinculado: ${safe(t.nome,100)}`);}
     }
     const medForDose=dose?medMap.get(dose.medicamento_id):undefined;
-    const doseTitle=medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · '+safe(medForDose.dosagem,45):''} — ${row.title}`:row.title;
+    const doseTitle=medForDose?`${safe(medForDose.nome,100)}${safe(medForDose.dosagem,45)?' · '+safe(medForDose.dosagem,45):''}`:row.title;
     add({section:row.category,date:row.date,time:row.time,title:doseTitle,detail:row.detail,source:row.source,
       sourceId:row.sourceId,registeredAt:null,provenance:row.category==='brain'?'motor':row.category==='symptoms'||row.category==='consultations'?'declarado':'registrado',relations,
       href:dose?.id?`/saude/careflow/fato?tipo=dose&id=${encodeURIComponent(dose.id)}`:
        reading?.id?`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(reading.id)}`:
        row.category==='consultations'&&c?.id?`/saude/consultas/detalhes?id=${encodeURIComponent(c.id)}`:
         symptom?.id?`/saude/careflow/sintomas#careflow-sintoma-${encodeURIComponent(symptom.id)}`:null});
+  }
+  // Algumas versões antigas salvaram a pressão com categoria divergente. A autoridade
+  // continua sendo o registro original: apenas garantimos sua projeção na seção Medições.
+  if(selected('measurements'))for(const reading of owned(context.registrosSaude)){
+    if(reading.tipo!=='pressao_arterial'||!reading.id||!within(date(reading.data)))continue;
+    if(rows.some(row=>row.section==='measurements'&&row.sourceId===reading.id))continue;
+    add({section:'measurements',date:date(reading.data),time:clock(reading.horario),title:`Pressão arterial · ${safe(reading.valor_medicao,40)||'valor não informado'}`,
+      detail:safe(reading.observacoes,500)||'Medição manual registrada pela pessoa.',source:'registro_saude_pressao',sourceId:reading.id,
+      registeredAt:reading.created_at||null,provenance:'registrado',relations:[],href:`/saude/careflow/fato?tipo=registro&id=${encodeURIComponent(reading.id)}`});
   }
   // R6: a aferição canônica já está em Medições; não repetir a mesma medida
   // apenas porque um evento imutável a vinculou ao plano.
@@ -241,49 +243,13 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       provenance:'registrado',relations:(r.medicamento_ids||[]).filter(id=>medMap.has(id)).map(id=>`Medicamento cadastrado: ${safe(medMap.get(id)?.nome,100)}`),
       href:'/saude/tratamentos'});
   }
-  // M5: same read-only longitudinal facts, no parallel CareFlow rehabilitation ledger.
-  const rehabFacts=input.rehab?rehabFactsM5({userId:uid,personId:pid,
-    programs:input.rehab.programs,sessions:input.rehab.sessions,milestones:input.rehab.milestones}):[];
-  if(selected('rehabilitation'))for(const f of rehabFacts){
-    const day=/^\d{4}-\d{2}-\d{2}$/.test(f.date)?f.date:localDayRehabM5(f.date);
-    if(!within(day))continue;
-    const instant=f.date.includes('T')?new Date(f.date):null;
-    const time=instant&&Number.isFinite(instant.getTime())?
-      instant.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):null;
-    add({section:'rehabilitation',date:day,time,title:safe(f.title,180),detail:safe(f.detail,800),
-      provenance:'declarado',source:'reabilitacao_'+f.kind,sourceId:f.id,registeredAt:f.date,
-      relations:[safe(f.source,150)],href:f.href});
-  }
-  const episodeRehabIds=new Set(consultation?.id?(input.rehab?.origins||[])
-    .filter(o=>o.user_id===uid&&o.person_id===pid&&!o.deleted_at&&o.origin_type==='consulta'&&o.origin_id===consultation.id)
-    .map(o=>o.program_id):[]);
-  const episodeRehabFacts=new Set(rehabFacts.filter(f=>episodeRehabIds.has(f.programId)).map(f=>f.id));
-  // A4: each dated, append-only phase is its OWN documented occurrence, not a current-cadastro snapshot.
-  if(selected('treatments'))for(const f of input.treatmentFacts||[]){
-    if(f.userId!==uid||f.personId!==pid||!within(f.date)||!treatMap.has(f.treatmentId))continue;
-    add({section:'treatments',date:f.date,time:null,title:`${f.treatmentName} · ${f.kindLabel}`,
-      detail:[f.title, f.sourceLabel,...f.details,f.notes||'',
-        'Registro declarado; não confirma prescrição atual, dose tomada ou melhora clínica.'].filter(Boolean).join(' · '),
-      source:'a4_treatment_phase',sourceId:f.id,registeredAt:f.recordedAt,provenance:'declarado',
-      relations:[f.medicationName?`Medicamento vinculado: ${f.medicationName}`:'',
-        f.consultationId&&consulted.has(f.consultationId)?`Consulta vinculada: ${safe(consulted.get(f.consultationId)?.especialidade,100)}`:'',
-        f.documentId?'Documento vinculado por ID (conteúdo não incluído)':''].filter(Boolean),
-      href:f.href});
-  }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
   const episodeRows=consultation?rows.filter(r=>{
     if(r.section==='consultations')return r.sourceId===consultation.id;
     if(r.section==='careflow')return episodeCareIds.has(r.sourceId);
     if(r.section==='symptoms')return episodeSymptomIds.has(r.sourceId);
     if(r.section==='medications')return Boolean(consultation.medicamento_ids?.includes(r.sourceId));
-    if(r.section==='treatments'){
-      if(r.source==='a4_treatment_phase'){
-        const fact=(input.treatmentFacts||[]).find(f=>f.id===r.sourceId&&f.userId===uid&&f.personId===pid);
-        return Boolean(fact&&(fact.consultationId===consultation.id || consultation.tratamento_ids?.includes(fact.treatmentId)));
-      }
-      return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
-    }
-    if(r.section==='rehabilitation')return episodeRehabFacts.has(r.sourceId);
+    if(r.section==='treatments')return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
     return false;
   }):rows;
   episodeRows.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')||a.section.localeCompare(b.section)||a.key.localeCompare(b.key));
