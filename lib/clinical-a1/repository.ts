@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { enfileirarOperacao, solicitarProcessamentoSync } from "@/lib/sync/enfileirarOperacao";
 import { isPrescriptionOnly } from "@/lib/health-supply/renewal-event";
+import { captureHistoricalLocationA3 } from "@/lib/health-supply/a3-historical-locations";
 import { a1Today, validCivilDate, type A1Source, type A1PhaseKind, type A1TreatmentPhase, type A1PrescriptionLink, type A1SupplyLocation } from "./types";
 
 const str=(value: string | null | undefined):string => typeof value==="string"?value.trim():"";
@@ -36,7 +37,7 @@ export const clinicalA1Repository={
     });
     completed();return row.id;
   },
-  async linkPrescriptions(input:{userId:string;personId:string;medicationId:string;previousId:string;currentId:string;tipo:"renovacao"|"substituicao";origem:A1Source;observacoes?:string}):Promise<string>{
+  async linkPrescriptions(input:{userId:string;personId:string;medicationId:string;previousId:string;currentId:string;tipo:"renovacao"|"substituicao";origem:A1Source;observacoes?:string}, behavior?:{notify?:boolean}):Promise<string>{
     ensureIdentity(input.userId,input.personId);
     if(!input.previousId||!input.currentId||input.previousId===input.currentId)throw new Error("Selecione duas receitas diferentes.");
     const [previous,current,medicine]=await Promise.all([db.renovacoes.get(input.previousId),db.renovacoes.get(input.currentId),db.medicamentos.get(input.medicationId)]);
@@ -52,6 +53,8 @@ export const clinicalA1Repository={
       // A1 version graph must be acyclic, including two same-day prescriptions.
       const allLinks=await db.a1_prescription_links.where("person_id").equals(input.personId)
         .filter(x=>x.user_id===input.userId&&!x.deleted_at&&x.medicamento_id===input.medicationId).toArray();
+      if(allLinks.some(link=>link.renovacao_anterior_id===input.previousId))
+        throw new Error("A receita anterior já foi vinculada a uma nova versão. Reabra o histórico antes de tentar outra.");
       const successors=new Map<string,string[]>();
       for(const link of allLinks)successors.set(link.renovacao_anterior_id,[...(successors.get(link.renovacao_anterior_id)||[]),link.renovacao_atual_id]);
       const visited=new Set<string>(),stack=[input.currentId];
@@ -61,6 +64,7 @@ export const clinicalA1Repository={
       await db.a1_prescription_links.add(row);
       await enfileirarOperacao("a1_prescription_links","add",row,{dispatchSync:false});
     });
+    if(behavior?.notify===false)return row.id;
     completed();return row.id;
   },
   async registerSupplyLocation(input:{userId:string;personId:string;processId:string;farmaciaId?:string|null;localId?:string|null;startOn:string;origem:A1Source;observacoes?:string}):Promise<string>{
@@ -71,7 +75,11 @@ export const clinicalA1Repository={
     if(Boolean(pharmacy)===Boolean(location))throw new Error("Escolha uma farmácia ou um local de saúde, não ambos.");
     if(pharmacy){const a=await db.farmacias.get(pharmacy);if(!a||a.user_id!==input.userId)throw new Error("Farmácia fora da sua Rede de Saúde.");}
     if(location){const a=await db.locais.get(location);if(!a||a.user_id!==input.userId)throw new Error("Local fora da sua Rede de Saúde.");}
-    const row:A1SupplyLocation={...newMeta(input.userId,input.personId),fornecimento_id:input.processId,farmacia_id:pharmacy,local_id:location,inicio_vigencia:ensureDate(input.startOn,false),origem:input.origem,observacoes:str(input.observacoes).slice(0,1000)||null};
+    const locationSnapshotA3=captureHistoricalLocationA3({userId:input.userId,pharmacyId:pharmacy,placeId:location,
+      pharmacy:pharmacy?await db.farmacias.get(pharmacy):null,
+      place:location?await db.locais.get(location):null,
+      now:new Date().toISOString(),source:"planned_assignment"});
+    const row:A1SupplyLocation={...newMeta(input.userId,input.personId),fornecimento_id:input.processId,farmacia_id:pharmacy,local_id:location,inicio_vigencia:ensureDate(input.startOn,false),origem:input.origem,observacoes:str(input.observacoes).slice(0,1000)||null,a3_location_snapshot:locationSnapshotA3};
     await db.transaction("rw",[db.a1_supply_locations,db.syncQueue],async()=>{
       const conflict=await db.a1_supply_locations.where("person_id").equals(input.personId).filter(x=>x.user_id===input.userId&&!x.deleted_at&&x.fornecimento_id===input.processId&&x.inicio_vigencia===row.inicio_vigencia).first();
       if(conflict)throw new Error("Já existe um local registrado para essa data e fornecimento.");

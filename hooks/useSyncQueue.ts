@@ -3105,6 +3105,9 @@ export function useSyncQueue() {
                 renovacao.document_id ??
                 null,
 
+               a3_location_snapshot:renovacao.a3_location_snapshot??null,
+               a3_location_changes:renovacao.a3_location_changes??[],
+
               tipo_aquisicao:
                 renovacao.tipo_aquisicao ??
                 null,
@@ -3485,6 +3488,8 @@ export function useSyncQueue() {
             farmacia_id:r.farmacia_id??null,
             hospital_id:r.hospital_id??null,
             local_id:r.local_id??null,
+            a3_location_snapshot:r.a3_location_snapshot??null,
+            a3_location_changes:r.a3_location_changes??[],
             medicamento_nome:r.medicamento_nome??null,
             medicamento_dosagem:r.medicamento_dosagem??null,
             data:r.data,

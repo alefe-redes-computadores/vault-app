@@ -87,6 +87,8 @@ import { safeReturnTarget } from "@/lib/navigation/return-context";
 import { safeClinicalReturnM150 } from "@/lib/navigation/clinical-return-m150";
 import { db } from "@/lib/db";
 import { healthSupplyRepository } from "@/lib/repositories/healthSupply";
+import { prescriptionCandidatesA3 } from "@/lib/health-supply/a3-canonical-versions";
+import { useLiveQuery } from "dexie-react-hooks";
 
 function NovaReceitaContent() {
   const router =
@@ -123,6 +125,7 @@ function NovaReceitaContent() {
 
   const {
     addRenovacao,
+    renovacoes,
   } =
     useRenovacoes();
   const { createDocument, deleteDocument } = useDocumentActions();
@@ -134,6 +137,8 @@ function NovaReceitaContent() {
     "";
   const withdrawalIdParam = searchParams.get("retirada_id") || "";
   const [planOnly, setPlanOnly] = useState(searchParams.get("mode") === "plan");
+  const [previousPrescriptionA3,setPreviousPrescriptionA3] = useState("");
+  const [linkTypeA3,setLinkTypeA3] = useState<"renovacao"|"substituicao">("renovacao");
   const [plannedDate, setPlannedDate] = useState("");
 
   const rawReturnTo =
@@ -235,6 +240,10 @@ function NovaReceitaContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const a1Links=useLiveQuery(async()=>activePersonId?db.a1_prescription_links.where("person_id").equals(activePersonId).toArray():[],[activePersonId])||[];
+  const priorPrescriptionsA3=useMemo(()=>prescriptionCandidatesA3(renovacoes,a1Links,user?.id||"",activePersonId||"",medicamentoId),
+    [renovacoes,a1Links,user?.id,activePersonId,medicamentoId]);
+  useEffect(()=>{setPreviousPrescriptionA3("");},[medicamentoId,activePersonId]);
   const selectedMedicamento =
     useMemo(
       () =>
@@ -451,6 +460,8 @@ function NovaReceitaContent() {
           {
             somenteReceita:
               true,
+             previousPrescriptionId:previousPrescriptionA3||null,
+             prescriptionLinkType:linkTypeA3,
 
             proximaRenovacao:
               proximaRenovacao ||
@@ -656,9 +667,37 @@ function NovaReceitaContent() {
             </div>
 
             {!planOnly && <>
+             <div className="rounded-2xl border border-violet-400/20 bg-violet-400/[.035] p-3">
+               <label htmlFor="a3-prior-prescription" className="mb-1.5 block text-xs font-semibold text-ink-primary">Histórico da receita · vínculo opcional</label>
+               <HealthRelationPicker
+                 id="a3-prior-prescription"
+                 title="Vincular receita anterior"
+                 value={previousPrescriptionA3}
+                 onValueChange={setPreviousPrescriptionA3}
+                 className="w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-xs text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+                 <option value="">Receita independente · não substitui nenhuma</option>
+                 {priorPrescriptionsA3.map(r=><option key={r.id} value={r.id!}>Associar à receita de {r.data.split("-").reverse().join("/")}</option>)}
+               </HealthRelationPicker>
+               {previousPrescriptionA3 && (
+                 <div className="mt-2">
+                   <label htmlFor="a3-link-type" className="mb-1.5 block text-xs font-semibold text-ink-muted">Tipo de vínculo</label>
+                   <HealthRelationPicker
+                     id="a3-link-type"
+                     title="Tipo de vínculo da receita"
+                     kind="status"
+                     value={linkTypeA3}
+                     onValueChange={value => setLinkTypeA3(value as "renovacao" | "substituicao")}
+                     className="w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-2.5 text-xs text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+                     <option value="renovacao">Renovação documentada</option>
+                     <option value="substituicao">Substituição da receita anterior</option>
+                   </HealthRelationPicker>
+                 </div>
+               )}
+               <p className="mt-1.5 text-[11px] leading-relaxed text-ink-muted">Vincule somente quando essa relação for um fato. O VAULT usa o histórico A1 existente, sem criar outra receita ou mexer no estoque.</p>
+             </div>
 
-            <div>
-              <label className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-ink-primary">
+             <div>
+               <label className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-ink-primary">
                 <Calendar
                   size={
                     13

@@ -1,4 +1,7 @@
 import type { Farmacia, LocalSaude, Medicamento, Renovacao, Retirada } from "@/lib/types";
+import type { A1PrescriptionLink } from "@/lib/clinical-a1/types";
+import { prescriptionHistoryA3 } from "@/lib/health-supply/a3-canonical-versions";
+import { locationDisplayA3 } from "@/lib/health-supply/a3-historical-locations";
 
 /**
  * A3 P1: purely factual read model. Never persists, mutates stock or creates clinical events.
@@ -26,6 +29,9 @@ export type SupplyContinuityEventA3 = {
   /** Each historical event stores the location ID; displayed name is current directory data. */
   pharmacyId: string | null;
   locationId: string | null;
+  historicalLocation: boolean;
+  prescriptionRevision: number | null;
+  previousPrescriptionId: string | null;
   linkedWithdrawalId: string | null;
   quantity: number | null;
   href: string;
@@ -37,6 +43,7 @@ export type SupplyContinuityInputA3 = {
   medicationIds: ReadonlySet<string>;
   medications: readonly Medicamento[];
   renewals: readonly Renovacao[];
+  a1Links?: readonly A1PrescriptionLink[];
   withdrawals: readonly Retirada[];
   pharmacies: readonly Farmacia[];
   places: readonly LocalSaude[];
@@ -50,7 +57,8 @@ const validDay = (value: string | null | undefined): value is string =>
 
 /** User-scoped directory lookup. Unknown IDs must never resolve to another account. */
 export function projectSupplyContinuityA3(input: SupplyContinuityInputA3) {
-  const {userId, personId, medicationIds, medications, renewals, withdrawals, pharmacies, places, today} = input;
+  const {userId, personId, medicationIds, medications, renewals, a1Links = [], withdrawals, pharmacies, places, today} = input;
+  const revisions = new Map([...medicationIds].flatMap(mid => prescriptionHistoryA3(renewals,a1Links,userId,personId,mid).map(x=>[x.id,x.version] as const)));
   const events: SupplyContinuityEventA3[] = [];
   const own = (row: {user_id: string; person_id?: string | null}) =>
     !!userId && !!personId && row.user_id === userId && row.person_id === personId;
@@ -81,9 +89,12 @@ export function projectSupplyContinuityA3(input: SupplyContinuityInputA3) {
     if (seen.has(key)) continue;
     seen.add(key);
     const pharmacyId=safeId(r.farmacia_id), locationId=safeId(r.local_id);
+    const locationA3=locationDisplayA3(r.a3_location_snapshot,loc(pharmacyId,pharmacyById)||loc(locationId,placeById));
     events.push({key, source:"renovacoes", id:r.id,medicationId:r.medicamento_id,
       medicationName:label(r.medicamento_id,r.medicamento_nome),kind,date:day,
-      pharmacyId,locationId,pharmacyName:loc(pharmacyId,pharmacyById),locationName:loc(locationId,placeById),
+      pharmacyId,locationId,pharmacyName:pharmacyId?locationA3.name:null,locationName:locationId?locationA3.name:null,historicalLocation:locationA3.historical,
+      prescriptionRevision:kind==="prescription"?(revisions.get(r.id)??null):null,
+      previousPrescriptionId:null,
       linkedWithdrawalId:sourceWithdrawalByReceiptId.get(r.id)||null,
       quantity:acquired?r.quantidade!:null,
       href:`/saude/renovacao/detalhes?id=${encodeURIComponent(r.id)}`});
@@ -97,9 +108,11 @@ export function projectSupplyContinuityA3(input: SupplyContinuityInputA3) {
     if (seen.has(key)) continue;
     seen.add(key);
     const pharmacyId=safeId(r.farmacia_id),locationId=safeId(r.local_id);
+    const locationA3=locationDisplayA3(r.a3_location_snapshot,loc(pharmacyId,pharmacyById)||loc(locationId,placeById));
     events.push({key,source:"retiradas",id:r.id,medicationId:r.medicamento_id,
       medicationName:label(r.medicamento_id,r.medicamento_nome),kind,date:r.data,
-      pharmacyId,locationId,pharmacyName:loc(pharmacyId,pharmacyById),locationName:loc(locationId,placeById),
+      pharmacyId,locationId,pharmacyName:pharmacyId?locationA3.name:null,locationName:locationId?locationA3.name:null,historicalLocation:locationA3.historical,
+      prescriptionRevision:null,previousPrescriptionId:null,
       linkedWithdrawalId:null,quantity:typeof r.quantidade_retirada === "number" && r.quantidade_retirada >= 0 ? r.quantidade_retirada : null,
       href:`/saude/retiradas/detalhes?id=${encodeURIComponent(r.id)}`});
   }

@@ -956,6 +956,9 @@ export type UpdateMedicamentoInput =
   NullableMedicamentoFields;
 
 export interface Renovacao {
+  /** A3: immutable event-scoped site as recorded, never live directory identity. */
+  a3_location_snapshot?: import("@/lib/health-supply/a3-historical-locations").A3LocationSnapshot | null;
+  a3_location_changes?: import("@/lib/health-supply/a3-historical-locations").A3LocationChange[] | null;
   id?: string;
   user_id: string;
   person_id?: string;
@@ -1061,6 +1064,9 @@ export interface RetiradaReagendamento {
 }
 
 export interface Retirada {
+  /** A3: event-scoped site snapshot; never derived retroactively for legacy records. */
+  a3_location_snapshot?: import("@/lib/health-supply/a3-historical-locations").A3LocationSnapshot | null;
+  a3_location_changes?: import("@/lib/health-supply/a3-historical-locations").A3LocationChange[] | null;
   fornecimento_id?: string | null;
   fornecimento_ciclo_id?: string | null;
   id?: string;

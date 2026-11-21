@@ -13,7 +13,22 @@ for(const [path,code,kind] of [[modelFile,model,ts.ScriptKind.TS],[componentFile
 const {outputText,diagnostics}=ts.transpileModule(model,{fileName:modelFile,reportDiagnostics:true,
  compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}});
 check(!diagnostics?.some(d=>d.category===ts.DiagnosticCategory.Error),'transpilação da autoridade de leitura');
-const m={exports:{}};new Function('module','exports',outputText)(m,m.exports);
+function runtimeA3(file,deps={}){
+ const js=ts.transpileModule(read(file),{fileName:file,compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
+ const m={exports:{}};
+ new Function('module','exports','require',js)(m,m.exports,name=>{if(!Object.prototype.hasOwnProperty.call(deps,name))throw Error('Fixture A3 sem import '+name);return deps[name]});
+ return m.exports;
+}
+const historical=runtimeA3('lib/health-supply/a3-historical-locations.ts');
+const canonical=runtimeA3('lib/health-supply/a3-canonical-versions.ts',{
+ '@/lib/health-supply/renewal-event':{isPrescriptionOnly:event=>!event.tipo_aquisicao?.trim()&&!event.data_aquisicao?.trim()&&event.quantidade==null&&event.preco==null}
+});
+const m={exports:{}};
+new Function('module','exports','require',outputText)(m,m.exports,name=>{
+ if(name==='@/lib/health-supply/a3-canonical-versions')return canonical;
+ if(name==='@/lib/health-supply/a3-historical-locations')return historical;
+ throw Error('Import inesperado da projeção '+name);
+});
 const run=m.exports.projectSupplyContinuityA3;
 check(typeof run==='function','função relacional exportada');
 const uid='owner',pid='person',another='other',mid='med1';
@@ -55,7 +70,7 @@ check(run({...inv,today:''}).overdueWithdrawals===0,'sem data atual válida não
 check(s.events.find(e=>e.id==='purchase').href==='/saude/renovacao/detalhes?id=purchase','aquisição abre detalhe da autoridade original');
 check(s.events.find(e=>e.id==='real').href==='/saude/retiradas/detalhes?id=real','retirada abre detalhe original');
 check(component.includes('projectSupplyContinuityA3')&&component.includes('<Link href={event.href}')&&page.includes('<SupplyContinuityA3'),'UI integrada na tela existente, sem rota paralela');
-check(!component.includes('db.')&&!component.includes('enfileirarOperacao('),'UI não cria segundo escritor nem outra fila');
+check(component.includes('db.a1_prescription_links') && !/db\.(?:a1_prescription_links|renovacoes|retiradas)\.(?:put|add|update|delete|bulkPut|bulkAdd)/.test(component) && !component.includes('enfileirarOperacao('),'UI lê somente relações A1 canônicas sem outro escritor nem outra fila');
 check(!model.includes('db.')&&!model.includes('supabase.'),'projeção pura, sem armazenamento paralelo');
 check(component.includes('min-h-11')&&component.includes('min-h-14'),'alvos de toque mínimos preservados');
 check(page.split('<SupplyContinuityA3').length===2,'somente uma montagem do resumo na tela canônica');

@@ -14,6 +14,8 @@ import {
 } from "@/lib/health-utils";
 
 import { detachOrDeleteRetiradaFromRenovacao, reconcileScheduledRetiradaFromRenovacao } from "@/lib/repositories/retiradas";
+import { clinicalA1Repository } from "@/lib/clinical-a1/repository";
+import { captureHistoricalLocationA3, recordLocationChangeA3 } from "@/lib/health-supply/a3-historical-locations";
 
 import type {
   Farmacia,
@@ -98,6 +100,9 @@ export type RenovacaoCreateOptions = {
    * - não cria/reconcilia Retirada.
    */
   somenteReceita?: boolean;
+  /** Explicit A1 predecessor selection; never invent a succession from the calendar. */
+  previousPrescriptionId?: string | null;
+  prescriptionLinkType?: "renovacao" | "substituicao";
 
   /**
    * Registra somente compra/retirada e seus efeitos logísticos.
@@ -806,6 +811,10 @@ export const renovacoesRepository = {
       options.somenteAquisicao ===
       true;
 
+    if (options.previousPrescriptionId && !somenteReceita) {
+      throw new Error("Substituir receita exige registrar somente uma nova prescrição.");
+    }
+
     if (
       somenteReceita &&
       somenteAquisicao
@@ -919,6 +928,12 @@ export const renovacoesRepository = {
 
     const timestamp =
       nowIso();
+
+    const lugarA3 = !somenteReceita && localId ? await db.locais.get(localId) : null;
+    const enderecoEventoA3 = somenteReceita ? null : captureHistoricalLocationA3({
+      userId, pharmacyId:farmaciaId,placeId:localId,pharmacy:farmacia,place:lugarA3,
+      now:timestamp,source:"event",
+    });
 
     const id =
       generateId();
@@ -1050,6 +1065,8 @@ export const renovacoesRepository = {
 
       synced:
         false,
+      a3_location_snapshot: enderecoEventoA3,
+      a3_location_changes: [],
     };
 
     const cleanRenovacao =
@@ -1188,6 +1205,7 @@ export const renovacoesRepository = {
       [
         db.renovacoes,
         db.retiradas,
+        db.a1_prescription_links,
         db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
         db.medicamentos,
         db.syncQueue,
@@ -1239,6 +1257,16 @@ export const renovacoesRepository = {
         await db.renovacoes.add(
           cleanRenovacao
         );
+        if (somenteReceita && options.previousPrescriptionId) {
+          // Reuse the ONE A1 relation authority in the same Dexie transaction.
+          // No new prescription ledger, no extra stock movement.
+          await clinicalA1Repository.linkPrescriptions({
+            userId,personId,medicationId:medicamentoId,
+            previousId:options.previousPrescriptionId,currentId:id,
+            tipo:options.prescriptionLinkType||"renovacao",
+            origem:"relato_pessoal",
+          },{notify:false});
+        }
 
         const medicationChanges=Object.fromEntries(Object.entries(medicamentoAtualizado).filter(([key,value])=>value!==(medicamento as unknown as Record<string,unknown>)[key]));
         await db.medicamentos.put({...currentMedication,...medicationChanges});
@@ -1442,10 +1470,24 @@ export const renovacoesRepository = {
 
     const timestamp =
       nowIso();
+    const updatedPharmacyIdA3 = normalizedData.farmacia_id === undefined ? atual.farmacia_id : normalizedData.farmacia_id;
+    const updatedPlaceIdA3 = normalizedData.local_id === undefined ? atual.local_id : normalizedData.local_id;
+    const siteChangedA3 = updatedPharmacyIdA3 !== atual.farmacia_id || updatedPlaceIdA3 !== atual.local_id;
+    const pharmacyA3 = siteChangedA3 && updatedPharmacyIdA3 ? await getFarmaciaForUser(updatedPharmacyIdA3,userId) : null;
+    const placeA3 = siteChangedA3 && updatedPlaceIdA3 ? await db.locais.get(updatedPlaceIdA3) : null;
+    const changedSiteA3 = siteChangedA3 ? recordLocationChangeA3({
+      previous:atual.a3_location_snapshot,
+      next:captureHistoricalLocationA3({userId,pharmacyId:updatedPharmacyIdA3,placeId:updatedPlaceIdA3,
+        pharmacy:pharmacyA3,place:placeA3,now:timestamp,source:"explicit_correction"}),
+      history:atual.a3_location_changes,now:timestamp,reason:"historical_correction",
+    }) : null;
 
     const payload =
       removeUndefined({
         ...normalizedData,
+        // Ignore untrusted edits of the audit fields; only an explicit site change appends history.
+        a3_location_snapshot:changedSiteA3?.changed ? changedSiteA3.snapshot : (atual.a3_location_snapshot??null),
+        a3_location_changes:changedSiteA3?.changed ? changedSiteA3.history : (atual.a3_location_changes??[]),
 
         medicamento_id:
           medicamentoId,
@@ -1518,11 +1560,22 @@ export const renovacoesRepository = {
       [
         db.renovacoes,
         db.retiradas,
+        db.a1_prescription_links,
         db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
         db.medicamentos,
         db.syncQueue,
       ],
       async () => {
+        // A1 is the single prescription-version ledger: do not mutate a linked
+        // prescription into an acquisition or move its historical date/medicine.
+        const a1Relations=await db.a1_prescription_links.where("person_id").equals(safePersonId)
+          .filter(x=>x.user_id===userId&&!x.deleted_at&&(x.renovacao_anterior_id===safeId||x.renovacao_atual_id===safeId)).first();
+        if(a1Relations){
+          const nextVersion={...atual,...payload};
+          if(nextVersion.medicamento_id!==atual.medicamento_id||nextVersion.data!==atual.data||
+             nextVersion.tipo_aquisicao||nextVersion.data_aquisicao||nextVersion.quantidade!=null||nextVersion.preco!=null)
+            throw new Error("Receita vinculada a uma versão posterior: preserve o documento e a data original; registre uma nova receita.");
+        }
         const linked=await db.retiradas.where("renovacao_realizada_id").equals(safeId).toArray();
         if(linked.some(r=>r.person_id===safePersonId&&r.user_id===userId)){
           for(const key of ["medicamento_id","quantidade","data_aquisicao","tipo_aquisicao"] as const){
@@ -1625,6 +1678,7 @@ export const renovacoesRepository = {
       [
         db.renovacoes,
         db.retiradas,
+        db.a1_prescription_links,
         db.fornecimentos, db.fornecimento_ciclos, db.fornecimento_itens,
         db.syncQueue,
       ],

@@ -30,6 +30,8 @@ export interface A1PrescriptionLink extends A1Record {
 }
 /** Dated location statement. Historical withdrawals never inherit the current location. */
 export interface A1SupplyLocation extends A1Record {
+  /** A3 adds an immutable recorded label/address to the canonical dated assignment. */
+  a3_location_snapshot?: import("@/lib/health-supply/a3-historical-locations").A3LocationSnapshot | null;
   fornecimento_id: string;
   farmacia_id: string | null;
   local_id: string | null;

@@ -1,4 +1,5 @@
 import { withdrawalHistory } from "@/lib/withdrawal-reschedule";
+import { captureHistoricalLocationA3, recordLocationChangeA3 } from "@/lib/health-supply/a3-historical-locations";
 import {loadSupplyWithdrawal} from "@/lib/health-supply/resolve-withdrawal";
 import { getLocalFirstAuthUser } from "@/lib/supabase/local-auth";
 // lib/repositories/retiradas.ts
@@ -87,8 +88,12 @@ export async function reconcileScheduledRetiradaFromRenovacao(r:Renovacao,m:Medi
   date(target,"Data da próxima retirada");
 
   const supply=ex?.fornecimento_ciclo_id?{fornecimento_id:ex.fornecimento_id,fornecimento_ciclo_id:ex.fornecimento_ciclo_id}:await loadSupplyWithdrawal(m.id!,r.person_id,r.user_id,target);
+  const plannedA3 = ex ? (ex.a3_location_snapshot??null) :
+    (r.a3_location_snapshot??await capturePlannedLocationA3(r.farmacia_id??m.farmacia_id??null,r.local_id??m.local_id??null,r.user_id,t));
   const rr:Retirada={
     ...supply,
+    a3_location_snapshot:plannedA3,
+    a3_location_changes:ex?.a3_location_changes??[],
     id:ex?.id||genId(),
     user_id:r.user_id,
     person_id:r.person_id,
@@ -190,6 +195,11 @@ export async function detachOrDeleteRetiradaFromRenovacao(r:Renovacao){
   );
 }
 
+async function capturePlannedLocationA3(pharmacyId:string|null,placeId:string|null,userId:string,at:string){
+  const pharmacy=pharmacyId?await db.farmacias.get(pharmacyId):null;
+  const place=placeId?await db.locais.get(placeId):null;
+  return captureHistoricalLocationA3({userId,pharmacyId,placeId,pharmacy,place,now:at,source:"planned_assignment"});
+}
 export const retiradasRepository={
   async getAll(userId:string,personId:string){
     const owner=req(userId,"Usuário");
@@ -241,9 +251,12 @@ export const retiradasRepository={
     const t=now();
 
     const supply=await loadSupplyWithdrawal(medicamentoId,personId,userId,data.data);
+    const localA3 = await capturePlannedLocationA3(data.farmacia_id??null,data.local_id??null,userId,t);
     const retirada:Retirada={
       ...data,
       ...supply,
+      a3_location_snapshot:localA3,
+      a3_location_changes:[],
       id:genId(),
       user_id:userId,
       person_id:personId,
@@ -312,9 +325,22 @@ export const retiradasRepository={
       throw new Error("Medicamento não pertence ao usuário autenticado.");
     }
 
+    // Completed/cancelled factual withdrawal locations cannot be silently reassigned.
+    const pharmacyIdA3=changes.farmacia_id===undefined?current.farmacia_id:changes.farmacia_id;
+    const placeIdA3=changes.local_id===undefined?current.local_id:changes.local_id;
+    const movedA3=pharmacyIdA3!==current.farmacia_id || placeIdA3!==current.local_id;
+    if(movedA3 && current.status!=="agendada")throw new Error("O local de uma retirada concluída ou encerrada é histórico. Corrija por um procedimento auditável.");
+    const changedAtA3=now();
+    const siteA3=movedA3?recordLocationChangeA3({
+      previous:current.a3_location_snapshot,
+      next:await capturePlannedLocationA3(pharmacyIdA3??null,placeIdA3??null,userId,changedAtA3),
+      history:current.a3_location_changes,now:changedAtA3,reason:"reassignment",
+    }):null;
     const next:Retirada={
       ...current,
       ...changes,
+      a3_location_snapshot:siteA3?.changed ? siteA3.snapshot : (current.a3_location_snapshot??null),
+      a3_location_changes:siteA3?.changed ? siteA3.history : (current.a3_location_changes??[]),
       id:current.id,
       user_id:current.user_id,
       person_id:current.person_id,

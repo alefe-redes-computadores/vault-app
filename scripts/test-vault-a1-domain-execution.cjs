@@ -45,6 +45,7 @@ const r=moduleJs('lib/clinical-a1/repository.ts',{
  '@/lib/db':{db},
  '@/lib/sync/enfileirarOperacao':{enfileirarOperacao:async(table,operation,row)=>{queue.push({table,operation,row});},solicitarProcessamentoSync:()=>{}},
  '@/lib/health-supply/renewal-event':{isPrescriptionOnly:e=>!e.tipo_aquisicao&&!e.data_aquisicao&&e.quantidade==null&&e.preco==null},
+ '@/lib/health-supply/a3-historical-locations':moduleJs('lib/health-supply/a3-historical-locations.ts',{}),
  './types':types
 }).clinicalA1Repository;
 async function rejected(action,contains){await assert.rejects(action,e=>String(e.message).includes(contains));}
