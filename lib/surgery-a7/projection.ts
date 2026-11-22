@@ -4,6 +4,12 @@
  * Input always scoped by authenticated user and active person.
  */
 import {A7_EVENT_LABEL,A7_SOURCE_LABEL,type A7Event,type A7Team} from './types';
+/** Read-only presentation labels mirrored from M5; no M5 writer or second projection. */
+const A7_M5_MILESTONE_LABELS:Record<string,string>={
+ reassessment:'Reavaliação',reported_progress:'Evolução informada',
+ clinical_clearance:'Liberação clínica registrada',exam_referral:'Encaminhamento para exame',
+ functional_discharge:'Alta funcional relatada'
+};
 export type ScopedA7 = {id?:string;user_id:string;person_id?:string|null;deleted_at?:string|null};
 export type SurgeryA7 = ScopedA7 & {procedimento:string;data:string;horario?:string;status:string;observacoes?:string;medico_id?:string;hospital_id?:string;local_id?:string;tratamento_ids?:string[];document_id?:string};
 export type ConsultationA7 = ScopedA7 & {especialidade:string;medico:string;data:string;horario?:string;status:string;observacoes?:string;orientacao_profissional?:string;proximos_passos?:string};
@@ -14,7 +20,8 @@ export type OrderA7 = ScopedA7 & {title:string;requested_on?:string|null;status?
 export type OrderLinkA7 = ScopedA7 & {consultation_id:string;order_id:string;role:string};
 export type RehabProgramA7 = ScopedA7 & {title:string;status:string;start_date?:string|null};
 export type RehabOriginA7 = ScopedA7 & {program_id:string;origin_type:string;origin_id:string};
-export type RehabSessionA7 = ScopedA7 & {program_id:string;scheduled_at:string;status:string};
+export type RehabSessionA7 = ScopedA7 & {program_id:string;scheduled_at:string;status:string;synced?:boolean};
+export type RehabMilestoneA7 = ScopedA7 & {program_id:string;kind:string;notes:string;recorded_at:string;source:string;synced?:boolean};
 /** A5's canonical records; read-only in A7. Never infer the relationship from dates. */
 export type HospitalizationA7 = ScopedA7 & {
  reason:string;status:string;admission_kind:string;planned_admission_on?:string|null;
@@ -47,7 +54,7 @@ export type SurgeryJourneyInputA7 = {
  surgeries:readonly SurgeryA7[];consultations:readonly ConsultationA7[];links:readonly LinkA7[];
  treatments:readonly TreatmentA7[];documents:readonly DocumentA7[];
  orders:readonly OrderA7[];orderLinks:readonly OrderLinkA7[];
- rehabPrograms:readonly RehabProgramA7[];rehabOrigins:readonly RehabOriginA7[];rehabSessions:readonly RehabSessionA7[];
+ rehabPrograms:readonly RehabProgramA7[];rehabOrigins:readonly RehabOriginA7[];rehabSessions:readonly RehabSessionA7[];rehabMilestones?:readonly RehabMilestoneA7[];
  doctors:readonly AccountEntityA7[];hospitals:readonly AccountEntityA7[];
  hospitalizations?:readonly HospitalizationA7[];hospitalizationRelations?:readonly HospitalizationRelationA7[];
  hospitalizationEvents?:readonly HospitalizationEventA7[];hospitalizationDischarges?:readonly HospitalizationDischargeA7[];
@@ -57,9 +64,9 @@ export type SurgeryJourneyInputA7 = {
 };
 export type SurgeryStageA7 = 'pre'|'procedure'|'post'|'return'|'related'|'rehabilitation'|'hospitalization';
 export type SurgeryRowA7 = {
- key:string;stage:SurgeryStageA7;kind:'consultation'|'surgery'|'treatment'|'document'|'exam'|'rehabilitation'|'hospitalization'|'asset'|'hospital_event'|'hospital_discharge'|'hospital_team'|'hospital_stay'|'surgical_event'|'surgical_team';
+ key:string;stage:SurgeryStageA7;kind:'consultation'|'surgery'|'treatment'|'document'|'exam'|'rehabilitation'|'hospitalization'|'asset'|'hospital_event'|'hospital_discharge'|'hospital_team'|'hospital_stay'|'surgical_event'|'surgical_team'|'rehab_session'|'rehab_milestone';
  title:string;detail:string;date:string;time:string;status:string;href:string;
- evidence:string;sourceId:string;
+ evidence:string;sourceId:string;sourceSynced?:boolean;
 };
 export type SurgeryJourneyA7 = {
  id:string;procedure:string;date:string;time:string;status:string;observations:string;
@@ -83,8 +90,8 @@ const toOrderHref=(id:string)=>`/saude/exames/pedidos?id=${encodeURIComponent(id
 const toRehabHref=(id:string)=>`/saude/reabilitacao/detalhes?id=${encodeURIComponent(id)}`;
 const stageOf=(role:string):SurgeryStageA7=>role==='preoperative'?'pre':role==='postoperative'?'post':role==='return_visit'?'return':'related';
 const stageSort=(rows:SurgeryRowA7[])=>rows.sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999')||a.time.localeCompare(b.time)||a.title.localeCompare(b.title,'pt-BR'));
-const row=(stage:SurgeryStageA7,kind:SurgeryRowA7['kind'],id:string,identity:string,title:string,detail:string,date:string,time:string,status:string,href:string,evidence:string):SurgeryRowA7=>({
- key:`${stage}:${kind}:${identity}`,stage,kind,sourceId:id,title:safe(title,180)||'Registro sem título',detail:safe(detail,3500),date:isoDay(date),time:validTime(time),status:safe(status,80),href,evidence:safe(evidence,200)
+const row=(stage:SurgeryStageA7,kind:SurgeryRowA7['kind'],id:string,identity:string,title:string,detail:string,date:string,time:string,status:string,href:string,evidence:string,sourceSynced?:boolean):SurgeryRowA7=>({
+ key:`${stage}:${kind}:${identity}`,stage,kind,sourceId:id,title:safe(title,180)||'Registro sem título',detail:safe(detail,3500),date:isoDay(date),time:validTime(time),status:safe(status,80),href,evidence:safe(evidence,200),sourceSynced
 });
 /** Does not infer pre-op approval, recovery, discharge or clinical relationship from timing. */
 export function projectSurgeryJourneyA7(input:SurgeryJourneyInputA7):SurgeryJourneyA7|null{
@@ -109,7 +116,7 @@ export function projectSurgeryJourneyA7(input:SurgeryJourneyInputA7):SurgeryJour
   stages[stage].push(row(stage,'surgical_event',e.id!,e.id!,e.title,
    [A7_EVENT_LABEL[e.kind],e.description,e.corrects_event_id?'Retificação vinculada ao fato anterior':''].filter(Boolean).join(' · '),
    e.occurred_on||'','','',`/saude/cirurgias/jornada?id=${encodeURIComponent(sid)}#a7-event-${encodeURIComponent(e.id!)}`,
-   `Fonte: ${A7_SOURCE_LABEL[e.source]}; registro imutável da própria jornada cirúrgica`));
+   `Fonte: ${A7_SOURCE_LABEL[e.source]}; registro imutável da própria jornada cirúrgica`,e.synced));
  }
  const surgicalTeam=owned(input.surgeryTeam||[],uid,pid).filter(t=>t.cirurgia_id===sid);
  for(const t of surgicalTeam){
@@ -118,7 +125,7 @@ export function projectSurgeryJourneyA7(input:SurgeryJourneyInputA7):SurgeryJour
   stages.procedure.push(row('procedure','surgical_team',t.id!,t.id!,person.nome,
    [t.role,t.note||''].filter(Boolean).join(' · '), '', '', '',
    `/saude/medicos/detalhes?id=${encodeURIComponent(t.professional_id)}`,
-   `Fonte: ${A7_SOURCE_LABEL[t.source]}; função declarada no procedimento, não inferida pela internação`));
+   `Fonte: ${A7_SOURCE_LABEL[t.source]}; função declarada no procedimento, não inferida pela internação`,t.synced));
  }
  const links=owned(input.links,uid,pid).filter(x=>x.cirurgia_id===sid&&consultations.has(x.consulta_id));
  const uniqueLinks=unique(links.map(link=>({key:`${link.consulta_id}:${link.role}`,link}))).map(x=>x.link);
@@ -220,16 +227,36 @@ export function projectSurgeryJourneyA7(input:SurgeryJourneyInputA7):SurgeryJour
    [target.label,asset.upload_status==='synced'?'Arquivo clínico privado sincronizado':'Arquivo clínico privado com sincronização ainda não confirmada'].join(' · '),
    '', '', asset.upload_status,target.href,'Fonte: vínculo explícito de arquivo privado M3 por consulta ou internação documentada'));
  }
+ // M5: only direct Cirurgia->Programa or proven A7->A5->Programa relationships.
+ // No temporal, name, specialty or treatment-based guesses.
  const programs=new Map(owned(input.rehabPrograms,uid,pid).map(x=>[x.id!,x]));
- const origins=owned(input.rehabOrigins,uid,pid).filter(x=>x.origin_type==='cirurgia'&&x.origin_id===sid&&programs.has(x.program_id));
- const linkedPrograms=new Set(origins.map(x=>x.program_id));
+ const directIds=new Set(owned(input.rehabOrigins,uid,pid).filter(x=>
+  x.origin_type==='cirurgia'&&x.origin_id===sid&&programs.has(x.program_id)).map(x=>x.program_id));
+ const viaA5Ids=new Set(owned(input.hospitalizationRelations||[],uid,pid).filter(x=>
+  hospitalIDs.has(x.hospitalization_id)&&x.entity_type==='rehab_program'&&programs.has(x.entity_id)).map(x=>x.entity_id));
+ const linkedPrograms=new Set([...directIds,...viaA5Ids]);
  const sessions=owned(input.rehabSessions,uid,pid).filter(x=>linkedPrograms.has(x.program_id));
+ const milestones=owned(input.rehabMilestones||[],uid,pid).filter(x=>linkedPrograms.has(x.program_id));
  for(const id of linkedPrograms){
   const program=programs.get(id)!;
   const total=sessions.filter(x=>x.program_id===id&&x.status==='performed').length;
   stages.rehabilitation.push(row('rehabilitation','rehabilitation',id,id,program.title,
    `${total===1?'1 sessão registrada como realizada':`${total} sessões registradas como realizadas`}. Nenhuma recuperação é presumida.`,
-   program.start_date||'','',''+program.status,toRehabHref(id),'Vínculo explícito de origem Cirurgia → Reabilitação (M5)'));
+   program.start_date||'','',''+program.status,toRehabHref(id),directIds.has(id)?
+    'Fonte: vínculo explícito Cirurgia -> Reabilitação M5':'Fonte: vínculo explícito Cirurgia -> Internação A5 -> Reabilitação M5'));
+ }
+ for(const s of (input.rehabMilestones===undefined?[]:sessions)){
+  const label=s.status==='performed'?'Sessão registrada como realizada':s.status==='missed'?'Ausência registrada':
+   s.status==='cancelled'?'Sessão cancelada':s.status==='confirmed'?'Sessão confirmada':'Sessão agendada';
+  stages.rehabilitation.push(row('rehabilitation','rehab_session',s.id!,s.id!,label,
+   `Programa: ${programs.get(s.program_id)?.title||'Programa vinculado'}. Estado declarado, sem conclusão funcional presumida.`,
+   s.scheduled_at||'','',''+s.status,toRehabHref(s.program_id),'Fonte: sessão original M5',s.synced));
+ }
+ for(const m of milestones){
+  stages.rehabilitation.push(row('rehabilitation','rehab_milestone',m.id!,m.id!,
+   A7_M5_MILESTONE_LABELS[m.kind]||'Marco registrado',m.notes||'',m.recorded_at||'','','',
+   toRehabHref(m.program_id),m.source==='professional_reported'?
+    'Fonte: informação atribuída a profissional, registrada na Reabilitação M5':'Fonte: marco informado na Reabilitação M5',m.synced));
  }
  for(const stage of Object.keys(stages) as SurgeryStageA7[])stages[stage]=stageSort(unique(stages[stage]));
  const doctor=input.doctors.find(x=>x.id===surgery.medico_id&&x.user_id===uid);
@@ -238,7 +265,8 @@ export function projectSurgeryJourneyA7(input:SurgeryJourneyInputA7):SurgeryJour
   'A classificação pré/pós-operatória exige um vínculo explícito com o procedimento, não apenas datas próximas.',
   'Cirurgia registrada como realizada não comprova alta hospitalar, reabilitação concluída nem liberação médica.',
   'Ausência de exame, documento ou retorno nesta visão não comprova ausência no prontuário.',
-  'Internação planejada não equivale a admissão. Alta hospitalar registrada não equivale a recuperação cirúrgica.'
+  'Internação planejada não equivale a admissão. Alta hospitalar registrada não equivale a recuperação cirúrgica.',
+  'Sessão agendada não comprova presença; marco não comprova melhora. A sincronização local não atesta leitura por outro dispositivo.'
  ];
  if(!uniqueLinks.length)caveats.unshift('Nenhuma consulta está vinculada diretamente a esta cirurgia; use os vínculos M4 para organizar a jornada.');
  return {id:sid,procedure:safe(surgery.procedimento,180)||'Cirurgia registrada',date:isoDay(surgery.data),time:validTime(surgery.horario),

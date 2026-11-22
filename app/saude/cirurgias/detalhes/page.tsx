@@ -975,6 +975,7 @@ function DetalhesCirurgiaContent() {
         </header>
 
         <div className="px-5 pt-4"><button type="button" onClick={()=>router.push(`/saude/jornada?cirurgia=${encodeURIComponent(cirurgia.id||'')}`)} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-sky-300/20 bg-sky-300/[.06] px-4 text-left text-xs font-semibold text-sky-200"><span>Ver jornada clínica relacionada</span><Stethoscope size={17}/></button></div>
+        {cirurgia.id && <div className="px-5 pt-3"><button type="button" onClick={()=>router.push(`/saude/cirurgias/jornada?id=${encodeURIComponent(cirurgia.id!)}&return_to=${encodeURIComponent(`/saude/cirurgias/detalhes?id=${encodeURIComponent(cirurgia.id!)}`)}`)} className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-emerald-300/25 bg-emerald-300/[.06] px-4 text-left text-xs font-semibold text-emerald-200"><span>Jornada Cirúrgica 360 · fatos e equipe</span><Stethoscope size={17}/></button></div>}
         <div className="px-5 pt-3"><SurgeryConsultationLinksM4P2 surgeryId={cirurgia.id!}/></div>
         {cirurgia.id && <div className="px-5 pt-3"><RehabM5ReverseLinks kind="cirurgia" recordId={cirurgia.id} returnTo={`/saude/cirurgias/detalhes?id=${encodeURIComponent(cirurgia.id)}`} /></div>}
         {cirurgia.id && <div className="px-5 pt-3"><HospitalizationA5ReverseLinks kind="cirurgia" recordId={cirurgia.id} returnTo={`/saude/cirurgias/detalhes?id=${encodeURIComponent(cirurgia.id)}`} /></div>}

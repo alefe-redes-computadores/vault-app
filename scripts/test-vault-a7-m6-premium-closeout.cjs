@@ -1,0 +1,63 @@
+/** A7/M6 macrocomplemento: testes puros. Nenhuma rede, escrita clínica ou Firestore. */
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const Module=require('node:module');
+const ts=require('typescript');
+let checks=0;
+const check=(label,fn)=>{fn();console.log('OK:',label);checks++};
+function load(rel,mocks={}){
+ const file=path.resolve(rel);const s=fs.readFileSync(file,'utf8');
+ const t=ts.transpileModule(s,{fileName:file,reportDiagnostics:true,compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}});
+ assert.equal(t.diagnostics.filter(d=>d.category===1).length,0,rel+' sintaxe');
+ const m=new Module(file,module);m.filename=file;m.paths=module.paths;
+ m.require=id=>Object.prototype.hasOwnProperty.call(mocks,id)?mocks[id]:require(id);
+ m._compile(t.outputText,file);return m.exports;
+}
+const utils=load('lib/surgery-a7/premium.ts');
+check('Busca sem acentos',()=>assert.equal(utils.normalizeSurgerySearchA7('FISIOTERÁPIA'), 'fisioterapia'));
+check('Pontuação preservada',()=>assert.equal(utils.normalizeSurgerySearchA7('A/B'), 'a/b'));
+const owned=(id,fields={})=>({id,user_id:'u1',person_id:'p1',deleted_at:null,...fields});
+const surgery=owned('s1',{procedimento:'Cirurgia original',data:'2026-11-13',status:'agendada'});
+const episode=owned('h1',{status:'planned',reason:'Acompanhamento',admission_kind:'elective'});
+const relation=owned('l1',{hospitalization_id:'h1',entity_type:'cirurgia',entity_id:'s1',relation_role:'related'});
+const args={userId:'u1',personId:'p1',episodeId:'h1',episodes:[episode],relations:[relation],surgeries:[surgery]};
+check('Cirurgia por vínculo A5 real',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7(args),'s1'));
+check('Outra conta negada',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7({...args,userId:'u2'}),''));
+check('Outra pessoa negada',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7({...args,personId:'p2'}),''));
+check('Episódio sem vínculo negado',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7({...args,episodeId:'h2'}),''));
+check('Episódio removido negado',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7({...args,episodes:[{...episode,deleted_at:'2026-11-21'}]}),''));
+check('Cirurgia estrangeira negada',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7({...args,surgeries:[{...surgery,user_id:'u2'}]}),''));
+check('Duas cirurgias no episódio exigem escolha',()=>assert.equal(utils.resolveSurgeryForHospitalizationA7({...args,surgeries:[surgery,owned('s2')],relations:[relation,owned('l2',{hospitalization_id:'h1',entity_type:'cirurgia',entity_id:'s2'})]}),''));
+const pj=load('lib/surgery-a7/projection.ts',{'./types':{A7_EVENT_LABEL:{preparation_note:'Preparação'},A7_SOURCE_LABEL:{self_report:'Relato pessoal'}},'@/lib/rehab-m5/projection':{REHAB_M5_MILESTONE_LABELS:{reassessment:'Reavaliação'}}});
+const program=owned('r1',{title:'Programa M5',status:'active',start_date:'2026-11-15'});
+const session=owned('ss1',{program_id:'r1',scheduled_at:'2026-11-17T11:00:00',status:'performed',synced:false});
+const milestone=owned('mm1',{program_id:'r1',kind:'reassessment',notes:'Reavaliação informada',recorded_at:'2026-11-18',source:'self_report',synced:true});
+const origin=owned('o1',{program_id:'r1',origin_type:'cirurgia',origin_id:'s1'});
+const rehabRelation=owned('l3',{hospitalization_id:'h1',entity_type:'rehab_program',entity_id:'r1'});
+const base={userId:'u1',personId:'p1',surgeryId:'s1',surgeries:[surgery],consultations:[],links:[],treatments:[],documents:[],orders:[],orderLinks:[],doctors:[],hospitals:[],hospitalizations:[episode],hospitalizationRelations:[relation],rehabPrograms:[program],rehabOrigins:[],rehabSessions:[session],rehabMilestones:[milestone],surgeryEvents:[],surgeryTeam:[]};
+check('M5 vínculo direto preserva sessões e marcos',()=>{let j=pj.projectSurgeryJourneyA7({...base,rehabOrigins:[origin]});assert.equal(j.counts.rehabilitation,1);assert.equal(j.stages.rehabilitation.length,3);assert.equal(j.stages.rehabilitation.find(x=>x.kind==='rehab_session').sourceSynced,false);assert.equal(j.stages.rehabilitation.find(x=>x.kind==='rehab_milestone').sourceSynced,true)});
+check('M5 por A5 somente em cadeia documental',()=>{let j=pj.projectSurgeryJourneyA7({...base,hospitalizationRelations:[relation,rehabRelation]});assert.equal(j.counts.rehabilitation,1);assert.equal(j.stages.rehabilitation.length,3)});
+check('Datas não criam relação M5',()=>{let j=pj.projectSurgeryJourneyA7(base);assert.equal(j.counts.rehabilitation,0)});
+check('Hospitalização estrangeira não cria relação',()=>{let j=pj.projectSurgeryJourneyA7({...base,hospitalizationRelations:[relation,{...rehabRelation,hospitalization_id:'h2'}]});assert.equal(j.counts.rehabilitation,0)});
+check('Sessão e marco de outra pessoa negados',()=>{let j=pj.projectSurgeryJourneyA7({...base,rehabOrigins:[origin],rehabSessions:[{...session,person_id:'p2'}],rehabMilestones:[{...milestone,user_id:'u2'}]});assert.equal(j.stages.rehabilitation.length,1)});
+check('Sem Cirurgia não cria jornada',()=>assert.equal(pj.projectSurgeryJourneyA7({...base,surgeries:[]}),null));
+const ui=fs.readFileSync('components/saude/SurgeryJourneyA7.tsx','utf8');
+const page=fs.readFileSync('app/saude/cirurgias/jornada/page.tsx','utf8');
+check('Densidade Compacto e Conforto',()=>assert.ok(ui.includes('Densidade de exibição')&&ui.includes('Compacto</button>')&&ui.includes('Conforto</button>')));
+check('Sync sem alegação de entrega remota',()=>assert.ok(ui.includes('Isso não atesta recepção em outro dispositivo')));
+check('A5 só por resolver explicitamente',()=>assert.ok(ui.includes('resolveSurgeryForHospitalizationA7')&&page.includes("params.get('internacao')")));
+check('Sem novo escritor clínico nos componentes',()=>{for(const p of ['lib/surgery-a7/premium.ts','components/saude/SurgeryJourneyA7.tsx'])assert.ok(!/supabase\.from\(|db\.[a-z_]+\.(?:put|add|delete)\(|fetch\(/.test(fs.readFileSync(p,'utf8')))});
+check('Atalhos A7 preservam autoridades originais',()=>{
+ const a=fs.readFileSync('app/saude/cirurgias/detalhes/page.tsx','utf8');
+ const b=fs.readFileSync('components/saude/HospitalizationA5Workspace.tsx','utf8');
+ const c=fs.readFileSync('app/saude/careflow/page.tsx','utf8');
+ assert.ok(a.includes('Jornada Cirúrgica 360 · fatos e equipe'));
+ assert.ok(b.includes('Ver Jornada Cirúrgica vinculada')&&b.includes('linked.some('));
+ assert.ok(c.includes('Jornada Cirúrgica<ChevronRight')&&c.includes('Internações<ChevronRight'));
+});
+check('Teste aditivo preservado no gate V63',()=>{
+ const gate=fs.readFileSync('scripts/test-v63-release-gate.mjs','utf8');
+ assert.equal(gate.split('"scripts/test-vault-a7-m6-premium-closeout.cjs"').length-1,1);
+});
+console.log(`A7_M6_PREMIUM_MACRO_OK | contratos=${checks} | sem gravação`);

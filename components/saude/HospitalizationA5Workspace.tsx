@@ -324,6 +324,7 @@ export function HospitalizationA5Workspace({view,selectedId}:{view:View;selected
     <section className={box}>
      <h2 className="flex items-center gap-2 text-sm font-bold"><Link2 size={18} className="text-sky-300"/>Relações clínicas por ID</h2>
      <p className="mt-1 text-[11px] text-ink-muted">{linked.length} {linked.length===1?'relação explícita':'relações explícitas'} — nenhuma foi deduzida por nome ou data.</p>
+      {selected && linked.some(l=>l.entity_type==='cirurgia'&&data?.cirurgias.some(c=>c.id===l.entity_id))&&<button type="button" className={`${soft} mt-2 w-full text-emerald-300`} onClick={()=>{trigger('vibrate');router.push(withReturnTarget(`/saude/cirurgias/jornada?internacao=${encodeURIComponent(selected.id)}`,detailPath(selected.id)));}}>Ver Jornada Cirúrgica vinculada</button>}
      {linked.map(l=><article key={l.id} className="mt-2 flex items-center gap-2 rounded-xl border border-surface-border p-2.5 text-xs">
       <div className="min-w-0 flex-1"><button type="button" className="inline-flex min-h-11 items-center gap-1 font-semibold" onClick={()=>go(pathTo(l.entity_type,l.entity_id))}>
        <span className="min-w-0 break-words">{nameOfRelation(l.entity_type,l.entity_id)}</span><ChevronRight size={15}/></button>

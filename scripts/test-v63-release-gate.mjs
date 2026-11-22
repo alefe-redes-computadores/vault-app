@@ -8,6 +8,7 @@ const contracts = [
   "scripts/test-vault-m93-home-brain-documents.cjs",
   "scripts/test-vault-m94-notifications-update.cjs",
   "scripts/test-vault-v281-guided-close.cjs",
+  "scripts/test-vault-a7-m6-premium-closeout.cjs",
   "scripts/test-vault-m153-p6-visual-360.cjs",
   "scripts/test-vault-m148-p3.cjs",
   "scripts/test-vault-m126-manufacturer-batch-closure.cjs",
