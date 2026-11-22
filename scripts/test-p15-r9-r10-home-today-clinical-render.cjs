@@ -35,9 +35,9 @@ ok(v45.includes('TodayTimelineGroupPresentation.ts')&&v45.includes('groups.inclu
 ok(v49.includes('TodayTimelineGroupPresentation.ts')&&v49.includes('groups.indexOf(')&&v49.includes('const metadata = todayTimelineGroupPresentation'),'V49 valida ordem modular e ligação ao agrupamento');
 ok(today.includes('groupTimelineItems(dosesParaExibir')&&today.includes('summarizeTimeline(doses)'),'Grupos e métricas canônicos intactos');
 ok(today.includes('todayTimelineGroupPresentation')&&groups.includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 explícitos');
-ok(today.includes('<TodayTimelineGuide isHoje={isHoje}') && groups.includes('Programadas para depois · ainda não estão atrasadas'),'V229: indicação das doses futuras permanece no Hoje e no módulo de grupos');
+ok(/<TodayTimelineGuide\s+isHoje=\{isHoje\}/.test(today) && groups.includes('Programadas para depois · ainda não estão atrasadas'),'V229: indicação das doses futuras permanece no Hoje e no módulo de grupos');
 for(const key of ['agora','atrasadas','depois','avulsas','revisao','concluidas','ignoradas','manha','tarde','noite'])ok(groups.includes(key+': { label:'),'Grupo preservado '+key);
-ok(today.includes('const metricItems = useMemo(() => doses.filter(')&&today.includes('visibleTimelineItems(dosesFiltradas'),'Memo P10 e visibilidade V9 mantidos');
+ok(/const metricItems\s*=\s*useMemo\(\s*\(\)\s*=>\s*doses\.filter\(/.test(today)&&today.includes('visibleTimelineItems(dosesFiltradas'),'Memo P10 e visibilidade V9 mantidos');
 ok(evidence.includes('medicationEvidenceClarity(source, safeCount, routeRecorded)')&&evidence.includes('{clarity.label}')&&evidence.includes('{clarity.explanation}'),'Origem da evidência explicável');
 ok(evidence.includes('medicationStageGuidance(stage)')&&evidence.includes('não comprova retirada, compra concluída nem validade da receita.'),'Segurança da receita e aquisição preservada');
 ok(fenix.includes('Brain · {brief.posture}')&&fenix.includes('data-care-status={carePosture.tone}'),'Postura do Brain permanece');

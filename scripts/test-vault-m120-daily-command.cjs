@@ -82,7 +82,7 @@ for(const p of ['app/hoje/page.tsx','app/page.tsx','components/hoje/TodayFilterP
 }
 const today=read('app/hoje/page.tsx'),home=read('app/page.tsx'),panel=read('components/hoje/TodayFilterPanel.tsx');
 ok('Hoje conserva motores e autoridade de doses',()=>{
-  assert(today.includes('buildTodayTimelineItems({'));assert(today.includes('useDoseLogs('));assert(today.includes('DoseScheduleGroups items={grupo.items}'));
+  assert(today.includes('buildTodayTimelineItems({'));assert(today.includes('useDoseLogs('));assert(/<DoseScheduleGroups\s+items=\{grupo.items\}/.test(today));
   assert(today.includes('command={healthIntelligence.careCommand}'));
 });
 ok('Hoje preserva foco por horário',()=>assert(today.includes('focusTime={focusDoseTime}')));

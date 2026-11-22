@@ -13,8 +13,8 @@ ok(today.includes('Compromissos do Dia')&&today.includes('compromissosFiltrados.
 ok(today.includes('<TodayDoseGroupHeading')&&today.includes('const progresso = grupo.progress')&&group.includes('role="progressbar"'),'dose group shows existing memoized authority');
 ok(today.includes('setMostrarConcluidas')&&today.includes('<TodayFilterPanel')&&
    today.includes('showResolved={mostrarConcluidas}')&&
-   today.includes('onShowResolved={(value) => { trigger("vibrate"); setMostrarConcluidas(value); }}')&&
-   today.includes('visibleTimelineItems(dosesFiltradas, { isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas })')&&
+   (/onShowResolved=\{\(value\)\s*=>\s*\{\s*trigger\("vibrate"\);\s*setMostrarConcluidas\(value\);\s*\}\}/.test(today))&&
+   /visibleTimelineItems\(dosesFiltradas,\s*\{\s*isToday:\s*isHoje,\s*status:\s*filtroStatus,\s*showResolved:\s*mostrarConcluidas,?\s*\}\)/.test(today)&&
    today.includes('const hasFiltrosAtivos ='),'historical toggle and filters retained');
 ok(today.includes('emptyTimelineCopy.title')&&today.includes('emptyTimelineCopy.description')&&empty.includes('Nenhum slot para revisar neste dia'),'empty UI never erases scheduled slots');
 ok(today.includes('await marcarDose(')&&today.includes('partitionDoseBatchByStock(')&&today.includes('buildTodayTimelineItems(')&&today.includes('setIsBatchTimeModalOpen'),'canonical dose batch/stock/actions untouched');

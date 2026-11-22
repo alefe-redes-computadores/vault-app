@@ -23,7 +23,7 @@ for(const [file,label] of [
  ok(`sem CTA de criação genérico no cabeçalho: ${file}`,!s.includes('rightAction={<button')&&!s.includes('          rightAction={'));
 }
 const records=read('app/saude/registros/page.tsx');
-ok('atalhos específicos continuam',records.includes('"Humor", "humor"')&&records.includes('"Sintoma", "sintoma"'));
+ok('atalhos específicos continuam',(/humor:\s*\{\s*label:\s*"Humor"/.test(records))&&(/sintoma:\s*\{\s*label:\s*"Sintoma"/.test(records)));
 ok('mês pt-BR preserva de minúsculo',records.includes('month.label.charAt(0).toLocaleUpperCase("pt-BR")')&&!records.includes('bg-surface text-sm font-semibold capitalize'));
 
 const supply=read('app/saude/fornecimento/page.tsx');

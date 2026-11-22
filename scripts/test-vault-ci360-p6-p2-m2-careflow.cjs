@@ -79,7 +79,7 @@ yes(rw.reminderDayEligibleM2({careflow_m2:{plan_id:'a',start:'2026-11-17',end:'2
 // An obligatory picker callback must never be dropped by a design-system refactor.
 const pressureView = text('app/saude/careflow/pressao/page.tsx');
 const symptomView = text('app/saude/careflow/sintomas/page.tsx');
-yes(pressureView.includes('<CustomDatePicker label="Fim" value={end} minDate={start} onChange={setEnd}/>'),
+yes(/<CustomDatePicker\s+label="Fim"\s+value=\{end\}[\s\S]*?onChange=\{setEnd\}/.test(pressureView),
   'FIX2: end date picker has the required onChange callback');
 yes(symptomView.includes("nome:name,data:date,horario:time,intensidade:intensity"),
   'FIX2: symptom consultation association records date from selected value');

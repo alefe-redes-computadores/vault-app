@@ -10,7 +10,7 @@ assert(groups.includes("Revisar {pending.length} juntas"));
 assert(page.includes("max-h-[calc(100dvh-env(safe-area-inset-bottom)-8rem)]"));
 assert(!page.includes("safe-area-inset-top"));
 assert(page.includes("overflow-y-auto overscroll-contain"));
-assert(page.includes("Saldo zerado não comprova que a dose deixou de ser tomada"));
+assert(/Saldo zerado não comprova que a dose deixou de ser\s+tomada/.test(page));
 assert(page.includes("Confirmar que não tomei por falta de estoque"));
 assert(page.includes("dosesComEstoqueNoLote"));
 assert(page.includes("batchOperationLock.current"));

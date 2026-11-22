@@ -34,7 +34,7 @@ const map=read('app/saude/mapa/page.tsx');
 ok(map.includes('data-vault-focus-icon="r4"')&&map.includes('replace(/^Brain:\\s*/i'), 'Em foco mostra ícone e limpa prefixo repetido');
 const home=read('app/page.tsx');
 ok(home.includes('duplicatePrimaryStockUXR4'),'aviso duplicado controlado por identidade de medicamento');
-ok(read('components/home/HomeCommandCenter.tsx').includes('min-h-[76px]')&&read('components/home/HomeCommandCenter.tsx').includes('${viva ? "h-auto self-start" : "h-full"}')&&!read('components/home/HomeCommandCenter.tsx').includes('className="group flex h-full min-h-[76px]'),'atalho Medicamentos mantém 76px sem stretch do Viva');
+ok(read('components/home/HomeCommandCenter.tsx').includes('min-h-[76px]')&&/viva\s*\?\s*"h-auto self-start"\s*:\s*"h-full"/.test(read('components/home/HomeCommandCenter.tsx'))&&!read('components/home/HomeCommandCenter.tsx').includes('className="group flex h-full min-h-[76px]'),'atalho Medicamentos mantém 76px sem stretch do Viva');
 ok(read('components/home/HomeClinicalAreaTile.tsx').includes('min-h-[76px]'),'atalho Minha Saúde acompanha geometria');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok((gate.match(/"scripts\/test-vault-ux360-r4-video.cjs"/g)||[]).length===1,'R4 listado exatamente uma vez no V63');

@@ -18,9 +18,9 @@ assert(home.includes('setInsightExplicado('),'insights still open detail evidenc
 assert(home.includes('longitudinalHighlights.some(item => item.gravidadeSeguranca')&&home.includes('HomeAttentionRail alerts={unifiedAlerts}'),'urgent evidence remains expanded');
 assert(home.includes('suppressOperationalOverlap('),'Home keeps dedup source of truth');
 assert(home.includes('primaryMedicationCareOpportunity.actionHref'),'Home preserves real operational action');
-assert(today.includes('<TodayFilterPanel status={filtroStatus}')&&today.includes('<TodayDateNavigation label="Escolher data da linha do tempo"'),'all Today areas visible');
+assert(/<TodayFilterPanel\s+status=\{filtroStatus\}/.test(today)&&/<TodayDateNavigation\s+label="Escolher data da linha do tempo"/.test(today),'all Today areas visible');
 assert(today.includes('pendingDoses={totalPendentes}') && today.includes('getElementById("hoje-doses")') && todayActions.includes('pendingDoses > 0'),'pending jump preserved');
-assert(today.includes('DoseMonthOverview userId={user.id} personId={activePersonId}'),'owner-safe monthly analysis');
+assert(/<DoseMonthOverview\s+userId=\{user.id\}\s+personId=\{activePersonId\}/.test(today),'owner-safe monthly analysis');
 assert(today.includes('dosesElegiveisLote.length > 1') && today.includes('handleTomarTodos()'),'dose batch preserved');
 assert(today.includes('setMostrarConcluidas'),'past doses review preserved');
 assert(detail.includes('<MedicationDetailNavigation')&&medicationNavigation.includes('label="Áreas do medicamento" layout="grid"'),'medicine sections discoverable');

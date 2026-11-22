@@ -16,9 +16,9 @@ for (const marker of [
 ]) assert(records.includes(marker), `V192 care record command missing: ${marker}`);
 
 assert(!records.includes("useTratamentos"), "unused treatment subscription must not return");
-assert(records.includes('insight&&insight.status!=="normal"'), "missing insight must remain neutral");
+assert(/insight\s*&&\s*insight.status\s*!==\s*"normal"/.test(records), "missing insight must remain neutral");
 assert(records.includes("buildClinicalEvents(registros, allDoseLogs, medicamentos)"), "canonical record+dose timeline must remain");
-assert(records.includes("O Vault não diagnostica, não prescreve"), "clinical safety language must remain");
+assert(/não diagnostica, não prescreve e não recomenda alterar dose/.test(records), "clinical safety language must remain");
 
 for (const marker of [
   "V192: planos supraorbitais",

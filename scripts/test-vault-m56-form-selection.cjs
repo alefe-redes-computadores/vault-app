@@ -109,7 +109,7 @@ let form=walk(q,n=>n.type==='form')[0];
  const date=read('components/saude/HealthDateTimePicker.tsx');
  ok(date.includes('disabled={!date} clearable={false}'),'datetime cannot silently clear the selected date via time reset');
  const hour=read('components/saude/HealthTimePicker.tsx');
- ok(hour.includes('disabled={disabled}')&&hour.includes('clearable && value'),'single time picker remains clearable when allowed');
+ ok(hour.includes('disabled={disabled}')&&/clearable\s*&&\s*\(draft\s*\|\|\s*value\)/.test(hour)&&hour.includes('onChange("")'),'single time picker remains clearable when allowed');
  const treatment=read('components/saude/TreatmentRelationOption.tsx');
  ok(treatment.includes('break-words')&&!treatment.includes('truncate'),'long treatment identity and condition are not truncated');
  for(const [file,term] of [['components/SelectionModal.tsx','useModalGuard'],['components/saude/HealthRelationPicker.tsx','buildRelationMetadata'],['components/saude/HealthDateTimePicker.tsx','CustomDatePicker'],['components/saude/HealthTimePicker.tsx','inputMode="numeric"']])ok(read(file).includes(term),'existing authority and integration retained: '+file);

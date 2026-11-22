@@ -10,7 +10,7 @@ ok(home.includes('const homeClinicalData = useLiveQuery')&&home.includes('Promis
 ok((home.match(/homeClinicalData!/g)||[]).length===5,'Home compartilha o snapshot entre cinco áreas');
 ok(home.includes('where("[user_id+person_id]")')&&home.includes('homeClinicalReady'),'Home usa índice de proprietário e rejeita resultado obsoleto');
 ok(home.includes('db.doseLogs.where("[user_id+person_id]")'),'planejamento antigo é restrito por conta e pessoa no índice');
-ok(today.includes('plannedPrescriptionAgendaState(\n                medicamento.proxima_renovacao,\n                dataSelecionada,\n                hoje,')&&today.includes('withdrawalsForAgendaDate(retiradas, dataSelecionada, hoje)'),'Hoje usa uma referência civil única');
+ok(/plannedPrescriptionAgendaState\(\s*medicamento\.proxima_renovacao,\s*dataSelecionada,\s*hoje\s*\)/.test(today)&&today.includes('withdrawalsForAgendaDate(retiradas, dataSelecionada, hoje)'),'Hoje usa uma referência civil única');
 ok(diagnostics.includes('db.doseLogs\n        .where("user_id")\n        .equals(user.id)'),'Diagnóstico não varre doses de outras contas');
 ok(notifications.includes('schedulingRef')&&notifications.includes('signature = `${user.id}:${activePersonId}:${candidate.id}`'),'notificação possui mutex por conta, pessoa e insight');
 ok(notifications.includes('let cancelled = false')&&notifications.includes('return () => { cancelled = true; }'),'agendamento assíncrono é invalidado na troca de contexto');

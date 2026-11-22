@@ -25,10 +25,10 @@ assert(!cal.includes('type="date"')&&cal.includes('aria-haspopup="dialog"')&&cal
 assert(cal.includes('Semana da data selecionada')&&cal.includes('Voltar para Hoje')&&cal.includes('onSelectDate(value)'),'week strip and direct day selection');
 assert(!page.includes('data-vault-p5p5-dose-shortcut="true"')&&page.includes('LINHA DO TEMPO'),'Today header minimal');
 assert(pulse.includes('Entender o progresso')&&pulse.includes('Este total é da linha do tempo selecionada'),'progress explanation behind info');
-assert(agenda.includes('previewRows=overview.rows.filter(item=>item.kind!=="appointment")')&&page.includes('<TodayAppointmentCard'),'no duplicated appointment card identity');
+assert(/previewRows\s*=\s*overview.rows.filter\(\s*\(item\)\s*=>\s*item.kind\s*!==\s*"appointment"\s*\)/.test(agenda)&&page.includes('<TodayAppointmentCard'),'no duplicated appointment card identity');
 assert(page.includes('TodayActionCenter')&&page.includes('TodayAgendaOverview'),'Brain operational context kept');
 assert(page.includes('SmilePlus')&&page.includes('Registrar sintoma'),'check-in semantics');
-assert(page.includes('vault:today:r4-return')&&page.includes('saved.person!==activePersonId'),'same owner/date scroll only');
+assert(page.includes('vault:today:r4-return')&&/saved.person\s*!==\s*activePersonId/.test(page),'same owner/date scroll only');
 assert(more.includes('<VaultUpdateDisclosureR4')&&more.includes('<VaultUpdateCenter />')&&more.includes('id="vault-updates-r4"')&&update.includes('return <summary'),'update diagnostics preserved, direct official center under collapsed accordion');
 assert(update.includes('state.installedVersion||APP_VERSION'),'no made-up APK version');
 assert(more.includes('grid grid-cols-1 gap-2 min-[380px]:grid-cols-2 [&_button]:min-w-0')&&more.includes('grid grid-cols-1 gap-2 border-t border-surface-border/35 pb-3 pt-3'),'data grid');

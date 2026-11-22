@@ -7,6 +7,7 @@ import {withReturnTarget} from '@/lib/navigation/return-context';
 import {useCareFlowM2} from '@/hooks/useCareFlowM2';
 import {useRegistrosSaude} from '@/hooks/useRegistrosSaude';
 import {useAuth} from '@/hooks/useAuth';
+import { TreatmentContinuityA4 } from '@/components/saude/TreatmentContinuityA4';
 const areas=[
  {href:'/saude/careflow/modo-medico',title:'Modo Médico',description:'Conferir informações para a consulta',icon:Stethoscope,tone:'text-emerald-200'},
  {href:'/saude/careflow/episodios',title:'Atendimentos',description:'Consultas e vínculos reais',icon:GitBranch,tone:'text-sky-300'},
@@ -32,6 +33,7 @@ export default function CareFlowDashboard(){
   <div className="grid gap-2 min-[360px]:grid-cols-2"><Link href={withReturnTarget('/saude/cirurgias/jornada','/saude/careflow')} className="flex min-h-12 items-center gap-2 rounded-xl border border-surface-border bg-surface p-3 text-xs font-semibold"><HeartPulse size={17} className="text-rose-300"/>Jornada Cirúrgica<ChevronRight size={16} className="ml-auto"/></Link><Link href={withReturnTarget('/saude/internacoes','/saude/careflow')} className="flex min-h-12 items-center gap-2 rounded-xl border border-surface-border bg-surface p-3 text-xs font-semibold"><Activity size={17} className="text-sky-300"/>Internações<ChevronRight size={16} className="ml-auto"/></Link></div>
   {metrics.some(m=>m.count>0)&&<p className="text-xs text-ink-muted">{metrics.filter(m=>m.count>0).map(m=>`${m.count} ${m.label.toLocaleLowerCase('pt-BR')}`).join(' · ')}</p>}
   {otherGroups.map(group=><section key={group.label} aria-label={group.label} className="space-y-2"><h2 className="text-[11px] font-bold uppercase tracking-[.13em] text-ink-muted">{group.label}</h2><div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">{group.cards.map(({href,title,description,icon:Icon,tone},index)=><Link key={href} href={withReturnTarget(href,'/saude/careflow')} className={`flex min-h-[72px] min-w-0 items-center gap-2.5 rounded-2xl border border-surface-border/70 bg-surface p-3 transition-colors active:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 ${group.cards.length%2===1&&index===group.cards.length-1?'min-[360px]:col-span-2':''}`}><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-void/50"><Icon size={19} className={tone}/></span><span className="min-w-0 flex-1"><strong className="block break-words text-xs font-bold">{title}</strong><span className="mt-0.5 block break-words text-[11px] leading-snug text-ink-muted">{description}</span></span><ChevronRight size={15} className="shrink-0 text-ink-muted"/></Link>)}</div></section>)}
+  <TreatmentContinuityA4 context="careflow" maxItems={3} />
   <p className="flex gap-2 text-[11px] leading-relaxed text-ink-muted"><ShieldCheck size={15} className="shrink-0 text-emerald-300"/>O acompanhamento clínico exibe somente dados declarados ou conferidos. Ausência de registro não prova ausência de evento. Nenhum dado é compartilhado automaticamente.</p>
  </div></main></PageTransition>;
 }

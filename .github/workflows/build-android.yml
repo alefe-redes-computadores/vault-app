@@ -22,7 +22,7 @@ jobs:
       - name: Clonar repositório
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required to verify an immutable differential baseline
+          fetch-depth: 0  # Historical audit optional; strict V63 executes the current tree
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -39,10 +39,12 @@ jobs:
       - name: Instalar dependências reproduzíveis
         run: npm ci
 
-      - name: Executar gate V63 diferencial auditável (base imutável V29.1)
+      - name: Executar gate V63 estrito e TypeScript integral
+        shell: bash
         run: |
-          node scripts/test-v63-differential-release.mjs
-          npx tsc --noEmit
+          set -euo pipefail
+          mkdir -p artifacts
+          npm run test:release 2>&1 | tee artifacts/V63-STRICT.log
       - name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
@@ -277,10 +279,10 @@ jobs:
         shell: bash
         run: |
           {
-            echo '## VAULT M67 · Build Android com gate diferencial (APK ainda requer homologação física)'
+            echo '## VAULT M67 · Build Android com gate V63 estrito (APK ainda requer homologação física)'
             echo "- Commit: ${GITHUB_SHA}"
             echo "- Execução: ${GITHUB_RUN_ID}"
-            echo '- Gate diferencial V63 sem regressões novas, com dívida legada declarada; TypeScript aprovado'
+            echo '- Gate canônico V63 estrito e TypeScript integral aprovados'
             echo '- Exportação, bridge, build e certificado/versionCode: aprovados'
             echo '- Artefato APK: Vault-App-debug (conferir etapa seguinte)'
             echo '- Teste de instalação e sincronização PWA × APK: pendente de homologação manual'
@@ -294,19 +296,19 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Preservar relatório integral do gate V63
+      - name: Preservar relatório integral do gate V63 estrito
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Vault-V63-Differential-Audit
-          path: artifacts/V63-DIFFERENTIAL/
+          name: Vault-V63-Strict-Audit
+          path: artifacts/V63-STRICT.log
           if-no-files-found: warn
           retention-days: 14
 
       # M87: publish only after release tests, export, stable signing, aapt/apksigner
       # verification and the original artifact upload have all succeeded.
       - name: Publicar atualização Android certificada
-        if: success() && github.ref == 'refs/heads/main' && vars.VAULT_ALLOW_DIFFERENTIAL_ANDROID_RELEASE == 'true'
+        if: success() && github.ref == 'refs/heads/main' && vars.VAULT_ALLOW_STRICT_ANDROID_RELEASE == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -335,7 +337,7 @@ jobs:
             printf -- '- %s\n' "$COMMIT_SUBJECT"
             echo
             echo '## Certificação'
-            echo '- Gate diferencial V63 (falhas históricas declaradas, sem regressões), exportação, build e assinatura Android validados na Action.'
+            echo '- Gate canônico V63 estrito, TypeScript, exportação, build e assinatura Android validados na Action.'
             echo '- Atualização sobre APK anterior depende da assinatura estável e da confirmação do Android.'
           } > "$DIR/notes.md"
           if gh release view "$TAG" >/dev/null 2>&1; then

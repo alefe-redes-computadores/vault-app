@@ -29,13 +29,13 @@ ok(model.buildHomeVivaFrontsP4({...input,medications:[{...med,observacoes:'curso
 const plan={id:'e1',user_id:'u1',person_id:'p1',kind:'monitor_plan',payload:{start:'2026-11-18',end:'2026-11-22'},created_at:'2026-11-18T13:00:00Z'};
 fronts=model.buildHomeVivaFrontsP4({...input,events:[plan]});
 ok(fronts.length===1&&fronts[0].id==='monitor','monitoramento finito de pressao');
-ok(fronts[0].href==='/saude/careflow/pressao','abre plano canônico');
+ok(fronts[0].href==='/saude/registros?foco=pressao','abre plano canônico');
 ok(model.buildHomeVivaFrontsP4({...input,events:[{...plan,person_id:'p2'}]})[0].id==='routine','monitoramento nao vaza pessoa');
 ok(model.buildHomeVivaFrontsP4({...input,events:[{...plan,payload:{start:'2026-12-01',end:'2026-12-02'}}]})[0].id==='routine','plano futuro nao vira ativo');
 const consultation={id:'c1',user_id:'u1',person_id:'p1',data:'2026-11-18',horario:'09:00',status:'realizada'};
 fronts=model.buildHomeVivaFrontsP4({...input,consultations:[consultation]});
 ok(fronts.length===1&&fronts[0].id==='consultation','consulta finalizada recente entra no contexto');
-ok(!fronts[0].description.includes('receita')&&fronts[0].href==='/saude/consultas','consulta nao inventa prescricao');
+ok(!fronts[0].description.includes('receita')&&fronts[0].href==='/saude/consultas/detalhes?id=c1','consulta nao inventa prescricao');
 ok(model.buildHomeVivaFrontsP4({...input,consultations:[{...consultation,data:'2026-11-02'}]})[0].id==='routine','consulta antiga nao se repete');
 ok(model.buildHomeVivaFrontsP4({...input,consultations:[{...consultation,status:'agendada'}]})[0].id==='routine','agendada nao tratada como concluida');
 ok(model.buildHomeVivaFrontsP4({...input,consultations:[{...consultation,person_id:'p2'}]})[0].id==='routine','consulta de outra pessoa nao aparece');
@@ -43,9 +43,9 @@ fronts=model.buildHomeVivaFrontsP4({...input,medications:[med],consultations:[co
 ok(fronts.map(x=>x.id).join(',')==='temporary,monitor,consultation','prioridade finita e deterministica');
 ok(new Set(fronts.map(x=>x.id)).size===fronts.length,'sem tabs duplicadas');
 const home=read('components/home/HomeCommandCenter.tsx'),page=read('app/page.tsx'),viva=read('components/home/HomeVivaP4.tsx');
-ok(home.includes('viva?<HomeVivaP4 data={viva}')&&page.includes('mode="primary"')&&page.includes('viva={{userId:'),'home mostra vivo no lugar do tile redundante');
+ok(/viva\s*\?\s*\(\s*<HomeVivaP4\s+data=\{viva\}/.test(home)&&page.includes('mode="primary"')&&page.includes('viva={{userId:'),'home mostra vivo no lugar do tile redundante');
 ok(viva.includes('fronts.length>=2')&&viva.includes('aria-pressed={active.id===front.id}'),'selecao interna so com duas frentes');
-ok(viva.includes('active.id==="routine"?"/saude/careflow/sintomas":active.href')&&viva.includes('onNavigate("/saude/careflow/pressao")')&&!viva.includes('onNavigate("/saude/minha-saude")')&&fs.existsSync('app/saude/careflow/sintomas/page.tsx')&&fs.existsSync('app/saude/careflow/pressao/page.tsx'),'rotina neutra oferece formulários reais, sem duplicar Hoje e Saúde');
+ok(viva.includes('active.id==="routine"?"/saude/registros/novo?preset=sintoma":active.href')&&viva.includes('onNavigate("/saude/careflow/pressao?novo=1")')&&!viva.includes('onNavigate("/saude/minha-saude")')&&fs.existsSync('app/saude/careflow/sintomas/page.tsx')&&fs.existsSync('app/saude/careflow/pressao/page.tsx'),'rotina neutra oferece formulários reais, sem duplicar Hoje e Saúde');
 ok(viva.includes('min-h-11')&&viva.includes('focus-visible:outline')&&viva.includes('motion-reduce:transition-none')&&viva.includes('trigger("light")'),'CTA, toque e haptics intactos');
 ok(!/setInterval|\.insert\(|\.update\(|supabase|fetch\(/.test(read('lib/home/home-viva-p4.ts')),'modelo nao grava nem busca dados');
 const nav=read('components/BottomNav.tsx');ok(nav.includes('"/saude/fenix"')&&nav.includes('shouldShowNav(pathname)'),'Fênix mantém BottomNav e aba Saúde');

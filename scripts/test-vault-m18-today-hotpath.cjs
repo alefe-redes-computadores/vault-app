@@ -20,11 +20,11 @@ ok(v98.includes("summary.includes('if (item.isExpectedUnconfirmed) totalEsperada
 ok(today.includes('const operationalMinute = isHoje ? horaAtual : "00:00"'),'clock only groups today');
 ok(today.includes('nowTime: operationalMinute')&&today.includes('[dosesParaExibir, operationalMinute, isHoje, hoje, dataSelecionada]'),'past/future grouping avoids minute dependency');
 ok(today.includes('dose.horario <= operationalMinute')&&today.includes('[isHoje, metricItems, batchTargetKeys, operationalMinute]'),'batch eligibility remains current for today');
-ok(today.includes('const concluidasOcultas = useMemo(() => countHiddenTodayResolved(dosesFiltradas,')&&today.includes('[dosesFiltradas, isHoje, filtroStatus, mostrarConcluidas]'),'hidden count only recomputes on relevant change');
+ok((/const concluidasOcultas\s*=\s*useMemo\(\s*\(\)\s*=>\s*countHiddenTodayResolved\(dosesFiltradas,/.test(today))&&today.includes('[dosesFiltradas, isHoje, filtroStatus, mostrarConcluidas]'),'hidden count only recomputes on relevant change');
 ok(owner.includes('const EMPTY_TODAY_ROWS: never[] = [];')&&(owner.match(/: EMPTY_TODAY_ROWS,/g)||[]).length===10,'ten unavailable Dexie rows share stable empty identity');
 ok(owner.includes('dayData?.userId === userId')&&owner.includes('historyData?.userId === userId')&&owner.includes('[user_id+person_id+data]'),'owner-scope and indexed day reads intact');
 ok(owner.includes('.where("[user_id+person_id]").equals([userId, personId]).toArray()'),'complete longitudinal evidence remains available');
-ok(today.includes('useTodayOwnerData({')&&today.includes('renderItem={(item) => <TodayDoseTimelineCard item={item} scope={doseCardScope} />}')&&card.includes('handleCancelPlannedDose(item)'),'M17 cards and Codex owner hook remain wired');
+ok(today.includes('useTodayOwnerData({')&&/renderItem=\{\(item\)\s*=>\s*\(\s*<TodayDoseTimelineCard\s+item=\{item\}\s+scope=\{doseCardScope\}\s*\/>/.test(today)&&card.includes('handleCancelPlannedDose(item)'),'M17 cards and Codex owner hook remain wired');
 for(const f of ['scripts/test-vault-m17-today-dose-performance.cjs','scripts/test-vault-m16-today-data-evidence-fenix.cjs','scripts/test-vault-m18-medication-navigation-fenix.cjs'])ok(gate.includes(f),'release retains '+f);
 ok(gate.includes('scripts/test-vault-m18-today-hotpath.cjs'),'M18 installed in global gate');
 // Run the real optimized module. Clinical-time implementation is intentionally

@@ -19,8 +19,8 @@ ok("retiradas explicam programação e histórico", hub.includes("<HomeSupplyAcc
   supplyTiles.includes("Datas e histórico") && supplyTiles.includes("Processos e receitas"));
 // M131 R4: Minha Saúde agora é acesso principal, com componente canônico.
 // As demais áreas conservam sua cor semântica no catálogo secundário.
-const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));
-const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-coral"[^>]*onNavigate=\{go\}/.test(hub);
+const hasClinicalTone=(route,tone)=>hub.includes(`path: "${route}"`) && new RegExp('path: \"'+route+'\"[\\s\\S]{0,250}tone: \"[^\"]*text-'+tone).test(hub);
+const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[\s\S]*?path="\/saude\/minha-saude"[\s\S]*?tone="[^"]*text-coral"[\s\S]*?onNavigate=\{go\}/.test(hub);
 ok("atalhos clínicos possuem cores semânticas",
   primaryHealthTone &&
   !hasClinicalTone("/saude/minha-saude", "emerald-400") &&
@@ -37,7 +37,7 @@ ok("Hoje resume concluídos por padrão", today.includes("mostrarConcluidas") &&
 // Old .filter() wording was an implementation detail; M25 keeps the input
 // reference when no resolved rows need hiding, without changing visibility.
 ok("pendentes continuam visíveis por padrão",
-  today.includes("visibleTimelineItems(dosesFiltradas, { isToday: isHoje, status: filtroStatus, showResolved: mostrarConcluidas })") &&
+  /visibleTimelineItems\(dosesFiltradas,\s*\{\s*isToday:\s*isHoje,\s*status:\s*filtroStatus,\s*showResolved:\s*mostrarConcluidas,?\s*\}\)/.test(today) &&
   timeline.includes('if (!options.isToday || options.status !== "todos" || options.showResolved) return items;') &&
   timeline.includes('if (item.tomada || item.ignorada || item.isDataConflict)') &&
   timeline.includes('if (filtered === null) filtered = items.slice(0, i)') &&
@@ -78,7 +78,7 @@ ok("mostrar concluídos e histórico mantêm todos os registros",
 ok("filtro explícito continua soberano", today.includes('filtroStatus !== "todos"'));
 const remindersPanel = read("components/hoje/TodayRemindersPanel.tsx");
 ok("lembretes continuam fora da adesão",
-  today.includes('<TodayRemindersPanel reminders={remindersDoDia}') &&
+  (/<TodayRemindersPanel\s+reminders=\{remindersForaDaAgenda\}/.test(today))&&today.includes('!reminder.careflow_m2?.plan_id') &&
   remindersPanel.includes('não mede adesão') &&
   remindersPanel.includes('Lembretes não confirmam dose tomada') &&
   !remindersPanel.includes('marcarDose('));

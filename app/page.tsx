@@ -10,6 +10,9 @@ import { contextualWithdrawalHrefM2 } from "@/lib/careflow-m2/withdrawal-coheren
 import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
+import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
+import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
+import { HospitalizationA5AgendaStrip } from "@/components/saude/HospitalizationA5AgendaStrip";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
 import {useSupplyOverview} from "@/hooks/useSupplyOverview";
 import {brainV5PriorityReason} from "@/lib/health-intelligence/brain-v5";
@@ -2282,6 +2285,12 @@ export default function HomePage() {
               ACESSO RÁPIDO
           =================================================== */}
 
+          {/* V33: fatos próprios em widgets de leitura; não disputam a primeira dobra. */}
+          <div data-vault-v33="care-continuity" className="space-y-2">
+            <TreatmentContinuityA4 context="home" maxItems={2} />
+            <RehabM5AgendaStrip />
+            <HospitalizationA5AgendaStrip />
+          </div>
           <div id="home-organizacao" data-vault-home-optional-p6="organization" className="scroll-mt-24" role="region" aria-label="Acompanhamento de saúde">
             <HomeCommandCenter
               gastoMes={metricasFinanceiras.gastoMesAtual}

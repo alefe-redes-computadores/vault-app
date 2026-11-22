@@ -85,7 +85,7 @@ ok(details.includes('function formatMedicationDosageDisplay(') && details.includ
 ok(home.includes('projectHomeDashboardAlerts(healthInsights, documentInsights') && home.includes('buildHomePendingDoseProjection'), 'Home delega alertas mas conserva motor de doses');
 ok(home.includes('retiradasAtrasadas.length') && home.includes('selectHomeOverdueWithdrawals'), 'Home preserva retirada vencida');
 ok(todayPage.includes('describeTodayDate(hoje, requestedDate)') && todayPage.includes('projectRemindersForDay(healthReminders, dataSelecionada)'), 'Hoje delega data e lembretes');
-ok(todayPage.includes('await marcarDose(') && todayPage.includes('<TodayRemindersPanel reminders={remindersDoDia}'), 'confirmacao e destinos de doses conservados');
+ok(todayPage.includes('await marcarDose(') && /<TodayRemindersPanel\s+reminders=\{remindersForaDaAgenda\}/.test(todayPage) && todayPage.includes('!reminder.careflow_m2?.plan_id'), 'confirmacao e destinos de doses conservados');
 ok(listing.includes('formatQuantidade } from "@/lib/health-intelligence/medication-detail-presenters"'), 'Listagem usa formatador comum');
 ok(details.includes('formatKnownQuantitySummary') && details.includes('getDoseSortTimestamp'), 'Detalhes usa helpers extraidos');
 ok(details.includes('VAULT_BUP_DOSAGE_DISPLAY_V70') && details.includes('function formatMedicationDosageDisplay('), 'Contrato V70 da bupropiona preservado no arquivo original');

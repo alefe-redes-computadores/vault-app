@@ -19,7 +19,7 @@ assert(today.includes('VAULT_V321_DAILY_FOCUS'));
 assert(today.includes('id="hoje-doses"'));
 assert(today.includes('pendingDoses={totalPendentes}')&&todayActions.includes('pendingDoses > 0')&&today.includes('scrollIntoView({ behavior: "smooth", block: "start" })'),'CTA de doses usa fila existente');
 assert(today.includes('VAULT_V321_MONTH_DEFERRED')&&today.includes('<ClinicalDisclosure')&&today.includes('id="hoje-mes"'),'mês sob demanda');
-assert(today.includes('<DoseMonthOverview userId={user.id} personId={activePersonId} today={hoje} context={healthIntelligence.context}'),'visão mensal mantém owner e fonte canônica');
+assert(/<DoseMonthOverview\s+userId=\{user.id\}\s+personId=\{activePersonId\}\s+today=\{hoje\}\s+context=\{healthIntelligence.context\}/.test(today),'visão mensal mantém owner e fonte canônica');
 assert(today.includes('onClick={() => void handleTomarTodos()}')&&today.includes('dosesElegiveisLote.length > 1'),'ação em lote preservada');
 assert(today.includes('setMostrarConcluidas')&&today.includes('QuickDoseModal'),'ações de dose e histórico preservadas');
 assert(home.includes('VAULT_V321_HOME_EVIDENCE')&&home.includes('home-health-evidence'),'home organiza análise');

@@ -43,7 +43,7 @@ const supply = read("components/saude/SupplyCycleSummary.tsx");
 assert.match(timelinePage, /buildClinicalTimelineProjection/);
 assert.match(timelinePage, /routeById\.get\(event\.id\)/);
 assert.doesNotMatch(timelinePage, /\.reverse\(\)\.filter/);
-assert.match(recordsPage, /for\(const event of month\.events\)/);
+assert.match(recordsPage, /for\s*\(\s*const event of month\.events\s*\)/);
 assert.doesNotMatch(recordsPage, /month\.events\.filter\(e => e\.kind/);
 assert.doesNotMatch(surgery, /sky-/);
 assert.match(surgery, /rose-400/);

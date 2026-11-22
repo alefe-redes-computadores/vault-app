@@ -9,7 +9,7 @@ const c=r("components/vault-intelligence/ContextualHealthIntelligence.tsx");
 const z=r("app/inteligencia/page.tsx");
 
 ok(h.includes("useMedicationRegulatoryProfiles")
-  && h.includes("<TodayDoseTimelineCard item={item} scope={doseCardScope} />")
+  && /<TodayDoseTimelineCard\s+item=\{item\}\s+scope=\{doseCardScope\}\s*\/>/.test(h)
   && doseCard.includes("getMedicationRegulatorySurface(")
   && doseCard.includes("regulatorySurface.rail")
   && doseCard.includes("borderLeft: `4px solid ${regulatorySurface.rail}`"),"Hoje regulatório");

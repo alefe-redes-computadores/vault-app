@@ -28,13 +28,13 @@ assert(evt,'M114B/M118: evento de sincronização deve ser declarado');
 const eventName=evt[1];
 assert(new RegExp('dispatchEvent\\(new Event\\(\\s*'+escapeRE(eventName)+'\\s*\\)\\)').test(toggle),
   'M114B/M118: alteração emite evento à Home');
-assert(center.includes('window.addEventListener("vault:home:essential-changed",sync)') &&
-       center.includes('window.removeEventListener("vault:home:essential-changed",sync)'),
+assert(/window\.addEventListener\("vault:home:essential-changed",\s*sync\)/.test(center) &&
+       /window\.removeEventListener\("vault:home:essential-changed",\s*sync\)/.test(center),
   'M114B/M118: Central sincroniza e libera listener');
 assert(center.includes('localStorage.getItem("vault:home:essential:v1")')&&
        center.includes('setEssential(localStorage.getItem('),
   'M114B/M118: Central restaura estado por armazenamento');
-assert((center.match(/!essential\?<ClinicalDisclosure/g)||[]).length===2,
+assert((center.match(/!essential\s*\?\s*\(\s*<ClinicalDisclosure/g)||[]).length===2,
   'M114B/M118: duas áreas secundárias reagem ao modo Essencial');
 assert(center.includes('id="home-outras-areas"')&&center.includes('id="home-organizacao"'),
   'M114B/M118: áreas do modo completo preservadas');

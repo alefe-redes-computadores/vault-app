@@ -120,11 +120,10 @@ check(network.includes('text-sky-300" label="Médico Prescritor"'),'médico iden
  check(network.includes('Vínculo não confirma atendimento, fornecimento ou retirada'),'sem inferência clínica');
  const hub=file('components/home/HomeCommandCenter.tsx');
  // Existing V9 semantics: preserve each clinical route's original color exactly.
- const hasClinicalTone=(route,tone)=>hub.split("\n").some(line=>
-   line.includes(`path: "${route}"`) && line.includes(`text-${tone}`));
+ const hasClinicalTone=(route,tone)=>new RegExp('path:\\s*\"'+route.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\"[\\s\\S]{0,250}?tone:\\s*\"[^\"]*text-'+tone+'').test(hub);
  // M131 R3: Minha Saude agora e primaria. Confirmar rota e cor no componente
  // de destaque, mantendo intactas as outras cinco cores de rota V9.
- const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[^>]*path="\/saude\/minha-saude"[^>]*tone="[^"]*text-coral"[^>]*onNavigate=\{go\}/.test(hub);
+ const primaryHealthTone = /<HomeClinicalAreaTile\s+label="Minha saúde"[\s\S]*?path="\/saude\/minha-saude"[\s\S]*?tone="[^"]*text-coral"[\s\S]*?onNavigate=\{go\}/.test(hub);
  check(primaryHealthTone &&
    hasClinicalTone('/saude/consultas','sky-300') &&
    hasClinicalTone('/saude/exames','cyan-300') &&

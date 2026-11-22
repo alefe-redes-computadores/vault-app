@@ -8,6 +8,7 @@ for(const p of ['app/hoje/page.tsx','lib/today/timeline-identity.ts']){
  ok(parsed.parseDiagnostics.length===0,'parser '+p);
 }
 const page=read('app/hoje/page.tsx'),gate=read('scripts/test-v63-release-gate.mjs'),card=read('components/hoje/TodayDoseTimelineCard.tsx');
+const syntaxCompact=(value)=>value.replace(/\s+/g,'');
 for(const source of [
  'const committedTimeline = useRef<TodayTimelineSnapshot<DoseItemExt> | null>(null)',
  'const doseIdentityContext = JSON.stringify([',
@@ -16,9 +17,9 @@ for(const source of [
  'return reconcileTodayTimelineItems(committedTimeline.current, doseIdentityContext, projected).items',
  'useLayoutEffect(() => {',
  'committedTimeline.current = {scopeKey: doseIdentityContext, items: doses}',
-]) ok(page.includes(source),'owner/commit wiring '+source);
+]) ok(syntaxCompact(page).includes(syntaxCompact(source)),'owner/commit wiring '+source);
 ok(page.includes('const doses = useMemo<DoseItemExt[]>')&&page.includes('buildTodayTimelineItems({')&&page.includes('summarizeTimeline(doses)'),'M17-M20 clinical projection remains intact');
-ok(page.includes('renderItem={(item) => <TodayDoseTimelineCard item={item} scope={doseCardScope} />}')&&card.includes('memo(function TodayDoseTimelineCardBody'),'M21 memoized cards still wired');
+ok(/renderItem=\{\(item\)\s*=>\s*\(\s*<TodayDoseTimelineCard\s+item=\{item\}\s+scope=\{doseCardScope\}\s*\/>\s*\)\}/.test(page)&&card.includes('memo(function TodayDoseTimelineCardBody'),'M21 memoized cards still wired');
 for(const id of ['test-vault-m21-committed-card-render.cjs','test-vault-m20-owner-day-dose-read.cjs','test-vault-m19-today-projection-hotpath.cjs','test-vault-m18-today-hotpath.cjs','test-vault-m17-today-dose-performance.cjs','test-vault-m22-timeline-reconciliation.cjs']) ok(gate.includes(id),'release gate '+id);
 const path='lib/today/timeline-identity.ts',mod=new Module(path,module);
 mod._compile(ts.transpileModule(read(path),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,path);

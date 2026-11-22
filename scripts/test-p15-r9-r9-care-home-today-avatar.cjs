@@ -36,7 +36,7 @@ ok(home.includes('countHomeTodayAppointments({')&&home.includes('appointments={t
 ok(home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('medicationsForOwner(medicamentosTodas, activePersonId, user?.id)')&&home.includes('openWithdrawalsDueBy(retiradas, hoje)'),'Home conserva proprietário e índice V196');
 ok(today.includes('todayTimelineGroupContext(metadata[key].sub, items.length)')&&today.includes('groupTimelineItems(dosesParaExibir'),'Hoje mantém grupos canônicos');
 ok(today.includes('todayTimelineGroupPresentation')&&read('components/hoje/TodayTimelineGroupPresentation.ts').includes('Registros contraditórios não entram nas métricas'),'Conflitos V277 preservados');
-ok(today.includes('const metricItems = useMemo(() => doses.filter(')&&today.includes('summarizeTimeline(doses)'),'Métrica P10 não perdeu o memo');
+ok(/const metricItems\s*=\s*useMemo\(\s*\(\)\s*=>\s*doses\.filter\(/.test(today)&&today.includes('summarizeTimeline(doses)'),'Métrica P10 não perdeu o memo');
 ok(today.includes('visibleTimelineItems(dosesFiltradas')&&today.includes('countHiddenTodayResolved(dosesFiltradas'),'Visibilidade e contagem R8 mantidas');
 ok(details.includes('stage={careDecision.stage}')&&details.includes('V332_CARE_EVIDENCE_DISCLOSURE'),'Detalhes passam estágio canônico ao aviso');
 ok(details.includes('navigateCareAction(brainCareAction?.href || careDecision.actionHref'),'Ação original permanece única');

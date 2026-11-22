@@ -83,7 +83,7 @@ const avatar=read('app/saude/minha-saude/page.tsx');
 const gate=read('scripts/test-v63-release-gate.mjs');
 assert.match(create,/\["medicao", "sintoma", "humor", "dor", "ansiedade", "apatia"\]/);
 assert.match(create,/item\.person_id === activePersonId/,'Deep links must resolve a treatment in the active person');
-assert.match(page,/Registrar rapidamente/);
+assert.match(page,/<EmptyState[\s\S]*?actionLabel="Novo registro"[\s\S]*?onAction=\{\(\)\s*=>\s*router\.push\(preserveReturn\("\/saude\/registros\/novo"\)\)/);
 assert.match(viewer,/formatConsultationBrief\(consultation\)/);
 assert.match(viewer,/navigator\.clipboard\?\.writeText/,'Copying is explicit, not automatic');
 assert.match(viewer,/window\.print\(\)/);

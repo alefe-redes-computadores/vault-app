@@ -23,7 +23,7 @@ ok('Home explica recorte de doses',hero.includes('Home: horários de contínuos.
 ok('Hoje não presume contagem igual à Home',pulse.includes('A Home resume apenas a rotina de medicamentos contínuos'));
 ok('Atalhos do Hoje usam mesmos destinos',today.includes('aria-label="Acessos rápidos do cuidado"')&&today.includes('navigateWithReturnM120("/saude/central-m144")')&&today.includes('navigateWithReturnM120("/saude/plano-seguranca")'));
 ok('Check-in usa diário existente',today.includes('getElementById("hoje-diario")')&&today.includes('id="hoje-diario"'));
-ok('Doses e Brain mantêm autoridade',today.includes('<TodayActionCenter pendingDoses={totalPendentes}')&&today.includes('<TodayBatchAction count={dosesElegiveisLote.length}')&&today.includes('<DoseScheduleGroups items={grupo.items}'));
+ok('Doses e Brain mantêm autoridade',/<TodayActionCenter\s+pendingDoses=\{totalPendentes\}/.test(today)&&/<TodayBatchAction\s+count=\{dosesElegiveisLote.length\}/.test(today)&&/<DoseScheduleGroups\s+items=\{grupo.items\}/.test(today));
 ok('Datas e passado continuam discriminados',today.includes('isPassado')&&today.includes('isFuturo')&&today.includes('<TodayRoutinePulse'));
 ok('Pluralização sem marcador genérico',!agenda.includes('evento(s)')&&!agenda.includes('compromisso(s)')&&!actions.includes('sinal(is) agrupado(s)')&&!today.includes('registro(s) recolhido(s)'));
 ok('Release integra novo contrato uma vez',(gate.match(/"scripts\/test-vault-m150-p4.cjs"/g)||[]).length===1&&gate.includes('scripts/test-vault-m150-p3.cjs')&&gate.includes('scripts/test-vault-m152b-final.cjs'));

@@ -42,10 +42,10 @@ ok(ready.includes('routeIndex.get(id)')&&ready.includes('const routeIndex ='),'�
 ok(ready.includes("Ausência de evento não significa falha clínica")&&ready.includes("planned event never becomes completed stock"),"V253: ausência de registro não é falha clínica e planejamento não vira estoque");
 ok(ready.includes('`Cadastro: ${routeEvidence.declaredLabel}`')&&ready.includes('`Vínculos históricos: ${route.labels.join(" + ") || "não informados"}`'),'evidência separa registro atual e vínculos históricos');
 const tile=read(files[2]),home=read(files[3]);
-ok(home.includes('<HomeClinicalAreaTile key={path}')&&tile.includes('onNavigate(path)'),'Home modulariza 6 atalhos e mantém handler de haptics no pai');
+ok(/<HomeClinicalAreaTile\s+key=\{path\}/.test(home)&&tile.includes('onNavigate(path)'),'Home modulariza 6 atalhos e mantém handler de haptics no pai');
 ok(tile.includes('aria-label={`${label}: ${description}`}')&&tile.includes('focus-visible:outline')&&tile.includes('motion-reduce:transition-none'),'atalhos acessíveis e com reduced-motion');
 ok(tile.includes('path === "/saude/minha-saude"')&&home.includes('label="Minha saúde"'),'Minha Saúde possui destaque contextual');
-ok(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen')&&home.includes('id="home-acessos-medicamentos"')&&home.includes('id="home-organizacao"'),'somente Outras áreas aberta por padrão');
+ok(/<ClinicalDisclosure\s+id="home-outras-areas"\s+title=/.test(home) && !/<ClinicalDisclosure\s+id="home-outras-areas"[^>]*defaultOpen/.test(home)&&home.includes('id="home-acessos-medicamentos"')&&home.includes('id="home-organizacao"'),'somente Outras áreas aberta por padrão');
 ok(home.includes('"/saude/medicamentos"')&&home.includes('"/saude/retiradas"')&&home.includes('"/saude/fornecimento"'),'rotas críticas preservadas');
 const avatar=read(files[4]);
 ok(avatar.includes('Brain · {brief.posture}')&&avatar.includes('planFocus.priorityScore')&&avatar.includes('authorityLabel ?? brief.authority'),'Fênix mantém postura e evidência do Brain');

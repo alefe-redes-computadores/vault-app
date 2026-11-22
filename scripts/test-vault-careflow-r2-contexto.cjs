@@ -43,7 +43,7 @@ ok(build([{...event,user_id:'other'}],'owner','person',rec).length===0,'isolamen
 const pressure=read('app/saude/careflow/pressao/page.tsx');
 ok(pressure.includes('consultationId')&&pressure.includes('symptomId')&&pressure.includes('ownConsultations.some')&&pressure.includes('ownSymptoms.some'),'seletores com verificacao de titular');
 ok(pressure.includes('saveHealthMeasurement(scope.pid')&&pressure.includes('pressure_context_explicit'),'fonte canônica precede evento contextual');
-ok(pressure.includes('repairContext')&&pressure.includes('pendingContext')&&(pressure.match(/id:p\.eventId/g)||[]).length===2&&pressure.includes('events.some(e=>e.id===p.eventId'),'reparo reaproveita mesmo id');
+ok(pressure.includes('repairContext')&&pressure.includes('pendingContext')&&(pressure.match(/id:\s*p\.eventId/g)||[]).length===2&&/events\.some\([\s\S]*?e\.id\s*===\s*p\.eventId\s*&&\s*e\.user_id\s*===\s*p\.uid\s*&&\s*e\.person_id\s*===\s*p\.pid/.test(pressure),'reparo reaproveita mesmo id');
 ok(!pressure.includes('db.version(')&&!pressure.includes('supabase'),'tela nao migra base nem chama nuvem');
 const dossier=read('app/saude/careflow/dossie/page.tsx');
 ok(dossier.includes('origin(row)')&&dossier.includes('ownedEvents')&&dossier.includes('ownedRecords'),'links somente com origem da pessoa autorizada');

@@ -15,7 +15,7 @@ ok(detail.includes('Quantidade registrada hoje')&&detail.includes('Menor preço 
 ok(detail.includes('onClick={\n                    abrirQuickDose'.replace('\n','\n'.replace('\n','\n')))||detail.includes('abrirQuickDose'),"Ação de dose original continua nos detalhes");
 ok(timeline.includes('[...history].reverse()')&&timeline.includes('formatDose(item.dosagem_antiga)')&&timeline.includes('formatDay(item.data_mudanca)'),"Evolução visual usa eventos sem mutação e preserva ordem antiga");
 ok(!timeline.includes('db.')&&!timeline.includes('supabase')&&!timeline.includes('safeAdd')&&!timeline.includes('safeUpdate'),"Componente de evolução não escreve dados");
-ok(today.includes('import { TodayDoseTimelineCard, type TodayDoseTimelineCardScope }') && today.includes('<TodayDoseTimelineCard item={item} scope={doseCardScope} />') && doseCard.includes('import { getDiasRestantesEstilo }') && doseCard.includes('getDiasRestantesEstilo(') && doseCard.includes('diasEstilo.cor') && doseCard.includes('diasEstilo.bg'),"Hoje reutiliza apresentação de prazo");
+ok(/import\s*\{\s*TodayDoseTimelineCard,\s*type TodayDoseTimelineCardScope,?\s*\}/.test(today) && /<TodayDoseTimelineCard\s+item=\{item\}\s+scope=\{doseCardScope\}\s*\/>/.test(today) && doseCard.includes('import { getDiasRestantesEstilo }') && doseCard.includes('getDiasRestantesEstilo(') && doseCard.includes('diasEstilo.cor') && doseCard.includes('diasEstilo.bg'),"Hoje reutiliza apresentação de prazo");
 const compiled=ts.transpileModule(style,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
 const m={exports:{}};new Function('module','exports',compiled)(m,m.exports);
 const get=m.exports.getDiasRestantesEstilo;

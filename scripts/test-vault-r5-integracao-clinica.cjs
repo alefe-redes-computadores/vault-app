@@ -50,9 +50,9 @@ check(exams.includes('Pedidos de exames (') && exams.includes('unifiedRows.map('
 check(!exams.includes('Pedido com vários exames · CareFlow 360')&&exams.includes('examesComStatus'),'CTA redundante removido sem apagar exames canônicos');
 check(symptoms.includes('composeOpen')&&symptoms.includes('Registrar sintoma')&&symptoms.includes('useRegistrosSaude')&&symptoms.includes("createRegistro({categoria:'sintoma'"),'sintoma usa escrita canônica e formulário sob demanda');
 check(symptoms.includes('historyLimit')&&symptoms.includes('revealCountR3')&&symptoms.includes('careflow-sintoma-'),'histórico além de 100 e retorno por ID preservados');
-check(pressure.includes('showPlanForm')&&pressure.includes('showReadingForm')&&pressure.includes('Salvar medição real')&&pressure.includes('saveHealthMeasurement(scope.pid'),'plano e medição sob demanda, escrita canônica de pressão preservada');
+check(pressure.includes('showPlanForm')&&pressure.includes('showReadingForm')&&pressure.includes('Salvar medição')&&pressure.includes('saveHealthMeasurement(scope.pid'),'plano e medição sob demanda, escrita canônica de pressão preservada');
 check(pressure.includes('pendingContext')&&pressure.includes('repairContext')&&pressure.includes('pressure_context_explicit'),'reparo de vínculo por ID sem segunda medição');
-check(records.includes('Acompanhamentos desta Linha de cuidado')&&records.includes('/saude/careflow/sintomas')&&records.includes('/saude/careflow/pressao'),'Linha de cuidado conecta sintomas, medições e planos sem segundo repositório');
+check(records.includes('aria-label="Acompanhamentos ativos"')&&records.includes('setFocus("sintomas")')&&records.includes('setFocus("pressao")')&&records.includes('pressurePlans.map(')&&records.includes('/saude/careflow/pressao?plano=1'),'Linha de cuidado conecta sintomas, medições e planos sem segundo repositório');
 check(hub.includes('Pedidos de exames')&&hub.includes('Mesmos relatos da Linha de cuidado')&&hub.includes("href:'/saude/careflow/pressao'")&&hub.includes("href:'/saude/careflow/exames'"),'hub contextual mantém as rotas históricas');
 const gate=read('scripts/test-v63-release-gate.mjs');
 check(gate.split('"scripts/test-vault-r5-integracao-clinica.cjs"').length===2,'novo contrato V63 exato uma vez');

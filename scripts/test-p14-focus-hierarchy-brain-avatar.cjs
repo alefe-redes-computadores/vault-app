@@ -29,13 +29,13 @@ check(nav.includes('density?:"regular"|"compact"') && nav.includes('density="reg
 check(nav.includes('grid-cols-4 gap-1') && nav.includes('min-[480px]:grid-cols-5'), 'âncoras compactas mostram 4 ou 5 colunas');
 check(nav.includes('layout="grid"') && nav.includes('layout?:"scroll"|"grid"') && nav.includes('min-[480px]:grid-cols-4'), 'contrato visual V334 legado intacto');
 check(nav.includes('IntersectionObserver') && nav.includes('hashchange') && nav.includes('aria-current='), 'navegação profunda e seção ativa preservadas');
-check(today.includes('<TodayDateNavigation label="Escolher data da linha do tempo"')&&today.includes('<TodayFilterPanel status={filtroStatus}'), 'Hoje compacto, sem duplicar data selecionada');
+check(/<TodayDateNavigation\s+label="Escolher data da linha do tempo"/.test(today)&&/<TodayFilterPanel\s+status=\{filtroStatus\}/.test(today), 'Hoje compacto, sem duplicar data selecionada');
 check(today.includes('navegarData(') && today.includes('voltarParaHoje') && today.includes('DoseScheduleGroups'), 'datas, retorno e autoridade de doses intactos');
 check(today.includes('retroReviewMode') && today.includes('dosesElegiveisLote') && today.includes('processandoTodos'), 'revisão retroativa e operações em lote preservadas');
-check(today.includes('<TodayFilterPanel status={filtroStatus}') && read('components/hoje/TodayFilterPanel.tsx').includes('{ value: "todos", label: "Padrão" }'), 'filtro Todas explícito');
-check(today.includes('onPeriod={(value) => { trigger("vibrate"); setFiltroPeriodo(value); }}') && read('components/hoje/TodayFilterPanel.tsx').includes('flex flex-wrap gap-2'), 'filtros de período acessíveis sem rolagem invisível');
+check(/<TodayFilterPanel\s+status=\{filtroStatus\}/.test(today) && read('components/hoje/TodayFilterPanel.tsx').includes('{ value: "todos", label: "Padrão" }'), 'filtro Todas explícito');
+check(/onPeriod=\{\(value\)\s*=>\s*\{\s*trigger\("vibrate"\);\s*setFiltroPeriodo\(value\);\s*\}\}/.test(today) && read('components/hoje/TodayFilterPanel.tsx').includes('flex flex-wrap gap-2'), 'filtros de período acessíveis sem rolagem invisível');
 check(home.includes('home-acessos-medicamentos')&&home.includes('"/saude/retiradas"')&&home.includes('"/saude/fornecimento"'), 'Home recolhe atalhos sem apagar rotas');
-check(home.includes('"/saude/medicamentos"')&&home.includes('<ClinicalDisclosure id="home-outras-areas"'), 'Medicamentos continuam em destaque, outras áreas acessíveis');
+check(home.includes('"/saude/medicamentos"')&&/<ClinicalDisclosure\s+id="home-outras-areas"/.test(home), 'Medicamentos continuam em destaque, outras áreas acessíveis');
 check(metrics.includes('min-h-[58px]') && metrics.includes('onOpenPending') && metrics.includes('SOS / extra'), '4 métricas compactas com ação de doses');
 check(med.includes('<details id="medicamentos-panorama"') && med.includes('Entender indicadores, doses e estados') && med.includes('<ClinicalCollectionGroup id="medicamentos-atencao"') && med.includes('tone="attention" defaultOpen forceOpen'), 'panorama secundário recolhido; urgências continuam abertas e responsivas');
 check(med.includes('medsPrioridade.map(renderCard)') && med.includes('medsEmDia.map(renderCard)') && med.includes('medsSOS.map(renderCard)'), 'listagem mantém prioridade, rotina e SOS');

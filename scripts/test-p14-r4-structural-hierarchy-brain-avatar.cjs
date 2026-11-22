@@ -40,7 +40,7 @@ ok(today.includes('dosesElegiveisLote.length > 1')&&today.includes('<TodayBatchA
 ok(today.includes('onClick={() => void handleTomarTodos()}')&&today.includes('disabled={Boolean(processandoTodos || processandoDoseId)}'),'Lote usa handler e trava existentes');
 ok(batch.includes('count < 2')&&batch.includes('SOS e futuras ficam de fora')&&batch.includes('onClick={onClick}'),'UI de lote não autoriza SOS nem futuras');
 ok(today.includes('dosesComEstoqueNoLote')&&today.includes('dosesSemEstoqueNoLote')&&today.includes('retroReviewMode'),'Safeguards de estoque e revisão preservados');
-ok(today.includes('medicamentosSemHorario.length > 0')&&today.includes('<TodayUnscheduledRoutine')&&today.includes('encodeURIComponent(medicationId)'),'Rotinas sem horário mantidas e URL codificada');
+ok(today.includes('medicamentosSemHorario.length > 0')&&/<TodayUnscheduledRoutine\s/.test(today)&&/encodeURIComponent\(\s*medicationId\s*\)/.test(today),'Rotinas sem horário mantidas e URL codificada');
 ok(missing.includes('não entram nas doses pendentes')&&missing.includes('onEdit(m.id!)'),'Falta de horário é cadastro e não adesão');
 ok(today.includes('DoseScheduleGroups')&&today.includes('QuickDoseModal')&&today.includes('TodayActionCenter'),'Fila, modal de dose e priorização permanecem');
 ok(today.includes('id="hoje-mes"')&&today.includes('id="hoje-diario"')&&today.includes('onClick={() => void handleTomarTodos()}'),'Âncoras e confirmação de lote permanecem');

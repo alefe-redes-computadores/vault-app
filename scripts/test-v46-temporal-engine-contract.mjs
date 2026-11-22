@@ -10,7 +10,7 @@ const checks=[
  ["modo customizado",hoje.includes('executarTomadaEmLote("custom")')],
  ["instante único no lote agora",hoje.includes("const batchNow =")&&hoje.includes("takenAt = batchNow!")],
  ["slot separado do instante real",/marcarComoTomadaEm\(\s*dose\.medicamentoId,\s*dose\.horario,\s*takenAt\.toISOString\(\),\s*dose\.unidadePorDose/s.test(hoje)],
- ["quantidade histórica preservada",hoje.includes("takenAt.toISOString(),\n            item.unidadePorDose")],
+ ["quantidade histórica preservada",/takenAt\.toISOString\(\),\s*item\.unidadePorDose/.test(hoje)],
  ["histórico não movimenta estoque",hook.includes("adjustStock:")&&hook.includes("false")],
  ["repository sem fallback 1",repo.includes("Não existe fallback para 1")],
  ["desfazer V45 preservado",hoje.includes("handleDesfazerLote")],

@@ -29,7 +29,7 @@ ok(card.includes('scope.regulatoryProfiles[item.medicamentoId]')&&card.includes(
 ok(card.includes('regulatoryProfiles, processingId, medicationsById, commands'),'stable visual dependency projection');
 ok(card.includes('isHistoricalProcessing: scope.isHistoricalProcessing')&&card.includes('isProcessing: scope.isProcessing')&&card.includes('horaAtual: scope.horaAtual'),'important disabled/clock state remains reactive');
 ok(card.includes('handleToggle(')&&card.includes('handleIgnorar(')&&card.includes('handleCancelPlannedDose(item)'),'all clinical buttons remain wired');
-ok(page.includes('<TodayDoseTimelineCard item={item} scope={doseCardScope} />')&&page.includes('const doseCardScope: TodayDoseTimelineCardScope ='),'parent operations unchanged');
+ok(page.replace(/\s+/g,'').includes('<TodayDoseTimelineCarditem={item}scope={doseCardScope}/>')&&page.includes('const doseCardScope: TodayDoseTimelineCardScope ='),'parent operations unchanged');
 ok(gate.includes('scripts/test-vault-m21-committed-card-render.cjs')&&gate.includes('scripts/test-vault-m20-owner-day-dose-read.cjs'),'M20 and M21 retained in global gate');
 const compile=(src,jsx=ts.JsxEmit.None)=>ts.transpileModule(src,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx}}).outputText;
 const helperModule=new Module(helperPath,module);

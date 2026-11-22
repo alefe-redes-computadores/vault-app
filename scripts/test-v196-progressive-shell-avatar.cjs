@@ -37,10 +37,10 @@ const homeMedClasses=qg1.extractClassAfter(command,'onClick={() => go("/saude/me
 assert(command.includes('grid min-w-0 grid-cols-2 gap-2') &&
   homeMedClasses.includes('min-h-[76px]') &&
   homeMedClasses.includes('rounded-[18px]') &&
-  homeMedClasses.includes('${viva ? "h-auto self-start" : "h-full"}') &&
+  /viva\s*\?\s*"h-auto self-start"\s*:\s*"h-full"/.test(homeMedClasses) &&
   qg1.homePrimaryMinHeightQG1(command,76) &&
-  command.includes('<HomeClinicalAreaTile label="Minha saúde" description="CareFlow, exames, sinais e dossiê" path="/saude/minha-saude"') &&
-  command.includes('tone="border-coral/20 bg-coral/[0.06] text-coral" onNavigate={go}'));
+  /<HomeClinicalAreaTile\s+label="Minha saúde"\s+description="CareFlow, exames, sinais e dossiê"\s+path="\/saude\/minha-saude"/.test(command) &&
+  /tone="border-coral\/20 bg-coral\/\[0\.06\] text-coral"\s+onNavigate=\{go\}/.test(command));
 
 
 assert(avatar.includes("V196: o mesmo orçamento de meshes"));

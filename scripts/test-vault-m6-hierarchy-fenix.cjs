@@ -59,7 +59,7 @@ const disclosureIdx=home.indexOf('id="home-acessos-medicamentos"');
 const medLinkIdx=home.indexOf('go("/saude/medicamentos")');
 ok(disclosureIdx>0 && medLinkIdx>disclosureIdx,'atalho duplicado da Home está dentro da seção recolhida');
 ok(home.includes('<HomeSupplyAccessTiles') && home.includes('withdrawalPath="/saude/retiradas"'),'retiradas e fornecimento preservados');
-ok(home.includes('id="home-outras-areas" title=') && !home.includes('id="home-outras-areas" defaultOpen') && home.includes('Saúde e rotina'),'hierarquia geral e expansão padrão preservadas');
+ok((/<ClinicalDisclosure\s+id="home-outras-areas"\s+title=/.test(home)) && !/<ClinicalDisclosure\s+id="home-outras-areas"[^>]*defaultOpen/.test(home) && home.includes('Saúde e rotina'),'hierarquia geral e expansão padrão preservadas');
 ok(organization.includes('Documentos de saúde') && organization.includes('text-violet-300') && home.includes('networkTone="text-sky-300/80"'),'área inferior abandona repetição de azul');
 // Fenix: first interaction MUST be local, navigation exists only as explicit sheet action.
 const brainStart=health.indexOf('onBrainSelect={()=>{');

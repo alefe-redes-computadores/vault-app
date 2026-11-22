@@ -49,7 +49,7 @@ const decision=read(files[8]);
 ok(decision.includes('const prescription = `/saude/renovacao/nova-receita?medicamento_id=')&&!decision.includes('const prescription = `/documentos'),'decisao de receita aponta para formulario clinico, nao Cofre Pessoal');
 const today=read(files[5]),card=read(files[4]);
 ok(today.includes('returnTo: buildTimelineUrl(dataSelecionada)'),'Hoje leva data selecionada para cada card');
-ok(today.includes('actionHref: withReturnTarget(decision.actionHref, buildTimelineUrl(dataSelecionada))')&&today.includes('router.push(evento.actionHref);'),'agenda de receita preserva origem Hoje');
+ok(/actionHref:\s*withReturnTarget\(\s*decision.actionHref,\s*buildTimelineUrl\(dataSelecionada\)\s*\)/.test(today)&&today.includes('router.push(evento.actionHref);'),'agenda de receita preserva origem Hoje');
 ok(card.includes('returnTo: string;')&&card.includes('returnTo: scope.returnTo')&&card.includes('scope.returnTo,'),'origem participa da memoizacao e troca de dia');
 ok(card.split('router.push(withReturnTarget(`/saude/medicamentos/detalhes?id=${encodeURIComponent(item.medicamentoId)}`, returnTo))').length===3,'toque e teclado do medicamento usam mesmo destino contextual');
 ok(!card.includes('router.back()'),'componente nao usa historico cego');

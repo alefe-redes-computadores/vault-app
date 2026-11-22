@@ -40,10 +40,10 @@ ok(dossier.includes('lastArchivedR3')&&dossier.includes('lastArchivedR3.uid===us
 ok(dossier.includes('withReturnTarget(`/saude/careflow/relatorios?arquivo=${encodeURIComponent(lastArchivedR3.id)}`'),'PDF recem salvo abre ID preciso');
 ok(dossier.includes('makeCareFlowTimelinePdfM3(personName,visible)')&&dossier.includes('visible.length>500'),'filtro e limite PDF R2 preservados');
 const library=read('app/saude/careflow/relatorios/page.tsx');
-ok(library.includes('files.find(f=>f.id===requested)')&&library.includes('activePersonId')&&library.includes('user?.id'),'PDF so e focado dentro do escopo filtrado');
+ok(/files\.find\(\s*\(?f\)?\s*=>\s*f\.id\s*===\s*requested\s*\)/.test(library)&&library.includes('activePersonId')&&library.includes('user?.id'),'PDF so e focado dentro do escopo filtrado');
 ok(library.includes('formatCareFlowDayR3(file.start)')&&library.includes('formatCareFlowDayR3(file.end)'),'datas nao vazam ISO');
 ok(library.includes('ClinicalBackLinkP0')&&library.includes('id={`careflow-arquivo-${file.id}`}'),'voltar contextual e foco no arquivo');
-ok(library.includes('pdfLibraryM2.get(scope.personId,id)')&&library.includes('sameScopeP6(scope)'),'leitura do PDF nao perde escopo');
+ok(/pdfLibraryM2\.get\(scope\.personId,\s*id\)/.test(library)&&library.includes('sameScopeP6(scope)'),'leitura do PDF nao perde escopo');
 const gate=read('scripts/test-v63-release-gate.mjs');
 ok(gate.split('"scripts/test-vault-careflow-r3-rotas.cjs"').length===2,'registro unico V63');
 console.log(`CAREFLOW R3: ${count} garantias focadas e privacidade OK`);

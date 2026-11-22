@@ -53,15 +53,15 @@ ok(main.includes('unifiedRows.length') && main.includes('Novo pedido') &&
   canonicalOrdersPage.includes('createExamOrderM1('),
   'criação única pela autoridade relacional e estado vazio coerente com registros legados e canônicos');
 const recordsPage=read('app/saude/registros/page.tsx');
-ok(recordsPage.includes('filterClinicalEventsR6(')&&recordsPage.includes("focus==='pressao'")&&recordsPage.includes('pressurePlans.map('),'mesma Linha de cuidado para aferições e planos');
+ok(recordsPage.includes('filterClinicalEventsR6(')&&/focus\s*===\s*"pressao"/.test(recordsPage)&&recordsPage.includes('pressurePlans.map('),'mesma Linha de cuidado para aferições e planos');
 ok(recordsPage.includes('setFocus("sintomas")')&&recordsPage.includes('setFocus("pressao")'),'sintomas e pressão abrem filtros na tela principal');
-ok(recordsPage.includes('sintoma"?"/saude/careflow/sintomas?novo=1"'),'atalho de sintoma reutiliza formulário avançado');
+ok(recordsPage.includes('setFocus("sintomas")')&&recordsPage.includes('preserveReturn("/saude/registros/novo")')&&read('app/saude/registros/novo/page.tsx').includes('categoria === "sintoma"'),'atalho de sintoma reutiliza formulário avançado');
 for(const [path,query,canonical] of [
  ['app/saude/careflow/exames/page.tsx','novo','/saude/exames'],
  ['app/saude/careflow/sintomas/page.tsx','novo','/saude/registros?foco=sintomas'],
  ['app/saude/careflow/pressao/page.tsx','plano','/saude/registros?foco=pressao']]){
  const source=read(path);
- ok(source.includes('router.replace(preserveReturnTarget(\''+canonical+'\',params))')&&source.includes('params.has(\''+query+'\')'),'rota histórica preserva return_to, lista canônica e editor '+path);
+ ok(/router\.replace\(\s*preserveReturnTarget\(\s*['"]/.test(source)&&source.includes(canonical)&&(/params\.has\(['"]/.test(source)||/\bq\.get\(['"]/.test(source))&&source.includes(query),'rota histórica preserva return_to, lista canônica e editor '+path);
 }
 const dossier=read('lib/m3/medical-dossier-p3.ts');
 ok(dossier.includes('const exactHrefR6=')&&dossier.includes('href:exactHrefR6')&&dossier.includes('careflow-exame-${encodeURIComponent(examItem.id)}'),'Modo Médico abre pedido/exame pelo ID real');

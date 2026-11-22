@@ -119,7 +119,7 @@ ok(homeCenter.includes('border-emerald-300/25 bg-emerald-300/[.06]')&&homeCenter
 ok(homeCenter.includes('tone: "border-sky-400/20 bg-sky-400/[0.06] text-sky-300"'),'Home consultas azul');
 ok(homeCenter.includes('tone: "border-cyan-400/20 bg-cyan-400/[0.06] text-cyan-300"'),'Home exames ciano');
 ok(homeCenter.includes('networkTone="text-sky-300/80"'),'Home profissionais azul');
-ok(homeCenter.includes('Icon={Syringe} tone="border-violet-400/20'),'Home procedimentos com iconografia Lucide e violeta');
+ok(/Icon=\{Syringe\}\s+tone="border-violet-400\/20/.test(homeCenter),'Home procedimentos com iconografia Lucide e violeta');
 ok(!homeSupply.includes('amber-300')&&!homeSupply.includes('violet-300')&&homeSupply.includes('emerald-300'),'Home retiradas/fornecimento ambos esmeralda');
 ok(homeCare.includes('text-violet-300')&&homeCare.includes('Profissionais e locais'),'Home documentos violeta e Rede humana');
 ok(homePage.includes('bg-cyan-400/10 text-cyan-300'),'compromisso de exame ciano sem alterar dados');

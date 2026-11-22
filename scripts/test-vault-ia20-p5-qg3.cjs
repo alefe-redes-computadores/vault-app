@@ -24,8 +24,8 @@ for(const p of files){
 }
 const [today,rail,documents,more,bottom,legacy,gate]=files.map(read);
 // First-fold navigation is always an action on existing DOM anchors, never a dose operation.
-ok(today.includes('<TodayJourneyRailP5 isToday={isHoje} pendingCount={isHoje?totalPendentes:0}'),'Hoje: pending count from actual filtered view and only current day');
-ok(today.split('<TodayJourneyRailP5 ').length===2,'Hoje: one contextual navigation');
+ok(/<TodayJourneyRailP5\s+isToday=\{isHoje\}\s+pendingCount=\{isHoje\s*\?\s*totalPendentes\s*:\s*0\}/.test(today),'Hoje: pending count from actual filtered view and only current day');
+ok((today.match(/<TodayJourneyRailP5\b/g)||[]).length===1,'Hoje: one contextual navigation');
 for(const id of ['hoje-doses','hoje-agenda','hoje-diario']){
  ok(today.includes(`id="${id}"`),`Hoje: destination ${id} still exists`);
  ok(rail.includes(`id:"${id}"`),`Hoje: direct navigation to ${id}`);

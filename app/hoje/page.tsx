@@ -17,6 +17,9 @@ import { TodayDateNavigation } from "@/components/hoje/TodayDateNavigation";
 import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
 import { TodayUnscheduledRoutine } from "@/components/hoje/TodayUnscheduledRoutine";
+import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
+import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
+import { HospitalizationA5AgendaStrip } from "@/components/saude/HospitalizationA5AgendaStrip";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
 import { HealthTimePicker } from "@/components/saude/HealthTimePicker";
 import { DoseScheduleGroups } from "@/components/saude/DoseScheduleGroups";
@@ -2057,6 +2060,14 @@ export default function HojePage() {
               </span>
               <ChevronRight size={15} className="shrink-0" aria-hidden="true" />
             </button>
+          ) : null}
+          {/* V33: visíveis somente hoje e sem revisão retroativa; ausência não gera cartões vazios. */}
+          {isHoje && !retroReviewMode ? (
+            <div data-vault-v33="today-care-context" className="space-y-2">
+              <TreatmentContinuityA4 context="today" maxItems={2} />
+              <RehabM5AgendaStrip />
+              <HospitalizationA5AgendaStrip day={dataSelecionada} />
+            </div>
           ) : null}
           <span
             id="hoje-agenda"

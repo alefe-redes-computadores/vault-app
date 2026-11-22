@@ -61,7 +61,7 @@ assert.match(today,/setBatchTargetKeys\(keys\)/);
 assert.match(today,/batchOwnerRef\.current !== ownerAtStart/);
 assert.match(today,/interrompidoPorTrocaDePessoa/);
 assert.match(today,/batchOwnerRef\.current === ownerAtStart \? confirmadas : \[\]/);
-assert.match(today,/dosesComEstoqueNoLote\.length===0/);
+assert.match(today,/dosesComEstoqueNoLote\.length\s*===\s*0/);
 // V223 R2: the group card passes deduplicated dose ITEMS; the Hoje handler
 // converts those items into distinct KEYS before opening the temporal review.
 assert.match(grouped,/eligibleGroupDoseItems\(pending\)/, 'The grouped card must filter scheduled pending slots');

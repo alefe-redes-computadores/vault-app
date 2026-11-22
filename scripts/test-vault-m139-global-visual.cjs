@@ -72,7 +72,7 @@ ok(center.includes('grid min-w-0 grid-cols-2 gap-2 items-start max-[349px]:grid-
 ok(center.includes('rounded-[18px] border border-emerald-300/25 bg-emerald-300/[.06] px-2.5 py-2.5 text-left touch-manipulation shadow-sm'),'Home R3 mantém o raio e a borda originais com toque adicional sem quebrar contratos P15');
 ok(center.includes('go("/saude/medicamentos")')&&center.includes('path="/saude/minha-saude"'),'atalhos primários continuam apontando para suas páginas reais');
 ok(qg1.clinicalTileMinHeightQG1(tile,76)&&tile.includes('${tone}')&&tile.includes('touch-manipulation')&&tile.includes('onNavigate(path)'),'cartões preservam altura, tema, toques e destinos');
-ok(center.includes('grid min-w-0 grid-cols-2 gap-2')&&center.includes('grid-cols-2 gap-2 items-start')&&center.includes('${viva ? "h-auto self-start" : "h-full"}'), 'contratos legados P15 R9 R6, V196, M131 e M136 da Home continuam validos');
+ok(center.includes('grid min-w-0 grid-cols-2 gap-2')&&center.includes('grid-cols-2 gap-2 items-start')&&/viva\s*\?\s*"h-auto self-start"\s*:\s*"h-full"/.test(center), 'contratos legados P15 R9 R6, V196, M131 e M136 da Home continuam validos');
 const harmony=read('scripts/test-vault-home-harmony.cjs');
 ok(harmony.includes('useState: initial =>')&&harmony.includes('useEffect: () => {}'), 'harness Home Harmony simula hooks React reais sem efeitos colaterais');
 ok(harmony.includes("tile.props.className.includes('bg-violet-400/[0.06]')")&&harmony.includes("tile.props.className.includes('border-violet-400/20')"), 'Home Harmony testa paleta M132, não expectativa obsoleta');

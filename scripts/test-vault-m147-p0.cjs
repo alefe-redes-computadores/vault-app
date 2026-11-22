@@ -55,7 +55,7 @@ const today=read(paths[6]);
 ok(today.includes('navigateWithReturnM120("/saude/central-m144")') &&
    today.includes('const navigateWithReturnM120 = (href: string) =>') &&
    today.includes('router.push(withReturnTarget(href, buildTimelineUrl(dataSelecionada)))') &&
-   today.includes('onClick={()=>{trigger("vibrate");navigateWithReturnM120("/saude/central-m144");}}') &&
+   /onClick=\{\(\)\s*=>\s*\{\s*trigger\("vibrate"\);\s*navigateWithReturnM120\("\/saude\/central-m144"\);\s*\}\}/.test(today) &&
    !today.includes('<a href="/saude/central-m144"'), 'Hoje client navigation');
 ok(today.includes('id="hoje-diario"'),'M143 diary preserved');
 const gate=read('scripts/test-v63-release-gate.mjs');

@@ -62,7 +62,8 @@ check('Contratos legados M76 e M110 migrados para nova ordem sem remover autorid
  assert(m76.includes("!today.includes('data-vault-p5p5-dose-shortcut"));
  assert(m110.includes('Doses prioritarias; Brain e agenda preservados'));
  assert(m76.includes('buildTodayAgendaOverview'));
- assert(m110.includes('DoseScheduleGroups items={grupo.items}'));
+ assert(/<DoseScheduleGroups\s+items=\{grupo\.items\}/.test(today), 'Hoje deve montar grupos com itens canônicos');
+ assert(m110.includes('Projeções e agrupamento canônicos preservados') && m110.includes('DoseScheduleGroups'), 'M110 deve conservar a proteção funcional dos grupos');
 });
 check('Release V63 registra exatamente um contrato P5 P5',()=>{
  assert.equal(read('scripts/test-v63-release-gate.mjs').split('"scripts/test-vault-m150-p5-p5.cjs"').length-1,1);
