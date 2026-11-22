@@ -1784,6 +1784,11 @@ async function performPullAllData(userId: string): Promise<void> {
       localTable:db.hospitalization_relations_a5,query:async()=>await supabase.from('hospitalization_relations_a5').select('*').eq('user_id',userId)});
     await processTable({remoteTable:'hospitalization_discharge_a5',queueTable:'hospitalization_discharge_a5',
       localTable:db.hospitalization_discharge_a5,query:async()=>await supabase.from('hospitalization_discharge_a5').select('*').eq('user_id',userId)});
+    // A7: additive surgical facts, owner-scoped and respecting offline outbox/tombstones.
+    await processTable({remoteTable:'surgery_journey_events_a7',queueTable:'surgery_journey_events_a7',
+      localTable:db.surgery_journey_events_a7,query:async()=>await supabase.from('surgery_journey_events_a7').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'surgery_team_a7',queueTable:'surgery_team_a7',
+      localTable:db.surgery_team_a7,query:async()=>await supabase.from('surgery_team_a7').select('*').eq('user_id',userId)});
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

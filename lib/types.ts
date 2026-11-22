@@ -769,6 +769,8 @@ export interface SyncQueueItem {
     | "hospitalization_events_a5"
     | "hospitalization_relations_a5"
     | "hospitalization_discharge_a5"
+    | "surgery_journey_events_a7"
+    | "surgery_team_a7"
     | "health_reminders"
     | "notification_policies_p2"
     | "health_profiles"

@@ -44,6 +44,7 @@ import type { ExamOrderM1, ExamOrderItemM1, ExamSessionM1, ExamSessionItemM1, Cl
 import type { SurgeryConsultationLinkM4P2 } from '@/lib/clinical-journey-m4/surgery-links-p2';
 import type { RehabProgramM5, RehabTeamM5, RehabSessionM5, RehabSessionTeamM5, RehabOriginM5, RehabSessionEventM5, RehabMilestoneM5 } from '@/lib/rehab-m5/types';
 import type { A5Episode,A5Stay,A5Team,A5Event,A5Relation,A5Discharge } from '@/lib/hospitalizations-a5/types';
+import type {A7Event,A7Team} from '@/lib/surgery-a7/types';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -219,6 +220,8 @@ class VaultDB extends Dexie {
   hospitalization_events_a5!: Table<A5Event,string>;
   hospitalization_relations_a5!: Table<A5Relation,string>;
   hospitalization_discharge_a5!: Table<A5Discharge,string>;
+  surgery_journey_events_a7!: Table<A7Event,string>;
+  surgery_team_a7!: Table<A7Team,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
@@ -1533,6 +1536,11 @@ class VaultDB extends Dexie {
       hospitalization_events_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, kind, occurred_on, updated_at, deleted_at, synced',
       hospitalization_relations_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, entity_id, [entity_type+entity_id], updated_at, deleted_at, synced',
       hospitalization_discharge_a5: 'id, user_id, person_id, [user_id+person_id], hospitalization_id, updated_at, deleted_at, synced',
+    });
+    // A7/M6: historical surgical facts + procedure-specific professionals. A5 remains the hospital authority.
+    this.version(55).stores({
+      surgery_journey_events_a7:'id, user_id, person_id, [user_id+person_id], cirurgia_id, [user_id+person_id+cirurgia_id], stage, kind, occurred_on, corrects_event_id, updated_at, deleted_at, synced',
+      surgery_team_a7:'id, user_id, person_id, [user_id+person_id], cirurgia_id, [user_id+person_id+cirurgia_id], professional_id, updated_at, deleted_at, synced',
     });
 
   }

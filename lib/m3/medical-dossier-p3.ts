@@ -6,8 +6,12 @@ import { buildClinicalReport360, validClinicalDay, type Report360Section } from 
 import type { HealthInsightContext } from '@/lib/health-insights';
 import type { CareFlowEventM2 } from '@/lib/careflow-m2/domain';
 import type { BrainV5Alert } from '@/lib/health-intelligence/brain-v5';
+import type { A4ClinicalFact } from '@/lib/treatment-a4/clinical-bridge';
+import { rehabFactsM5, localDayRehabM5 } from '@/lib/rehab-m5/projection';
+import type { RehabProgramM5, RehabSessionM5, RehabMilestoneM5, RehabOriginM5 } from '@/lib/rehab-m5/types';
+import type { A7Event, A7Team } from '@/lib/surgery-a7/types';
 
-export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments';
+export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation';
 export type MedicalModeP3 = 'summary' | 'detailed';
 export type MedicalProvenanceP3 = 'registrado' | 'declarado' | 'motor';
 export type MedicalRowP3 = {
@@ -35,7 +39,8 @@ export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;des
   {id:'surgeries',label:'Cirurgias',description:'Eventos e status registrados'},
   {id:'withdrawals',label:'Retiradas',description:'Conclusão e ciclo sem recalcular estoque'},
   {id:'prescriptions',label:'Receitas e aquisições',description:'Data da receita versus data da aquisição'},
-  {id:'treatments',label:'Tratamentos',description:'Cadastro atual e relações explícitas'},
+  {id:'treatments',label:'Tratamentos',description:'Fases versionadas e cadastro atual, sem inferências'},
+  {id:'rehabilitation',label:'Reabilitação',description:'Ciclos, sessões e marcos documentados'},
   {id:'documents',label:'Documentos',description:'Somente títulos e metadados permitidos'},
 ];
 const ALLOWED = new Set<MedicalSectionP3>(MEDICAL_SECTIONS_P3.map(s=>s.id));
@@ -59,9 +64,14 @@ const human=(text:string):string=>text
   });
 export type MedicalDossierInputP3={
   context:HealthInsightContext; careflow:readonly CareFlowEventM2[]; ledger?:readonly BrainV5Alert[];
+  treatmentFacts?:readonly A4ClinicalFact[];
+  surgeryEvents?:readonly A7Event[];
+  surgeryTeam?:readonly A7Team[];
   ownerId:string; personId:string; personName:string; start:string; end:string;
   mode:MedicalModeP3; sections:readonly MedicalSectionP3[]; includeBrain?:boolean; generatedAt?:string;
   consultationId?:string;
+  rehab?:{programs:readonly RehabProgramM5[];sessions:readonly RehabSessionM5[];
+    milestones:readonly RehabMilestoneM5[];origins:readonly RehabOriginM5[]};
 };
 function isOwner(x:{user_id?:string;person_id?:string},uid:string,pid:string):boolean {
   return x.user_id===uid&&x.person_id===pid;
@@ -243,13 +253,72 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       provenance:'registrado',relations:(r.medicamento_ids||[]).filter(id=>medMap.has(id)).map(id=>`Medicamento cadastrado: ${safe(medMap.get(id)?.nome,100)}`),
       href:'/saude/tratamentos'});
   }
+  // M5: restore factual rehabilitation records without producing a parallel record writer.
+  const rehabFacts=input.rehab?rehabFactsM5({userId:uid,personId:pid,
+    programs:input.rehab.programs,sessions:input.rehab.sessions,milestones:input.rehab.milestones}):[];
+  if(selected('rehabilitation'))for(const f of rehabFacts){
+    const day=/^\d{4}-\d{2}-\d{2}$/.test(f.date)?f.date:localDayRehabM5(f.date);
+    if(!within(day))continue;
+    const instant=f.date.includes('T')?new Date(f.date):null;
+    const time=instant&&Number.isFinite(instant.getTime())?
+      instant.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):null;
+    add({section:'rehabilitation',date:day,time,title:safe(f.title,180),detail:safe(f.detail,800),
+      provenance:'declarado',source:'reabilitacao_'+f.kind,sourceId:f.id,registeredAt:f.date,
+      relations:[safe(f.source,150)],href:f.href});
+  }
+  const episodeRehabIds=new Set(consultation?.id?(input.rehab?.origins||[])
+    .filter(o=>o.user_id===uid&&o.person_id===pid&&!o.deleted_at&&o.origin_type==='consulta'&&o.origin_id===consultation.id)
+    .map(o=>o.program_id):[]);
+  const episodeRehabFacts=new Set(rehabFacts.filter(f=>episodeRehabIds.has(f.programId)).map(f=>f.id));
+  // A4: every versioned phase is an independent historical occurrence, not a snapshot.
+  if(selected('treatments'))for(const f of input.treatmentFacts||[]){
+    if(f.userId!==uid||f.personId!==pid||!within(f.date)||!treatMap.has(f.treatmentId))continue;
+    add({section:'treatments',date:f.date,time:null,title:`${f.treatmentName} · ${f.kindLabel}`,
+      detail:[f.title,f.sourceLabel,...f.details,f.notes||'',
+        'Registro declarado; não confirma prescrição atual, dose tomada ou melhora clínica.'].filter(Boolean).join(' · '),
+      source:'a4_treatment_phase',sourceId:f.id,registeredAt:f.recordedAt,provenance:'declarado',
+      relations:[f.medicationName?`Medicamento vinculado: ${f.medicationName}`:'',
+        f.consultationId&&consulted.has(f.consultationId)?`Consulta vinculada: ${safe(consulted.get(f.consultationId)?.especialidade,100)}`:'',
+        f.documentId?'Documento vinculado por ID (conteúdo não incluído)':''].filter(Boolean),href:f.href});
+  }
+  // A7: surgery and professional records use surgery IDs, never inferred hospitalization IDs.
+  if(selected('surgeries')){
+    const surgeryIds=new Set(surgeries.flatMap(s=>s.id?[s.id]:[]));
+    const stageLabel:Record<string,string>={pre:'Preparação',procedure:'Procedimento',post:'Pós-operatório',return:'Retorno'};
+    const sourceLabel:Record<string,string>={self_report:'Relato pessoal',professional_document:'Documento profissional',verified_import:'Importação verificada'};
+    for(const e of input.surgeryEvents||[]){
+      if(e.user_id!==uid||e.person_id!==pid||e.deleted_at||!surgeryIds.has(e.cirurgia_id))continue;
+      const factDay=date(e.occurred_on)||date(e.created_at);if(!within(factDay))continue;
+      add({section:'surgeries',date:factDay,time:null,title:`${stageLabel[e.stage]||'Jornada'} · ${safe(e.title,170)}`,
+        detail:`${sourceLabel[e.source]||'Origem informada'} · ${safe(e.description,4000)}${!e.occurred_on?' · Data do fato não informada; exibida data de cadastro.':''}${e.corrects_event_id?' · Retificação com referência ao original.':''}`,
+        source:'surgery_journey_event_a7',sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',
+        relations:['Cirurgia vinculada pelo identificador original'],
+        href:`/saude/cirurgias/jornada?id=${encodeURIComponent(e.cirurgia_id)}#a7-event-${encodeURIComponent(e.id)}`});
+    }
+    for(const t of input.surgeryTeam||[]){
+      if(t.user_id!==uid||t.person_id!==pid||t.deleted_at||!surgeryIds.has(t.cirurgia_id))continue;
+      const day=date(t.created_at);if(!within(day))continue;
+      add({section:'surgeries',date:day,time:null,title:`Equipe do procedimento · ${safe(t.role,120)}`,
+        detail:`${sourceLabel[t.source]||'Origem informada'} · Participação vinculada à cirurgia. ${safe(t.note,1200)}`,
+        source:'surgery_team_a7',sourceId:t.id,registeredAt:t.created_at,provenance:'declarado',
+        relations:['Equipe cirúrgica; não equivale à equipe da internação'],
+        href:`/saude/cirurgias/jornada?id=${encodeURIComponent(t.cirurgia_id)}`});
+    }
+  }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
   const episodeRows=consultation?rows.filter(r=>{
     if(r.section==='consultations')return r.sourceId===consultation.id;
     if(r.section==='careflow')return episodeCareIds.has(r.sourceId);
     if(r.section==='symptoms')return episodeSymptomIds.has(r.sourceId);
     if(r.section==='medications')return Boolean(consultation.medicamento_ids?.includes(r.sourceId));
-    if(r.section==='treatments')return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
+    if(r.section==='treatments'){
+      if(r.source==='a4_treatment_phase'){
+        const fact=(input.treatmentFacts||[]).find(f=>f.id===r.sourceId&&f.userId===uid&&f.personId===pid);
+        return Boolean(fact&&(fact.consultationId===consultation.id || consultation.tratamento_ids?.includes(fact.treatmentId)));
+      }
+      return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
+    }
+    if(r.section==='rehabilitation')return episodeRehabFacts.has(r.sourceId);
     return false;
   }):rows;
   episodeRows.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')||a.section.localeCompare(b.section)||a.key.localeCompare(b.key));

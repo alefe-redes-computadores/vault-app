@@ -50,6 +50,8 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   hospitalization_events_a5: [["hospitalization_id","hospitalizations_a5"],["stay_id","hospitalization_stays_a5"],["source_professional_id","medicos"],["corrects_event_id","hospitalization_events_a5"]],
   hospitalization_relations_a5: [["hospitalization_id","hospitalizations_a5"]],
   hospitalization_discharge_a5: [["hospitalization_id","hospitalizations_a5"]],
+  surgery_journey_events_a7: [["cirurgia_id","cirurgias"],["source_professional_id","medicos"],["corrects_event_id","surgery_journey_events_a7"]],
+  surgery_team_a7: [["cirurgia_id","cirurgias"],["professional_id","medicos"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {

@@ -63,6 +63,7 @@ import { syncClinicalExamM1 } from "@/lib/clinical-exams-m1/sync";
 import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-links-p2";
 import { syncRehabM5 } from "@/lib/rehab-m5/sync";
 import { syncHospitalizationA5,pendingA5Dependency } from "@/lib/hospitalizations-a5/sync";
+import {syncSurgeryA7,pendingSurgeryA7Dependency} from "@/lib/surgery-a7/sync";
 import { REHAB_ALL_TABLES_M5, type RehabTableM5 } from "@/lib/rehab-m5/types";
 import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
@@ -5210,6 +5211,8 @@ export function useSyncQueue() {
         case "hospitalization_events_a5": await markRecordSyncedIfCurrent(db.hospitalization_events_a5,payload.id,expectedUpdatedAt); break;
         case "hospitalization_relations_a5": await markRecordSyncedIfCurrent(db.hospitalization_relations_a5,payload.id,expectedUpdatedAt); break;
         case "hospitalization_discharge_a5": await markRecordSyncedIfCurrent(db.hospitalization_discharge_a5,payload.id,expectedUpdatedAt); break;
+        case "surgery_journey_events_a7": await markRecordSyncedIfCurrent(db.surgery_journey_events_a7,payload.id,expectedUpdatedAt); break;
+        case "surgery_team_a7": await markRecordSyncedIfCurrent(db.surgery_team_a7,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5480,6 +5483,13 @@ export function useSyncQueue() {
           );
           return;
 
+        case 'surgery_journey_events_a7': case 'surgery_team_a7': {
+          const client=requireSupabase();const {data,error}=await client.auth.getUser();
+          if(error||!data.user)throw Error('A7: sessão autenticada obrigatória.');
+          const pending=await pendingSurgeryA7Dependency(item,async(table,id)=>Boolean(await db.syncQueue.where('chave').equals(`${table}:${id}`).first()));
+          if(pending)throw new SyncDependencyDeferredError('A7: aguardando vínculo original '+pending);
+          await syncSurgeryA7(item,data.user.id);return;
+        }
         case 'hospitalizations_a5': case 'hospitalization_stays_a5': case 'hospitalization_team_a5':
         case 'hospitalization_events_a5': case 'hospitalization_relations_a5': case 'hospitalization_discharge_a5': {
           const client=requireSupabase();const {data,error}=await client.auth.getUser();
@@ -5756,6 +5766,8 @@ export function useSyncQueue() {
                   "clinical_asset_links",
                   "consultation_exam_order_links",
                   "cirurgias",
+                  "surgery_journey_events_a7",
+                  "surgery_team_a7",
 
                   "renovacoes",
                   "a1_prescription_links",
