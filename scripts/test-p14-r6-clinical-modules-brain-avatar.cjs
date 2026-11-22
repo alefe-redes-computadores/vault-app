@@ -9,7 +9,7 @@ for(const [path,source] of [[p,page],[d,detail],["MedicationOperationalStrip.tsx
  const src=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  ok(src.parseDiagnostics.length===0,`${path}: TSX sintaticamente válido`);
 }
-ok(page.includes("<MedicationOperationalStrip today={todayStatus}")&&page.includes('stockLabel={stockUnknown ? "Não informado"'),"listagem delega apenas a apresentação do estado operacional");
+ok(page.includes("<MedicationOperationalStrip today={todayStatus}")&&page.includes('stockLabel={stockUnknown ? "Estoque não registrado"'),"listagem delega apenas a apresentação do estado operacional");
 ok(page.includes('doseOutcome={dosesIgnoradasHoje>0&&!isSOS?"ignored"')&&page.includes('rotinaConcluida||sosTomadoHoje?"completed"'),"resultado da dose continua derivado da mesma autoridade");
 ok(strip.includes('Hoje: ${today.label}. Estoque: ${stockLabel}')&&strip.includes('stockTone==="empty"'),"resumo clínico acessível distingue estoque conhecido de vazio");
 ok(page.includes('routeLabels={supplyRoute?.labels}')&&page.includes('routeMode={supplyRoute?.mode}')&&page.includes('brainAction ??'),"V271 conserva fornecimento e prioridade canônica");

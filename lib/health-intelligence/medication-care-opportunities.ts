@@ -16,6 +16,7 @@ import {
 } from "@/lib/health-insights";
 
 import { getLocalTodayISO } from "@/lib/health-utils";
+import { parseTemporaryCourseNote, temporaryCourseEnd } from "@/lib/health-supply/temporary-course";
 import { decideMedicationAlerts } from "@/lib/health-intelligence/medication-alert-policy";
 import { indexScheduledWithdrawalsByOwner, medicationWithdrawalKey, medicationAccessAction, withdrawalDueState } from "@/lib/medication-access-action";
 import { isPrescriptionOnly, renewalEventDate } from "@/lib/health-supply/renewal-event";
@@ -376,6 +377,18 @@ export function buildMedicationCareOpportunities({
       continue;
     }
 
+    // Somente cursos com nota canônica informada, NUNCA a partir de nome ou sintoma.
+    // O encerramento temporal retira a sugestão, não cancela doses nem modifica o plano.
+    if (medicamento.tipo_uso === "temporario") {
+      const course = parseTemporaryCourseNote(medicamento.observacoes || "");
+      if (course) {
+        try {
+          const end = temporaryCourseEnd({ ...course,
+            times: course.intervalHours ? [] : [course.firstPlannedAt?.slice(11) || "00:00"] });
+          if (end < today) continue;
+        } catch { /* sem evidência suficiente: não criar decisão clínica automática */ }
+      }
+    }
     const insight =
       sugerirRenovacao(
         medicamento

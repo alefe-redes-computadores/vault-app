@@ -19,7 +19,9 @@ assert(globals.includes("contain-intrinsic-size: auto 520px"));
 assert(home.includes("min-[380px]:grid-cols-4"));
 assert(home.includes("const medicamentosById"));
 assert(home.includes("medicationsForOwner(medicamentosTodas, activePersonId, user?.id)") && home.includes("openWithdrawalsDueBy(retiradas, hoje)"));
-assert(home.includes('className="vault-deferred-lg space-y-3"'));
+// V34X: a Home mede a altura real e não reserva 520px antes do primeiro paint.
+// O utilitário continua disponível para superfícies que realmente precisam dele.
+assert(!home.includes('className="vault-deferred-lg space-y-3"'));
 
 assert(today.includes("new Map<string, any>"));
 assert(today.includes("<TodayDoseTimelineCard") && doseCard.includes('scope.medicamentosById.get(item.medicamentoId)'));

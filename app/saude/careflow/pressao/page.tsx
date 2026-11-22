@@ -76,12 +76,12 @@ export default function PressureCareFlowPage() {
     [note, setNote] = useState("");
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
-  const [showPlanForm, setShowPlanForm] = useState(false),
-    [showReadingForm, setShowReadingForm] = useState(false);
+  const [activeForm, setActiveForm] = useState<"plan" | "reading" | null>(null);
+  const showPlanForm = activeForm === "plan";
+  const showReadingForm = activeForm === "reading";
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (q.get("plano") === "1") setShowPlanForm(true);
-    if (q.get("novo") === "1" || q.has("consulta")) setShowReadingForm(true);
+    setActiveForm(q.get("novo") === "1" || q.has("consulta") ? "reading" : q.get("plano") === "1" ? "plan" : null);
   }, []);
   const [consultationId, setConsultationId] = useState(""),
     [symptomId, setSymptomId] = useState("");
@@ -344,7 +344,7 @@ export default function PressureCareFlowPage() {
       }
       setSlots([""]);
       setPlanNote("");
-      setShowPlanForm(false);
+      setActiveForm(null);
       if (editingPlan) {
         for (const reminder of remindersByPlan.get(editingPlan) || [])
           await healthRemindersRepository.setPaused(
@@ -379,7 +379,7 @@ export default function PressureCareFlowPage() {
       Array.isArray(plan.payload.slots) ? plan.payload.slots.map(String) : [""]
     );
     setPlanNote(String(plan.payload.note || ""));
-    setShowPlanForm(true);
+    setActiveForm("plan");
     setMessage(
       "Edite e salve: o plano atual será encerrado somente após a nova versão ser criada."
     );
@@ -517,7 +517,7 @@ export default function PressureCareFlowPage() {
       }
       if (scopeStill(scope.uid, scope.pid)) setMessage(feedback);
       if (scopeStill(scope.uid, scope.pid)) {
-        setShowReadingForm(false);
+        setActiveForm(null);
         showToast("Medição de pressão salva", "success");
       }
     } catch (e) {
@@ -650,7 +650,7 @@ export default function PressureCareFlowPage() {
             <button
               type="button"
               aria-expanded={showPlanForm}
-              onClick={() => { setShowPlanForm((v) => !v); setShowReadingForm(false); }}
+              onClick={() => setActiveForm(current => current === "plan" ? null : "plan")}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-300/[.07] px-3 text-xs font-bold text-sky-200"
             >
               <CalendarClock size={16} />
@@ -659,7 +659,7 @@ export default function PressureCareFlowPage() {
             <button
               type="button"
               aria-expanded={showReadingForm}
-              onClick={() => { setShowReadingForm((v) => !v); setShowPlanForm(false); }}
+              onClick={() => setActiveForm(current => current === "reading" ? null : "reading")}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"
             >
               <HeartPulse size={16} />
@@ -860,15 +860,16 @@ export default function PressureCareFlowPage() {
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <CustomDatePicker
+                  className="min-w-0 [&>label]:mb-1.5 [&>label]:text-xs [&>label]:font-normal [&>label]:text-ink-muted [&_input]:h-12 [&_input]:py-0"
                   label="Data da medição"
                   value={date}
                   onChange={setDate}
                   maxDate={getLocalTodayISO()}
                 />
                 <div className="min-w-0 text-xs text-ink-muted">
-                  <span>Horário</span>
+                  <span className="mb-1.5 block">Horário</span>
                   <HealthTimePicker
-                    className="mt-1"
+                    className="mt-1 h-12"
                     value={time}
                     onChange={setTime}
                     clearable={false}
@@ -910,7 +911,7 @@ export default function PressureCareFlowPage() {
                   <span className="flex items-center gap-1.5">
                     <MessageSquareHeart
                       size={15}
-                      className="text-fuchsia-300"
+                      className="text-rose-300"
                     />
                     Sintoma observado (opcional)
                   </span>
@@ -999,7 +1000,7 @@ export default function PressureCareFlowPage() {
                 />
                 <polyline
                   fill="none"
-                  stroke="#a78bfa"
+                  stroke="#34d399"
                   strokeWidth="2.3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1008,20 +1009,20 @@ export default function PressureCareFlowPage() {
               </svg>
               <p className="flex gap-4 text-[10px] text-ink-muted">
                 <span className="text-sky-300">● Sistólica</span>
-                <span className="text-violet-300">● Diastólica</span>
+                <span className="text-emerald-300">● Diastólica</span>
               </p>
             </section>
           )}
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-sm font-bold">
-                <Activity size={16} className="text-violet-300" />
+                <Activity size={16} className="text-emerald-300" />
                 Histórico de medições ({measurements.length})
               </h2>
               <button
                 onClick={() => void archivePdf()}
                 disabled={busy || !measurements.length}
-                className="flex min-h-11 items-center gap-1.5 rounded-xl border border-violet-300/30 px-3 text-xs text-violet-300 disabled:opacity-40"
+                className="flex min-h-11 items-center gap-1.5 rounded-xl border border-emerald-300/30 px-3 text-xs text-emerald-300 disabled:opacity-40"
               >
                 <FileText size={15} />
                 Arquivar PDF local
@@ -1043,7 +1044,7 @@ export default function PressureCareFlowPage() {
               return (
                 <article
                   id={r.id ? `careflow-pressao-${r.id}` : undefined}
-                  className="scroll-mt-24 target:ring-2 target:ring-violet-300/40 rounded-xl border border-surface-border/60 bg-surface p-3"
+                  className="scroll-mt-24 target:ring-2 target:ring-emerald-300/40 rounded-xl border border-surface-border/60 bg-surface p-3"
                   key={r.id}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -1084,7 +1085,7 @@ export default function PressureCareFlowPage() {
                               r.id || ""
                             )}`
                           )}
-                          className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-violet-300/20 px-2 text-[11px] text-violet-200"
+                          className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-rose-300/20 px-2 text-[11px] text-rose-200"
                         >
                           <MessageSquareHeart size={13} />
                           {symptom.nome}
@@ -1124,7 +1125,7 @@ export default function PressureCareFlowPage() {
             <span className="block pt-2">
               <Link
                 href="/saude/careflow/sintomas"
-                className="text-violet-200 underline"
+                className="text-rose-200 underline"
               >
                 Ver sintomas registrados separadamente
               </Link>{" "}

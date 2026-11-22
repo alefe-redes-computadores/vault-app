@@ -450,9 +450,18 @@ export type MedicationCatalogIdentity = {
 
 function identityFor(medication: Medicamento, reference: MedicationReference | null): MedicationCatalogIdentity {
   const authority = getMedicationCatalogAuthority(medication.nome, reference);
+  const persisted = snapshotReference(medication)?.reference || null;
+  const savedAuthority = persisted ? getMedicationCatalogAuthority(medication.nome, persisted) : null;
+  const sameVerifiedProduct = Boolean(persisted && medication.catalog_snapshot?.match_kind === "exact" &&
+    savedAuthority?.state === "confirmed" &&
+    (!reference || normalizeMedicationText(reference.canonicalName) === normalizeMedicationText(persisted.canonicalName)) &&
+    (authority.state === "confirmed" || authority.state === "unvalidated"));
+  const displayIngredients = authority.activeIngredients.length
+    ? authority.activeIngredients
+    : sameVerifiedProduct ? savedAuthority?.activeIngredients || [] : [];
   return {
-    activeIngredient: authority.activeIngredients[0] || null,
-    activeIngredients: authority.activeIngredients,
+    activeIngredient: displayIngredients[0] || null,
+    activeIngredients: displayIngredients,
     canonicalName: reference?.canonicalName || null,
     sourceLabel: authority.sourceLabel,
     authorityState: authority.state,

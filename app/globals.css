@@ -28,7 +28,7 @@ html.dark {
   --text-ink-primary: 236 240 244;
   --text-ink-muted: 138 148 163;
   --text-ink-faint: 79 88 102;
-  --shadow-vault: 0 14px 42px -12px rgba(0,0,0,0.5);
+  --shadow-vault: 0 8px 22px -12px rgba(0,0,0,0.24);
   color-scheme: dark;
 }
 

@@ -88,13 +88,13 @@ export function ListCard({
         ${isTight ? "rounded-[16px]" : isCompact ? "rounded-[20px]" : "rounded-[24px]"}
         border
         bg-surface
-        ${isCompact ? "shadow-none" : "shadow-md"}
+        ${isCompact ? "shadow-none" : "shadow-sm"}
         transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none
         focus-within:border-ice/45
         ${
           isDisabled
             ? `${disabledBorderColor} opacity-60`
-            : "border-surface-border hover:bg-surface-raised/80 hover:shadow-lg"
+            : "border-surface-border hover:bg-surface-raised/80 hover:shadow-sm"
         }
         ${className}
       `}

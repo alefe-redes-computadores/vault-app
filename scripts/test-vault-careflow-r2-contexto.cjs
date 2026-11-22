@@ -47,7 +47,7 @@ ok(pressure.includes('repairContext')&&pressure.includes('pendingContext')&&(pre
 ok(!pressure.includes('db.version(')&&!pressure.includes('supabase'),'tela nao migra base nem chama nuvem');
 const dossier=read('app/saude/careflow/dossie/page.tsx');
 ok(dossier.includes('origin(row)')&&dossier.includes('ownedEvents')&&dossier.includes('ownedRecords'),'links somente com origem da pessoa autorizada');
-ok(dossier.includes('makeCareFlowTimelinePdfM3(personName,visible)')&&dossier.includes('visible.length>500'),'PDF conforme filtro sem corte invisivel');
+ok(/makeCareFlowTimelinePdfM3\(personName,\s*visible\)/.test(dossier)&&/visible\.length\s*>\s*500/.test(dossier),'PDF conforme filtro sem corte invisivel');
 const episode=read('app/saude/careflow/episodios/page.tsx');
 ok(episode.includes('episodeReturn')&&episode.includes('withReturnTarget(r.href,episodeReturn)'),'retorno contextual nas fontes');
 ok(episode.includes('ClinicalBackLinkP0')&&episode.includes('careflow-episodio-linha'),'voltar e ancora da linha do tempo');

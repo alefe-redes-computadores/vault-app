@@ -36,9 +36,9 @@ ok(symptoms.includes('historyLimit')&&symptoms.includes('revealCountR3')&&sympto
 ok(symptoms.includes("b.horario||'00:00'")&&symptoms.includes("a.horario||'00:00'"),'historia ordenada por dia e horario');
 ok(symptoms.includes('createRegistro')&&symptoms.includes('repair=async')&&symptoms.includes("'consultation_to_existing_symptom'"),'salvamento canônico e reparo mantidos');
 const dossier=read('app/saude/careflow/dossie/page.tsx');
-ok(dossier.includes('lastArchivedR3')&&dossier.includes('lastArchivedR3.uid===user?.id')&&dossier.includes('lastArchivedR3.pid===activePersonId'),'link de PDF respeita identidade ativa');
-ok(dossier.includes('withReturnTarget(`/saude/careflow/relatorios?arquivo=${encodeURIComponent(lastArchivedR3.id)}`'),'PDF recem salvo abre ID preciso');
-ok(dossier.includes('makeCareFlowTimelinePdfM3(personName,visible)')&&dossier.includes('visible.length>500'),'filtro e limite PDF R2 preservados');
+ok(dossier.includes('lastArchivedR3')&&/lastArchivedR3\.uid\s*===\s*user\?\.id/.test(dossier)&&/lastArchivedR3\.pid\s*===\s*activePersonId/.test(dossier),'link de PDF respeita identidade ativa');
+ok(/withReturnTarget\(\s*`\/saude\/careflow\/relatorios\?arquivo=\$\{encodeURIComponent\(lastArchivedR3\.id\)\}`/.test(dossier),'PDF recem salvo abre ID preciso');
+ok(/makeCareFlowTimelinePdfM3\(personName,\s*visible\)/.test(dossier)&&/visible\.length\s*>\s*500/.test(dossier),'filtro e limite PDF R2 preservados');
 const library=read('app/saude/careflow/relatorios/page.tsx');
 ok(/files\.find\(\s*\(?f\)?\s*=>\s*f\.id\s*===\s*requested\s*\)/.test(library)&&library.includes('activePersonId')&&library.includes('user?.id'),'PDF so e focado dentro do escopo filtrado');
 ok(library.includes('formatCareFlowDayR3(file.start)')&&library.includes('formatCareFlowDayR3(file.end)'),'datas nao vazam ISO');

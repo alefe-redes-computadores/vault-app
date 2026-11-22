@@ -29,7 +29,9 @@ const statePresentation: Record<PrescriptionStatus, { label: string; tone: strin
 
 /** P15 R4: apresentação somente. Validade, vínculos e comandos continuam no dossiê autorizado. */
 export function MedicationPrescriptionCard({ typeLabel, badge, status, issuedAt, expiresAt, nextAt, validityLabel, nextLabel, hasAttachment, onPlan, onAttachment, onLink, onReceived }: Props) {
-  const state = statePresentation[status];
+  const state = hasAttachment && status === "missing"
+    ? { label: "Data de emissão não informada · anexo disponível", tone: "bg-sky-400/10 text-sky-200" }
+    : statePresentation[status];
   // Tipo e faixa regulatória podem ser sinônimos ("Receita azul" + "AZUL").
   // Não repetir a mesma classificação; preservar o badge quando acrescentar informação.
   const redundantBadge = Boolean(badge?.label && typeLabel.toLocaleLowerCase("pt-BR").includes(badge.label.toLocaleLowerCase("pt-BR")));

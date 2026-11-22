@@ -19,10 +19,10 @@ export function CareFlowOrderRelationsR5({order,userId,personId,doctors,places,c
   const appointment=appointmentId?consultations.find(c=>c.id===appointmentId&&c.user_id===userId&&c.person_id===personId):undefined;
   const links=[
     doctor?{label:`Médico: ${doctor.nome}`,href:`/saude/medicos/detalhes?id=${encodeURIComponent(doctor.id!)}`,Icon:Stethoscope,tone:"text-sky-300 border-sky-400/20 bg-sky-400/5"}:null,
-    place?{label:`Local: ${place.nome}`,href:`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`,Icon:MapPin,tone:"text-violet-300 border-violet-400/20 bg-violet-400/5"}:null,
+    place?{label:`Local: ${place.nome}`,href:`/saude/locais/detalhes?id=${encodeURIComponent(place.id!)}`,Icon:MapPin,tone:"text-emerald-300 border-emerald-400/20 bg-emerald-400/5"}:null,
     appointment?{label:`Consulta vinculada`,href:`/saude/consultas/detalhes?id=${encodeURIComponent(appointment.id!)}`,Icon:CalendarCheck2,tone:"text-emerald-300 border-emerald-400/20 bg-emerald-400/5"}:null,
   ].filter((x):x is NonNullable<typeof x>=>Boolean(x));
-  return links.length?<div aria-label="Vínculos confirmados do pedido" className="mt-2 flex flex-wrap gap-1.5">{links.map(({label,href,Icon,tone})=><Link key={href} href={href} className={`inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-xl border px-2.5 text-[10px] font-semibold ${tone}`}><Icon size={14} className="shrink-0"/><span className="min-w-0 break-words">{label}</span><ChevronRight size={13} className="shrink-0"/></Link>)}</div>:null;
+  return links.length?<div aria-label="Vínculos confirmados do pedido" className="mt-2 flex flex-wrap gap-1.5">{links.map(({label,href,Icon,tone})=><Link key={href} href={href} className={`inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-xl border px-2.5 text-[10px] font-semibold ${tone}`}><Icon size={14} className="shrink-0"/><span className="min-w-0 break-words">{label}</span><ChevronRight size={13} className="shrink-0"/></Link>)}</div>:null;
 }
 /** Doctor links are evidence-based: only CareFlow orders with explicit doctor_id and same account/person. */
 export function DoctorCareFlowRelationsR5({doctorId,doctorOwnerId}:{doctorId:string;doctorOwnerId:string}){

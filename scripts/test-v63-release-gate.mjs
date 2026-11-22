@@ -548,6 +548,11 @@ const contracts = [
   "scripts/test-vault-medication-document-sync-p0.cjs",
   "scripts/test-vault-p0-consulta-sync-owner.cjs",
   "scripts/test-vault-a5-v28.cjs",
+  "scripts/test-vault-v34-closeout.cjs",
+  "scripts/test-vault-v34x-substituta.cjs",
+  "scripts/test-vault-v34y-integrity.cjs",
+  "scripts/test-vault-v34z-final-closure.cjs",
+  "scripts/test-vault-v34zf-bridge.cjs",
   "scripts/test-vault-a8-vaccination-360.cjs",
   "scripts/test-vault-a8-a9-integrated-360.cjs",
 ];

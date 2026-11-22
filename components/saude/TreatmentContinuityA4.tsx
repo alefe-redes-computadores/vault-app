@@ -32,12 +32,12 @@ export function TreatmentContinuityA4({context='careflow',maxItems=2,medicationI
     return {scope,facts:facts.filter(f=>!medicationId||f.medicationId===medicationId).slice(0,Math.max(1,Math.min(8,maxItems)))};
   },[uid,pid,maxItems,medicationId,compact,today]);
   if(!uid||!pid||snapshot?.scope!==scope||!snapshot.facts.length)return null;
-  return <section aria-label="Mudanças declaradas dos tratamentos" className={`min-w-0 rounded-[22px] border border-violet-400/20 bg-surface/85 ${compact?'p-3':'p-4'} vault-deferred`}>
-    <div className="flex items-start gap-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-violet-400/10 text-violet-200"><History size={18}/></span>
+  return <section aria-label="Mudanças declaradas dos tratamentos" className={`min-w-0 rounded-[22px] border border-emerald-400/20 bg-surface/85 ${compact?'p-3':'p-4'} vault-deferred`}>
+    <div className="flex items-start gap-2.5"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/10 text-emerald-200"><History size={18}/></span>
       <div className="min-w-0 flex-1"><h2 className="text-sm font-bold leading-5 text-ink-primary">Mudanças de tratamentos</h2><p className="text-[11px] leading-relaxed text-ink-muted">Somente fases informadas e registradas. Não altera doses nem receitas.</p></div></div>
-    <div className="mt-3 space-y-2">{snapshot.facts.map(f=><Link key={f.id} href={f.href} className="flex min-h-12 min-w-0 items-start gap-2 rounded-xl border border-surface-border/60 bg-surface-raised/65 px-3 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-300">
+    <div className="mt-3 space-y-2">{snapshot.facts.map(f=><Link key={f.id} href={f.href} className="flex min-h-12 min-w-0 items-start gap-2 rounded-xl border border-surface-border/60 bg-surface-raised/65 px-3 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
       <span className="min-w-0 flex-1"><span className="block break-words text-xs font-semibold text-ink-primary">{f.treatmentName} · {f.kindLabel}</span><span className="mt-1 block break-words text-[11px] text-ink-muted">{f.date.slice(8)}/{f.date.slice(5,7)}/{f.date.slice(0,4)} · {f.sourceLabel}{f.medicationName?` · ${f.medicationName}`:''}{!f.synced?' · Pendente de sincronização':''}</span></span>
-      <ChevronRight size={16} aria-hidden="true" className="mt-1 shrink-0 text-violet-300"/></Link>)}</div>
+      <ChevronRight size={16} aria-hidden="true" className="mt-1 shrink-0 text-emerald-300"/></Link>)}</div>
     {!compact&&<p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-muted"><ShieldCheck size={14} className="mt-0.5 shrink-0"/>A cronologia preserva cada evento. Não representa a prescrição em vigor.</p>}
   </section>;
 }

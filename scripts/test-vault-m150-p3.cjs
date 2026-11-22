@@ -61,7 +61,7 @@ assert.equal(special.rail,'#cbd5e1');
 const med=read('app/saude/medicamentos/page.tsx');
 assert(med.includes('<MedicationProvenanceLineM150P3')&&!med.includes('source="ultima_aquisicao"'),'origens em linha unica');
 assert(med.includes('medicationCardActionLayoutM150P3(')&&med.includes('data-vault-med360-entry="menu"')&&med.includes('className="pointer-events-auto relative z-20 grid size-11')&&med.includes('if (careActionButtonM150P3) controls.push(careActionButtonM150P3)')&&med.includes('if (stockActionButtonM150P3) controls.push(stockActionButtonM150P3)')&&med.includes('setMedicationSheet360({')&&med.includes('controls,')&&med.includes('openMedicationSheet360("acoes")')&&read('components/saude/MedicationSheet360R3.tsx').includes('value.controls.map'),'acoes secundarias acessiveis na Gaveta 360 com os controles clinicos originais');
-assert(med.includes('stockUnknown ? "Não informado" : medicationStockLabelM149('),'saldo desconhecido preservado');
+assert(med.includes('stockUnknown ? "Estoque não registrado" : medicationStockLabelM149('),'saldo desconhecido preservado com rótulo honesto');
 assert(med.includes('isSuspendedSOSM147')&&med.includes('Registrar uso já ocorrido'),'registro suspenso so historico');
 assert.equal((med.match(/aria-label="Escolher densidade dos cartões"/g)||[]).length,1,'controle de densidade unico');
 const filter=read('components/saude/MedicationFilterBar.tsx');

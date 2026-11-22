@@ -18,7 +18,7 @@ type Props = {
 };
 
 const tags: Record<EventKind,{label:string;tone:string}> = {
-  prescription: {label:"Receita",tone:"bg-violet-500/15 text-violet-300"},
+  prescription: {label:"Receita",tone:"bg-sky-500/15 text-sky-300"},
   planned: {label:"Aquisição prevista",tone:"bg-amber-500/15 text-amber-300"},
   public: {label:"SUS / sem custo",tone:"bg-emerald-500/20 text-emerald-400"},
   private: {label:"Comprado",tone:"bg-ice/10 text-ice"},

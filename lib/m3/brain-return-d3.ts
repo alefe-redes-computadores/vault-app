@@ -27,6 +27,10 @@ const validDay = (raw: unknown): raw is string => {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === raw;
 };
 const consultHref = (id: string): string => `/saude/consultas/detalhes?id=${encodeURIComponent(id)}`;
+export const humanReturnSourceD3 = (source: string): string => ({
+  health_record:'Registro de saúde', consultation:'Consulta', careflow_exam_result:'Resultado de exame',
+  careflow_exam_status:'Situação do exame', careflow_exam_order:'Pedido de exame'
+}[source] || 'Registro documentado');
 
 /** Somente URLs internas conhecidas; os destinos são revisáveis antes de registrar. */
 export function contextualEpisodeHrefD3(href: string, consultationId: string): string {
@@ -76,7 +80,7 @@ export function buildReturnBriefD3(episode: EpisodeSnapshotP4, today: string): R
     if (seen.has(signature)) continue;
     seen.add(signature);
     facts.push({key:signature, title:clean(row.title, 130), date:row.date,
-      detail:clean(row.detail, 340), source:clean(row.source, 65),
+      detail:clean(row.detail, 340), source:humanReturnSourceD3(clean(row.source, 65)),
       href: row.href?.startsWith('/saude/') && !row.href.startsWith('//') ? row.href : null});
     if (facts.length === 3) break;
   }

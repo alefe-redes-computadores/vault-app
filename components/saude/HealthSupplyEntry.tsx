@@ -59,7 +59,7 @@ export function HealthSupplyEntry({
                 </span>
               )}
               {summary.protocolled > 0 && (
-                <span className="rounded-md bg-violet-400/10 px-2 py-1 text-[10px] font-medium text-violet-200">
+                <span className="rounded-md bg-sky-400/10 px-2 py-1 text-[10px] font-medium text-sky-200">
                   {summary.protocolled} {summary.protocolled === 1 ? "protocolado" : "protocolados"}
                 </span>
               )}

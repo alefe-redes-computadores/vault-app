@@ -240,12 +240,12 @@ export default function CareFlowReportLibraryPage() {
             </div>
           </header>
           <details className="group rounded-2xl border border-surface-border bg-surface p-2">
-            <summary className="min-h-11 cursor-pointer px-3 py-3 text-xs font-semibold text-violet-200">
+            <summary className="min-h-11 cursor-pointer px-3 py-3 text-xs font-semibold text-amber-200">
               Arquivar outro PDF neste aparelho
             </summary>
-            <section className="space-y-3 rounded-3xl border border-violet-300/20 bg-surface p-4">
+            <section className="space-y-3 rounded-3xl border border-amber-300/20 bg-surface p-4">
               <h2 className="flex items-center gap-2 text-sm font-bold">
-                <Archive size={17} className="text-violet-300" />
+                <Archive size={17} className="text-amber-300" />
                 Selecionar e arquivar PDF
               </h2>
               <p className="text-[11px] leading-relaxed text-ink-muted">
@@ -254,7 +254,7 @@ export default function CareFlowReportLibraryPage() {
                 Desinstalar/limpar dados do navegador pode eliminar arquivos
                 locais — exporte uma cópia.
               </p>
-              <label className="flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-violet-300/25 bg-violet-300/[.055] px-3.5 py-3 text-xs font-semibold text-violet-200 focus-within:ring-2 focus-within:ring-violet-300/30">
+              <label className="flex min-h-14 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-amber-300/25 bg-amber-300/[.055] px-3.5 py-3 text-xs font-semibold text-amber-200 focus-within:ring-2 focus-within:ring-amber-300/30">
                 <span className="min-w-0 flex-1 break-words">
                   {chosen ? chosen.name : "Selecionar PDF neste aparelho"}
                   {chosen ? (
@@ -293,7 +293,7 @@ export default function CareFlowReportLibraryPage() {
                 type="button"
                 disabled={!chosen || busy || !activePersonId}
                 onClick={() => void importFile()}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-300 text-sm font-bold text-void disabled:opacity-40"
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-300 text-sm font-bold text-void disabled:opacity-40"
               >
                 <FilePlus2 size={16} />
                 Arquivar arquivo local
@@ -349,7 +349,7 @@ export default function CareFlowReportLibraryPage() {
                 key={file.id}
                 className={`flex scroll-mt-24 items-center gap-2 rounded-2xl border bg-surface p-3 ${
                   highlightedR3 === file.id
-                    ? "border-violet-300/60 ring-2 ring-violet-300/20"
+                    ? "border-emerald-300/60 ring-2 ring-emerald-300/20"
                     : "border-surface-border"
                 }`}
               >

@@ -57,7 +57,7 @@ ok(m15.includes("doseCard.includes('describeTodayDoseStatus({')")&&m15.includes(
 ok(v196.includes("doseCard.includes('scope.medicamentosById.get(item.medicamentoId)')")&&v196.includes('today.includes("<TodayDoseTimelineCard")'),
  'V196 medication index still in use, in correct owner');
 ok(p15.includes('const doseCard=read("components/hoje/TodayDoseTimelineCard.tsx")')
-  &&p15.includes('TodayDoseTimelineCard') && p15.includes('scope=\\{doseCardScope\\}') || p15.includes('scope=\{doseCardScope\}') && p15.includes('getDiasRestantesEstilo(')
+  &&p15.includes('TodayDoseTimelineCard') && (p15.includes('scope=\\{doseCardScope\\}') || p15.includes('scope=\{doseCardScope\}')) && p15.includes('getDiasRestantesEstilo(')
   &&p15.includes('doseCard.includes(\'getDiasRestantesEstilo(\')')
   &&p15.includes('doseCard.includes(\'diasEstilo.cor\')')
   &&p15.includes('doseCard.includes(\'diasEstilo.bg\')'),

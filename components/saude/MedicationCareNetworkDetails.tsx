@@ -8,6 +8,7 @@ type NetworkNode = {id?: string | null; name: string; address?: string | null; p
 type LatestPublicAcquisition = {nextWithdrawalDate?: string | null; needsPrescription?: boolean | null};
 type Props = {
   doctor: {id?: string | null; name: string; otherMedicationCount: number};
+  medicationId?: string;
   hospital: NetworkNode | null;
   location: NetworkNode | null;
   pharmacy: NetworkNode | null;
@@ -19,7 +20,7 @@ type Props = {
 };
 
 /** Presentation only. The owning page authorizes every relation before passing it in. */
-export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,latestPublicAcquisition,onNavigate,onMap,onCall,formatDay}:Props) {
+export function MedicationCareNetworkDetails({doctor,medicationId,hospital,location,pharmacy,latestPublicAcquisition,onNavigate,onMap,onCall,formatDay}:Props) {
   const navigate = (type: "medicos" | "hospitais" | "locais" | "farmacias", id?: string | null) => {
     if (id?.trim()) onNavigate(`/saude/${type}/detalhes?id=${encodeURIComponent(id)}`);
   };
@@ -42,11 +43,11 @@ export function MedicationCareNetworkDetails({doctor,hospital,location,pharmacy,
       {linkedLocations>0?`${countLabel(linkedLocations, "referência de cuidado exibida", "referências de cuidado exibidas")} conforme os vínculos registrados.`:"Nenhuma referência de rede confirmada nesta ficha."} Vínculo não confirma atendimento, fornecimento ou retirada.
     </p>
     <DetailInfoRow icon={<Stethoscope size={19}/>} iconClassName="bg-sky-400/10 text-sky-300" label="Médico Prescritor"
-      action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : undefined}>
+      action={doctor.id ? action("Abrir detalhes do médico",()=>navigate("medicos",doctor.id),"open") : medicationId ? action("Relacionar médico no cadastro do medicamento",()=>onNavigate(`/saude/medicamentos/editar?id=${encodeURIComponent(medicationId)}&return_to=${encodeURIComponent(`/saude/medicamentos/detalhes?id=${encodeURIComponent(medicationId)}`)}`),"open") : undefined}>
       <p className="break-words text-sm font-bold text-ink-primary">{doctor.name}</p>
       {doctor.otherMedicationCount > 0 ? <p className="mt-1 text-[11px] text-sky-300">Também vinculado a {doctor.otherMedicationCount} outro{doctor.otherMedicationCount===1?"":"s"} medicamento{doctor.otherMedicationCount===1?"":"s"} desta pessoa</p> : null}
     </DetailInfoRow>
-    {hospital ? <DetailInfoRow icon={<Building2 size={19}/>} iconClassName="bg-violet-400/10 text-violet-400" label="Hospital" action={nodeActions("hospitais",hospital)}>
+    {hospital ? <DetailInfoRow icon={<Building2 size={19}/>} iconClassName="bg-sky-400/10 text-sky-300" label="Hospital" action={nodeActions("hospitais",hospital)}>
       <p className="break-words text-sm font-bold text-ink-primary">{hospital.name}</p>
       {hospital.address ? <p className="mt-0.5 break-words text-[11px] text-ink-muted">{hospital.address}</p> : null}
     </DetailInfoRow> : null}

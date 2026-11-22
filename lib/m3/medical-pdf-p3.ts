@@ -3,6 +3,7 @@ import type { MedicalDossierP3, MedicalRowP3 } from './medical-dossier-p3';
 
 const clean=(input:unknown,max=6000):string=>String(input??'').replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,max);
 const shortDay=(iso:string)=>/^\d{4}-\d{2}-\d{2}$/.test(iso)?`${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}`:'Data não informada';
+const humanRowTextV34X=(value:string)=>value.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g,'$3/$2/$1').replace(/\bhealth_record\b/gi,'Registro de saúde');
 const sectionLabels:Record<string,string>={
   consultations:'Consultas',careflow:'CareFlow e pedidos',medications:'Medicamentos',doses:'Doses registradas',
   symptoms:'Sintomas e humor',measurements:'Medições',exams:'Exames avulsos',surgeries:'Cirurgias',
@@ -52,12 +53,12 @@ export async function makeMedicalPdfP3(report:MedicalDossierP3):Promise<Blob>{
     room(18);
     pdf.setDrawColor(218,231,237);pdf.line(left,y-2,right,y-2);
     pdf.setFont('helvetica','bold');pdf.setTextColor(25,46,56);pdf.setFontSize(10);
-    const title=`${shortDay(value.date)}  ·  ${clean(value.title,160)}`;
+    const title=`${shortDay(value.date)}  ·  ${clean(humanRowTextV34X(value.title),160)}`;
     const titleLines=pdf.splitTextToSize(title,right-left) as string[];
     for(const piece of titleLines){room(6);pdf.text(piece,left,y);y+=5.2;}
-    line(value.detail,9);
-    line(`Origem: ${clean(value.source,90)} · Evidência: ${value.provenance}${value.registeredAt?` · Registrado em: ${clean(value.registeredAt,40)}`:''}`,8,[81,106,117]);
-    for(const link of value.relations)line(`Vínculo documentado: ${link}`,8,[69,106,105]);
+    line(humanRowTextV34X(value.detail),9);
+    line(`Origem: ${clean(humanRowTextV34X(value.source),90)} · Evidência: ${value.provenance}${value.registeredAt?` · Registrado em: ${clean(value.registeredAt,40)}`:''}`,8,[81,106,117]);
+    for(const link of value.relations)line(`Vínculo documentado: ${humanRowTextV34X(link)}`,8,[69,106,105]);
     y+=3;
   }
   page();

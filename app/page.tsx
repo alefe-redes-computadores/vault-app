@@ -1649,7 +1649,7 @@ export default function HomePage() {
                 duration: 0.24,
                 delay: 0.04,
               }}
-              className="vault-deferred space-y-3"
+              className="space-y-3"
             >
               {/* P15 R8: renderização read-only; a autoridade e a ordem vêm de unifiedAlerts. */}
               <HomeAttentionRail alerts={unifiedAlerts} description={hasImmediateAttentionP7 ? "Há registros prioritários para conferir" : "O que merece prioridade agora"} expanded={mostrarTodosAlertas}
@@ -1681,7 +1681,7 @@ export default function HomePage() {
                 duration: 0.24,
                 delay: 0.05,
               }}
-              className="vault-deferred space-y-3"
+              className="space-y-3"
             >
               <div className="flex items-end justify-between gap-3">
                 <div>
@@ -1916,7 +1916,7 @@ export default function HomePage() {
                 delay:
                   0.08,
               }}
-              className="vault-deferred"
+              className=""
             >
               <div
                 className={`rounded-[20px] border p-3 shadow-sm ${
@@ -1980,7 +1980,7 @@ export default function HomePage() {
                         {primaryMedicationCareOpportunity.careStageLabel}
                       </span>
                       {primaryMedicationCareOpportunity.plannedAcquisitionCount ? (
-                        <span className="rounded-full border border-violet-400/20 bg-violet-400/8 px-2 py-1 font-mono text-[8px] text-violet-300">
+                        <span className="rounded-full border border-surface-border/60 bg-surface-raised px-2 py-1 text-[10px] text-ink-muted">
                           Futuro · não altera estoque
                         </span>
                       ) : null}
@@ -2010,8 +2010,8 @@ export default function HomePage() {
                     className={`rounded-xl px-3 py-2.5 text-[10px] font-bold transition-all active:scale-[0.98] ${
                       primaryMedicationCareOpportunity.level ===
                       "urgent"
-                        ? "bg-coral text-white"
-                        : "bg-ice text-void"
+                        ? "bg-emerald-300 text-void"
+                        : "bg-emerald-300 text-void"
                     }`}
                   >
                     {primaryMedicationCareOpportunity.actionLabel}
@@ -2042,9 +2042,10 @@ export default function HomePage() {
                         primaryMedicationCareOpportunity.treatmentHref!
                       );
                     }}
-                    className="mt-2 flex w-full items-center justify-between rounded-xl border border-surface-border/70 bg-surface-raised/70 px-3 py-2.5 text-left transition-all active:scale-[0.98]"
+                    className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/70 bg-surface-raised/70 px-3 py-2.5 text-left transition-all active:scale-[0.98]"
                   >
-                    <div className="min-w-0">
+                    <FolderHeart size={18} aria-hidden="true" className="shrink-0 text-emerald-300" />
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-ink-primary">
                         Ver tratamento vinculado
                       </p>
@@ -2063,6 +2064,15 @@ export default function HomePage() {
                   </button>
                 )}
 
+
+                {!primaryMedicationCareOpportunity.treatmentHref && primaryMedicationCareOpportunity.medicamentoId && (
+                  <button type="button" aria-label={`Relacionar um tratamento ao medicamento ${primaryMedicationCareOpportunity.medicamentoNome}`}
+                    onClick={() => { trigger("vibrate"); router.push(`/saude/medicamentos/editar?id=${encodeURIComponent(primaryMedicationCareOpportunity.medicamentoId)}&return_to=${encodeURIComponent("/")}`); }}
+                    className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[.04] px-3 py-2.5 text-left text-xs font-semibold text-sky-200">
+                    <FolderHeart size={17} className="shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">Relacionar tratamento</span><ChevronRight size={15} aria-hidden="true" className="shrink-0" />
+                  </button>
+                )}
 
                 <p className="mt-3 text-center text-xs leading-relaxed text-ink-faint">
                   O Vault cruza seus próprios registros de estoque, renovação e tratamento. Isso não substitui orientação profissional.
@@ -2098,7 +2108,7 @@ export default function HomePage() {
               duration: 0.24,
               delay: 0.08,
             }}
-            className="vault-deferred-lg space-y-3"
+            className="space-y-3"
           >
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -2107,7 +2117,7 @@ export default function HomePage() {
                     size={
                       15
                     }
-                    className="text-violet-400"
+                    className="text-sky-300"
                   />
 
                   <h2 className="font-display text-sm font-semibold text-ink-primary">

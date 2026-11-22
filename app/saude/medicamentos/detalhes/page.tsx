@@ -2825,7 +2825,7 @@ function MedicamentoDetalhesContent() {
                     )}
                   </div>
 
-                  {med.laboratorio_etiqueta && <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-violet-200" title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}><Factory size={12} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{med.laboratorio_etiqueta}</span></p>}
+                  {med.laboratorio_etiqueta && <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-sky-200" title={`Laboratório da etiqueta visual: ${med.laboratorio_etiqueta}`}><Factory size={12} className="shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{med.laboratorio_etiqueta}</span></p>}
                   <p className="mt-1 text-sm font-medium leading-relaxed text-ink-secondary">
                     {med.dosagem}
                     <span>
@@ -2834,6 +2834,12 @@ function MedicamentoDetalhesContent() {
                     </span>
                   </p>
 
+                  {(catalogIdentity?.activeIngredients?.length || stableIngredientKnowledge) && (
+                    <p className="mt-2 flex min-w-0 flex-wrap gap-1 text-xs leading-snug text-ink-secondary" data-vault-v34x-ingredient-visible>
+                      <span className="font-semibold text-ink-muted">Princípio ativo:</span>
+                      <span className="min-w-0 break-words">{catalogIdentity?.activeIngredients?.join(" + ") || stableIngredientKnowledge}</span>
+                    </p>
+                  )}
                   {catalogIdentity && catalogIdentity.authorityState !== "unvalidated" && (
                     <details className="group mt-2 rounded-xl border border-surface-border/60 bg-void/20 px-3 py-1">
                       <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-2 py-2 text-left">
@@ -3340,8 +3346,8 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
 
           {comportamento && (
-            <details open={comportamento.tipo === "alerta_adesao"} className="group rounded-[18px] border border-violet-400/20 bg-violet-400/[0.035] px-3 py-1">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-left text-xs font-semibold text-violet-300">
+            <details open={comportamento.tipo === "alerta_adesao"} className="group rounded-[18px] border border-amber-400/20 bg-amber-400/[0.035] px-3 py-1">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-2 text-left text-xs font-semibold text-amber-300">
                 <span className="min-w-0 break-words">{comportamento.tipo === "alerta_adesao" ? "Atenção ao registro" : "Padrão observado"} · {comportamento.titulo}</span>
                 <ChevronRight size={15} className="shrink-0 transition-transform group-open:rotate-90"/>
               </summary>
@@ -3402,7 +3408,7 @@ function MedicamentoDetalhesContent() {
 
           {/* P14 R5: rotina/estoque antes de contexto secundário (âncoras preservadas). */}
           <ClinicalDisclosure id="medicamento-jornada" title="Jornada do medicamento" description="Receita, aquisição e retirada · etapas registradas ou planejadas" icon={<CalendarDays size={18}/>} iconClassName="text-sky-300">
-            <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} onNavigate={href=>router.push(href)}/>
+            <MedicationJourneySummary snapshot={journeySnapshot} medicationId={med.id} prescriptionDeclared={Boolean(med.data_receita)} onNavigate={href=>router.push(href)}/>
             <details className="mt-2 rounded-xl border border-surface-border/50 bg-surface-raised/30 px-3 py-1">
               <summary className="min-h-11 cursor-pointer py-2 text-xs font-semibold text-ink-secondary">Conferir datas documentais</summary>
           <MedicationTreatmentJourneyD2
@@ -3415,7 +3421,7 @@ function MedicamentoDetalhesContent() {
             {med.id && med.person_id===activePersonId ? <TreatmentContinuityA4 context="careflow" maxItems={2} medicationId={med.id}/> : null}
           </ClinicalDisclosure>
           {med.id && med.person_id && activePersonId === med.person_id ? (
-            <ClinicalDisclosure id="pharmalens-v7" title="PharmaLens · fabricantes" description="Trocas, experiências e evidências pessoais por fabricante" icon={<LineChart size={18}/>} iconClassName="text-violet-300">
+            <ClinicalDisclosure id="pharmalens-v7" title="PharmaLens · fabricantes" description="Trocas, experiências e evidências pessoais por fabricante" icon={<LineChart size={18}/>} iconClassName="text-emerald-300">
               {() => <PharmaLensMedicationEntryV7 medicationId={med.id!} userId={med.user_id} personId={med.person_id!} referenceManufacturer={med.laboratorio_etiqueta}/>}
             </ClinicalDisclosure>
           ) : null}
@@ -3477,6 +3483,7 @@ function MedicamentoDetalhesContent() {
               ================================================== */}
           <ClinicalDisclosure id="medicamento-rede" title="Prescrição e rede de cuidado" description="Profissionais, locais e farmácias vinculados" icon={<Stethoscope size={18}/> } iconClassName="text-teal-300">
             {() => <MedicationCareNetworkDetails
+              medicationId={med.id}
               doctor={{id:medico?.id,name:medico?.nome || med.medico || "Não informado",otherMedicationCount:outrosMedsDesteMedico.length}}
               hospital={hospital ? {id:hospital.id,name:hospital.nome,address:hospital.endereco,phone:hospital.telefone} : null}
               location={local ? {id:local.id,name:local.nome,address:local.endereco,phone:local.telefone,kind:local.tipo} : null}
@@ -3495,7 +3502,7 @@ function MedicamentoDetalhesContent() {
 
           {renovacoes.length >
             0 && (
-            <ClinicalDisclosure id="historico-aquisicoes" title="Movimentações anteriores" description={`${renovacoes.length} receitas e aquisições registradas · consultar sob demanda`} icon={<CalendarDays size={18}/>} iconClassName="text-violet-300">
+            <ClinicalDisclosure id="historico-aquisicoes" title="Movimentações anteriores" description={`${renovacoes.length} receitas e aquisições registradas · consultar sob demanda`} icon={<CalendarDays size={18}/>} iconClassName="text-amber-300">
               {() => <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 px-1">
                 <div>

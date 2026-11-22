@@ -20,12 +20,12 @@ export function MedicationDetailCareHubM148({ view, treatments = [], hasRoutine,
   const links = [
     { id: hasRoutine ? "medicamento-rotina" : "medicamento-agora", icon: Activity, ...view.treatment, tone: "text-sky-300" },
     { id: "medicamento-fornecimento", icon: Package, ...view.supply, tone: "text-emerald-300" },
-    { id: "medicamento-receita", icon: FileText, ...view.documents, tone: "text-violet-300" },
+    { id: "medicamento-receita", icon: FileText, ...view.documents, tone: "text-sky-300" },
   ] as const;
   const manufacturerDay = view.manufacturer.latestAcquisitionDate;
   const manufacturerDate = manufacturerDay && /^\d{4}-\d{2}-\d{2}$/.test(manufacturerDay)
     ? manufacturerDay.split("-").reverse().join("/") : null;
-  return <section aria-label="Mapa de relações do medicamento" className="rounded-[22px] border border-emerald-300/15 bg-gradient-to-br from-surface-raised/75 via-surface to-violet-400/[.025] p-3 shadow-sm">
+  return <section aria-label="Mapa de relações do medicamento" className="rounded-[22px] border border-emerald-300/15 bg-gradient-to-br from-surface-raised/75 via-surface to-emerald-400/[.025] p-3 shadow-sm">
     <div className="flex items-start gap-2.5">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-emerald-300/15 bg-emerald-300/[.06] text-emerald-300"><ShieldCheck size={17}/></span>
       <div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Relações deste medicamento</h2><p className="mt-0.5 text-xs leading-relaxed text-ink-muted">Tratamento, fornecimento e receitas com origens separadas. Toque para abrir a seção real.</p></div>
@@ -41,12 +41,12 @@ export function MedicationDetailCareHubM148({ view, treatments = [], hasRoutine,
       </button>)}
     </div>
     <details className="group mt-2.5 rounded-xl border border-surface-border/50 bg-void/15 px-3">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="flex items-center gap-2"><Factory size={15} className="text-violet-300"/> Fabricantes e origem das informações</span><ChevronDown size={15} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"><span className="flex items-center gap-2"><Factory size={15} className="text-amber-300"/> Fabricantes e origem das informações</span><ChevronDown size={15} className="shrink-0 transition-transform group-open:rotate-180"/></summary>
       <div className="space-y-3 border-t border-surface-border/40 pb-3 pt-3 text-xs leading-relaxed text-ink-muted">
         <div><p title="Etiqueta declarada no cadastro" className="mb-1 font-semibold text-ink-secondary">Laboratório informado</p>{view.manufacturer.label ? <ManufacturerBadge manufacturer={view.manufacturer.label}/> : <p>Não informada</p>}</div>
         <div><p className="mb-1 font-semibold text-ink-secondary">Fabricante da última aquisição realizada</p>{view.manufacturer.latestAcquisition ? <ManufacturerBadge manufacturer={view.manufacturer.latestAcquisition}/> : <p>{view.manufacturer.hasCompletedAcquisition ? "Não informado no registro da última aquisição" : "Nenhuma aquisição realizada registrada"}</p>}{manufacturerDate ? <p className="mt-1 flex items-center gap-1.5"><CalendarClock size={13}/> Aquisição registrada em {manufacturerDate}</p> : null}</div>
         <p className="rounded-lg border border-amber-300/15 bg-amber-300/[.04] p-2.5">O fabricante da última aquisição não comprova qual embalagem está em uso. A etiqueta é uma informação declarada, não um laudo ou identificação física verificada.</p>
-        {hasPharmaLens ? <button type="button" onClick={() => onOpenSection("pharmalens-v7")} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[.045] px-3 text-xs font-semibold text-violet-200">Explorar relatos e trocas de fabricante <ChevronRight size={15}/></button> : null}
+        {hasPharmaLens ? <button type="button" onClick={() => onOpenSection("pharmalens-v7")} className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.045] px-3 text-xs font-semibold text-amber-200">Explorar relatos e trocas de fabricante <ChevronRight size={15}/></button> : null}
       </div>
     </details>
     <p className="mt-2.5 text-[11px] leading-relaxed text-ink-muted">{view.note}</p>

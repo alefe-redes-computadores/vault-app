@@ -17,12 +17,12 @@ type Props = {
 export const MedicationBehaviorEvidence = memo(function MedicationBehaviorEvidence({
   alert, title, message, suggestedAction, confidence, sample,
 }: Props) {
-  const tone = alert ? "text-amber-400" : "text-violet-400";
+  const tone = alert ? "text-amber-400" : "text-sky-300";
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      className={`rounded-[20px] border p-3.5 ${alert ? "border-amber-400/30 bg-amber-400/10" : "border-violet-400/30 bg-violet-400/10"}`}>
+      className={`rounded-[20px] border p-3.5 ${alert ? "border-amber-400/30 bg-amber-400/10" : "border-sky-400/30 bg-sky-400/10"}`}>
       <div className="flex items-start gap-3">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${alert ? "bg-amber-400/10" : "bg-violet-400/10"} ${tone}`} aria-hidden="true">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${alert ? "bg-amber-400/10" : "bg-sky-400/10"} ${tone}`} aria-hidden="true">
           <Activity size={18} />
         </span>
         <div className="min-w-0 flex-1">
