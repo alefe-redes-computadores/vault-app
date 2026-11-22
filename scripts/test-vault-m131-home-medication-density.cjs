@@ -9,8 +9,9 @@ for (const p of ["components/home/HomeCommandCenter.tsx","components/home/HomeDa
 }
 const home=read("components/home/HomeCommandCenter.tsx"),hero=read("components/home/HomeDailyHero.tsx"),med=read("app/saude/medicamentos/page.tsx");
 ok(home.includes('grid min-w-0 grid-cols-2 gap-2')&&home.includes('label="Minha saúde"')&&home.includes('go("/saude/medicamentos")'),"duas ações principais continuam navegáveis");
-ok(!home.includes('label: "Minha saúde"')&&home.includes('<HomeClinicalAreaTile key={path}'),"Minha saúde não está duplicada em outras áreas");
-ok(home.includes('id="home-outras-areas" title=')&&!home.includes('id="home-outras-areas" defaultOpen'),"outras áreas recolhidas inicialmente");
+ok(!home.includes('label: "Minha saúde"')&&/<HomeClinicalAreaTile\s+key=\{path\}/.test(home),"Minha saúde não está duplicada em outras áreas");
+const otherDisclosure=home.match(/<ClinicalDisclosure\b[^>]*id="home-outras-areas"[^>]*>/s)?.[0]||"";
+ok(/<ClinicalDisclosure\s+id="home-outras-areas"\s+title=/.test(home)&&!/\bdefaultOpen\b/.test(otherDisclosure),"outras áreas recolhidas inicialmente");
 ok(home.includes('withdrawalPath="/saude/retiradas"')&&home.includes('supplyPath="/saude/fornecimento"')&&home.includes('<details className="group'),"retiradas e fornecimento continuam alcançáveis no modo Essencial");
 ok(home.includes('go("/saude/plano-seguranca")')&&home.includes('id="home-organizacao"'),"segurança e organização disponíveis");
 ok(home.includes('tone="border-coral/20 bg-coral/[0.06] text-coral"')&&read('components/home/HomeClinicalAreaTile.tsx').includes('onNavigate(path)'),"componente de Minha saúde reutiliza identidade sem duplicar CSS");
