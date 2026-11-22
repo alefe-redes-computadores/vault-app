@@ -10,8 +10,10 @@ import type { A4ClinicalFact } from '@/lib/treatment-a4/clinical-bridge';
 import { rehabFactsM5, localDayRehabM5 } from '@/lib/rehab-m5/projection';
 import type { RehabProgramM5, RehabSessionM5, RehabMilestoneM5, RehabOriginM5 } from '@/lib/rehab-m5/types';
 import type { A7Event, A7Team } from '@/lib/surgery-a7/types';
+import { currentVaccinationEventsA8 } from '@/lib/vaccination-a8/types';
+import type {A8Course,A8Event} from '@/lib/vaccination-a8/types';
 
-export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation';
+export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation' | 'vaccinations';
 export type MedicalModeP3 = 'summary' | 'detailed';
 export type MedicalProvenanceP3 = 'registrado' | 'declarado' | 'motor';
 export type MedicalRowP3 = {
@@ -41,6 +43,7 @@ export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;des
   {id:'prescriptions',label:'Receitas e aquisições',description:'Data da receita versus data da aquisição'},
   {id:'treatments',label:'Tratamentos',description:'Fases versionadas e cadastro atual, sem inferências'},
   {id:'rehabilitation',label:'Reabilitação',description:'Ciclos, sessões e marcos documentados'},
+  {id:'vaccinations',label:'Vacinação',description:'Aplicações declaradas, planejamento e fontes documentadas'},
   {id:'documents',label:'Documentos',description:'Somente títulos e metadados permitidos'},
 ];
 const ALLOWED = new Set<MedicalSectionP3>(MEDICAL_SECTIONS_P3.map(s=>s.id));
@@ -67,6 +70,7 @@ export type MedicalDossierInputP3={
   treatmentFacts?:readonly A4ClinicalFact[];
   surgeryEvents?:readonly A7Event[];
   surgeryTeam?:readonly A7Team[];
+  vaccination?:{courses:readonly A8Course[];events:readonly A8Event[]};
   ownerId:string; personId:string; personName:string; start:string; end:string;
   mode:MedicalModeP3; sections:readonly MedicalSectionP3[]; includeBrain?:boolean; generatedAt?:string;
   consultationId?:string;
@@ -303,6 +307,24 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
         source:'surgery_team_a7',sourceId:t.id,registeredAt:t.created_at,provenance:'declarado',
         relations:['Equipe cirúrgica; não equivale à equipe da internação'],
         href:`/saude/cirurgias/jornada?id=${encodeURIComponent(t.cirurgia_id)}`});
+    }
+  }
+  // A8: same canonical vaccination events as the standalone dossier. No inference from dates or M144 diary.
+  if(selected('vaccinations')&&input.vaccination){
+    const courses=owned(input.vaccination.courses).filter(c=>!c.deleted_at);
+    const names=new Map(courses.map(c=>[c.id,c.vaccine_name]));
+    for(const e of currentVaccinationEventsA8(input.vaccination.events,uid,pid)){
+      if(e.effective_kind==='void'||!names.has(e.course_id))continue;
+      const factDay=e.effective_kind==='dose'?e.administered_on:e.planned_on;
+      if(!factDay||!within(factDay))continue;
+      const isDose=e.effective_kind==='dose';
+      add({section:'vaccinations',date:factDay,time:null,
+        title:`${isDose?'Aplicação informada':'Data planejada'} · ${safe(names.get(e.course_id),160)}`,
+        detail:[e.dose_number?`Dose ${e.dose_number}`:'',e.lot?`Lote ${e.lot}`:'',e.manufacturer?`Fabricante informado: ${e.manufacturer}`:'',
+          e.source==='professional_document'?'Documento profissional apresentado':'Relato próprio',e.note||'',
+          isDose?'Aplicação declarada, não validação oficial do esquema.':'Planejamento não confirma vacinação.'].filter(Boolean).join(' · '),
+        source:'vaccination_event_a8',sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',
+        relations:['Carteira A8 vinculada por ID ao perfil ativo'],href:`/saude/vacinas?curso=${encodeURIComponent(e.course_id)}`});
     }
   }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.

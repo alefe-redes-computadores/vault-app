@@ -64,6 +64,7 @@ import { syncSurgeryConsultationLinkM4P2 } from "@/lib/clinical-journey-m4/sync-
 import { syncRehabM5 } from "@/lib/rehab-m5/sync";
 import { syncHospitalizationA5,pendingA5Dependency } from "@/lib/hospitalizations-a5/sync";
 import {syncSurgeryA7,pendingSurgeryA7Dependency} from "@/lib/surgery-a7/sync";
+import {syncVaccinationA8,pendingVaccinationA8Dependency} from "@/lib/vaccination-a8/sync";
 import { REHAB_ALL_TABLES_M5, type RehabTableM5 } from "@/lib/rehab-m5/types";
 import { isClinicalExamTableM1 } from "@/lib/clinical-exams-m1/types";
 import {
@@ -5213,6 +5214,8 @@ export function useSyncQueue() {
         case "hospitalization_discharge_a5": await markRecordSyncedIfCurrent(db.hospitalization_discharge_a5,payload.id,expectedUpdatedAt); break;
         case "surgery_journey_events_a7": await markRecordSyncedIfCurrent(db.surgery_journey_events_a7,payload.id,expectedUpdatedAt); break;
         case "surgery_team_a7": await markRecordSyncedIfCurrent(db.surgery_team_a7,payload.id,expectedUpdatedAt); break;
+        case "vaccination_courses_a8": await markRecordSyncedIfCurrent(db.vaccination_courses_a8,payload.id,expectedUpdatedAt); break;
+        case "vaccination_events_a8": await markRecordSyncedIfCurrent(db.vaccination_events_a8,payload.id,expectedUpdatedAt); break;
         case "health_reminders":
           await markRecordSyncedIfCurrent(db.health_reminders, payload.id, expectedUpdatedAt);
           break;
@@ -5483,6 +5486,13 @@ export function useSyncQueue() {
           );
           return;
 
+        case 'vaccination_courses_a8': case 'vaccination_events_a8': {
+          const client=requireSupabase();const {data,error}=await client.auth.getUser();
+          if(error||!data.user)throw Error('A8: sessão autenticada obrigatória.');
+          const pending=await pendingVaccinationA8Dependency(item,async(table,id)=>Boolean(await db.syncQueue.where('chave').equals(`${table}:${id}`).first()));
+          if(pending)throw new SyncDependencyDeferredError('A8: aguardando vínculo pendente '+pending);
+          await syncVaccinationA8(item,data.user.id);return;
+        }
         case 'surgery_journey_events_a7': case 'surgery_team_a7': {
           const client=requireSupabase();const {data,error}=await client.auth.getUser();
           if(error||!data.user)throw Error('A7: sessão autenticada obrigatória.');
@@ -5763,6 +5773,8 @@ export function useSyncQueue() {
                   "exam_sessions",
                   "exam_session_items",
                   "clinical_assets",
+                  "vaccination_courses_a8",
+                  "vaccination_events_a8",
                   "clinical_asset_links",
                   "consultation_exam_order_links",
                   "cirurgias",

@@ -548,14 +548,35 @@ const contracts = [
   "scripts/test-vault-medication-document-sync-p0.cjs",
   "scripts/test-vault-p0-consulta-sync-owner.cjs",
   "scripts/test-vault-a5-v28.cjs",
+  "scripts/test-vault-a8-vaccination-360.cjs",
 ];
 
+// CI permanece fail-fast por padrao. Para homologacao no Termux, o modo
+// VAULT_V63_COLLECT_ALL=1 executa TODOS os contratos e so entao bloqueia.
+// Nenhuma falha e tolerada nem contabilizada como sucesso.
+const collectAll = process.env.VAULT_V63_COLLECT_ALL === "1";
+const failedContracts = [];
+let checkedContracts = 0;
 for (const contract of contracts) {
   console.log(`\n=== ${contract} ===`);
   const result = spawnSync(process.execPath, ["--require", vaultM2TestPreload, contract], { stdio: "inherit" });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  checkedContracts++;
+  if (!collectAll) {
+    // Contrato M67: a CI padrao interrompe no primeiro erro.
+    if (result.status !== 0) process.exit(result.status ?? 1);
+  } else if (result.status !== 0) {
+    failedContracts.push({contract,code:result.status ?? 1});
+  }
+  if (collectAll && (checkedContracts % 25 === 0 || checkedContracts === contracts.length)) {
+    console.log(`[V63 COLETA] ${checkedContracts}/${contracts.length} | falhas=${failedContracts.length}`);
+  }
 }
-
+if (failedContracts.length > 0) {
+  console.error(`V63_BLOQUEADA_COLETA_INTEGRAL | executadas=${checkedContracts} | falhas=${failedContracts.length}`);
+  for (const {contract,code} of failedContracts) console.error(`V63_FALHA | exit=${code} | ${contract}`);
+  process.exit(1);
+}
+if (collectAll) console.log(`V63_COLETA_INTEGRAL_APROVADA | executadas=${checkedContracts} | falhas=0`);
 
 console.log("\n=== V70 — SUPER INTEGRIDADE + UX ===");
 execFileSync(process.execPath, ["scripts/test-v70-super-integrity-ux-contract.mjs"], { stdio: "inherit" });

@@ -18,6 +18,7 @@ import { TodayJourneyRailP5 } from "@/components/hoje/TodayJourneyRailP5";
 import { TodayBatchAction } from "@/components/hoje/TodayBatchAction";
 import { TodayUnscheduledRoutine } from "@/components/hoje/TodayUnscheduledRoutine";
 import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
+import { VaccinationAccessA8 } from "@/components/saude/VaccinationAccessA8";
 import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
 import { HospitalizationA5AgendaStrip } from "@/components/saude/HospitalizationA5AgendaStrip";
 import { HealthDateTimePicker } from "@/components/saude/HealthDateTimePicker";
@@ -2067,6 +2068,7 @@ export default function HojePage() {
               <TreatmentContinuityA4 context="today" maxItems={2} />
               <RehabM5AgendaStrip />
               <HospitalizationA5AgendaStrip day={dataSelecionada} />
+              <VaccinationAccessA8 context="today" />
             </div>
           ) : null}
           <span

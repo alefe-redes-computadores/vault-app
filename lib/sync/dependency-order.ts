@@ -52,6 +52,8 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   hospitalization_discharge_a5: [["hospitalization_id","hospitalizations_a5"]],
   surgery_journey_events_a7: [["cirurgia_id","cirurgias"],["source_professional_id","medicos"],["corrects_event_id","surgery_journey_events_a7"]],
   surgery_team_a7: [["cirurgia_id","cirurgias"],["professional_id","medicos"]],
+  vaccination_courses_a8: [],
+  vaccination_events_a8: [["course_id","vaccination_courses_a8"],["source_professional_id","medicos"],["source_location_id","locais"],["corrects_event_id","vaccination_events_a8"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -86,7 +88,8 @@ export function blockedSyncDependency(
       type==='exam_session'?'exam_sessions':type==='consultation'?'consultas':
       type==='rehab_program'?'rehab_programs_m5':type==='rehab_session'?'rehab_sessions_m5':
       type==='hospitalization'?'hospitalizations_a5':type==='hospitalization_event'?'hospitalization_events_a5':
-      type==='hospitalization_discharge'?'hospitalization_discharge_a5':null;
+      type==='hospitalization_discharge'?'hospitalization_discharge_a5':
+      type==='vaccination_event'?'vaccination_events_a8':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
   return null;

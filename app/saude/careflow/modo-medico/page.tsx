@@ -77,6 +77,15 @@ export default function MedicalModeP3Page(){
     return {scope:scopeKey,events:events.filter(x=>x.user_id===uid&&x.person_id===pid&&!x.deleted_at),
       team:team.filter(x=>x.user_id===uid&&x.person_id===pid&&!x.deleted_at)};
   },[user?.id,activePersonId]);
+  const vaccination=useLiveQuery(async()=>{
+    const uid=user?.id||'',pid=activePersonId||'';
+    if(!uid||!pid)return {scope:scopeKey,courses:[],events:[]};
+    const [person,courses,events]=await Promise.all([db.persons.get(pid),
+      db.vaccination_courses_a8.where('[user_id+person_id]').equals([uid,pid]).toArray(),
+      db.vaccination_events_a8.where('[user_id+person_id]').equals([uid,pid]).toArray()]);
+    if(person?.user_id!==uid)return {scope:scopeKey,courses:[],events:[]};
+    return {scope:scopeKey,courses,events};
+  },[user?.id,activePersonId]);
   const notes=notesDraft.scope===scopeKey?notesDraft.text:'';
   useEffect(()=>{
     setNotesDraft({scope:'',text:''});setMessage('');setQ('');setLimit(40);setFocusSection('all');setEpisode('');setReadingMode(false);
@@ -108,7 +117,7 @@ export default function MedicalModeP3Page(){
     if(item.data&&item.data<start)setStart(item.data);
   },[scopeKey,user?.id,activePersonId,health.context,consultations,start]);
   const person=persons.find(p=>p.id===activePersonId);
-  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&a4Phases?.scope===scopeKey&&surgical?.scope===scopeKey&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey));
+  const ready=Boolean(user?.id&&activePersonId&&!health.isLoading&&!health.error&&!loadingCare&&(!includeBrain||!brain.isLoading)&&health.context?.userId===user?.id&&health.context?.personId===activePersonId&&a4Phases?.scope===scopeKey&&surgical?.scope===scopeKey&&(!sections.includes('rehabilitation')||rehab?.scope===scopeKey)&&(!sections.includes('vaccinations')||vaccination?.scope===scopeKey));
   const a4Facts=useMemo(()=>user?.id&&activePersonId&&health.context&&a4Phases?.scope===scopeKey?
     projectA4ClinicalFacts({userId:user.id,personId:activePersonId,phases:a4Phases.rows,
       treatments:health.context.tratamentos,medications:health.context.medicamentos,from:start,through:end,max:2000}):[],
@@ -117,19 +126,19 @@ export default function MedicalModeP3Page(){
     if(!ready||!user?.id||!activePersonId||!health.context)return {report:null,error:''};
     try{
       return {report:buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
-        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],
+        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,
         ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode,sections,consultationId:episode||undefined}),error:''};
     }catch(error){return {report:null,error:error instanceof Error?error.message:'Não foi possível preparar esta prévia.'};}
-  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical]);
+  },[ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,mode,sections,episode,rehab,scopeKey,a4Facts,surgical,vaccination]);
   const normalized=q.trim().toLocaleLowerCase('pt-BR');
   // Busca percorre a projeção detalhada completa, mas não altera o PDF.
   const searchReport=useMemo(()=>{
     if(!normalized||!ready||!user?.id||!activePersonId||!health.context)return prepared.report;
     try{return buildMedicalDossierP3({context:health.context,careflow:events,ledger:includeBrain?brain.records:[],includeBrain,treatmentFacts:a4Facts,rehab:rehab?.scope===scopeKey?rehab:undefined,
-        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],
+        surgeryEvents:surgical?.scope===scopeKey?surgical.events:[],surgeryTeam:surgical?.scope===scopeKey?surgical.team:[],vaccination:vaccination?.scope===scopeKey?vaccination:undefined,
       ownerId:user.id,personId:activePersonId,personName:person?.name||'Pessoa ativa',start,end,mode:'detailed',sections,consultationId:episode||undefined});}
     catch{return prepared.report;}
-  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical]);
+  },[normalized,ready,user?.id,activePersonId,health.context,events,brain.records,includeBrain,person?.name,start,end,sections,episode,prepared.report,rehab,scopeKey,a4Facts,surgical,vaccination]);
   const filtered=useMemo(()=>searchReport?.rows.filter(r=>
     (focusSection==='all'||r.section===focusSection)&&
     (!normalized||[r.title,r.detail,r.source,...r.relations].join(' ').toLocaleLowerCase('pt-BR').includes(normalized)))||[],

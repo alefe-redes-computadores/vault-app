@@ -1,7 +1,7 @@
 import type { SyncQueueItem } from '@/lib/types';
 import { isClinicalExamTableM1, type ClinicalExamTableM1 } from './types';
 
-export type ClinicalDependencyM1 = {table: ClinicalExamTableM1 | 'consultas'; id: string};
+export type ClinicalDependencyM1 = {table: ClinicalExamTableM1 | 'consultas' | 'vaccination_events_a8'; id: string};
 /** Exact foreign-key dependencies, without name/date inference. */
 export function clinicalExamDependenciesM1(item: SyncQueueItem): ClinicalDependencyM1[] {
   if (!isClinicalExamTableM1(item.table) || item.operation === 'delete') return [];
@@ -24,6 +24,7 @@ export function clinicalExamDependenciesM1(item: SyncQueueItem): ClinicalDepende
       if (kind === 'exam_order_item') add('exam_order_items','entity_id');
       if (kind === 'exam_session') add('exam_sessions','entity_id');
       if (kind === 'consultation') add('consultas','entity_id');
+      if (kind === 'vaccination_event') add('vaccination_events_a8','entity_id');
       break;
     }
     case 'consultation_exam_order_links':

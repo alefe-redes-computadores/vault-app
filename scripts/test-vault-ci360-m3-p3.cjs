@@ -17,7 +17,8 @@ function load(path,aliases={}){
 }
 const report=load('lib/clinical-report-360.ts');
 const rehabProjection=load('lib/rehab-m5/projection.ts');
-const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection});
+const vaccination=load('lib/vaccination-a8/types.ts');
+const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination});
 const scope=load('lib/m3/medical-scope-p3.ts');
 const timestamp='2026-11-17T11:00:00-03:00';
 const ctx=()=>({userId:'own-a',personId:'person-a',medicamentos:[],doseLogs:[],renovacoes:[],tratamentos:[],
@@ -78,6 +79,17 @@ assert.ok(scopedRehab.rows.some(r=>r.sourceId==='rehab-1'&&r.title.includes('Rea
 const foreignRehab=med.buildMedicalDossierP3({...args(ctx()),sections:['rehabilitation'],rehab:{...rehabInput,programs:[{...factualRehab,user_id:'another-account'}]}});
 assert.ok(!foreignRehab.rows.some(r=>r.sourceId==='rehab-1'),'M5 foreign owner is never projected');
 
+// A8 Modo Médico: reuse pure owner-scoped projections, not legacy M144 diary text.
+const series={id:'course-own',...own,vaccine_name:'Vacina declarada',scheme_note:null,deleted_at:null};
+const vaccinationRows=[
+ {id:'a8-plan',...own,course_id:'course-own',kind:'plan',effective_kind:'plan',planned_on:'2026-11-15',administered_on:null,created_at:timestamp,deleted_at:null},
+ {id:'a8-dose',...own,course_id:'course-own',kind:'dose',effective_kind:'dose',planned_on:null,administered_on:'2026-11-13',created_at:timestamp,deleted_at:null,source:'self_report'},
+ {id:'a8-foreign',...other,course_id:'course-own',kind:'dose',effective_kind:'dose',planned_on:null,administered_on:'2026-11-14',created_at:timestamp,deleted_at:null,source:'self_report'}
+];
+const a8Report=med.buildMedicalDossierP3({...args(ctx()),sections:['vaccinations'],vaccination:{courses:[series,{...series,id:'course-other',...other}],events:vaccinationRows}});
+assert.equal(a8Report.rows.length,2,'A8: não inclui dose de outra pessoa');
+assert.equal(a8Report.rows.filter(r=>r.title.includes('Aplicação informada')).length,1,'A8 planejamento não vira aplicação');
+assert.ok(a8Report.rows.every(r=>r.source==='vaccination_event_a8'&&r.href?.includes('curso=course-own')),'A8 links por ID canônico');
 assert.doesNotThrow(()=>scope.assertMedicalScopeP3({userId:'u',personId:'p',signature:'a'}, {userId:'u',personId:'p',signature:'a'}));
 for(const otherScope of [{userId:'u2',personId:'p',signature:'a'},{userId:'u',personId:'p2',signature:'a'},{userId:'u',personId:'p',signature:'b'}])
   assert.throws(()=>scope.assertMedicalScopeP3({userId:'u',personId:'p',signature:'a'},otherScope),/mudou/);

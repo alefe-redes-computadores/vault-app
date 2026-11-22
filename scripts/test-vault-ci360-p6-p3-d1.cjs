@@ -14,6 +14,15 @@ const rehabMod={exports:{}};
 vm.runInNewContext(rehabCompiled,{module:rehabMod,exports:rehabMod.exports,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,encodeURIComponent},
  {filename:'lib/rehab-m5/projection.ts',timeout:10000});
 
+// A8: carregar o modulo de producao em memoria, sem substituir a regra de titularidade.
+const vaccinationSource=fs.readFileSync('lib/vaccination-a8/types.ts','utf8');
+const vaccinationCompiled=ts.transpileModule(vaccinationSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const vaccinationMod={exports:{}};
+vm.runInNewContext(vaccinationCompiled,{module:vaccinationMod,exports:vaccinationMod.exports,
+  Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol},
+ {filename:'lib/vaccination-a8/types.ts',timeout:10000});
+assert.equal(typeof vaccinationMod.exports.currentVaccinationEventsA8,'function','A8 usa o filtro real de vacinacao por titular');
+
 const fakeClinical={
  validClinicalDay:s=>{if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;return !Number.isNaN(Date.parse(s+'T12:00:00Z'));},
  buildClinicalReport360:({context,sections,ownerId,personId})=>{
@@ -26,7 +35,7 @@ const fakeClinical={
 };
 vm.runInNewContext(compiled.outputText,{
  exports:m.exports,module:m,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,
- require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;throw Error('Dependência não permitida '+id);}
+ require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;throw Error('Dependência não permitida '+id);}
 },{filename:p,timeout:10000});
 const {buildMedicalDossierP3}=m.exports;
 const owner={user_id:'u',person_id:'p'},foreign={user_id:'outro',person_id:'p'};
@@ -43,6 +52,21 @@ const cf=[
  {...foreign,id:'bad',kind:'monitor_note',parent_id:'c',related_id:'sf',created_at:'2026-11-18T10:00:00-03:00',payload:{date:'2026-11-18',link:'consultation_to_existing_symptom'}}
 ];
 const options={context:ctx,careflow:cf,ownerId:'u',personId:'p',personName:'Pessoa fictícia',start:'2026-11-16',end:'2026-11-18',mode:'detailed',sections:['consultations','symptoms','careflow','medications']};
+
+// A8: um plano nao e aplicacao; dados de outra pessoa nunca aparecem no PDF/Modo Medico.
+const vaccinationOwn={user_id:'u',person_id:'p',course_id:'a8-course',deleted_at:null,created_at:'2026-11-17T12:00:00Z'};
+const vaccineRows=[
+ {...vaccinationOwn,id:'a8-factual',kind:'dose',effective_kind:'dose',administered_on:'2026-11-17',planned_on:null,source:'self_report'},
+ {...vaccinationOwn,id:'a8-planned',kind:'plan',effective_kind:'plan',planned_on:'2026-11-18',administered_on:null,source:'self_report'},
+ {...vaccinationOwn,id:'a8-foreign',user_id:'outro',kind:'dose',effective_kind:'dose',administered_on:'2026-11-17',planned_on:null,source:'self_report'}
+];
+const vaccinationInput={courses:[{...vaccinationOwn,id:'a8-course',vaccine_name:'Vacina declarada',scheme_note:null}],events:vaccineRows};
+const vaccinationReport=buildMedicalDossierP3({...options,sections:['vaccinations'],vaccination:vaccinationInput});
+assert.ok(vaccinationReport.rows.some(x=>x.sourceId==='a8-factual'),'dose declarada A8 aparece');
+assert.ok(vaccinationReport.rows.some(x=>x.sourceId==='a8-planned'),'planejamento A8 permanece como plano');
+assert.ok(!vaccinationReport.rows.some(x=>x.sourceId==='a8-foreign'),'vacinacao alheia nao vaza para PDF');
+assert.equal(vaccinationMod.exports.factualDoseCountA8(vaccineRows,'u','p'),1,'plano e registro estrangeiro nao contam como aplicacao');
+
 const all=buildMedicalDossierP3(options);
 const symptom=all.rows.find(x=>x.sourceId==='s');
 assert.ok(symptom,'sintoma original preservado');

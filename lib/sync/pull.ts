@@ -1789,6 +1789,11 @@ async function performPullAllData(userId: string): Promise<void> {
       localTable:db.surgery_journey_events_a7,query:async()=>await supabase.from('surgery_journey_events_a7').select('*').eq('user_id',userId)});
     await processTable({remoteTable:'surgery_team_a7',queueTable:'surgery_team_a7',
       localTable:db.surgery_team_a7,query:async()=>await supabase.from('surgery_team_a7').select('*').eq('user_id',userId)});
+    // A8: courses must hydrate before immutable events; pending local rows protected by processTable.
+    await processTable({remoteTable:'vaccination_courses_a8',queueTable:'vaccination_courses_a8',
+      localTable:db.vaccination_courses_a8,query:async()=>await supabase.from('vaccination_courses_a8').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'vaccination_events_a8',queueTable:'vaccination_events_a8',
+      localTable:db.vaccination_events_a8,query:async()=>await supabase.from('vaccination_events_a8').select('*').eq('user_id',userId)});
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

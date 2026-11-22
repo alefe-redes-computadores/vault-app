@@ -11,6 +11,7 @@ import { CareFlowSummaryM2 } from "@/components/saude/CareFlowSummaryM2";
 import { ExamAgendaM2 } from "@/components/saude/ExamAgendaM2";
 import { ClinicalEpisodePulseP4 } from "@/components/home/ClinicalEpisodePulseP4";
 import { TreatmentContinuityA4 } from "@/components/saude/TreatmentContinuityA4";
+import { VaccinationAccessA8 } from "@/components/saude/VaccinationAccessA8";
 import { RehabM5AgendaStrip } from "@/components/saude/RehabM5AgendaStrip";
 import { HospitalizationA5AgendaStrip } from "@/components/saude/HospitalizationA5AgendaStrip";
 import {WithdrawalPreparationView} from "@/components/saude/WithdrawalPreparationSummary";
@@ -2290,6 +2291,7 @@ export default function HomePage() {
             <TreatmentContinuityA4 context="home" maxItems={2} />
             <RehabM5AgendaStrip />
             <HospitalizationA5AgendaStrip />
+            <VaccinationAccessA8 context="home" />
           </div>
           <div id="home-organizacao" data-vault-home-optional-p6="organization" className="scroll-mt-24" role="region" aria-label="Acompanhamento de saúde">
             <HomeCommandCenter

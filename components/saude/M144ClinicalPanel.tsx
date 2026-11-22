@@ -51,6 +51,7 @@ export function M144ClinicalPanel(){
  useEffect(()=>{setAnchor('');setBridge('');setFeedback('');setFrom('');setUntil('');setNote('');setTitle('');setLot('');setNext('');setBenefit('');setCost('');setPain('');setEnergy('');setCourseMed('');setCourseFrom('');setCourseUntil('');setCourseNote('');setEventDate('');setProofNote('');},[uid,pid]);
  const enabled=Boolean(uid&&pid&&!authLoading&&!isLoading);
  async function save(event:EntryM144){
+  if(event.tag==='immunization'){setFeedback('Use a carteira de vacinação para cadastrar novas aplicações.');return;}
   if(!enabled||saving.current)return;
   saving.current=true;setBusy(true);setFeedback('');
   try{
@@ -60,7 +61,7 @@ export function M144ClinicalPanel(){
    const eventDayM147 = diaryDayForEventM147(event,today);
    await createRegistro({categoria:'habito',tipo:`vault_m144_${event.tag}`,nome:tagLabel[event.tag],data:eventDayM147,horario:clock,source:'manual',contexto:'VAULT_M144|'+JSON.stringify({...event,recordedAt:now.toISOString(),hourMeaning:'registration'}),medicamento_id:event.tag==='bridge'||event.tag==='course'?event.bridgeId:undefined,observacoes:(event.note||event.benefit||event.cost||'').slice(0,350)});
    setFeedback('Registro criado no Diário da pessoa ativa. O esquema terapêutico não foi alterado.');
-   setNote('');setTitle('');setLot('');setNext('');setBenefit('');setCost('');setPain('');setEnergy('');setCourseNote('');setProofNote('');if(event.tag==='bridge'){setFrom('');setUntil('');}if(event.tag==='course'){setCourseFrom('');setCourseUntil('');}if(event.tag==='immunization'||event.tag==='procedure'){setEventDate('');}
+   setNote('');setTitle('');setLot('');setNext('');setBenefit('');setCost('');setPain('');setEnergy('');setCourseNote('');setProofNote('');if(event.tag==='bridge'){setFrom('');setUntil('');}if(event.tag==='course'){setCourseFrom('');setCourseUntil('');}if(event.tag==='procedure'){setEventDate('');}
   }catch(error){setFeedback(error instanceof Error?error.message:'Não foi possível registrar. Nenhum tratamento foi alterado.');}
   finally{saving.current=false;setBusy(false);}
  }
@@ -149,6 +150,7 @@ export function M144ClinicalPanel(){
    <h2 id="m144-periodic-title" className="flex items-center gap-2 text-sm font-bold text-ink-primary"><Syringe size={17} className="text-violet-300"/>Imunizações e procedimentos periódicos</h2>
    <p className="mt-2 text-xs text-ink-muted">Registro voluntário fora da lista de comprimidos. A data de reforço é a que você declarar; o VAULT não calcula esquema vacinal.</p>
    <div className="mt-3 flex gap-2" role="group" aria-label="Tipo de ocorrência"><button type="button" aria-pressed={eventKind==='immunization'} onClick={()=>setEventKind('immunization')} className={buttonBase+(eventKind==='immunization'?' border-violet-300/60 text-violet-200':' border-surface-border text-ink-muted')}>Vacina</button><button type="button" aria-pressed={eventKind==='procedure'} onClick={()=>setEventKind('procedure')} className={buttonBase+(eventKind==='procedure'?' border-violet-300/60 text-violet-200':' border-surface-border text-ink-muted')}>Procedimento</button></div>
+   {eventKind==='immunization'?<div className="mt-3 space-y-2 rounded-xl border border-teal-300/20 bg-void/25 p-3"><p className="text-xs text-ink-muted">A carteira de vacinação é o único cadastro atual de vacinas. Os relatos antigos deste Diário continuam no histórico, sem serem convertidos em doses.</p><Link href="/saude/vacinas" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-300/35 bg-emerald-300/10 px-3 py-2 text-xs font-semibold text-emerald-200"><Syringe size={17}/>Abrir carteira de vacinação</Link></div>:<>
    <label className="mt-3 block text-xs text-ink-muted">Descrição<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100} className={input} placeholder="Nome ou descrição fornecida"/></label>
    <label className="mt-3 block text-xs text-ink-muted">Data da aplicação ou do procedimento<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={eventDate} onChange={e=>setEventDate(maskDayInputM144(e.target.value))} className={input}/></label>
    <p className="mt-1 text-[11px] text-ink-faint">Datas: digite 8 números (AAAAMMDD). O VAULT adiciona os hífens.</p>
@@ -156,7 +158,9 @@ export function M144ClinicalPanel(){
    <div className="mt-2 grid grid-cols-2 gap-3"><label className="text-xs text-ink-muted">Lote (se conhecido)<input value={lot} onChange={e=>setLot(e.target.value)} maxLength={70} className={input}/></label><label className="text-xs text-ink-muted">Próxima data declarada<input type="text" inputMode="numeric" autoComplete="off" placeholder="AAAA-MM-DD" maxLength={10} value={next} onChange={e=>setNext(maskDayInputM144(e.target.value))} className={input}/></label></div>
    <label className="mt-2 block text-xs text-ink-muted">Comprovante / observação (opcional)<textarea rows={2} maxLength={350} value={proofNote} onChange={e=>setProofNote(e.target.value)} className={input+' resize-y py-3'} placeholder="Referência descritiva; anexe o arquivo original em Documentos"/></label>
    <Link href="/documentos" className="mt-1 inline-flex min-h-10 items-center text-xs font-semibold text-violet-200 underline underline-offset-4">Abrir Documentos para anexar o comprovante</Link>
-   <button type="button" disabled={!enabled||busy||!title.trim()||!isDayM144(eventDate)||Boolean(eventKind==='immunization'&&eventDate>today)||Boolean(next&&!isDayM144(next))} onClick={()=>void save({tag:eventKind,id:'v1',title:title.trim(),lot:lot.trim(),next:next||undefined,start:eventDate,note:proofNote.trim()})} className={buttonBase+' mt-3 w-full border-violet-300/30 bg-violet-300/10 text-violet-200 disabled:opacity-40'}>Registrar no Diário</button>
+   <button type="button" disabled={!enabled||busy||!title.trim()||!isDayM144(eventDate)||Boolean(next&&!isDayM144(next))} onClick={()=>void save({tag:eventKind,id:'v1',title:title.trim(),lot:lot.trim(),next:next||undefined,start:eventDate,note:proofNote.trim()})} className={buttonBase+' mt-3 w-full border-violet-300/30 bg-violet-300/10 text-violet-200 disabled:opacity-40'}>Registrar no Diário</button>
+   </>}
+
   </section>
     </>
   )}
