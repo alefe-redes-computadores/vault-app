@@ -115,93 +115,140 @@ export function VaultUpdateCenter() {
     } catch { setFeedback("Não foi possível configurar as notificações agora."); }
   }
 
+  const actionIsNewer = Boolean(state.run && release && state.run.number > release.build);
+  const actionTime = state.run?.createdAt ? humanDate(state.run.createdAt) : "Horário não informado";
+  const actionState = !state.run ? "Não foi possível consultar as execuções"
+    : state.run.status !== "completed" ? "Em andamento"
+    : state.run.conclusion === "success" ? "Concluída com sucesso"
+    : state.run.conclusion === "cancelled" ? "Cancelada"
+    : state.run.conclusion === "failure" ? "Falhou"
+    : state.run.conclusion === "timed_out" ? "Tempo esgotado" : "Sem resultado confirmado";
+  const activeRun = Boolean(state.run && state.run.status !== "completed");
+  const releaseRunGap = actionIsNewer && state.run?.status === "completed" && state.run.conclusion === "success";
+  const checkedLabel = state.checkedAt ? humanDate(state.checkedAt) : "Ainda não consultado";
+
   return (
     <motion.section id="vault-updates" aria-label="Central de atualizações do Vault"
       initial={reducedMotion ? false : {opacity: 0, y: 8}}
       animate={{opacity: 1, y: 0}}
       transition={{duration: reducedMotion ? 0 : 0.24}}
       className="relative scroll-mt-24 overflow-hidden rounded-[22px] border border-emerald-300/20 bg-surface p-3.5 shadow-sm">
-      <span aria-hidden="true" className="pointer-events-none absolute -right-12 -top-14 size-40 rounded-full bg-emerald-400/[.035] blur-3xl" />
-      <div className="relative flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-400/15 bg-emerald-400/10 text-emerald-300"><Smartphone size={19} /></span>
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-400/15 bg-emerald-400/10 text-emerald-300"><Smartphone size={20}/></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-300">VAULT UPDATE CENTER</p>
-          <h2 className="mt-0.5 text-sm font-bold text-ink-primary">Atualizações do aplicativo</h2>
+          <h2 className="text-base font-bold text-ink-primary">Atualizações do VAULT</h2>
           <AnimatePresence mode="wait" initial={false}>
             <motion.p key={`${state.phase}-${state.decision}`} role="status" aria-live="polite"
               initial={reducedMotion ? false : {opacity:0, y:3}}
-              animate={{opacity:1,y:0}} exit={{opacity:0}}
+              animate={{opacity:1, y:0}} exit={{opacity:0}}
               transition={{duration: reducedMotion ? 0 : 0.16}}
-              className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
-              {checking ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none"/> : null}{status}
+              className="mt-1 flex items-center gap-1.5 text-xs text-ink-secondary">
+              {checking ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none"/> : hasUpdate ? <CheckCircle2 size={14} className="text-emerald-300"/> : null}{status}
             </motion.p>
           </AnimatePresence>
         </div>
-        {state.decision === "current" && native && state.phase === "ready" ? <CheckCircle2 size={18} className="shrink-0 text-emerald-300"/> : null}
-        {hasUpdate ? <Sparkles size={18} className="shrink-0 text-emerald-300" aria-label="Nova versão"/> : null}
       </div>
 
-      <div className="relative mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="min-w-0 rounded-xl border border-surface-border/50 bg-surface-raised/50 p-2.5">
-          <p className="text-[10px] text-ink-muted">{native ? "Versão instalada" : "Versão PWA"}</p>
-          <p className="mt-1 truncate font-bold text-ink-primary">{state.installedVersion}</p>
-          <p className="mt-1 text-[10px] text-ink-muted">{native ? state.installedBuild ? `Build ${state.installedBuild}` : "Build não identificado" : "Atualização web independente"}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="min-w-0 rounded-xl border border-surface-border/50 bg-surface-raised/40 p-3">
+          <p className="text-[11px] text-ink-muted">{native ? "Neste aparelho" : "Versão web"}</p>
+          <p className="mt-1 truncate text-base font-bold text-ink-primary">{state.installedVersion}</p>
+          <p className="mt-1 text-xs text-ink-secondary">{native ? state.installedBuild ? `Build ${state.installedBuild}` : "Build não identificado" : "Atualização web independente"}</p>
         </div>
-        <div className="min-w-0 rounded-xl border border-emerald-400/10 bg-emerald-400/[.03] p-2.5">
-          <p className="text-[10px] text-ink-muted">APK certificado</p>
-          <p className="mt-1 truncate font-bold text-ink-primary">{release ? `v${release.version}` : "Indisponível"}</p>
-          <p className="mt-1 text-[10px] text-ink-muted">{release ? `Build ${release.build} · ${humanSize(release.bytes)}` : "Aguardando release aprovada"}</p>
+        <div className="min-w-0 rounded-xl border border-emerald-400/20 bg-emerald-400/[.035] p-3">
+          <p className="text-[11px] text-ink-muted">{native ? "APK disponível" : "APK Android"}</p>
+          <p className="mt-1 truncate text-base font-bold text-ink-primary">{release ? `v${release.version}` : "Indisponível"}</p>
+          <p className="mt-1 text-xs text-emerald-300">{release ? `Build ${release.build}` : "Release não confirmada"}</p>
         </div>
       </div>
 
-      {native ? <VaultNativeUpdateFlow release={release} installedBuild={state.installedBuild} available={hasUpdate} /> : null}
-      <details className="mt-3 rounded-xl border border-surface-border/45 bg-surface/35 px-3 py-2" aria-label="Diagnóstico técnico das atualizações">
-        <summary className="flex min-h-11 cursor-pointer items-center justify-between text-xs font-semibold text-ink-secondary">Detalhes técnicos e histórico <ChevronRight size={14}/></summary>
-      {release ? <div className="mt-2 rounded-xl border border-surface-border/40 bg-surface-raised/25 px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
-        <div className="flex items-center gap-2"><PackageCheck size={13} className="shrink-0 text-emerald-300" /> Release certificada · {humanDate(release.publishedAt)}</div>
-        <p className="mt-1">Download via GitHub Releases, sem expiração automática de 7 dias. Disponibilidade depende da manutenção da release.</p>
-        <p className="mt-1">No APK com suporte M111, o VAULT confere integridade, versão, identificador e assinatura antes de abrir o instalador oficial. O download manual permanece disponível.</p>
-        {release.highlights.length > 0 ? <div className="mt-2 border-t border-surface-border/40 pt-2"><p className="flex items-center gap-1 font-semibold text-ink-secondary"><Sparkles size={13}/> Novidades desta compilação</p>{release.highlights.map((item,i)=><p key={i} className="mt-1">• {item}</p>)}</div> : null}
-        <div className="mt-2 grid grid-cols-2 gap-2 border-t border-surface-border/40 pt-2">
-          <button type="button" onClick={()=>void copyChecksum()} className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-surface-border/60 text-[10px] font-semibold text-ink-secondary"><Copy size={12}/> Copiar SHA-256</button>
-          <button type="button" onClick={()=>void openTrusted(release.releaseUrl)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-surface-border/60 text-[10px] font-semibold text-ink-secondary"><ExternalLink size={12}/> Ver release</button>
+      {release && state.phase === "ready" ? <p className="mt-2 text-xs text-ink-secondary">
+        Release certificada publicada em {humanDate(release.publishedAt)} · {humanSize(release.bytes)}.
+        {native && state.installedBuild !== null && release.build <= state.installedBuild ? " Este aparelho já possui esse build ou um superior." : ""}
+      </p> : null}
+
+      {native ? <VaultNativeUpdateFlow release={release} installedBuild={state.installedBuild} available={hasUpdate}/> : null}
+
+      {release && state.phase === "ready" ? <section aria-label="Novidades da atualização" className="mt-3 rounded-xl border border-surface-border/40 bg-surface-raised/20 p-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-ink-primary"><Sparkles size={15} className="text-emerald-300"/> O que mudou nesta atualização</div>
+        {release.highlights.length ? <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-ink-secondary">
+          {release.highlights.slice(0, 4).map((item, i) => <li key={`${release.tag}-${i}`}>• {item.replace(/^(?:feat|fix|chore|docs|refactor|perf|test)(?:\([^)]+\))?:\s*/i, "")}</li>)}
+        </ul> : <p className="mt-2 text-xs text-ink-muted">Esta release ainda não possui um resumo público detalhado. Consulte o histórico certificado.</p>}
+        {release.highlights.length > 4 ? <details className="mt-2 rounded-lg border border-surface-border/30 px-2">
+          <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-ink-secondary">Ver mais {release.highlights.length - 4} melhorias</summary>
+          <ul className="space-y-1 pb-2 text-xs text-ink-secondary">{release.highlights.slice(4).map((item,i) => <li key={`${release.tag}-extra-${i}`}>• {item.replace(/^(?:feat|fix|chore|docs|refactor|perf|test)(?:\([^)]+\))?:\s*/i, "")}</li>)}</ul>
+        </details> : null}
+        <p className="mt-2 text-[11px] text-ink-muted">As novidades correspondem à release oferecida. O histórico recente de releases fica nos detalhes; versões antigas podem não aparecer.</p>
+      </section> : null}
+
+      <div className="mt-3 rounded-xl border border-surface-border/40 bg-surface-raised/20 px-3 py-2.5" aria-label="Situação da compilação no GitHub">
+        <div className="flex items-start gap-2.5">
+          <Clock3 size={17} className="mt-0.5 shrink-0 text-ink-secondary"/>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-ink-primary">{activeRun ? "Compilação em andamento" : "Última compilação consultada"}</p>
+            <p className="mt-1 text-xs text-ink-secondary">{state.run ? `Action #${state.run.number} · ${actionState}` : "Nenhuma execução identificada"}</p>
+            {state.run ? <p className="mt-1 text-[11px] text-ink-muted">Iniciada: {actionTime}</p> : null}
+            {releaseRunGap ? <p className="mt-1 text-xs text-amber-200">Essa Action terminou com sucesso, mas o APK oferecido continua sendo o Build {release?.build}: ainda não foi confirmada uma release certificada dessa execução.</p> : null}
+            {actionIsNewer && activeRun && release ? <p className="mt-1 text-xs text-amber-200">O Build {release.build} permanece o último APK certificado enquanto a compilação nova não é publicada.</p> : null}
+            <p className="mt-1 text-[11px] text-ink-muted">Verificado em: {checkedLabel}</p>
+          </div>
         </div>
-      </div> : null}
+      </div>
 
-      <VaultUpdateHistory />
+      {runWarning && !releaseRunGap ? <p role="note" className="mt-2 text-xs text-amber-200">
+        {runWarning === "failed" ? "A última compilação apresentou falha; uma release certificada anterior continua independente." : "A nova compilação não é, por si só, uma atualização pronta."}
+      </p> : null}
+      {failureCode ? <p role="alert" className="mt-2 text-xs text-coral">Consulta com atenção. Código para suporte: {failureCode}.</p> : null}
+      {!native ? <p className="mt-2 text-xs text-ink-secondary">O PWA recebe atualizações pelo navegador. A versão web não é comparável ao build do APK Android.</p> : null}
 
-      {/* M94: os estados do run e da release são independentes; uma Action nova não homologa APK. */}
-      {state.run && state.phase === "ready" ? <div aria-label="Situação da compilação no GitHub" className="mt-2 flex min-w-0 items-center justify-between gap-2 rounded-xl border border-surface-border/40 bg-void/25 px-3 py-2 text-[11px]">
-        <span className="min-w-0 text-ink-secondary">Action #{state.run.number} · {state.run.status !== "completed" ? "Compilando" : state.run.conclusion === "success" ? "Concluída" : "Falhou ou foi cancelada"}</span>
-        <span className={`shrink-0 text-[10px] font-semibold ${state.run.status !== "completed" ? "text-amber-200" : state.run.conclusion === "success" ? "text-emerald-300" : "text-coral"}`}>{state.run.status !== "completed" ? "Em andamento" : state.run.conclusion === "success" ? "Sucesso" : "Atenção"}</span>
-      </div> : null}
-      {state.artifact && state.phase === "ready" ? <div role="note" className={`mt-2 flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] leading-relaxed ${artifactStatus === "expired" ? "border-coral/20 bg-coral/[.04] text-coral" : artifactStatus === "expiring" ? "border-amber-400/25 bg-amber-400/[.05] text-amber-200" : "border-surface-border/40 bg-surface-raised/25 text-ink-muted"}`}>
-        <Clock3 size={15} className="mt-0.5 shrink-0"/>
-        <div className="min-w-0">
-          <p className="font-semibold">{artifactStatus === "expired" ? "Artefato temporário expirou" : artifactStatus === "expiring" ? "Artefato temporário próximo do prazo" : "Artefato temporário do Actions"}</p>
-          <p>Prazo informado pelo GitHub: {humanDate(state.artifact.expiresAt)}. {artifactStatus === "expired" ? "Esse ZIP do Actions não está mais disponível." : "Prazo válido apenas para a cópia de teste do Actions."}</p>
-          <p>A release certificada, quando publicada, possui distribuição independente desse prazo.</p>
-        </div>
-      </div> : null}
-      {!state.artifact && state.phase === "ready" ? <p className="mt-2 flex items-start gap-2 text-[10px] text-ink-muted"><FileCheck2 size={13} className="mt-0.5 shrink-0"/>Validade do artefato temporário não confirmada pelo GitHub. Nenhum prazo foi presumido.</p> : null}
-      {runWarning ? <div role="note" className="mt-2 flex items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.05] px-3 py-2 text-xs text-amber-200">
-        <AlertTriangle size={15} className="mt-0.5 shrink-0"/>
-        <span>{runWarning === "failed" ? "A compilação mais recente falhou. Uma release certificada anterior continua identificada separadamente." : "Há uma compilação mais recente em andamento. O download disponível, se houver, é da última release aprovada."}</span>
-      </div> : null}
-      {failureCode ? <div role="alert" className="mt-2 rounded-xl border border-coral/20 bg-coral/[.05] px-3 py-2 text-xs text-coral">Falha de verificação: <span className="font-mono">{failureCode}</span>. Copie o diagnóstico se precisar de suporte.</div> : null}
-      {!native ? <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">O PWA recebe atualizações pelo navegador. O APK Android é um produto separado; esta tela não compara sua versão web com um APK.</p> : null}
-
-      </details>
-      <div className="mt-3 grid grid-cols-1 gap-2 min-[370px]:grid-cols-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={() => {setFeedback("");void checkVaultUpdates(true);}} disabled={checking}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary transition-colors active:scale-[0.985] disabled:opacity-50 motion-reduce:transform-none"><RefreshCw size={15} className={checking ? "animate-spin motion-reduce:animate-none" : ""}/> Procurar atualizações</button>
-        {(hasUpdate || (!native && Boolean(release) && state.phase === "ready")) ? <button type="button" onClick={()=>void openApk()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 text-xs font-bold text-emerald-300 transition-colors active:scale-[0.985] motion-reduce:transform-none"><Download size={15}/> {native ? "Baixar manualmente" : "Baixar APK Android"}</button> : <button type="button" onClick={()=>void copyDiagnostic()} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-muted transition-colors active:scale-[0.985] motion-reduce:transform-none"><Copy size={15}/> Copiar diagnóstico</button>}
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised px-3 text-xs font-semibold text-ink-primary disabled:opacity-50">
+          <RefreshCw size={16} className={checking ? "animate-spin motion-reduce:animate-none" : ""}/> Procurar atualizações
+        </button>
+        {(hasUpdate || (!native && Boolean(release) && state.phase === "ready")) ? <button type="button" onClick={()=>void openApk()}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border/60 px-3 text-xs font-semibold text-ink-secondary">
+          <Download size={16}/> {native ? "Baixar manualmente" : "Baixar APK Android"}
+        </button> : null}
       </div>
-      {release ? <button type="button" onClick={()=>void copyDiagnostic()} className="mt-2 flex min-h-10 w-full items-center justify-between px-2 text-[11px] text-ink-muted"><span className="flex items-center gap-1.5"><Copy size={13}/> Copiar diagnóstico técnico</span><ChevronRight size={14}/></button> : null}
-      {state.run && state.phase === "ready" && (runWarning || !release) ? <button type="button" onClick={()=>void openTrusted(state.run!.url)} className="mt-1 flex min-h-10 w-full items-center justify-between px-2 text-[11px] text-ink-muted"><span className="flex items-center gap-1.5"><ExternalLink size={13}/> Ver execução no GitHub</span><ChevronRight size={14}/></button> : null}
-      {native ? <button type="button" onClick={()=>void toggleNotify()} aria-pressed={notifyEnabled} className="mt-2 flex min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-surface-border/60 px-3 text-left text-xs text-ink-secondary transition-colors active:scale-[0.985] motion-reduce:transform-none"><span className="flex items-center gap-2"><BellRing size={15}/> Avisar sobre novos APKs e prazo do artefato</span><span className={notifyEnabled ? "shrink-0 font-bold text-emerald-300" : "shrink-0 text-ink-muted"}>{notifyEnabled ? "Ativado" : "Desativado"}</span></button> : null}
-      <p className="mt-2 flex items-start gap-2 text-[10px] leading-relaxed text-ink-faint"><ShieldCheck size={14} className="mt-0.5 shrink-0"/>O aplicativo nunca instala APK sem sua confirmação. Alertas sobre novas versões exigem consulta ao abrir/retomar o VAULT; lembretes de prazo já agendados podem aparecer com o app fechado. Push remoto ainda não está disponível.</p>
-      {feedback ? <p role="status" className="mt-2 text-[11px] text-emerald-300">{feedback}</p> : null}
+
+      <details className="mt-3 rounded-xl border border-surface-border/45 px-3 py-1" aria-label="Detalhes técnicos e histórico">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 text-xs font-semibold text-ink-secondary">Segurança, detalhes técnicos e histórico <ChevronRight size={16}/></summary>
+        <div className="space-y-3 border-t border-surface-border/30 pb-3 pt-3 text-xs text-ink-secondary">
+          {release ? <div className="space-y-2">
+            <p className="font-semibold text-ink-primary"><PackageCheck size={14} className="mr-1 inline text-emerald-300"/> Release certificada · Build {release.build}</p>
+            <p>Publicada em: {humanDate(release.publishedAt)}. Download oficial via GitHub Releases, sem expiração automática de 7 dias.</p>
+            <p>Arquivo: Vault-App.apk · {humanSize(release.bytes)} · versão {release.version}.</p>
+            <p>O download nativo verifica SHA-256, assinatura e identidade do pacote. A instalação do APK requer sua confirmação no Android.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={()=>void copyChecksum()} className="min-h-11 rounded-lg border border-surface-border/60 px-2 text-xs">Copiar SHA-256</button>
+              <button type="button" onClick={()=>void openTrusted(release.releaseUrl)} className="min-h-11 rounded-lg border border-surface-border/60 px-2 text-xs">Ver release</button>
+            </div>
+          </div> : <p>Release certificada não está disponível ou ainda não foi confirmada pela consulta.</p>}
+          <div className="border-t border-surface-border/30 pt-2">
+            <p className="font-semibold text-ink-primary">Execução do GitHub Actions</p>
+            <p className="mt-1">{state.run ? `Action #${state.run.number} · ${actionState}` : "Não consultada"}. Esse processo não é o APK oferecido.</p>
+            {state.run ? <button type="button" onClick={()=>void openTrusted(state.run!.url)} className="mt-2 min-h-11 text-emerald-300 underline">Ver execução no GitHub</button> : null}
+          </div>
+          <div className="border-t border-surface-border/30 pt-2">
+            <p className="font-semibold text-ink-primary">Cópia temporária para testes</p>
+            {state.artifact ? <p className="mt-1">{artifactStatus === "expired" ? "Expirada" : artifactStatus === "expiring" ? "Perto de expirar" : "Disponível no Actions"} · Expira em {humanDate(state.artifact.expiresAt)}. Esse prazo não afeta a release certificada.</p>
+              : <p className="mt-1">O prazo do arquivo temporário não foi confirmado. Nenhum prazo foi presumido.</p>}
+          </div>
+          <VaultUpdateHistory installedBuild={native ? state.installedBuild : null}/>
+          <button type="button" onClick={()=>void copyDiagnostic()} className="flex min-h-11 w-full items-center justify-between gap-2 border-t border-surface-border/30 pt-2 text-ink-secondary"><span className="flex items-center gap-2"><Copy size={16}/> Copiar diagnóstico técnico</span><ChevronRight size={15}/></button>
+        </div>
+      </details>
+
+      {native ? <div className="mt-3 rounded-xl border border-surface-border/40 px-3 py-1">
+        <button type="button" onClick={()=>void toggleNotify()} aria-pressed={notifyEnabled}
+          className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-xs text-ink-secondary">
+          <span className="flex items-center gap-2"><BellRing size={16}/> Avisar quando houver nova versão</span>
+          <span className={notifyEnabled ? "font-semibold text-emerald-300" : "text-ink-muted"}>{notifyEnabled ? "Ativado" : "Desativado"}</span>
+        </button>
+      </div> : null}
+      <p className="mt-2 text-[11px] text-ink-muted">A release depende da publicação no GitHub. Alertas exigem uma consulta ao abrir/retomar o aplicativo; push remoto com o aplicativo fechado ainda não está disponível.</p>
+      {feedback ? <p role="status" className="mt-2 text-xs text-emerald-300">{feedback}</p> : null}
     </motion.section>
   );
 }

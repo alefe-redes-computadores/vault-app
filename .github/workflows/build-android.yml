@@ -45,6 +45,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           npm run test:release 2>&1 | tee artifacts/V63-STRICT.log
+          node scripts/test-vault-update360-v34.cjs
       - name: Exportar aplicação para o Capacitor
         env:
           NEXT_TELEMETRY_DISABLED: "1"
@@ -334,7 +335,8 @@ jobs:
             echo "VAULT_CERT_SHA256=$CERT_SHA256"
             echo
             echo '## Novidades'
-            printf -- '- %s\n' "$COMMIT_SUBJECT"
+            PREVIOUS_SHA="$(gh release view --json targetCommitish --jq .targetCommitish 2>/dev/null || true)"
+            node scripts/generate-vault-release-notes-v34.cjs "$GITHUB_SHA" "$PREVIOUS_SHA"
             echo
             echo '## Certificação'
             echo '- Gate canônico V63 estrito, TypeScript, exportação, build e assinatura Android validados na Action.'

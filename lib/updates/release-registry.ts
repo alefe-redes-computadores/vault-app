@@ -1,7 +1,7 @@
 /** VAULT M87: only a published, non-draft GitHub Release with a real APK can be offered. */
 export const VAULT_REPO = "alefe-redes-computadores/vault-app";
 export const VAULT_RELEASE_API = `https://api.github.com/repos/${VAULT_REPO}/releases/latest`;
-export const VAULT_RUN_API = `https://api.github.com/repos/${VAULT_REPO}/actions/workflows/build-android.yml/runs?branch=main&per_page=1`;
+export const VAULT_RUN_API = `https://api.github.com/repos/${VAULT_REPO}/actions/workflows/build-android.yml/runs?branch=main&per_page=10`;
 
 export type VaultApprovedRelease = {
   tag: string;
@@ -25,6 +25,8 @@ export type VaultWorkflowRun = {
   conclusion: string | null;
   sha: string;
   url: string;
+  /** Actual workflow timestamp from GitHub, not an artifact expiry. */
+  createdAt?: string | null;
 };
 const obj = (v: unknown): Record<string, unknown> | null =>
   v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null;
@@ -74,7 +76,7 @@ export function parseVaultApprovedRelease(raw: unknown): VaultApprovedRelease | 
   const newSection = body.split(/^## Novidades\s*$/m)[1] || "";
   const highlights = newSection.split(/^## /m)[0].split(/\r?\n/)
     .filter(line => /^- /u.test(line)).map(line => line.slice(2).trim())
-    .filter(Boolean).slice(0, 4).map(item => item.slice(0, 160));
+    .filter(Boolean).slice(0, 12).map(item => item.slice(0, 160));
   return {tag, build, version, commit, checksum: checksum.toLowerCase(),
     appId: appId || null, signerSha256: signerSha256 ? signerSha256.toLowerCase() : null,
     apkUrl, releaseUrl, publishedAt, bytes, highlights};
@@ -83,7 +85,11 @@ export function parseVaultApprovedRelease(raw: unknown): VaultApprovedRelease | 
 export function parseVaultWorkflowRun(raw: unknown): VaultWorkflowRun | null {
   const root = obj(raw);
   const list = root && Array.isArray(root.workflow_runs) ? root.workflow_runs : [];
-  const first = obj(list[0]);
+  // Prefer an active run over a completed one: an older run can still be running.
+  // The GitHub API returns newest-first; never promote a run to a certified release.
+  const candidates = list.map(obj).filter((entry): entry is Record<string, unknown> => entry !== null);
+  const first = candidates.find(entry => ["queued", "in_progress", "waiting", "requested", "pending"].includes(text(entry.status)))
+    || candidates[0];
   if (!first) return null;
   const id = posInt(first.id), number = posInt(first.run_number);
   const url = text(first.html_url), sha = text(first.head_sha);
@@ -91,7 +97,9 @@ export function parseVaultWorkflowRun(raw: unknown): VaultWorkflowRun | null {
   const status = text(first.status);
   const conclusion = first.conclusion === null ? null : text(first.conclusion);
   if (!["queued","in_progress","completed","waiting","requested","pending"].includes(status)) return null;
-  return {id, number, status, conclusion, sha, url};
+  const createdAt = text(first.created_at);
+  return {id, number, status, conclusion, sha, url,
+    createdAt: createdAt && Number.isFinite(Date.parse(createdAt)) ? createdAt : null};
 }
 
 export function getVaultUpdateDecision(installedBuild: number | null, release: VaultApprovedRelease | null,

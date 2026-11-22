@@ -169,3 +169,14 @@ Para build Android:
 npx cap sync android
 npx cap open android
 ```
+
+
+### Update 360 — origem das versões e transparência
+
+- **Versão funcional:** `package.json` e `package-lock.json`, conferidos com `lib/app-version.ts`.
+  A versão só muda quando uma entrega de produto é versionada; uma Action não cria, por si, uma nova versão semântica.
+- **Build Android:** `versionCode` vem do número da execução que gerou o APK, verificado pelo Gradle e pelo `App.getInfo()` no aparelho.
+- **Atualização oferecida:** última GitHub Release certificada com APK/commit/SHA/assinatura válidos, nunca um artefato temporário do Actions.
+- **Novidades:** commits entre a release certificada anterior e a nova release, produzidos na Action pelo `generate-vault-release-notes-v34.cjs`;
+  o resumo não afirma homologação física. O histórico de releases permanece acessível na Central.
+- **CI/Release/Android:** aprovação do gate, Action, publicação de APK, instalação e teste físico são evidências diferentes.

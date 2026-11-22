@@ -74,7 +74,9 @@ async function getInstalled() {
 /** Shares a single request between the global observer and the Mais screen. */
 export function checkVaultUpdates(force = false): Promise<VaultUpdateSnapshot> {
   if (pending) return pending;
-  if (!force && state.phase === "ready" && Date.now() - lastRequestMs < SIX_HOURS) return Promise.resolve(state);
+  if (!force && state.phase === "ready" && Date.now() - lastRequestMs <
+      Math.min(SIX_HOURS, state.run && state.run.status !== "completed" ? 60_000 : 10 * 60_000)) return Promise.resolve(state);
+  // Foreground checks refresh more often while retaining the legacy cache ceiling.
   if (typeof window === "undefined") return Promise.resolve(state);
   publish({phase:"checking", errorCode:null});
   pending = (async () => {
