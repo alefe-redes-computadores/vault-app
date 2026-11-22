@@ -1,4 +1,6 @@
 'use client';
+import {ClinicalReverseProcedureA9} from '@/components/saude/ClinicalReverseProcedureA9';
+
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ListPageHeader } from '@/components/list/ListPageHeader';
@@ -154,6 +156,7 @@ export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string
      <p className="mt-2 text-ink-muted">Equipe da sessão: {info.sessionTeam.filter(t=>t.session_id===s.id).length===1?'1 vínculo':`${info.sessionTeam.filter(t=>t.session_id===s.id).length} vínculos`}</p>
      <div className="flex flex-wrap items-end gap-2"><Field label="Atribuir membro da equipe"><HealthRelationPicker title="Membro da equipe desta sessão" kind="doctor" value={sessionTeamId===s.id?sessionTeam:''} className={field} onValueChange={value=>{setSessionTeamId(s.id);setSessionTeam(value)}}><option value="">Selecione</option>{members.map(t=><option value={t.id} key={t.id}>{info.professionals.find(x=>x.id===t.professional_id)?.nome||'Profissional'} · {t.role}</option>)}</HealthRelationPicker></Field>
       <button className={secondary} disabled={busy||sessionTeamId!==s.id||!sessionTeam} onClick={()=>void action(async()=>{await addRehabSessionProfessionalM5({personId,sessionId:s.id,teamId:sessionTeam});setSessionTeam('');},'Profissional associado à sessão.')}>Adicionar</button></div>
+     <ClinicalReverseProcedureA9 kind="rehab_session" recordId={s.id} returnTo={'/saude/reabilitacao/detalhes?id='+encodeURIComponent(selected.id)}/>
      {info.events.filter(e=>e.session_id===s.id).sort((a,b)=>a.created_at.localeCompare(b.created_at)).map(e=><p className="mt-1 text-[11px] text-ink-muted" key={e.id}><ClipboardList className="mr-1 inline" size={12}/>{e.action==='rescheduled'?'Remarcado':e.action==='status_changed'?'Estado alterado':'Agendado'} · {date(e.created_at)} {e.action==='rescheduled'?`(${date(e.from_at)} → ${date(e.to_at)})`:''}</p>)}
     </div>)}
     <div className="space-y-2 border-t border-surface-border pt-3"><p className="text-xs font-semibold">Agendar nova sessão</p>

@@ -1,6 +1,7 @@
 // app/saude/medicamentos/detalhes/page.tsx
 "use client";
 
+import {ClinicalReverseSensitivityA9} from "@/components/saude/ClinicalReverseSensitivityA9";
 import { MedicationRestockAction } from "@/components/saude/MedicationRestockAction";
 import { medicationRestockHref, medicationStockCountHref } from "@/lib/health-intelligence/medication-restock-navigation";
 import { isPharmaceuticallyEquivalentName } from "@/lib/medication-catalog/pharmaceutical-equivalence";
@@ -3798,7 +3799,7 @@ function MedicamentoDetalhesContent() {
           </div>
         </BottomSheet>
 
-
+        {med.id&&<div className="mx-4 mb-5"><ClinicalReverseSensitivityA9 recordType="medication" recordId={med.id} returnTo={`/saude/medicamentos/detalhes?id=${encodeURIComponent(med.id)}`}/></div>}
       </main>
     </PageTransition>
   );

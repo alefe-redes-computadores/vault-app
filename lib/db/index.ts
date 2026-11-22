@@ -46,6 +46,7 @@ import type { RehabProgramM5, RehabTeamM5, RehabSessionM5, RehabSessionTeamM5, R
 import type { A5Episode,A5Stay,A5Team,A5Event,A5Relation,A5Discharge } from '@/lib/hospitalizations-a5/types';
 import type {A7Event,A7Team} from '@/lib/surgery-a7/types';
 import type {A8Course,A8Event} from '@/lib/vaccination-a8/types';
+import type {A9Procedure,A9Sensitivity} from '@/lib/clinical-a9/types';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
 import type { VaultLocalPdfM2 } from '@/lib/careflow-m2/pdf-library';
 import type { HealthReminderRule } from '@/lib/health-reminders/types';
@@ -225,6 +226,8 @@ class VaultDB extends Dexie {
   surgery_team_a7!: Table<A7Team,string>;
   vaccination_courses_a8!: Table<A8Course,string>;
   vaccination_events_a8!: Table<A8Event,string>;
+  procedure_events_a9!: Table<A9Procedure,string>;
+  sensitivity_events_a9!: Table<A9Sensitivity,string>;
   health_reminders!: Table<HealthReminderRule, string>;
   notification_policies_p2!: Table<EventPolicyRecordP2,string>;
   health_goals!: Table<HealthGoal, string>;
@@ -1549,6 +1552,11 @@ class VaultDB extends Dexie {
     this.version(56).stores({
       vaccination_courses_a8: 'id, user_id, person_id, [user_id+person_id], vaccine_name, updated_at, deleted_at, synced',
       vaccination_events_a8: 'id, user_id, person_id, [user_id+person_id], course_id, [user_id+person_id+course_id], kind, effective_kind, planned_on, administered_on, corrects_event_id, updated_at, deleted_at, synced',
+    });
+    // A9: immutable procedures and sensitivities; additive after A8 v56.
+    this.version(57).stores({
+      procedure_events_a9:'id, user_id, person_id, [user_id+person_id], professional_id, location_id, consultation_id, rehab_session_id, corrects_event_id, planned_on, performed_on, updated_at, synced',
+      sensitivity_events_a9:'id, user_id, person_id, [user_id+person_id], professional_id, related_type, related_id, [user_id+person_id+related_type+related_id], corrects_event_id, reported_on, updated_at, synced',
     });
 
   }

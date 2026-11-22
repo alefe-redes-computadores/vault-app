@@ -12,8 +12,10 @@ import type { RehabProgramM5, RehabSessionM5, RehabMilestoneM5, RehabOriginM5 } 
 import type { A7Event, A7Team } from '@/lib/surgery-a7/types';
 import { currentVaccinationEventsA8 } from '@/lib/vaccination-a8/types';
 import type {A8Course,A8Event} from '@/lib/vaccination-a8/types';
+import {activeFactsA9,A9_PROCEDURE_LABEL,A9_SENSITIVITY_LABEL} from '@/lib/clinical-a9/types';
+import type {A9Procedure,A9Sensitivity} from '@/lib/clinical-a9/types';
 
-export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation' | 'vaccinations';
+export type MedicalSectionP3 = Report360Section | 'careflow' | 'surgeries' | 'exams' | 'withdrawals' | 'prescriptions' | 'treatments' | 'rehabilitation' | 'vaccinations' | 'procedures_a9' | 'sensitivities_a9';
 export type MedicalModeP3 = 'summary' | 'detailed';
 export type MedicalProvenanceP3 = 'registrado' | 'declarado' | 'motor';
 export type MedicalRowP3 = {
@@ -44,6 +46,8 @@ export const MEDICAL_SECTIONS_P3: readonly {id:MedicalSectionP3;label:string;des
   {id:'treatments',label:'Tratamentos',description:'Fases versionadas e cadastro atual, sem inferências'},
   {id:'rehabilitation',label:'Reabilitação',description:'Ciclos, sessões e marcos documentados'},
   {id:'vaccinations',label:'Vacinação',description:'Aplicações declaradas, planejamento e fontes documentadas'},
+  {id:'procedures_a9',label:'Procedimentos não cirúrgicos',description:'Planos, realizações e retificações informadas'},
+  {id:'sensitivities_a9',label:'Alergias e reações declaradas',description:'Origem, intensidade e incerteza sem diagnóstico automático'},
   {id:'documents',label:'Documentos',description:'Somente títulos e metadados permitidos'},
 ];
 const ALLOWED = new Set<MedicalSectionP3>(MEDICAL_SECTIONS_P3.map(s=>s.id));
@@ -71,6 +75,7 @@ export type MedicalDossierInputP3={
   surgeryEvents?:readonly A7Event[];
   surgeryTeam?:readonly A7Team[];
   vaccination?:{courses:readonly A8Course[];events:readonly A8Event[]};
+  clinicalA9?:{procedures:readonly A9Procedure[];sensitivities:readonly A9Sensitivity[]};
   ownerId:string; personId:string; personName:string; start:string; end:string;
   mode:MedicalModeP3; sections:readonly MedicalSectionP3[]; includeBrain?:boolean; generatedAt?:string;
   consultationId?:string;
@@ -327,6 +332,32 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
         relations:['Carteira A8 vinculada por ID ao perfil ativo'],href:`/saude/vacinas?curso=${encodeURIComponent(e.course_id)}`});
     }
   }
+  // A9: one factual projection shared with PDF. Corrections retained but only current facts displayed.
+  if(input.clinicalA9){
+    if(selected('procedures_a9'))for(const e of activeFactsA9(input.clinicalA9.procedures,uid,pid)){
+      const day=e.planned_on||e.performed_on;if(!day||!within(day))continue;
+      add({section:'procedures_a9',date:day,time:null,title:`${A9_PROCEDURE_LABEL[e.effective_status]} · ${safe(e.title,160)}`,
+        detail:[e.category==='dressing'?'Curativo':e.category==='ambulatory'?'Procedimento ambulatorial':'Procedimento não cirúrgico',
+          e.source==='professional_document'?'Documento profissional informado':'Relato próprio',e.note||'',
+          e.effective_status==='planned'?'Planejamento não comprova realização':'Realização informada, sem validação automática'].filter(Boolean).join(' · '),
+        source:'procedure_event_a9',sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',
+        relations:[e.consultation_id&&consulted.has(e.consultation_id)?`Consulta vinculada por ID: ${e.consultation_id}`:'',
+          'Autoridade A9: não é cirurgia, internação ou sessão M5'].filter(Boolean),
+        href:`/saude/procedimentos?id=${encodeURIComponent(e.id)}`});
+    }
+    if(selected('sensitivities_a9'))for(const e of activeFactsA9(input.clinicalA9.sensitivities,uid,pid)){
+      if(!within(e.reported_on))continue;
+      add({section:'sensitivities_a9',date:e.reported_on,time:null,
+        title:`${A9_SENSITIVITY_LABEL[e.sensitivity_type]} · ${safe(e.agent_label,160)}`,
+        detail:[e.certainty==='suspected'?'Suspeita/relato — não é diagnóstico':'Documento profissional informado — sem validação VAULT',
+          e.severity==='unknown'?'Intensidade não informada':`Intensidade declarada: ${e.severity}`,
+          e.source==='professional_document'?'Fonte documental informada':'Relato próprio',e.note||'',
+          'Associação temporal não determina causalidade'].filter(Boolean).join(' · '),
+        source:'sensitivity_event_a9',sourceId:e.id,registeredAt:e.created_at,provenance:'declarado',
+        relations:[e.related_id?'Vínculo declarado por ID, sem causalidade automática':'Sem vínculo relacional declarado'],
+        href:`/saude/reacoes?id=${encodeURIComponent(e.id)}`});
+    }
+  }
   // Episódio: somente registros com prova por ID; não incluir por mera coincidência de data ou médico.
   const episodeRows=consultation?rows.filter(r=>{
     if(r.section==='consultations')return r.sourceId===consultation.id;
@@ -341,6 +372,7 @@ export function buildMedicalDossierP3(input:MedicalDossierInputP3):MedicalDossie
       return Boolean(consultation.tratamento_ids?.includes(r.sourceId));
     }
     if(r.section==='rehabilitation')return episodeRehabFacts.has(r.sourceId);
+    if(r.section==='procedures_a9')return Boolean(input.clinicalA9?.procedures.some(p=>p.id===r.sourceId&&p.user_id===uid&&p.person_id===pid&&p.consultation_id===consultation.id));
     return false;
   }):rows;
   episodeRows.sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||'')||a.section.localeCompare(b.section)||a.key.localeCompare(b.key));

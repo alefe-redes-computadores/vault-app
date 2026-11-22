@@ -23,6 +23,14 @@ vm.runInNewContext(vaccinationCompiled,{module:vaccinationMod,exports:vaccinatio
  {filename:'lib/vaccination-a8/types.ts',timeout:10000});
 assert.equal(typeof vaccinationMod.exports.currentVaccinationEventsA8,'function','A8 usa o filtro real de vacinacao por titular');
 
+// A9: load the real pure model; do not fake scope, correction or provenance.
+const a9Source=fs.readFileSync('lib/clinical-a9/types.ts','utf8');
+const a9Compiled=ts.transpileModule(a9Source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const a9Mod={exports:{}};
+vm.runInNewContext(a9Compiled,{module:a9Mod,exports:a9Mod.exports,Date,Math,Number,String,Boolean,Array,Object,Set,Map,JSON,Error,RegExp,Symbol}, {filename:'lib/clinical-a9/types.ts',timeout:10000});
+assert.equal(typeof a9Mod.exports.activeFactsA9,'function','A9 carrega filtro real por conta e pessoa');
+
+
 const fakeClinical={
  validClinicalDay:s=>{if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;return !Number.isNaN(Date.parse(s+'T12:00:00Z'));},
  buildClinicalReport360:({context,sections,ownerId,personId})=>{
@@ -35,7 +43,7 @@ const fakeClinical={
 };
 vm.runInNewContext(compiled.outputText,{
  exports:m.exports,module:m,Date,Math,Number,String,Array,Object,Set,Map,JSON,Error,RegExp,Symbol,console,
- require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;throw Error('Dependência não permitida '+id);}
+ require:id=>{if(id==='@/lib/clinical-report-360')return fakeClinical;if(id==='@/lib/rehab-m5/projection')return rehabMod.exports;if(id==='@/lib/vaccination-a8/types')return vaccinationMod.exports;if(id==='@/lib/clinical-a9/types')return a9Mod.exports;throw Error('Dependência não permitida '+id);}
 },{filename:p,timeout:10000});
 const {buildMedicalDossierP3}=m.exports;
 const owner={user_id:'u',person_id:'p'},foreign={user_id:'outro',person_id:'p'};
@@ -66,6 +74,19 @@ assert.ok(vaccinationReport.rows.some(x=>x.sourceId==='a8-factual'),'dose declar
 assert.ok(vaccinationReport.rows.some(x=>x.sourceId==='a8-planned'),'planejamento A8 permanece como plano');
 assert.ok(!vaccinationReport.rows.some(x=>x.sourceId==='a8-foreign'),'vacinacao alheia nao vaza para PDF');
 assert.equal(vaccinationMod.exports.factualDoseCountA8(vaccineRows,'u','p'),1,'plano e registro estrangeiro nao contam como aplicacao');
+
+
+// A9 factual procedures versus planned and strictly isolated reaction reports.
+const a9Rows=[{...owner,id:'a9-plan',kind:'entry',effective_status:'planned',planned_on:'2026-11-17',performed_on:null,title:'Procedimento planejado',category:'ambulatory',source:'self_report',corrects_event_id:null,created_at:'2026-11-17T12:00:00Z',deleted_at:null},
+ {...owner,id:'a9-factual',kind:'entry',effective_status:'performed',planned_on:null,performed_on:'2026-11-18',title:'Curativo informado',category:'dressing',source:'self_report',corrects_event_id:null,created_at:'2026-11-18T12:00:00Z',deleted_at:null},
+ {...foreign,id:'a9-foreign',kind:'entry',effective_status:'performed',planned_on:null,performed_on:'2026-11-18',title:'PROIBIDO PROCEDIMENTO OUTRO USUARIO',category:'dressing',source:'self_report',corrects_event_id:null,created_at:'2026-11-18T12:00:00Z',deleted_at:null}];
+const a9Reactions=[{...owner,id:'a9-reaction',kind:'entry',sensitivity_type:'reaction',agent_label:'Reação relatada sem causalidade',certainty:'suspected',severity:'unknown',reported_on:'2026-11-18',source:'self_report',corrects_event_id:null,created_at:'2026-11-18T12:00:00Z',deleted_at:null},
+ {...foreign,id:'a9-reaction-foreign',kind:'entry',sensitivity_type:'reaction',agent_label:'PROIBIDO OUTRA CONTA',certainty:'suspected',severity:'unknown',reported_on:'2026-11-18',source:'self_report',corrects_event_id:null,created_at:'2026-11-18T12:00:00Z',deleted_at:null}];
+const a9Report=buildMedicalDossierP3({...options,sections:['procedures_a9','sensitivities_a9'],clinicalA9:{procedures:a9Rows,sensitivities:a9Reactions}});
+assert.ok(a9Report.rows.some(x=>x.sourceId==='a9-plan'&&x.title.includes('Planejado')));
+assert.ok(a9Report.rows.some(x=>x.sourceId==='a9-factual'&&x.title.includes('Realizado')));
+assert.ok(a9Report.rows.some(x=>x.sourceId==='a9-reaction'&&x.detail.includes('não determina causalidade')));
+assert.ok(!a9Report.rows.some(x=>x.title.includes('PROIBIDO')),'A9 não vaza outra conta');
 
 const all=buildMedicalDossierP3(options);
 const symptom=all.rows.find(x=>x.sourceId==='s');

@@ -18,7 +18,8 @@ function load(path,aliases={}){
 const report=load('lib/clinical-report-360.ts');
 const rehabProjection=load('lib/rehab-m5/projection.ts');
 const vaccination=load('lib/vaccination-a8/types.ts');
-const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination});
+const a9=load('lib/clinical-a9/types.ts');
+const med=load('lib/m3/medical-dossier-p3.ts',{'@/lib/clinical-report-360':report,'@/lib/rehab-m5/projection':rehabProjection,'@/lib/vaccination-a8/types':vaccination,'@/lib/clinical-a9/types':a9});
 const scope=load('lib/m3/medical-scope-p3.ts');
 const timestamp='2026-11-17T11:00:00-03:00';
 const ctx=()=>({userId:'own-a',personId:'person-a',medicamentos:[],doseLogs:[],renovacoes:[],tratamentos:[],

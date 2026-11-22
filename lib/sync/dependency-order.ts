@@ -54,6 +54,8 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   surgery_team_a7: [["cirurgia_id","cirurgias"],["professional_id","medicos"]],
   vaccination_courses_a8: [],
   vaccination_events_a8: [["course_id","vaccination_courses_a8"],["source_professional_id","medicos"],["source_location_id","locais"],["corrects_event_id","vaccination_events_a8"]],
+  procedure_events_a9: [["professional_id","medicos"],["location_id","locais"],["consultation_id","consultas"],["rehab_session_id","rehab_sessions_m5"],["corrects_event_id","procedure_events_a9"]],
+  sensitivity_events_a9: [["professional_id","medicos"],["corrects_event_id","sensitivity_events_a9"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -82,6 +84,9 @@ export function blockedSyncDependency(
       type==='tratamento'?'tratamentos':type==='rehab_program'?'rehab_programs_m5':type==='medicamento'?'medicamentos':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
+  if(item.table==='sensitivity_events_a9'){const p=item.payload;const t=p.related_type==='medication'?'medicamentos':p.related_type==='vaccination_event'?'vaccination_events_a8':p.related_type==='procedure_event'?'procedure_events_a9':null;
+    if(t&&typeof p.related_id==='string'&&failedEntities.has(`${t}:${p.related_id}`))return `${t}:${p.related_id}`;
+  }
   if(item.table==='clinical_asset_links'){
     const p=item.payload, type=p.entity_type, id=p.entity_id;
     const table=type==='exam_order'?'exam_orders':type==='exam_order_item'?'exam_order_items':
@@ -89,7 +94,8 @@ export function blockedSyncDependency(
       type==='rehab_program'?'rehab_programs_m5':type==='rehab_session'?'rehab_sessions_m5':
       type==='hospitalization'?'hospitalizations_a5':type==='hospitalization_event'?'hospitalization_events_a5':
       type==='hospitalization_discharge'?'hospitalization_discharge_a5':
-      type==='vaccination_event'?'vaccination_events_a8':null;
+      type==='vaccination_event'?'vaccination_events_a8':
+      type==='procedure_event'?'procedure_events_a9':type==='sensitivity_event'?'sensitivity_events_a9':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
   return null;

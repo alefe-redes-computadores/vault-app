@@ -2,6 +2,7 @@
 "use client";
 import { professionalCategoryLabel } from "@/components/saude/ProfessionalClassificationA1";
 import { RehabM5ReverseLinks } from "@/components/saude/RehabM5ReverseLinks";
+import { ClinicalReverseA8A9 } from "@/components/saude/ClinicalReverseA8A9";
 
 import {
   Suspense,
@@ -1633,6 +1634,7 @@ function DetalhesMedicoContent() {
 
         <section className="space-y-5 px-5 pt-6">
           {medico?.id && <RehabM5ReverseLinks kind="profissional" recordId={medico.id} returnTo={`/saude/medicos/detalhes?id=${encodeURIComponent(medico.id)}`} />}
+          {medico?.id && <ClinicalReverseA8A9 kind="professional" recordId={medico.id} returnTo={`/saude/medicos/detalhes?id=${encodeURIComponent(medico.id)}`} />}
           <DoctorCareFlowRelationsR5 doctorId={medico.id||""} doctorOwnerId={medico.user_id}/>
           {/* ==================================================
               HERO / GLOBAL PROFILE

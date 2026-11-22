@@ -773,6 +773,8 @@ export interface SyncQueueItem {
     | "surgery_team_a7"
     | "vaccination_courses_a8"
     | "vaccination_events_a8"
+    | "procedure_events_a9"
+    | "sensitivity_events_a9"
     | "health_reminders"
     | "notification_policies_p2"
     | "health_profiles"
