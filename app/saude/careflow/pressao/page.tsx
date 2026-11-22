@@ -30,6 +30,7 @@ import { pdfLibraryM2 } from "@/lib/careflow-m2/pdf-library";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { isClockM2, isIsoDateM2 } from "@/lib/careflow-m2/domain";
 import { parsePressureDraft } from "@/lib/health/pressure-input";
+import { useToast } from "@/components/ToastProvider";
 const input =
   "min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary focus:border-sky-300/50 outline-none";
 const nowClock = () => new Date().toTimeString().slice(0, 5);
@@ -43,6 +44,7 @@ const validBP = (sys: number, dia: number) =>
   dia < sys;
 export default function PressureCareFlowPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   // R6: a lista de aferições e planos está na Linha de cuidado; aqui há editor/detalhe.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -313,7 +315,7 @@ export default function PressureCareFlowPage() {
         await healthRemindersRepository.createMany(
           clean.map((clock) => ({
             person_id: activePersonId,
-            title: `Registrar pressão · ${clock}`,
+              title: "Registrar pressão",
             body: "Registre apenas valores realmente medidos.",
             target_type: "health_record:medicao",
             target_route: "/saude/careflow/pressao?novo=1",
@@ -329,6 +331,7 @@ export default function PressureCareFlowPage() {
             clean.length === 1 ? "horário" : "horários"
           }.`
         );
+        showToast("Plano de pressão salvo", "success");
       } catch (e) {
         setMessage(
           `Plano preservado (ID ${id.slice(
@@ -513,6 +516,10 @@ export default function PressureCareFlowPage() {
         }
       }
       if (scopeStill(scope.uid, scope.pid)) setMessage(feedback);
+      if (scopeStill(scope.uid, scope.pid)) {
+        setShowReadingForm(false);
+        showToast("Medição de pressão salva", "success");
+      }
     } catch (e) {
       if (scopeStill(scope.uid, scope.pid))
         setMessage(
@@ -619,7 +626,7 @@ export default function PressureCareFlowPage() {
   };
   return (
     <PageTransition>
-      <main className="min-h-screen bg-void px-4 pb-24 pt-5 header-safe-top text-ink-primary vault-adaptive-tail">
+      <main className="min-h-screen bg-void px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-5 header-safe-top text-ink-primary vault-adaptive-tail">
         <div className="mx-auto max-w-3xl space-y-4">
           <header className="flex gap-3">
             <ClinicalBackLinkP0
@@ -635,7 +642,7 @@ export default function PressureCareFlowPage() {
           </header>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/saude/registros"
+              href="/saude/registros?foco=pressao"
               className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ink-secondary"
             >
               Linha de cuidado
@@ -643,7 +650,7 @@ export default function PressureCareFlowPage() {
             <button
               type="button"
               aria-expanded={showPlanForm}
-              onClick={() => setShowPlanForm((v) => !v)}
+              onClick={() => { setShowPlanForm((v) => !v); setShowReadingForm(false); }}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-300/[.07] px-3 text-xs font-bold text-sky-200"
             >
               <CalendarClock size={16} />
@@ -652,7 +659,7 @@ export default function PressureCareFlowPage() {
             <button
               type="button"
               aria-expanded={showReadingForm}
-              onClick={() => setShowReadingForm((v) => !v)}
+              onClick={() => { setShowReadingForm((v) => !v); setShowPlanForm(false); }}
               className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"
             >
               <HeartPulse size={16} />

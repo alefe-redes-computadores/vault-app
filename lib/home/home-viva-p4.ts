@@ -51,17 +51,17 @@ export function buildHomeVivaFrontsP4(input:HomeVivaInputP4):HomeVivaFrontP4[]{
     const first=temporary[0];
     fronts.push({id:"temporary",label:"Tratamento por período",title:first.name||"Tratamento temporário",
       description:temporary.length>1?`${temporary.length} períodos registrados; confira o mais próximo do término.`:`Período informado até ${localDate(first.end)}.`,
-      detail:"Horários planejados não confirmam tomadas.",href:first.id?`/saude/medicamentos/detalhes?id=${encodeURIComponent(first.id)}`:"/saude/medicamentos",tone:"emerald"});
+    detail:"Horários planejados não confirmam tomadas.",href:first.id?`/saude/medicamentos/detalhes?id=${encodeURIComponent(first.id)}`:"/saude/medicamentos",tone:"emerald"});
   }
   const monitor=input.events.filter(e=>own(e,input)&&e.kind==="monitor_plan"&&validDay(e.payload.start)&&validDay(e.payload.end)&&String(e.payload.start)<=input.today&&String(e.payload.end)>=input.today)
     .sort((a,b)=>b.created_at.localeCompare(a.created_at));
   if(monitor.length)fronts.push({id:"monitor",label:"Acompanhamento",title:"Plano de pressão ativo",
-    description:`Período registrado até ${localDate(String(monitor[0].payload.end))}.`,detail:"Conferir medidas sem presumir que foram realizadas.",href:"/saude/careflow/pressao",tone:"sky"});
+    description:`Período registrado até ${localDate(String(monitor[0].payload.end))}.`,detail:"Conferir medidas sem presumir que foram realizadas.",href:"/saude/registros?foco=pressao",tone:"sky"});
   const since=offsetDay(input.today,-3);
   const recent=input.consultations.filter(c=>own(c,input)&&c.status==="realizada"&&validDay(c.data)&&c.data<=input.today&&c.data>=since)
     .sort((a,b)=>b.data.localeCompare(a.data)||String(b.horario||"").localeCompare(String(a.horario||"")));
   if(recent.length)fronts.push({id:"consultation",label:"Após a consulta",title:"Consulta registrada recentemente",
     description:`Consulta de ${localDate(recent[0].data)}. Registros e próximos passos ficam disponíveis para conferir.`,
-    detail:"O VAULT não presume receita, exame ou recomendação do profissional.",href:"/saude/consultas",tone:"violet"});
+    detail:"O VAULT não presume receita, exame ou recomendação do profissional.",href:recent[0].id?`/saude/consultas/detalhes?id=${encodeURIComponent(recent[0].id)}`:"/saude/consultas",tone:"sky"});
   return fronts.length?fronts:[routine];
 }

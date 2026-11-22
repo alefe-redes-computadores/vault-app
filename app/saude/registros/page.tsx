@@ -68,7 +68,7 @@ const categoryMeta: Record<
 > = {
   sintoma: {
     label: "Sintoma",
-    tone: "border-violet-400/25 bg-violet-400/10 text-violet-300",
+    tone: "border-rose-400/25 bg-rose-400/10 text-rose-300",
     icon: HeartPulse,
   },
   medicao: {
@@ -262,7 +262,7 @@ export default function RegistrosSaudePage() {
         <ListPageHeader
           title="Linha de cuidado"
           badgeLabel="PRONTUÁRIO CLÍNICO"
-          badgeColor="text-violet-300"
+          badgeColor="text-sky-300"
           subtitle="Registros e doses, sem substituir avaliação profissional"
           backUrl={backTarget}
           className="print:static print:bg-white"
@@ -483,7 +483,7 @@ export default function RegistrosSaudePage() {
                 }
                 className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-raised text-xs font-semibold"
               >
-                <BarChart3 size={15} className="text-violet-300" />
+                <BarChart3 size={15} className="text-sky-300" />
                 Ver evolução
               </button>
               <button
@@ -500,7 +500,7 @@ export default function RegistrosSaudePage() {
             <button
               type="button"
               onClick={() => router.push(preserveReturn("/saude/relatorios"))}
-              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/25 bg-violet-400/[.06] px-3 text-xs font-semibold text-violet-300 print:hidden"
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/[.06] px-3 text-xs font-semibold text-amber-200 print:hidden"
             >
               <FileDown size={15} />
               Central de Relatórios 360 · PDF, CSV e JSON
