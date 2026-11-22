@@ -1799,6 +1799,11 @@ async function performPullAllData(userId: string): Promise<void> {
       localTable:db.procedure_events_a9,query:async()=>await supabase.from('procedure_events_a9').select('*').eq('user_id',userId)});
     await processTable({remoteTable:'sensitivity_events_a9',queueTable:'sensitivity_events_a9',
       localTable:db.sensitivity_events_a9,query:async()=>await supabase.from('sensitivity_events_a9').select('*').eq('user_id',userId)});
+    // A7/M5 continuity: parent facts before links; never overwrite pending offline rows.
+    await processTable({remoteTable:'surgical_intents_a7m5',queueTable:'surgical_intents_a7m5',
+      localTable:db.surgical_intents_a7m5,query:async()=>await supabase.from('surgical_intents_a7m5').select('*').eq('user_id',userId)});
+    await processTable({remoteTable:'surgery_evidence_links_a7m5',queueTable:'surgery_evidence_links_a7m5',
+      localTable:db.surgery_evidence_links_a7m5,query:async()=>await supabase.from('surgery_evidence_links_a7m5').select('*').eq('user_id',userId)});
     // A1: after legacy providers, prescriptions and treatments are hydrated.
     // processTable protects unsynced local events and pending queue entries.
     await processTable({

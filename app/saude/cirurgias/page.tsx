@@ -9,10 +9,13 @@ import {
 import {
   useRouter,
 } from "next/navigation";
+import Link from "next/link";
 import {
   Activity,
   Building2,
   CalendarDays,
+  ClipboardList,
+  GitBranch,
 } from "lucide-react";
 import {
   useLiveQuery,
@@ -666,6 +669,16 @@ export default function CirurgiasPage() {
             </button>
           </ListFilters>
         </ListPageHeader>
+        {activePersonId && <nav aria-label="Acompanhamento de cirurgias" className="mx-3 mt-2 flex flex-wrap gap-2 sm:mx-4">
+          <Link href="/saude/cirurgias/encaminhamentos" onClick={()=>trigger("vibrate")}
+            className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-300/30 bg-surface px-3 text-xs font-semibold text-emerald-200">
+            <ClipboardList size={16} className="shrink-0"/><span>Encaminhamentos sem data</span>
+          </Link>
+          <Link href="/saude/cirurgias/jornada" onClick={()=>trigger("vibrate")}
+            className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ink-secondary">
+            <GitBranch size={16} className="shrink-0"/><span>Jornada cirúrgica</span>
+          </Link>
+        </nav>}
 
         <section className="space-y-3.5 px-5 pt-4">
           {activePersonId && (

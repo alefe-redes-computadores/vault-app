@@ -12,6 +12,7 @@ import { HealthRelationPicker } from '@/components/saude/HealthRelationPicker';
 import { SurgeryConsultationLinksM4P2 } from '@/components/saude/SurgeryConsultationLinksM4P2';
 import { projectSurgeryJourneyA7, type SurgeryRowA7, type SurgeryStageA7, type HospitalizationA7, type HospitalizationRelationA7, type HospitalizationEventA7, type HospitalizationDischargeA7, type HospitalizationTeamA7, type HospitalizationStayA7 } from '@/lib/surgery-a7/projection';
 import {SurgeryA7RecordsPanel} from '@/components/saude/SurgeryA7RecordsPanel';
+import {SurgeryEvidencePanelA7M5} from '@/components/saude/SurgeryEvidencePanelA7M5';
 import { REHAB_M5_STATES } from '@/lib/rehab-m5/projection';
 import { normalizeSurgerySearchA7, resolveSurgeryForHospitalizationA7 } from '@/lib/surgery-a7/premium';
 import { safeReturnTarget, withReturnTarget } from '@/lib/navigation/return-context';
@@ -70,33 +71,33 @@ export function SurgeryJourneyA7({initialSurgeryId='',initialHospitalizationId='
   const person=await db.persons.get(pid);if(!person||person.user_id!==uid)return null;
   const own=<T extends {user_id:string;person_id?:string|null}>(rows:T[])=>rows.filter(r=>r.user_id===uid&&r.person_id===pid);
   const a5Ready=true; // A5 is a published prerequisite for this build.
-  const a5Read=<T extends {user_id:string;person_id?:string|null},>(table:string)=>db.table(table).where('person_id').equals(pid).toArray().then(rows=>own(rows as T[]));
+  const a5Read=<T extends {user_id:string;person_id?:string|null},>(table:string)=>db.table(table).where('[user_id+person_id]').equals([uid,pid]).toArray().then(rows=>own(rows as T[]));
   const [surgeries,consultations,links,treatments,documents,orders,orderLinks,rehabPrograms,rehabOrigins,rehabSessions,rehabMilestones,doctors,hospitals,
    clinicalAssets,clinicalAssetLinks,hospitalizations,hospitalizationRelations,
    hospitalizationEvents,hospitalizationDischarges,hospitalizationTeam,hospitalizationStays,surgeryEvents,surgeryTeam]=await Promise.all([
-   db.cirurgias.where('person_id').equals(pid).toArray().then(own),
-   db.consultas.where('person_id').equals(pid).toArray().then(own),
-   db.surgery_consultation_links_m4.where('person_id').equals(pid).toArray().then(own),
-   db.tratamentos.where('person_id').equals(pid).toArray().then(own),
-   db.documents.where('person_id').equals(pid).toArray().then(own),
-   db.exam_orders.where('person_id').equals(pid).toArray().then(own),
-   db.consultation_exam_order_links.where('person_id').equals(pid).toArray().then(own),
-   db.rehab_programs_m5.where('person_id').equals(pid).toArray().then(own),
-   db.rehab_origin_links_m5.where('person_id').equals(pid).toArray().then(own),
-   db.rehab_sessions_m5.where('person_id').equals(pid).toArray().then(own),
-   db.rehab_milestones_m5.where('person_id').equals(pid).toArray().then(own),
+   db.cirurgias.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.consultas.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.surgery_consultation_links_m4.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.tratamentos.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.documents.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.exam_orders.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.consultation_exam_order_links.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.rehab_programs_m5.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.rehab_origin_links_m5.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.rehab_sessions_m5.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.rehab_milestones_m5.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
    db.medicos.where('user_id').equals(uid).toArray(),
    db.hospitais.where('user_id').equals(uid).toArray(),
-   db.clinical_assets.where('person_id').equals(pid).toArray().then(own),
-   db.clinical_asset_links.where('person_id').equals(pid).toArray().then(own),
+   db.clinical_assets.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.clinical_asset_links.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
    a5Read<HospitalizationA7>('hospitalizations_a5'),
    a5Read<HospitalizationRelationA7>('hospitalization_relations_a5'),
    a5Read<HospitalizationEventA7>('hospitalization_events_a5'),
    a5Read<HospitalizationDischargeA7>('hospitalization_discharge_a5'),
    a5Read<HospitalizationTeamA7>('hospitalization_team_a5'),
    a5Read<HospitalizationStayA7>('hospitalization_stays_a5'),
-   db.surgery_journey_events_a7.where('person_id').equals(pid).toArray().then(own),
-   db.surgery_team_a7.where('person_id').equals(pid).toArray().then(own)]);
+   db.surgery_journey_events_a7.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own),
+   db.surgery_team_a7.where('[user_id+person_id]').equals([uid,pid]).toArray().then(own)]);
   return {scope,surgeries,consultations,links,treatments,documents,orders,orderLinks,rehabPrograms,rehabOrigins,rehabSessions,rehabMilestones,
    doctors,hospitals,clinicalAssets,clinicalAssetLinks,hospitalizations,hospitalizationRelations,
    hospitalizationEvents,hospitalizationDischarges,hospitalizationTeam,hospitalizationStays,surgeryEvents,surgeryTeam,a5Ready};
@@ -151,10 +152,13 @@ export function SurgeryJourneyA7({initialSurgeryId='',initialHospitalizationId='
        {label:'Internações vinculadas',count:journey.counts.hospitalizations},
        {label:'Arquivos privados',count:journey.counts.privateAssets},
        {label:'Registros da jornada',count:journey.counts.surgicalEvents},{label:'Equipe cirúrgica',count:journey.counts.surgicalTeam}
-      ].map(x=><div key={x.label} className="rounded-xl border border-surface-border/60 bg-surface-raised/65 p-2.5"><strong className="block text-lg tabular-nums text-ink-primary">{x.count}</strong><span className="mt-1 block text-[10px] leading-4 text-ink-muted">{x.label}</span></div>)}</div>
+      ].filter(x=>x.count>0).map(x=><div key={x.label} className="rounded-xl border border-surface-border/60 bg-surface-raised/65 p-2.5"><strong className="block text-lg tabular-nums text-ink-primary">{x.count}</strong><span className="mt-1 block text-[10px] leading-4 text-ink-muted">{x.label}</span></div>)}</div>
      <Link href={withReturnTarget(`/saude/cirurgias/detalhes?id=${encodeURIComponent(journey.id)}`,returnHere)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 text-xs font-bold text-slate-950">Abrir e editar cadastro original <ArrowUpRight size={15}/></Link>
     </section>
     <SurgeryA7RecordsPanel surgeryId={journey.id}/>
+    <SurgeryEvidencePanelA7M5 surgeryId={journey.id} operationDocumented={journey.status==='realizada'||journey.stages.procedure.some(x=>x.kind==='surgical_event')}
+      returnIds={journey.stages.return.filter(x=>x.kind==='consultation').map(x=>x.sourceId)}
+      rehabIds={journey.stages.rehabilitation.filter(x=>x.kind==='rehabilitation').map(x=>x.sourceId)}/>
     <section className={`${paper} space-y-2`} aria-label="Sincronização da jornada cirúrgica">
      <h2 className="flex items-center gap-2 text-sm font-bold"><ShieldCheck size={17} className="text-emerald-300"/>Sincronização dos fatos A7</h2>
      <p className="text-xs leading-5 text-ink-muted">{surgicalSync?.total||0} registros próprios de fatos e equipe. {surgicalSync?.pending||0} aguardam confirmação na nuvem{(surgicalSync?.unverified||0)>0?`; ${surgicalSync?.unverified} sem estado local verificável`:''}. Isso não atesta recepção em outro dispositivo.</p>
@@ -174,11 +178,11 @@ export function SurgeryJourneyA7({initialSurgeryId='',initialHospitalizationId='
     {data.a5Ready?<div className={`${paper} flex flex-wrap items-center justify-between gap-2`}><div><p className="text-xs font-bold">Internações relacionadas</p><p className="mt-1 text-[11px] text-ink-muted">Somente relações confirmadas por identificador. Outras internações permanecem no módulo próprio.</p></div><Link href="/saude/internacoes" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-border px-3 text-xs font-semibold text-ink-secondary">Abrir Internações <ArrowUpRight size={15}/></Link></div>:null}
 
     <section className={`${paper} space-y-3`} aria-label="Vínculos da jornada"><div className="flex items-center gap-2"><GitBranch size={17} className="text-sky-300"/><h2 className="text-sm font-bold">Organizar consultas da cirurgia</h2></div><p className="text-xs leading-5 text-ink-muted">Associe consultas já cadastradas ao pré-operatório, pós-operatório ou retorno. Somente sua confirmação cria o vínculo.</p><SurgeryConsultationLinksM4P2 surgeryId={journey.id}/></section>
-    <section className={`${paper} space-y-2`} aria-label="Iniciar reabilitação vinculada"><p className="text-xs font-bold text-ink-primary">Reabilitação relacionada</p><p className="text-xs leading-5 text-ink-muted">Para iniciar um ciclo ou vincular uma origem, use o cadastro canônico de Reabilitação.</p><Link href={withReturnTarget(`/saude/reabilitacao/novo?origem_tipo=cirurgia&origem_id=${encodeURIComponent(journey.id)}`,returnHere)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-300/30 px-3 text-xs font-semibold text-teal-300"><Plus size={16}/>Abrir Reabilitação</Link></section>
+    {journey.counts.rehabilitation>0&&<section className={`${paper} space-y-2`} aria-label="Reabilitação vinculada"><p className="text-xs font-bold text-ink-primary">Reabilitação relacionada</p><p className="text-xs leading-5 text-ink-muted">Para iniciar um ciclo ou vincular uma origem, use o cadastro canônico de Reabilitação.</p><Link href={withReturnTarget(`/saude/reabilitacao/novo?origem_tipo=cirurgia&origem_id=${encodeURIComponent(journey.id)}`,returnHere)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-300/30 px-3 text-xs font-semibold text-teal-300"><Plus size={16}/>Abrir Reabilitação</Link></section>}
     <section className={`${paper} space-y-2`} aria-label="Limitações dos dados"><h2 className="flex items-center gap-2 text-sm font-bold text-ink-primary"><ShieldCheck size={17} className="text-emerald-300"/>Origem e segurança dos dados</h2>{journey.caveats.map((message,i)=><p key={i} className="flex gap-2 text-[11px] leading-5 text-ink-muted"><TriangleAlert size={14} className="mt-0.5 shrink-0 text-amber-300"/>{message}</p>)}</section>
     </>:surgeries.length&&!selectedId?<section className={paper}><p className="text-xs leading-5 text-ink-muted">Escolha uma cirurgia para visualizar os registros comprovadamente vinculados a ela.</p></section>:null}
    </>}
-  <div className="flex flex-wrap gap-2"><Link href="/saude/jornada" className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ink-secondary"><CalendarDays size={15}/>Jornada clínica geral</Link><Link href="/saude/cirurgias" className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ink-secondary"><ArrowUpRight size={15}/>Todas as cirurgias</Link></div>
+  <div className="flex flex-wrap gap-2"><Link href="/saude/cirurgias/encaminhamentos" className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-emerald-200"><ClipboardList size={16}/>Encaminhamentos sem data</Link><Link href="/saude/jornada" className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ink-secondary"><CalendarDays size={15}/>Jornada clínica geral</Link><Link href="/saude/cirurgias" className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 text-xs font-semibold text-ink-secondary"><ArrowUpRight size={15}/>Todas as cirurgias</Link></div>
   <p className="flex gap-2 text-[11px] leading-5 text-ink-muted"><LockKeyhole size={15} className="mt-0.5 shrink-0"/>Visão local, por conta e pessoa. Sem diagnóstico, liberação cirúrgica, alta presumida, previsão de recuperação ou mensagens automáticas.</p>
  </div></main></PageTransition>;
 }

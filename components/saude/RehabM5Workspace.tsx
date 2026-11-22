@@ -1,11 +1,13 @@
 'use client';
 import {ClinicalReverseProcedureA9} from '@/components/saude/ClinicalReverseProcedureA9';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ListPageHeader } from '@/components/list/ListPageHeader';
 import { useHapticFeedback } from '@/lib/haptics';
+import { useToast } from '@/components/ToastProvider';
 import { RehabM5PremiumSections } from '@/components/saude/RehabM5PremiumSections';
+import {RehabRecurringPlannerA7M5} from '@/components/saude/RehabRecurringPlannerA7M5';
 import { HospitalizationA5ReverseLinks } from '@/components/saude/HospitalizationA5ReverseLinks';
 import { withReturnTarget } from '@/lib/navigation/return-context';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -32,7 +34,7 @@ const legend='mb-1 block text-xs font-semibold text-ink-muted';
 const date=(d?:string|null)=>d?new Date(d).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'Não informado';
 function Field({label,children}:{label:string;children:React.ReactNode}){return <fieldset className="min-w-0"><legend className={legend}>{label}</legend>{children}</fieldset>}
 export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string}){
- const router=useRouter();const searchParams=useSearchParams();const {trigger}=useHapticFeedback();const {user,loading}=useAuth();const {activePersonId}=useActivePersonId();
+ const router=useRouter();const searchParams=useSearchParams();const {trigger}=useHapticFeedback();const {showToast}=useToast();const {user,loading}=useAuth();const {activePersonId}=useActivePersonId();
  const uid=user?.id||'',personId=activePersonId||'';
  const scope=`${uid}:${personId}`;
  const [title,setTitle]=useState(''),[specialty,setSpecialty]=useState(''),[goal,setGoal]=useState('');
@@ -45,6 +47,7 @@ export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string
  const [eventSession,setEventSession]=useState('');
  const [rescheduleAt,setRescheduleAt]=useState(''),[sessionTeam,setSessionTeam]=useState(''),[sessionTeamId,setSessionTeamId]=useState('');
  const [editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const inFlight=useRef(false);
  const go=(path:string)=>{trigger('vibrate');router.push(withReturnTarget(path,searchParams.get('return_to')||'/saude/reabilitacao'));};
  // Only render records for the active authenticated account and exact person.
  const info=useLiveQuery(async()=>{
@@ -90,7 +93,7 @@ export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string
    const item=info?.tratamentos.find(x=>x.id===id);
    return item?`Tratamento · ${item.nome||'Sem título'}`:'Tratamento indisponível';
  };
- const action=async(run:()=>Promise<void>,success:string)=>{if(busy)return;setBusy(true);setMessage('');try{await run();setMessage(success);}catch(e){setMessage(e instanceof Error?e.message:'Não foi possível salvar.');}finally{setBusy(false);}};
+ const action=async(run:()=>Promise<void>,success:string)=>{if(inFlight.current)return;inFlight.current=true;setBusy(true);setMessage('');try{await run();setMessage(success);showToast(success,'success');trigger('success');}catch(e){const reason=e instanceof Error?e.message:'Não foi possível salvar.';setMessage(reason);showToast(reason,'error');trigger('error');}finally{inFlight.current=false;setBusy(false);}};
  const create=(e:FormEvent)=>{e.preventDefault();void action(async()=>{
   const id=await createRehabProgramM5({personId,title,specialty,functionalGoal:goal,startDate:start||undefined,expectedEndDate:expectedEnd||undefined});
   const source=searchParams.get('origem_tipo'),sourceId=searchParams.get('origem_id');
@@ -175,6 +178,7 @@ export function RehabM5Workspace({view,selectedId}:{view:View;selectedId?:string
      <Field label="Registro desta pessoa"><HealthRelationPicker title="Registro desta pessoa" className={field} value={originId} onValueChange={setOriginId}><option value="">Selecione</option>{choices?.filter(x=>x.id).map(x=><option key={x.id} value={x.id}>{'nome' in x?x.nome:'procedimento' in x?x.procedimento:x.especialidade}</option>)}</HealthRelationPicker></Field></div>
     <button disabled={busy||!originId} className={secondary} onClick={()=>void action(async()=>{await addRehabOriginM5({personId,programId:selected.id,type:originType,originId});setOriginId('');},'Origem vinculada por identidade real.')}><Link2 size={15}/> Vincular</button>
    </section>
+   <RehabRecurringPlannerA7M5 programId={selected.id}/>
    <RehabM5PremiumSections programId={selected.id} />
    <HospitalizationA5ReverseLinks kind="rehab_program" recordId={selected.id} returnTo={`/saude/reabilitacao/detalhes?id=${encodeURIComponent(selected.id)}`} />
    <div className="flex items-center gap-2 text-[11px] text-ink-muted"><ShieldCheck size={16}/> Dados escopados à pessoa e à conta. Histórico factual mantido.</div>

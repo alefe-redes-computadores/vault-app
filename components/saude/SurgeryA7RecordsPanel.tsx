@@ -11,19 +11,22 @@ import {useToast} from '@/components/ToastProvider';
 import {CustomDatePicker} from '@/components/DatePicker';
 import {HealthRelationPicker} from '@/components/saude/HealthRelationPicker';
 import {addSurgeryJourneyEventA7,linkSurgeryTeamA7,unlinkSurgeryTeamA7} from '@/lib/surgery-a7/repository';
-import {A7_EVENT_LABEL,A7_SOURCE_LABEL,displayDayA7,type A7EventKind,type A7Source} from '@/lib/surgery-a7/types';
+import {A7_EVENT_LABEL,A7_SOURCE_LABEL,A7_TOPIC_LABEL,A7_TOPICS_BY_STAGE,A7_STAGE_FOR_KIND,displayDayA7,type A7Topic,type A7EventKind,type A7Source} from '@/lib/surgery-a7/types';
+import {ClinicalFactDocumentsA7M5} from './ClinicalFactDocumentsA7M5';
+import {useHapticFeedback} from '@/lib/haptics';
 const card='rounded-[22px] border border-surface-border/70 bg-surface p-4 sm:p-5';
 const field='min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300';
 const SOURCE_VALUES:readonly A7Source[]=['self_report','professional_document'];
 const KINDS:readonly A7EventKind[]=['preparation_note','procedure_note','recovery_note','return_note','correction'];
 export function SurgeryA7RecordsPanel({surgeryId}:{surgeryId:string}){
- const {user}=useAuth();const {activePersonId}=useActivePersonId();const toast=useToast();const uid=user?.id||'',pid=activePersonId||'',scope=`${uid}:${pid}`;
+ const {user}=useAuth();const {activePersonId}=useActivePersonId();const toast=useToast();const {trigger}=useHapticFeedback();const uid=user?.id||'',pid=activePersonId||'',scope=`${uid}:${pid}`;
  const [open,setOpen]=useState(false),[kind,setKind]=useState<A7EventKind>('preparation_note'),[source,setSource]=useState<A7Source>('self_report');
+ const [topic,setTopic]=useState<A7Topic|'none'>('none');
  const [title,setTitle]=useState(''),[detail,setDetail]=useState(''),[day,setDay]=useState(''),[professional,setProfessional]=useState(''),[corrects,setCorrects]=useState('');
  const [teamOpen,setTeamOpen]=useState(false),[teamProfessional,setTeamProfessional]=useState(''),[teamRole,setTeamRole]=useState(''),[teamSource,setTeamSource]=useState<A7Source>('self_report'),[teamNote,setTeamNote]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [focusEvent,setFocusEvent]=useState(''),[confirmUnlink,setConfirmUnlink]=useState('');
- useEffect(()=>{setOpen(false);setKind('preparation_note');setSource('self_report');setTitle('');setDetail('');setDay('');setProfessional('');setCorrects('');setTeamOpen(false);setTeamProfessional('');setTeamRole('');setTeamSource('self_report');setTeamNote('');setError('');setFocusEvent('');setConfirmUnlink('');},[scope,surgeryId]);
+ useEffect(()=>{setOpen(false);setKind('preparation_note');setSource('self_report');setTopic('none');setTitle('');setDetail('');setDay('');setProfessional('');setCorrects('');setTeamOpen(false);setTeamProfessional('');setTeamRole('');setTeamSource('self_report');setTeamNote('');setError('');setFocusEvent('');setConfirmUnlink('');},[scope,surgeryId]);
  const data=useLiveQuery(async()=>{
   if(!uid||!pid||!surgeryId)return null;
   const [person,surgery,events,team,professionals]=await Promise.all([
@@ -43,9 +46,9 @@ export function SurgeryA7RecordsPanel({surgeryId}:{surgeryId:string}){
   if(busy||!pid||!surgeryId)return;setBusy(true);setError('');
   try{
    const id=await addSurgeryJourneyEventA7({personId:pid,surgeryId,kind,source,title,description:detail,occurredOn:day||null,
-    professionalId:professional||null,correctsEventId:kind==='correction'?corrects:null});
-   setTitle('');setDetail('');setDay('');setProfessional('');setCorrects('');setKind('preparation_note');setSource('self_report');setOpen(false);
-   toast.showSuccess('Registro salvo localmente. Sincronização pela fila protegida.');
+    professionalId:professional||null,correctsEventId:kind==='correction'?corrects:null,topic:kind==='correction'||topic==='none'?null:topic});
+   setTitle('');setDetail('');setDay('');setProfessional('');setCorrects('');setKind('preparation_note');setSource('self_report');setTopic('none');setOpen(false);
+   trigger('vibrate');toast.showSuccess('Registro salvo localmente. Sincronização pela fila protegida.');
    setFocusEvent(id);
   }catch(e){const msg=e instanceof Error?e.message:'Não foi possível registrar o fato.';setError(msg);toast.showError(msg);}finally{setBusy(false);}
  };
@@ -65,12 +68,13 @@ export function SurgeryA7RecordsPanel({surgeryId}:{surgeryId:string}){
   <section className={`${card} space-y-3`} aria-label="Registros da jornada cirúrgica">
    <div className="flex min-w-0 items-start gap-2"><ClipboardList className="mt-0.5 shrink-0 text-emerald-300" size={20}/><div className="min-w-0 flex-1"><h2 className="text-sm font-bold text-ink-primary">Acompanhamento da cirurgia</h2><p className="mt-1 text-xs leading-5 text-ink-muted">Registre fatos documentados ou relatos. Datas e etapas não comprovam liberação, alta, melhora ou realização da cirurgia.</p></div></div>
    {events.length===0?<p className="text-xs text-ink-muted">Nenhum fato adicional registrado nesta jornada.</p>:<div className="space-y-2">{[...events].sort((a,b)=>(b.occurred_on||b.created_at).localeCompare(a.occurred_on||a.created_at)).map(x=><article id={`a7-event-${x.id}`} key={x.id} className="rounded-xl border border-surface-border/70 bg-surface-raised/60 p-3">
-    <div className="flex min-w-0 items-start gap-2"><Check size={16} className="mt-0.5 shrink-0 text-emerald-300"/><div className="min-w-0 flex-1"><p className="text-[11px] font-semibold text-emerald-200">{A7_EVENT_LABEL[x.kind]} · {A7_SOURCE_LABEL[x.source]}</p><h3 className="mt-1 break-words text-sm font-bold text-ink-primary">{x.title}</h3><p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-ink-secondary">{x.description}</p><p className="mt-2 text-[11px] text-ink-muted">{displayDayA7(x.occurred_on)}{x.source_professional_id&&byId.has(x.source_professional_id)?` · ${byId.get(x.source_professional_id)}`:''}{x.corrects_event_id?' · Retificação referenciada':''}</p></div></div>
+    <div className="flex min-w-0 items-start gap-2"><Check size={16} className="mt-0.5 shrink-0 text-emerald-300"/><div className="min-w-0 flex-1"><p className="text-[11px] font-semibold text-emerald-200">{A7_EVENT_LABEL[x.kind]}{x.topic?' · '+A7_TOPIC_LABEL[x.topic]:''} · {A7_SOURCE_LABEL[x.source]}</p><h3 className="mt-1 break-words text-sm font-bold text-ink-primary">{x.title}</h3><p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-ink-secondary">{x.description}</p><p className="mt-2 text-[11px] text-ink-muted">{displayDayA7(x.occurred_on)}{x.source_professional_id&&byId.has(x.source_professional_id)?` · ${byId.get(x.source_professional_id)}`:''}{x.corrects_event_id?' · Retificação referenciada':''}</p><ClinicalFactDocumentsA7M5 type="surgery_event" entityId={x.id}/></div></div>
    </article>)}</div>}
    <button type="button" onClick={()=>{setOpen(v=>!v);setError('');}} aria-expanded={open} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-3 text-xs font-bold text-slate-950"><Plus size={17}/>{open?'Fechar novo registro':'Registrar fato da jornada'}</button>
    {open&&<div className="space-y-3 rounded-xl border border-surface-border bg-void/25 p-3" aria-label="Novo fato cirúrgico">
-    <div><p className="mb-2 text-xs font-bold text-ink-primary">Qual fato você deseja documentar?</p><div className="grid grid-cols-2 gap-2">{KINDS.map(value=><button key={value} type="button" aria-pressed={kind===value} onClick={()=>{setKind(value);setCorrects('');}} className={`min-h-11 rounded-xl border px-2 py-2 text-[11px] font-semibold ${kind===value?'border-emerald-300/60 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-secondary'}`}>{A7_EVENT_LABEL[value]}</button>)}</div></div>
+    <div><p className="mb-2 text-xs font-bold text-ink-primary">Qual fato você deseja documentar?</p><div className="grid grid-cols-2 gap-2">{KINDS.map(value=><button key={value} type="button" aria-pressed={kind===value} onClick={()=>{setKind(value);setTopic('none');setCorrects('');}} className={`min-h-11 rounded-xl border px-2 py-2 text-[11px] font-semibold ${kind===value?'border-emerald-300/60 bg-emerald-300/10 text-emerald-200':'border-surface-border text-ink-secondary'}`}>{A7_EVENT_LABEL[value]}</button>)}</div></div>
     {kind==='correction'&&<HealthRelationPicker title="Selecione o fato original a retificar" value={corrects} onValueChange={setCorrects} className={field}><option value="">Escolha um registro original…</option>{events.filter(x=>x.kind!=='correction').map(x=><option key={x.id} value={x.id}>{x.title} · {displayDayA7(x.occurred_on)}</option>)}</HealthRelationPicker>}
+    {kind!=='correction'&&<div className="space-y-1"><p className="text-xs font-semibold text-ink-primary">Tema registrado (opcional)</p><div className="grid gap-2 min-[390px]:grid-cols-2" role="group">{A7_TOPICS_BY_STAGE[A7_STAGE_FOR_KIND[kind]].map(t=><button type="button" key={t} aria-pressed={topic===t} onClick={()=>setTopic(t)} className={'min-h-11 rounded-xl border px-3 py-2 text-left text-xs '+(topic===t?'border-emerald-300/40 text-emerald-200':'border-surface-border text-ink-muted')}>{A7_TOPIC_LABEL[t]}</button>)}</div><p className="text-[11px] text-ink-muted">Escolha somente quando o documento ou relato for explícito. Sem completar checklist automaticamente.</p></div>}
     <label className="block text-xs font-semibold text-ink-primary">Título do fato<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={170} placeholder="O que foi registrado?" className={`mt-1 ${field}`}/></label>
     <label className="block text-xs font-semibold text-ink-primary">Descrição documentada<textarea value={detail} onChange={e=>setDetail(e.target.value)} maxLength={4000} rows={4} placeholder="Descreva somente o que consta no documento ou o que foi informado…" className={`mt-1 ${field}`}/></label>
     <CustomDatePicker label="Data do fato (opcional)" value={day} onChange={setDay} placeholder="Selecionar data documentada"/>

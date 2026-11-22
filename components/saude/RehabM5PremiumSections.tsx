@@ -14,6 +14,7 @@ import { createRehabMilestoneM5, closeRehabProgramM5, recordRehabSessionEvolutio
 import { REHAB_M5_MODALITIES, REHAB_M5_MILESTONE_LABELS } from '@/lib/rehab-m5/projection';
 import type { RehabMilestoneKindM5, RehabMilestoneSourceM5, RehabModalityM5, RehabSessionM5 } from '@/lib/rehab-m5/types';
 import { RehabM5ClinicalDocuments } from './RehabM5ClinicalDocuments';
+import {ClinicalFactDocumentsA7M5} from './ClinicalFactDocumentsA7M5';
 const frame='rounded-[20px] border border-teal-300/20 bg-surface-raised/80 p-4 shadow-sm';
 const inputStyle='min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-300';
 const soft='inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-300/30 bg-teal-300/[.07] px-3 py-2 text-xs font-semibold text-teal-200 disabled:opacity-50';
@@ -98,7 +99,7 @@ export function RehabM5PremiumSections({programId}:{programId:string}){
   <section className={`${frame} space-y-3`} aria-label="Marcos e reavaliações">
    <h2 className="flex items-center gap-2 text-sm font-bold"><Flag size={18} className="text-teal-300"/> Marcos e reavaliações</h2>
    {data.milestones.length===0?<p className="text-xs text-ink-muted">Nenhum marco documentado.</p>:data.milestones.slice().sort((a,b)=>b.recorded_at.localeCompare(a.recorded_at)).map(m=><div className="rounded-xl border border-surface-border p-3 text-xs" key={m.id}>
-    <strong>{nameKind[m.kind]}</strong><span className="ml-2 text-ink-muted">{dateBR(m.recorded_at)}</span><p className="mt-1 text-ink-muted">{m.notes}</p><p className="mt-1 text-[11px] text-teal-200">{m.source==='professional_reported'?'Informação atribuída a profissional':'Relato próprio'}</p></div>)}
+    <strong>{nameKind[m.kind]}</strong><span className="ml-2 text-ink-muted">{dateBR(m.recorded_at)}</span><p className="mt-1 text-ink-muted">{m.notes}</p><p className="mt-1 text-[11px] text-teal-200">{m.source==='professional_reported'?'Informação atribuída a profissional':'Relato próprio'}</p><ClinicalFactDocumentsA7M5 type="rehab_milestone" entityId={m.id}/></div>)}
    <div className="grid min-w-0 gap-2 min-[390px]:grid-cols-2">
     <Field label="Tipo de marco"><HealthRelationPicker title="Tipo de marco" kind="status" className={inputStyle} value={milestoneKind} onValueChange={value=>setMilestoneKind(value as RehabMilestoneKindM5)}>{Object.entries(nameKind).map(([v,l])=><option key={v} value={v}>{l}</option>)}</HealthRelationPicker></Field>
     <Field label="Fonte da informação"><HealthRelationPicker title="Fonte da informação" kind="status" className={inputStyle} value={milestoneSource} onValueChange={value=>{setMilestoneSource(value as RehabMilestoneSourceM5);setMilestonePro('')}}><option value="self_reported">Relato próprio</option><option value="professional_reported">Informação de profissional</option></HealthRelationPicker></Field>

@@ -45,6 +45,7 @@ import type { SurgeryConsultationLinkM4P2 } from '@/lib/clinical-journey-m4/surg
 import type { RehabProgramM5, RehabTeamM5, RehabSessionM5, RehabSessionTeamM5, RehabOriginM5, RehabSessionEventM5, RehabMilestoneM5 } from '@/lib/rehab-m5/types';
 import type { A5Episode,A5Stay,A5Team,A5Event,A5Relation,A5Discharge } from '@/lib/hospitalizations-a5/types';
 import type {A7Event,A7Team} from '@/lib/surgery-a7/types';
+import type {SurgicalIntentA7M5,SurgeryEvidenceLinkA7M5} from '@/lib/surgery-continuity-a7m5/types';
 import type {A8Course,A8Event} from '@/lib/vaccination-a8/types';
 import type {A9Procedure,A9Sensitivity} from '@/lib/clinical-a9/types';
 import type { EventPolicyRecordP2 } from '@/lib/m3/policy-record-p2';
@@ -226,6 +227,8 @@ class VaultDB extends Dexie {
   surgery_team_a7!: Table<A7Team,string>;
   vaccination_courses_a8!: Table<A8Course,string>;
   vaccination_events_a8!: Table<A8Event,string>;
+  surgical_intents_a7m5!: Table<SurgicalIntentA7M5,string>;
+  surgery_evidence_links_a7m5!: Table<SurgeryEvidenceLinkA7M5,string>;
   procedure_events_a9!: Table<A9Procedure,string>;
   sensitivity_events_a9!: Table<A9Sensitivity,string>;
   health_reminders!: Table<HealthReminderRule, string>;
@@ -1557,6 +1560,16 @@ class VaultDB extends Dexie {
     this.version(57).stores({
       procedure_events_a9:'id, user_id, person_id, [user_id+person_id], professional_id, location_id, consultation_id, rehab_session_id, corrects_event_id, planned_on, performed_on, updated_at, synced',
       sensitivity_events_a9:'id, user_id, person_id, [user_id+person_id], professional_id, related_type, related_id, [user_id+person_id+related_type+related_id], corrects_event_id, reported_on, updated_at, synced',
+    });
+    // A7/M5: optional surgical intentions and explicit, immutable links. No parallel clinical writer.
+    this.version(58).stores({
+      surgical_intents_a7m5:'id, user_id, person_id, [user_id+person_id], source_consultation_id, source_professional_id, linked_surgery_id, corrects_intent_id, status, updated_at, synced',
+      surgery_evidence_links_a7m5:'id, user_id, person_id, [user_id+person_id], surgery_id, [user_id+person_id+surgery_id], target_type, target_id, corrects_link_id, stage, updated_at, synced',
+    }).upgrade(async tx=>{
+      // Existing A7 events predate typed topics. Never reclassify clinical facts.
+      await tx.table('surgery_journey_events_a7').toCollection().modify((row:Record<string,unknown>)=>{
+        if(row.topic===undefined)row.topic=null;
+      });
     });
 
   }

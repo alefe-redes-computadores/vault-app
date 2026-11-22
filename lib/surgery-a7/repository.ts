@@ -2,7 +2,7 @@
 import {db} from '@/lib/db';
 import {getLocalFirstAuthUser} from '@/lib/supabase/local-auth';
 import {enfileirarOperacao,solicitarProcessamentoSync} from '@/lib/sync/enfileirarOperacao';
-import {A7_EVENT_LABEL,A7_STAGE_FOR_KIND,validDayA7,validUuidA7,type A7Base,type A7Event,type A7EventKind,type A7Source,type A7Stage,type A7Table,type A7Team} from './types';
+import {A7_EVENT_LABEL,A7_STAGE_FOR_KIND,A7_TOPICS_BY_STAGE,validDayA7,validUuidA7,type A7Topic,type A7Base,type A7Event,type A7EventKind,type A7Source,type A7Stage,type A7Table,type A7Team} from './types';
 const stamp=()=>new Date().toISOString();
 const freshId=()=>{if(typeof crypto==='undefined'||typeof crypto.randomUUID!=='function')throw Error('Identificador seguro indisponível.');return crypto.randomUUID();};
 const clean=(s:unknown,max:number)=>typeof s==='string'?s.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,max):'';
@@ -31,7 +31,7 @@ const record=(uid:string,pid:string,sid:string):A7Base=>{const now=stamp();retur
 const enqueue=async(table:A7Table,action:'add'|'update',row:A7Base)=>{
  await enfileirarOperacao(table,action,row as unknown as Record<string,unknown>,{dispatchSync:false});
 };
-export async function addSurgeryJourneyEventA7(input:{personId:string;surgeryId:string;kind:A7EventKind;source:A7Source;title:string;description:string;occurredOn?:string|null;professionalId?:string|null;correctsEventId?:string|null;}):Promise<string>{
+export async function addSurgeryJourneyEventA7(input:{personId:string;surgeryId:string;kind:A7EventKind;source:A7Source;title:string;description:string;occurredOn?:string|null;professionalId?:string|null;correctsEventId?:string|null;topic?:A7Topic|null;}):Promise<string>{
  if(!kindOptions.includes(input.kind)||!sourceOptions.includes(input.source))throw Error('Natureza ou origem do registro inválida.');
  const title=clean(input.title,170),description=clean(input.description,4000);
  if(!title||!description)throw Error('Informe título e descrição do fato registrado.');
@@ -43,7 +43,9 @@ export async function addSurgeryJourneyEventA7(input:{personId:string;surgeryId:
  if(input.kind==='correction'&&(!target||target.user_id!==uid||target.person_id!==input.personId||target.cirurgia_id!==input.surgeryId||target.deleted_at||target.kind==='correction'))throw Error('Fato original fora desta cirurgia.');
  const stage:A7Stage=target?.stage||(A7_STAGE_FOR_KIND[input.kind]);
  if(!stageOptions.includes(stage))throw Error('Etapa inválida.');
- const row:A7Event={...record(uid,input.personId,input.surgeryId),stage,kind:input.kind,source:input.source,occurred_on:day,
+ const topic=target?(target.topic??null):(input.topic??null);
+ if(topic&&!A7_TOPICS_BY_STAGE[stage].includes(topic))throw Error('Tema incompatível com a etapa informada');
+ const row:A7Event={...record(uid,input.personId,input.surgeryId),stage,kind:input.kind,source:input.source,occurred_on:day,topic,
   title,description,source_professional_id:input.professionalId||null,corrects_event_id:target?.id||null};
  await db.transaction('rw',[db.persons,db.cirurgias,db.medicos,db.surgery_journey_events_a7,db.syncQueue],async()=>{
   await ownedSurgery(uid,input.personId,input.surgeryId);

@@ -65,7 +65,7 @@ export function VaccinationA8Workspace({returnTo='/saude/minha-saude'}:{returnTo
  const [retracting,setRetracting]=useState(''),[retractNote,setRetractNote]=useState('');
  const [retiring,setRetiring]=useState(false);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState('');
- const [attachmentId,setAttachmentId]=useState('');const fileRef=useRef<HTMLInputElement|null>(null);
+ const [attachmentId,setAttachmentId]=useState('');const fileRef=useRef<HTMLInputElement|null>(null);const inFlight=useRef(false);
  useEffect(()=>{const params=new URLSearchParams(window.location.search);setDeepEventId(params.get('registro')||'');setSelected(params.get('curso')||'');setEditing(false);setCorrects('');setCreating(false);setRetracting('');setRetiring(false);setNotice('');setAttachmentId('');},[uid,pid]);
  const ownedCourses=(courses||[]).filter(c=>c.user_id===uid&&c.person_id===pid);
  const deepEvent=(events||[]).find(e=>e.id===deepEventId&&e.user_id===uid&&e.person_id===pid);
@@ -76,32 +76,33 @@ export function VaccinationA8Workspace({returnTo='/saude/minha-saude'}:{returnTo
  const visible=ownedCourses.filter(c=>c.vaccine_name.toLocaleLowerCase('pt-BR').includes(filter.toLocaleLowerCase('pt-BR')));
  const applied=current.filter(e=>e.effective_kind==='dose').length;
  const planned=current.filter(e=>e.effective_kind==='plan').length;
- const valid=Boolean(uid&&pid&&!busy);
+ const valid=Boolean(uid&&pid&&!busy&&!inFlight.current);
+ const fail=(e:unknown,fallback:string)=>{const msg=e instanceof Error?e.message:fallback;setNotice(msg);showToast(msg,'error');trigger('error');};
  const reset=()=>{setDay('');setDose('');setMaker('');setLot('');setSource('self_report');setProfessionalId('');setLocationId('');setNote('');setCorrects('');setEditing(false);};
- async function saveCourse(){if(!valid)return;setBusy(true);setNotice('');try{
+ async function saveCourse(){if(!valid||inFlight.current)return;inFlight.current=true;setBusy(true);setNotice('');try{
   const id=await createVaccinationCourseA8({personId:pid,name:courseName,schemeNote:courseNote});
   setSelected(id);setCourseName('');setCourseNote('');setCreating(false);setNotice('Vacina salva neste aparelho; a sincronização pode continuar pendente.');showToast('Vacina cadastrada neste aparelho.','success');trigger('success');
- }catch(e){setNotice(e instanceof Error?e.message:'Não foi possível salvar.');}finally{setBusy(false);}}
- async function saveEvent(){if(!valid||!selectedCourse||selectedCourse.deleted_at)return;
+ }catch(e){fail(e,'Não foi possível salvar.');}finally{inFlight.current=false;setBusy(false);}}
+ async function saveEvent(){if(!valid||inFlight.current||!selectedCourse||selectedCourse.deleted_at)return;
   const normalized=dayFromPt(day);if(!normalized){setNotice('Confira a data no formato DD/MM/AAAA.');return;}
   if(mode==='dose'&&normalized>getLocalTodayISO()){const message='Aplicação futura deve ser registrada como planejamento.';setNotice(message);showToast(message,'error');return;}
-  setBusy(true);setNotice('');try{
+  if(inFlight.current)return;inFlight.current=true;setBusy(true);setNotice('');try{
    const id=await recordVaccinationA8({personId:pid,courseId:selectedCourse.id,kind:mode,day:normalized,
     doseNumber:dose.trim()?Number(dose):null,manufacturer:maker,lot,source,sourceProfessionalId:professionalId||null,sourceLocationId:locationId||null,note,correctsEventId:corrects||null});
    reset();setAttachmentId(id);setNotice('Registro salvo neste aparelho; não é comprovação de sincronização ou validação clínica.');showToast('Registro de vacinação salvo.','success');trigger('success');
-  }catch(e){setNotice(e instanceof Error?e.message:'Não foi possível registrar.');}finally{setBusy(false);}}
+  }catch(e){fail(e,'Não foi possível registrar.');}finally{inFlight.current=false;setBusy(false);}}
  function editEvent(event:A8Event){setSelected(event.course_id);setCorrects(event.id);setMode(event.effective_kind==='plan'?'plan':'dose');
   setDay(ptInput(event.planned_on||event.administered_on||''));setDose(event.dose_number?.toString()||'');setMaker(event.manufacturer||'');setLot(event.lot||'');
   setSource(event.source);setProfessionalId(event.source_professional_id||'');setLocationId(event.source_location_id||'');setNote(event.note||'');setEditing(true);setRetracting('');setNotice('Retificação: o registro anterior continuará preservado no histórico.');}
- async function retract(){if(!valid||!retracting)return;setBusy(true);try{
+ async function retract(){if(!valid||inFlight.current||!retracting)return;inFlight.current=true;setBusy(true);try{
   await voidVaccinationEventA8({personId:pid,eventId:retracting,note:retractNote});
   setRetracting('');setRetractNote('');setNotice('Cancelamento documental registrado, sem apagar o histórico.');showToast('Retificação registrada, sem apagar o histórico.','success');trigger('success');
- }catch(e){setNotice(e instanceof Error?e.message:'Não foi possível cancelar.');}finally{setBusy(false);}}
- async function retire(){if(!valid||!selectedCourse)return;setBusy(true);setNotice('');try{await retireVaccinationCourseA8({personId:pid,courseId:selectedCourse.id});setRetiring(false);setEditing(false);setNotice('Vacina arquivada. O histórico permanece preservado.');showToast('Vacina arquivada; histórico preservado.','success');trigger('success');}catch(e){setNotice(e instanceof Error?e.message:'Não foi possível arquivar.');}finally{setBusy(false);}}
- async function attach(file:File|null){if(!file||!attachmentId||!valid)return;setBusy(true);try{
+ }catch(e){fail(e,'Não foi possível cancelar.');}finally{inFlight.current=false;setBusy(false);}}
+ async function retire(){if(!valid||inFlight.current||!selectedCourse)return;inFlight.current=true;setBusy(true);setNotice('');try{await retireVaccinationCourseA8({personId:pid,courseId:selectedCourse.id});setRetiring(false);setEditing(false);setNotice('Vacina arquivada. O histórico permanece preservado.');showToast('Vacina arquivada; histórico preservado.','success');trigger('success');}catch(e){fail(e,'Não foi possível arquivar.');}finally{inFlight.current=false;setBusy(false);}}
+ async function attach(file:File|null){if(!file||!attachmentId||!valid||inFlight.current)return;inFlight.current=true;setBusy(true);try{
   const result=await registerClinicalAssetM3({personId:pid,file,targets:[{entity_type:'vaccination_event',entity_id:attachmentId}],role:'supporting'});
   setNotice(result.uploaded?'Documento privado vinculado à dose.':'Documento salvo localmente; envio privado pendente.');showToast('Comprovante registrado em Documentos privados.','success');trigger('success');setAttachmentId('');
- }catch(e){setNotice(e instanceof Error?e.message:'Anexo mantido para revisão.');}finally{setBusy(false);}}
+ }catch(e){fail(e,'Anexo mantido para revisão.');}finally{inFlight.current=false;setBusy(false);}}
  return <main className="min-h-screen bg-void px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-5 header-safe-top text-ink-primary">
   <div className="mx-auto max-w-3xl space-y-4">
    <header className="flex items-start gap-3"><Link href={safeReturnTarget(returnTo,'/saude/minha-saude')} className={secondary+' size-11 shrink-0'} aria-label="Voltar à origem"><ArrowLeft size={19}/></Link><div className="min-w-0 flex-1"><h1 className="flex items-center gap-2 text-xl font-bold"><Syringe size={22} className="text-teal-300"/>Vacinação</h1><p className="mt-1 text-xs text-ink-muted">Carteira, datas declaradas e documentos vinculados por pessoa. Planejar não confirma aplicação.</p></div></header>

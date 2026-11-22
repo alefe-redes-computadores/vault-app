@@ -56,6 +56,8 @@ const REFERENCES: Partial<Record<SyncQueueItem["table"], ReadonlyArray<[string, 
   vaccination_events_a8: [["course_id","vaccination_courses_a8"],["source_professional_id","medicos"],["source_location_id","locais"],["corrects_event_id","vaccination_events_a8"]],
   procedure_events_a9: [["professional_id","medicos"],["location_id","locais"],["consultation_id","consultas"],["rehab_session_id","rehab_sessions_m5"],["corrects_event_id","procedure_events_a9"]],
   sensitivity_events_a9: [["professional_id","medicos"],["corrects_event_id","sensitivity_events_a9"]],
+  surgical_intents_a7m5: [["source_consultation_id","consultas"],["source_professional_id","medicos"],["linked_surgery_id","cirurgias"],["corrects_intent_id","surgical_intents_a7m5"]],
+  surgery_evidence_links_a7m5: [["surgery_id","cirurgias"],["corrects_link_id","surgery_evidence_links_a7m5"]],
 };
 
 export function syncEntityKey(item: SyncQueueItem): SyncEntityKey | null {
@@ -84,6 +86,12 @@ export function blockedSyncDependency(
       type==='tratamento'?'tratamentos':type==='rehab_program'?'rehab_programs_m5':type==='medicamento'?'medicamentos':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
+  if(item.table==='surgery_evidence_links_a7m5'){
+    const p=item.payload;
+    const t=p.target_type==='procedure_event_a9'?'procedure_events_a9':p.target_type==='exam_order'?'exam_orders':
+      p.target_type==='medication'?'medicamentos':p.target_type==='health_record'?'registros_saude':null;
+    if(t&&typeof p.target_id==='string'&&failedEntities.has(`${t}:${p.target_id}`))return `${t}:${p.target_id}`;
+  }
   if(item.table==='sensitivity_events_a9'){const p=item.payload;const t=p.related_type==='medication'?'medicamentos':p.related_type==='vaccination_event'?'vaccination_events_a8':p.related_type==='procedure_event'?'procedure_events_a9':null;
     if(t&&typeof p.related_id==='string'&&failedEntities.has(`${t}:${p.related_id}`))return `${t}:${p.related_id}`;
   }
@@ -95,7 +103,9 @@ export function blockedSyncDependency(
       type==='hospitalization'?'hospitalizations_a5':type==='hospitalization_event'?'hospitalization_events_a5':
       type==='hospitalization_discharge'?'hospitalization_discharge_a5':
       type==='vaccination_event'?'vaccination_events_a8':
-      type==='procedure_event'?'procedure_events_a9':type==='sensitivity_event'?'sensitivity_events_a9':null;
+      type==='procedure_event'?'procedure_events_a9':type==='sensitivity_event'?'sensitivity_events_a9':
+      type==='surgery_event'?'surgery_journey_events_a7':type==='surgical_intent'?'surgical_intents_a7m5':
+      type==='rehab_milestone'?'rehab_milestones_m5':null;
     if(table&&typeof id==='string'&&failedEntities.has(`${table}:${id}`))return `${table}:${id}`;
   }
   return null;

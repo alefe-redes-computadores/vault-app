@@ -39,6 +39,9 @@ async function validateTargetsM3(uid:string,pid:string,targets:readonly TargetM3
       :t.entity_type==='vaccination_event'?await db.vaccination_events_a8.get(t.entity_id)
       :t.entity_type==='procedure_event'?await db.procedure_events_a9.get(t.entity_id)
       :t.entity_type==='sensitivity_event'?await db.sensitivity_events_a9.get(t.entity_id)
+      :t.entity_type==='surgery_event'?await db.surgery_journey_events_a7.get(t.entity_id)
+      :t.entity_type==='surgical_intent'?await db.surgical_intents_a7m5.get(t.entity_id)
+      :t.entity_type==='rehab_milestone'?await db.rehab_milestones_m5.get(t.entity_id)
       :await db.consultas.get(t.entity_id);
     if(!row||row.user_id!==uid||row.person_id!==pid||('deleted_at' in row&&row.deleted_at))
       throw Error('Um dos vínculos não pertence à pessoa ativa ou foi removido.');
@@ -128,7 +131,7 @@ export async function registerClinicalAssetM3(input:RegisterClinicalAssetInputM3
   if(hasNativeClinicalCacheM3())await writeClinicalCacheM3(uid,pid,assetId,input.file.type,input.file);
   let linked=0;
   await db.transaction('rw',[db.persons,db.exam_orders,db.exam_order_items,db.exam_sessions,
-    db.consultas,db.rehab_programs_m5,db.rehab_sessions_m5,db.hospitalizations_a5,db.hospitalization_events_a5,db.hospitalization_discharge_a5,db.vaccination_events_a8,db.procedure_events_a9,db.sensitivity_events_a9,db.clinical_assets,db.clinical_asset_links,db.syncQueue],async()=>{
+    db.consultas,db.rehab_programs_m5,db.rehab_sessions_m5,db.hospitalizations_a5,db.hospitalization_events_a5,db.hospitalization_discharge_a5,db.vaccination_events_a8,db.procedure_events_a9,db.sensitivity_events_a9,db.surgery_journey_events_a7,db.surgical_intents_a7m5,db.rehab_milestones_m5,db.clinical_assets,db.clinical_asset_links,db.syncQueue],async()=>{
     const person=await db.persons.get(pid);if(!person||person.user_id!==uid)throw Error('Pessoa mudou durante gravação.');
     await validateTargetsM3(uid,pid,targets);
     const latest=await db.clinical_assets.get(assetId);

@@ -4,7 +4,7 @@ import type {SyncQueueItem} from '@/lib/types';
 import {A7_TABLES,validUuidA7,type A7Table} from './types';
 const COMMON=['id','user_id','person_id','cirurgia_id','created_at','updated_at','deleted_at'] as const;
 const FIELDS:Record<A7Table,readonly string[]>={
- surgery_journey_events_a7:[...COMMON,'stage','kind','source','occurred_on','title','description','source_professional_id','corrects_event_id'],
+ surgery_journey_events_a7:[...COMMON,'stage','kind','source','occurred_on','topic','title','description','source_professional_id','corrects_event_id'],
  surgery_team_a7:[...COMMON,'professional_id','role','source','note']
 };
 const SAME=(left:Record<string,unknown>,right:Record<string,unknown>,keys:readonly string[])=>keys.every(k=>{
@@ -21,7 +21,7 @@ export async function pendingSurgeryA7Dependency(item:SyncQueueItem,hasPending:(
 }
 export async function syncSurgeryA7(item:SyncQueueItem,uid:string):Promise<void>{
  const table=item.table as A7Table;if(!A7_TABLES.includes(table)||item.operation==='delete')throw Error('A7: operação inválida.');
- const raw=item.payload,fields=FIELDS[table];
+ const raw=table==='surgery_journey_events_a7'?{...item.payload,topic:item.payload.topic??null}:item.payload,fields=FIELDS[table];
  if(!validUuidA7(raw.id)||!validUuidA7(raw.person_id)||!validUuidA7(raw.cirurgia_id)||raw.user_id!==uid||
   fields.some(f=>raw[f]===undefined)||typeof raw.created_at!=='string'||typeof raw.updated_at!=='string'||
   !Number.isFinite(Date.parse(raw.created_at))||!Number.isFinite(Date.parse(raw.updated_at)))throw Error('A7: dados incompletos ou não autorizados.');

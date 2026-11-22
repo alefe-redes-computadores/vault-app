@@ -555,6 +555,7 @@ const contracts = [
   "scripts/test-vault-v34zf-bridge.cjs",
   "scripts/test-vault-a8-vaccination-360.cjs",
   "scripts/test-vault-a8-a9-integrated-360.cjs",
+  "scripts/test-vault-a7-m5-clinical-continuity-360.cjs",
 ];
 
 // CI permanece fail-fast por padrao. Para homologacao no Termux, o modo
