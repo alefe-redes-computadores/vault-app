@@ -51,9 +51,27 @@ AAPT="$(find "$SDK/build-tools" -type f -name aapt | sort -V | tail -1)"
 [ -x "$APKSIGNER" ] && [ -x "$AAPT" ] || { echo 'STOP: apksigner/aapt ausentes' >&2; exit 1; }
 "$APKSIGNER" verify --print-certs "$TMP/new/Vault-App.apk" > "$TMP/new-cert.txt"
 "$APKSIGNER" verify --print-certs "$TMP/old/Vault-App.apk" > "$TMP/old-cert.txt"
-get_cert() { sed -nE 's/^Signer #1 certificate SHA-256 digest:[[:space:]]*([[:xdigit:]]{64}).*$/\1/p' "$1" | head -1 | tr '[:upper:]' '[:lower:]'; }
+# apksigner supports numbered signers and SDK-range signers.
+# The command above cryptographically validates the APK before this parser runs.
+# Distinct SHA-256 digests stay distinct; the strict 64-hex check below rejects multiples.
+get_cert() {
+  awk '
+    /^Signer (#[0-9]+|\([^)]*\)) certificate SHA-256 digest:[[:space:]]*/ {
+      sub(/^.* certificate SHA-256 digest:[[:space:]]*/, "")
+      gsub(/[[:space:]:]/, "")
+      print tolower($0)
+    }
+  ' "$1" | sort -u
+}
 NEW_CERT="$(get_cert "$TMP/new-cert.txt")"; OLD_CERT="$(get_cert "$TMP/old-cert.txt")"
-[[ "$NEW_CERT" =~ ^[0-9a-f]{64}$ ]] && [[ "$OLD_CERT" =~ ^[0-9a-f]{64}$ ]] || { echo 'STOP: assinatura não reconhecida' >&2; exit 1; }
+if [[ ! "$NEW_CERT" =~ ^[0-9a-f]{64}$ || ! "$OLD_CERT" =~ ^[0-9a-f]{64}$ ]]; then
+  echo 'STOP: assinatura não reconhecida (digest ausente, inválido ou múltiplo)' >&2
+  echo 'CERTIFICADOS NOVO (rótulos públicos do apksigner):' >&2
+  grep 'certificate SHA-256 digest:' "$TMP/new-cert.txt" >&2 || true
+  echo 'CERTIFICADOS ANTERIOR (rótulos públicos do apksigner):' >&2
+  grep 'certificate SHA-256 digest:' "$TMP/old-cert.txt" >&2 || true
+  exit 1
+fi
 [ "$NEW_CERT" = "$OLD_CERT" ] || { echo 'STOP: assinatura incompatível com release anterior' >&2; exit 1; }
 PREV_CERT="$(field previous.certificate)"
 [ -z "$PREV_CERT" ] || [ "$PREV_CERT" = "$OLD_CERT" ] || { echo 'STOP: metadado do certificado anterior inválido' >&2; exit 1; }
