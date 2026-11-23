@@ -1,0 +1,6 @@
+{
+  "novidades": ["Registrar somente funcionalidades efetivamente implementadas e validadas para o próximo marco."],
+  "melhorias": ["Descrever melhorias comprovadas por testes e revisão, em português compreensível."],
+  "correcoes": [],
+  "seguranca": []
+}

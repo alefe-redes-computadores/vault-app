@@ -18,14 +18,14 @@ export function VaultUpdateHistory({installedBuild = null}: {installedBuild?: nu
     const fetchHistory = async () => {
       setPhase("loading");
       try {
-        const response = await fetch(`https://api.github.com/repos/${VAULT_REPO}/releases?per_page=25`, {
+        const response = await fetch(`https://api.github.com/repos/${VAULT_REPO}/releases?per_page=100`, {
           headers: {Accept:"application/vnd.github+json"}, cache:"no-store", signal:controller.signal,
         });
         if (!response.ok) throw new Error("Histórico indisponível");
         const raw: unknown = await response.json();
         if (!Array.isArray(raw)) throw new Error("Resposta inesperada");
         if (!controller.signal.aborted) {
-          setRows(raw.map(parseVaultApprovedRelease).filter((item): item is VaultApprovedRelease => item !== null).slice(0,25));
+          setRows(raw.map(parseVaultApprovedRelease).filter((item): item is VaultApprovedRelease => item !== null).slice(0,100));
           setPhase("ready");
         }
       } catch { if (!controller.signal.aborted) setPhase("error"); }
@@ -42,6 +42,8 @@ export function VaultUpdateHistory({installedBuild = null}: {installedBuild?: nu
       {phase === "ready" && rows.length === 0 && <p className="text-xs text-ink-muted">Nenhuma versão certificada identificada.</p>}
       {phase === "ready" && installedBuild !== null && versionsSinceInstalled.length === 0 && <p className="text-xs text-ink-muted">Nenhuma release posterior ao Build {installedBuild} foi identificada neste histórico recente.</p>}
       {phase === "ready" && installedBuild !== null && versionsSinceInstalled.length > 0 && <p className="text-xs font-semibold text-ink-primary">Releases certificadas posteriores ao Build {installedBuild}</p>}
+      <p className="text-[10px] text-ink-muted">Histórico das últimas releases públicas válidas, sem Actions não distribuídas.</p>
+      <button type="button" className="min-h-11 text-[11px] font-semibold text-ice" onClick={() => void Browser.open({url:`https://github.com/${VAULT_REPO}/releases`})}>Ver histórico integral no GitHub</button>
       {versionsSinceInstalled.map(release => <div key={release.tag} className="rounded-xl border border-surface-border/40 bg-surface p-2.5">
         <div className="flex items-center justify-between gap-2"><strong className="text-xs text-ink-primary">v{release.version} · Build {release.build}</strong><button type="button" onClick={() => void Browser.open({url:release.releaseUrl})} className="flex min-h-10 items-center gap-1 text-[11px] font-semibold text-ice"><ExternalLink size={13}/> Release</button></div>
         <p className="text-[10px] text-ink-muted">{new Date(release.publishedAt).toLocaleDateString("pt-BR")}</p>

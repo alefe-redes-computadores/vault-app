@@ -19,6 +19,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import { VaultNativeUpdateFlow } from "@/components/updates/VaultNativeUpdateFlow";
 import { VAULT_UPDATE_FRAGMENT_M117 } from "@/lib/updates/update-navigation-m117";
 import { VaultUpdateHistory } from "@/components/updates/VaultUpdateHistory";
+import { getVaultReleaseRunGapMessage } from "@/lib/updates/release-registry";
 
 const humanDate = (date: string): string => {
   const parsed = new Date(date);
@@ -54,6 +55,7 @@ export function VaultUpdateCenter() {
   }, []);
   const native = state.runtime === "android";
   const release = state.release;
+  const lastKnown = state.lastConfirmedRelease;
   const hasUpdate = native && state.phase === "ready" && state.decision === "available" && Boolean(release);
   const checking = state.phase === "checking";
   const runWarning = state.newestRunWarning;
@@ -61,10 +63,11 @@ export function VaultUpdateCenter() {
     ? `VAULT-UPD-BUILD-FAILED-${state.run.id}` : state.errorCode;
   const artifactStatus = getVaultTemporaryArtifactStatus(state.artifact);
   const status = checking ? "Verificando atualização…"
-    : state.phase === "error" ? "Não foi possível consultar agora"
+    : state.phase === "error" ? "Consulta indisponível · atualização não confirmada"
     : !native ? "PWA · atualizações pela web"
-    : state.decision === "available" ? "Atualização Android disponível"
-    : state.decision === "current" ? "Seu APK está atualizado"
+    : state.decision === "available" ? "Atualização distribuída e instalável"
+    : state.decision === "current" ? (state.run?.number && release && state.run.number > release.build && state.run.status === "completed" && state.run.conclusion === "success"
+      ? "Última versão distribuída instalada · compilação mais recente não liberada" : "Última versão distribuída instalada")
     : state.decision === "preparing" ? "O APK está sendo preparado"
     : state.decision === "failed" ? "Compilação não concluída"
     : state.decision === "unknown_installed" ? "Versão instalada não identificada"
@@ -75,8 +78,11 @@ export function VaultUpdateCenter() {
       "VAULT UPDATE DIAGNÓSTICO", `Código: ${failureCode || "VAULT-UPD-STATUS"}`,
       `App: ${native ? "Android" : "PWA"} ${state.installedVersion || APP_VERSION}`,
       `Build instalado: ${state.installedBuild ?? "não identificado"}`,
-      `Release: ${release?.tag || "não encontrada"}`,
-      `Último run: ${state.run?.id ?? "não consultado"} / ${state.run?.status ?? "desconhecido"} / ${state.run?.conclusion ?? "sem conclusão"}`,
+      `Release consultada: ${release?.tag || "não confirmada nesta consulta"}`,
+      `Última release antes da falha: ${state.lastConfirmedRelease?.tag || "sem referência"}`,
+      `Última consulta confirmada: ${state.lastConfirmedAt ? humanDate(state.lastConfirmedAt) : "não disponível"}`,
+      `Último run: ${(state.run || state.lastConfirmedRun)?.id ?? "não consultado"} / ${(state.run || state.lastConfirmedRun)?.status ?? "desconhecido"} / ${(state.run || state.lastConfirmedRun)?.conclusion ?? "sem conclusão"}`,
+      `Commit da Action: ${(state.run || state.lastConfirmedRun)?.sha ?? "não informado"}`,
       `Artefato Actions: ${state.artifact?.id ?? "não confirmado"}; estado: ${artifactStatus}`,
       `Prazo informado pelo GitHub: ${state.artifact?.expiresAt ?? "desconhecido"}`,
       `SHA-256 do APK certificado: ${release?.checksum ?? "não disponível"}`,
@@ -149,18 +155,32 @@ export function VaultUpdateCenter() {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="min-w-0 rounded-xl border border-surface-border/50 bg-surface-raised/40 p-3">
-          <p className="text-[11px] text-ink-muted">{native ? "Neste aparelho" : "Versão web"}</p>
-          <p className="mt-1 truncate text-base font-bold text-ink-primary">{state.installedVersion}</p>
-          <p className="mt-1 text-xs text-ink-secondary">{native ? state.installedBuild ? `Build ${state.installedBuild}` : "Build não identificado" : "Atualização web independente"}</p>
+      <div className="mt-3 space-y-2 text-xs" aria-label="Estado do aplicativo e da distribuição">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="min-w-0 rounded-xl border border-surface-border/50 bg-surface-raised/40 p-3">
+            <p className="text-[11px] text-ink-muted">{native ? "Instalado neste aparelho" : "Versão PWA"}</p>
+            <p className="mt-1 truncate text-base font-bold text-ink-primary">v{state.installedVersion || APP_VERSION}</p>
+            <p className="mt-1 text-xs text-ink-secondary">{native ? state.installedBuild ? `Build ${state.installedBuild}` : "Build não identificado" : "Distribuição web independente"}</p>
+          </div>
+          <div className="min-w-0 rounded-xl border border-surface-border/50 bg-surface-raised/40 p-3">
+            <p className="text-[11px] text-ink-muted">Última compilação</p>
+            <p className="mt-1 truncate text-base font-bold text-ink-primary">{state.run ? `Build ${state.run.number}` : "Não confirmada"}</p>
+            <p className="mt-1 text-xs text-ink-secondary">{state.run ? `Action #${state.run.number} · ${actionState}` : "Nenhuma execução revalidada"}</p>
+          </div>
         </div>
-        <div className="min-w-0 rounded-xl border border-emerald-400/20 bg-emerald-400/[.035] p-3">
-          <p className="text-[11px] text-ink-muted">{native ? "APK disponível" : "APK Android"}</p>
-          <p className="mt-1 truncate text-base font-bold text-ink-primary">{release ? `v${release.version}` : "Indisponível"}</p>
-          <p className="mt-1 text-xs text-emerald-300">{release ? `Build ${release.build}` : "Release não confirmada"}</p>
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.035] p-3">
+          <div className="flex items-center justify-between gap-2"><p className="font-semibold text-ink-primary">Última release distribuída</p><PackageCheck size={16} className="text-emerald-300"/></div>
+          <p className="mt-1 font-bold text-ink-primary">{release ? `v${release.version} · Build ${release.build}` : "Nenhuma release confirmada nesta consulta"}</p>
+          {releaseRunGap ? <p className="mt-1 text-amber-200">{getVaultReleaseRunGapMessage(state.installedBuild, release, state.run, native)}</p> : null}
+          {state.phase === "error" && lastKnown ? <p className="mt-1 text-amber-200">Referência anterior: v{lastKnown.version} · Build {lastKnown.build}. Apenas informativa; não habilita instalação.</p> : null}
         </div>
       </div>
+      {state.phase === "error" ? <p role="alert" className="mt-2 text-xs text-amber-200">
+        {state.errorCode === "VAULT-UPD-OFFLINE" ? "Sem conexão. Tente novamente ao voltar à internet." :
+         state.errorCode === "VAULT-UPD-RATE-LIMIT" ? "A consulta ao GitHub atingiu o limite. Tente novamente mais tarde." :
+         "A consulta falhou. Não é possível garantir que exista uma atualização nova."}
+        {state.lastConfirmedAt ? ` Última consulta confirmada em ${humanDate(state.lastConfirmedAt)}.` : " Ainda não há consulta confirmada."}
+      </p> : null}
 
       {release && state.phase === "ready" ? <p className="mt-2 text-xs text-ink-secondary">
         Release certificada publicada em {humanDate(release.publishedAt)} · {humanSize(release.bytes)}.

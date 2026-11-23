@@ -21,10 +21,15 @@ export type VaultUpdateSnapshot = {
   newestRunWarning: ReturnType<typeof getVaultLatestRunWarning>;
   checkedAt: string | null;
   errorCode: string | null;
+  /** Informational last confirmed state; NEVER authorize installation from these fields. */
+  lastConfirmedAt: string | null;
+  lastConfirmedRelease: VaultApprovedRelease | null;
+  lastConfirmedRun: VaultWorkflowRun | null;
 };
 const EMPTY: VaultUpdateSnapshot = {
   phase: "idle", runtime: "web", installedVersion: APP_VERSION, installedBuild: null,
   release: null, run: null, artifact: null, decision: "web", newestRunWarning: null, checkedAt: null, errorCode: null,
+  lastConfirmedAt: null, lastConfirmedRelease: null, lastConfirmedRun: null,
 };
 let state: VaultUpdateSnapshot = EMPTY;
 let lastRequestMs = 0;
@@ -101,12 +106,14 @@ export function checkVaultUpdates(force = false): Promise<VaultUpdateSnapshot> {
       publish({phase:"ready", runtime:installed.runtime, installedVersion:installed.version,
         installedBuild:installed.build, release, run, artifact, decision,
         newestRunWarning:getVaultLatestRunWarning(release,run),
-        checkedAt:new Date().toISOString(), errorCode:null});
+        checkedAt:new Date().toISOString(), errorCode:null,
+        lastConfirmedAt:new Date().toISOString(), lastConfirmedRelease:release, lastConfirmedRun:run});
       lastRequestMs = Date.now();
     } catch (error) {
       const code = error instanceof Error && /^VAULT-UPD-[A-Z0-9-]+$/.test(error.message)
         ? error.message : "VAULT-UPD-NETWORK";
-      // Fail closed: don't present a previously cached URL as currently checked.
+      // Keep the last confirmed *reference* in the snapshot, but clear actionable
+      // release and mark phase=error. Never install based on a stale response.
       publish({phase:"error", runtime:installed.runtime, installedVersion:installed.version,
         installedBuild:installed.build, release:null, run:null, artifact:null, decision:"unavailable",
         newestRunWarning:null, errorCode:code, checkedAt:new Date().toISOString()});

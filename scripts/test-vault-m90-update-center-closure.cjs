@@ -73,7 +73,17 @@ function load(file, deps={}) {
  ok(client.includes('run.status === "completed" && run.conclusion === "success"')&&client.includes('catch(() => null)'), 'falha opcional da API de artefatos não cancela release certificada');
  ok(client.includes('release:null')&&client.includes('artifact:null'),'erro crítico limpa links antigos');
  const workflow=read('.github/workflows/build-android.yml');
- ok(workflow.includes('retention-days: 7')&&workflow.includes('gh release create')&&workflow.includes('vaultStableDebug'),'release e assinatura originais preservadas');
+ const promotion=read('.github/workflows/promote-android-run.yml');
+ const publisher=read('scripts/vault-publish-verified-action.sh');
+ ok(workflow.includes('retention-days: 7')&&workflow.includes('vaultStableDebug')&&
+    workflow.includes('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')&&
+    !workflow.includes('gh release create')&&
+    promotion.includes('environment: vault-android-release')&&
+    promotion.includes("vars.VAULT_ALLOW_STRICT_ANDROID_RELEASE == 'true'")&&
+    publisher.includes('apksigner')&&publisher.includes('get_cert')&&
+    publisher.includes('gh release create')&&
+    publisher.indexOf('get_cert')<publisher.indexOf('gh release create'),
+    'release e assinatura originais preservadas');
  ok(read('components/Providers.tsx').includes('vault_update_available'),'notificação continua abrindo Mais');
  ok(read('scripts/test-v63-release-gate.mjs').includes('"scripts/test-vault-m90-update-center-closure.cjs"')&&read('scripts/test-v63-release-gate.mjs').includes('"scripts/test-vault-m87-m89-update-center.cjs"'),'ambos os contratos no gate global');
 

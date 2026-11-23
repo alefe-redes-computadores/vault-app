@@ -30,8 +30,16 @@ ok(config.appId==='com.alefejohsefe.vault'&&pkg.dependencies['@capacitor/core'].
 const w=read('.github/workflows/build-android.yml');
 ok(w.includes('VAULT_DEBUG_KEYSTORE_BASE64')&&w.includes('vaultStableDebug')&&w.includes('ASSEMBLE_DEBUG')===false,'Assinatura estável original não foi trocada');
 ok(w.indexOf('patch-android-exact-alarms-m99.mjs')<w.indexOf('apply-android-native-updater-m111.mjs')&&w.indexOf('check-android-native-updater-m111.mjs')<w.indexOf('assembleDebug'),'Ponte gerada depois dos patches existentes e antes do Gradle');
-ok(w.indexOf('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')<w.indexOf('gh release create'),'Só publica após a verificação de assinatura');
-ok(w.includes('VAULT_CERT_SHA256=')&&w.includes('VAULT_APP_ID=com.alefejohsefe.vault')&&w.includes('VAULT_APK_SHA256='),'Release inclui identidade, certificado e SHA-256');
+ const promotion=read('.github/workflows/promote-android-run.yml');
+ const publisher=read('scripts/vault-publish-verified-action.sh');
+ ok(w.includes('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')&&
+    w.indexOf('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')<w.indexOf('upload-artifact@v4')&&
+    !w.includes('gh release create')&&
+    promotion.includes('environment: vault-android-release')&&
+    publisher.indexOf('get_cert')<publisher.indexOf('gh release create')&&
+    publisher.includes('apksigner')&&publisher.includes('VAULT_EXPECTED_SHA'),
+    'Só publica após a verificação de assinatura');
+ ok(publisher.includes('VAULT_CERT_SHA256=')&&publisher.includes('VAULT_APP_ID=com.alefejohsefe.vault')&&publisher.includes('VAULT_APK_SHA256='),'Release inclui identidade, certificado e SHA-256');
 const source=read('lib/updates/release-registry.ts');
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const mod={exports:{}};new Function('module','exports',js)(mod,mod.exports);

@@ -76,7 +76,7 @@ export function parseVaultApprovedRelease(raw: unknown): VaultApprovedRelease | 
   const newSection = body.split(/^## Novidades\s*$/m)[1] || "";
   const highlights = newSection.split(/^## /m)[0].split(/\r?\n/)
     .filter(line => /^- /u.test(line)).map(line => line.slice(2).trim())
-    .filter(Boolean).slice(0, 12).map(item => item.slice(0, 160));
+    .filter(Boolean).map(item => item.slice(0, 300));
   return {tag, build, version, commit, checksum: checksum.toLowerCase(),
     appId: appId || null, signerSha256: signerSha256 ? signerSha256.toLowerCase() : null,
     apkUrl, releaseUrl, publishedAt, bytes, highlights};
@@ -109,6 +109,18 @@ export function getVaultUpdateDecision(installedBuild: number | null, release: V
   if (run && run.status !== "completed") return "preparing";
   if (run && run.conclusion === "failure") return "failed";
   return "unavailable";
+}
+
+/** Copy is derived from installed/released/build states, not from Action success alone. */
+export function getVaultReleaseRunGapMessage(installedBuild: number | null,
+  release: VaultApprovedRelease | null, run: VaultWorkflowRun | null, native: boolean): string | null {
+  if (!release || !run || run.number <= release.build ||
+      run.status !== "completed" || run.conclusion !== "success") return null;
+  if (!native) return "Há uma compilação Android mais recente ainda não distribuída. A versão PWA é independente.";
+  if (installedBuild === null) return `O Build ${release.build} está distribuído, mas não foi possível identificar o build instalado. A compilação ${run.number} ainda não foi liberada.`;
+  if (installedBuild < release.build) return `O Build ${release.build} já está distribuído e há uma atualização disponível para este aparelho. A compilação ${run.number} ainda não foi liberada.`;
+  if (installedBuild > release.build) return `Este aparelho possui um build superior à última release confirmada (Build ${release.build}). A compilação ${run.number} ainda não foi distribuída.`;
+  return "Você está na última versão distribuída. Existe uma compilação mais recente ainda não liberada para instalação.";
 }
 
 export function getVaultLatestRunWarning(release: VaultApprovedRelease | null, run: VaultWorkflowRun | null):

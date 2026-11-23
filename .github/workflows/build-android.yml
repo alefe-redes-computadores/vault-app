@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: vault-android-${{ github.ref }}
@@ -306,49 +306,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      # M87: publish only after release tests, export, stable signing, aapt/apksigner
-      # verification and the original artifact upload have all succeeded.
-      - name: Publicar atualização Android certificada
-        if: success() && github.ref == 'refs/heads/main' && vars.VAULT_ALLOW_STRICT_ANDROID_RELEASE == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="vault-android-b${GITHUB_RUN_NUMBER}"
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          DIR="$RUNNER_TEMP/vault-certified-release"
-          mkdir -p "$DIR"
-          test -s "$APK"
-          cp "$APK" "$DIR/Vault-App.apk"
-          SHA256="$(sha256sum "$DIR/Vault-App.apk" | awk '{print $1}')"
-          CERT_SHA256="$(keytool -exportcert -keystore "$RUNNER_TEMP/vault-debug.keystore" -alias androiddebugkey -storepass android | sha256sum | awk '{print $1}')"
-          test "${#CERT_SHA256}" -eq 64
-          VERSION="$(node -p 'require("./package.json").version')"
-          COMMIT_SUBJECT="$(git log -1 --pretty=%s | tr '\n' ' ' | cut -c1-160)"
-          {
-            echo "VAULT_VERSION=$VERSION"
-            echo "VAULT_BUILD=$GITHUB_RUN_NUMBER"
-            echo "VAULT_COMMIT=$GITHUB_SHA"
-            echo "VAULT_APK_SHA256=$SHA256"
-            echo "VAULT_APP_ID=com.alefejohsefe.vault"
-            echo "VAULT_CERT_SHA256=$CERT_SHA256"
-            echo
-            echo '## Novidades'
-            PREVIOUS_SHA="$(gh release view --json targetCommitish --jq .targetCommitish 2>/dev/null || true)"
-            node scripts/generate-vault-release-notes-v34.cjs "$GITHUB_SHA" "$PREVIOUS_SHA"
-            echo
-            echo '## Certificação'
-            echo '- Gate canônico V63 estrito, TypeScript, exportação, build e assinatura Android validados na Action.'
-            echo '- Atualização sobre APK anterior depende da assinatura estável e da confirmação do Android.'
-          } > "$DIR/notes.md"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "BLOQUEADO: release $TAG já existe; não sobrescrever asset certificado" >&2
-            exit 1
-          fi
-          gh release create "$TAG" "$DIR/Vault-App.apk#Vault-App.apk" \
-            --target "$GITHUB_SHA" \
-            --title "VAULT v${VERSION} · Build ${GITHUB_RUN_NUMBER}" \
-            --notes-file "$DIR/notes.md" \
-            --latest
-          echo "APK certificado publicado: $TAG" >> "$GITHUB_STEP_SUMMARY"
+      # Publicação foi deslocada para promote-android-run.yml:
+      # workflow_run completed SUCCESS + Environment protegido + revalidação do artefato original.
+      # Não publicar de dentro do job de compilação; o estado da Action ainda não é completed.

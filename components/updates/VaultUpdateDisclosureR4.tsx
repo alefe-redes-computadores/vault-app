@@ -26,7 +26,7 @@ export function VaultUpdateDisclosureR4() {
   const status = state.phase === "checking" ? "Verificando atualização"
     : state.phase === "error" ? "Consulta indisponível"
     : !native ? "PWA · atualizações pela web"
-    : state.decision === "current" ? "APK atualizado (última consulta)"
+    : state.decision === "current" ? "Última versão distribuída instalada"
     : needsUpdate ? "Atualização disponível"
     : state.decision === "preparing" ? "APK em preparação"
     : state.decision === "unknown_installed" ? "Versão instalada não identificada"

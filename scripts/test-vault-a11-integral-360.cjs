@@ -90,10 +90,10 @@ ok(!/\.insert\(|\.upsert\(|\.update\(|\.delete\(/.test(rls),'RLS somente leitura
 const gate=read('scripts/test-v63-release-gate.mjs');
 const contractBlock=gate.split('const contracts = [')[1]?.split('];')[0]||'';
 const entries=[...contractBlock.matchAll(/"scripts\/[^\"]+"/g)].map(x=>x[0]);
-eq(entries.length,558,'V63 preserva 556 e acrescenta A11 + Guardian3 UX');
+eq(entries.length,561,'V63 preserva 558 e acrescenta os 3 contratos Update 360');
 eq(entries.filter(x=>x==='"scripts/test-vault-a11-integral-360.cjs"').length,1,'A11 única no V63');
 eq(entries.filter(x=>x==='"scripts/test-vault-guardian3-ux.cjs"').length,1,'Guardian3 UX único no V63');
-eq(new Set(entries).size,558,'V63 não aceita contratos duplicados');
+eq(new Set(entries).size,561,'V63 não aceita contratos duplicados');
 ok(entries.includes('"scripts/test-vault-a11-integral-360.cjs"'),'Novo contrato permanente no V63');
 ok(entries.includes('"scripts/test-vault-guardian-ga01-gp2-clinical.cjs"'),'Guardian GA01 presente');
 ok(entries.includes('"scripts/test-vault-ga02-ga07-guardian.cjs"'),'Guardian GA02-GA07 presente');

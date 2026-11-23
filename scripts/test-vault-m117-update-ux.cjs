@@ -30,7 +30,7 @@ assert(core.includes('checkInstallPermission(): Promise<{ granted: boolean }>'))
 assert(java.includes('public void checkInstallPermission(PluginCall call)')&&java.includes('canRequestPackageInstalls()'));
 assert(flow.includes('await native.installVerified(metadata)')&&flow.includes('setStage("permission")')&&flow.includes('setStage("permitted")')&&flow.includes('Permissão concedida')&&flow.includes('Continuar instalação'));
 assert(java.includes('verifyPackage(file, m.build, m.version, m.cert)')&&java.includes('FileProvider.getUriForFile')&&java.includes('ACTION_VIEW')&&java.includes('FLAG_GRANT_READ_URI_PERMISSION'));
-assert(flow.includes('native.downloadVerified(metadata)')&&flow.includes('cancelDownload()')&&flow.includes('Baixar e atualizar no VAULT'));
+assert(flow.includes('native.downloadVerified(metadata)')&&flow.includes('cancelDownload()')&&flow.includes('Atualizar VAULT · Build ${metadata.build}'));
 for(const path of ['components/updates/VaultNativeUpdateFlow.tsx','components/updates/VaultUpdateHomePromptM117.tsx','lib/updates/native-apk-updater.ts','lib/updates/update-navigation-m117.ts']){
  const src=read(path);const ast=ts.createSourceFile(path,src,ts.ScriptTarget.Latest,true,path.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
  assert.deepEqual(ast.parseDiagnostics.map(x=>ts.flattenDiagnosticMessageText(x.messageText,' ')),[],path);

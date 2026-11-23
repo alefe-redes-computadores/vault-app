@@ -33,7 +33,7 @@ ok(reg.getVaultUpdateDecision(null,release,run)==='unknown_installed','sem build
 ok(reg.parseVaultWorkflowRun({workflow_runs:[{...makeRun(2203,'completed','success'),html_url:'https://evil.invalid'}]})===null,'Actions URL externa não aceita');
 ok(reg.parseVaultWorkflowRun({workflow_runs:[{...makeRun(2203,'completed','success'),created_at:'garbage'}]}).createdAt===null,'timestamp inválido não é mostrado como data');
 const ui=read('components/updates/VaultUpdateCenter.tsx');
-for(const word of ['Neste aparelho','O que mudou nesta atualização','Compilação em andamento','Release certificada','Expira em','Copiar SHA-256','Ver release','Baixar manualmente','Procurar atualizações','VaultNativeUpdateFlow','VaultUpdateHistory','checkedLabel','releaseRunGap','aria-pressed={notifyEnabled}']) ok(ui.includes(word),'central preserva '+word);
+for(const word of ['Instalado neste aparelho','O que mudou nesta atualização','Compilação em andamento','Release certificada','Expira em','Copiar SHA-256','Ver release','Baixar manualmente','Procurar atualizações','VaultNativeUpdateFlow','VaultUpdateHistory','checkedLabel','releaseRunGap','aria-pressed={notifyEnabled}']) ok(ui.includes(word),'central preserva '+word);
 ok(ui.indexOf('O que mudou nesta atualização')<ui.indexOf('Cópia temporária para testes'),'novidades antes de informações efêmeras');
 ok(ui.indexOf('VaultNativeUpdateFlow release=')<ui.indexOf('Cópia temporária para testes'),'download nativo antecede artefato teste');
 const native=read('components/updates/VaultNativeUpdateFlow.tsx');
@@ -41,8 +41,10 @@ ok(native.includes('downloadVerified')&&native.includes('installVerified')&&nati
 const client=read('lib/updates/client.ts');
 ok(client.includes('SIX_HOURS')&&client.includes('parseVaultTemporaryArtifact')&&client.includes('release:null'),'fonte instalada/cache/erro fechado');
 const workflow=read('.github/workflows/build-android.yml');
-ok(workflow.includes('VAULT_ALLOW_STRICT_ANDROID_RELEASE')&&workflow.includes('npm run test:release'),'autorização e gate estrito preservados');
-ok(workflow.includes('generate-vault-release-notes-v34.cjs')&&workflow.includes('gh release create'),'changelog acumulado apenas em release');
+const promotion=read('.github/workflows/promote-android-run.yml');
+ok(promotion.includes('VAULT_ALLOW_STRICT_ANDROID_RELEASE') && promotion.includes('environment: vault-android-release') && workflow.includes('npm run test:release'),'gate estrito e autorização de publicação preservados');
+const publisher=read('scripts/vault-publish-verified-action.sh');
+ok(!workflow.includes('gh release create') && publisher.includes('generate-vault-release-notes-v34.cjs') && publisher.includes('gh release create'),'changelog só na promoção protegida da release');
 ok(workflow.indexOf('node scripts/test-vault-update360-v34.cjs')>workflow.indexOf('npm run test:release') && workflow.indexOf('node scripts/test-vault-update360-v34.cjs')<workflow.indexOf('ci-build-export-resilient.cjs'),'CI valida contratos V34 antes do build');
 const {summarize}=require('./generate-vault-release-notes-v34.cjs');
 const notes=summarize(['feat(vault): A8 Vacinas 360','fix(vault): busca em Medicamentos','fix(vault): busca em Medicamentos','test(vault): gate V63']);

@@ -1,5 +1,30 @@
 # Histórico de versões do VAULT
 
+## [Não distribuído] — Engenharia Update 360 Premium (23/11/2026)
+
+**Código candidato, ainda não é GitHub Release, não integra o APK Build 2195 e não altera o Build 2211.**
+
+### Novidades
+- Governança da publicação Android por workflow protegido, com promoção auditada do artefato original sem recompilação.
+- Preparação semântica de versões via comando controlado, com notas humanas e backup; nenhuma versão foi incrementada nesta cirurgia.
+
+### Melhorias
+- Central distingue instalado no aparelho, compilação da Action e última release distribuída; consulta offline mostra referência histórica sem permitir instalar a partir do cache.
+- Changelog cumulativo de releases elimina limites de 40 commits e 12 notas; histórico resumido no app e integral na release.
+
+### Segurança
+- Conferência do ZIP original, APK, certificado estável, assinatura anterior, SHA, package ID, versionCode e versionName antes de qualquer promoção.
+- GitHub Environment protegido e gate explícito, sem publicação automática nesta entrega.
+
+### Linha de implementação já publicada no GitHub (não equivale a APK distribuído)
+- **A10 Integral 360** (`f393b06`, 22/11): Linha Clínica factual, integrações observacionais Brain/PharmaLens/Fênix, Modo Médico/PDF, sem segundo escritor.
+- **A11 Integral 360** (`c252826`, 23/11): instrumentação de diagnóstico, matrizes 2×2 e oráculos, sem certificação física automática.
+- **Guardian⁴ FIX3** (`94cf39f`, 23/11): mitigação OOM PWA (`experimental.cpus: 1` na Vercel), PWA READY, V63 558 no corte.
+- **Android #2211**: CI de teste concluída com sucesso; **release permanente ainda não comprovada** nesta linha.
+
+---
+
+
 ## M98 — Central de Relatórios 360 (2026-11-08)
 
 - Nova Central clínica com períodos 7/30/90 dias, intervalo livre e seleção de pessoa e conteúdo.

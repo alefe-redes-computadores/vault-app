@@ -560,6 +560,9 @@ const contracts = [
   "scripts/test-vault-guardian-ga01-gp2-clinical.cjs",
   "scripts/test-vault-ga02-ga07-guardian.cjs",
   "scripts/test-vault-a11-integral-360.cjs",
+  "scripts/test-vault-update360-premium.cjs",
+  "scripts/test-vault-version-governance.cjs",
+  "scripts/test-vault-android-promotion-policy.cjs",
   "scripts/test-vault-guardian3-ux.cjs", // G4-03: uma unica vez
 ];
 

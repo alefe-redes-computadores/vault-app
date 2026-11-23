@@ -61,7 +61,15 @@ function load(rel,stubs={}){
   const strictIndex=workflow.indexOf('npm run test:release');
   ok(strictIndex>=0&&strictIndex<workflow.indexOf('ci-build-export-resilient.cjs'),'gate V63 estrito antes da exportação');
   ok(workflow.includes('set -euo pipefail')&&workflow.includes('artifacts/V63-STRICT.log')&&pkg.scripts['test:release'].includes('tsc --noEmit'),'CI exige TypeScript integral e preserva log estrito');
-  ok(workflow.includes("if: success() && github.ref == 'refs/heads/main' && vars.VAULT_ALLOW_STRICT_ANDROID_RELEASE == 'true'"),'publicação estrita somente com opt-in expresso');
+  const promotion=read('.github/workflows/promote-android-run.yml');
+  const publisher=read('scripts/vault-publish-verified-action.sh');
+  ok(promotion.includes("vars.VAULT_ALLOW_STRICT_ANDROID_RELEASE == 'true'")&&
+     promotion.includes('environment: vault-android-release')&&
+     promotion.includes('types: [completed]')&&
+     publisher.includes('VAULT_RELEASE_POLICY_READY')&&
+     publisher.includes('VAULT_EXPECTED_SHA')&&
+     !workflow.includes('gh release create'),
+     'publicação estrita somente com opt-in expresso');
   ok(workflow.indexOf('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')<workflow.indexOf('GITHUB_STEP_SUMMARY'),'resumo só após verificar assinatura/versão');
   ok(workflow.indexOf('GITHUB_STEP_SUMMARY')<workflow.indexOf('upload-artifact@v4'),'resumo anterior ao artefato APK');
   ok(workflow.includes('if-no-files-found: error'),'ausência do APK bloqueia build');

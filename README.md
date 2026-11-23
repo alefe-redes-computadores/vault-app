@@ -180,3 +180,16 @@ npx cap open android
 - **Novidades:** commits entre a release certificada anterior e a nova release, produzidos na Action pelo `generate-vault-release-notes-v34.cjs`;
   o resumo não afirma homologação física. O histórico de releases permanece acessível na Central.
 - **CI/Release/Android:** aprovação do gate, Action, publicação de APK, instalação e teste físico são evidências diferentes.
+
+## Update 360 Premium — governança pós-A11 (candidata não publicada)
+
+Esta intervenção **não** altera `APP_VERSION=1.2.0`, não distribui o APK da Action #2211 e não altera o mecanismo Android M111.
+- **Instalado**: `App.getInfo()` no aparelho. **Compilação**: resultado da Action, jamais instalável por si só. **Release**: `vault-android-b<build>` validada e publicada.
+- **Compilar**: `build-android.yml` aplica V63, TypeScript, V70, export Capacitor, Gradle e certificado e entrega somente artefato temporário.
+- **Promover**: `promote-android-run.yml` usa `workflow_run` COMPLETED/SUCCESS ou `workflow_dispatch` com `run_id` e SHA originais; exige Environment `vault-android-release` com revisores e autorização explícita. Revalida o ZIP, o APK e a assinatura antes de criar release imutável. Nenhuma release é criada pelo ZIP desta cirurgia.
+- **Preparar versão**: `node scripts/vault-prepare-version.cjs --check` ou `--prepare 1.3.0 --kind minor --notes docs/VAULT-RELEASE-NOTES-SAMPLE.json`. O modo padrão é **dry-run**; aplicar exige `VAULT_VERSION_APPLY=SIM` e `--apply`, antes de um NOVO build, com revisão de notas reais.
+- **Histórico**: `CHANGELOG.md` é cumulativo; as notas públicas agrupam os commits verificáveis entre as releases sem truncar 40/12. Versões e builds continuam unidades diferentes.
+- **Estados**: código preparado / gate local / Git / CI / Release / aparelho / homologação. Nunca presumir equivalência.
+- Contrato detalhado: [docs/VAULT-UPDATE360-PREMIUM-GUARDIAN.md](docs/VAULT-UPDATE360-PREMIUM-GUARDIAN.md).
+
+<!-- VAULT_CURRENT_VERSION:1.2.0 -->

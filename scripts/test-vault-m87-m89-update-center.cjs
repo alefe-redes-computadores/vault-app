@@ -47,9 +47,23 @@ ok(v.getVaultLatestRunWarning(parsed,run)==='failed','falha mais recente aparece
 ok(v.getVaultUpdateDecision(80,null,run)==='failed','sem release válida: falha não oferece APK');
 ok(v.getVaultUpdateDecision(80,null,{...run,status:'in_progress',conclusion:null})==='preparing','build em andamento não é download');
 const workflow=read('.github/workflows/build-android.yml');
-ok(workflow.includes('permissions:\n  contents: write') && workflow.includes('gh release create'), 'workflow publica release usando token restrito ao GitHub');
-ok(workflow.indexOf('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.') < workflow.indexOf('upload-artifact@v4') && workflow.indexOf('upload-artifact@v4') < workflow.indexOf('gh release create'), 'release só ocorre após certificado, build e artefato');
-ok(workflow.includes('VAULT_APK_SHA256=') && workflow.includes('VAULT_VERSION='),'release informa SHA256 e versão');
+const promotion=read('.github/workflows/promote-android-run.yml');
+const publisher=read('scripts/vault-publish-verified-action.sh');
+ok(workflow.includes('permissions:\n  contents: read')&&
+   !workflow.includes('gh release create')&&
+   promotion.includes('environment: vault-android-release')&&
+   promotion.includes('contents: write')&&
+   promotion.includes('GH_TOKEN: ${{ github.token }}')&&
+   publisher.includes('gh release create'),
+   'workflow publica release usando token restrito ao GitHub');
+ok(workflow.indexOf('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')>=0&&
+   workflow.indexOf('ASSINATURA E VERSIONCODE DO VAULT VALIDADOS.')<workflow.indexOf('upload-artifact@v4')&&
+   promotion.includes('workflow_run:')&&promotion.includes('types: [completed]')&&
+   publisher.includes('VAULT_SOURCE_RUN_ID')&&publisher.includes('VAULT_EXPECTED_SHA')&&
+   publisher.indexOf('apksigner')<publisher.indexOf('gh release create')&&
+   publisher.indexOf('sha256sum')<publisher.indexOf('gh release create'),
+   'release só ocorre após certificado, build e artefato');
+ok(publisher.includes('VAULT_APK_SHA256=')&&publisher.includes('VAULT_VERSION=')&&publisher.includes('VAULT_CERT_SHA256='),'release informa SHA256 e versão');
 ok(workflow.includes('VAULT_APP_VERSION') && workflow.includes('versionName'), 'versão Android nativa sincronizada ao package');
 ok(workflow.includes('retention-days: 7') && workflow.includes('Vault-App-debug'), 'artefato legado de sete dias preservado');
 const more=read('app/mais/page.tsx'),providers=read('components/Providers.tsx');

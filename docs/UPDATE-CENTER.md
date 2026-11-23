@@ -46,3 +46,15 @@
 - Validar Actions em execução, falha, cancelamento, ausência de release, remoção de asset e rate-limit.
 - Verificar apresentação mobile, preferência de alertas e retomada em aparelho físico.
 - Avaliar push real em segundo plano de modo separado: requer emissor confiável e canal nativo; nunca prometer este comportamento apenas com LocalNotifications.
+
+## Update 360 Premium — adendo de governança (candidata; sem publicação)
+
+A documentação M87–M90 acima registra o comportamento histórico original. A nova proposta preserva a ponte M111 e migra a **criação** de release para `.github/workflows/promote-android-run.yml`, executada somente após Action original `completed/success` e aprovação do Environment. O job de build deixa de criar release por si mesmo.
+
+Três autoridades independentes: (1) versão/build instalados lidos por `App.getInfo()`, (2) Action recente apenas informativa e (3) release pública com APK e metadados verificados. Sem release nova, não existe CTA de atualização nativa, independentemente de sucesso da Action.
+
+Na falha offline/429, preservar a **referência anterior** como informativa, indicar a última consulta confirmada e **não** habilitar download a partir de cache. O usuário pode usar `Procurar atualizações` (fetch `no-store` já existente). M111 continua a baixar, validar bytes, SHA-256, assinatura, pacote e versão e abrir o instalador Android com confirmação humana. A notificação de nova versão continua exclusiva de release instalável.
+
+Promoção manual do Build 2211: `run_id=45219364674`, `versionCode=2211`, `versionName=1.2.0`, `SHA=94cf39fb99c00875b0c21f97dff75224e09cd6f9` e `tag=vault-android-b2211`, sujeitos a artefato não expirado, assinatura igual à anterior e aprovação humana. **Não** converter esse APK para 1.3.0; novo semver exige novo build.
+
+Ver [docs/VAULT-UPDATE360-PREMIUM-GUARDIAN.md](VAULT-UPDATE360-PREMIUM-GUARDIAN.md).
