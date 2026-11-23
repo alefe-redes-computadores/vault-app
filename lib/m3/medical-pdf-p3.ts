@@ -4,10 +4,17 @@ import type { MedicalDossierP3, MedicalRowP3 } from './medical-dossier-p3';
 const clean=(input:unknown,max=6000):string=>String(input??'').replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,max);
 const shortDay=(iso:string)=>/^\d{4}-\d{2}-\d{2}$/.test(iso)?`${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}`:'Data não informada';
 const humanRowTextV34X=(value:string)=>value.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g,'$3/$2/$1').replace(/\bhealth_record\b/gi,'Registro de saúde');
+/** Time values with Z retain their UTC meaning; never shift a civil day to another timezone. */
+const recordedAtBR=(value:string):string=>{
+  const v=clean(value,50);
+  const m=/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(v);
+  if(!m)return humanRowTextV34X(v);
+  return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}${/[zZ]$/.test(v)?' UTC':''}`;
+};
 const sectionLabels:Record<string,string>={
   consultations:'Consultas',careflow:'CareFlow e pedidos',medications:'Medicamentos',doses:'Doses registradas',
   symptoms:'Sintomas e humor',measurements:'Medições',exams:'Exames avulsos',surgeries:'Cirurgias',
-  withdrawals:'Retiradas',prescriptions:'Receitas e aquisições',treatments:'Tratamentos',rehabilitation:'Reabilitação',documents:'Documentos',brain:'Brain (interpretação registrada)'
+  withdrawals:'Retiradas',prescriptions:'Receitas e aquisições',treatments:'Tratamentos',rehabilitation:'Reabilitação',vaccinations:'Vacinação',procedures_a9:'Procedimentos não cirúrgicos',sensitivities_a9:'Alergias, intolerâncias e reações declaradas',documents:'Documentos',brain:'Brain (interpretação registrada)'
 };
 export function medicalP3FileName(input:MedicalDossierP3):string{
   return `VAULT-Modo-Medico-${input.mode==='summary'?'Resumo':'Detalhado'}-${input.start}-${input.end}.pdf`;
@@ -57,7 +64,7 @@ export async function makeMedicalPdfP3(report:MedicalDossierP3):Promise<Blob>{
     const titleLines=pdf.splitTextToSize(title,right-left) as string[];
     for(const piece of titleLines){room(6);pdf.text(piece,left,y);y+=5.2;}
     line(humanRowTextV34X(value.detail),9);
-    line(`Origem: ${clean(humanRowTextV34X(value.source),90)} · Evidência: ${value.provenance}${value.registeredAt?` · Registrado em: ${clean(value.registeredAt,40)}`:''}`,8,[81,106,117]);
+    line(`Origem: ${clean(humanRowTextV34X(value.source),90)} · Evidência: ${value.provenance}${value.registeredAt?` · Registrado em: ${recordedAtBR(value.registeredAt)}`:''}`,8,[81,106,117]);
     for(const link of value.relations)line(`Vínculo documentado: ${humanRowTextV34X(link)}`,8,[69,106,105]);
     y+=3;
   }
@@ -66,11 +73,11 @@ export async function makeMedicalPdfP3(report:MedicalDossierP3):Promise<Blob>{
   pdf.text(report.mode==='summary'?'Resumo para consulta':'Dossiê clínico detalhado',left,y);y+=11;
   line(`Pessoa: ${report.personName}`,11,[24,52,59]);
   if(report.episode)line(`Episódio selecionado: ${report.episode.title} · ${shortDay(report.episode.date)}. Apenas vínculos explícitos foram incluídos.`,9,[25,105,82]);
-  line(`Período: ${shortDay(report.start)} a ${shortDay(report.end)} · Preparado em: ${clean(report.generatedAt,40)}`);
+  line(`Período: ${shortDay(report.start)} a ${shortDay(report.end)} · Preparado em: ${recordedAtBR(report.generatedAt)}`);
   line('Documento informativo gerado com registros existentes. Não é laudo, prescrição ou diagnóstico.',9,[129,95,45]);
   heading('Conteúdo selecionado');
   line(report.sections.map(x=>sectionLabels[x]||x).join(' · '));
-  line(`${report.rows.length} linha(s) nesta versão · ${report.availableCount} ocorrência(s) elegíveis conforme o período e as seções.`);
+  line(`${report.rows.length} ${report.rows.length===1?'linha':'linhas'} nesta versão · ${report.availableCount} ${report.availableCount===1?'ocorrência elegível':'ocorrências elegíveis'} conforme o período e as seções.`);
   if(report.omittedBySummary>0)line(`O resumo omite ${report.omittedBySummary} ocorrências por concisão. Para o histórico integral, escolha o modo detalhado.`,9,[129,95,45]);
   if(!report.rows.length){heading('Nenhuma ocorrência selecionada');line('Não há registros acessíveis para este período e estas seções. Isso não prova ausência de acontecimentos clínicos.');}
   else{

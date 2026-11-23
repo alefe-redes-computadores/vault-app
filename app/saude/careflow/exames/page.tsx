@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ToastProvider';
+import { useHapticFeedback } from '@/lib/haptics';
 import { preserveReturnTarget } from '@/lib/navigation/return-context';
 import { ClipboardCheck, FileSearch, FlaskConical, Plus, ScanText, ShieldCheck, Check, ChevronDown, ArrowLeft, Camera, HeartPulse, Droplet, ScanLine, Search } from 'lucide-react';
 import { useCareFlowM2 } from '@/hooks/useCareFlowM2';
@@ -21,6 +23,8 @@ const stateNames:Record<ExamItemStateM2,string>={pending:'Solicitado',collected:
 type DetectorBlock={rawValue?:string};type Detector=new()=>{detect(b:ImageBitmap):Promise<DetectorBlock[]>};
 export default function CareFlowExamsPage(){
  const router=useRouter();
+  const {showSuccess,showError}=useToast();
+  const {trigger}=useHapticFeedback();
  // R6: rota histórica abre o cadastro/detalhe exato; a listagem fica em Exames.
  useEffect(()=>{
    const params=new URLSearchParams(window.location.search);
@@ -34,6 +38,8 @@ export default function CareFlowExamsPage(){
   const [doctorId,setDoctorId]=useState(''),[locationId,setLocationId]=useState('');
   const appliedConsultation=useRef('');
   const m2CreateIntent=useRef<{key:string;orderId:string;itemIds:string[];linkId?:string}|null>(null);
+  const examSubmitLock=useRef(false);
+  const examEventLock=useRef(false);
   useEffect(()=>{
     if(!userId||!activePersonId)return;
     const id=new URLSearchParams(window.location.search).get('consulta')||'';
@@ -94,6 +100,8 @@ export default function CareFlowExamsPage(){
     }catch{setOcrState('Não foi possível ler a foto. Use a digitação manual.');}finally{bitmap?.close();setBusy(false);}
   };
   const submit=async()=>{
+    if(examSubmitLock.current||busy)return;
+    examSubmitLock.current=true;
     setStatus('');setBusy(true);
     try{
       const checked=checkedExamItemsM2(items);
@@ -102,10 +110,12 @@ export default function CareFlowExamsPage(){
       if(doctorId&&!medicos.some(m=>m.id===doctorId&&m.user_id===userId))throw new Error('Médico vinculado não pertence à conta ativa.');
       if(locationId&&!locais.some(l=>l.id===locationId&&l.user_id===userId))throw new Error('Local vinculado não pertence à conta ativa.');
       // M2: OCR/manual review keeps its UI, but ALL new writes use the canonical tables.
-      const description=[!doctorId&&doctor.trim()?`Solicitante informado: ${doctor.trim().slice(0,160)}`:'',
-        lab.trim()?`Laboratório citado no pedido (não agendado): ${lab.trim().slice(0,160)}`:'',
-        locationId?`Local citado: ${locais.find(x=>x.id===locationId)?.nome||'não informado'}`:''].filter(Boolean).join(' | ');
-      const key=JSON.stringify([userId,activePersonId,title,date,consultation,doctorId,description,checked]);
+      // O pedido M1 possui FK para medico/consulta, mas nao possui FK de local/laboratorio.
+      // Guardar citacoes historicas explicitamente como texto, sem fingir vinculo canônico.
+      const description=[!doctorId&&doctor.trim()?`Solicitante informado: ${doctor.trim().slice(0,160)} (declaração sem cadastro vinculado)`:'',
+        !locationId&&lab.trim()?`Laboratório declarado sem vínculo: ${lab.trim().slice(0,160)}`:'',
+        locationId?`Local mencionado no pedido (referência textual, não vínculo): ${locais.find(x=>x.id===locationId)?.nome||'não informado'}`:''].filter(Boolean).join(' | ');
+      const key=JSON.stringify([userId,activePersonId,title,date,consultation,doctorId,locationId,description,checked]);
       if(m2CreateIntent.current?.key!==key)m2CreateIntent.current={key,orderId:crypto.randomUUID(),
         itemIds:checked.map(()=>crypto.randomUUID()),linkId:consultation?crypto.randomUUID():undefined};
       await createExamOrderM1({personId:activePersonId,title:title.trim()||'Pedido de exames',
@@ -113,16 +123,21 @@ export default function CareFlowExamsPage(){
         consultationId:consultation||null,note:description||null,
         idempotency:{orderId:m2CreateIntent.current!.orderId,itemIds:m2CreateIntent.current!.itemIds,linkId:m2CreateIntent.current!.linkId}});
       m2CreateIntent.current=null;
-      setStatus(`${checked.length} exame(s) salvo(s). Itens não marcados/duvidosos não foram importados.`);
+      const total=checked.length;
+      setStatus(`${total} ${total===1?'exame salvo':'exames salvos'}. Itens não marcados ou duvidosos não foram importados.`);
+      showSuccess(total===1?'Pedido e exame salvos neste aparelho.':'Pedido e exames salvos neste aparelho.');
+      trigger('success');
  router.replace(preserveReturnTarget('/saude/exames',new URLSearchParams(window.location.search)));
       setTab('orders');setItems([]);setImage(null);setFile(null);setText('');setZoom(100);
-    }catch(e){setStatus(e instanceof Error?e.message:'Não foi possível guardar o pedido.');}
-    finally{setBusy(false);}
+    }catch(e){const reason=e instanceof Error?e.message:'Não foi possível guardar o pedido.';setStatus(reason);showError(reason);}
+    finally{examSubmitLock.current=false;setBusy(false);}
   };
   const addUpdate=async(itemId:string,asResult:boolean)=>{
+    if(examEventLock.current||busy)return;
+    examEventLock.current=true;
     setStatus('');setBusy(true);
     const existing=orders.flatMap(o=>o.items).find(x=>x.item.id===itemId);
-    if(!existing){setStatus('Exame não está mais disponível para esta pessoa.');setBusy(false);return;}
+    if(!existing){setStatus('Exame não está mais disponível para esta pessoa.');examEventLock.current=false;setBusy(false);return;}
     const edit=draft(itemId);
     try{
       if(asResult){if(!edit.resultValue.trim()||!isIsoDateM2(edit.date))throw new Error('Preencha resultado e data reais.');
@@ -133,14 +148,14 @@ export default function CareFlowExamsPage(){
         await append({kind:'exam_status',parent_id:itemId,payload:{state:next}});
         setItemStates(prev=>{const nextItems={...prev};delete nextItems[itemId];return nextItems;});
         setStatus('Novo evento de situação registrado para este exame.');}
-    }catch(e){setStatus(e instanceof Error?e.message:'Falha ao salvar o evento.');}finally{setBusy(false);}
+    }catch(e){const reason=e instanceof Error?e.message:'Falha ao salvar o evento.';setStatus(reason);showError(reason);}finally{examEventLock.current=false;setBusy(false);}
   };
   return <PageTransition><main className="min-h-screen bg-void px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-5 header-safe-top text-ink-primary vault-adaptive-tail"><div className="mx-auto max-w-3xl space-y-4">
     <header className="flex items-start gap-3"><ClinicalBackLinkP0 fallback="/saude/careflow" className="flex size-11 items-center justify-center rounded-xl border border-surface-border" /><div><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Saúde · Exames</p><h1 className="text-xl font-bold">{tab==='new'?'Novo pedido de exames':'Pedidos de exames'}</h1><p className="mt-1 text-xs text-ink-muted">Um pedido, vários exames individuais e histórico independente.</p></div></header>
     {tab==='orders'?<section aria-label="Ações dos pedidos" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-surface-border/70 bg-surface px-4 py-3"><div className="min-w-0"><h2 className="text-sm font-bold">Meus pedidos ({orders.length})</h2><p className="mt-1 text-[11px] leading-snug text-ink-muted">Pedidos agrupados; resultados individuais preservam seus próprios estados.</p></div><button type="button" onClick={()=>setTab('new')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-void"><Plus size={16}/>Novo pedido</button></section>:<div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-surface-border/70 bg-surface p-3"><button type="button" onClick={()=>setTab('orders')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-border px-3 text-xs font-semibold text-ink-primary"><ArrowLeft size={16}/>Voltar aos pedidos</button><span className="text-xs font-semibold text-emerald-200">Novo pedido de exames</span></div>}
     {tab==='new'&&<section aria-label="Formulário do novo pedido de exames" className="space-y-3 rounded-3xl border border-emerald-300/20 bg-surface p-4"><h2 className="flex items-center gap-2 text-sm font-bold"><Plus size={17} className="text-emerald-300"/>Criar pedido de exames</h2><p className="text-xs leading-relaxed text-ink-muted">1. Identifique o pedido e seus vínculos. 2. Revise os itens informados ou fotografados. 3. Confirme somente os exames realmente marcados na solicitação.</p>
-      <div className="grid gap-2 sm:grid-cols-2"><label className="text-xs text-ink-muted">Título<input className={`${B} mt-1`} value={title} maxLength={120} onChange={e=>setTitle(e.target.value)}/></label><CustomDatePicker label="Data de solicitação" value={date} onChange={setDate} maxDate={getLocalTodayISO()}/><details className="text-xs text-ink-muted sm:col-span-2"><summary className="min-h-11 cursor-pointer rounded-xl border border-surface-border/60 px-3 py-3">Informação do laboratório, se já conhecida</summary><label className="mt-2 block">Laboratório informado no documento (não comprova realização)<input className={`${B} mt-1`} value={lab} onChange={e=>setLab(e.target.value)} placeholder="Opcional; não inventar local"/></label></details></div>
-      <div className="grid gap-2 sm:grid-cols-2"><div className="min-w-0 text-xs text-ink-muted"><span>Médico responsável</span><HealthRelationPicker title="Escolher médico" kind="doctor" value={doctorId} onValueChange={value=>{setDoctorId(value);if(value)setDoctor("");}} className={`${B} mt-1`}><option value="">Não informado / outro profissional</option>{medicos.filter(m=>m.id&&m.user_id===userId).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}</HealthRelationPicker>{!doctorId&&<label className="mt-2 block">Outro médico (nome informado no pedido)<input className={`${B} mt-1`} value={doctor} onChange={e=>setDoctor(e.target.value)} placeholder="Se não estiver cadastrado"/></label>}</div><div className="min-w-0 text-xs text-ink-muted"><span>Local relacionado (somente se informado no pedido)</span><HealthRelationPicker title="Escolher local" kind="place" value={locationId} onValueChange={setLocationId} className={`${B} mt-1`}><option value="">Sem local confirmado</option>{locais.filter(l=>l.id&&l.user_id===userId).map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</HealthRelationPicker></div></div>
+      <div className="grid gap-2 sm:grid-cols-2"><label className="text-xs text-ink-muted">Título<input className={`${B} mt-1`} value={title} maxLength={120} onChange={e=>setTitle(e.target.value)}/></label><CustomDatePicker label="Data de solicitação" value={date} onChange={setDate} maxDate={getLocalTodayISO()}/>{!locationId&&<details className="text-xs text-ink-muted sm:col-span-2"><summary className="min-h-11 cursor-pointer rounded-xl border border-surface-border/60 px-3 py-3">Informação do laboratório, se já conhecida</summary><label className="mt-2 block">Laboratório informado no documento (não comprova realização)<input className={`${B} mt-1`} value={lab} onChange={e=>setLab(e.target.value)} placeholder="Somente se não houver local cadastrado"/></label></details>}</div>
+      <div className="grid gap-2 sm:grid-cols-2"><div className="min-w-0 text-xs text-ink-muted"><span>Médico responsável</span><HealthRelationPicker title="Escolher médico" kind="doctor" value={doctorId} onValueChange={value=>{setDoctorId(value);if(value)setDoctor("");}} className={`${B} mt-1`}><option value="">Não informado / outro profissional</option>{medicos.filter(m=>m.id&&m.user_id===userId).map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}</HealthRelationPicker>{!doctorId&&<label className="mt-2 block">Outro médico (nome informado no pedido)<input className={`${B} mt-1`} value={doctor} onChange={e=>setDoctor(e.target.value)} placeholder="Se não estiver cadastrado"/></label>}</div><div className="min-w-0 text-xs text-ink-muted"><span>Local mencionado no pedido (referência textual)</span><HealthRelationPicker title="Escolher local" kind="place" value={locationId} onValueChange={value=>{setLocationId(value);if(value)setLab('');}} className={`${B} mt-1`}><option value="">Nenhum local identificado no cadastro</option>{locais.filter(l=>l.id&&l.user_id===userId).map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</HealthRelationPicker></div></div>
       <div className="text-xs text-ink-muted"><span>Consulta relacionada</span><HealthRelationPicker kind="consultation" title="Selecionar consulta" value={consultation} onValueChange={setConsultation} className={`${B} mt-1`}><option value="">Sem vínculo confirmado</option>{consultas.filter(c=>c.id&&c.person_id===activePersonId&&c.user_id===userId).map(c=><option key={c.id} value={c.id}>{c.data?.split('-').reverse().join('/')} · {c.especialidade||c.medico||'Consulta'}</option>)}</HealthRelationPicker></div>
       <div className="rounded-2xl border border-surface-border/60 bg-void/30 p-3"><p className="flex items-center gap-2 text-xs font-semibold"><FileSearch size={16} className="text-sky-300"/>Foto do pedido · conferência visual</p><p className="mt-1 text-[11px] leading-relaxed text-ink-muted">A imagem fica somente na tela para comparação. A leitura automática não comprova quais itens estão marcados sem sua revisão.</p>
         <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-sky-300/30 bg-sky-300/[.07] px-4 text-xs font-semibold text-sky-200"><Camera size={16}/>Fotografar ou anexar pedido<input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" aria-label="Selecionar foto do pedido" className="sr-only" onChange={e=>{const next=e.target.files?.[0]||null;if(!next)return;if(next.size>10*1024*1024){setStatus('Foto acima de 10 MB.');return;}setFile(next);setImage(URL.createObjectURL(next));setZoom(100);}}/></label>{file&&<div className="mt-2 flex flex-wrap items-center gap-2"><p className="min-w-0 flex-1 break-all text-[11px] text-ink-secondary">Imagem para conferência: {file.name} · não enviada automaticamente</p><button type="button" onClick={()=>{if(image)URL.revokeObjectURL(image);setFile(null);setImage(null);}} className="min-h-11 rounded-xl border border-surface-border px-2.5 text-xs text-ink-muted">Remover imagem</button></div>}

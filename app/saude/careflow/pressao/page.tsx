@@ -311,6 +311,7 @@ export default function PressureCareFlowPage() {
         },
       });
       setSelectedPlan(id);
+      let remindersCreated=false;
       try {
         await healthRemindersRepository.createMany(
           clean.map((clock) => ({
@@ -326,42 +327,35 @@ export default function PressureCareFlowPage() {
             careflow_m2: { plan_id: id, start, end },
           }))
         );
+        remindersCreated=true;
         setMessage(
-          `Plano salvo com ${clean.length} ${
+          `Plano e lembretes salvos com ${clean.length} ${
             clean.length === 1 ? "horário" : "horários"
           }.`
         );
-        showToast("Plano de pressão salvo", "success");
+        showToast("Plano e lembretes de pressão salvos", "success");
       } catch (e) {
         setMessage(
-          `Plano preservado (ID ${id.slice(
-            0,
-            8
-          )}), mas não foi possível criar os lembretes. Configure-os em Lembretes de Saúde. ${
-            e instanceof Error ? e.message : ""
-          }`
+          `Plano de pressão salvo, mas não foi possível confirmar a criação de todos os lembretes. Confira Lembretes de Saúde antes de depender dos avisos. ${editingPlan?'O plano anterior permanece disponível até conferência. ':''}${e instanceof Error?e.message:''}`
         );
+        showToast("Plano salvo; confira os lembretes pendentes", "info");
       }
       setSlots([""]);
       setPlanNote("");
       setActiveForm(null);
-      if (editingPlan) {
-        for (const reminder of remindersByPlan.get(editingPlan) || [])
-          await healthRemindersRepository.setPaused(
-            reminder.id,
-            activePersonId,
-            true
-          );
-        await append({
-          kind: "monitor_note",
-          parent_id: editingPlan,
-          payload: {
-            link: "pressure_plan_closed",
-            reason: "replaced_by_new_version",
-            replacement_id: id,
-          },
-        });
-        setEditingPlan("");
+      // Sem comprovar os novos avisos, nao pausar os lembretes do plano anterior.
+      if (editingPlan && remindersCreated) {
+        try {
+          for (const reminder of remindersByPlan.get(editingPlan) || [])
+            await healthRemindersRepository.setPaused(reminder.id, activePersonId, true);
+          await append({kind: "monitor_note",parent_id: editingPlan,payload: {
+            link: "pressure_plan_closed",reason: "replaced_by_new_version",replacement_id: id,
+          }});
+          setEditingPlan("");
+        } catch (e) {
+          setMessage(`Novo plano e lembretes salvos, mas a substituição do plano anterior precisa de conferência. ${e instanceof Error?e.message:''}`);
+          showToast("Novo plano salvo; revise o plano anterior", "info");
+        }
       }
     } catch (e) {
       setMessage(

@@ -405,7 +405,7 @@ function getReceitaBadgeProps(
         "Receita Especial",
 
       colorClass:
-        "border-purple-400/30 bg-purple-400/10 text-purple-400",
+        "border-amber-400/30 bg-amber-400/10 text-amber-300",
     },
   };
 

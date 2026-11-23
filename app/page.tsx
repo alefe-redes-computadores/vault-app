@@ -1535,7 +1535,7 @@ export default function HomePage() {
                       }}
                       className="flex w-full items-center gap-3 rounded-[20px] border border-surface-border/50 bg-surface p-3.5 text-left shadow-sm transition-all active:scale-[0.985]"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/10 text-violet-400">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-400/10 text-sky-300">
                         <Syringe
                           size={
                             17
@@ -2166,7 +2166,7 @@ export default function HomePage() {
                 className="flex w-full items-center justify-between rounded-[22px] border border-dashed border-surface-border/60 bg-surface/40 px-4 py-4 text-left transition-all active:scale-[0.985]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-400/10 text-violet-400">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
                     <FolderHeart
                       size={
                         16

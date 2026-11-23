@@ -215,7 +215,7 @@ export default function MedicalModeP3Page(){
       <p className="mt-1 text-xs leading-relaxed text-ink-muted">Selecione um atendimento para mostrar somente fatos ligados por IDs reais. Sem vínculo documentado não significa que o fato não ocorreu.</p>
       <div className="mt-3"><HealthRelationPicker title="Selecionar uma consulta" kind="consultation" value={episode} onValueChange={value=>{setEpisode(value);setLimit(40);setMessage('');const item=consultations.find(c=>c.id===value);if(item?.data&&item.data<start)setStart(item.data);}} className="min-h-12 w-full rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary">
         <option value="">Histórico geral (sem filtro por episódio)</option>
-        {consultations.slice(0,120).map(c=><option value={c.id} key={c.id}>{fmt(c.data)} · {c.especialidade||c.medico||'Consulta'}</option>)}
+        {consultations.map(c=><option value={c.id} key={c.id}>{fmt(c.data)} · {c.especialidade||c.medico||'Consulta'}</option>)}
       </HealthRelationPicker></div>
       {episode?<p className="mt-2 text-[11px] text-sky-200">Filtro por vínculo explícito ativo: consultas, sintomas, pedidos e medicamentos ligados; doses não são associadas por coincidência.</p>:null}
       <button type="button" aria-pressed={readingMode} onClick={()=>setReadingMode(value=>!value)} className="mt-3 min-h-11 rounded-xl border border-emerald-300/30 px-3 text-xs font-semibold text-emerald-200">{readingMode?'Voltar à leitura compacta':'Leitura ampliada para mostrar no consultório'}</button>
