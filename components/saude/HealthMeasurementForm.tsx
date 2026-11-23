@@ -18,6 +18,7 @@ import { decimal, sleepDuration } from "@/lib/health-profile/metrics";
 import { getLocalTodayISO } from "@/lib/health-utils";
 import { saveHealthMeasurement } from "@/lib/repositories/healthMeasurements";
 import { useHapticFeedback } from "@/lib/haptics";
+import { useToast } from "@/components/ToastProvider";
 export const HEALTH_FIELD =
   "w-full rounded-2xl border border-surface-border bg-surface-raised px-3 py-3 text-sm text-ink-primary outline-none focus:border-emerald-400/50";
 export function HealthMeasurementForm({
@@ -52,6 +53,7 @@ export function HealthMeasurementForm({
   const lock = useRef(false),
     id = useRef(crypto.randomUUID()),
     { trigger } = useHapticFeedback();
+  const { showSuccess } = useToast();
   const eligible = devices.filter(
     (d) => d.active && d.capabilities.includes(type)
   );
@@ -98,6 +100,8 @@ export function HealthMeasurementForm({
         notes,
       });
       trigger("success");
+      // O pai somente fecha o painel; feedback unico apos a gravacao confirmada.
+      showSuccess(`${METRICS[type].label}: registro salvo neste aparelho.`);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não foi possível salvar.");
@@ -124,7 +128,7 @@ export function HealthMeasurementForm({
           disabled={busy}
           onClick={onClose}
           aria-label="Fechar registro"
-          className="p-2 text-ink-muted"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
         >
           <X size={18} />
         </button>
@@ -146,7 +150,7 @@ export function HealthMeasurementForm({
               <HealthTimePicker value={endTime} onChange={setEndTime} />
             </div>
           </div>
-          <p aria-live="polite" className="text-xs text-violet-300">
+          <p aria-live="polite" className="text-xs text-sky-300">
             {duration !== null
               ? `Duração registrada: ${Math.floor(duration / 60)}h ${
                   duration % 60

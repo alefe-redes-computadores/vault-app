@@ -34,6 +34,11 @@ import { useToast } from "@/components/ToastProvider";
 const input =
   "min-h-11 w-full min-w-0 rounded-xl border border-surface-border bg-surface-raised px-3 text-sm text-ink-primary focus:border-sky-300/50 outline-none";
 const nowClock = () => new Date().toTimeString().slice(0, 5);
+// Apenas exibicao no PDF: data civil sem new Date() nem conversao UTC.
+const pressurePdfDateBR = (raw: string): string =>
+  /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? `${raw.slice(8, 10)}/${raw.slice(5, 7)}/${raw.slice(0, 4)}`
+    : raw;
 const validBP = (sys: number, dia: number) =>
   Number.isInteger(sys) &&
   Number.isInteger(dia) &&
@@ -595,14 +600,14 @@ export default function PressureCareFlowPage() {
       write("Registros pessoais declarados; nao substituem avaliacao medica.");
       for (const r of measurements)
         write(
-          `${r.data} ${r.horario || ""} | ${r.valor_medicao || "sem valor"} | ${
+          `${pressurePdfDateBR(String(r.data || ""))} ${r.horario || ""} | ${r.valor_medicao || "sem valor"} | ${
             r.observacoes || ""
           }`
         );
       const blob = pdf.output("blob");
       const freshPerson = activePersonId;
       await pdfLibraryM2.add(freshPerson, {
-        title: `Pressão arterial · ${measurements.length} medições`,
+        title: `Pressão arterial · ${measurements.length} ${measurements.length === 1 ? "medição" : "medições"}`,
         start:
           measurements[measurements.length - 1]?.data || getLocalTodayISO(),
         end: measurements[0]?.data || getLocalTodayISO(),

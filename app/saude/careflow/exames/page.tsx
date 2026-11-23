@@ -148,6 +148,9 @@ export default function CareFlowExamsPage(){
         await append({kind:'exam_status',parent_id:itemId,payload:{state:next}});
         setItemStates(prev=>{const nextItems={...prev};delete nextItems[itemId];return nextItems;});
         setStatus('Novo evento de situação registrado para este exame.');}
+      // Confirma apenas o retorno resolvido do writer canônico, nunca uma conclusão presumida.
+      showSuccess(asResult ? 'Resultado do exame registrado neste aparelho.' : 'Situação do exame atualizada neste aparelho.');
+      trigger('success');
     }catch(e){const reason=e instanceof Error?e.message:'Falha ao salvar o evento.';setStatus(reason);showError(reason);}finally{examEventLock.current=false;setBusy(false);}
   };
   return <PageTransition><main className="min-h-screen bg-void px-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] pt-5 header-safe-top text-ink-primary vault-adaptive-tail"><div className="mx-auto max-w-3xl space-y-4">

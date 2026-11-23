@@ -2213,7 +2213,7 @@ export default function NovaConsultaPage() {
                   size={
                     16
                   }
-                  className="shrink-0 text-violet-400"
+                  className="shrink-0 text-emerald-300"
                 />
 
                 <label className="text-sm font-semibold text-ink-primary">
@@ -2303,16 +2303,16 @@ export default function NovaConsultaPage() {
                         key={
                           tratamentoId
                         }
-                        className="flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5"
+                        className="flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5"
                       >
                         <IconComp
                           size={
                             14
                           }
-                          className="text-violet-400"
+                          className="text-emerald-300"
                         />
 
-                        <span className="text-xs font-medium text-violet-300">
+                        <span className="text-xs font-medium text-emerald-200">
                           {
                             tratamento.nome
                           }
@@ -2348,7 +2348,7 @@ export default function NovaConsultaPage() {
                               );
                             }
                           }
-                          className="ml-1 text-violet-400/60 transition-colors hover:text-coral"
+                          className="ml-1 text-emerald-300/70 transition-colors hover:text-coral"
                           aria-label={`Remover ${tratamento.nome}`}
                         >
                           <X
@@ -2477,7 +2477,7 @@ export default function NovaConsultaPage() {
                     );
                   }
                 }
-                className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/30 bg-violet-400/5 px-4 py-3 text-violet-300 transition-colors hover:bg-violet-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-400/5 px-4 py-3 text-emerald-200 transition-colors hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Plus
                   size={
@@ -2691,7 +2691,7 @@ export default function NovaConsultaPage() {
                     size={
                       16
                     }
-                    className="shrink-0 text-violet-400"
+                    className="shrink-0 text-rose-300"
                   />
 
                   <span className="truncate">

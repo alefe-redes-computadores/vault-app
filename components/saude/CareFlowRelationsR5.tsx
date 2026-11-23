@@ -11,6 +11,12 @@ type Place={id?:string;user_id:string;nome:string};
 type Appointment={id?:string;user_id:string;person_id?:string;especialidade:string};
 const ownId=(raw:unknown)=>typeof raw==="string"&&raw.trim().length>0?raw.trim():null;
 const linkBase="/saude/careflow/exames";
+// Data civil da fonte, formatada sem Date/UTC (sem mover o dia do evento).
+const civilDateR5=(raw:unknown):string=>{
+  const value=typeof raw==="string"?raw.trim():"";
+  const match=/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(value);
+  return match?`${match[3]}/${match[2]}/${match[1]}`:value;
+};
 export function CareFlowOrderRelationsR5({order,userId,personId,doctors,places,consultations}:{order:CareFlowEventM2;userId:string;personId:string;doctors:readonly Doctor[];places:readonly Place[];consultations:readonly Appointment[]}){
   if(!userId||!personId||order.user_id!==userId||order.person_id!==personId)return null;
   const doctorId=ownId(order.payload.doctor_id),placeId=ownId(order.payload.location_id),appointmentId=ownId(order.related_id);
@@ -32,6 +38,6 @@ export function DoctorCareFlowRelationsR5({doctorId,doctorOwnerId}:{doctorId:str
   return <section aria-label="Pedidos CareFlow vinculados a este médico" className="rounded-[20px] border border-sky-400/20 bg-sky-400/[.045] p-3">
     <h2 className="flex items-center gap-2 text-xs font-semibold"><FlaskConical size={17} className="text-sky-300"/>Pedidos CareFlow vinculados</h2>
     <p className="mt-1 text-[10px] leading-relaxed text-ink-muted">Somente pedidos desta pessoa com vínculo explícito ao médico. Nenhum vínculo é inferido pelo nome.</p>
-    <div className="mt-2 space-y-1.5">{orders.map(e=><Link key={e.id} href={`${linkBase}#careflow-pedido-${encodeURIComponent(e.id)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border/50 bg-void/20 px-3 text-left"><span className="min-w-0 flex-1 text-xs font-medium">{String(e.payload.title||"Pedido de exames")}</span><span className="text-[10px] text-ink-muted">{String(e.payload.date||"")}</span><ChevronRight size={15} className="text-sky-300"/></Link>)}</div>
+    <div className="mt-2 space-y-1.5">{orders.map(e=><Link key={e.id} href={`${linkBase}#careflow-pedido-${encodeURIComponent(e.id)}`} className="flex min-h-11 items-center gap-2 rounded-xl border border-surface-border/50 bg-void/20 px-3 text-left"><span className="min-w-0 flex-1 text-xs font-medium">{String(e.payload.title||"Pedido de exames")}</span><span className="text-[10px] text-ink-muted">{civilDateR5(e.payload.date)}</span><ChevronRight size={15} className="text-sky-300"/></Link>)}</div>
   </section>;
 }
