@@ -560,6 +560,7 @@ const contracts = [
   "scripts/test-vault-guardian-ga01-gp2-clinical.cjs",
   "scripts/test-vault-ga02-ga07-guardian.cjs",
   "scripts/test-vault-a11-integral-360.cjs",
+  "scripts/test-vault-guardian3-ux.cjs", // G4-03: uma unica vez
 ];
 
 // CI permanece fail-fast por padrao. Para homologacao no Termux, o modo

@@ -17,6 +17,12 @@ const nextConfig = {
 
   reactStrictMode: true,
 
+  // G4-01: mitigacao experimental APENAS no build PWA da Vercel.
+  // Nao altera export Android, Sentry, sourcemaps ou desenvolvimento.
+  ...(process.env.VERCEL === "1" && !isCapacitorExport
+    ? { experimental: { cpus: 1 } }
+    : {}),
+
 };
 
 module.exports = withSentryConfig(nextConfig, {

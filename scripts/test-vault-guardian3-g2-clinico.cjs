@@ -57,7 +57,9 @@ ok(finder.includes('found.slice(0,n)')&&finder.includes('setN(x=>x+24)'),'Seleto
 const gate=read('scripts/test-v63-release-gate.mjs');
 const block=gate.split('const contracts = [')[1]?.split('];')[0]||'';
 const list=[...block.matchAll(/"(scripts\/[^"\n]+)"/g)].map(v=>v[1]);
-equal(list.length,556,'V63 composto de exatamente 556 contratos');
+equal(list.length,558,'V63 composto de exatamente 558 contratos');
+equal(list.filter(x=>x==='scripts/test-vault-a11-integral-360.cjs').length,1,'A11 unica no V63');
+equal(list.filter(x=>x==='scripts/test-vault-guardian3-ux.cjs').length,1,'Guardian3 UX unico no V63');
 for (const filename of [
  'scripts/test-vault-a7-m5-clinical-continuity-360.cjs',
  'scripts/test-vault-ga02-ga07-guardian.cjs',
