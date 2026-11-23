@@ -51,12 +51,12 @@ AAPT="$(find "$SDK/build-tools" -type f -name aapt | sort -V | tail -1)"
 [ -x "$APKSIGNER" ] && [ -x "$AAPT" ] || { echo 'STOP: apksigner/aapt ausentes' >&2; exit 1; }
 "$APKSIGNER" verify --print-certs "$TMP/new/Vault-App.apk" > "$TMP/new-cert.txt"
 "$APKSIGNER" verify --print-certs "$TMP/old/Vault-App.apk" > "$TMP/old-cert.txt"
-# apksigner supports numbered signers and SDK-range signers.
+# apksigner supports numbered, SDK-range, and V1-V4 scheme signers.
 # The command above cryptographically validates the APK before this parser runs.
 # Distinct SHA-256 digests stay distinct; the strict 64-hex check below rejects multiples.
 get_cert() {
   awk '
-    /^Signer (#[0-9]+|\([^)]*\)) certificate SHA-256 digest:[[:space:]]*/ {
+    /^(V[1-4] Signer:|Signer (#[0-9]+|\([^)]*\))) certificate SHA-256 digest:[[:space:]]*/ {
       sub(/^.* certificate SHA-256 digest:[[:space:]]*/, "")
       gsub(/[[:space:]:]/, "")
       print tolower($0)
